@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -7,6 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Exercise, Language } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface ExerciseFormProps {
   onSuccess?: () => void;
@@ -57,31 +58,72 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const generateAudio = async (text: string, language: Language): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: { text, language }
+      });
+
+      if (error) throw error;
+
+      const audioContent = data.audioContent;
+      const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
+      
+      const fileName = `${Date.now()}.mp3`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('audio')
+        .upload(fileName, blob, {
+          contentType: 'audio/mp3'
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('audio')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error generating audio:', error);
+      toast.error('Failed to generate audio for the exercise');
+      return null;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
-    
-    if (initialValues?.id) {
-      // Update existing exercise
-      updateExercise(initialValues.id, {
-        title,
-        text,
-        language,
-        tags
-      });
-    } else {
-      // Add new exercise
-      addExercise({
-        title,
-        text,
-        language,
-        tags
-      });
-    }
-    
-    if (onSuccess) {
-      onSuccess();
+
+    try {
+      const audioUrl = await generateAudio(text, language);
+      
+      if (initialValues?.id) {
+        // Update existing exercise
+        updateExercise(initialValues.id, {
+          title,
+          text,
+          language,
+          tags,
+          ...(audioUrl && { audioUrl })
+        });
+      } else {
+        // Add new exercise
+        addExercise({
+          title,
+          text,
+          language,
+          tags,
+          ...(audioUrl && { audioUrl })
+        });
+      }
+      
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error('Error saving exercise:', error);
+      toast.error('Failed to save the exercise');
     }
   };
 
