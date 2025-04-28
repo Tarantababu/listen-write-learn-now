@@ -9,7 +9,113 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      exercises: {
+        Row: {
+          audio_url: string | null
+          completion_count: number | null
+          created_at: string
+          id: string
+          is_completed: boolean | null
+          language: string
+          tags: string[] | null
+          text: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          completion_count?: number | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean | null
+          language: string
+          tags?: string[] | null
+          text: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          completion_count?: number | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean | null
+          language?: string
+          tags?: string[] | null
+          text?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          learning_languages: string[]
+          selected_language: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          learning_languages?: string[]
+          selected_language?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          learning_languages?: string[]
+          selected_language?: string
+        }
+        Relationships: []
+      }
+      vocabulary: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          definition: string
+          example_sentence: string
+          exercise_id: string | null
+          id: string
+          language: string
+          user_id: string
+          word: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          definition: string
+          example_sentence: string
+          exercise_id?: string | null
+          id?: string
+          language: string
+          user_id: string
+          word: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          definition?: string
+          example_sentence?: string
+          exercise_id?: string | null
+          id?: string
+          language?: string
+          user_id?: string
+          word?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vocabulary_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
