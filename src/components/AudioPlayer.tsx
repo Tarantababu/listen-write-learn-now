@@ -6,31 +6,55 @@ import { Button } from '@/components/ui/button';
 interface AudioPlayerProps {
   audioUrl?: string;
   demoMode?: boolean;
+  registerMethods?: (methods: { 
+    play: () => void; 
+    pause: () => void;
+    replay: () => void;
+  }) => void;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, demoMode = false }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ 
+  audioUrl, 
+  demoMode = false,
+  registerMethods
+}) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const togglePlay = () => {
+  const play = () => {
     if (!audioRef.current) return;
-    
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
-    }
-    
-    setIsPlaying(!isPlaying);
+    audioRef.current.play();
+    setIsPlaying(true);
   };
 
-  const handleReplay = () => {
+  const pause = () => {
+    if (!audioRef.current) return;
+    audioRef.current.pause();
+    setIsPlaying(false);
+  };
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      pause();
+    } else {
+      play();
+    }
+  };
+
+  const replay = () => {
     if (!audioRef.current) return;
     
     audioRef.current.currentTime = 0;
     audioRef.current.play();
     setIsPlaying(true);
   };
+
+  // Register methods for external control
+  useEffect(() => {
+    if (registerMethods) {
+      registerMethods({ play, pause, replay });
+    }
+  }, [registerMethods]);
 
   useEffect(() => {
     // If we have no audio URL and are in demo mode, create a fake audio element
@@ -82,7 +106,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, demoMode = false })
         </Button>
         
         <Button 
-          onClick={handleReplay}
+          onClick={replay}
           variant="outline"
           size="icon"
           className="rounded-full"

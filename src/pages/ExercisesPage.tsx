@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Plus, Filter } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -28,6 +27,7 @@ import ExerciseCard from '@/components/ExerciseCard';
 import DictationPractice from '@/components/DictationPractice';
 import { Exercise } from '@/types';
 import { toast } from 'sonner';
+import VocabularyHighlighter from '@/components/VocabularyHighlighter';
 
 const ExercisesPage: React.FC = () => {
   const { exercises, selectExercise, selectedExercise, deleteExercise, markProgress } = useExerciseContext();
@@ -44,6 +44,7 @@ const ExercisesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCompleted, setFilterCompleted] = useState<boolean | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [showResults, setShowResults] = useState(false);
   
   // Get all unique tags from exercises
   const allTags = Array.from(
@@ -79,6 +80,7 @@ const ExercisesPage: React.FC = () => {
   const handlePractice = (exercise: Exercise) => {
     setExerciseToPractice(exercise);
     setIsPracticeModalOpen(true);
+    setShowResults(false);
   };
   
   const handleEdit = (exercise: Exercise) => {
@@ -113,6 +115,7 @@ const ExercisesPage: React.FC = () => {
         toast.success(`Great job! ${3 - updatedCompletionCount} more successful attempts until mastery.`);
       }
     }
+    setShowResults(true);
   };
   
   const clearFilters = () => {
@@ -273,10 +276,15 @@ const ExercisesPage: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           {exerciseToPractice && (
-            <DictationPractice
-              exercise={exerciseToPractice}
-              onComplete={handlePracticeComplete}
-            />
+            <>
+              <DictationPractice
+                exercise={exerciseToPractice}
+                onComplete={handlePracticeComplete}
+              />
+              {showResults && (
+                <VocabularyHighlighter exercise={exerciseToPractice} />
+              )}
+            </>
           )}
         </DialogContent>
       </Dialog>
