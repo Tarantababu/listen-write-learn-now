@@ -1,16 +1,21 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Exercise, Language } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 interface ExerciseContextProps {
   exercises: Exercise[];
   selectedExercise: Exercise | null;
-  addExercise: (exercise: Omit<Exercise, 'id' | 'createdAt' | 'completionCount' | 'isCompleted'>) => void;
-  updateExercise: (id: string, updates: Partial<Exercise>) => void;
-  deleteExercise: (id: string) => void;
+  addExercise: (exercise: Omit<Exercise, 'id' | 'createdAt' | 'completionCount' | 'isCompleted'>) => Promise<Exercise>;
+  updateExercise: (id: string, updates: Partial<Exercise>) => Promise<void>;
+  deleteExercise: (id: string) => Promise<void>;
   selectExercise: (id: string | null) => void;
-  markProgress: (id: string, accuracy: number) => void;
+  markProgress: (id: string, accuracy: number) => Promise<void>;
   filterExercisesByLanguage: (language: Language) => Exercise[];
+  loading: boolean;
 }
 
 const ExerciseContext = createContext<ExerciseContextProps | undefined>(undefined);
@@ -24,50 +29,197 @@ export const useExerciseContext = () => {
 };
 
 export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [exercises, setExercises] = useState<Exercise[]>(() => {
-    const savedExercises = localStorage.getItem('exercises');
-    return savedExercises 
-      ? JSON.parse(savedExercises).map((ex: any) => ({
-          ...ex,
-          createdAt: new Date(ex.createdAt)
-        })) 
-      : [];
-  });
-  
+  const [exercises, setExercises] = useState<Exercise[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
-
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { settings } = useUserSettingsContext();
+  
+  // Load exercises from Supabase when user changes
   useEffect(() => {
-    localStorage.setItem('exercises', JSON.stringify(exercises));
-  }, [exercises]);
+    const fetchExercises = async () => {
+      if (!user) {
+        // If not logged in, use local storage
+        const savedExercises = localStorage.getItem('exercises');
+        if (savedExercises) {
+          try {
+            setExercises(JSON.parse(savedExercises).map((ex: any) => ({
+              ...ex,
+              createdAt: new Date(ex.createdAt)
+            })));
+          } catch (error) {
+            console.error('Error parsing stored exercises:', error);
+            setExercises([]);
+          }
+        } else {
+          setExercises([]);
+        }
+        setLoading(false);
+        return;
+      }
 
-  const addExercise = (exercise: Omit<Exercise, 'id' | 'createdAt' | 'completionCount' | 'isCompleted'>) => {
-    const newExercise: Exercise = {
-      ...exercise,
-      id: crypto.randomUUID(),
-      createdAt: new Date(),
-      completionCount: 0,
-      isCompleted: false
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('exercises')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data) {
+          setExercises(data.map(ex => ({
+            id: ex.id,
+            title: ex.title,
+            text: ex.text,
+            language: ex.language as Language,
+            tags: ex.tags || [],
+            audioUrl: ex.audio_url,
+            createdAt: new Date(ex.created_at),
+            completionCount: ex.completion_count || 0,
+            isCompleted: ex.is_completed || false
+          })));
+        }
+      } catch (error) {
+        console.error('Error fetching exercises:', error);
+        toast.error('Failed to load exercises');
+        setExercises([]);
+      } finally {
+        setLoading(false);
+      }
     };
-    
-    setExercises([...exercises, newExercise]);
-    
-    // Here we would typically generate audio using the ChatGPT API
-    // For now, we'll mock this functionality
-    console.log(`Audio would be generated for: ${newExercise.text}`);
-    
-    return newExercise;
+
+    fetchExercises();
+  }, [user]);
+
+  // Save exercises to local storage for non-authenticated users
+  useEffect(() => {
+    if (!user) {
+      localStorage.setItem('exercises', JSON.stringify(exercises));
+    }
+  }, [exercises, user]);
+
+  const addExercise = async (exercise: Omit<Exercise, 'id' | 'createdAt' | 'completionCount' | 'isCompleted'>) => {
+    try {
+      if (!user) {
+        // Handle non-authenticated user
+        const newExercise: Exercise = {
+          ...exercise,
+          id: crypto.randomUUID(),
+          createdAt: new Date(),
+          completionCount: 0,
+          isCompleted: false
+        };
+        
+        setExercises(prev => [newExercise, ...prev]);
+        return newExercise;
+      }
+
+      // Create exercise in Supabase
+      const { data, error } = await supabase
+        .from('exercises')
+        .insert({
+          user_id: user.id,
+          title: exercise.title,
+          text: exercise.text,
+          language: exercise.language,
+          tags: exercise.tags,
+          audio_url: exercise.audioUrl
+        })
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      const newExercise: Exercise = {
+        id: data.id,
+        title: data.title,
+        text: data.text,
+        language: data.language as Language,
+        tags: data.tags || [],
+        audioUrl: data.audio_url,
+        createdAt: new Date(data.created_at),
+        completionCount: data.completion_count || 0,
+        isCompleted: data.is_completed || false
+      };
+
+      setExercises(prev => [newExercise, ...prev]);
+      return newExercise;
+    } catch (error: any) {
+      toast.error('Failed to create exercise: ' + error.message);
+      throw error;
+    }
   };
 
-  const updateExercise = (id: string, updates: Partial<Exercise>) => {
-    setExercises(exercises.map(ex => 
-      ex.id === id ? { ...ex, ...updates } : ex
-    ));
+  const updateExercise = async (id: string, updates: Partial<Exercise>) => {
+    try {
+      if (!user) {
+        // Handle non-authenticated user
+        setExercises(exercises.map(ex => 
+          ex.id === id ? { ...ex, ...updates } : ex
+        ));
+        return;
+      }
+
+      // Update exercise in Supabase
+      const { error } = await supabase
+        .from('exercises')
+        .update({
+          title: updates.title,
+          text: updates.text,
+          language: updates.language,
+          tags: updates.tags,
+          audio_url: updates.audioUrl,
+          completion_count: updates.completionCount,
+          is_completed: updates.isCompleted
+        })
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setExercises(exercises.map(ex => 
+        ex.id === id ? { ...ex, ...updates } : ex
+      ));
+      
+      // Update selected exercise if it's the one being updated
+      if (selectedExercise?.id === id) {
+        setSelectedExercise(prev => prev ? { ...prev, ...updates } : null);
+      }
+    } catch (error: any) {
+      toast.error('Failed to update exercise: ' + error.message);
+      throw error;
+    }
   };
 
-  const deleteExercise = (id: string) => {
-    setExercises(exercises.filter(ex => ex.id !== id));
-    if (selectedExercise?.id === id) {
-      setSelectedExercise(null);
+  const deleteExercise = async (id: string) => {
+    try {
+      if (!user) {
+        // Handle non-authenticated user
+        setExercises(exercises.filter(ex => ex.id !== id));
+        if (selectedExercise?.id === id) {
+          setSelectedExercise(null);
+        }
+        return;
+      }
+
+      // Delete exercise from Supabase
+      const { error } = await supabase
+        .from('exercises')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setExercises(exercises.filter(ex => ex.id !== id));
+      if (selectedExercise?.id === id) {
+        setSelectedExercise(null);
+      }
+    } catch (error: any) {
+      toast.error('Failed to delete exercise: ' + error.message);
+      throw error;
     }
   };
 
@@ -81,23 +233,69 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setSelectedExercise(exercise || null);
   };
 
-  const markProgress = (id: string, accuracy: number) => {
-    setExercises(exercises.map(ex => {
-      if (ex.id === id) {
-        // If accuracy is > 95%, increment completion count
-        if (accuracy >= 95) {
-          const newCompletionCount = ex.completionCount + 1;
-          // Mark as completed if they've achieved >95% accuracy three times
-          return {
-            ...ex,
-            completionCount: newCompletionCount,
-            isCompleted: newCompletionCount >= 3
-          };
-        }
-        return ex;
+  const markProgress = async (id: string, accuracy: number) => {
+    try {
+      const exercise = exercises.find(ex => ex.id === id);
+      if (!exercise) return;
+
+      // Calculate new completion count and status
+      let newCompletionCount = exercise.completionCount;
+      let isCompleted = exercise.isCompleted;
+
+      // If accuracy is > 95%, increment completion count
+      if (accuracy >= 95) {
+        newCompletionCount += 1;
+        // Mark as completed if they've achieved >95% accuracy three times
+        isCompleted = newCompletionCount >= 3;
       }
-      return ex;
-    }));
+
+      // Update locally
+      const updatedExercise = {
+        ...exercise,
+        completionCount: newCompletionCount,
+        isCompleted
+      };
+
+      // Update in Supabase if authenticated
+      if (user) {
+        const { error } = await supabase
+          .from('exercises')
+          .update({
+            completion_count: newCompletionCount,
+            is_completed: isCompleted
+          })
+          .eq('id', id)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        // Also save completion record
+        const { error: completionError } = await supabase
+          .from('completions')
+          .insert({
+            user_id: user.id,
+            exercise_id: id,
+            attempt_count: exercise.completionCount + 1,
+            completed: isCompleted,
+            accuracy: accuracy
+          });
+
+        if (completionError) console.error('Error saving completion record:', completionError);
+      }
+
+      // Update state
+      setExercises(exercises.map(ex => 
+        ex.id === id ? updatedExercise : ex
+      ));
+
+      // Update selected exercise if needed
+      if (selectedExercise?.id === id) {
+        setSelectedExercise(updatedExercise);
+      }
+    } catch (error: any) {
+      toast.error('Failed to update progress: ' + error.message);
+      throw error;
+    }
   };
 
   const filterExercisesByLanguage = (language: Language) => {
@@ -112,7 +310,8 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     deleteExercise,
     selectExercise,
     markProgress,
-    filterExercisesByLanguage
+    filterExercisesByLanguage,
+    loading
   };
 
   return (

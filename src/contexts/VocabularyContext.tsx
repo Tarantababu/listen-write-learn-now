@@ -1,13 +1,17 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { VocabularyItem, Language } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface VocabularyContextProps {
   vocabulary: VocabularyItem[];
-  addVocabularyItem: (item: Omit<VocabularyItem, 'id'>) => void;
-  removeVocabularyItem: (id: string) => void;
+  addVocabularyItem: (item: Omit<VocabularyItem, 'id'>) => Promise<VocabularyItem>;
+  removeVocabularyItem: (id: string) => Promise<void>;
   getVocabularyByExercise: (exerciseId: string) => VocabularyItem[];
   getVocabularyByLanguage: (language: Language) => VocabularyItem[];
+  loading: boolean;
 }
 
 const VocabularyContext = createContext<VocabularyContextProps | undefined>(undefined);
@@ -21,31 +25,140 @@ export const useVocabularyContext = () => {
 };
 
 export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [vocabulary, setVocabulary] = useState<VocabularyItem[]>(() => {
-    const savedVocabulary = localStorage.getItem('vocabulary');
-    return savedVocabulary ? JSON.parse(savedVocabulary) : [];
-  });
+  const [vocabulary, setVocabulary] = useState<VocabularyItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
+  // Load vocabulary from Supabase when user changes
   useEffect(() => {
-    localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
-  }, [vocabulary]);
+    const fetchVocabulary = async () => {
+      if (!user) {
+        // If not logged in, use local storage
+        const savedVocabulary = localStorage.getItem('vocabulary');
+        if (savedVocabulary) {
+          try {
+            setVocabulary(JSON.parse(savedVocabulary));
+          } catch (error) {
+            console.error('Error parsing stored vocabulary:', error);
+            setVocabulary([]);
+          }
+        } else {
+          setVocabulary([]);
+        }
+        setLoading(false);
+        return;
+      }
 
-  const addVocabularyItem = (item: Omit<VocabularyItem, 'id'>) => {
-    const newItem: VocabularyItem = {
-      ...item,
-      id: crypto.randomUUID(),
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('vocabulary')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data) {
+          setVocabulary(data.map(item => ({
+            id: item.id,
+            word: item.word,
+            definition: item.definition,
+            exampleSentence: item.example_sentence,
+            audioUrl: item.audio_url,
+            exerciseId: item.exercise_id || '',
+            language: item.language as Language
+          })));
+        }
+      } catch (error) {
+        console.error('Error fetching vocabulary:', error);
+        toast.error('Failed to load vocabulary');
+        setVocabulary([]);
+      } finally {
+        setLoading(false);
+      }
     };
-    
-    setVocabulary([...vocabulary, newItem]);
-    
-    // Here we would generate audio for the example sentence using ChatGPT API
-    console.log(`Audio would be generated for example: ${newItem.exampleSentence}`);
-    
-    return newItem;
+
+    fetchVocabulary();
+  }, [user]);
+
+  // Save vocabulary to local storage for non-authenticated users
+  useEffect(() => {
+    if (!user) {
+      localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
+    }
+  }, [vocabulary, user]);
+
+  const addVocabularyItem = async (item: Omit<VocabularyItem, 'id'>): Promise<VocabularyItem> => {
+    try {
+      if (!user) {
+        // Handle non-authenticated user
+        const newItem: VocabularyItem = {
+          ...item,
+          id: crypto.randomUUID(),
+        };
+        
+        setVocabulary(prev => [newItem, ...prev]);
+        return newItem;
+      }
+
+      // Create vocabulary item in Supabase
+      const { data, error } = await supabase
+        .from('vocabulary')
+        .insert({
+          user_id: user.id,
+          word: item.word,
+          definition: item.definition,
+          example_sentence: item.exampleSentence,
+          audio_url: item.audioUrl,
+          exercise_id: item.exerciseId,
+          language: item.language
+        })
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      const newItem: VocabularyItem = {
+        id: data.id,
+        word: data.word,
+        definition: data.definition,
+        exampleSentence: data.example_sentence,
+        audioUrl: data.audio_url,
+        exerciseId: data.exercise_id || '',
+        language: data.language as Language
+      };
+
+      setVocabulary(prev => [newItem, ...prev]);
+      return newItem;
+    } catch (error: any) {
+      toast.error('Failed to create vocabulary item: ' + error.message);
+      throw error;
+    }
   };
 
-  const removeVocabularyItem = (id: string) => {
-    setVocabulary(vocabulary.filter(item => item.id !== id));
+  const removeVocabularyItem = async (id: string) => {
+    try {
+      if (!user) {
+        // Handle non-authenticated user
+        setVocabulary(vocabulary.filter(item => item.id !== id));
+        return;
+      }
+
+      // Delete vocabulary item from Supabase
+      const { error } = await supabase
+        .from('vocabulary')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setVocabulary(vocabulary.filter(item => item.id !== id));
+    } catch (error: any) {
+      toast.error('Failed to delete vocabulary item: ' + error.message);
+      throw error;
+    }
   };
 
   const getVocabularyByExercise = (exerciseId: string) => {
@@ -61,7 +174,8 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     addVocabularyItem,
     removeVocabularyItem,
     getVocabularyByExercise,
-    getVocabularyByLanguage
+    getVocabularyByLanguage,
+    loading
   };
 
   return (

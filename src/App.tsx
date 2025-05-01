@@ -17,36 +17,42 @@ import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
 import LoginPage from "@/pages/LoginPage";
 import SignUpPage from "@/pages/SignUpPage";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <UserSettingsProvider>
-        <ExerciseProvider>
-          <VocabularyProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
+        <UserSettingsProvider>
+          <ExerciseProvider>
+            <VocabularyProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/signup" element={<SignUpPage />} />
-                  <Route path="/" element={<Layout />}>
-                    <Route index element={<HomePage />} />
-                    <Route path="exercises" element={<ExercisesPage />} />
-                    <Route path="vocabulary" element={<VocabularyPage />} />
-                    <Route path="settings" element={<SettingsPage />} />
+                  
+                  {/* Protected Routes */}
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/" element={<Layout />}>
+                      <Route index element={<HomePage />} />
+                      <Route path="exercises" element={<ExercisesPage />} />
+                      <Route path="vocabulary" element={<VocabularyPage />} />
+                      <Route path="settings" element={<SettingsPage />} />
+                    </Route>
                   </Route>
+                  
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
-          </VocabularyProvider>
-        </ExerciseProvider>
-      </UserSettingsProvider>
-    </AuthProvider>
+              </TooltipProvider>
+            </VocabularyProvider>
+          </ExerciseProvider>
+        </UserSettingsProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 

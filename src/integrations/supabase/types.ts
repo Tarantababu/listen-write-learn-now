@@ -9,6 +9,44 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      completions: {
+        Row: {
+          accuracy: number | null
+          attempt_count: number | null
+          completed: boolean | null
+          created_at: string | null
+          exercise_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          attempt_count?: number | null
+          completed?: boolean | null
+          created_at?: string | null
+          exercise_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          attempt_count?: number | null
+          completed?: boolean | null
+          created_at?: string | null
+          exercise_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "completions_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           audio_url: string | null
@@ -79,6 +117,7 @@ export type Database = {
           definition: string
           example_sentence: string
           exercise_id: string | null
+          explanation: string | null
           id: string
           language: string
           user_id: string
@@ -90,6 +129,7 @@ export type Database = {
           definition: string
           example_sentence: string
           exercise_id?: string | null
+          explanation?: string | null
           id?: string
           language: string
           user_id: string
@@ -101,6 +141,7 @@ export type Database = {
           definition?: string
           example_sentence?: string
           exercise_id?: string | null
+          explanation?: string | null
           id?: string
           language?: string
           user_id?: string
