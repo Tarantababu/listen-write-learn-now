@@ -35,6 +35,22 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const { user } = useAuth();
   const { settings } = useUserSettingsContext();
   
+  // Ensure audio bucket exists
+  useEffect(() => {
+    const createAudioBucket = async () => {
+      try {
+        await supabase.functions.invoke('create-audio-bucket', {
+          body: {}
+        });
+      } catch (error) {
+        console.error('Error creating audio bucket:', error);
+        // Don't show error to user as this is a background operation
+      }
+    };
+    
+    createAudioBucket();
+  }, []);
+  
   // Load exercises from Supabase when user changes
   useEffect(() => {
     const fetchExercises = async () => {
