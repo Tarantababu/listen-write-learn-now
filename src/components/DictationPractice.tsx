@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import AudioPlayer from '@/components/AudioPlayer';
 import { Keyboard } from 'lucide-react';
 import { toast } from 'sonner';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface DictationPracticeProps {
   exercise: Exercise;
@@ -214,56 +215,58 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
           </Button>
         </div>
       ) : (
-        // Results section - modified for better scrolling and highlight errors
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-          <div className="border rounded-md p-4">
-            <h3 className="font-medium mb-2">Your Answer:</h3>
-            <p 
-              className="text-sm whitespace-pre-wrap"
-              dangerouslySetInnerHTML={{ __html: highlightedErrors }}
-            ></p>
-          </div>
-          
-          <div className="border rounded-md p-4">
-            <h3 className="font-medium mb-2">Original Text:</h3>
-            <p className="text-sm whitespace-pre-wrap">{exercise.text}</p>
-          </div>
-          
-          <div className="bg-muted p-4 rounded-md text-center">
-            <h3 className="font-medium mb-1">Accuracy</h3>
-            <div className={`text-2xl font-bold ${
-              accuracy && accuracy >= 95 
-                ? 'text-success' 
-                : accuracy && accuracy >= 70 
-                  ? 'text-amber-500' 
-                  : 'text-destructive'
-            }`}>
-              {accuracy}%
+        // Results section - using ScrollArea for proper scrolling
+        <ScrollArea className="h-[60vh] pr-2">
+          <div className="space-y-4">
+            <div className="border rounded-md p-4">
+              <h3 className="font-medium mb-2">Your Answer:</h3>
+              <p 
+                className="text-sm whitespace-pre-wrap"
+                dangerouslySetInnerHTML={{ __html: highlightedErrors }}
+              ></p>
             </div>
             
-            {accuracy && accuracy >= 95 ? (
-              <p className="text-sm text-success mt-2">
-                Great job! {exercise.completionCount + 1 >= 3 
-                  ? "You've mastered this exercise!" 
-                  : `${3 - exercise.completionCount - 1} more successful attempts until mastery.`}
-              </p>
-            ) : (
-              <p className="text-sm mt-2">
-                Keep practicing to improve your accuracy
-              </p>
-            )}
+            <div className="border rounded-md p-4">
+              <h3 className="font-medium mb-2">Original Text:</h3>
+              <p className="text-sm whitespace-pre-wrap">{exercise.text}</p>
+            </div>
+            
+            <div className="bg-muted p-4 rounded-md text-center">
+              <h3 className="font-medium mb-1">Accuracy</h3>
+              <div className={`text-2xl font-bold ${
+                accuracy && accuracy >= 95 
+                  ? 'text-success' 
+                  : accuracy && accuracy >= 70 
+                    ? 'text-amber-500' 
+                    : 'text-destructive'
+              }`}>
+                {accuracy}%
+              </div>
+              
+              {accuracy && accuracy >= 95 ? (
+                <p className="text-sm text-success mt-2">
+                  Great job! {exercise.completionCount + 1 >= 3 
+                    ? "You've mastered this exercise!" 
+                    : `${3 - exercise.completionCount - 1} more successful attempts until mastery.`}
+                </p>
+              ) : (
+                <p className="text-sm mt-2">
+                  Keep practicing to improve your accuracy
+                </p>
+              )}
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleTryAgain}
+                variant="outline"
+                className="flex-1"
+              >
+                Try Again
+              </Button>
+            </div>
           </div>
-          
-          <div className="flex gap-2">
-            <Button 
-              onClick={handleTryAgain}
-              variant="outline"
-              className="flex-1"
-            >
-              Try Again
-            </Button>
-          </div>
-        </div>
+        </ScrollArea>
       )}
     </div>
   );
