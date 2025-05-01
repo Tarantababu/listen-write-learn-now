@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import VocabularyCard from '@/components/VocabularyCard';
+import VocabularyPlaylist from '@/components/VocabularyPlaylist';
 import { VocabularyItem } from '@/types';
 import { toast } from 'sonner';
 
@@ -85,6 +86,9 @@ const VocabularyPage: React.FC = () => {
           Review and manage your saved vocabulary items
         </p>
       </div>
+      
+      {/* Add the Vocabulary Playlist component */}
+      <VocabularyPlaylist vocabularyItems={displayVocabulary} />
       
       <div className="mb-6">
         <Input

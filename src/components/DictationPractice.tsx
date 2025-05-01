@@ -19,6 +19,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   const [userInput, setUserInput] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [highlightedErrors, setHighlightedErrors] = useState<string>('');
   const audioPlayerRef = useRef<{ play: () => void; pause: () => void; replay: () => void } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
@@ -57,10 +58,44 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     const totalWords = originalWords.length;
     return Math.round((correctWords / totalWords) * 100);
   }, [exercise.text, userInput]);
+
+  // Create highlighted version of the user's answer showing errors
+  const getHighlightedErrors = useCallback(() => {
+    if (!userInput.trim()) return '';
+    
+    // Normalize both texts (lowercase, remove punctuation)
+    const normalizeText = (text: string) => {
+      return text
+        .toLowerCase()
+        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+    
+    const normalizedOriginal = normalizeText(exercise.text).split(' ');
+    const words = userInput.split(/\s+/);
+    
+    // Create a new array with spans for incorrect words
+    const highlightedWords = words.map((word, index) => {
+      const normalizedWord = word.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '');
+      const isCorrect = index < normalizedOriginal.length && normalizedWord === normalizedOriginal[index];
+      
+      if (isCorrect) {
+        return word;
+      } else {
+        return `<span class="text-destructive font-medium">${word}</span>`;
+      }
+    });
+    
+    return highlightedWords.join(' ');
+  }, [exercise.text, userInput]);
   
   const handleSubmit = () => {
     const calculatedAccuracy = calculateAccuracy();
+    const errorHighlighting = getHighlightedErrors();
+    
     setAccuracy(calculatedAccuracy);
+    setHighlightedErrors(errorHighlighting);
     setShowResults(true);
     onComplete(calculatedAccuracy);
 
@@ -179,10 +214,14 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
           </Button>
         </div>
       ) : (
-        <div className="space-y-6">
+        // Results section - modified for better scrolling and highlight errors
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
           <div className="border rounded-md p-4">
             <h3 className="font-medium mb-2">Your Answer:</h3>
-            <p className="text-sm whitespace-pre-wrap">{userInput}</p>
+            <p 
+              className="text-sm whitespace-pre-wrap"
+              dangerouslySetInnerHTML={{ __html: highlightedErrors }}
+            ></p>
           </div>
           
           <div className="border rounded-md p-4">
