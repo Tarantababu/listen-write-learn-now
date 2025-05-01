@@ -15,8 +15,8 @@ interface UserSettingsContextProps {
 }
 
 const defaultSettings: UserSettings = {
-  learningLanguages: ['english', 'german'],
-  selectedLanguage: 'english'
+  learningLanguages: ['english', 'german'] as Language[],
+  selectedLanguage: 'english' as Language
 };
 
 const UserSettingsContext = createContext<UserSettingsContextProps | undefined>(undefined);
@@ -59,8 +59,8 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         if (data) {
           setSettings({
-            learningLanguages: data.learning_languages || defaultSettings.learningLanguages,
-            selectedLanguage: data.selected_language || defaultSettings.selectedLanguage
+            learningLanguages: data.learning_languages as Language[] || defaultSettings.learningLanguages,
+            selectedLanguage: data.selected_language as Language || defaultSettings.selectedLanguage
           });
         }
       } catch (error) {
@@ -109,7 +109,6 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (settings.learningLanguages.includes(language)) {
       try {
         await updateSettings({ selectedLanguage: language });
-        toast.success(`Selected ${language} as your active language`);
       } catch (error) {
         console.error('Error selecting language:', error);
       }
@@ -121,7 +120,6 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       try {
         const updatedLanguages = [...settings.learningLanguages, language];
         await updateSettings({ learningLanguages: updatedLanguages });
-        toast.success(`Added ${language} to your learning languages`);
       } catch (error) {
         console.error('Error adding language:', error);
       }
@@ -140,7 +138,6 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
         
         await updateSettings(updates);
-        toast.success(`Removed ${language} from your learning languages`);
       } catch (error) {
         console.error('Error removing language:', error);
       }

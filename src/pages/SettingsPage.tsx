@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -8,26 +8,56 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Language } from '@/types';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Loader2 } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
-  const { settings, updateSettings, selectLanguage, addLearningLanguage, removeLearningLanguage } = useUserSettingsContext();
+  const { settings, updateSettings, selectLanguage, addLearningLanguage, removeLearningLanguage, loading } = useUserSettingsContext();
   
   const availableLanguages: Language[] = ['english', 'german'];
+  const [updatingLanguage, setUpdatingLanguage] = useState<string | null>(null);
   
-  const handleLanguageToggle = (language: Language, isChecked: boolean) => {
-    if (isChecked) {
-      addLearningLanguage(language);
-      toast.success(`Added ${language} to your learning languages`);
-    } else {
-      removeLearningLanguage(language);
-      toast.success(`Removed ${language} from your learning languages`);
+  const handleLanguageToggle = async (language: Language, isChecked: boolean) => {
+    try {
+      setUpdatingLanguage(language);
+      if (isChecked) {
+        await addLearningLanguage(language);
+        toast.success(`Added ${language} to your learning languages`);
+      } else {
+        await removeLearningLanguage(language);
+        toast.success(`Removed ${language} from your learning languages`);
+      }
+    } catch (error) {
+      console.error('Error updating languages:', error);
+      toast.error('Failed to update learning languages');
+    } finally {
+      setUpdatingLanguage(null);
     }
   };
   
-  const handleLanguageSelect = (language: Language) => {
-    selectLanguage(language);
-    toast.success(`Selected ${language} as your active language`);
+  const handleLanguageSelect = async (language: Language) => {
+    try {
+      setUpdatingLanguage(language);
+      await selectLanguage(language);
+      toast.success(`Selected ${language} as your active language`);
+    } catch (error) {
+      console.error('Error selecting language:', error);
+      toast.error('Failed to update active language');
+    } finally {
+      setUpdatingLanguage(null);
+    }
   };
+  
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -57,16 +87,27 @@ const SettingsPage: React.FC = () => {
                       handleLanguageToggle(language, checked as boolean)
                     }
                     disabled={
-                      settings.learningLanguages.length === 1 && 
-                      settings.learningLanguages.includes(language)
+                      updatingLanguage === language ||
+                      (settings.learningLanguages.length === 1 && 
+                      settings.learningLanguages.includes(language))
                     }
                   />
                   <Label htmlFor={`language-${language}`} className="capitalize">
                     {language}
+                    {updatingLanguage === language && (
+                      <Loader2 className="h-3 w-3 animate-spin ml-2 inline" />
+                    )}
                   </Label>
                 </div>
               ))}
             </div>
+            
+            <Alert className="mt-4">
+              <AlertTitle>Want more languages?</AlertTitle>
+              <AlertDescription>
+                This application is designed to easily add new languages. Currently, English and German are supported.
+              </AlertDescription>
+            </Alert>
           </CardContent>
         </Card>
         
@@ -84,13 +125,24 @@ const SettingsPage: React.FC = () => {
             >
               {settings.learningLanguages.map(language => (
                 <div key={language} className="flex items-center space-x-2">
-                  <RadioGroupItem value={language} id={`active-${language}`} />
+                  <RadioGroupItem 
+                    value={language} 
+                    id={`active-${language}`}
+                    disabled={updatingLanguage === language}
+                  />
                   <Label htmlFor={`active-${language}`} className="capitalize">
                     {language}
+                    {updatingLanguage === language && (
+                      <Loader2 className="h-3 w-3 animate-spin ml-2 inline" />
+                    )}
                   </Label>
                 </div>
               ))}
             </RadioGroup>
+            
+            <p className="text-sm text-muted-foreground mt-4">
+              Your active language determines which exercises and vocabulary items are displayed throughout the app.
+            </p>
           </CardContent>
         </Card>
         
