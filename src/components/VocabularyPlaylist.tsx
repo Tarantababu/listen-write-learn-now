@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { VocabularyItem } from '@/types';
-import { Play, Pause, RotateCcw, ListMusic } from 'lucide-react';
+import { Play, Pause, RotateCcw, ListMusic, SkipBack, SkipForward } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,13 +12,16 @@ import {
 } from '@/components/ui/dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface VocabularyPlaylistProps {
   vocabularyItems: VocabularyItem[];
+  onPlayingItemChange?: (id: string | null) => void;
 }
 
 const VocabularyPlaylist: React.FC<VocabularyPlaylistProps> = ({
-  vocabularyItems
+  vocabularyItems,
+  onPlayingItemChange = () => {}
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
@@ -35,6 +38,16 @@ const VocabularyPlaylist: React.FC<VocabularyPlaylistProps> = ({
   );
 
   const currentItem = currentPlaylist[currentItemIndex];
+
+  // Notify parent of current playing item
+  useEffect(() => {
+    onPlayingItemChange(isPlaying && currentItem ? currentItem.id : null);
+    
+    // Clean up when component unmounts
+    return () => {
+      onPlayingItemChange(null);
+    };
+  }, [isPlaying, currentItem, onPlayingItemChange]);
 
   // Load audio when current item changes
   useEffect(() => {
@@ -141,126 +154,130 @@ const VocabularyPlaylist: React.FC<VocabularyPlaylistProps> = ({
     setShowPlaylistDialog(false);
   };
 
+  if (itemsWithAudio.length === 0) {
+    return null;
+  }
+
   return (
     <>
       <audio ref={audioRef} />
       
-      {itemsWithAudio.length > 0 ? (
-        <div className="mb-6 bg-muted rounded-lg p-4">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="font-medium text-lg flex items-center">
-              <ListMusic className="mr-2 h-5 w-5" />
-              Vocabulary Playlist
-            </h2>
-            
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm">
-                  {selectedItems.size > 0 ? `${selectedItems.size} selected` : 'All items'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-0">
-                <div className="p-4 border-b border-border">
-                  <h4 className="font-medium">Select vocabulary items</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Choose which items to include in the playlist
-                  </p>
-                </div>
-                <div className="max-h-60 overflow-y-auto p-2">
-                  {itemsWithAudio.map(item => (
-                    <div 
-                      key={item.id} 
-                      className="flex items-center p-2 hover:bg-accent rounded-md cursor-pointer"
-                      onClick={() => toggleItemSelection(item.id)}
-                    >
-                      <div className={`w-4 h-4 mr-2 rounded border ${
-                        selectedItems.has(item.id) ? 'bg-primary border-primary' : 'border-muted-foreground'
-                      }`}>
-                        {selectedItems.has(item.id) && (
-                          <div className="h-full w-full text-white flex items-center justify-center text-xs">✓</div>
-                        )}
-                      </div>
-                      <span className="truncate">{item.word}</span>
+      <div className="mb-6 bg-gradient-to-r from-muted/70 to-muted rounded-lg p-4 shadow-sm border border-border/40">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-medium text-lg flex items-center">
+            <ListMusic className="mr-2 h-5 w-5" />
+            Vocabulary Playlist
+          </h2>
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                {selectedItems.size > 0 ? `${selectedItems.size} selected` : 'All items'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0">
+              <div className="p-4 border-b border-border">
+                <h4 className="font-medium">Select vocabulary items</h4>
+                <p className="text-sm text-muted-foreground">
+                  Choose which items to include in the playlist
+                </p>
+              </div>
+              <div className="max-h-60 overflow-y-auto p-2">
+                {itemsWithAudio.map(item => (
+                  <div 
+                    key={item.id} 
+                    className="flex items-center p-2 hover:bg-accent rounded-md cursor-pointer"
+                    onClick={() => toggleItemSelection(item.id)}
+                  >
+                    <div className={`w-4 h-4 mr-2 rounded border ${
+                      selectedItems.has(item.id) ? 'bg-primary border-primary' : 'border-muted-foreground'
+                    }`}>
+                      {selectedItems.has(item.id) && (
+                        <div className="h-full w-full text-white flex items-center justify-center text-xs">✓</div>
+                      )}
                     </div>
-                  ))}
-                </div>
-                <div className="p-2 border-t border-border">
-                  <div className="flex justify-between">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setSelectedItems(new Set())}
-                    >
-                      Reset
-                    </Button>
-                    <Button 
-                      variant="default" 
-                      size="sm"
-                      onClick={() => {
-                        setCurrentItemIndex(0);
-                        setIsPlaying(false);
-                      }}
-                    >
-                      Apply
-                    </Button>
+                    <span className="truncate">{item.word}</span>
                   </div>
+                ))}
+              </div>
+              <div className="p-2 border-t border-border">
+                <div className="flex justify-between">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSelectedItems(new Set())}
+                  >
+                    Reset
+                  </Button>
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    onClick={() => {
+                      setCurrentItemIndex(0);
+                      setIsPlaying(false);
+                    }}
+                  >
+                    Apply
+                  </Button>
                 </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-          
-          <div className="flex items-center justify-center space-x-4">
-            <Button
-              variant="outline" 
-              size="sm"
-              onClick={playPrevious}
-              disabled={currentPlaylist.length <= 1}
-            >
-              Previous
-            </Button>
-            
-            <Button
-              onClick={togglePlay}
-              variant="default"
-              size="icon"
-              className="rounded-full w-12 h-12"
-            >
-              {isPlaying ? 
-                <Pause className="h-6 w-6" /> : 
-                <Play className="h-6 w-6" />
-              }
-            </Button>
-            
-            <Button
-              variant="outline" 
-              size="sm"
-              onClick={playNext}
-              disabled={currentPlaylist.length <= 1}
-            >
-              Next
-            </Button>
-            
-            <Button 
-              onClick={restart}
-              variant="outline"
-              size="icon"
-              className="rounded-full"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          {currentItem && (
-            <div className="mt-4 text-center">
-              <p className="font-medium">{currentItem.word}</p>
-              <p className="text-sm text-muted-foreground italic">"{currentItem.exampleSentence}"</p>
-              <p className="text-xs mt-1 text-muted-foreground">
-                {currentItemIndex + 1} of {currentPlaylist.length}
-              </p>
-            </div>
-          )}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
-      ) : null}
+        
+        <div className="flex items-center justify-center space-x-4">
+          <Button
+            variant="outline" 
+            size="sm"
+            onClick={playPrevious}
+            disabled={currentPlaylist.length <= 1}
+          >
+            <SkipBack className="h-4 w-4 mr-1" />
+            Previous
+          </Button>
+          
+          <Button
+            onClick={togglePlay}
+            variant="default"
+            size="icon"
+            className="rounded-full w-12 h-12 bg-gradient-to-r from-primary/90 to-accent hover:opacity-90"
+          >
+            {isPlaying ? 
+              <Pause className="h-6 w-6" /> : 
+              <Play className="h-6 w-6 ml-0.5" />
+            }
+          </Button>
+          
+          <Button
+            variant="outline" 
+            size="sm"
+            onClick={playNext}
+            disabled={currentPlaylist.length <= 1}
+          >
+            Next
+            <SkipForward className="h-4 w-4 ml-1" />
+          </Button>
+          
+          <Button 
+            onClick={restart}
+            variant="outline"
+            size="icon"
+            className="rounded-full"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {currentItem && (
+          <div className="mt-4 p-3 border border-border/60 rounded-lg bg-background/80 shadow-sm">
+            <p className="font-medium">{currentItem.word}</p>
+            <p className="text-sm text-muted-foreground italic">"{currentItem.exampleSentence}"</p>
+            <p className="text-xs mt-1 text-muted-foreground">
+              {currentItemIndex + 1} of {currentPlaylist.length}
+            </p>
+          </div>
+        )}
+      </div>
       
       <Dialog open={showPlaylistDialog} onOpenChange={setShowPlaylistDialog}>
         <DialogTrigger asChild>
@@ -282,7 +299,10 @@ const VocabularyPlaylist: React.FC<VocabularyPlaylistProps> = ({
                 {itemsWithAudio.map(item => (
                   <div 
                     key={item.id} 
-                    className="flex items-center p-2 hover:bg-accent rounded-md cursor-pointer"
+                    className={cn(
+                      "flex items-center p-2 hover:bg-accent rounded-md cursor-pointer",
+                      currentItem?.id === item.id && isPlaying && "bg-accent/30"
+                    )}
                     onClick={() => toggleItemSelection(item.id)}
                   >
                     <div className={`w-4 h-4 mr-2 rounded border ${
@@ -302,7 +322,10 @@ const VocabularyPlaylist: React.FC<VocabularyPlaylistProps> = ({
               <Button variant="outline" onClick={() => setShowPlaylistDialog(false)}>
                 Cancel
               </Button>
-              <Button onClick={handlePlayAll}>
+              <Button 
+                onClick={handlePlayAll}
+                className="bg-gradient-to-r from-primary/90 to-accent hover:opacity-90"
+              >
                 Play {selectedItems.size > 0 ? 'Selected' : 'All'}
               </Button>
             </div>

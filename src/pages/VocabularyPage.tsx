@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,7 @@ import VocabularyCard from '@/components/VocabularyCard';
 import VocabularyPlaylist from '@/components/VocabularyPlaylist';
 import { VocabularyItem } from '@/types';
 import { toast } from 'sonner';
-import { FileDown, Info } from 'lucide-react';
+import { FileDown, Info, Search } from 'lucide-react';
 import { downloadAnkiImport } from '@/utils/ankiExport';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
@@ -24,10 +25,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const VocabularyPage: React.FC = () => {
   const { vocabulary, removeVocabularyItem, loading } = useVocabularyContext();
   const { settings } = useUserSettingsContext();
+  const isMobile = useIsMobile();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -35,6 +38,9 @@ const VocabularyPage: React.FC = () => {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [sortOrder, setSortOrder] = useState<'newest'|'oldest'|'alphabetical'>('newest');
+  const [isActionBarSticky, setIsActionBarSticky] = useState(false);
+  const actionBarRef = useRef<HTMLDivElement>(null);
+  const [currentPlayingId, setCurrentPlayingId] = useState<string | null>(null);
   
   // Filter vocabulary by current language and search term
   const filteredVocabulary = vocabulary
@@ -59,6 +65,23 @@ const VocabularyPage: React.FC = () => {
         return b.id.localeCompare(a.id);
       }
     });
+  
+  // Track scroll to make action bar sticky
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!actionBarRef.current) return;
+      
+      const rect = actionBarRef.current.getBoundingClientRect();
+      if (rect.top <= 0) {
+        setIsActionBarSticky(true);
+      } else {
+        setIsActionBarSticky(false);
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   
   const handleDeleteItem = (item: VocabularyItem) => {
     setItemToDelete(item);
@@ -107,7 +130,7 @@ const VocabularyPage: React.FC = () => {
       
       toast.success(
         <div className="flex flex-col gap-1">
-          <div>Vocabulary exported successfully</div>
+          <div>{itemsToExport.length} vocabulary {itemsToExport.length === 1 ? 'item' : 'items'} exported successfully</div>
           <div className="text-sm font-light">Follow the README.txt file in the ZIP for import instructions</div>
         </div>
       );
@@ -127,8 +150,12 @@ const VocabularyPage: React.FC = () => {
     setSelectedItems([]);
   };
   
+  const updateCurrentPlayingId = (id: string | null) => {
+    setCurrentPlayingId(id);
+  };
+  
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 pb-20">
       <div className="mb-6">
         <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">Vocabulary</h1>
         <p className="text-muted-foreground">
@@ -138,90 +165,100 @@ const VocabularyPage: React.FC = () => {
       
       {/* Add the Vocabulary Playlist component */}
       {filteredVocabulary.length > 0 && (
-        <VocabularyPlaylist vocabularyItems={filteredVocabulary} />
+        <VocabularyPlaylist 
+          vocabularyItems={filteredVocabulary} 
+          onPlayingItemChange={updateCurrentPlayingId}
+        />
       )}
       
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="flex-1">
-          <Input
-            placeholder="Search vocabulary..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
-          />
-        </div>
+      {/* Actions Bar - can be sticky */}
+      <div 
+        ref={actionBarRef}
+        className={`bg-background z-10 pt-2 pb-4 mb-2 ${isActionBarSticky ? 'sticky top-0 shadow-md px-4 -mx-4 pt-4' : ''}`}
+      >
+        <div className="flex flex-col md:flex-row gap-4 mb-2">
+          <div className="flex-1 relative">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search vocabulary..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-8"
+            />
+          </div>
 
-        <div className="w-full md:w-48">
-          <Select
-            value={sortOrder}
-            onValueChange={(value) => setSortOrder(value as 'newest'|'oldest'|'alphabetical')}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">Newest first</SelectItem>
-              <SelectItem value="oldest">Oldest first</SelectItem>
-              <SelectItem value="alphabetical">Alphabetical</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="w-full md:w-48">
+            <Select
+              value={sortOrder}
+              onValueChange={(value) => setSortOrder(value as 'newest'|'oldest'|'alphabetical')}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest first</SelectItem>
+                <SelectItem value="oldest">Oldest first</SelectItem>
+                <SelectItem value="alphabetical">Alphabetical</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className={`flex gap-2 ${isMobile ? 'flex-col' : 'flex-row flex-wrap'}`}>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={selectAll}
+              className={`whitespace-nowrap ${isMobile ? 'w-full' : ''}`}
+              disabled={filteredVocabulary.length === 0}
+            >
+              Select All
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={deselectAll}
+              className={`whitespace-nowrap ${isMobile ? 'w-full' : ''}`}
+              disabled={selectedItems.length === 0}
+            >
+              Deselect All
+            </Button>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={handleExportAnki}
+                    disabled={isExporting || filteredVocabulary.length === 0}
+                    className={`whitespace-nowrap bg-gradient-to-r from-primary/90 to-accent hover:opacity-90 ${isMobile ? 'w-full' : ''}`}
+                  >
+                    <FileDown className="mr-2 h-4 w-4" />
+                    {isExporting ? "Exporting..." : "Export Vocabulary"}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Exports a ZIP file containing a text file for Anki import and audio files (if available)</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
         
-        <div className="flex gap-2 flex-wrap">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={selectAll}
-            className="whitespace-nowrap"
-            disabled={filteredVocabulary.length === 0}
-          >
-            Select All
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={deselectAll}
-            className="whitespace-nowrap"
-            disabled={selectedItems.length === 0}
-          >
-            Deselect All
-          </Button>
-          
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  onClick={handleExportAnki}
-                  disabled={isExporting || filteredVocabulary.length === 0}
-                  className="whitespace-nowrap bg-gradient-to-r from-primary to-accent hover:opacity-90"
-                >
-                  <FileDown className="mr-2 h-4 w-4" />
-                  {isExporting ? "Exporting..." : "Export Vocabulary"}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                <p>Exports a ZIP file containing a text file for Anki import and audio files (if available)</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <div className="text-sm text-muted-foreground">
+          {selectedItems.length > 0 ? (
+            <p>{selectedItems.length} of {filteredVocabulary.length} items selected</p>
+          ) : (
+            <p>Select items to export or use the Export button to export all visible items</p>
+          )}
         </div>
-      </div>
-      
-      <div className="mb-4 text-sm text-muted-foreground">
-        {selectedItems.length > 0 ? (
-          <p>{selectedItems.length} of {filteredVocabulary.length} items selected</p>
-        ) : (
-          <p>Select items to export or use the Export button to export all visible items</p>
-        )}
       </div>
       
       {loading ? (
-        <div className="text-center py-12 gradient-card rounded-lg">
+        <div className="text-center py-12 gradient-card rounded-lg shadow-sm border border-border">
           <p className="text-lg mb-2">Loading vocabulary items...</p>
         </div>
       ) : filteredVocabulary.length === 0 ? (
-        <div className="text-center py-12 gradient-card rounded-lg">
+        <div className="text-center py-12 gradient-card rounded-lg shadow-sm border border-border">
           <p className="text-lg mb-2">Your vocabulary list is empty</p>
           <p className="text-muted-foreground mb-4">
             Practice exercises and save words to build your vocabulary
@@ -230,7 +267,7 @@ const VocabularyPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredVocabulary.map(item => (
-            <div key={item.id} className="relative">
+            <div key={item.id} className="relative animate-fade-in">
               <div className="absolute top-2 right-2 z-10">
                 <Checkbox
                   checked={selectedItems.includes(item.id)}
@@ -239,9 +276,9 @@ const VocabularyPage: React.FC = () => {
                 />
               </div>
               <VocabularyCard
-                key={item.id}
                 item={item}
                 onDelete={() => handleDeleteItem(item)}
+                isHighlighted={item.id === currentPlayingId}
               />
             </div>
           ))}
