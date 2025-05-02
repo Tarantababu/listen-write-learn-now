@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
+import { SampleDictationModal } from './SampleDictationModal';
 
 const transitionVariants = {
   item: {
@@ -26,6 +27,12 @@ const transitionVariants = {
 };
 
 export function Hero() {
+  const [sampleModalOpen, setSampleModalOpen] = useState(false);
+  
+  const handleOpenSample = () => {
+    setSampleModalOpen(true);
+  };
+
   return (
     <section className="relative pt-24 md:pt-36">
       <div
@@ -128,17 +135,18 @@ export function Hero() {
               </Button>
             </div>
             <Button
-              asChild
-              size="lg"
               variant="outline"
-              className="rounded-xl px-5">
-              <Link to="#sample">
-                <span className="text-nowrap">Try a Sample</span>
-              </Link>
+              size="lg"
+              className="rounded-xl px-5"
+              onClick={handleOpenSample}>
+              <span className="text-nowrap">Try a Sample</span>
             </Button>
           </AnimatedGroup>
         </div>
       </div>
+
+      {/* Sample dictation modal */}
+      <SampleDictationModal open={sampleModalOpen} onOpenChange={setSampleModalOpen} />
     </section>
   );
 }
