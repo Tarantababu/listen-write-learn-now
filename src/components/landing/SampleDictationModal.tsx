@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -33,9 +34,17 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
   const handleTryAgain = () => {
     setCompleted(false);
   };
+  
+  // Reset completed state when modal closes
+  const handleOpenChange = (newOpenState: boolean) => {
+    if (!newOpenState) {
+      setCompleted(false);
+    }
+    onOpenChange(newOpenState);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>Try Dictation Practice</DialogTitle>
@@ -64,7 +73,7 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
           
           {completed && (
             <Button asChild>
-              <a href="/signup">Sign Up Now</a>
+              <Link to="/signup">Sign Up Now</Link>
             </Button>
           )}
         </div>
