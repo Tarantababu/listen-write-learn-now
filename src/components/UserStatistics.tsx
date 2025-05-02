@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { format, subDays, isSameDay, differenceInDays, startOfDay } from 'date-fns';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -6,9 +5,12 @@ import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Trophy, BookOpen, CalendarDays, Star, ChartBar } from 'lucide-react';
+import { Trophy, BookOpen, CalendarDays, Star, ChartBar, Award } from 'lucide-react';
 import StatsCard from './StatsCard';
 import StatsHeatmap from './StatsHeatmap';
+import { getUserLevel, getWordsToNextLevel, getLevelProgress, formatNumber } from '@/utils/levelSystem';
+import { LevelBadge } from '@/utils/levelSystem';
+import Progress from '@/components/Progress';
 
 interface CompletionData {
   date: Date;
@@ -174,13 +176,45 @@ const UserStatistics: React.FC = () => {
     count
   }));
 
+  // 7. Level information based on mastered words
+  const userLevel = getUserLevel(masteredWords.size);
+  const wordsToNextLevel = getWordsToNextLevel(masteredWords.size);
+  const levelProgress = getLevelProgress(masteredWords.size);
+  
+  const levelDescription = wordsToNextLevel > 0
+    ? `⭐ You've mastered ${formatNumber(masteredWords.size)} words – ${userLevel.level} Level – ${formatNumber(wordsToNextLevel)} to ${userLevel.level.charAt(0)}${Number(userLevel.level.charAt(1)) + 1}`
+    : `⭐ You've mastered ${formatNumber(masteredWords.size)} words – ${userLevel.level} Level – Maximum level reached!`;
+
   if (isLoading) {
     return <div className="text-center p-4">Loading statistics...</div>;
   }
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Your Progress</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Your Progress</h2>
+        <div className="flex items-center gap-2">
+          <LevelBadge masteredWords={masteredWords.size} />
+          <span className="text-sm font-medium">{userLevel.title}</span>
+        </div>
+      </div>
+      
+      <div className="bg-muted/40 p-4 rounded-lg">
+        <div className="flex items-center gap-2 mb-2">
+          <Award className="h-5 w-5 text-amber-500" />
+          <h3 className="font-medium">Language Level</h3>
+        </div>
+        <p className="text-sm mb-2">{levelDescription}</p>
+        <Progress value={levelProgress} className="h-2" />
+        <div className="flex justify-between mt-1">
+          <span className="text-xs text-muted-foreground">{userLevel.level}</span>
+          {userLevel.maxWords !== null && (
+            <span className="text-xs text-muted-foreground">
+              {userLevel.level.charAt(0)}{Number(userLevel.level.charAt(1)) + 1}
+            </span>
+          )}
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatsCard 
@@ -188,6 +222,8 @@ const UserStatistics: React.FC = () => {
           value={masteredWords.size} 
           icon={<Trophy />}
           description="Words completed with 95%+ accuracy at least 3 times" 
+          progress={levelProgress}
+          progressColor={userLevel.color}
         />
         
         <StatsCard 

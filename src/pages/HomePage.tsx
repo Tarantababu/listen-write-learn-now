@@ -5,12 +5,43 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { Headphones, BookOpen, Settings, LogOut } from 'lucide-react';
+import { useExerciseContext } from '@/contexts/ExerciseContext';
+import { Headphones, BookOpen, Settings, LogOut, Award } from 'lucide-react';
 import UserStatistics from '@/components/UserStatistics';
+import { Progress } from '@/components/ui/progress';
+import { getUserLevel, getWordsToNextLevel, getLevelProgress, formatNumber } from '@/utils/levelSystem';
 
 const HomePage: React.FC = () => {
   const { user, signOut } = useAuth();
   const { settings } = useUserSettingsContext();
+  const { exercises } = useExerciseContext();
+  
+  // Calculate mastered words count
+  const masteredWords = React.useMemo(() => {
+    const currentLanguage = settings.selectedLanguage;
+    const masteredSet = new Set<string>();
+    
+    exercises.forEach(exercise => {
+      if (exercise.language !== currentLanguage || !exercise.isCompleted) return;
+      
+      // Words from completed exercises are considered mastered
+      const words = exercise.text
+        .toLowerCase()
+        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .split(' ');
+        
+      words.forEach(word => masteredSet.add(word));
+    });
+    
+    return masteredSet.size;
+  }, [exercises, settings.selectedLanguage]);
+  
+  // Get level information
+  const userLevel = getUserLevel(masteredWords);
+  const wordsToNextLevel = getWordsToNextLevel(masteredWords);
+  const levelProgress = getLevelProgress(masteredWords);
   
   return (
     <div className="container mx-auto px-4 py-8">
@@ -24,19 +55,46 @@ const HomePage: React.FC = () => {
 
         <div className="mb-8">
           <Card>
-            <CardHeader>
-              <CardTitle>Welcome, {user?.email}</CardTitle>
-              <CardDescription>
-                You're currently learning {settings.learningLanguages.map((lang) => 
-                  lang.charAt(0).toUpperCase() + lang.slice(1)
-                ).join(', ')}
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Welcome, {user?.email}</CardTitle>
+                <CardDescription>
+                  You're currently learning {settings.learningLanguages.map((lang) => 
+                    lang.charAt(0).toUpperCase() + lang.slice(1)
+                  ).join(', ')}
+                </CardDescription>
+              </div>
+              <div className={`p-2 rounded-full ${userLevel.color}`}>
+                <Award className="h-6 w-6 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <p>
-                Dictation practice is a powerful method for improving language skills. Listen to the audio, 
-                write what you hear, and improve your comprehension and spelling.
-              </p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-lg">{userLevel.level} · {userLevel.title}</h3>
+                    <p className="text-sm text-muted-foreground">{userLevel.description}</p>
+                  </div>
+                  <div className="bg-muted px-2 py-1 rounded text-xs">
+                    {userLevel.cefrEquivalent}
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>{formatNumber(masteredWords)} words mastered</span>
+                    {wordsToNextLevel > 0 && (
+                      <span>{formatNumber(wordsToNextLevel)} words to next level</span>
+                    )}
+                  </div>
+                  <Progress value={levelProgress} className="h-2" />
+                </div>
+                
+                <p>
+                  Dictation practice is a powerful method for improving language skills. Listen to the audio, 
+                  write what you hear, and improve your comprehension and spelling.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
 interface StatsCardProps {
@@ -9,6 +10,8 @@ interface StatsCardProps {
   icon?: React.ReactNode;
   description?: string;
   className?: string;
+  progress?: number;
+  progressColor?: string;
 }
 
 const StatsCard: React.FC<StatsCardProps> = ({
@@ -17,6 +20,8 @@ const StatsCard: React.FC<StatsCardProps> = ({
   icon,
   description,
   className,
+  progress,
+  progressColor = "bg-primary",
 }) => {
   return (
     <Card className={cn("overflow-hidden", className)}>
@@ -28,6 +33,15 @@ const StatsCard: React.FC<StatsCardProps> = ({
         <div className="text-2xl font-bold">{value}</div>
         {description && (
           <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        )}
+        {typeof progress === 'number' && (
+          <div className="mt-3">
+            <Progress 
+              value={progress} 
+              className="h-1.5" 
+              indicatorClassName={progressColor} 
+            />
+          </div>
         )}
       </CardContent>
     </Card>
