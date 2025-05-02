@@ -59,6 +59,7 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       try {
         setLoading(true);
+        // Now the directories table exists in Supabase
         const { data, error } = await supabase
           .from('directories')
           .select('*')

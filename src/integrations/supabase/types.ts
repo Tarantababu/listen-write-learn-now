@@ -47,11 +47,44 @@ export type Database = {
           },
         ]
       }
+      directories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "directories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "directories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercises: {
         Row: {
           audio_url: string | null
           completion_count: number | null
           created_at: string
+          directory_id: string | null
           id: string
           is_completed: boolean | null
           language: string
@@ -65,6 +98,7 @@ export type Database = {
           audio_url?: string | null
           completion_count?: number | null
           created_at?: string
+          directory_id?: string | null
           id?: string
           is_completed?: boolean | null
           language: string
@@ -78,6 +112,7 @@ export type Database = {
           audio_url?: string | null
           completion_count?: number | null
           created_at?: string
+          directory_id?: string | null
           id?: string
           is_completed?: boolean | null
           language?: string
@@ -87,7 +122,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "exercises_directory_id_fkey"
+            columns: ["directory_id"]
+            isOneToOne: false
+            referencedRelation: "directories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
