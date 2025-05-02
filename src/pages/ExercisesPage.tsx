@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import DirectoryBrowser from '@/components/DirectoryBrowser';
 import { Exercise } from '@/types';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 // Import the components we've just created
 import FilterBar from '@/components/exercises/FilterBar';
@@ -23,6 +23,8 @@ const ExercisesPage: React.FC = () => {
   const { exercises, selectExercise, selectedExercise, deleteExercise, markProgress } = useExerciseContext();
   const { currentDirectoryId } = useDirectoryContext();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [key, setKey] = useState(Date.now()); // Add a key to force re-rendering
   
   // Modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -136,18 +138,19 @@ const ExercisesPage: React.FC = () => {
     }
   };
 
-  // Function to refresh current page using React Router
-  const refreshCurrentPage = () => {
-    // Navigate to the current page to refresh it
-    navigate('/dashboard/exercises');
+  // Function to refresh the page properly
+  const refreshPage = () => {
+    setKey(Date.now()); // This will force the component to re-render
+    
+    // Also refetch the exercises data through your context if needed
+    // This could be done using a method from useExerciseContext if available
   };
 
   // Clean up exercise states when modals close
   const handleAddModalClose = (open: boolean) => {
     setIsAddModalOpen(open);
     if (!open) {
-      // Refresh the page when modal closes
-      refreshCurrentPage();
+      refreshPage();
     }
   };
 
@@ -156,8 +159,7 @@ const ExercisesPage: React.FC = () => {
     if (!open) {
       setTimeout(() => {
         setExerciseToEdit(null);
-        // Refresh the page when modal closes
-        refreshCurrentPage();
+        refreshPage();
       }, 300); // Wait for animation to finish
     }
   };
@@ -167,8 +169,7 @@ const ExercisesPage: React.FC = () => {
     if (!open) {
       setTimeout(() => {
         setExerciseToPractice(null);
-        // Refresh the page when modal closes
-        refreshCurrentPage();
+        refreshPage();
       }, 300); // Wait for animation to finish
     }
   };
@@ -178,15 +179,15 @@ const ExercisesPage: React.FC = () => {
     if (!open) {
       setTimeout(() => {
         setExerciseToDelete(null);
-        // Refresh the page when modal closes
-        refreshCurrentPage();
+        refreshPage();
       }, 300);
     }
   };
   
   return (
     <DirectoryProvider>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8" key={key}>
+        {/* The key prop here will force a re-render when changed */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Your Exercise Library</h1>
           <Button onClick={() => setIsAddModalOpen(true)}>
