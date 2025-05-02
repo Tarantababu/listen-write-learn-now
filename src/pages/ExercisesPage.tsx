@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Plus, Filter, Search } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -208,15 +207,16 @@ const ExercisesPage: React.FC = () => {
             ) : (
               <>
                 {/* Grid of exercises */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr mb-6">
                   {paginatedExercises.map(exercise => (
-                    <ExerciseCard
-                      key={exercise.id}
-                      exercise={exercise}
-                      onPractice={() => handlePractice(exercise)}
-                      onEdit={() => handleEdit(exercise)}
-                      onDelete={() => handleDelete(exercise)}
-                    />
+                    <div key={exercise.id} className="h-full">
+                      <ExerciseCard
+                        exercise={exercise}
+                        onPractice={() => handlePractice(exercise)}
+                        onEdit={() => handleEdit(exercise)}
+                        onDelete={() => handleDelete(exercise)}
+                      />
+                    </div>
                   ))}
                   
                   {/* Create New Exercise Card */}

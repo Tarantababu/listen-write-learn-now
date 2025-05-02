@@ -29,7 +29,6 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
     ? directories.find(dir => dir.id === exercise.directoryId)?.name 
     : null;
   
-  // Calculate duration in minutes (mock data for now)
   // Since duration isn't in the Exercise type, we generate it here
   const duration = (Math.floor(Math.random() * 4) + 2) + ":" + (Math.floor(Math.random() * 60)).toString().padStart(2, '0') + " min";
   
@@ -48,8 +47,8 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
   
   return (
     <>
-      <Card className="overflow-hidden hover:shadow-md transition-all duration-200">
-        <CardContent className="p-4">
+      <Card className="h-full flex flex-col overflow-hidden hover:shadow-md transition-all duration-200">
+        <CardContent className="p-4 flex-grow">
           <div className="flex justify-between items-start mb-2">
             <div>
               {/* Language and tag pills */}
@@ -85,7 +84,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
           </div>
           
           {/* Status indicators */}
-          <div className="flex items-center justify-between text-xs mt-4">
+          <div className="flex items-center justify-between text-xs mt-auto">
             <div className="flex items-center gap-1 text-gray-500">
               <Clock className="h-3.5 w-3.5" />
               <span>{duration}</span>
