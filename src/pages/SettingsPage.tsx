@@ -111,12 +111,7 @@ const SettingsPage: React.FC = () => {
                 </div>)}
             </div>
             
-            <Alert className="mt-4">
-              <AlertTitle>Want more languages?</AlertTitle>
-              <AlertDescription>
-                This application is designed to easily add new languages. Currently, English and German are supported.
-              </AlertDescription>
-            </Alert>
+            
           </CardContent>
         </Card>
         
@@ -174,14 +169,9 @@ const SettingsPage: React.FC = () => {
                 Version 1.0.0
               </p>
             </div>
-            <p className="text-sm">
-              Improve your language skills with the dictation method. 
-              Listen to exercises, write what you hear, and build your vocabulary.
-            </p>
+            
             <div className="pt-4">
-              <Button variant="outline">
-                Visit Support Site
-              </Button>
+              
             </div>
           </CardContent>
         </Card>
