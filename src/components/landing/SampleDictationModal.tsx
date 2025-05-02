@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -24,8 +23,7 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
     completionCount: 0,
     isCompleted: false,
     createdAt: new Date(),
-    directoryId: null,
-    vocabulary: []
+    directoryId: null
   };
 
   const handleComplete = (accuracy: number) => {
