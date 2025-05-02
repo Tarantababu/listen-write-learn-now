@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Exercise } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import AudioPlayer from '@/components/AudioPlayer';
-import { Keyboard } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -28,6 +27,9 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [highlightedErrors, setHighlightedErrors] = useState<string>('');
   const [tokenResults, setTokenResults] = useState<TokenComparisonResult[]>([]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(200); // Default duration in seconds
   const [stats, setStats] = useState<{
     correct: number;
     almost: number;
@@ -42,13 +44,13 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     extra: 0
   });
   
-  const audioPlayerRef = useRef<{ play: () => void; pause: () => void; replay: () => void } | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   const handleSubmit = () => {
     if (!userInput.trim()) return;
     
-    // Use the new comparison logic
+    // Use the comparison logic
     const result = compareTexts(exercise.text, userInput);
     const highlightedText = generateHighlightedText(result.tokenResults);
     
@@ -77,16 +79,10 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
 
   // Handle keyboard shortcuts
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Play/Pause with Ctrl+Space or Alt+Space
-    if ((e.ctrlKey || e.altKey) && e.key === ' ') {
+    // Play/Pause with Shift+Space
+    if (e.shiftKey && e.key === ' ') {
       e.preventDefault(); // Prevent space from being typed
-      if (audioPlayerRef.current) {
-        if (e.ctrlKey) {
-          audioPlayerRef.current.play();
-        } else {
-          audioPlayerRef.current.pause();
-        }
-      }
+      togglePlay();
     }
     
     // Submit on Ctrl+Enter or Command+Enter
@@ -94,36 +90,69 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       e.preventDefault();
       handleSubmit();
     }
+  };
+  
+  const togglePlay = () => {
+    if (!audioRef.current) return;
     
-    // Replay with Alt+R
-    if (e.altKey && e.key === 'r') {
-      e.preventDefault();
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.replay();
-      }
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
     }
+    setIsPlaying(!isPlaying);
   };
   
-  const handleTryAgain = () => {
-    setUserInput('');
-    setShowResults(false);
-    setAccuracy(null);
-    setTokenResults([]);
+  const handleSkipBack = () => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+  };
+  
+  const handleSkipForward = () => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = Math.min(audioRef.current.duration, audioRef.current.currentTime + 10);
+  };
+  
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
+  // Update time display
+  useEffect(() => {
+    if (!audioRef.current) return;
     
-    // Focus on textarea after resetting
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
+    const updateTime = () => {
+      if (audioRef.current) {
+        setCurrentTime(audioRef.current.currentTime);
       }
-    }, 0);
-  };
-
-  // Register audio player methods
-  const registerAudioPlayerMethods = (methods: { play: () => void; pause: () => void; replay: () => void }) => {
-    audioPlayerRef.current = methods;
-  };
+    };
+    
+    const handleLoadedMetadata = () => {
+      if (audioRef.current) {
+        setDuration(audioRef.current.duration);
+      }
+    };
+    
+    const handleEnded = () => {
+      setIsPlaying(false);
+    };
+    
+    audioRef.current.addEventListener('timeupdate', updateTime);
+    audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audioRef.current.addEventListener('ended', handleEnded);
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('timeupdate', updateTime);
+        audioRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        audioRef.current.removeEventListener('ended', handleEnded);
+      }
+    };
+  }, []);
   
-  // Auto-focus the textarea when component mounts
+  // Auto-focus textarea
   useEffect(() => {
     if (textareaRef.current && !showResults) {
       textareaRef.current.focus();
@@ -132,58 +161,105 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   
   return (
     <div className="space-y-6">
-      <div className="bg-muted p-4 rounded-md">
-        <h3 className="font-medium mb-2">Instructions</h3>
-        <p className="text-sm">
-          Listen to the audio and type what you hear in the box below.
-        </p>
-        <div className="mt-2 p-2 bg-background rounded border text-xs flex items-center">
-          <Keyboard className="h-3.5 w-3.5 mr-1.5" />
-          <span>
-            <strong>Ctrl+Space</strong>: Play, 
-            <strong> Alt+Space</strong>: Pause, 
-            <strong> Alt+R</strong>: Replay, 
-            <strong> Ctrl+Enter</strong>: Submit
+      {/* Header with exercise title and progress */}
+      <div className="p-6 border-b">
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-2xl font-bold">{exercise.title}</h1>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600">Progress: {exercise.completionCount}/3</span>
+            <Progress 
+              value={(exercise.completionCount / 3) * 100} 
+              className="w-32 h-2" 
+              indicatorClassName="bg-indigo-600"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full capitalize">
+            {exercise.language}
           </span>
+          {exercise.tags.length > 0 && (
+            <span className="text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded-full">
+              {exercise.tags[0]}
+            </span>
+          )}
         </div>
       </div>
       
-      <div className="flex justify-center">
-        <AudioPlayer 
-          audioUrl={exercise.audioUrl} 
-          demoMode={!exercise.audioUrl}
-          registerMethods={registerAudioPlayerMethods}
-        />
-      </div>
-      
       {!showResults ? (
-        <div className="space-y-4">
-          <div>
+        <div className="p-6 space-y-8">
+          {/* Audio player */}
+          <div className="flex flex-col items-center justify-center">
+            {exercise.audioUrl && <audio ref={audioRef} src={exercise.audioUrl} />}
+            
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <button 
+                className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
+                onClick={handleSkipBack}
+              >
+                <SkipBack className="h-5 w-5 text-gray-700" />
+              </button>
+              
+              <button 
+                className="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center"
+                onClick={togglePlay}
+              >
+                {isPlaying ? 
+                  <Pause className="h-8 w-8 text-white" /> : 
+                  <Play className="h-8 w-8 text-white ml-1" />
+                }
+              </button>
+              
+              <button 
+                className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
+                onClick={handleSkipForward}
+              >
+                <SkipForward className="h-5 w-5 text-gray-700" />
+              </button>
+            </div>
+            
+            <div className="w-full max-w-md">
+              <div className="flex justify-between text-sm text-gray-500 mb-1">
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+              <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-indigo-600 transition-all" 
+                  style={{ width: `${(currentTime / duration) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          
+          {/* Input area */}
+          <div className="space-y-4">
             <Textarea
               ref={textareaRef}
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type what you hear..."
-              className="min-h-40"
-              disabled={showResults}
+              className="min-h-32 rounded-xl border-gray-200 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             />
-            <p className="text-xs mt-1 text-muted-foreground">
-              Press Ctrl+Enter to submit
+            <p className="text-sm text-gray-500 text-right">
+              Press <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Shift</span> + <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Space</span> to play/pause
             </p>
           </div>
           
-          <Button
-            onClick={handleSubmit}
-            className="w-full"
-            disabled={!userInput.trim()}
-          >
-            Check My Answer
-          </Button>
+          <div className="flex justify-center">
+            <Button
+              onClick={handleSubmit}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2 rounded-lg text-base"
+              disabled={!userInput.trim()}
+            >
+              Check Answer
+            </Button>
+          </div>
         </div>
       ) : (
-        // Results section - using ScrollArea for proper scrolling
-        <ScrollArea className="h-[60vh] pr-2">
+        // Results view - kept the same
+        <ScrollArea className="h-[60vh] pr-2 p-6">
           <div className="space-y-4">
             {/* Stats section */}
             <div className="bg-muted p-4 rounded-md">
@@ -289,7 +365,19 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
             
             <div className="flex gap-2">
               <Button 
-                onClick={handleTryAgain}
+                onClick={() => {
+                  setUserInput('');
+                  setShowResults(false);
+                  setAccuracy(null);
+                  setTokenResults([]);
+                  
+                  // Focus on textarea after resetting
+                  setTimeout(() => {
+                    if (textareaRef.current) {
+                      textareaRef.current.focus();
+                    }
+                  }, 0);
+                }}
                 variant="outline"
                 className="flex-1"
               >
@@ -304,4 +392,3 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
 };
 
 export default DictationPractice;
-

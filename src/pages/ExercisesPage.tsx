@@ -337,7 +337,7 @@ const ExercisesPage: React.FC = () => {
           </AlertDialogContent>
         </AlertDialog>
         
-        {/* Practice Modal */}
+        {/* Practice Modal - Updated to match design */}
         <Dialog 
           open={isPracticeModalOpen} 
           onOpenChange={(open) => {
@@ -345,13 +345,7 @@ const ExercisesPage: React.FC = () => {
             if (!open) setExerciseToPractice(null);
           }}
         >
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{exerciseToPractice?.title}</DialogTitle>
-              <DialogDescription>
-                Practice dictation by listening and typing what you hear
-              </DialogDescription>
-            </DialogHeader>
+          <DialogContent className="max-w-3xl p-0 overflow-hidden">
             {exerciseToPractice && (
               <>
                 <DictationPractice
