@@ -230,15 +230,15 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       <div>
         <Label htmlFor="directory">Directory</Label>
         <Select 
-          value={directoryId || ""} 
-          onValueChange={(value) => setDirectoryId(value || null)}
+          value={directoryId || "root"} 
+          onValueChange={(value) => setDirectoryId(value === "root" ? null : value)}
           disabled={isSaving || isGeneratingAudio}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select a directory" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Root</SelectItem>
+            <SelectItem value="root">Root</SelectItem>
             {directories.map((dir) => (
               <SelectItem key={dir.id} value={dir.id}>
                 {getDirectoryPath(dir.id)}
