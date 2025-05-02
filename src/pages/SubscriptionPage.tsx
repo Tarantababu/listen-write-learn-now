@@ -1,10 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Check, X, CreditCard, Shield, CalendarClock, Award } from 'lucide-react';
+import { Loader2, Check, X, CreditCard, Shield, CalendarClock, Award, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -68,6 +67,59 @@ const SubscriptionPage: React.FC = () => {
       setIsProcessing(false);
     }
   };
+
+  // Show error state if there's an error checking subscription
+  if (subscription.error) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold flex items-center">
+            <CreditCard className="mr-2 h-6 w-6 text-primary" />
+            Subscription Management
+          </h1>
+        </div>
+        
+        <Card className="border-2 shadow-lg overflow-hidden relative border-yellow-300/50 bg-yellow-50/20">
+          <CardHeader>
+            <CardTitle className="flex items-center text-yellow-700">
+              <AlertTriangle className="h-5 w-5 mr-2" />
+              Subscription Status Unavailable
+            </CardTitle>
+            <CardDescription className="text-yellow-600">
+              {subscription.error}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              We're currently experiencing issues with our subscription service. 
+              This might be due to maintenance or temporary service disruption.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button 
+              onClick={checkSubscription} 
+              variant="outline" 
+              className="w-full"
+              disabled={subscription.isLoading}
+            >
+              {subscription.isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Trying again...
+                </>
+              ) : (
+                <>Try Again</>
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+        
+        <div className="mt-6 text-sm text-muted-foreground">
+          <p>If this problem persists, please contact support.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (subscription.isLoading) {
     return (

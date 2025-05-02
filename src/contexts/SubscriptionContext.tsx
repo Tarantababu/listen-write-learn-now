@@ -12,6 +12,7 @@ interface SubscriptionState {
   trialEnd: Date | null;
   subscriptionEnd: Date | null;
   lastChecked: Date | null;
+  error: string | null;
 }
 
 interface SubscriptionContextProps {
@@ -41,6 +42,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     trialEnd: null,
     subscriptionEnd: null,
     lastChecked: null,
+    error: null
   });
 
   // Check subscription status when user changes
@@ -54,6 +56,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         isSubscribed: false,
         subscriptionTier: 'free',
         subscriptionStatus: null,
+        error: null
       }));
     }
   }, [user]);
@@ -63,42 +66,55 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!user) return;
 
     try {
-      setSubscription(prev => ({ ...prev, isLoading: true }));
+      setSubscription(prev => ({ ...prev, isLoading: true, error: null }));
 
       const { data, error } = await supabase.functions.invoke('check-subscription');
 
       if (error) {
         console.error('Error checking subscription:', error);
-        toast.error('Failed to check subscription status');
+        setSubscription(prev => ({ 
+          ...prev, 
+          isLoading: false,
+          error: 'Failed to check subscription status. Please try again later.'
+        }));
         return;
       }
 
       setSubscription({
         isLoading: false,
-        isSubscribed: data.subscribed || false,
-        subscriptionTier: data.subscription_tier || 'free',
-        subscriptionStatus: data.subscription_status,
-        trialEnd: data.trial_end ? new Date(data.trial_end) : null,
-        subscriptionEnd: data.subscription_end ? new Date(data.subscription_end) : null,
+        isSubscribed: data?.subscribed || false,
+        subscriptionTier: data?.subscription_tier || 'free',
+        subscriptionStatus: data?.subscription_status,
+        trialEnd: data?.trial_end ? new Date(data?.trial_end) : null,
+        subscriptionEnd: data?.subscription_end ? new Date(data?.subscription_end) : null,
         lastChecked: new Date(),
+        error: null
       });
 
       console.log('Subscription checked:', data);
     } catch (error) {
       console.error('Error in subscription check:', error);
-      setSubscription(prev => ({ ...prev, isLoading: false }));
-      toast.error('Failed to check subscription status');
+      setSubscription(prev => ({ 
+        ...prev, 
+        isLoading: false,
+        error: 'Failed to check subscription status. Please try again later.'
+      }));
     }
   };
 
   // Create a Stripe checkout session
   const createCheckoutSession = async (): Promise<string | null> => {
     try {
+      setSubscription(prev => ({ ...prev, error: null }));
       const { data, error } = await supabase.functions.invoke('create-checkout');
 
       if (error) {
         console.error('Error creating checkout session:', error);
         toast.error('Failed to create checkout session');
+        setSubscription(prev => ({ 
+          ...prev, 
+          error: 'Failed to create checkout session. Please try again later.'
+        }));
         return null;
       }
 
@@ -106,6 +122,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch (error) {
       console.error('Error in checkout process:', error);
       toast.error('Failed to create checkout session');
+      setSubscription(prev => ({ 
+        ...prev, 
+        error: 'Failed to create checkout session. Please try again later.'
+      }));
       return null;
     }
   };
@@ -113,11 +133,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Open Stripe customer portal
   const openCustomerPortal = async (): Promise<string | null> => {
     try {
+      setSubscription(prev => ({ ...prev, error: null }));
       const { data, error } = await supabase.functions.invoke('customer-portal');
 
       if (error) {
         console.error('Error opening customer portal:', error);
         toast.error('Failed to open subscription management portal');
+        setSubscription(prev => ({ 
+          ...prev, 
+          error: 'Failed to open customer portal. Please try again later.'
+        }));
         return null;
       }
 
@@ -125,6 +150,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch (error) {
       console.error('Error opening customer portal:', error);
       toast.error('Failed to open subscription management portal');
+      setSubscription(prev => ({ 
+        ...prev, 
+        error: 'Failed to open customer portal. Please try again later.'
+      }));
       return null;
     }
   };
