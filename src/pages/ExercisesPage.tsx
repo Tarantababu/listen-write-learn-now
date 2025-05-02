@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -135,17 +134,44 @@ const ExercisesPage: React.FC = () => {
   };
 
   // Clean up exercise states when modals close
+  const handleAddModalClose = (open: boolean) => {
+    setIsAddModalOpen(open);
+    if (!open) {
+      // Refresh the page when modal closes
+      window.location.reload();
+    }
+  };
+
   const handleEditModalClose = (open: boolean) => {
     setIsEditModalOpen(open);
     if (!open) {
-      setTimeout(() => setExerciseToEdit(null), 300); // Wait for animation to finish
+      setTimeout(() => {
+        setExerciseToEdit(null);
+        // Refresh the page when modal closes
+        window.location.reload();
+      }, 300); // Wait for animation to finish
     }
   };
 
   const handlePracticeModalClose = (open: boolean) => {
     setIsPracticeModalOpen(open);
     if (!open) {
-      setTimeout(() => setExerciseToPractice(null), 300); // Wait for animation to finish
+      setTimeout(() => {
+        setExerciseToPractice(null);
+        // Refresh the page when modal closes
+        window.location.reload();
+      }, 300); // Wait for animation to finish
+    }
+  };
+
+  const handleDeleteDialogClose = (open: boolean) => {
+    setIsDeleteDialogOpen(open);
+    if (!open) {
+      setTimeout(() => {
+        setExerciseToDelete(null);
+        // Refresh the page when modal closes
+        window.location.reload();
+      }, 300);
     }
   };
   
@@ -206,7 +232,7 @@ const ExercisesPage: React.FC = () => {
         {/* Modals - Always render them but control visibility with open prop */}
         <ExerciseFormModal 
           isOpen={isAddModalOpen}
-          onOpenChange={setIsAddModalOpen}
+          onOpenChange={handleAddModalClose}
           mode="create"
         />
         
@@ -220,12 +246,7 @@ const ExercisesPage: React.FC = () => {
         
         <DeleteExerciseDialog 
           isOpen={isDeleteDialogOpen}
-          onOpenChange={(open) => {
-            setIsDeleteDialogOpen(open);
-            if (!open) {
-              setTimeout(() => setExerciseToDelete(null), 300);
-            }
-          }}
+          onOpenChange={handleDeleteDialogClose}
           onConfirm={confirmDelete}
         />
         
