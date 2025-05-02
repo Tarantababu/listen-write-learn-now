@@ -25,7 +25,7 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
     userId: 'sample',
     completionCount: 0,
     isCompleted: false,
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(), // Fixed: Using Date object directly instead of string
     directoryId: null,
     vocabulary: []
   };
