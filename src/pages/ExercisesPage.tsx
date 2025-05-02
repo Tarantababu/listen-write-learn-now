@@ -1,55 +1,44 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Filter, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
 import { DirectoryProvider } from '@/contexts/DirectoryContext';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import ExerciseForm from '@/components/ExerciseForm';
-import ExerciseCard from '@/components/ExerciseCard';
-import DictationPractice from '@/components/DictationPractice';
 import DirectoryBrowser from '@/components/DirectoryBrowser';
-import { Exercise, Language } from '@/types';
+import { Exercise } from '@/types';
 import { toast } from 'sonner';
-import VocabularyHighlighter from '@/components/VocabularyHighlighter';
+
+// Import the components we've just created
+import FilterBar from '@/components/exercises/FilterBar';
+import EmptyStateMessage from '@/components/exercises/EmptyStateMessage';
+import ExerciseGrid from '@/components/exercises/ExerciseGrid';
+import PaginationControls from '@/components/exercises/PaginationControls';
+import ExerciseFormModal from '@/components/exercises/ExerciseFormModal';
+import DeleteExerciseDialog from '@/components/exercises/DeleteExerciseDialog';
+import PracticeModal from '@/components/exercises/PracticeModal';
 
 const ExercisesPage: React.FC = () => {
   const { exercises, selectExercise, selectedExercise, deleteExercise, markProgress } = useExerciseContext();
-  const { settings } = useUserSettingsContext();
   const { currentDirectoryId } = useDirectoryContext();
   
+  // Modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPracticeModalOpen, setIsPracticeModalOpen] = useState(false);
+  
+  // Selected exercise state
   const [exerciseToEdit, setExerciseToEdit] = useState<Exercise | null>(null);
   const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
   const [exerciseToPractice, setExerciseToPractice] = useState<Exercise | null>(null);
   
+  // Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCompleted, setFilterCompleted] = useState<boolean | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [showResults, setShowResults] = useState(false);
+  
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   
   // Reset pagination when filters change
@@ -97,10 +86,18 @@ const ExercisesPage: React.FC = () => {
       return ex.tags.includes(selectedTag);
     });
   
+  // Pagination
+  const exercisesPerPage = 6;
+  const totalPages = Math.ceil(filteredExercises.length / exercisesPerPage);
+  const paginatedExercises = filteredExercises.slice(
+    (currentPage - 1) * exercisesPerPage,
+    currentPage * exercisesPerPage
+  );
+  
+  // Event handlers
   const handlePractice = (exercise: Exercise) => {
     setExerciseToPractice(exercise);
     setIsPracticeModalOpen(true);
-    setShowResults(false);
   };
   
   const handleEdit = (exercise: Exercise) => {
@@ -135,22 +132,7 @@ const ExercisesPage: React.FC = () => {
         toast.success(`Great job! ${3 - updatedCompletionCount} more successful attempts until mastery.`);
       }
     }
-    setShowResults(true);
   };
-  
-  const clearFilters = () => {
-    setSearchTerm('');
-    setFilterCompleted(null);
-    setSelectedTag(null);
-  };
-
-  // Pagination
-  const exercisesPerPage = 6;
-  const totalPages = Math.ceil(filteredExercises.length / exercisesPerPage);
-  const paginatedExercises = filteredExercises.slice(
-    (currentPage - 1) * exercisesPerPage,
-    currentPage * exercisesPerPage
-  );
   
   return (
     <DirectoryProvider>
@@ -172,206 +154,66 @@ const ExercisesPage: React.FC = () => {
           {/* Exercise Content */}
           <div className="md:col-span-3">
             {/* Search and filters */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <div className="relative flex-grow">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search exercises..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              
-              <div className="w-full md:w-48">
-                <select
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value="all-languages"
-                  onChange={() => {}}
-                >
-                  <option value="all-languages">All Languages</option>
-                  {allLanguages.map(lang => (
-                    <option key={lang} value={lang}>{lang.charAt(0).toUpperCase() + lang.slice(1)}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="w-full md:w-48">
-                <select
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={selectedTag || ''}
-                  onChange={(e) => setSelectedTag(e.target.value || null)}
-                >
-                  <option value="">All Tags</option>
-                  {allTags.map(tag => (
-                    <option key={tag} value={tag}>{tag}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            <FilterBar 
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              selectedTag={selectedTag}
+              setSelectedTag={setSelectedTag}
+              allTags={allTags}
+              allLanguages={allLanguages}
+            />
             
             {filteredExercises.length === 0 ? (
-              <div className="text-center py-12 border rounded-lg">
-                <p className="text-muted-foreground mb-4">No exercises found</p>
-                <Button onClick={() => setIsAddModalOpen(true)}>
-                  Create your first exercise
-                </Button>
-              </div>
+              <EmptyStateMessage onCreateExercise={() => setIsAddModalOpen(true)} />
             ) : (
               <>
                 {/* Grid of exercises */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr mb-6">
-                  {paginatedExercises.map(exercise => (
-                    <div key={exercise.id} className="h-full">
-                      <ExerciseCard
-                        exercise={exercise}
-                        onPractice={() => handlePractice(exercise)}
-                        onEdit={() => handleEdit(exercise)}
-                        onDelete={() => handleDelete(exercise)}
-                      />
-                    </div>
-                  ))}
-                  
-                  {/* Create New Exercise Card */}
-                  {paginatedExercises.length < exercisesPerPage && (
-                    <Card className="border-dashed border-2 hover:border-primary/50 transition-colors flex flex-col items-center justify-center h-full min-h-[280px] cursor-pointer" onClick={() => setIsAddModalOpen(true)}>
-                      <CardContent className="flex flex-col items-center justify-center h-full text-center p-6">
-                        <div className="bg-gray-50 rounded-full p-4 mb-4">
-                          <Plus className="h-6 w-6 text-primary" />
-                        </div>
-                        <h3 className="font-medium text-lg mb-2">Create New Exercise</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Add your own text and generate audio for practice
-                        </p>
-                        <Button className="mt-4" onClick={() => setIsAddModalOpen(true)}>
-                          Create Exercise
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
+                <ExerciseGrid 
+                  paginatedExercises={paginatedExercises}
+                  exercisesPerPage={exercisesPerPage}
+                  onPractice={handlePractice}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onCreateClick={() => setIsAddModalOpen(true)}
+                />
                 
                 {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex justify-center items-center gap-2 mt-6">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </Button>
-                    
-                    <div className="flex gap-1">
-                      {Array.from({ length: totalPages }).map((_, i) => (
-                        <Button
-                          key={i}
-                          variant={currentPage === i + 1 ? "default" : "outline"}
-                          size="sm"
-                          className="min-w-[40px]"
-                          onClick={() => setCurrentPage(i + 1)}
-                        >
-                          {i + 1}
-                        </Button>
-                      ))}
-                    </div>
-                    
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                )}
+                <PaginationControls 
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
               </>
             )}
           </div>
         </div>
         
-        {/* Add Exercise Modal */}
-        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create New Exercise</DialogTitle>
-              <DialogDescription>
-                Add a new exercise for dictation practice
-              </DialogDescription>
-            </DialogHeader>
-            <ExerciseForm onSuccess={() => {
-              setIsAddModalOpen(false);
-              toast.success('Exercise created');
-            }} />
-          </DialogContent>
-        </Dialog>
+        {/* Modals */}
+        <ExerciseFormModal 
+          isOpen={isAddModalOpen}
+          onOpenChange={setIsAddModalOpen}
+          mode="create"
+        />
         
-        {/* Edit Exercise Modal */}
-        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Edit Exercise</DialogTitle>
-              <DialogDescription>
-                Update your exercise details
-              </DialogDescription>
-            </DialogHeader>
-            {exerciseToEdit && (
-              <ExerciseForm 
-                initialValues={exerciseToEdit}
-                onSuccess={() => {
-                  setIsEditModalOpen(false);
-                  setExerciseToEdit(null);
-                  toast.success('Exercise updated');
-                }} 
-              />
-            )}
-          </DialogContent>
-        </Dialog>
+        <ExerciseFormModal
+          isOpen={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+          initialValues={exerciseToEdit}
+          mode="edit"
+        />
         
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the exercise.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setExerciseToDelete(null)}>
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDelete}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <DeleteExerciseDialog 
+          isOpen={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          onConfirm={confirmDelete}
+        />
         
-        {/* Practice Modal - Updated to match design */}
-        <Dialog 
-          open={isPracticeModalOpen} 
-          onOpenChange={(open) => {
-            setIsPracticeModalOpen(open);
-            if (!open) setExerciseToPractice(null);
-          }}
-        >
-          <DialogContent className="max-w-3xl p-0 overflow-hidden">
-            {exerciseToPractice && (
-              <>
-                <DictationPractice
-                  exercise={exerciseToPractice}
-                  onComplete={handlePracticeComplete}
-                />
-                {showResults && (
-                  <VocabularyHighlighter exercise={exerciseToPractice} />
-                )}
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
+        <PracticeModal
+          isOpen={isPracticeModalOpen}
+          onOpenChange={setIsPracticeModalOpen}
+          exercise={exerciseToPractice}
+          onComplete={handlePracticeComplete}
+        />
       </div>
     </DirectoryProvider>
   );
