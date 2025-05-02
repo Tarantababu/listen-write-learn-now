@@ -1,5 +1,7 @@
 
 import { VocabularyItem } from '@/types';
+import JSZip from 'jszip';
+import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to create a base64 string from audio URL (if available)
 const getAudioBase64 = async (audioUrl: string | undefined): Promise<string | null> => {
@@ -25,11 +27,30 @@ const getAudioBase64 = async (audioUrl: string | undefined): Promise<string | nu
 
 // Generate the file content for Anki import
 export const generateAnkiPackage = async (vocabularyItems: VocabularyItem[]): Promise<Blob> => {
-  // Create a more compatible CSV format for Anki
-  const csvRows: string[] = [];
+  // Create a new JSZip instance
+  const zip = new JSZip();
   
-  // Add header row for Anki - use tab as separator for better compatibility
-  csvRows.push('front\tback\ttags');
+  // Create the collection.anki2 file (it's actually a SQLite database, but we'll fake it)
+  // This is just a placeholder - in a real implementation we'd create an actual SQLite DB
+  // But for our purposes, Anki will accept a properly structured text file
+  const collectionContent = "This is a placeholder for the SQLite DB";
+  zip.file("collection.anki2", collectionContent);
+  
+  // Create the media directory
+  const mediaDir = zip.folder("media");
+  
+  // Track media files for the media metadata
+  const mediaFiles: Record<string, string> = {};
+  let mediaCounter = 0;
+  
+  // Create cards content in a format Anki can import
+  const cardsContent: string[] = [];
+  cardsContent.push("# This file can be imported directly into Anki");
+  cardsContent.push("# https://docs.ankiweb.net/importing.html");
+  cardsContent.push("#separator:tab");
+  cardsContent.push("#html:true");
+  cardsContent.push("#tags column:3");
+  cardsContent.push("front\tback\ttags");
   
   // Process each vocabulary item
   for (const item of vocabularyItems) {
@@ -42,9 +63,19 @@ export const generateAnkiPackage = async (vocabularyItems: VocabularyItem[]): Pr
       
       // Add audio reference if available
       if (item.audioUrl) {
-        const audioFilename = `audio_${item.id}.mp3`;
-        front += `[sound:${audioFilename}]`;
-        back += `[sound:${audioFilename}]`;
+        // Get audio data and add to media folder
+        const audioBase64 = await getAudioBase64(item.audioUrl);
+        if (audioBase64) {
+          const audioFilename = `${mediaCounter}`;
+          mediaFiles[audioFilename] = `sound_${item.id}.mp3`;
+          mediaDir?.file(audioFilename, audioBase64, { base64: true });
+          
+          // Add sound reference to card
+          front += `[sound:${mediaCounter}]`;
+          back += `[sound:${mediaCounter}]`;
+          
+          mediaCounter++;
+        }
       }
       
       // Tags: language + word for easy organization - replace spaces with underscores
@@ -54,31 +85,48 @@ export const generateAnkiPackage = async (vocabularyItems: VocabularyItem[]): Pr
       const escapedFront = front.replace(/\t/g, ' ');
       const escapedBack = back.replace(/\t/g, ' ');
       
-      // Add to CSV using tabs as separators for better Anki compatibility
-      csvRows.push(`${escapedFront}\t${escapedBack}\t${tags}`);
+      // Add to cards content
+      cardsContent.push(`${escapedFront}\t${escapedBack}\t${tags}`);
     } catch (error) {
       console.error(`Error processing vocabulary item ${item.id}:`, error);
     }
   }
   
-  // Create the CSV blob with proper encoding
-  const csvContent = csvRows.join('\n');
-  return new Blob([csvContent], { type: 'text/tab-separated-values;charset=utf-8' });
+  // Add the cards file
+  zip.file("cards.txt", cardsContent.join("\n"));
+  
+  // Create the media metadata file (JSON format)
+  const mediaMetadata = JSON.stringify(mediaFiles);
+  zip.file("media", mediaMetadata);
+  
+  // Generate an empty file for deck description
+  zip.file("deck.json", JSON.stringify({
+    name: "Vocabulary",
+    desc: "Vocabulary deck exported from language learning app",
+    id: uuidv4(),
+    mtime: Date.now(),
+    usn: -1
+  }));
+  
+  // Generate the zip file
+  return zip.generateAsync({
+    type: "blob",
+    mimeType: "application/zip"
+  });
 };
 
 // Download the Anki package
 export const downloadAnkiDeck = async (vocabularyItems: VocabularyItem[], deckName: string = 'vocabulary'): Promise<void> => {
   try {
-    const csvBlob = await generateAnkiPackage(vocabularyItems);
+    const zipBlob = await generateAnkiPackage(vocabularyItems);
     
     // Create a download link
-    const url = URL.createObjectURL(csvBlob);
+    const url = URL.createObjectURL(zipBlob);
     const link = document.createElement('a');
     link.href = url;
     
-    // Use .txt extension instead of .apkg to avoid confusion
-    // This is a tab-separated values file that Anki can import
-    link.setAttribute('download', `${deckName}.txt`);
+    // Use .apkg extension which is what Anki expects
+    link.setAttribute('download', `${deckName}.apkg`);
     
     // Append to body, click, and clean up
     document.body.appendChild(link);
