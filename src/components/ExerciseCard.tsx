@@ -1,10 +1,17 @@
-
 import React, { useState } from 'react';
 import { Exercise } from '@/types';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, MoreVertical, Check } from 'lucide-react';
+import { Clock, Pencil, Trash2, FolderUp, MoreVertical, Check } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import MoveExerciseModal from './MoveExerciseModal';
 
 interface ExerciseCardProps {
@@ -29,8 +36,23 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
     ? directories.find(dir => dir.id === exercise.directoryId)?.name 
     : null;
   
-  // Since duration isn't in the Exercise type, we generate it here
-  const duration = (Math.floor(Math.random() * 4) + 2) + ":" + (Math.floor(Math.random() * 60)).toString().padStart(2, '0') + " min";
+  // Format the exercise text to estimate reading time
+  // A typical person reads about 200-250 words per minute
+  const wordCount = text.split(/\s+/).length;
+  const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
+  
+  // Format time as minutes:seconds
+  const formatTime = () => {
+    if (readingTimeMinutes < 1) {
+      return "30s";
+    } else if (readingTimeMinutes === 1) {
+      return "1:00 min";
+    } else {
+      return `${readingTimeMinutes}:00 min`;
+    }
+  };
+  
+  const duration = formatTime();
   
   // Format progress status
   const getProgressStatus = () => {
@@ -73,14 +95,34 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
             </div>
             
             {/* Menu (three dots) */}
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => {}}
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-8 w-8"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onEdit} className="cursor-pointer">
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsMoveModalOpen(true)} className="cursor-pointer">
+                  <FolderUp className="mr-2 h-4 w-4" />
+                  Move to folder
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onDelete} className="cursor-pointer text-destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           
           {/* Status indicators */}
