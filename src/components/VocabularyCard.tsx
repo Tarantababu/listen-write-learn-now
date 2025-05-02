@@ -28,12 +28,12 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
       isHighlighted ? "ring-2 ring-primary shadow-lg" : "shadow-sm hover:shadow-md"
     )}>
       <CardContent className="p-4 flex-grow">
-        <div className="mb-2 flex justify-between items-start">
+        <div className="mb-2 flex justify-between items-start gap-4">
           <h3 className={cn(
             "font-medium text-lg",
             isHighlighted && "text-primary"
           )}>{word}</h3>
-          <span className="text-xs px-2 py-1 bg-muted rounded-full capitalize">
+          <span className="text-xs px-2 py-1 bg-muted rounded-full capitalize shrink-0">
             {language}
           </span>
         </div>
