@@ -3,6 +3,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface SubscriptionState {
   isLoading: boolean;
@@ -32,6 +34,13 @@ export const useSubscription = () => {
   return context;
 };
 
+// Interface for portal error response
+interface PortalErrorResponse {
+  error: string;
+  details?: string;
+  setupUrl?: string;
+}
+
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, session } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionState>({
@@ -44,6 +53,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     lastChecked: null,
     error: null
   });
+  
+  const [portalSetupError, setPortalSetupError] = useState<PortalErrorResponse | null>(null);
 
   // Check subscription status when user changes
   useEffect(() => {
@@ -134,6 +145,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const openCustomerPortal = async (): Promise<string | null> => {
     try {
       setSubscription(prev => ({ ...prev, error: null }));
+      setPortalSetupError(null);
+      
       const { data, error } = await supabase.functions.invoke('customer-portal');
 
       if (error) {
@@ -143,6 +156,14 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           ...prev, 
           error: 'Failed to open customer portal. Please try again later.'
         }));
+        return null;
+      }
+      
+      // Check if there's a portal setup error response
+      if (data && data.error && data.error === 'Stripe Customer Portal not configured') {
+        console.log('Stripe Customer Portal needs setup:', data);
+        setPortalSetupError(data as PortalErrorResponse);
+        toast.error('Stripe Customer Portal needs configuration');
         return null;
       }
 
@@ -158,6 +179,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  // Close portal setup error dialog
+  const closePortalSetupError = () => {
+    setPortalSetupError(null);
+  };
+
   const value = {
     subscription,
     checkSubscription,
@@ -165,5 +191,48 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     openCustomerPortal,
   };
 
-  return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;
+  return (
+    <SubscriptionContext.Provider value={value}>
+      {children}
+      
+      {/* Portal Setup Error Dialog */}
+      <Dialog open={portalSetupError !== null} onOpenChange={closePortalSetupError}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Stripe Customer Portal Setup Required</DialogTitle>
+            <DialogDescription>
+              Your Stripe account requires additional configuration before the Customer Portal can be used.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              {portalSetupError?.details || 
+                'The Stripe Customer Portal needs to be configured in your Stripe Dashboard before users can manage their subscriptions.'}
+            </p>
+            
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+              <p className="text-sm text-amber-800">
+                Admin action required: Go to the Stripe Dashboard and configure your Customer Portal settings.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            {portalSetupError?.setupUrl && (
+              <Button 
+                onClick={() => window.open(portalSetupError.setupUrl, '_blank')}
+                className="bg-primary"
+              >
+                Open Stripe Dashboard
+              </Button>
+            )}
+            <Button variant="outline" onClick={closePortalSetupError}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </SubscriptionContext.Provider>
+  );
 };

@@ -60,21 +60,41 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    // Create customer portal session
-    const origin = req.headers.get("origin") || "http://localhost:3000";
-    const returnUrl = `${origin}/dashboard`;
-    
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: returnUrl,
-    });
-    
-    logStep("Customer portal session created", { sessionId: portalSession.id, url: portalSession.url });
+    try {
+      // Create customer portal session
+      const origin = req.headers.get("origin") || "http://localhost:3000";
+      const returnUrl = `${origin}/dashboard/subscription`;
+      
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: returnUrl,
+      });
+      
+      logStep("Customer portal session created", { sessionId: portalSession.id, url: portalSession.url });
 
-    return new Response(JSON.stringify({ url: portalSession.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+      return new Response(JSON.stringify({ url: portalSession.url }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } catch (stripeError: any) {
+      // Handle specific Stripe configuration errors
+      if (stripeError.message && stripeError.message.includes("configuration has not been created")) {
+        logStep("Stripe portal configuration error", { message: stripeError.message });
+        
+        // Return a more helpful error message with instructions
+        return new Response(JSON.stringify({ 
+          error: "Stripe Customer Portal not configured", 
+          details: "Your Stripe Customer Portal needs to be configured in the Stripe Dashboard first.",
+          setupUrl: "https://dashboard.stripe.com/test/settings/billing/portal"
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+      
+      // Re-throw other Stripe errors
+      throw stripeError;
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });
