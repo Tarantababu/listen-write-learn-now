@@ -51,11 +51,6 @@ export function Footer() {
                   English
                 </a>
               </li>
-              <li>
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Turkish
-                </a>
-              </li>
             </ul>
           </div>
           <div className="space-y-4">

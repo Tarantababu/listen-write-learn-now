@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Check, Ear, Brain, Pen, ArrowUpRight, FileBarChart } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,7 +36,7 @@ const benefits = [
   "Comprehension-friendly texts based on the most common 1000–7000 words",
   "Instant feedback and error highlighting",
   "Smart statistics to monitor your progress",
-  "Multilingual support (German, English, Turkish)",
+  "Multilingual support (German and English)",
   "Free access with optional premium features coming soon"
 ];
 

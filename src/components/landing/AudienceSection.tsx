@@ -87,12 +87,6 @@ export function AudienceSection() {
                 </div>
                 <span>English</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="size-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <span className="font-medium">TR</span>
-                </div>
-                <span>Turkish</span>
-              </div>
             </div>
           </div>
         </div>
