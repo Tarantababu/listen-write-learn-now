@@ -7,6 +7,12 @@ import AudioPlayer from '@/components/AudioPlayer';
 import { Keyboard } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { 
+  compareTexts, 
+  generateHighlightedText,
+  TokenComparisonResult 
+} from '@/utils/textComparison';
+import { cn } from '@/lib/utils';
 
 interface DictationPracticeProps {
   exercise: Exercise;
@@ -21,91 +27,51 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   const [showResults, setShowResults] = useState(false);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [highlightedErrors, setHighlightedErrors] = useState<string>('');
+  const [tokenResults, setTokenResults] = useState<TokenComparisonResult[]>([]);
+  const [stats, setStats] = useState<{
+    correct: number;
+    almost: number;
+    incorrect: number;
+    missing: number;
+    extra: number;
+  }>({
+    correct: 0,
+    almost: 0,
+    incorrect: 0,
+    missing: 0,
+    extra: 0
+  });
+  
   const audioPlayerRef = useRef<{ play: () => void; pause: () => void; replay: () => void } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
-  // Calculate the similarity between user input and exercise text
-  const calculateAccuracy = useCallback(() => {
-    if (!userInput.trim()) return 0;
-    
-    // Normalize both texts for comparison (lowercase, remove punctuation)
-    const normalizeText = (text: string) => {
-      return text
-        .toLowerCase()
-        // Remove all punctuation and special characters
-        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '')
-        // Replace multiple spaces with a single space
-        .replace(/\s+/g, ' ')
-        .trim();
-    };
-    
-    const normalizedOriginal = normalizeText(exercise.text);
-    const normalizedInput = normalizeText(userInput);
-    
-    // Split into words for comparison
-    const originalWords = normalizedOriginal.split(' ');
-    const inputWords = normalizedInput.split(' ');
-    
-    // Calculate word-level accuracy
-    let correctWords = 0;
-    
-    inputWords.forEach((word, index) => {
-      if (index < originalWords.length && word === originalWords[index]) {
-        correctWords++;
-      }
-    });
-    
-    // Calculate percentage
-    const totalWords = originalWords.length;
-    return Math.round((correctWords / totalWords) * 100);
-  }, [exercise.text, userInput]);
-
-  // Create highlighted version of the user's answer showing errors
-  const getHighlightedErrors = useCallback(() => {
-    if (!userInput.trim()) return '';
-    
-    // Normalize both texts (lowercase, remove punctuation)
-    const normalizeText = (text: string) => {
-      return text
-        .toLowerCase()
-        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    };
-    
-    const normalizedOriginal = normalizeText(exercise.text).split(' ');
-    const words = userInput.split(/\s+/);
-    
-    // Create a new array with spans for incorrect words
-    const highlightedWords = words.map((word, index) => {
-      const normalizedWord = word.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '');
-      const isCorrect = index < normalizedOriginal.length && normalizedWord === normalizedOriginal[index];
-      
-      if (isCorrect) {
-        return word;
-      } else {
-        return `<span class="text-destructive font-medium">${word}</span>`;
-      }
-    });
-    
-    return highlightedWords.join(' ');
-  }, [exercise.text, userInput]);
-  
   const handleSubmit = () => {
-    const calculatedAccuracy = calculateAccuracy();
-    const errorHighlighting = getHighlightedErrors();
+    if (!userInput.trim()) return;
     
-    setAccuracy(calculatedAccuracy);
-    setHighlightedErrors(errorHighlighting);
+    // Use the new comparison logic
+    const result = compareTexts(exercise.text, userInput);
+    const highlightedText = generateHighlightedText(result.tokenResults);
+    
+    setAccuracy(result.accuracy);
+    setHighlightedErrors(highlightedText);
+    setTokenResults(result.tokenResults);
+    setStats({
+      correct: result.correct,
+      almost: result.almost,
+      incorrect: result.incorrect,
+      missing: result.missing,
+      extra: result.extra
+    });
+    
     setShowResults(true);
-    onComplete(calculatedAccuracy);
+    onComplete(result.accuracy);
 
-    if (calculatedAccuracy >= 95) {
-      toast.success(`Great job! ${calculatedAccuracy}% accuracy!`);
-    } else if (calculatedAccuracy >= 70) {
-      toast.info(`Good effort! ${calculatedAccuracy}% accuracy. Keep practicing!`);
+    if (result.accuracy >= 95) {
+      toast.success(`Great job! ${result.accuracy}% accuracy!`);
+    } else if (result.accuracy >= 70) {
+      toast.info(`Good effort! ${result.accuracy}% accuracy. Keep practicing!`);
     } else {
-      toast.error(`You scored ${calculatedAccuracy}%. Try listening again carefully.`);
+      toast.error(`You scored ${result.accuracy}%. Try listening again carefully.`);
     }
   };
 
@@ -142,6 +108,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     setUserInput('');
     setShowResults(false);
     setAccuracy(null);
+    setTokenResults([]);
     
     // Focus on textarea after resetting
     setTimeout(() => {
@@ -218,8 +185,57 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
         // Results section - using ScrollArea for proper scrolling
         <ScrollArea className="h-[60vh] pr-2">
           <div className="space-y-4">
+            {/* Stats section */}
+            <div className="bg-muted p-4 rounded-md">
+              <h3 className="font-medium mb-2">Results Summary</h3>
+              <div className="grid grid-cols-5 gap-2 text-center">
+                <div className={cn("p-2 rounded", stats.correct > 0 ? "bg-success/20" : "bg-muted-foreground/10")}>
+                  <div className="text-xl font-bold">{stats.correct}</div>
+                  <div className="text-xs">Correct</div>
+                </div>
+                <div className={cn("p-2 rounded", stats.almost > 0 ? "bg-amber-500/20" : "bg-muted-foreground/10")}>
+                  <div className="text-xl font-bold">{stats.almost}</div>
+                  <div className="text-xs">Almost</div>
+                </div>
+                <div className={cn("p-2 rounded", stats.incorrect > 0 ? "bg-destructive/20" : "bg-muted-foreground/10")}>
+                  <div className="text-xl font-bold">{stats.incorrect}</div>
+                  <div className="text-xs">Incorrect</div>
+                </div>
+                <div className={cn("p-2 rounded", stats.missing > 0 ? "bg-blue-500/20" : "bg-muted-foreground/10")}>
+                  <div className="text-xl font-bold">{stats.missing}</div>
+                  <div className="text-xs">Missing</div>
+                </div>
+                <div className={cn("p-2 rounded", stats.extra > 0 ? "bg-purple-500/20" : "bg-muted-foreground/10")}>
+                  <div className="text-xl font-bold">{stats.extra}</div>
+                  <div className="text-xs">Extra</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Detailed comparison */}
             <div className="border rounded-md p-4">
-              <h3 className="font-medium mb-2">Your Answer:</h3>
+              <h3 className="font-medium mb-2">Word-by-Word Comparison</h3>
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {tokenResults.map((result, index) => {
+                  if (!result.userToken && result.status === 'missing') {
+                    return (
+                      <span key={index} className="px-2 py-0.5 bg-blue-100 border border-blue-200 rounded text-sm">
+                        <span className="opacity-50">Missing:</span> {result.originalToken}
+                      </span>
+                    );
+                  } else if (result.status === 'extra') {
+                    return (
+                      <span key={index} className="px-2 py-0.5 bg-purple-100 border border-purple-200 rounded text-sm">
+                        <span className="opacity-50">Extra:</span> {result.userToken}
+                      </span>
+                    );
+                  }
+                  
+                  return null;
+                })}
+              </div>
+              
+              <h3 className="font-medium mb-2 mt-4">Your Answer:</h3>
               <p 
                 className="text-sm whitespace-pre-wrap"
                 dangerouslySetInnerHTML={{ __html: highlightedErrors }}
@@ -254,6 +270,21 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
                   Keep practicing to improve your accuracy
                 </p>
               )}
+              
+              <div className="mt-4 text-xs p-2 bg-background rounded border flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-success"></span>
+                  <span>Correct words</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                  <span>Almost correct (minor typos)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-destructive"></span>
+                  <span>Incorrect words</span>
+                </div>
+              </div>
             </div>
             
             <div className="flex gap-2">
@@ -273,3 +304,4 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
 };
 
 export default DictationPractice;
+
