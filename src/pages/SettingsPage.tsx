@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,13 +12,17 @@ import { Loader2, Settings, Mail, User } from 'lucide-react';
 import FeedbackForm from '@/components/FeedbackForm';
 import AvatarUpload from '@/components/AvatarUpload';
 import { Separator } from '@/components/ui/separator';
-
 const SettingsPage: React.FC = () => {
-  const { settings, updateSettings, selectLanguage, addLearningLanguage, removeLearningLanguage, loading } = useUserSettingsContext();
-  
+  const {
+    settings,
+    updateSettings,
+    selectLanguage,
+    addLearningLanguage,
+    removeLearningLanguage,
+    loading
+  } = useUserSettingsContext();
   const availableLanguages: Language[] = ['english', 'german'];
   const [updatingLanguage, setUpdatingLanguage] = useState<string | null>(null);
-  
   const handleLanguageToggle = async (language: Language, isChecked: boolean) => {
     try {
       setUpdatingLanguage(language);
@@ -37,7 +40,6 @@ const SettingsPage: React.FC = () => {
       setUpdatingLanguage(null);
     }
   };
-  
   const handleLanguageSelect = async (language: Language) => {
     try {
       setUpdatingLanguage(language);
@@ -50,20 +52,15 @@ const SettingsPage: React.FC = () => {
       setUpdatingLanguage(null);
     }
   };
-  
   if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
+    return <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
           <p className="text-muted-foreground">Loading settings...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-  
-  return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
+  return <div className="container mx-auto px-4 py-8 max-w-3xl">
       <div className="mb-6">
         <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent flex items-center">
           <Settings className="mr-2 h-6 w-6" />
@@ -105,28 +102,13 @@ const SettingsPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {availableLanguages.map(language => (
-                <div key={language} className="flex items-center space-x-2">
-                  <Checkbox 
-                    id={`language-${language}`}
-                    checked={settings.learningLanguages.includes(language)}
-                    onCheckedChange={(checked) => 
-                      handleLanguageToggle(language, checked as boolean)
-                    }
-                    disabled={
-                      updatingLanguage === language ||
-                      (settings.learningLanguages.length === 1 && 
-                      settings.learningLanguages.includes(language))
-                    }
-                  />
+              {availableLanguages.map(language => <div key={language} className="flex items-center space-x-2">
+                  <Checkbox id={`language-${language}`} checked={settings.learningLanguages.includes(language)} onCheckedChange={checked => handleLanguageToggle(language, checked as boolean)} disabled={updatingLanguage === language || settings.learningLanguages.length === 1 && settings.learningLanguages.includes(language)} />
                   <Label htmlFor={`language-${language}`} className="capitalize">
                     {language}
-                    {updatingLanguage === language && (
-                      <Loader2 className="h-3 w-3 animate-spin ml-2 inline" />
-                    )}
+                    {updatingLanguage === language && <Loader2 className="h-3 w-3 animate-spin ml-2 inline" />}
                   </Label>
-                </div>
-              ))}
+                </div>)}
             </div>
             
             <Alert className="mt-4">
@@ -146,25 +128,14 @@ const SettingsPage: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <RadioGroup 
-              value={settings.selectedLanguage} 
-              onValueChange={(value) => handleLanguageSelect(value as Language)}
-            >
-              {settings.learningLanguages.map(language => (
-                <div key={language} className="flex items-center space-x-2">
-                  <RadioGroupItem 
-                    value={language} 
-                    id={`active-${language}`}
-                    disabled={updatingLanguage === language}
-                  />
+            <RadioGroup value={settings.selectedLanguage} onValueChange={value => handleLanguageSelect(value as Language)}>
+              {settings.learningLanguages.map(language => <div key={language} className="flex items-center space-x-2">
+                  <RadioGroupItem value={language} id={`active-${language}`} disabled={updatingLanguage === language} />
                   <Label htmlFor={`active-${language}`} className="capitalize">
                     {language}
-                    {updatingLanguage === language && (
-                      <Loader2 className="h-3 w-3 animate-spin ml-2 inline" />
-                    )}
+                    {updatingLanguage === language && <Loader2 className="h-3 w-3 animate-spin ml-2 inline" />}
                   </Label>
-                </div>
-              ))}
+                </div>)}
             </RadioGroup>
             
             <p className="text-sm text-muted-foreground mt-4">
@@ -185,9 +156,7 @@ const SettingsPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <FeedbackForm />
-            <div className="mt-4 text-xs text-muted-foreground">
-              Your feedback helps us improve! All messages are sent to yigitaydin@gmail.com
-            </div>
+            <div className="mt-4 text-xs text-muted-foreground">Your feedback helps us improve!</div>
           </CardContent>
         </Card>
         
@@ -217,8 +186,6 @@ const SettingsPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default SettingsPage;
