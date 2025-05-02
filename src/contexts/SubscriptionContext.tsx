@@ -13,6 +13,7 @@ interface SubscriptionState {
   subscriptionStatus: string | null;
   trialEnd: Date | null;
   subscriptionEnd: Date | null;
+  canceledAt: Date | null;
   lastChecked: Date | null;
   error: string | null;
 }
@@ -50,6 +51,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     subscriptionStatus: null,
     trialEnd: null,
     subscriptionEnd: null,
+    canceledAt: null,
     lastChecked: null,
     error: null
   });
@@ -98,6 +100,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         subscriptionStatus: data?.subscription_status,
         trialEnd: data?.trial_end ? new Date(data?.trial_end) : null,
         subscriptionEnd: data?.subscription_end ? new Date(data?.subscription_end) : null,
+        canceledAt: data?.canceled_at ? new Date(data?.canceled_at) : null,
         lastChecked: new Date(),
         error: null
       });

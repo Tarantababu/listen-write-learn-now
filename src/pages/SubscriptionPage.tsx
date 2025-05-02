@@ -1,9 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Check, X, CreditCard, Shield, CalendarClock, Award, AlertTriangle } from 'lucide-react';
+import { Loader2, Check, X, CreditCard, Shield, CalendarClock, Award, AlertTriangle, Ban } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -132,6 +133,10 @@ const SubscriptionPage: React.FC = () => {
     );
   }
 
+  const isSubscriptionCanceled = subscription.subscriptionStatus === 'canceled';
+  const isSubscriptionActive = subscription.isSubscribed && !isSubscriptionCanceled;
+  const hasRemainingAccess = isSubscriptionCanceled && subscription.subscriptionEnd && new Date(subscription.subscriptionEnd) > new Date();
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <div className="mb-6">
@@ -147,10 +152,18 @@ const SubscriptionPage: React.FC = () => {
       <div className="space-y-8">
         {/* Current plan info */}
         <Card className="border-2 shadow-lg overflow-hidden relative">
-          {subscription.isSubscribed && (
+          {subscription.isSubscribed && !isSubscriptionCanceled && (
             <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-4 py-1 rounded-bl-md">
               <span className="flex items-center text-xs font-semibold">
                 <Shield className="mr-1 h-3 w-3" /> ACTIVE
+              </span>
+            </div>
+          )}
+          
+          {isSubscriptionCanceled && hasRemainingAccess && (
+            <div className="absolute top-0 right-0 bg-amber-500 text-white px-4 py-1 rounded-bl-md">
+              <span className="flex items-center text-xs font-semibold">
+                <Ban className="mr-1 h-3 w-3" /> CANCELED
               </span>
             </div>
           )}
@@ -162,11 +175,13 @@ const SubscriptionPage: React.FC = () => {
                 : 'Free Plan'}
             </CardTitle>
             <CardDescription>
-              {subscription.isSubscribed 
+              {isSubscriptionActive 
                 ? subscription.subscriptionStatus === 'trialing' 
                   ? 'You are currently on a free trial' 
                   : 'You have access to all premium features'
-                : 'Limited access to features'}
+                : isSubscriptionCanceled && hasRemainingAccess
+                  ? 'Your subscription was canceled but access remains until the end of the billing period'
+                  : 'Limited access to features'}
             </CardDescription>
           </CardHeader>
           
@@ -178,7 +193,9 @@ const SubscriptionPage: React.FC = () => {
                   <p className="text-sm text-muted-foreground">
                     {subscription.subscriptionStatus === 'trialing'
                       ? 'Your card will be charged after the trial ends'
-                      : 'Monthly subscription'}
+                      : isSubscriptionCanceled
+                        ? 'Your subscription has been canceled'
+                        : 'Monthly subscription'}
                   </p>
                 </div>
                 
@@ -198,13 +215,34 @@ const SubscriptionPage: React.FC = () => {
                   </div>
                 )}
                 
+                {isSubscriptionCanceled && subscription.canceledAt && (
+                  <div className="flex items-start space-x-2 p-3 bg-amber-50 rounded-md border border-amber-200">
+                    <Ban className="h-5 w-5 text-amber-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Subscription Canceled</p>
+                      <p className="text-sm">
+                        Canceled on {format(subscription.canceledAt, 'PPP')}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
                 {subscription.subscriptionEnd && (
                   <div className="flex items-start space-x-2 p-3 bg-muted/50 rounded-md">
                     <CalendarClock className="h-5 w-5 text-primary mt-0.5" />
                     <div>
-                      <p className="font-medium">Next billing date</p>
+                      <p className="font-medium">
+                        {isSubscriptionCanceled 
+                          ? 'Access ends on' 
+                          : 'Next billing date'}
+                      </p>
                       <p className="text-sm">
                         {format(subscription.subscriptionEnd, 'PPP')}
+                        {isSubscriptionCanceled && (
+                          <span className="block text-xs text-muted-foreground mt-1">
+                            You will have premium access until this date
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -297,7 +335,7 @@ const SubscriptionPage: React.FC = () => {
                     Processing...
                   </>
                 ) : (
-                  <>Manage Subscription</>
+                  <>{isSubscriptionCanceled ? 'Reactivate Subscription' : 'Manage Subscription'}</>
                 )}
               </Button>
             ) : (
@@ -348,8 +386,10 @@ const SubscriptionPage: React.FC = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
                   <p className="font-medium">
-                    {subscription.isSubscribed ? (
+                    {isSubscriptionActive ? (
                       <span className="text-green-600">Active</span>
+                    ) : isSubscriptionCanceled && hasRemainingAccess ? (
+                      <span className="text-amber-600">Canceled - Access Until {format(subscription.subscriptionEnd!, 'MMM d')}</span>
                     ) : (
                       <span className="text-yellow-600">Free</span>
                     )}
@@ -362,7 +402,20 @@ const SubscriptionPage: React.FC = () => {
                 {subscription.subscriptionStatus && (
                   <div className="col-span-2">
                     <p className="text-sm text-muted-foreground">Subscription Status</p>
-                    <p className="font-medium capitalize">{subscription.subscriptionStatus}</p>
+                    <p className="font-medium capitalize">
+                      {subscription.subscriptionStatus}
+                      {isSubscriptionCanceled && hasRemainingAccess && (
+                        <span className="text-sm text-muted-foreground ml-2">
+                          (Premium access until {format(subscription.subscriptionEnd!, 'MMM d')})
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+                {subscription.canceledAt && (
+                  <div className="col-span-2">
+                    <p className="text-sm text-muted-foreground">Canceled On</p>
+                    <p className="font-medium">{format(subscription.canceledAt, 'PPP')}</p>
                   </div>
                 )}
                 {subscription.lastChecked && (

@@ -128,33 +128,46 @@ serve(async (req) => {
       limit: 5,
     });
     
-    const hasActiveSub = subscriptions.data.some(sub => 
+    const activeSubscription = subscriptions.data.find(sub => 
       sub.status === "active" || sub.status === "trialing"
     );
     
-    let subscription = subscriptions.data.find(sub => 
-      sub.status === "active" || sub.status === "trialing"
+    // Also check for canceled subscriptions that still have access
+    const canceledSubscription = subscriptions.data.find(sub => 
+      sub.status === "canceled" && sub.current_period_end * 1000 > Date.now()
     );
     
+    // Use either active or canceled-but-valid subscription
+    const subscription = activeSubscription || canceledSubscription;
+    
+    const hasActiveSub = Boolean(subscription);
     let subscriptionTier = "free";
     let subscriptionEnd = null;
     let trialEnd = null;
     let subscriptionStatus = null;
+    let canceledAt = null;
 
     if (hasActiveSub && subscription) {
       subscriptionStatus = subscription.status;
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       subscriptionTier = "premium";
       
+      // Add cancellation date if subscription has been canceled
+      if (subscription.status === "canceled" && subscription.canceled_at) {
+        canceledAt = new Date(subscription.canceled_at * 1000).toISOString();
+        logStep("Subscription was canceled", { canceledAt });
+      }
+      
       if (subscription.status === "trialing" && subscription.trial_end) {
         trialEnd = new Date(subscription.trial_end * 1000).toISOString();
       }
       
-      logStep("Active subscription found", { 
+      logStep("Subscription found", { 
         subscriptionId: subscription.id, 
         status: subscriptionStatus,
         endDate: subscriptionEnd,
-        trialEnd
+        trialEnd,
+        canceledAt
       });
     } else {
       logStep("No active subscription found");
@@ -170,13 +183,15 @@ serve(async (req) => {
       subscription_status: subscriptionStatus,
       trial_end: trialEnd,
       subscription_end: subscriptionEnd,
+      canceled_at: canceledAt,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'email' });
 
     logStep("Updated database with subscription info", { 
       subscribed: hasActiveSub, 
       subscriptionTier, 
-      subscriptionStatus
+      subscriptionStatus,
+      canceledAt
     });
     
     return new Response(JSON.stringify({
@@ -184,7 +199,8 @@ serve(async (req) => {
       subscription_tier: subscriptionTier,
       subscription_status: subscriptionStatus,
       trial_end: trialEnd,
-      subscription_end: subscriptionEnd
+      subscription_end: subscriptionEnd,
+      canceled_at: canceledAt
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
