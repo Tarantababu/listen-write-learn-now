@@ -74,6 +74,19 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
     setIsMoveModalOpen(true);
   };
 
+  // Fixed event handlers to properly stop propagation
+  const handleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onEdit();
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDelete();
+  };
+
   const handleMoveSuccess = () => {
     // Reset modal state
     setIsMoveModalOpen(false);
@@ -113,6 +126,10 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                   variant="ghost" 
                   size="icon"
                   className="h-8 w-8"
+                  onClick={(e) => {
+                    // Prevent the click from propagating to the card
+                    e.stopPropagation();
+                  }}
                 >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
@@ -120,7 +137,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onEdit} className="cursor-pointer">
+                <DropdownMenuItem onClick={handleEdit} className="cursor-pointer">
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
@@ -129,7 +146,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                   Move to folder
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onDelete} className="cursor-pointer text-destructive">
+                <DropdownMenuItem onClick={handleDelete} className="cursor-pointer text-destructive">
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
