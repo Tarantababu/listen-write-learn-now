@@ -103,6 +103,7 @@ serve(async (req) => {
         subscription_status: null,
         trial_end: null,
         subscription_end: null,
+        canceled_at: null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'email' });
       
@@ -111,7 +112,8 @@ serve(async (req) => {
         subscription_tier: "free",
         subscription_status: null,
         trial_end: null,
-        subscription_end: null
+        subscription_end: null,
+        canceled_at: null
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -121,13 +123,14 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    // Check for active subscriptions
+    // Check for all subscriptions including canceled ones
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "all", // Get all subscriptions to check status
       limit: 5,
     });
     
+    // First look for active or trialing subscriptions
     const activeSubscription = subscriptions.data.find(sub => 
       sub.status === "active" || sub.status === "trialing"
     );
@@ -137,7 +140,7 @@ serve(async (req) => {
       sub.status === "canceled" && sub.current_period_end * 1000 > Date.now()
     );
     
-    // Use either active or canceled-but-valid subscription
+    // Prioritize active subscriptions over canceled ones
     const subscription = activeSubscription || canceledSubscription;
     
     const hasActiveSub = Boolean(subscription);
@@ -152,12 +155,15 @@ serve(async (req) => {
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       subscriptionTier = "premium";
       
-      // Add cancellation date if subscription has been canceled
-      if (subscription.status === "canceled" && subscription.canceled_at) {
-        canceledAt = new Date(subscription.canceled_at * 1000).toISOString();
+      // Check if subscription has been canceled
+      if (subscription.status === "canceled" || subscription.canceled_at) {
+        canceledAt = subscription.canceled_at 
+          ? new Date(subscription.canceled_at * 1000).toISOString() 
+          : new Date().toISOString();
         logStep("Subscription was canceled", { canceledAt });
       }
       
+      // Check for trial period
       if (subscription.status === "trialing" && subscription.trial_end) {
         trialEnd = new Date(subscription.trial_end * 1000).toISOString();
       }

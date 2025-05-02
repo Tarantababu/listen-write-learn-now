@@ -93,6 +93,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return;
       }
 
+      console.log('Raw subscription data:', data);
+
       setSubscription({
         isLoading: false,
         isSubscribed: data?.subscribed || false,
@@ -105,7 +107,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         error: null
       });
 
-      console.log('Subscription checked:', data);
+      console.log('Subscription checked:', {
+        subscribed: data?.subscribed,
+        tier: data?.subscription_tier,
+        status: data?.subscription_status,
+        canceledAt: data?.canceled_at ? new Date(data?.canceled_at) : 'not canceled'
+      });
     } catch (error) {
       console.error('Error in subscription check:', error);
       setSubscription(prev => ({ 
@@ -211,7 +218,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           <div className="py-4">
             <p className="text-sm text-muted-foreground mb-4">
               {portalSetupError?.details || 
-                'The Stripe Customer Portal needs to be configured in your Stripe Dashboard before users can manage their subscriptions.'}
+                'The Stripe Customer Portal needs to be configured in the Stripe Dashboard first.'}
             </p>
             
             <div className="bg-amber-50 border border-amber-200 rounded-md p-3">

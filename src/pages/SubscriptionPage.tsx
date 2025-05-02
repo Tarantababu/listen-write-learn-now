@@ -133,9 +133,18 @@ const SubscriptionPage: React.FC = () => {
     );
   }
 
-  const isSubscriptionCanceled = subscription.subscriptionStatus === 'canceled';
+  const isSubscriptionCanceled = subscription.canceledAt !== null || subscription.subscriptionStatus === 'canceled';
   const isSubscriptionActive = subscription.isSubscribed && !isSubscriptionCanceled;
   const hasRemainingAccess = isSubscriptionCanceled && subscription.subscriptionEnd && new Date(subscription.subscriptionEnd) > new Date();
+
+  console.log('Subscription status display info:', {
+    subscriptionStatus: subscription.subscriptionStatus,
+    isSubscribed: subscription.isSubscribed,
+    canceledAt: subscription.canceledAt,
+    isSubscriptionCanceled,
+    isSubscriptionActive,
+    hasRemainingAccess
+  });
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
