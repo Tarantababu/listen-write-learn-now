@@ -28,12 +28,12 @@ const DeleteExerciseDialog: React.FC<DeleteExerciseDialogProps> = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the exercise, all associated vocabulary items, and all completion records.
+            This will archive the exercise and hide it from your dashboard. The exercise will remain in the database to preserve associated data but will no longer be visible to you.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+          <AlertDialogAction onClick={onConfirm} className="bg-destructive hover:bg-destructive/90">Archive</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

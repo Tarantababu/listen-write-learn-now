@@ -1,4 +1,3 @@
-
 export type Language = 'english' | 'german';
 
 export interface Exercise {
@@ -8,10 +7,11 @@ export interface Exercise {
   language: Language;
   tags: string[];
   audioUrl?: string;
+  directoryId?: string | null;
   createdAt: Date;
   completionCount: number;
   isCompleted: boolean;
-  directoryId?: string;
+  archived?: boolean;
 }
 
 export interface Directory {

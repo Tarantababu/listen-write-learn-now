@@ -15,6 +15,7 @@ export const fetchExercises = async (userId: string | undefined) => {
     .from('exercises')
     .select('*')
     .eq('user_id', userId)
+    .eq('archived', false) // Only fetch non-archived exercises
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -38,7 +39,8 @@ export const createExercise = async (
       language: exercise.language,
       tags: exercise.tags,
       audio_url: exercise.audioUrl,
-      directory_id: exercise.directoryId
+      directory_id: exercise.directoryId,
+      archived: false // New exercises are not archived
     })
     .select('*')
     .single();
@@ -62,7 +64,8 @@ export const updateExercise = async (userId: string, id: string, updates: Partia
       audio_url: updates.audioUrl,
       directory_id: updates.directoryId,
       completion_count: updates.completionCount,
-      is_completed: updates.isCompleted
+      is_completed: updates.isCompleted,
+      archived: updates.archived
     })
     .eq('id', id)
     .eq('user_id', userId);
@@ -105,7 +108,22 @@ export const deleteAssociatedCompletions = async (userId: string, exerciseId: st
 };
 
 /**
+ * Archives an exercise in Supabase instead of deleting it
+ */
+export const archiveExercise = async (userId: string, id: string) => {
+  const { error } = await supabase
+    .from('exercises')
+    .update({ archived: true })
+    .eq('id', id)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+};
+
+/**
  * Deletes an exercise from Supabase
+ * Note: This function is kept for backwards compatibility but should be avoided
+ * in favor of archiveExercise to prevent foreign key constraint violations
  */
 export const deleteExercise = async (userId: string, id: string) => {
   const { error } = await supabase
@@ -148,7 +166,8 @@ export const mapExerciseFromDb = (ex: any): Exercise => ({
   directoryId: ex.directory_id,
   createdAt: new Date(ex.created_at),
   completionCount: ex.completion_count || 0,
-  isCompleted: ex.is_completed || false
+  isCompleted: ex.is_completed || false,
+  archived: ex.archived || false
 });
 
 /**

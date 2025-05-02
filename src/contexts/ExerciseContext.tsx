@@ -8,6 +8,7 @@ import {
   createExercise, 
   updateExercise as updateExerciseInDb, 
   deleteExercise as deleteExerciseFromDb,
+  archiveExercise as archiveExerciseInDb,
   recordCompletion,
   ensureAudioBucket,
   deleteAssociatedVocabulary,
@@ -135,21 +136,15 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return;
       }
 
-      // First delete associated vocabulary items
-      await deleteAssociatedVocabulary(user.id, id);
-
-      // Then delete associated completions
-      await deleteAssociatedCompletions(user.id, id);
-
-      // Finally delete the exercise from Supabase
-      await deleteExerciseFromDb(user.id, id);
+      // Instead of attempting to delete, archive the exercise
+      await archiveExerciseInDb(user.id, id);
 
       setExercises(exercises.filter(ex => ex.id !== id));
       if (selectedExercise?.id === id) {
         setSelectedExercise(null);
       }
     } catch (error: any) {
-      toast.error('Failed to delete exercise: ' + error.message);
+      toast.error('Failed to archive exercise: ' + error.message);
       throw error;
     }
   };
