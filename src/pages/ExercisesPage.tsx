@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import DirectoryBrowser from '@/components/DirectoryBrowser';
 import { Exercise } from '@/types';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 // Import the components we've just created
 import FilterBar from '@/components/exercises/FilterBar';
@@ -20,6 +22,7 @@ import PracticeModal from '@/components/exercises/PracticeModal';
 const ExercisesPage: React.FC = () => {
   const { exercises, selectExercise, selectedExercise, deleteExercise, markProgress } = useExerciseContext();
   const { currentDirectoryId } = useDirectoryContext();
+  const navigate = useNavigate();
   
   // Modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -133,12 +136,18 @@ const ExercisesPage: React.FC = () => {
     }
   };
 
+  // Function to refresh current page using React Router
+  const refreshCurrentPage = () => {
+    // Navigate to the current page to refresh it
+    navigate('/dashboard/exercises');
+  };
+
   // Clean up exercise states when modals close
   const handleAddModalClose = (open: boolean) => {
     setIsAddModalOpen(open);
     if (!open) {
       // Refresh the page when modal closes
-      window.location.reload();
+      refreshCurrentPage();
     }
   };
 
@@ -148,7 +157,7 @@ const ExercisesPage: React.FC = () => {
       setTimeout(() => {
         setExerciseToEdit(null);
         // Refresh the page when modal closes
-        window.location.reload();
+        refreshCurrentPage();
       }, 300); // Wait for animation to finish
     }
   };
@@ -159,7 +168,7 @@ const ExercisesPage: React.FC = () => {
       setTimeout(() => {
         setExerciseToPractice(null);
         // Refresh the page when modal closes
-        window.location.reload();
+        refreshCurrentPage();
       }, 300); // Wait for animation to finish
     }
   };
@@ -170,7 +179,7 @@ const ExercisesPage: React.FC = () => {
       setTimeout(() => {
         setExerciseToDelete(null);
         // Refresh the page when modal closes
-        window.location.reload();
+        refreshCurrentPage();
       }, 300);
     }
   };
