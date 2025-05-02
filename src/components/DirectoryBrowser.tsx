@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
-import { Folder, FolderPlus, File, ChevronRight, MoreVertical, Plus } from 'lucide-react';
+import { Folder, FolderPlus, File, ChevronRight, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -42,7 +42,8 @@ const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({
     getDirectoryPath,
     addDirectory,
     updateDirectory,
-    deleteDirectory
+    deleteDirectory,
+    loading
   } = useDirectoryContext();
   
   const { exercises, moveExerciseToDirectory } = useExerciseContext();
@@ -164,65 +165,73 @@ const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({
         
         {/* Directory and Exercise List */}
         <div className="space-y-2">
-          {currentDirectories.length === 0 && currentExercises.length === 0 && (
+          {loading ? (
             <div className="text-center py-8 text-muted-foreground">
-              This folder is empty
+              Loading folders...
             </div>
-          )}
-          
-          {/* Directories */}
-          {currentDirectories.map(directory => (
-            <div 
-              key={directory.id}
-              className="flex items-center justify-between p-2 rounded-md hover:bg-accent group"
-            >
-              <div 
-                className="flex items-center flex-1 cursor-pointer"
-                onClick={() => handleNavigateToDirectory(directory.id)}
-              >
-                <Folder className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span>{directory.name}</span>
-              </div>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
-                    <MoreVertical className="h-4 w-4" />
-                    <span className="sr-only">Actions</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => openRenameDialog(directory)}>
-                    Rename
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={() => handleDeleteDirectory(directory.id)}
-                    className="text-destructive"
-                  >
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ))}
-          
-          {/* Exercises */}
-          {currentExercises.map(exercise => (
-            <div 
-              key={exercise.id}
-              className={cn(
-                "flex items-center justify-between p-2 rounded-md hover:bg-accent group",
-                selectedExerciseId === exercise.id && "bg-accent"
+          ) : (
+            <>
+              {currentDirectories.length === 0 && currentExercises.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  This folder is empty
+                </div>
               )}
-              onClick={() => onSelectExercise && onSelectExercise(exercise.id)}
-            >
-              <div className="flex items-center flex-1 cursor-pointer">
-                <File className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span>{exercise.title}</span>
-              </div>
-            </div>
-          ))}
+              
+              {/* Directories */}
+              {currentDirectories.map(directory => (
+                <div 
+                  key={directory.id}
+                  className="flex items-center justify-between p-2 rounded-md hover:bg-accent group"
+                >
+                  <div 
+                    className="flex items-center flex-1 cursor-pointer"
+                    onClick={() => handleNavigateToDirectory(directory.id)}
+                  >
+                    <Folder className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span>{directory.name}</span>
+                  </div>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">Actions</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => openRenameDialog(directory)}>
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => handleDeleteDirectory(directory.id)}
+                        className="text-destructive"
+                      >
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ))}
+              
+              {/* Exercises */}
+              {currentExercises.map(exercise => (
+                <div 
+                  key={exercise.id}
+                  className={cn(
+                    "flex items-center justify-between p-2 rounded-md hover:bg-accent group",
+                    selectedExerciseId === exercise.id && "bg-accent"
+                  )}
+                  onClick={() => onSelectExercise && onSelectExercise(exercise.id)}
+                >
+                  <div className="flex items-center flex-1 cursor-pointer">
+                    <File className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span>{exercise.title}</span>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
       
