@@ -1,153 +1,167 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Headphones, Menu, X, Award } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useExerciseContext } from '@/contexts/ExerciseContext';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { getUserLevel } from '@/utils/levelSystem';
-import LevelBadge from '@/components/LevelBadge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { 
+  Headphones, 
+  Menu, 
+  LogOut, 
+  BookOpen, 
+  Home, 
+  Settings, 
+  User,
+  CreditCard,
+  Crown
+} from 'lucide-react';
+import { useMobileDetection } from '@/hooks/use-mobile';
 
 const Header: React.FC = () => {
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { exercises } = useExerciseContext();
-  const { settings } = useUserSettingsContext();
-  
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
+  const { user, signOut } = useAuth();
+  const { subscription } = useSubscription();
+  const location = useLocation();
+  const isMobile = useMobileDetection();
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+
+  const isActive = (path: string) => {
+    return location.pathname === path 
+      || (path !== '/dashboard' && location.pathname.startsWith(path));
   };
 
-  const navigateTo = (path: string) => {
-    navigate(path);
-    setMobileMenuOpen(false);
-  };
-  
-  // Calculate mastered words for level badge
-  const masteredWords = React.useMemo(() => {
-    const currentLanguage = settings.selectedLanguage;
-    const masteredSet = new Set<string>();
-    
-    exercises.forEach(exercise => {
-      if (exercise.language !== currentLanguage || !exercise.isCompleted) return;
-      
-      // We consider completed exercises (3+ attempts with >95% accuracy) as mastered
-      const words = exercise.text
-        .toLowerCase()
-        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .split(' ');
-        
-      words.forEach(word => masteredSet.add(word));
-    });
-    
-    return masteredSet.size;
-  }, [exercises, settings.selectedLanguage]);
-  
-  const userLevel = getUserLevel(masteredWords);
-  
   return (
-    <header className="flex items-center justify-between p-4 bg-white shadow-sm sticky top-0 z-50">
-      <div 
-        className="flex items-center gap-2 cursor-pointer" 
-        onClick={() => navigateTo('/dashboard')}
-      >
-        <Headphones className="h-6 w-6 text-primary" />
-        <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">ListenWriteLearn</h1>
-      </div>
-      
-      <div className="flex items-center gap-4">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-1.5">
-                <Award className="h-4 w-4 text-amber-500" />
-                <LevelBadge masteredWords={masteredWords} />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Your current level: {userLevel.title}</p>
-              <p className="text-xs text-muted-foreground">Based on {masteredWords} mastered words</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        
-        {isMobile ? (
-          <>
-            <button 
-              onClick={toggleMobileMenu}
-              className="text-gray-600 focus:outline-none"
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? <X /> : <Menu />}
-            </button>
-            
-            {mobileMenuOpen && (
-              <div className="absolute top-full left-0 right-0 bg-white shadow-md animate-slide-in">
-                <nav className="p-4">
-                  <ul className="flex flex-col gap-4">
-                    <li>
-                      <button 
-                        onClick={() => navigateTo('/dashboard/exercises')}
-                        className="text-base w-full text-left py-2 px-4 hover:bg-muted rounded-md transition-colors"
-                      >
-                        Exercises
-                      </button>
-                    </li>
-                    <li>
-                      <button 
-                        onClick={() => navigateTo('/dashboard/vocabulary')}
-                        className="text-base w-full text-left py-2 px-4 hover:bg-muted rounded-md transition-colors"
-                      >
-                        Vocabulary
-                      </button>
-                    </li>
-                    <li>
-                      <button 
-                        onClick={() => navigateTo('/dashboard/settings')}
-                        className="text-base w-full text-left py-2 px-4 hover:bg-muted rounded-md transition-colors"
-                      >
-                        Settings
-                      </button>
-                    </li>
-                  </ul>
-                </nav>
-              </div>
-            )}
-          </>
-        ) : (
-          <nav>
-            <ul className="flex gap-6">
-              <li>
-                <button 
-                  onClick={() => navigateTo('/dashboard/exercises')}
-                  className="text-sm hover:text-primary transition-colors"
-                >
+    <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur">
+      <div className="container flex h-16 items-center justify-between">
+        <div className="flex items-center gap-6">
+          <Link 
+            to="/dashboard" 
+            className="flex items-center gap-2 text-lg font-semibold"
+          >
+            <Headphones className="h-5 w-5 text-primary" />
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent hidden sm:inline-block">
+              ListenWriteLearn
+            </span>
+          </Link>
+          
+          {!isMobile && user && (
+            <nav className="flex items-center gap-1">
+              <Button 
+                asChild 
+                variant={isActive('/dashboard') && !isActive('/dashboard/exercises') && !isActive('/dashboard/vocabulary') ? "default" : "ghost"}
+              >
+                <Link to="/dashboard">
+                  <Home className="h-4 w-4 mr-1" />
+                  Dashboard
+                </Link>
+              </Button>
+              
+              <Button 
+                asChild 
+                variant={isActive('/dashboard/exercises') ? "default" : "ghost"}
+              >
+                <Link to="/dashboard/exercises">
+                  <BookOpen className="h-4 w-4 mr-1" />
                   Exercises
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => navigateTo('/dashboard/vocabulary')}
-                  className="text-sm hover:text-primary transition-colors"
-                >
+                </Link>
+              </Button>
+              
+              <Button 
+                asChild 
+                variant={isActive('/dashboard/vocabulary') ? "default" : "ghost"}
+              >
+                <Link to="/dashboard/vocabulary">
+                  <BookOpen className="h-4 w-4 mr-1" />
                   Vocabulary
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => navigateTo('/dashboard/settings')}
-                  className="text-sm hover:text-primary transition-colors"
-                >
-                  Settings
-                </button>
-              </li>
-            </ul>
-          </nav>
-        )}
+                </Link>
+              </Button>
+              
+              <Button 
+                asChild 
+                variant={isActive('/dashboard/subscription') ? "default" : "ghost"}
+              >
+                <Link to="/dashboard/subscription">
+                  <CreditCard className="h-4 w-4 mr-1" />
+                  Subscription
+                </Link>
+              </Button>
+            </nav>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {user ? (
+            <>
+              {subscription.isSubscribed && (
+                <span className="hidden sm:flex items-center text-xs font-medium bg-primary/15 text-primary px-2 py-1 rounded">
+                  <Crown className="h-3 w-3 mr-1" />
+                  Premium
+                </span>
+              )}
+              <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    {isMobile ? <Menu /> : <User />}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {isMobile && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard">
+                          <Home className="h-4 w-4 mr-2" /> Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard/exercises">
+                          <BookOpen className="h-4 w-4 mr-2" /> Exercises
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard/vocabulary">
+                          <BookOpen className="h-4 w-4 mr-2" /> Vocabulary
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard/subscription">
+                          <CreditCard className="h-4 w-4 mr-2" /> Subscription
+                          {subscription.isSubscribed && (
+                            <Crown className="h-3 w-3 ml-1 text-primary" />
+                          )}
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/settings">
+                      <Settings className="h-4 w-4 mr-2" /> Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="h-4 w-4 mr-2" /> Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="ghost">
+                <Link to="/login">Log in</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/signup">Sign up</Link>
+              </Button>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );
