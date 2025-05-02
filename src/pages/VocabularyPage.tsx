@@ -9,6 +9,9 @@ import VocabularyCard from '@/components/VocabularyCard';
 import VocabularyPlaylist from '@/components/VocabularyPlaylist';
 import { VocabularyItem } from '@/types';
 import { toast } from 'sonner';
+import { FileExport } from 'lucide-react';
+import { downloadAnkiDeck } from '@/utils/ankiExport';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const VocabularyPage: React.FC = () => {
   const { vocabulary, removeVocabularyItem } = useVocabularyContext();
@@ -17,6 +20,8 @@ const VocabularyPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<VocabularyItem | null>(null);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
   
   // Filter vocabulary by current language and search term
   const filteredVocabulary = vocabulary
@@ -43,7 +48,55 @@ const VocabularyPage: React.FC = () => {
       toast.success('Vocabulary item removed');
       setDeleteDialogOpen(false);
       setItemToDelete(null);
+      // Also remove from selected items if present
+      setSelectedItems(prev => prev.filter(id => id !== itemToDelete.id));
     }
+  };
+  
+  const toggleSelectItem = (id: string) => {
+    setSelectedItems(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(itemId => itemId !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+  
+  const handleExportAnki = async () => {
+    try {
+      setIsExporting(true);
+      
+      // If no items are selected, export all filtered items
+      const itemsToExport = selectedItems.length > 0
+        ? filteredVocabulary.filter(item => selectedItems.includes(item.id))
+        : filteredVocabulary;
+        
+      if (itemsToExport.length === 0) {
+        toast.error('No vocabulary items to export');
+        return;
+      }
+      
+      await downloadAnkiDeck(
+        itemsToExport, 
+        `${settings.selectedLanguage}_vocabulary_${new Date().toISOString().split('T')[0]}`
+      );
+      
+      toast.success(`${itemsToExport.length} vocabulary items exported for Anki`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export vocabulary');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+  
+  const selectAll = () => {
+    setSelectedItems(filteredVocabulary.map(item => item.id));
+  };
+  
+  const deselectAll = () => {
+    setSelectedItems([]);
   };
   
   // Since we don't have actual vocabulary items in the demo, let's create some examples
@@ -81,7 +134,7 @@ const VocabularyPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Vocabulary</h1>
+        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">Vocabulary</h1>
         <p className="text-muted-foreground">
           Review and manage your saved vocabulary items
         </p>
@@ -90,16 +143,57 @@ const VocabularyPage: React.FC = () => {
       {/* Add the Vocabulary Playlist component */}
       <VocabularyPlaylist vocabularyItems={displayVocabulary} />
       
-      <div className="mb-6">
-        <Input
-          placeholder="Search vocabulary..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="flex-1">
+          <Input
+            placeholder="Search vocabulary..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={selectAll}
+            className="whitespace-nowrap"
+            disabled={displayVocabulary.length === 0}
+          >
+            Select All
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={deselectAll}
+            className="whitespace-nowrap"
+            disabled={selectedItems.length === 0}
+          >
+            Deselect All
+          </Button>
+          
+          <Button 
+            onClick={handleExportAnki}
+            disabled={isExporting || displayVocabulary.length === 0}
+            className="whitespace-nowrap bg-gradient-to-r from-primary to-accent hover:opacity-90"
+          >
+            <FileExport className="mr-2 h-4 w-4" />
+            {isExporting ? "Exporting..." : "Export for Anki"}
+          </Button>
+        </div>
+      </div>
+      
+      <div className="mb-4 text-sm text-muted-foreground">
+        {selectedItems.length > 0 ? (
+          <p>{selectedItems.length} of {displayVocabulary.length} items selected</p>
+        ) : (
+          <p>Select items to export or use the Export button to export all visible items</p>
+        )}
       </div>
       
       {displayVocabulary.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="text-center py-12 gradient-card rounded-lg">
           <p className="text-lg mb-2">Your vocabulary list is empty</p>
           <p className="text-muted-foreground mb-4">
             Practice exercises and save words to build your vocabulary
@@ -108,11 +202,20 @@ const VocabularyPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {displayVocabulary.map(item => (
-            <VocabularyCard
-              key={item.id}
-              item={item}
-              onDelete={() => handleDeleteItem(item)}
-            />
+            <div key={item.id} className="relative">
+              <div className="absolute top-2 right-2 z-10">
+                <Checkbox
+                  checked={selectedItems.includes(item.id)}
+                  onCheckedChange={() => toggleSelectItem(item.id)}
+                  aria-label="Select vocabulary item"
+                />
+              </div>
+              <VocabularyCard
+                key={item.id}
+                item={item}
+                onDelete={() => handleDeleteItem(item)}
+              />
+            </div>
           ))}
         </div>
       )}

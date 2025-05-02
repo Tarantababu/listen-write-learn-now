@@ -31,25 +31,27 @@ const App = () => (
             <VocabularyProvider>
               <TooltipProvider>
                 <Toaster />
-                <Sonner />
-                <Routes>
-                  {/* Public Routes */}
-                  <Route path="/" element={<Index />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/signup" element={<SignUpPage />} />
-                  
-                  {/* Protected Routes */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route path="/dashboard" element={<Layout />}>
-                      <Route index element={<HomePage />} />
-                      <Route path="exercises" element={<ExercisesPage />} />
-                      <Route path="vocabulary" element={<VocabularyPage />} />
-                      <Route path="settings" element={<SettingsPage />} />
+                <Sonner position="top-center" />
+                <div className="min-h-screen flex flex-col">
+                  <Routes>
+                    {/* Public Routes */}
+                    <Route path="/" element={<Index />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/signup" element={<SignUpPage />} />
+                    
+                    {/* Protected Routes */}
+                    <Route element={<ProtectedRoute />}>
+                      <Route path="/dashboard" element={<Layout />}>
+                        <Route index element={<HomePage />} />
+                        <Route path="exercises" element={<ExercisesPage />} />
+                        <Route path="vocabulary" element={<VocabularyPage />} />
+                        <Route path="settings" element={<SettingsPage />} />
+                      </Route>
                     </Route>
-                  </Route>
-                  
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
+                    
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </div>
               </TooltipProvider>
             </VocabularyProvider>
           </ExerciseProvider>

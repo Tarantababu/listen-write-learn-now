@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Language } from '@/types';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Settings, Mail } from 'lucide-react';
+import FeedbackForm from '@/components/FeedbackForm';
 
 const SettingsPage: React.FC = () => {
   const { settings, updateSettings, selectLanguage, addLearningLanguage, removeLearningLanguage, loading } = useUserSettingsContext();
@@ -62,14 +63,17 @@ const SettingsPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Settings</h1>
+        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent flex items-center">
+          <Settings className="mr-2 h-6 w-6" />
+          Settings
+        </h1>
         <p className="text-muted-foreground">
           Customize your learning experience
         </p>
       </div>
       
       <div className="space-y-6">
-        <Card>
+        <Card className="gradient-card">
           <CardHeader>
             <CardTitle>Learning Languages</CardTitle>
             <CardDescription>
@@ -111,7 +115,7 @@ const SettingsPage: React.FC = () => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="gradient-card">
           <CardHeader>
             <CardTitle>Active Language</CardTitle>
             <CardDescription>
@@ -146,7 +150,25 @@ const SettingsPage: React.FC = () => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="gradient-card">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Mail className="mr-2 h-5 w-5" />
+              Feedback
+            </CardTitle>
+            <CardDescription>
+              Share your thoughts and suggestions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FeedbackForm />
+            <div className="mt-4 text-xs text-muted-foreground">
+              Your feedback helps us improve! All messages are sent to yigitaydin@gmail.com
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="gradient-card">
           <CardHeader>
             <CardTitle>About</CardTitle>
             <CardDescription>
