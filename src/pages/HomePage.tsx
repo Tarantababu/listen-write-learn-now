@@ -10,41 +10,37 @@ import UserStatistics from '@/components/UserStatistics';
 import { Progress } from '@/components/ui/progress';
 import { getUserLevel, getWordsToNextLevel, getLevelProgress, formatNumber } from '@/utils/levelSystem';
 import LevelBadge from '@/components/LevelBadge';
-
 const HomePage: React.FC = () => {
-  const { user, signOut } = useAuth();
-  const { settings } = useUserSettingsContext();
-  const { exercises } = useExerciseContext();
-  
+  const {
+    user,
+    signOut
+  } = useAuth();
+  const {
+    settings
+  } = useUserSettingsContext();
+  const {
+    exercises
+  } = useExerciseContext();
+
   // Calculate mastered words count
   const masteredWords = React.useMemo(() => {
     const currentLanguage = settings.selectedLanguage;
     const masteredSet = new Set<string>();
-    
     exercises.forEach(exercise => {
       if (exercise.language !== currentLanguage || !exercise.isCompleted) return;
-      
+
       // Words from completed exercises are considered mastered
-      const words = exercise.text
-        .toLowerCase()
-        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .split(' ');
-        
+      const words = exercise.text.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '').replace(/\s+/g, ' ').trim().split(' ');
       words.forEach(word => masteredSet.add(word));
     });
-    
     return masteredSet.size;
   }, [exercises, settings.selectedLanguage]);
-  
+
   // Get level information
   const userLevel = getUserLevel(masteredWords);
   const wordsToNextLevel = getWordsToNextLevel(masteredWords);
   const levelProgress = getLevelProgress(masteredWords);
-  
-  return (
-    <div className="container mx-auto px-4 py-8">
+  return <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         <header className="mb-8 text-center">
           <h1 className="text-3xl font-bold mb-2">ListenWriteLearn</h1>
@@ -59,43 +55,14 @@ const HomePage: React.FC = () => {
               <div>
                 <CardTitle>Welcome, {user?.email}</CardTitle>
                 <CardDescription>
-                  You're currently learning {settings.learningLanguages.map((lang) => 
-                    lang.charAt(0).toUpperCase() + lang.slice(1)
-                  ).join(', ')}
+                  You're currently learning {settings.learningLanguages.map(lang => lang.charAt(0).toUpperCase() + lang.slice(1)).join(', ')}
                 </CardDescription>
               </div>
               <div className={`p-2 rounded-full ${userLevel.color}`}>
                 <Award className="h-6 w-6 text-white" />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-lg">{userLevel.level} · {userLevel.title}</h3>
-                    <p className="text-sm text-muted-foreground">{userLevel.description}</p>
-                  </div>
-                  <div className="bg-muted px-2 py-1 rounded text-xs">
-                    {userLevel.cefrEquivalent}
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>{formatNumber(masteredWords)} words mastered</span>
-                    {wordsToNextLevel > 0 && (
-                      <span>{formatNumber(wordsToNextLevel)} words to next level</span>
-                    )}
-                  </div>
-                  <Progress value={levelProgress} className="h-2" />
-                </div>
-                
-                <p>
-                  Dictation practice is a powerful method for improving language skills. Listen to the audio, 
-                  write what you hear, and improve your comprehension and spelling.
-                </p>
-              </div>
-            </CardContent>
+            
           </Card>
         </div>
         
@@ -164,18 +131,12 @@ const HomePage: React.FC = () => {
         </div>
         
         <div className="mt-8 flex justify-center">
-          <Button 
-            variant="ghost" 
-            className="flex items-center gap-2 text-muted-foreground"
-            onClick={() => signOut()}
-          >
+          <Button variant="ghost" className="flex items-center gap-2 text-muted-foreground" onClick={() => signOut()}>
             <LogOut className="h-4 w-4" />
             Sign Out
           </Button>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default HomePage;
