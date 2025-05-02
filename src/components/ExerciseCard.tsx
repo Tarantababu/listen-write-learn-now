@@ -30,7 +30,8 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
     : null;
   
   // Calculate duration in minutes (mock data for now)
-  const duration = exercise.duration || (Math.floor(Math.random() * 4) + 2) + ":" + (Math.floor(Math.random() * 60)).toString().padStart(2, '0') + " min";
+  // Since duration isn't in the Exercise type, we generate it here
+  const duration = (Math.floor(Math.random() * 4) + 2) + ":" + (Math.floor(Math.random() * 60)).toString().padStart(2, '0') + " min";
   
   // Format progress status
   const getProgressStatus = () => {
