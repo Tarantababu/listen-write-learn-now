@@ -41,12 +41,18 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // This ensures we always have the language preference available immediately
   useEffect(() => {
     const savedSettings = localStorage.getItem('userSettings');
+    const savedAvatarUrl = localStorage.getItem('userAvatarUrl');
+    
     if (savedSettings) {
       try {
         setSettings(JSON.parse(savedSettings));
       } catch (e) {
         console.error("Failed to parse saved settings", e);
       }
+    }
+    
+    if (savedAvatarUrl) {
+      setAvatarUrl(savedAvatarUrl);
     }
   }, []);
 
@@ -76,6 +82,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
           
           if (data.avatar_url) {
             setAvatarUrl(data.avatar_url);
+            localStorage.setItem('userAvatarUrl', data.avatar_url);
           }
         }
       } catch (error) {
@@ -150,8 +157,9 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       if (updateError) throw updateError;
 
-      // Update local state
+      // Update local state and localStorage
       setAvatarUrl(avatarUrl);
+      localStorage.setItem('userAvatarUrl', avatarUrl);
       
       toast.success('Avatar updated successfully');
       return avatarUrl;
