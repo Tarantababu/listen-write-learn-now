@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Exercise } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -6,24 +7,29 @@ import { Progress } from '@/components/ui/progress';
 import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import VocabularyHighlighter from '@/components/VocabularyHighlighter';
 import { 
   compareTexts, 
   generateHighlightedText,
   TokenComparisonResult 
 } from '@/utils/textComparison';
 import { cn } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface DictationPracticeProps {
   exercise: Exercise;
   onComplete: (accuracy: number) => void;
+  showResults?: boolean;
+  onTryAgain?: () => void;
 }
 
 const DictationPractice: React.FC<DictationPracticeProps> = ({
   exercise,
-  onComplete
+  onComplete,
+  showResults = false,
+  onTryAgain
 }) => {
   const [userInput, setUserInput] = useState('');
-  const [showResults, setShowResults] = useState(false);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [highlightedErrors, setHighlightedErrors] = useState<string>('');
   const [tokenResults, setTokenResults] = useState<TokenComparisonResult[]>([]);
@@ -65,7 +71,6 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       extra: result.extra
     });
     
-    setShowResults(true);
     onComplete(result.accuracy);
 
     if (result.accuracy >= 95) {
@@ -158,11 +163,25 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       textareaRef.current.focus();
     }
   }, [showResults]);
+
+  const handleTryAgain = () => {
+    setUserInput('');
+    if (onTryAgain) {
+      onTryAgain();
+    }
+    
+    // Focus on textarea after resetting
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }, 0);
+  };
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header with exercise title and progress */}
-      <div className="p-6 border-b">
+      <div className="p-4 border-b">
         <div className="flex justify-between items-center mb-2">
           <h1 className="text-2xl font-bold">{exercise.title}</h1>
           <div className="flex items-center gap-3">
@@ -258,134 +277,179 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
           </div>
         </div>
       ) : (
-        // Results view - kept the same
-        <ScrollArea className="h-[60vh] pr-2 p-6">
-          <div className="space-y-4">
-            {/* Stats section */}
-            <div className="bg-muted p-4 rounded-md">
-              <h3 className="font-medium mb-2">Results Summary</h3>
-              <div className="grid grid-cols-5 gap-2 text-center">
-                <div className={cn("p-2 rounded", stats.correct > 0 ? "bg-success/20" : "bg-muted-foreground/10")}>
-                  <div className="text-xl font-bold">{stats.correct}</div>
-                  <div className="text-xs">Correct</div>
-                </div>
-                <div className={cn("p-2 rounded", stats.almost > 0 ? "bg-amber-500/20" : "bg-muted-foreground/10")}>
-                  <div className="text-xl font-bold">{stats.almost}</div>
-                  <div className="text-xs">Almost</div>
-                </div>
-                <div className={cn("p-2 rounded", stats.incorrect > 0 ? "bg-destructive/20" : "bg-muted-foreground/10")}>
-                  <div className="text-xl font-bold">{stats.incorrect}</div>
-                  <div className="text-xs">Incorrect</div>
-                </div>
-                <div className={cn("p-2 rounded", stats.missing > 0 ? "bg-blue-500/20" : "bg-muted-foreground/10")}>
-                  <div className="text-xl font-bold">{stats.missing}</div>
-                  <div className="text-xs">Missing</div>
-                </div>
-                <div className={cn("p-2 rounded", stats.extra > 0 ? "bg-purple-500/20" : "bg-muted-foreground/10")}>
-                  <div className="text-xl font-bold">{stats.extra}</div>
-                  <div className="text-xs">Extra</div>
-                </div>
-              </div>
+        // Enhanced Results view with tabs
+        <div className="overflow-hidden">
+          <Tabs defaultValue="summary" className="w-full">
+            <div className="px-6 pt-4">
+              <TabsList className="w-full grid grid-cols-3">
+                <TabsTrigger value="summary">Summary</TabsTrigger>
+                <TabsTrigger value="comparison">Comparison</TabsTrigger>
+                <TabsTrigger value="vocabulary">Vocabulary</TabsTrigger>
+              </TabsList>
             </div>
-            
-            {/* Detailed comparison */}
-            <div className="border rounded-md p-4">
-              <h3 className="font-medium mb-2">Word-by-Word Comparison</h3>
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {tokenResults.map((result, index) => {
-                  if (!result.userToken && result.status === 'missing') {
-                    return (
-                      <span key={index} className="px-2 py-0.5 bg-blue-100 border border-blue-200 rounded text-sm">
-                        <span className="opacity-50">Missing:</span> {result.originalToken}
-                      </span>
-                    );
-                  } else if (result.status === 'extra') {
-                    return (
-                      <span key={index} className="px-2 py-0.5 bg-purple-100 border border-purple-200 rounded text-sm">
-                        <span className="opacity-50">Extra:</span> {result.userToken}
-                      </span>
-                    );
-                  }
+
+            <TabsContent value="summary" className="mt-0">
+              <ScrollArea className="h-[65vh] p-6">
+                <div className="space-y-4">
+                  {/* Stats section with cards layout */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {/* Accuracy card */}
+                    <div className={cn(
+                      "p-6 rounded-lg border text-center flex flex-col items-center justify-center",
+                      accuracy && accuracy >= 95 ? "bg-success/10 border-success/50" :
+                      accuracy && accuracy >= 70 ? "bg-amber-500/10 border-amber-500/50" :
+                      "bg-destructive/10 border-destructive/50"
+                    )}>
+                      <h3 className="font-medium mb-1 text-gray-600">Accuracy</h3>
+                      <div className={cn(
+                        "text-4xl font-bold",
+                        accuracy && accuracy >= 95 ? "text-success" :
+                        accuracy && accuracy >= 70 ? "text-amber-500" :
+                        "text-destructive"
+                      )}>
+                        {accuracy}%
+                      </div>
+                      
+                      {accuracy && accuracy >= 95 ? (
+                        <p className="text-sm text-success mt-2">
+                          Great job! {exercise.completionCount + 1 >= 3 
+                            ? "You've mastered this exercise!" 
+                            : `${3 - exercise.completionCount - 1} more successful attempts until mastery.`}
+                        </p>
+                      ) : (
+                        <p className="text-sm mt-2">
+                          Keep practicing to improve your accuracy
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Stats breakdown card */}
+                    <div className="p-6 rounded-lg border bg-muted/30">
+                      <h3 className="font-medium mb-3 text-gray-600">Statistics</h3>
+                      <div className="grid grid-cols-5 gap-2">
+                        <div className={cn("p-2 rounded flex flex-col items-center", stats.correct > 0 ? "bg-success/20" : "bg-muted")}>
+                          <div className="text-xl font-bold">{stats.correct}</div>
+                          <div className="text-xs">Correct</div>
+                        </div>
+                        <div className={cn("p-2 rounded flex flex-col items-center", stats.almost > 0 ? "bg-amber-500/20" : "bg-muted")}>
+                          <div className="text-xl font-bold">{stats.almost}</div>
+                          <div className="text-xs">Almost</div>
+                        </div>
+                        <div className={cn("p-2 rounded flex flex-col items-center", stats.incorrect > 0 ? "bg-destructive/20" : "bg-muted")}>
+                          <div className="text-xl font-bold">{stats.incorrect}</div>
+                          <div className="text-xs">Incorrect</div>
+                        </div>
+                        <div className={cn("p-2 rounded flex flex-col items-center", stats.missing > 0 ? "bg-blue-500/20" : "bg-muted")}>
+                          <div className="text-xl font-bold">{stats.missing}</div>
+                          <div className="text-xs">Missing</div>
+                        </div>
+                        <div className={cn("p-2 rounded flex flex-col items-center", stats.extra > 0 ? "bg-purple-500/20" : "bg-muted")}>
+                          <div className="text-xl font-bold">{stats.extra}</div>
+                          <div className="text-xs">Extra</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Your Answer section */}
+                  <div className="border rounded-lg p-4">
+                    <h3 className="font-medium mb-3">Your Answer</h3>
+                    <p 
+                      className="text-sm whitespace-pre-wrap p-3 bg-background rounded"
+                      dangerouslySetInnerHTML={{ __html: highlightedErrors }}
+                    ></p>
+                  </div>
+
+                  {/* Legend */}
+                  <div className="border rounded-lg p-4 bg-muted/20">
+                    <h3 className="font-medium mb-2">Legend</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-success"></span>
+                        <span className="text-sm">Correct words</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                        <span className="text-sm">Almost correct (minor typos)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-destructive"></span>
+                        <span className="text-sm">Incorrect words</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                        <span className="text-sm">Missing words</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      onClick={handleTryAgain}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    >
+                      Try Again
+                    </Button>
+                  </div>
+                </div>
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="comparison" className="mt-0">
+              <ScrollArea className="h-[65vh] p-6">
+                <div className="space-y-4">
+                  {/* Detailed comparison */}
+                  <div className="border rounded-lg p-4">
+                    <h3 className="font-medium mb-3">Word-by-Word Comparison</h3>
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {tokenResults.map((result, index) => {
+                        if (!result.userToken && result.status === 'missing') {
+                          return (
+                            <span key={index} className="px-2 py-0.5 bg-blue-100 border border-blue-200 rounded text-sm">
+                              <span className="opacity-50">Missing:</span> {result.originalToken}
+                            </span>
+                          );
+                        } else if (result.status === 'extra') {
+                          return (
+                            <span key={index} className="px-2 py-0.5 bg-purple-100 border border-purple-200 rounded text-sm">
+                              <span className="opacity-50">Extra:</span> {result.userToken}
+                            </span>
+                          );
+                        }
+                        
+                        return null;
+                      })}
+                    </div>
+                    
+                    <h3 className="font-medium mb-2 mt-4">Your Answer:</h3>
+                    <p 
+                      className="text-sm whitespace-pre-wrap bg-background p-3 rounded"
+                      dangerouslySetInnerHTML={{ __html: highlightedErrors }}
+                    ></p>
+                    
+                    <h3 className="font-medium mb-2 mt-4">Original Text:</h3>
+                    <p className="text-sm whitespace-pre-wrap bg-background p-3 rounded">{exercise.text}</p>
+                  </div>
                   
-                  return null;
-                })}
-              </div>
-              
-              <h3 className="font-medium mb-2 mt-4">Your Answer:</h3>
-              <p 
-                className="text-sm whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ __html: highlightedErrors }}
-              ></p>
-            </div>
-            
-            <div className="border rounded-md p-4">
-              <h3 className="font-medium mb-2">Original Text:</h3>
-              <p className="text-sm whitespace-pre-wrap">{exercise.text}</p>
-            </div>
-            
-            <div className="bg-muted p-4 rounded-md text-center">
-              <h3 className="font-medium mb-1">Accuracy</h3>
-              <div className={`text-2xl font-bold ${
-                accuracy && accuracy >= 95 
-                  ? 'text-success' 
-                  : accuracy && accuracy >= 70 
-                    ? 'text-amber-500' 
-                    : 'text-destructive'
-              }`}>
-                {accuracy}%
-              </div>
-              
-              {accuracy && accuracy >= 95 ? (
-                <p className="text-sm text-success mt-2">
-                  Great job! {exercise.completionCount + 1 >= 3 
-                    ? "You've mastered this exercise!" 
-                    : `${3 - exercise.completionCount - 1} more successful attempts until mastery.`}
-                </p>
-              ) : (
-                <p className="text-sm mt-2">
-                  Keep practicing to improve your accuracy
-                </p>
-              )}
-              
-              <div className="mt-4 text-xs p-2 bg-background rounded border flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-success"></span>
-                  <span>Correct words</span>
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      onClick={handleTryAgain}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                    >
+                      Try Again
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-amber-500"></span>
-                  <span>Almost correct (minor typos)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-destructive"></span>
-                  <span>Incorrect words</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button 
-                onClick={() => {
-                  setUserInput('');
-                  setShowResults(false);
-                  setAccuracy(null);
-                  setTokenResults([]);
-                  
-                  // Focus on textarea after resetting
-                  setTimeout(() => {
-                    if (textareaRef.current) {
-                      textareaRef.current.focus();
-                    }
-                  }, 0);
-                }}
-                variant="outline"
-                className="flex-1"
-              >
-                Try Again
-              </Button>
-            </div>
-          </div>
-        </ScrollArea>
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="vocabulary" className="mt-0">
+              <ScrollArea className="h-[65vh]">
+                <VocabularyHighlighter exercise={exercise} />
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
+        </div>
       )}
     </div>
   );

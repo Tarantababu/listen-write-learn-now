@@ -50,14 +50,14 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-3xl p-0 overflow-hidden">
+      <DialogContent className="max-w-4xl p-0 overflow-hidden max-h-[90vh]">
         <DictationPractice
           exercise={exercise}
           onComplete={handleComplete}
+          showResults={showResults}
+          onTryAgain={() => setShowResults(false)}
         />
-        {showResults && (
-          <VocabularyHighlighter exercise={exercise} />
-        )}
+        {/* VocabularyHighlighter is now conditionally rendered directly in DictationPractice */}
       </DialogContent>
     </Dialog>
   );
