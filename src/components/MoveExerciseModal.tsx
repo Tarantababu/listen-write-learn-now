@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Folder, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface MoveExerciseModalProps {
   exercise: Exercise;
@@ -31,6 +32,15 @@ const MoveExerciseModal: React.FC<MoveExerciseModalProps> = ({
   
   const [browsePath, setBrowsePath] = useState<string[]>([]);
   const [selectedDirectoryId, setSelectedDirectoryId] = useState<string | null>(null);
+  const [isMoving, setIsMoving] = useState(false);
+  
+  // Reset state when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setBrowsePath([]);
+      setSelectedDirectoryId(null);
+    }
+  }, [isOpen]);
   
   // Get current directory based on browsePath
   let currentDirectories = getRootDirectories();
@@ -63,19 +73,35 @@ const MoveExerciseModal: React.FC<MoveExerciseModalProps> = ({
   
   const handleMove = async () => {
     try {
+      setIsMoving(true);
       await moveExerciseToDirectory(exercise.id, selectedDirectoryId);
+      
+      // Close the modal
       onOpenChange(false);
-      if (onSuccess) onSuccess();
+      
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
+      
+      toast.success(`Exercise moved to ${selectedDirectoryId ? directories.find(d => d.id === selectedDirectoryId)?.name : 'Root'}`);
     } catch (error) {
       console.error('Error moving exercise:', error);
+      toast.error('Failed to move exercise');
+    } finally {
+      setIsMoving(false);
     }
   };
   
   const isCurrentDirectory = exercise.directoryId === selectedDirectoryId;
-  const currentDirectoryId = browsePath.length > 0 ? browsePath[browsePath.length - 1] : null;
   
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      // Only allow closing if we're not in the middle of moving
+      if (!isMoving || !open) {
+        onOpenChange(open);
+      }
+    }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Move Exercise</DialogTitle>
@@ -139,14 +165,18 @@ const MoveExerciseModal: React.FC<MoveExerciseModalProps> = ({
         </div>
         
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={isMoving}
+          >
             Cancel
           </Button>
           <Button 
             onClick={handleMove}
-            disabled={isCurrentDirectory}
+            disabled={isCurrentDirectory || isMoving}
           >
-            Move Here
+            {isMoving ? 'Moving...' : 'Move Here'}
           </Button>
         </div>
       </DialogContent>

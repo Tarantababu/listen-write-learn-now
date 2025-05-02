@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Exercise } from '@/types';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
@@ -66,6 +67,10 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
   };
   
   const progressStatus = getProgressStatus();
+
+  const handleMoveSuccess = () => {
+    // Additional actions after successful move if needed
+  };
   
   return (
     <>
@@ -154,6 +159,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
         exercise={exercise}
         isOpen={isMoveModalOpen}
         onOpenChange={setIsMoveModalOpen}
+        onSuccess={handleMoveSuccess}
       />
     </>
   );
