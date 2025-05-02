@@ -10,6 +10,9 @@ interface VocabularyCardProps {
   onDelete: () => void;
 }
 
+/**
+ * VocabularyCard component displays a single vocabulary item with its details
+ */
 const VocabularyCard: React.FC<VocabularyCardProps> = ({
   item,
   onDelete
@@ -27,15 +30,8 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
         </div>
         
         <div className="space-y-3 mt-4">
-          <div>
-            <h4 className="text-sm font-medium">Definition:</h4>
-            <p className="text-sm text-muted-foreground">{definition}</p>
-          </div>
-          
-          <div>
-            <h4 className="text-sm font-medium">Example:</h4>
-            <p className="text-sm text-muted-foreground italic">"{exampleSentence}"</p>
-          </div>
+          <VocabularyDefinition definition={definition} />
+          <VocabularyExample example={exampleSentence} />
           
           <div className="pt-2">
             <AudioPlayer 
@@ -59,5 +55,20 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
     </Card>
   );
 };
+
+// Extracted components for better maintainability
+const VocabularyDefinition = ({ definition }: { definition: string }) => (
+  <div>
+    <h4 className="text-sm font-medium">Definition:</h4>
+    <p className="text-sm text-muted-foreground">{definition}</p>
+  </div>
+);
+
+const VocabularyExample = ({ example }: { example: string }) => (
+  <div>
+    <h4 className="text-sm font-medium">Example:</h4>
+    <p className="text-sm text-muted-foreground italic">"{example}"</p>
+  </div>
+);
 
 export default VocabularyCard;

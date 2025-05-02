@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -27,7 +26,7 @@ import {
 } from "@/components/ui/tooltip";
 
 const VocabularyPage: React.FC = () => {
-  const { vocabulary, removeVocabularyItem } = useVocabularyContext();
+  const { vocabulary, removeVocabularyItem, loading } = useVocabularyContext();
   const { settings } = useUserSettingsContext();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -128,38 +127,6 @@ const VocabularyPage: React.FC = () => {
     setSelectedItems([]);
   };
   
-  // Since we don't have actual vocabulary items in the demo, let's create some examples
-  const demoVocabulary: VocabularyItem[] = [
-    {
-      id: '1',
-      word: 'Serendipity',
-      definition: 'The occurrence and development of events by chance in a happy or beneficial way.',
-      exampleSentence: 'The discovery was a perfect example of serendipity.',
-      language: 'english',
-      exerciseId: '1'
-    },
-    {
-      id: '2',
-      word: 'Ephemeral',
-      definition: 'Lasting for a very short time.',
-      exampleSentence: 'The ephemeral nature of fashion trends is well known.',
-      language: 'english',
-      exerciseId: '1'
-    },
-    {
-      id: '3',
-      word: 'Zeitgeist',
-      definition: 'The defining spirit or mood of a particular period of history as shown by the ideas and beliefs of the time.',
-      exampleSentence: 'The series captured the zeitgeist of the early 2000s.',
-      language: 'german',
-      exerciseId: '2'
-    }
-  ];
-  
-  // Use demo vocabulary if there are no real items
-  const displayVocabulary = vocabulary.length > 0 ? filteredVocabulary : 
-    demoVocabulary.filter(item => item.language === settings.selectedLanguage);
-  
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
@@ -170,7 +137,9 @@ const VocabularyPage: React.FC = () => {
       </div>
       
       {/* Add the Vocabulary Playlist component */}
-      <VocabularyPlaylist vocabularyItems={displayVocabulary} />
+      {filteredVocabulary.length > 0 && (
+        <VocabularyPlaylist vocabularyItems={filteredVocabulary} />
+      )}
       
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="flex-1">
@@ -204,7 +173,7 @@ const VocabularyPage: React.FC = () => {
             size="sm"
             onClick={selectAll}
             className="whitespace-nowrap"
-            disabled={displayVocabulary.length === 0}
+            disabled={filteredVocabulary.length === 0}
           >
             Select All
           </Button>
@@ -224,7 +193,7 @@ const VocabularyPage: React.FC = () => {
               <TooltipTrigger asChild>
                 <Button 
                   onClick={handleExportAnki}
-                  disabled={isExporting || displayVocabulary.length === 0}
+                  disabled={isExporting || filteredVocabulary.length === 0}
                   className="whitespace-nowrap bg-gradient-to-r from-primary to-accent hover:opacity-90"
                 >
                   <FileDown className="mr-2 h-4 w-4" />
@@ -241,13 +210,17 @@ const VocabularyPage: React.FC = () => {
       
       <div className="mb-4 text-sm text-muted-foreground">
         {selectedItems.length > 0 ? (
-          <p>{selectedItems.length} of {displayVocabulary.length} items selected</p>
+          <p>{selectedItems.length} of {filteredVocabulary.length} items selected</p>
         ) : (
           <p>Select items to export or use the Export button to export all visible items</p>
         )}
       </div>
       
-      {displayVocabulary.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-12 gradient-card rounded-lg">
+          <p className="text-lg mb-2">Loading vocabulary items...</p>
+        </div>
+      ) : filteredVocabulary.length === 0 ? (
         <div className="text-center py-12 gradient-card rounded-lg">
           <p className="text-lg mb-2">Your vocabulary list is empty</p>
           <p className="text-muted-foreground mb-4">
@@ -256,7 +229,7 @@ const VocabularyPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displayVocabulary.map(item => (
+          {filteredVocabulary.map(item => (
             <div key={item.id} className="relative">
               <div className="absolute top-2 right-2 z-10">
                 <Checkbox
