@@ -5,7 +5,8 @@ import { Headphones, Menu, X, Award } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { getUserLevel, LevelBadge } from '@/utils/levelSystem';
+import { getUserLevel } from '@/utils/levelSystem';
+import LevelBadge from '@/components/LevelBadge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const Header: React.FC = () => {

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { Headphones, BookOpen, Settings, LogOut, Award } from 'lucide-react';
 import UserStatistics from '@/components/UserStatistics';
 import { Progress } from '@/components/ui/progress';
 import { getUserLevel, getWordsToNextLevel, getLevelProgress, formatNumber } from '@/utils/levelSystem';
+import LevelBadge from '@/components/LevelBadge';
 
 const HomePage: React.FC = () => {
   const { user, signOut } = useAuth();

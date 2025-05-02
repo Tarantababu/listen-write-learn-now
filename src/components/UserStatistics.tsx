@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { format, subDays, isSameDay, differenceInDays, startOfDay } from 'date-fns';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -9,8 +10,8 @@ import { Trophy, BookOpen, CalendarDays, Star, ChartBar, Award } from 'lucide-re
 import StatsCard from './StatsCard';
 import StatsHeatmap from './StatsHeatmap';
 import { getUserLevel, getWordsToNextLevel, getLevelProgress, formatNumber } from '@/utils/levelSystem';
-import { LevelBadge } from '@/utils/levelSystem';
-import Progress from '@/components/Progress';
+import LevelBadge from '@/components/LevelBadge';
+import { Progress } from '@/components/ui/progress';
 
 interface CompletionData {
   date: Date;

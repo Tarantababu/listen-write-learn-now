@@ -113,14 +113,13 @@ export function getLevelProgress(masteredWordsCount: number): number {
   return Math.round((userProgress / levelRange) * 100);
 }
 
+// Convert this to a React component in JSX file
 export function LevelBadge({ masteredWords }: { masteredWords: number }) {
   const level = getUserLevel(masteredWords);
-  
-  return (
-    <Badge className={`${level.color} font-semibold`}>
-      {level.level}
-    </Badge>
-  );
+  return {
+    level: level.level,
+    color: level.color
+  };
 }
 
 export function formatNumber(num: number): string {
