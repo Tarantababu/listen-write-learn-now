@@ -20,7 +20,6 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
     text: 'Welcome to our dictation practice app. This is a sample exercise where you can listen to an audio clip and type what you hear. After submitting, you will see how accurate you were.',
     audioUrl: 'https://ik.imagekit.io/lrigu76hy/dictation-sample-audio.mp3',
     language: 'english',
-    level: 'A2',
     tags: ['sample', 'beginner'],
     userId: 'sample',
     completionCount: 0,
