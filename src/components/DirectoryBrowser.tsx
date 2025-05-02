@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
-import { Folder, FolderPlus, File, ChevronRight, MoreVertical } from 'lucide-react';
+import { Folder, FolderPlus, File, ChevronRight, MoreVertical, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -54,6 +53,7 @@ const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({
   const [directoryToRename, setDirectoryToRename] = useState<Directory | null>(null);
   
   const handleNavigateToDirectory = (directoryId: string | null) => {
+    console.log('Navigating to directory:', directoryId);
     setCurrentDirectoryId(directoryId);
   };
   
@@ -126,31 +126,50 @@ const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({
   return (
     <>
       <div className={cn("space-y-4", className)}>
+        {/* All Exercises Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleNavigateToDirectory(null)}
+          className={cn(
+            "w-full flex justify-start mb-2", 
+            !currentDirectoryId && "bg-accent font-medium"
+          )}
+        >
+          <Home className="h-4 w-4 mr-2 text-muted-foreground" />
+          All Exercises
+        </Button>
+        
         {/* Breadcrumbs */}
-        <div className="flex items-center text-sm text-muted-foreground">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => handleNavigateToDirectory(null)}
-            className="h-auto p-1"
-          >
-            Root
-          </Button>
-          
-          {directoryPath.map((dir, index) => (
-            <React.Fragment key={dir.id}>
-              <ChevronRight className="h-4 w-4 mx-1" />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleNavigateToDirectory(dir.id)}
-                className="h-auto p-1"
-              >
-                {dir.name}
-              </Button>
-            </React.Fragment>
-          ))}
-        </div>
+        {currentDirectoryId && (
+          <div className="flex items-center flex-wrap text-sm text-muted-foreground">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => handleNavigateToDirectory(null)}
+              className="h-auto p-1"
+            >
+              Root
+            </Button>
+            
+            {directoryPath.map((dir, index) => (
+              <React.Fragment key={dir.id}>
+                <ChevronRight className="h-4 w-4 mx-1" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleNavigateToDirectory(dir.id)}
+                  className={cn(
+                    "h-auto p-1",
+                    currentDirectoryId === dir.id && "font-medium"
+                  )}
+                >
+                  {dir.name}
+                </Button>
+              </React.Fragment>
+            ))}
+          </div>
+        )}
         
         {/* Actions */}
         <div className="flex justify-between items-center">

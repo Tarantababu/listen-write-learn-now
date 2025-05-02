@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -47,13 +46,18 @@ const ExercisesPage: React.FC = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   
-  // Reset pagination when filters change
+  // Reset pagination when filters change or when directory changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filterCompleted, selectedTag, currentDirectoryId]);
   
+  // Debug the directory change
+  useEffect(() => {
+    console.log('Current directory changed:', currentDirectoryId);
+  }, [currentDirectoryId]);
+  
   // Get all unique tags from exercises that match the selected language
-  const languageExercises = exercises.filter(ex => ex.language === settings.selectedLanguage);
+  const languageExercises = exercises.filter(ex => ex.language === settings.selectedLanguage && !ex.archived);
   
   const allTags = Array.from(
     new Set(languageExercises.flatMap(exercise => exercise.tags))
@@ -145,9 +149,6 @@ const ExercisesPage: React.FC = () => {
   // Function to refresh the page properly
   const refreshPage = () => {
     setKey(Date.now()); // This will force the component to re-render
-    
-    // Also refetch the exercises data through your context if needed
-    // This could be done using a method from useExerciseContext if available
   };
 
   // Clean up exercise states when modals close
@@ -194,6 +195,11 @@ const ExercisesPage: React.FC = () => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">
             Your {settings.selectedLanguage.charAt(0).toUpperCase() + settings.selectedLanguage.slice(1)} Exercises
+            {currentDirectoryId && (
+              <span className="ml-2 text-muted-foreground">
+                (in selected folder)
+              </span>
+            )}
           </h1>
           <Button onClick={() => setIsAddModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" /> New Exercise
