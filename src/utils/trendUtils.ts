@@ -1,12 +1,13 @@
 
-import { subDays, isAfter, format } from 'date-fns';
+
+import { subDays, isAfter, format, startOfDay } from 'date-fns';
 
 export interface TrendData {
   value: number;
   label: string;
 }
 
-// Calculate trend compared to the previous period (week, month)
+// Calculate trend compared to the previous period (week, month, day)
 export function calculateTrend(
   currentValue: number,
   previousPeriodValue: number
@@ -14,7 +15,7 @@ export function calculateTrend(
   if (previousPeriodValue === 0) {
     return {
       value: currentValue > 0 ? 100 : 0,
-      label: 'Since last week'
+      label: 'From previous period'
     };
   }
   
@@ -35,6 +36,17 @@ export function groupByDay(data: Array<{ date: Date, count: number }>) {
   });
   
   return grouped;
+}
+
+// Calculate value for current day vs previous day
+export function compareWithPreviousDay(data: Record<string, number>): TrendData {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+  
+  const todayValue = data[today] || 0;
+  const yesterdayValue = data[yesterday] || 0;
+  
+  return calculateTrend(todayValue, yesterdayValue);
 }
 
 // Calculate value for current week vs previous week
@@ -58,3 +70,16 @@ export function compareWeeks(data: Record<string, number>) {
   
   return calculateTrend(currentWeekTotal, previousWeekTotal);
 }
+
+// Get value for today from data
+export function getTodayValue(data: Record<string, number>): number {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  return data[today] || 0;
+}
+
+// Get value for yesterday from data
+export function getYesterdayValue(data: Record<string, number>): number {
+  const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+  return data[yesterday] || 0;
+}
+

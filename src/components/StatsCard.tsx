@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { TrendingDown, TrendingUp, Flag } from 'lucide-react';
+import { TrendingDown, TrendingUp, Activity } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface StatsCardProps {
@@ -35,6 +35,7 @@ const StatsCard: React.FC<StatsCardProps> = ({
     
     const isPositive = trend.value >= 0;
     const Icon = isPositive ? TrendingUp : TrendingDown;
+    const displayValue = Math.abs(trend.value);
     
     return (
       <TooltipProvider>
@@ -45,10 +46,10 @@ const StatsCard: React.FC<StatsCardProps> = ({
               isPositive ? "text-green-600" : "text-red-500"
             )}>
               <Icon className={cn(
-                "h-3 w-3 transition-transform animate-fade-in",
+                "h-3 w-3 transition-transform",
                 isPositive && "animate-bounce-once"
               )} />
-              <span>{isPositive ? "+" : ""}{trend.value}%</span>
+              <span>{isPositive ? "+" : "-"}{displayValue}%</span>
             </div>
           </TooltipTrigger>
           <TooltipContent>
