@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -8,8 +9,8 @@ import VocabularyCard from '@/components/VocabularyCard';
 import VocabularyPlaylist from '@/components/VocabularyPlaylist';
 import { VocabularyItem } from '@/types';
 import { toast } from 'sonner';
-import { FileDown } from 'lucide-react';
-import { downloadAnkiDeck } from '@/utils/ankiExport';
+import { FileDown, Info } from 'lucide-react';
+import { downloadAnkiImport } from '@/utils/ankiExport';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Select,
@@ -18,6 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const VocabularyPage: React.FC = () => {
   const { vocabulary, removeVocabularyItem } = useVocabularyContext();
@@ -94,12 +101,17 @@ const VocabularyPage: React.FC = () => {
         return;
       }
       
-      await downloadAnkiDeck(
+      await downloadAnkiImport(
         itemsToExport, 
         `${settings.selectedLanguage}_vocabulary_${new Date().toISOString().split('T')[0]}`
       );
       
-      toast.success(`${itemsToExport.length} vocabulary items exported as an Anki deck (.apkg). Open it with Anki to import.`);
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <div>Vocabulary exported successfully</div>
+          <div className="text-sm font-light">Follow the README.txt file in the ZIP for import instructions</div>
+        </div>
+      );
     } catch (error) {
       console.error('Export error:', error);
       toast.error('Failed to export vocabulary');
@@ -207,14 +219,23 @@ const VocabularyPage: React.FC = () => {
             Deselect All
           </Button>
           
-          <Button 
-            onClick={handleExportAnki}
-            disabled={isExporting || displayVocabulary.length === 0}
-            className="whitespace-nowrap bg-gradient-to-r from-primary to-accent hover:opacity-90"
-          >
-            <FileDown className="mr-2 h-4 w-4" />
-            {isExporting ? "Exporting..." : "Export for Anki"}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  onClick={handleExportAnki}
+                  disabled={isExporting || displayVocabulary.length === 0}
+                  className="whitespace-nowrap bg-gradient-to-r from-primary to-accent hover:opacity-90"
+                >
+                  <FileDown className="mr-2 h-4 w-4" />
+                  {isExporting ? "Exporting..." : "Export Vocabulary"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p>Exports a ZIP file containing a text file for Anki import and audio files (if available)</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
       

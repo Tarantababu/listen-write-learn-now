@@ -1,7 +1,6 @@
 
 import { VocabularyItem } from '@/types';
 import JSZip from 'jszip';
-import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to create a base64 string from audio URL (if available)
 const getAudioBase64 = async (audioUrl: string | undefined): Promise<string | null> => {
@@ -26,107 +25,107 @@ const getAudioBase64 = async (audioUrl: string | undefined): Promise<string | nu
 };
 
 // Generate the file content for Anki import
-export const generateAnkiPackage = async (vocabularyItems: VocabularyItem[]): Promise<Blob> => {
-  // Create a new JSZip instance
-  const zip = new JSZip();
-  
-  // Create the collection.anki2 file (it's actually a SQLite database, but we'll fake it)
-  // This is just a placeholder - in a real implementation we'd create an actual SQLite DB
-  // But for our purposes, Anki will accept a properly structured text file
-  const collectionContent = "This is a placeholder for the SQLite DB";
-  zip.file("collection.anki2", collectionContent);
-  
-  // Create the media directory
-  const mediaDir = zip.folder("media");
-  
-  // Track media files for the media metadata
-  const mediaFiles: Record<string, string> = {};
-  let mediaCounter = 0;
-  
+export const generateAnkiImportFile = async (vocabularyItems: VocabularyItem[]): Promise<{ content: string, mediaFiles: { name: string, data: string }[] }> => {
   // Create cards content in a format Anki can import
   const cardsContent: string[] = [];
-  cardsContent.push("# This file can be imported directly into Anki");
-  cardsContent.push("# https://docs.ankiweb.net/importing.html");
+  const mediaFiles: { name: string, data: string }[] = [];
+  
+  // Add header for Anki import
   cardsContent.push("#separator:tab");
   cardsContent.push("#html:true");
-  cardsContent.push("#tags column:3");
-  cardsContent.push("front\tback\ttags");
+  cardsContent.push("#columns:Word\tDefinition\tExample Sentence\tAudio\tTags");
   
   // Process each vocabulary item
   for (const item of vocabularyItems) {
     try {
-      // Front: Example sentence + audio
-      let front = `<div>${item.exampleSentence}</div>`;
+      // Prepare the fields
+      const word = item.word.replace(/\t/g, ' ');
+      const definition = item.definition.replace(/\t/g, ' ');
+      const example = item.exampleSentence.replace(/\t/g, ' ');
       
-      // Back: Example sentence + definition
-      let back = `<div>${item.exampleSentence}</div><hr><div><strong>Definition:</strong> ${item.definition}</div>`;
-      
-      // Add audio reference if available
+      // Handle audio if available
+      let audioField = "";
       if (item.audioUrl) {
-        // Get audio data and add to media folder
         const audioBase64 = await getAudioBase64(item.audioUrl);
         if (audioBase64) {
-          const audioFilename = `${mediaCounter}`;
-          mediaFiles[audioFilename] = `sound_${item.id}.mp3`;
-          mediaDir?.file(audioFilename, audioBase64, { base64: true });
-          
-          // Add sound reference to card
-          front += `[sound:${mediaCounter}]`;
-          back += `[sound:${mediaCounter}]`;
-          
-          mediaCounter++;
+          const audioFileName = `sound_${item.id}.mp3`;
+          mediaFiles.push({
+            name: audioFileName,
+            data: audioBase64
+          });
+          audioField = `[sound:${audioFileName}]`;
         }
       }
       
-      // Tags: language + word for easy organization - replace spaces with underscores
+      // Tags: language + word for organization - replace spaces with underscores
       const tags = `${item.language} ${item.word.replace(/\s+/g, '_')}`;
       
-      // Escape any tab characters in the content
-      const escapedFront = front.replace(/\t/g, ' ');
-      const escapedBack = back.replace(/\t/g, ' ');
-      
       // Add to cards content
-      cardsContent.push(`${escapedFront}\t${escapedBack}\t${tags}`);
+      cardsContent.push(`${word}\t${definition}\t${example}\t${audioField}\t${tags}`);
     } catch (error) {
       console.error(`Error processing vocabulary item ${item.id}:`, error);
     }
   }
   
-  // Add the cards file
-  zip.file("cards.txt", cardsContent.join("\n"));
+  return {
+    content: cardsContent.join("\n"),
+    mediaFiles
+  };
+};
+
+// Create a ZIP package with the import file and media files
+export const createAnkiPackage = async (vocabularyItems: VocabularyItem[]): Promise<Blob> => {
+  const importData = await generateAnkiImportFile(vocabularyItems);
   
-  // Create the media metadata file (JSON format)
-  const mediaMetadata = JSON.stringify(mediaFiles);
-  zip.file("media", mediaMetadata);
+  // Create a ZIP archive
+  const zip = new JSZip();
   
-  // Generate an empty file for deck description
-  zip.file("deck.json", JSON.stringify({
-    name: "Vocabulary",
-    desc: "Vocabulary deck exported from language learning app",
-    id: uuidv4(),
-    mtime: Date.now(),
-    usn: -1
-  }));
+  // Add the import file
+  zip.file("vocabulary_import.txt", importData.content);
   
-  // Generate the zip file
+  // Add all media files
+  if (importData.mediaFiles.length > 0) {
+    const mediaFolder = zip.folder("media");
+    importData.mediaFiles.forEach(file => {
+      mediaFolder?.file(file.name, file.data, { base64: true });
+    });
+  }
+  
+  // Generate readme with instructions
+  const instructions = `
+# Anki Import Instructions
+
+1. Extract this ZIP file
+2. Open Anki
+3. Click "Import File" from the File menu
+4. Select the "vocabulary_import.txt" file
+5. Make sure "Fields separated by: Tab" is selected
+6. If you have audio files, copy them from the "media" folder to your Anki media collection folder
+   (usually located at [Anki profile folder]/collection.media/)
+7. Click Import
+
+For more information on importing into Anki, see: https://docs.ankiweb.net/importing.html
+`;
+  zip.file("README.txt", instructions);
+  
+  // Generate the ZIP file
   return zip.generateAsync({
-    type: "blob",
-    mimeType: "application/zip"
+    type: "blob"
   });
 };
 
-// Download the Anki package
-export const downloadAnkiDeck = async (vocabularyItems: VocabularyItem[], deckName: string = 'vocabulary'): Promise<void> => {
+// Download the Anki import package
+export const downloadAnkiImport = async (vocabularyItems: VocabularyItem[], deckName: string = 'vocabulary'): Promise<void> => {
   try {
-    const zipBlob = await generateAnkiPackage(vocabularyItems);
+    const zipBlob = await createAnkiPackage(vocabularyItems);
     
     // Create a download link
     const url = URL.createObjectURL(zipBlob);
     const link = document.createElement('a');
     link.href = url;
     
-    // Use .apkg extension which is what Anki expects
-    link.setAttribute('download', `${deckName}.apkg`);
+    // Use .zip extension for the import package
+    link.setAttribute('download', `${deckName}_anki_import.zip`);
     
     // Append to body, click, and clean up
     document.body.appendChild(link);
@@ -136,7 +135,7 @@ export const downloadAnkiDeck = async (vocabularyItems: VocabularyItem[], deckNa
     
     return Promise.resolve();
   } catch (error) {
-    console.error('Error generating Anki package:', error);
+    console.error('Error generating Anki import package:', error);
     return Promise.reject(error);
   }
 };
