@@ -100,7 +100,7 @@ const VocabularyPage: React.FC = () => {
         `${settings.selectedLanguage}_vocabulary_${new Date().toISOString().split('T')[0]}`
       );
       
-      toast.success(`${itemsToExport.length} vocabulary items exported for Anki`);
+      toast.success(`${itemsToExport.length} vocabulary items exported for Anki import. Use "File > Import" in Anki to import the .txt file.`);
     } catch (error) {
       console.error('Export error:', error);
       toast.error('Failed to export vocabulary');

@@ -25,12 +25,11 @@ const getAudioBase64 = async (audioUrl: string | undefined): Promise<string | nu
 
 // Generate the file content for Anki import
 export const generateAnkiPackage = async (vocabularyItems: VocabularyItem[]): Promise<Blob> => {
-  // For now, we'll continue generating CSV since .apkg would require 
-  // a specialized library or backend service to create
+  // Create a more compatible CSV format for Anki
   const csvRows: string[] = [];
   
-  // Add header row for Anki
-  csvRows.push('front;back;tags');
+  // Add header row for Anki - use tab as separator for better compatibility
+  csvRows.push('front\tback\ttags');
   
   // Process each vocabulary item
   for (const item of vocabularyItems) {
@@ -48,20 +47,23 @@ export const generateAnkiPackage = async (vocabularyItems: VocabularyItem[]): Pr
         back += `[sound:${audioFilename}]`;
       }
       
-      // Tags: language + word for easy organization
-      const tags = `${item.language},${item.word.replace(/\s+/g, '_')}`;
+      // Tags: language + word for easy organization - replace spaces with underscores
+      const tags = `${item.language} ${item.word.replace(/\s+/g, '_')}`;
       
-      // Add to CSV
-      csvRows.push(`${front};${back};${tags}`);
+      // Escape any tab characters in the content
+      const escapedFront = front.replace(/\t/g, ' ');
+      const escapedBack = back.replace(/\t/g, ' ');
+      
+      // Add to CSV using tabs as separators for better Anki compatibility
+      csvRows.push(`${escapedFront}\t${escapedBack}\t${tags}`);
     } catch (error) {
       console.error(`Error processing vocabulary item ${item.id}:`, error);
     }
   }
   
-  // Create the CSV blob
+  // Create the CSV blob with proper encoding
   const csvContent = csvRows.join('\n');
-  
-  return new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+  return new Blob([csvContent], { type: 'text/tab-separated-values;charset=utf-8' });
 };
 
 // Download the Anki package
@@ -73,9 +75,10 @@ export const downloadAnkiDeck = async (vocabularyItems: VocabularyItem[], deckNa
     const url = URL.createObjectURL(csvBlob);
     const link = document.createElement('a');
     link.href = url;
-    // Change extension to .apkg for better UX, even though it's still a CSV internally
-    // In a production app, we would implement proper .apkg generation on a server
-    link.setAttribute('download', `${deckName}.apkg`);
+    
+    // Use .txt extension instead of .apkg to avoid confusion
+    // This is a tab-separated values file that Anki can import
+    link.setAttribute('download', `${deckName}.txt`);
     
     // Append to body, click, and clean up
     document.body.appendChild(link);
