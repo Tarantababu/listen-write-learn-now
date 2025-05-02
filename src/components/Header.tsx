@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -18,15 +19,18 @@ import {
   BookOpen, 
   Home, 
   Settings, 
-  User,
   CreditCard,
   Crown
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getLanguageFlag } from '@/utils/languageUtils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import UserAvatar from './UserAvatar';
 
 const Header: React.FC = () => {
   const { user, signOut } = useAuth();
   const { subscription } = useSubscription();
+  const { settings } = useUserSettingsContext();
   const location = useLocation();
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -35,6 +39,8 @@ const Header: React.FC = () => {
     return location.pathname === path 
       || (path !== '/dashboard' && location.pathname.startsWith(path));
   };
+
+  const languageFlag = getLanguageFlag(settings.selectedLanguage);
 
   return (
     <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur">
@@ -55,6 +61,7 @@ const Header: React.FC = () => {
               <Button 
                 asChild 
                 variant={isActive('/dashboard') && !isActive('/dashboard/exercises') && !isActive('/dashboard/vocabulary') ? "default" : "ghost"}
+                className="transition-all"
               >
                 <Link to="/dashboard">
                   <Home className="h-4 w-4 mr-1" />
@@ -65,6 +72,7 @@ const Header: React.FC = () => {
               <Button 
                 asChild 
                 variant={isActive('/dashboard/exercises') ? "default" : "ghost"}
+                className="transition-all"
               >
                 <Link to="/dashboard/exercises">
                   <BookOpen className="h-4 w-4 mr-1" />
@@ -75,6 +83,7 @@ const Header: React.FC = () => {
               <Button 
                 asChild 
                 variant={isActive('/dashboard/vocabulary') ? "default" : "ghost"}
+                className="transition-all"
               >
                 <Link to="/dashboard/vocabulary">
                   <BookOpen className="h-4 w-4 mr-1" />
@@ -85,6 +94,7 @@ const Header: React.FC = () => {
               <Button 
                 asChild 
                 variant={isActive('/dashboard/subscription') ? "default" : "ghost"}
+                className="transition-all"
               >
                 <Link to="/dashboard/subscription">
                   <CreditCard className="h-4 w-4 mr-1" />
@@ -96,18 +106,33 @@ const Header: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-2">
+          {user && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex items-center justify-center h-8 w-8 text-lg animate-fade-in hover:scale-110 transition-transform">
+                    {languageFlag}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Selected language: {settings.selectedLanguage}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          
           {user ? (
             <>
               {subscription.isSubscribed && (
-                <span className="hidden sm:flex items-center text-xs font-medium bg-primary/15 text-primary px-2 py-1 rounded">
+                <span className="hidden sm:flex items-center text-xs font-medium bg-primary/15 text-primary px-2 py-1 rounded animate-fade-in">
                   <Crown className="h-3 w-3 mr-1" />
                   Premium
                 </span>
               )}
               <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    {isMobile ? <Menu /> : <User />}
+                  <Button variant="ghost" size="icon" className="rounded-full p-0 h-8 w-8">
+                    {isMobile ? <Menu className="h-4 w-4" /> : <UserAvatar size="sm" />}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -153,10 +178,10 @@ const Header: React.FC = () => {
             </>
           ) : (
             <>
-              <Button asChild variant="ghost">
+              <Button asChild variant="ghost" className="transition-all">
                 <Link to="/login">Log in</Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="transition-all">
                 <Link to="/signup">Sign up</Link>
               </Button>
             </>

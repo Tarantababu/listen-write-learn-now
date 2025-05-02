@@ -15,36 +15,14 @@ interface StatsHeatmapProps {
 
 const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
   const today = new Date();
-  const sixMonthsAgo = subMonths(today, 6);
+  const threeMonthsAgo = subMonths(today, 3);
 
-  // Function to apply custom modifiers for activity intensity
-  const getDayClassNames = (date: Date) => {
-    const dayActivity = activityData.find(
-      activity => differenceInCalendarDays(activity.date, date) === 0
-    );
-
-    if (!dayActivity || dayActivity.count === 0) {
-      return '';
-    }
-
-    // Determine intensity based on count
-    if (dayActivity.count >= 15) {
-      return 'bg-green-800 hover:bg-green-700 text-white';
-    } else if (dayActivity.count >= 10) {
-      return 'bg-green-600 hover:bg-green-500 text-white'; 
-    } else if (dayActivity.count >= 5) {
-      return 'bg-green-500 hover:bg-green-400 text-white';
-    } else {
-      return 'bg-green-300 hover:bg-green-200';
-    }
-  };
-
-  // Filter activity data to only show the last 6 months
+  // Filter activity data to only show the last 3 months
   const filteredActivityData = useMemo(() => {
     return activityData.filter(activity => 
-      isWithinInterval(activity.date, { start: sixMonthsAgo, end: today })
+      isWithinInterval(activity.date, { start: threeMonthsAgo, end: today })
     );
-  }, [activityData, sixMonthsAgo, today]);
+  }, [activityData, threeMonthsAgo, today]);
 
   // Create explicit day modifiers for each activity day with its corresponding class
   const activityModifiers = useMemo(() => {
@@ -80,18 +58,18 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
   }, [filteredActivityData]);
 
   return (
-    <Card className="col-span-full">
+    <Card className="col-span-full animate-fade-in">
       <CardHeader>
         <CardTitle className="text-sm font-medium text-muted-foreground">
-          Activity Heatmap
+          Activity Heatmap - Last 3 Months
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
           <Calendar 
             mode="range"
-            numberOfMonths={6}
-            fromMonth={sixMonthsAgo}
+            numberOfMonths={3}
+            fromMonth={threeMonthsAgo}
             toMonth={today}
             defaultMonth={today}
             classNames={{

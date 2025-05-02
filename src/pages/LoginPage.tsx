@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Headphones } from 'lucide-react';
+import { Loader2, Headphones, Home } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   const { signIn, user } = useAuth();
@@ -36,6 +36,13 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 bg-gradient-to-br from-background via-background to-accent/10">
+      <Link to="/" className="absolute top-4 left-4 text-primary hover:text-accent transition-colors animate-fade-in">
+        <Button variant="ghost" className="flex items-center gap-2">
+          <Home className="h-4 w-4" />
+          <span>Back to Home</span>
+        </Button>
+      </Link>
+      
       <Card className="w-full max-w-md shadow-lg animate-slide-in gradient-card">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">

@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Language } from '@/types';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Settings, Mail } from 'lucide-react';
+import { Loader2, Settings, Mail, User } from 'lucide-react';
 import FeedbackForm from '@/components/FeedbackForm';
+import AvatarUpload from '@/components/AvatarUpload';
+import { Separator } from '@/components/ui/separator';
 
 const SettingsPage: React.FC = () => {
   const { settings, updateSettings, selectLanguage, addLearningLanguage, removeLearningLanguage, loading } = useUserSettingsContext();
@@ -73,7 +75,28 @@ const SettingsPage: React.FC = () => {
       </div>
       
       <div className="space-y-6">
-        <Card className="gradient-card">
+        <Card className="gradient-card animate-fade-in">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <User className="mr-2 h-5 w-5" />
+              Your Profile
+            </CardTitle>
+            <CardDescription>
+              Personalize your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center sm:items-start sm:flex-row gap-6">
+            <AvatarUpload />
+            <div className="w-full">
+              <Separator className="my-4 sm:hidden" />
+              <p className="text-sm text-muted-foreground mb-4">
+                Your profile picture will be displayed throughout the application and helps personalize your experience.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="gradient-card animate-fade-in">
           <CardHeader>
             <CardTitle>Learning Languages</CardTitle>
             <CardDescription>
@@ -115,7 +138,7 @@ const SettingsPage: React.FC = () => {
           </CardContent>
         </Card>
         
-        <Card className="gradient-card">
+        <Card className="gradient-card animate-fade-in">
           <CardHeader>
             <CardTitle>Active Language</CardTitle>
             <CardDescription>
@@ -150,7 +173,7 @@ const SettingsPage: React.FC = () => {
           </CardContent>
         </Card>
         
-        <Card className="gradient-card">
+        <Card className="gradient-card animate-fade-in">
           <CardHeader>
             <CardTitle className="flex items-center">
               <Mail className="mr-2 h-5 w-5" />
@@ -168,7 +191,7 @@ const SettingsPage: React.FC = () => {
           </CardContent>
         </Card>
         
-        <Card className="gradient-card">
+        <Card className="gradient-card animate-fade-in">
           <CardHeader>
             <CardTitle>About</CardTitle>
             <CardDescription>
