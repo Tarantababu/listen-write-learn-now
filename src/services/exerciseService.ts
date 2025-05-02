@@ -1,3 +1,4 @@
+
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -82,6 +83,23 @@ export const deleteAssociatedVocabulary = async (userId: string, exerciseId: str
 
   if (error) {
     console.error('Error deleting associated vocabulary:', error);
+    throw error;
+  }
+};
+
+/**
+ * Deletes all completions associated with an exercise
+ */
+export const deleteAssociatedCompletions = async (userId: string, exerciseId: string) => {
+  // Delete completion records associated with the exercise
+  const { error } = await supabase
+    .from('completions')
+    .delete()
+    .eq('exercise_id', exerciseId)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error deleting associated completions:', error);
     throw error;
   }
 };

@@ -28,7 +28,7 @@ const DeleteExerciseDialog: React.FC<DeleteExerciseDialogProps> = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the exercise and all associated vocabulary items.
+            This action cannot be undone. This will permanently delete the exercise, all associated vocabulary items, and all completion records.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
