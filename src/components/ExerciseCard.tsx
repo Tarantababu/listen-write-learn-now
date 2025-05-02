@@ -4,15 +4,19 @@ import { Exercise } from '@/types';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, Pencil, Trash2, FolderUp, MoreVertical, Check } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { 
+  Clock, 
+  Pencil, 
+  Trash2, 
+  FolderUp,
+  Check 
+} from 'lucide-react';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import MoveExerciseModal from './MoveExerciseModal';
 
 interface ExerciseCardProps {
@@ -97,7 +101,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
       <Card className="h-full flex flex-col overflow-hidden hover:shadow-md transition-all duration-200">
         <CardContent className="p-4 flex-grow">
           <div className="flex justify-between items-start mb-2">
-            <div>
+            <div className="flex-grow">
               {/* Language and tag pills */}
               <div className="flex gap-1 mb-2">
                 <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full capitalize">
@@ -118,40 +122,6 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                 {text}
               </p>
             </div>
-            
-            {/* Menu (three dots) */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={(e) => {
-                    // Prevent the click from propagating to the card
-                    e.stopPropagation();
-                  }}
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleEdit} className="cursor-pointer">
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleOpenMoveModal} className="cursor-pointer">
-                  <FolderUp className="mr-2 h-4 w-4" />
-                  Move to folder
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleDelete} className="cursor-pointer text-destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
           
           {/* Status indicators */}
@@ -168,15 +138,73 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
           </div>
         </CardContent>
         
-        <CardFooter className="border-t p-4 flex justify-center bg-gray-50">
+        {/* Action buttons */}
+        <div className="border-t p-3 flex items-center justify-between bg-gray-50">
+          <div className="flex items-center space-x-1">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={handleEdit} 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 rounded-full"
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-gray-600" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Edit</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={handleOpenMoveModal} 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 rounded-full"
+                  >
+                    <FolderUp className="h-3.5 w-3.5 text-gray-600" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Move to folder</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={handleDelete} 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 rounded-full text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Delete</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          
           <Button 
             onClick={onPractice} 
             variant="outline"
-            className="w-full"
+            size="sm"
+            className="text-xs"
           >
-            {completionCount > 0 && !isCompleted ? 'Continue Dictation' : 'Start Dictation'}
+            {completionCount > 0 && !isCompleted ? 'Continue' : 'Start'} Dictation
           </Button>
-        </CardFooter>
+        </div>
       </Card>
       
       {/* Move Exercise Modal - Always render the dialog but control visibility with open prop */}
