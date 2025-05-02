@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
@@ -16,63 +15,63 @@ export const LANGUAGE_LEVELS: LevelInfo[] = [
   {
     level: "A0",
     title: "Beginner Starter",
-    description: "Learning the basics",
+    description: "Can recognize isolated high-frequency words and basic phrases",
     cefrEquivalent: "Pre-A1",
     minWords: 0,
-    maxWords: 100,
+    maxWords: 300,
     color: "bg-slate-400"
   },
   {
     level: "A1",
     title: "Elementary",
-    description: "Can handle basic everyday expressions",
+    description: "Understands and uses routine expressions and elementary vocabulary",
     cefrEquivalent: "A1",
-    minWords: 101,
-    maxWords: 500,
+    minWords: 301,
+    maxWords: 1200,
     color: "bg-green-400"
   },
   {
     level: "A2",
     title: "Pre-Intermediate",
-    description: "Can communicate simple tasks",
+    description: "Manages simple interactions using concrete vocabulary and set phrases",
     cefrEquivalent: "A2",
-    minWords: 501,
-    maxWords: 1000,
+    minWords: 1201,
+    maxWords: 2500,
     color: "bg-blue-400"
   },
   {
     level: "B1",
     title: "Intermediate",
-    description: "Intermediate use of language",
+    description: "Can navigate familiar topics and produce connected discourse on routine matters",
     cefrEquivalent: "B1",
-    minWords: 1001,
-    maxWords: 2000,
+    minWords: 2501,
+    maxWords: 5000,
     color: "bg-indigo-500"
   },
   {
     level: "B2",
     title: "Upper Intermediate",
-    description: "Independent, extended vocabulary",
+    description: "Can understand abstract topics and discuss them with a range of vocabulary",
     cefrEquivalent: "B2",
-    minWords: 2001,
-    maxWords: 4000,
+    minWords: 5001,
+    maxWords: 8000,
     color: "bg-purple-500"
   },
   {
     level: "C1",
     title: "Advanced",
-    description: "Advanced vocabulary range",
+    description: "Uses nuanced vocabulary flexibly for social, academic, and professional contexts",
     cefrEquivalent: "C1",
-    minWords: 4001,
-    maxWords: 7000,
+    minWords: 8001,
+    maxWords: 12000,
     color: "bg-amber-500"
   },
   {
     level: "C2",
     title: "Proficient",
-    description: "Near-native command of vocabulary",
+    description: "Demonstrates native-like control over idiomatic, technical, and literary language",
     cefrEquivalent: "C2",
-    minWords: 7001,
+    minWords: 12001,
     maxWords: null,
     color: "bg-rose-500"
   }
