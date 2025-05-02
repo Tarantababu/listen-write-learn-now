@@ -193,6 +193,10 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     return path.join(" / ") || "Root";
   };
 
+  // Debug directories for troubleshooting
+  console.log("Available directories:", directories);
+  console.log("Current directory ID:", directoryId);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
