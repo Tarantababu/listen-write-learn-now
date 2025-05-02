@@ -55,7 +55,7 @@ const HomePage: React.FC = () => {
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
-                <Link to="/exercises">Go to Exercises</Link>
+                <Link to="/dashboard/exercises">Go to Exercises</Link>
               </Button>
             </CardFooter>
           </Card>
@@ -74,7 +74,7 @@ const HomePage: React.FC = () => {
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
-                <Link to="/vocabulary">View Vocabulary</Link>
+                <Link to="/dashboard/vocabulary">View Vocabulary</Link>
               </Button>
             </CardFooter>
           </Card>
@@ -93,7 +93,7 @@ const HomePage: React.FC = () => {
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full" variant="outline">
-                <Link to="/settings">Manage Settings</Link>
+                <Link to="/dashboard/settings">Manage Settings</Link>
               </Button>
             </CardFooter>
           </Card>

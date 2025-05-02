@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -11,6 +12,13 @@ import { toast } from 'sonner';
 import { FileDown } from 'lucide-react';
 import { downloadAnkiDeck } from '@/utils/ankiExport';
 import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const VocabularyPage: React.FC = () => {
   const { vocabulary, removeVocabularyItem } = useVocabularyContext();
@@ -21,6 +29,7 @@ const VocabularyPage: React.FC = () => {
   const [itemToDelete, setItemToDelete] = useState<VocabularyItem | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'newest'|'oldest'|'alphabetical'>('newest');
   
   // Filter vocabulary by current language and search term
   const filteredVocabulary = vocabulary
@@ -34,6 +43,16 @@ const VocabularyPage: React.FC = () => {
         item.definition.toLowerCase().includes(search) ||
         item.exampleSentence.toLowerCase().includes(search)
       );
+    })
+    .sort((a, b) => {
+      if (sortOrder === 'alphabetical') {
+        return a.word.localeCompare(b.word);
+      } else if (sortOrder === 'oldest') {
+        return a.id.localeCompare(b.id);
+      } else {
+        // newest first is default
+        return b.id.localeCompare(a.id);
+      }
     });
   
   const handleDeleteItem = (item: VocabularyItem) => {
@@ -148,10 +167,27 @@ const VocabularyPage: React.FC = () => {
             placeholder="Search vocabulary..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full"
           />
         </div>
+
+        <div className="w-full md:w-48">
+          <Select
+            value={sortOrder}
+            onValueChange={(value) => setSortOrder(value as 'newest'|'oldest'|'alphabetical')}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest first</SelectItem>
+              <SelectItem value="oldest">Oldest first</SelectItem>
+              <SelectItem value="alphabetical">Alphabetical</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button 
             variant="outline" 
             size="sm"

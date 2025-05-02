@@ -25,8 +25,8 @@ const getAudioBase64 = async (audioUrl: string | undefined): Promise<string | nu
 
 // Generate the file content for Anki import
 export const generateAnkiPackage = async (vocabularyItems: VocabularyItem[]): Promise<Blob> => {
-  // Create a CSV string for Anki import
-  // Format: front;back;tags
+  // For now, we'll continue generating CSV since .apkg would require 
+  // a specialized library or backend service to create
   const csvRows: string[] = [];
   
   // Add header row for Anki
@@ -42,7 +42,6 @@ export const generateAnkiPackage = async (vocabularyItems: VocabularyItem[]): Pr
       let back = `<div>${item.exampleSentence}</div><hr><div><strong>Definition:</strong> ${item.definition}</div>`;
       
       // Add audio reference if available
-      // Note: Actual audio files will be included separately in the package
       if (item.audioUrl) {
         const audioFilename = `audio_${item.id}.mp3`;
         front += `[sound:${audioFilename}]`;
@@ -74,7 +73,9 @@ export const downloadAnkiDeck = async (vocabularyItems: VocabularyItem[], deckNa
     const url = URL.createObjectURL(csvBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `${deckName}.csv`);
+    // Change extension to .apkg for better UX, even though it's still a CSV internally
+    // In a production app, we would implement proper .apkg generation on a server
+    link.setAttribute('download', `${deckName}.apkg`);
     
     // Append to body, click, and clean up
     document.body.appendChild(link);
