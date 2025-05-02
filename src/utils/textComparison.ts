@@ -73,7 +73,111 @@ export const normalizeText = (text: string): string => {
 };
 
 /**
- * Compares two texts token by token with fuzzy matching
+ * Implements the Needleman-Wunsch algorithm for optimal sequence alignment
+ * between original text and user input tokens
+ */
+export const alignSequences = (originalTokens: string[], userTokens: string[]): {
+  alignedOriginal: (string | null)[];
+  alignedUser: (string | null)[];
+} => {
+  const m = originalTokens.length;
+  const n = userTokens.length;
+  
+  // Create score matrix
+  const score: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+  
+  // Create traceback matrix to reconstruct the alignment
+  // 0: diagonal (match/mismatch), 1: left (deletion), 2: up (insertion)
+  const traceback: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+  
+  // Initialize first row and column with gap penalties
+  for (let i = 0; i <= m; i++) {
+    score[i][0] = i * -1;
+    if (i > 0) traceback[i][0] = 2; // up
+  }
+  
+  for (let j = 0; j <= n; j++) {
+    score[0][j] = j * -1;
+    if (j > 0) traceback[0][j] = 1; // left
+  }
+  
+  // Fill the matrix
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      // Calculate similarity score between tokens
+      const similarity = stringSimilarity(originalTokens[i - 1], userTokens[j - 1]);
+      
+      // Scoring: +1 for exact match, +0.5 for fuzzy match, -1 for mismatch
+      let matchScore;
+      if (similarity === 1) {
+        matchScore = 1; // Exact match
+      } else if (similarity >= 0.8) {
+        matchScore = 0.5; // Fuzzy match
+      } else {
+        matchScore = -1; // Mismatch
+      }
+      
+      const diagScore = score[i - 1][j - 1] + matchScore;
+      const upScore = score[i - 1][j] - 1; // Gap in user input (missing)
+      const leftScore = score[i][j - 1] - 1; // Gap in original (extra)
+      
+      // Choose the maximum score
+      if (diagScore >= upScore && diagScore >= leftScore) {
+        score[i][j] = diagScore;
+        traceback[i][j] = 0; // diagonal
+      } else if (upScore >= leftScore) {
+        score[i][j] = upScore;
+        traceback[i][j] = 2; // up
+      } else {
+        score[i][j] = leftScore;
+        traceback[i][j] = 1; // left
+      }
+    }
+  }
+  
+  // Traceback to get alignment
+  const alignedOriginal: (string | null)[] = [];
+  const alignedUser: (string | null)[] = [];
+  
+  let i = m;
+  let j = n;
+  
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && traceback[i][j] === 0) {
+      // Match or mismatch - add both tokens
+      alignedOriginal.unshift(originalTokens[i - 1]);
+      alignedUser.unshift(userTokens[j - 1]);
+      i--;
+      j--;
+    } else if (j > 0 && traceback[i][j] === 1) {
+      // Extra word in user input
+      alignedOriginal.unshift(null);
+      alignedUser.unshift(userTokens[j - 1]);
+      j--;
+    } else if (i > 0 && traceback[i][j] === 2) {
+      // Missing word in user input
+      alignedOriginal.unshift(originalTokens[i - 1]);
+      alignedUser.unshift(null);
+      i--;
+    } else {
+      // Should not happen, but just in case
+      if (i > 0) {
+        alignedOriginal.unshift(originalTokens[i - 1]);
+        alignedUser.unshift(null);
+        i--;
+      } else if (j > 0) {
+        alignedOriginal.unshift(null);
+        alignedUser.unshift(userTokens[j - 1]);
+        j--;
+      }
+    }
+  }
+  
+  return { alignedOriginal, alignedUser };
+};
+
+/**
+ * Compares two texts token by token with fuzzy matching using optimal alignment
  */
 export const compareTexts = (originalText: string, userText: string): {
   tokenResults: TokenComparisonResult[];
@@ -89,10 +193,13 @@ export const compareTexts = (originalText: string, userText: string): {
   const normalizedUser = normalizeText(userText);
   
   // Split into tokens
-  const originalTokens = normalizedOriginal.split(' ');
-  const userTokens = normalizedUser.split(' ');
+  const originalTokens = normalizedOriginal.split(' ').filter(Boolean);
+  const userTokens = normalizedUser.split(' ').filter(Boolean);
   
-  // Stage 2 & 3: Token Alignment and Comparison
+  // Stage 2: Sequence Alignment
+  const { alignedOriginal, alignedUser } = alignSequences(originalTokens, userTokens);
+  
+  // Stage 3: Token Comparison
   const tokenResults: TokenComparisonResult[] = [];
   let correct = 0;
   let almost = 0;
@@ -100,58 +207,50 @@ export const compareTexts = (originalText: string, userText: string): {
   let missing = 0;
   let extra = 0;
   
-  // Compare available tokens
-  const minLength = Math.min(originalTokens.length, userTokens.length);
-  
-  for (let i = 0; i < minLength; i++) {
-    const originalToken = originalTokens[i];
-    const userToken = userTokens[i];
-    const similarity = stringSimilarity(originalToken, userToken);
+  for (let i = 0; i < alignedOriginal.length; i++) {
+    const originalToken = alignedOriginal[i];
+    const userToken = alignedUser[i];
     
-    let status: TokenComparisonResult['status'];
-    
-    if (similarity === 1) {
-      status = 'correct';
-      correct++;
-    } else if (similarity >= 0.8) {
-      status = 'almost';
-      almost++;
-    } else {
-      status = 'incorrect';
-      incorrect++;
-    }
-    
-    tokenResults.push({
-      originalToken,
-      userToken,
-      status,
-      similarity
-    });
-  }
-  
-  // Handle missing tokens (original is longer than user input)
-  if (originalTokens.length > userTokens.length) {
-    for (let i = minLength; i < originalTokens.length; i++) {
+    if (originalToken === null && userToken !== null) {
+      // Extra word in user input
       tokenResults.push({
-        originalToken: originalTokens[i],
+        originalToken: '',
+        userToken,
+        status: 'extra',
+        similarity: 0
+      });
+      extra++;
+    } else if (originalToken !== null && userToken === null) {
+      // Missing word in user input
+      tokenResults.push({
+        originalToken,
         userToken: null,
         status: 'missing',
         similarity: 0
       });
       missing++;
-    }
-  }
-  
-  // Handle extra tokens (user input is longer than original)
-  if (userTokens.length > originalTokens.length) {
-    for (let i = minLength; i < userTokens.length; i++) {
+    } else if (originalToken !== null && userToken !== null) {
+      // Both tokens present, check similarity
+      const similarity = stringSimilarity(originalToken, userToken);
+      let status: TokenComparisonResult['status'];
+      
+      if (similarity === 1) {
+        status = 'correct';
+        correct++;
+      } else if (similarity >= 0.8) {
+        status = 'almost';
+        almost++;
+      } else {
+        status = 'incorrect';
+        incorrect++;
+      }
+      
       tokenResults.push({
-        originalToken: '',
-        userToken: userTokens[i],
-        status: 'extra',
-        similarity: 0
+        originalToken,
+        userToken,
+        status,
+        similarity
       });
-      extra++;
     }
   }
   
@@ -159,7 +258,7 @@ export const compareTexts = (originalText: string, userText: string): {
   const totalExpectedWords = originalTokens.length;
   // Count both correct and almost correct (with reduced weight) for accuracy
   const effectiveCorrect = correct + (almost * 0.5);
-  const accuracy = Math.round((effectiveCorrect / totalExpectedWords) * 100);
+  const accuracy = Math.min(100, Math.round((effectiveCorrect / totalExpectedWords) * 100));
   
   return {
     tokenResults,
@@ -195,4 +294,3 @@ export const generateHighlightedText = (tokenResults: TokenComparisonResult[]): 
     .filter(Boolean)
     .join(' ');
 };
-
