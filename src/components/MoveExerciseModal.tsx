@@ -85,11 +85,9 @@ const MoveExerciseModal: React.FC<MoveExerciseModalProps> = ({
         onSuccess();
       }
       
-      // Close the modal after a short delay to ensure state updates complete
-      setTimeout(() => {
-        setIsMoving(false);
-        onOpenChange(false);
-      }, 100);
+      // Close the modal
+      onOpenChange(false);
+      setIsMoving(false);
       
     } catch (error) {
       console.error('Error moving exercise:', error);
@@ -111,10 +109,8 @@ const MoveExerciseModal: React.FC<MoveExerciseModalProps> = ({
       open={isOpen} 
       onOpenChange={(open) => {
         // Only allow closing if we're not in the middle of moving
-        if (!isMoving && !open) {
-          onOpenChange(false);
-        } else if (!isMoving && open) {
-          onOpenChange(true);
+        if (!isMoving) {
+          onOpenChange(open);
         }
       }}
     >

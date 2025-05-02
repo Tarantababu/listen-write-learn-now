@@ -162,15 +162,13 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
         </CardFooter>
       </Card>
       
-      {/* Move Exercise Modal - Only render when open to avoid stale state */}
-      {isMoveModalOpen && (
-        <MoveExerciseModal
-          exercise={exercise}
-          isOpen={isMoveModalOpen}
-          onOpenChange={setIsMoveModalOpen}
-          onSuccess={handleMoveSuccess}
-        />
-      )}
+      {/* Move Exercise Modal - Always render the dialog but control visibility with open prop */}
+      <MoveExerciseModal
+        exercise={exercise}
+        isOpen={isMoveModalOpen}
+        onOpenChange={setIsMoveModalOpen}
+        onSuccess={handleMoveSuccess}
+      />
     </>
   );
 };

@@ -133,6 +133,21 @@ const ExercisesPage: React.FC = () => {
       }
     }
   };
+
+  // Clean up exercise states when modals close
+  const handleEditModalClose = (open: boolean) => {
+    setIsEditModalOpen(open);
+    if (!open) {
+      setTimeout(() => setExerciseToEdit(null), 300); // Wait for animation to finish
+    }
+  };
+
+  const handlePracticeModalClose = (open: boolean) => {
+    setIsPracticeModalOpen(open);
+    if (!open) {
+      setTimeout(() => setExerciseToPractice(null), 300); // Wait for animation to finish
+    }
+  };
   
   return (
     <DirectoryProvider>
@@ -188,32 +203,41 @@ const ExercisesPage: React.FC = () => {
           </div>
         </div>
         
-        {/* Modals */}
+        {/* Modals - Always render them but control visibility with open prop */}
         <ExerciseFormModal 
           isOpen={isAddModalOpen}
           onOpenChange={setIsAddModalOpen}
           mode="create"
         />
         
+        {/* Only render edit modal when there's an exercise to edit */}
         <ExerciseFormModal
           isOpen={isEditModalOpen}
-          onOpenChange={setIsEditModalOpen}
+          onOpenChange={handleEditModalClose}
           initialValues={exerciseToEdit}
           mode="edit"
         />
         
         <DeleteExerciseDialog 
           isOpen={isDeleteDialogOpen}
-          onOpenChange={setIsDeleteDialogOpen}
+          onOpenChange={(open) => {
+            setIsDeleteDialogOpen(open);
+            if (!open) {
+              setTimeout(() => setExerciseToDelete(null), 300);
+            }
+          }}
           onConfirm={confirmDelete}
         />
         
-        <PracticeModal
-          isOpen={isPracticeModalOpen}
-          onOpenChange={setIsPracticeModalOpen}
-          exercise={exerciseToPractice}
-          onComplete={handlePracticeComplete}
-        />
+        {/* Only render practice modal when there's an exercise to practice */}
+        {exerciseToPractice && (
+          <PracticeModal
+            isOpen={isPracticeModalOpen}
+            onOpenChange={handlePracticeModalClose}
+            exercise={exerciseToPractice}
+            onComplete={handlePracticeComplete}
+          />
+        )}
       </div>
     </DirectoryProvider>
   );

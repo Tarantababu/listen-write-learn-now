@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent
@@ -28,11 +28,21 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     setShowResults(true);
   };
   
-  // Reset when modal closes
-  const handleOpenChange = (open: boolean) => {
-    onOpenChange(open);
-    if (!open) {
+  // Reset when modal opens or closes
+  useEffect(() => {
+    if (isOpen) {
+      // Modal just opened
       setShowResults(false);
+    }
+  }, [isOpen]);
+  
+  // Safe handling of modal open state change
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      // Allow animation to complete before fully closing
+      onOpenChange(open);
+    } else {
+      onOpenChange(open);
     }
   };
   
