@@ -46,6 +46,39 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
     );
   }, [activityData, sixMonthsAgo, today]);
 
+  // Create explicit day modifiers for each activity day with its corresponding class
+  const activityModifiers = useMemo(() => {
+    const modifiers: Record<string, Date[]> = {};
+    
+    // Group dates by their intensity level
+    const intensityLevels = {
+      high: [] as Date[],
+      medium: [] as Date[],
+      low: [] as Date[],
+      minimal: [] as Date[]
+    };
+    
+    filteredActivityData.forEach(activity => {
+      if (activity.count >= 15) {
+        intensityLevels.high.push(activity.date);
+      } else if (activity.count >= 10) {
+        intensityLevels.medium.push(activity.date);
+      } else if (activity.count >= 5) {
+        intensityLevels.low.push(activity.date);
+      } else {
+        intensityLevels.minimal.push(activity.date);
+      }
+    });
+    
+    // Add each intensity level to modifiers
+    if (intensityLevels.high.length > 0) modifiers.activityHigh = intensityLevels.high;
+    if (intensityLevels.medium.length > 0) modifiers.activityMedium = intensityLevels.medium;
+    if (intensityLevels.low.length > 0) modifiers.activityLow = intensityLevels.low;
+    if (intensityLevels.minimal.length > 0) modifiers.activityMinimal = intensityLevels.minimal;
+    
+    return modifiers;
+  }, [filteredActivityData]);
+
   return (
     <Card className="col-span-full">
       <CardHeader>
@@ -64,14 +97,12 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
             classNames={{
               day_today: "border border-primary",
             }}
-            modifiers={{
-              activity: (date) => 
-                filteredActivityData.some(
-                  activity => differenceInCalendarDays(activity.date, date) === 0
-                )
-            }}
+            modifiers={activityModifiers}
             modifiersClassNames={{
-              activity: (date) => getDayClassNames(date)
+              activityHigh: "bg-green-800 hover:bg-green-700 text-white",
+              activityMedium: "bg-green-600 hover:bg-green-500 text-white",
+              activityLow: "bg-green-500 hover:bg-green-400 text-white",
+              activityMinimal: "bg-green-300 hover:bg-green-200"
             }}
             ISOWeek
             fixedWeeks
