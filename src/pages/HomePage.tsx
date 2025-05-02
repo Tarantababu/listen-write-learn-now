@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Headphones, BookOpen, Settings, LogOut } from 'lucide-react';
+import UserStatistics from '@/components/UserStatistics';
 
 const HomePage: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -38,6 +39,11 @@ const HomePage: React.FC = () => {
               </p>
             </CardContent>
           </Card>
+        </div>
+        
+        {/* User Statistics */}
+        <div className="mb-8">
+          <UserStatistics />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
