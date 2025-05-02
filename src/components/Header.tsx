@@ -22,13 +22,13 @@ import {
   CreditCard,
   Crown
 } from 'lucide-react';
-import { useMobileDetection } from '@/hooks/use-mobile';
+import { useMobile } from '@/hooks/use-mobile';
 
 const Header: React.FC = () => {
   const { user, signOut } = useAuth();
   const { subscription } = useSubscription();
   const location = useLocation();
-  const isMobile = useMobileDetection();
+  const isMobile = useMobile();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
   const isActive = (path: string) => {
