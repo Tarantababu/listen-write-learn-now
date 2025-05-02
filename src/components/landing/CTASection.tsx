@@ -1,10 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
+import { SampleDictationModal } from './SampleDictationModal';
 
 export function CTASection() {
+  const [sampleModalOpen, setSampleModalOpen] = useState(false);
+  
+  const handleOpenSample = () => {
+    setSampleModalOpen(true);
+  };
+
   return (
     <section id="cta" className="py-20 bg-primary/5">
       <div className="container px-4 md:px-6">
@@ -23,10 +30,13 @@ export function CTASection() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="rounded-xl px-6">
-              <Link to="#sample" id="sample">
-                <span className="text-nowrap">Try a Sample</span>
-              </Link>
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="rounded-xl px-6"
+              onClick={handleOpenSample}
+            >
+              <span className="text-nowrap">Try a Sample</span>
             </Button>
           </div>
           
@@ -35,6 +45,8 @@ export function CTASection() {
           </div>
         </div>
       </div>
+
+      <SampleDictationModal open={sampleModalOpen} onOpenChange={setSampleModalOpen} />
     </section>
   );
 }

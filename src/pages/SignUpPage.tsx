@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Home } from 'lucide-react';
 
 const SignUpPage: React.FC = () => {
   const { signUp, user } = useAuth();
@@ -52,7 +52,14 @@ const SignUpPage: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
+        <CardHeader className="text-center relative">
+          <Link 
+            to="/" 
+            className="absolute left-4 top-4 p-2 rounded-full hover:bg-muted transition-colors" 
+            aria-label="Back to homepage"
+          >
+            <Home size={20} />
+          </Link>
           <CardTitle className="text-2xl">Create an Account</CardTitle>
           <CardDescription>
             Enter your details to create a new account
