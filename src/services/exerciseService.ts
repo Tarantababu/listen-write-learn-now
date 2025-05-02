@@ -1,4 +1,3 @@
-
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -68,6 +67,23 @@ export const updateExercise = async (userId: string, id: string, updates: Partia
     .eq('user_id', userId);
 
   if (error) throw error;
+};
+
+/**
+ * Deletes all vocabulary items associated with an exercise
+ */
+export const deleteAssociatedVocabulary = async (userId: string, exerciseId: string) => {
+  // Delete vocabulary items associated with the exercise
+  const { error } = await supabase
+    .from('vocabulary')
+    .delete()
+    .eq('exercise_id', exerciseId)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error deleting associated vocabulary:', error);
+    throw error;
+  }
 };
 
 /**

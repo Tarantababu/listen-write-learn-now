@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Exercise, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,7 +10,8 @@ import {
   updateExercise as updateExerciseInDb, 
   deleteExercise as deleteExerciseFromDb,
   recordCompletion,
-  ensureAudioBucket
+  ensureAudioBucket,
+  deleteAssociatedVocabulary
 } from '@/services/exerciseService';
 import { useLocalExercises } from '@/hooks/useLocalExercises';
 
@@ -133,7 +135,10 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return;
       }
 
-      // Delete exercise from Supabase
+      // First delete associated vocabulary items
+      await deleteAssociatedVocabulary(user.id, id);
+
+      // Then delete the exercise from Supabase
       await deleteExerciseFromDb(user.id, id);
 
       setExercises(exercises.filter(ex => ex.id !== id));
