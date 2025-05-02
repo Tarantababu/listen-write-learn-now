@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Plus, Filter, Search } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useDirectoryContext } from '@/contexts/DirectoryContext';
 import { DirectoryProvider } from '@/contexts/DirectoryContext';
 import {
   Dialog,
@@ -27,13 +29,14 @@ import ExerciseForm from '@/components/ExerciseForm';
 import ExerciseCard from '@/components/ExerciseCard';
 import DictationPractice from '@/components/DictationPractice';
 import DirectoryBrowser from '@/components/DirectoryBrowser';
-import { Exercise } from '@/types';
+import { Exercise, Language } from '@/types';
 import { toast } from 'sonner';
 import VocabularyHighlighter from '@/components/VocabularyHighlighter';
 
 const ExercisesPage: React.FC = () => {
   const { exercises, selectExercise, selectedExercise, deleteExercise, markProgress } = useExerciseContext();
   const { settings } = useUserSettingsContext();
+  const { currentDirectoryId } = useDirectoryContext();
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -49,6 +52,11 @@ const ExercisesPage: React.FC = () => {
   const [showResults, setShowResults] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterCompleted, selectedTag, currentDirectoryId]);
+  
   // Get all unique tags from exercises
   const allTags = Array.from(
     new Set(exercises.flatMap(exercise => exercise.tags))
@@ -59,8 +67,13 @@ const ExercisesPage: React.FC = () => {
     new Set(exercises.map(exercise => exercise.language))
   );
   
-  // Filter exercises based on current language and search/filters
-  const filteredExercises = exercises
+  // First filter exercises by directory if a directory is selected
+  const directoryExercises = currentDirectoryId 
+    ? exercises.filter(ex => ex.directoryId === currentDirectoryId)
+    : exercises;
+  
+  // Then apply additional filters to the directory-filtered exercises
+  const filteredExercises = directoryExercises
     .filter(ex => {
       // Search term filter
       if (searchTerm) {
