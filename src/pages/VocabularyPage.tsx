@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -9,7 +8,7 @@ import VocabularyCard from '@/components/VocabularyCard';
 import VocabularyPlaylist from '@/components/VocabularyPlaylist';
 import { VocabularyItem } from '@/types';
 import { toast } from 'sonner';
-import { FileExport } from 'lucide-react';
+import { FileDown } from 'lucide-react';
 import { downloadAnkiDeck } from '@/utils/ankiExport';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -178,7 +177,7 @@ const VocabularyPage: React.FC = () => {
             disabled={isExporting || displayVocabulary.length === 0}
             className="whitespace-nowrap bg-gradient-to-r from-primary to-accent hover:opacity-90"
           >
-            <FileExport className="mr-2 h-4 w-4" />
+            <FileDown className="mr-2 h-4 w-4" />
             {isExporting ? "Exporting..." : "Export for Anki"}
           </Button>
         </div>
