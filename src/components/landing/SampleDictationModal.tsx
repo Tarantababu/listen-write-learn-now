@@ -13,10 +13,13 @@ interface SampleDictationModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Create a static audio URL that will be shared across all instances
+let staticAudioUrl: string | null = null;
+let audioGenerationInProgress = false;
+
 export function SampleDictationModal({ open, onOpenChange }: SampleDictationModalProps) {
   const [completed, setCompleted] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   
   // Sample exercise data with more comprehensive text
   const sampleText = "This app helps you improve your language skills through dictation. You listen to a sentence spoken by a native speaker and type what you hear. It trains your listening, spelling, and grammar all at once. Each exercise is based on the most common words in the language, so you build practical vocabulary while improving accuracy. You get instant feedback on your typing, and you can repeat each sentence as many times as you need. It's a simple but powerful way to make fast, real progress.";
@@ -25,7 +28,7 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
     id: 'sample-exercise',
     title: 'Try Dictation Practice',
     text: sampleText,
-    audioUrl: audioUrl || '',
+    audioUrl: staticAudioUrl || '',
     language: 'english',
     tags: ['sample', 'beginner'],
     completionCount: 0,
@@ -34,10 +37,13 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
     directoryId: null
   };
 
-  // Generate audio from text using the edge function
+  // Generate audio from text using the edge function only once
   useEffect(() => {
     const generateAudio = async () => {
       try {
+        if (audioGenerationInProgress) return;
+        
+        audioGenerationInProgress = true;
         setLoading(true);
         
         // Call the text-to-speech edge function
@@ -50,6 +56,7 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
         
         if (error) {
           console.error('Error generating audio:', error);
+          audioGenerationInProgress = false;
           return;
         }
         
@@ -61,20 +68,27 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
             bytes[i] = binaryString.charCodeAt(i);
           }
           const blob = new Blob([bytes], { type: 'audio/mp3' });
-          const url = URL.createObjectURL(blob);
-          setAudioUrl(url);
+          staticAudioUrl = URL.createObjectURL(blob);
+          
+          // Update the exercise with the new audio URL
+          sampleExercise.audioUrl = staticAudioUrl;
         }
       } catch (error) {
         console.error('Error in audio generation:', error);
       } finally {
         setLoading(false);
+        audioGenerationInProgress = false;
       }
     };
 
-    if (open && !audioUrl) {
+    // Only generate audio if we don't have it yet
+    if (open && !staticAudioUrl && !audioGenerationInProgress) {
       generateAudio();
+    } else {
+      // If we already have the audio, make sure loading is set to false
+      setLoading(false);
     }
-  }, [open, sampleText]);
+  }, [open]);
 
   const handleComplete = (accuracy: number) => {
     setCompleted(true);
