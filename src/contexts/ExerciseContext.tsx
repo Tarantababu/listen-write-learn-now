@@ -15,6 +15,7 @@ interface ExerciseContextProps {
   selectExercise: (id: string | null) => void;
   markProgress: (id: string, accuracy: number) => Promise<void>;
   filterExercisesByLanguage: (language: Language) => Exercise[];
+  moveExerciseToDirectory: (exerciseId: string, directoryId: string | null) => Promise<void>;
   loading: boolean;
 }
 
@@ -92,6 +93,7 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             language: ex.language as Language,
             tags: ex.tags || [],
             audioUrl: ex.audio_url,
+            directoryId: ex.directory_id,
             createdAt: new Date(ex.created_at),
             completionCount: ex.completion_count || 0,
             isCompleted: ex.is_completed || false
@@ -141,7 +143,8 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           text: exercise.text,
           language: exercise.language,
           tags: exercise.tags,
-          audio_url: exercise.audioUrl
+          audio_url: exercise.audioUrl,
+          directory_id: exercise.directoryId
         })
         .select('*')
         .single();
@@ -155,6 +158,7 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         language: data.language as Language,
         tags: data.tags || [],
         audioUrl: data.audio_url,
+        directoryId: data.directory_id,
         createdAt: new Date(data.created_at),
         completionCount: data.completion_count || 0,
         isCompleted: data.is_completed || false
@@ -187,6 +191,7 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           language: updates.language,
           tags: updates.tags,
           audio_url: updates.audioUrl,
+          directory_id: updates.directoryId,
           completion_count: updates.completionCount,
           is_completed: updates.isCompleted
         })
@@ -314,6 +319,41 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const moveExerciseToDirectory = async (exerciseId: string, directoryId: string | null) => {
+    try {
+      const exercise = exercises.find(ex => ex.id === exerciseId);
+      if (!exercise) return;
+
+      if (!user) {
+        // Handle non-authenticated user
+        setExercises(exercises.map(ex => 
+          ex.id === exerciseId ? { ...ex, directoryId } : ex
+        ));
+        return;
+      }
+
+      // Update in Supabase
+      const { error } = await supabase
+        .from('exercises')
+        .update({ directory_id: directoryId })
+        .eq('id', exerciseId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setExercises(exercises.map(ex => 
+        ex.id === exerciseId ? { ...ex, directoryId } : ex
+      ));
+      
+      toast.success('Exercise moved successfully');
+
+    } catch (error: any) {
+      toast.error('Failed to move exercise: ' + error.message);
+      throw error;
+    }
+  };
+
   const filterExercisesByLanguage = (language: Language) => {
     return exercises.filter(ex => ex.language === language);
   };
@@ -327,6 +367,7 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     selectExercise,
     markProgress,
     filterExercisesByLanguage,
+    moveExerciseToDirectory,
     loading
   };
 

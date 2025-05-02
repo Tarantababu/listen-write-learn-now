@@ -11,6 +11,14 @@ export interface Exercise {
   createdAt: Date;
   completionCount: number;
   isCompleted: boolean;
+  directoryId?: string;
+}
+
+export interface Directory {
+  id: string;
+  name: string;
+  parentId?: string | null;
+  createdAt: Date;
 }
 
 export interface VocabularyItem {

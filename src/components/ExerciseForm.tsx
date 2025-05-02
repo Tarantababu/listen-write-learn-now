@@ -1,11 +1,19 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useDirectoryContext } from '@/contexts/DirectoryContext';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -22,17 +30,28 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
 }) => {
   const { settings } = useUserSettingsContext();
   const { addExercise, updateExercise } = useExerciseContext();
+  const { directories, currentDirectoryId } = useDirectoryContext();
   
   const [title, setTitle] = useState(initialValues?.title || '');
   const [text, setText] = useState(initialValues?.text || '');
   const [language, setLanguage] = useState<Language>(
     initialValues?.language || settings.selectedLanguage
   );
+  const [directoryId, setDirectoryId] = useState<string | null>(
+    initialValues?.directoryId || currentDirectoryId
+  );
   const [tags, setTags] = useState<string[]>(initialValues?.tags || []);
   const [tagInput, setTagInput] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Update directory when currentDirectoryId changes (for new exercises)
+  useEffect(() => {
+    if (!initialValues?.directoryId && currentDirectoryId !== directoryId) {
+      setDirectoryId(currentDirectoryId);
+    }
+  }, [currentDirectoryId, initialValues?.directoryId, directoryId]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -128,6 +147,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           text,
           language,
           tags,
+          directoryId,
           ...(audioUrl && { audioUrl })
         });
         toast.success('Exercise updated successfully');
@@ -138,6 +158,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           text,
           language,
           tags,
+          directoryId,
           ...(audioUrl && { audioUrl })
         });
         toast.success('Exercise created successfully');
@@ -152,6 +173,24 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Build a directory path string for each directory
+  const getDirectoryPath = (dirId: string | null): string => {
+    if (!dirId) return "Root";
+    
+    let path = [];
+    let currentId = dirId;
+    
+    while (currentId) {
+      const dir = directories.find(d => d.id === currentId);
+      if (!dir) break;
+      
+      path.unshift(dir.name);
+      currentId = dir.parentId || null;
+    }
+    
+    return path.join(" / ") || "Root";
   };
 
   return (
@@ -186,6 +225,27 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
             </option>
           ))}
         </select>
+      </div>
+      
+      <div>
+        <Label htmlFor="directory">Directory</Label>
+        <Select 
+          value={directoryId || ""} 
+          onValueChange={(value) => setDirectoryId(value || null)}
+          disabled={isSaving || isGeneratingAudio}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select a directory" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Root</SelectItem>
+            {directories.map((dir) => (
+              <SelectItem key={dir.id} value={dir.id}>
+                {getDirectoryPath(dir.id)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
       <div>
