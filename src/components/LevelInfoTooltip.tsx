@@ -33,8 +33,8 @@ const LevelInfoTooltip: React.FC = () => {
             <HelpCircle className="h-4 w-4" />
           </button>
         </TooltipTrigger>
-        <TooltipContent className="w-64 p-0" align="start">
-          <div className="p-4">
+        <TooltipContent className="w-64 p-0 z-[100]" align="start">
+          <div className="p-4 bg-popover shadow-lg">
             <h4 className="font-medium mb-2">Language Proficiency Levels</h4>
             <div className="space-y-2 text-xs">
               {levels.map((level) => (
