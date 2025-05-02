@@ -21,10 +21,9 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
     audioUrl: 'https://ik.imagekit.io/lrigu76hy/dictation-sample-audio.mp3',
     language: 'english',
     tags: ['sample', 'beginner'],
-    userId: 'sample',
     completionCount: 0,
     isCompleted: false,
-    createdAt: new Date(), // Fixed: Using Date object directly instead of string
+    createdAt: new Date(),
     directoryId: null,
     vocabulary: []
   };
