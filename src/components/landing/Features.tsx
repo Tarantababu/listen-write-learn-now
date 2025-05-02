@@ -1,134 +1,125 @@
+
 import React from 'react';
-import { Check, Ear, Brain, Pen, ArrowUpRight, FileBarChart } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
+import { SampleDictationModal } from './SampleDictationModal';
+import { Check } from 'lucide-react';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 
-const features = [
-  {
-    icon: <Ear className="h-10 w-10 text-primary" />,
-    title: "Listening",
-    description: "Improve comprehension with natural, everyday speech.",
-    className: "bg-purple-50 dark:bg-purple-950/20"
+const transitionVariants = {
+  container: {
+    visible: {
+      transition: {
+        staggerChildren: 0.12,
+        delayChildren: 0.3,
+      },
+    },
   },
-  {
-    icon: <Pen className="h-10 w-10 text-primary" />,
-    title: "Writing",
-    description: "Reinforce grammar, spelling, and punctuation.",
-    className: "bg-blue-50 dark:bg-blue-950/20"
+  item: {
+    hidden: {
+      opacity: 0,
+      filter: 'blur(8px)',
+      y: 24,
+    },
+    visible: {
+      opacity: 1,
+      filter: 'blur(0px)',
+      y: 0,
+      transition: {
+        type: 'spring',
+        bounce: 0.3,
+        duration: 1.5,
+      },
+    },
   },
-  {
-    icon: <Brain className="h-10 w-10 text-primary" />,
-    title: "Memory",
-    description: "Build active recall with spaced repetition and context-based learning.",
-    className: "bg-amber-50 dark:bg-amber-950/20"
-  },
-  {
-    icon: <FileBarChart className="h-10 w-10 text-primary" />,
-    title: "Progress",
-    description: "Track your accuracy and speed over time.",
-    className: "bg-green-50 dark:bg-green-950/20"
-  }
-];
-
-const benefits = [
-  "Native-speaker audio at beginner to advanced levels",
-  "Comprehension-friendly texts based on the most common 1000–7000 words",
-  "Instant feedback and error highlighting",
-  "Smart statistics to monitor your progress",
-  "Multilingual support (German and English)",
-  "Free access with optional premium features coming soon"
-];
+};
 
 export function Features() {
   return (
-    <>
-      <section id="features" className="py-20">
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col items-center justify-center space-y-4 text-center">
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Why Dictation Works</h2>
-              <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Dictation is a time-tested method that strengthens all core language skills at once:
+    <section id="features" className="py-20 overflow-hidden">
+      <div className="container px-4 md:px-6 mx-auto">
+        <div className="text-center space-y-4">
+          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">How It Works</h2>
+          <p className="mx-auto max-w-[700px] text-muted-foreground text-lg">
+            A simple but powerful method that trains multiple skills at once
+          </p>
+        </div>
+
+        <div className="mt-16 grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+          <AnimatedGroup
+            variants={transitionVariants}
+            className="space-y-8 lg:max-w-xl">
+            <div>
+              <h3 className="text-2xl font-bold">Listen, Write, Learn</h3>
+              <p className="mt-2 text-muted-foreground">
+                Our dictation method combines listening practice with writing, reinforcing both skills simultaneously and creating stronger neural connections.
               </p>
             </div>
-          </div>
+
+            <ul className="space-y-4">
+              <li className="flex gap-3">
+                <Check className="h-6 w-6 text-primary flex-shrink-0" />
+                <div>
+                  <p className="font-medium">Improved Listening Comprehension</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Train your ears to pick up natural speech patterns, accents and intonation.
+                  </p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <Check className="h-6 w-6 text-primary flex-shrink-0" />
+                <div>
+                  <p className="font-medium">Enhanced Spelling & Grammar</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Develop correct spelling habits and grammatical intuition through repeated practice.
+                  </p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <Check className="h-6 w-6 text-primary flex-shrink-0" />
+                <div>
+                  <p className="font-medium">Expanded Vocabulary</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Learn new words in context, making them easier to remember and use in conversation.
+                  </p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <Check className="h-6 w-6 text-primary flex-shrink-0" />
+                <div>
+                  <p className="font-medium">Real-Time Feedback</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Get immediate corrections and accuracy scores to track your improvement over time.
+                  </p>
+                </div>
+              </li>
+            </ul>
+
+            <div className="pt-4">
+              <Link to="/signup" className="text-primary font-medium inline-flex items-center">
+                Start practicing
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 ml-1"
+                  viewBox="0 0 20 20"
+                  fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </Link>
+            </div>
+          </AnimatedGroup>
           
           <AnimatedGroup
-            variants={{
-              container: {
-                visible: {
-                  transition: {
-                    staggerChildren: 0.1,
-                  },
-                },
-              },
-              item: {
-                hidden: { opacity: 0, y: 20 },
-                visible: {
-                  opacity: 1,
-                  y: 0,
-                  transition: {
-                    type: "spring",
-                    stiffness: 100,
-                    damping: 15,
-                  },
-                },
-              },
-            }}
-            className="mx-auto grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4 mt-12">
-            {features.map((feature, i) => (
-              <Card key={i} className={cn("border shadow-sm", feature.className)}>
-                <CardHeader>
-                  <div className="mb-2">{feature.icon}</div>
-                  <CardTitle>{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-base">{feature.description}</CardDescription>
-                </CardContent>
-              </Card>
-            ))}
+            variants={transitionVariants}
+            className="lg:max-w-xl mx-auto">
+            {/* Embedded sample dictation component */}
+            <SampleDictationModal embedded={true} open={false} onOpenChange={() => {}} />
           </AnimatedGroup>
         </div>
-      </section>
-      
-      <section id="how-it-works" className="py-20 bg-muted/50">
-        <div className="container px-4 md:px-6">
-          <div className="grid gap-12 md:grid-cols-2">
-            <div className="flex flex-col justify-center space-y-4">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">What You'll Get</h2>
-              <ul className="space-y-4">
-                {benefits.map((benefit, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <Check className="h-6 w-6 text-primary mt-1 shrink-0" /> 
-                    <span>{benefit}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="flex items-center justify-center">
-              <div className="relative w-full max-w-lg overflow-hidden rounded-xl border bg-background shadow-lg">
-                <div className="p-4 sm:p-6">
-                  <img
-                    src="https://ik.imagekit.io/lrigu76hy/tailark/dictation-app-mockup.png?updatedAt=1745733451120"
-                    alt="Application interface showing dictation exercise"
-                    className="rounded-lg border shadow-sm"
-                    width="500"
-                    height="350"
-                  />
-                  <div className="mt-6 flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium">Interactive Dictation</h3>
-                      <p className="text-sm text-muted-foreground">Type what you hear and get instant feedback</p>
-                    </div>
-                    <ArrowUpRight className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </>
+      </div>
+    </section>
   );
 }

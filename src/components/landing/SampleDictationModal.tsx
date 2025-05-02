@@ -10,22 +10,26 @@ import { Loader2 } from 'lucide-react';
 interface SampleDictationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  embedded?: boolean;
 }
 
 // Pre-defined audio URL for all visitors
 const staticAudioUrl = "https://kmpghammoxblhacndimq.supabase.co/storage/v1/object/public/audio//exercise_1746223427671.mp3";
 
-export function SampleDictationModal({ open, onOpenChange }: SampleDictationModalProps) {
+export function SampleDictationModal({ open, onOpenChange, embedded = false }: SampleDictationModalProps) {
   const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
   
   // Sample exercise data with more comprehensive text
   const sampleText = "This app helps you improve your language skills through dictation. You listen to a sentence spoken by a native speaker and type what you hear. It trains your listening, spelling, and grammar all at once. Each exercise is based on the most common words in the language, so you build practical vocabulary while improving accuracy. You get instant feedback on your typing, and you can repeat each sentence as many times as you need. It's a simple but powerful way to make fast, real progress.";
   
+  // For embedded version, use a shorter text sample
+  const embeddedSampleText = "Listen carefully and type what you hear. This simple exercise improves your listening comprehension and spelling at the same time.";
+  
   const sampleExercise: Exercise = {
     id: 'sample-exercise',
     title: 'Try Dictation Practice',
-    text: sampleText,
+    text: embedded ? embeddedSampleText : sampleText,
     audioUrl: staticAudioUrl,
     language: 'english',
     tags: ['sample', 'beginner'],
@@ -51,6 +55,47 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
     onOpenChange(newOpenState);
   };
 
+  // For embedded mode, render directly in a div instead of a modal
+  if (embedded) {
+    return (
+      <div className="border rounded-xl overflow-hidden shadow-md bg-background">
+        <div className="p-4 border-b">
+          <h3 className="text-lg font-semibold">Try Dictation Practice</h3>
+          <p className="text-sm text-muted-foreground">
+            Listen and type what you hear
+          </p>
+        </div>
+        
+        <div className="h-[320px] overflow-auto">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
+              <p className="text-sm text-muted-foreground">Loading audio sample...</p>
+            </div>
+          ) : (
+            <DictationPractice 
+              exercise={sampleExercise} 
+              onComplete={handleComplete} 
+              showResults={completed}
+              onTryAgain={handleTryAgain}
+              hideVocabularyTab={true}
+            />
+          )}
+        </div>
+        
+        <div className="p-3 border-t flex justify-between items-center bg-muted/30">
+          <span className="text-xs text-muted-foreground">
+            Try the full experience
+          </span>
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/signup">Sign Up</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Regular modal view
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
