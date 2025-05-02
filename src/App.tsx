@@ -10,6 +10,7 @@ import { UserSettingsProvider } from "@/contexts/UserSettingsContext";
 import { VocabularyProvider } from "@/contexts/VocabularyContext";
 
 import Layout from "@/components/Layout";
+import Index from "@/pages/Index";
 import HomePage from "@/pages/HomePage";
 import ExercisesPage from "@/pages/ExercisesPage";
 import VocabularyPage from "@/pages/VocabularyPage";
@@ -32,12 +33,14 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Index />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/signup" element={<SignUpPage />} />
                   
                   {/* Protected Routes */}
                   <Route element={<ProtectedRoute />}>
-                    <Route path="/" element={<Layout />}>
+                    <Route path="/dashboard" element={<Layout />}>
                       <Route index element={<HomePage />} />
                       <Route path="exercises" element={<ExercisesPage />} />
                       <Route path="vocabulary" element={<VocabularyPage />} />
