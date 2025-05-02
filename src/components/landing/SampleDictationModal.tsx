@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import DictationPractice from '@/components/DictationPractice';
 import { Exercise } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
 interface SampleDictationModalProps {
@@ -13,9 +12,8 @@ interface SampleDictationModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Create a static audio URL that will be shared across all instances
-let staticAudioUrl: string | null = null;
-let audioGenerationInProgress = false;
+// Pre-defined audio URL for all visitors
+const staticAudioUrl = "https://kmpghammoxblhacndimq.supabase.co/storage/v1/object/public/audio//exercise_1746223427671.mp3";
 
 export function SampleDictationModal({ open, onOpenChange }: SampleDictationModalProps) {
   const [completed, setCompleted] = useState(false);
@@ -28,7 +26,7 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
     id: 'sample-exercise',
     title: 'Try Dictation Practice',
     text: sampleText,
-    audioUrl: staticAudioUrl || '',
+    audioUrl: staticAudioUrl,
     language: 'english',
     tags: ['sample', 'beginner'],
     completionCount: 0,
@@ -36,59 +34,6 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
     createdAt: new Date(),
     directoryId: null
   };
-
-  // Generate audio from text using the edge function only once
-  useEffect(() => {
-    const generateAudio = async () => {
-      try {
-        if (audioGenerationInProgress) return;
-        
-        audioGenerationInProgress = true;
-        setLoading(true);
-        
-        // Call the text-to-speech edge function
-        const { data, error } = await supabase.functions.invoke('text-to-speech', {
-          body: {
-            text: sampleText,
-            language: 'english'
-          }
-        });
-        
-        if (error) {
-          console.error('Error generating audio:', error);
-          audioGenerationInProgress = false;
-          return;
-        }
-        
-        // Convert base64 audio to blob URL
-        if (data && data.audioContent) {
-          const binaryString = atob(data.audioContent);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          const blob = new Blob([bytes], { type: 'audio/mp3' });
-          staticAudioUrl = URL.createObjectURL(blob);
-          
-          // Update the exercise with the new audio URL
-          sampleExercise.audioUrl = staticAudioUrl;
-        }
-      } catch (error) {
-        console.error('Error in audio generation:', error);
-      } finally {
-        setLoading(false);
-        audioGenerationInProgress = false;
-      }
-    };
-
-    // Only generate audio if we don't have it yet
-    if (open && !staticAudioUrl && !audioGenerationInProgress) {
-      generateAudio();
-    } else {
-      // If we already have the audio, make sure loading is set to false
-      setLoading(false);
-    }
-  }, [open]);
 
   const handleComplete = (accuracy: number) => {
     setCompleted(true);
@@ -120,7 +65,7 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="mt-4 text-muted-foreground">Generating audio sample...</p>
+              <p className="mt-4 text-muted-foreground">Loading audio sample...</p>
             </div>
           ) : (
             <DictationPractice 
