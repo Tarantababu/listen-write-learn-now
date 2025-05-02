@@ -9,6 +9,7 @@ import DirectoryBrowser from '@/components/DirectoryBrowser';
 import { Exercise } from '@/types';
 import { toast } from 'sonner';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 // Import the components we've just created
 import FilterBar from '@/components/exercises/FilterBar';
@@ -22,6 +23,7 @@ import PracticeModal from '@/components/exercises/PracticeModal';
 const ExercisesPage: React.FC = () => {
   const { exercises, selectExercise, selectedExercise, deleteExercise, markProgress } = useExerciseContext();
   const { currentDirectoryId } = useDirectoryContext();
+  const { settings } = useUserSettingsContext();
   const navigate = useNavigate();
   const location = useLocation();
   const [key, setKey] = useState(Date.now()); // Add a key to force re-rendering
@@ -50,9 +52,11 @@ const ExercisesPage: React.FC = () => {
     setCurrentPage(1);
   }, [searchTerm, filterCompleted, selectedTag, currentDirectoryId]);
   
-  // Get all unique tags from exercises
+  // Get all unique tags from exercises that match the selected language
+  const languageExercises = exercises.filter(ex => ex.language === settings.selectedLanguage);
+  
   const allTags = Array.from(
-    new Set(exercises.flatMap(exercise => exercise.tags))
+    new Set(languageExercises.flatMap(exercise => exercise.tags))
   );
   
   // Get all unique languages from exercises
@@ -60,10 +64,10 @@ const ExercisesPage: React.FC = () => {
     new Set(exercises.map(exercise => exercise.language))
   );
   
-  // First filter exercises by directory if a directory is selected
+  // First filter exercises by directory and selected language
   const directoryExercises = currentDirectoryId 
-    ? exercises.filter(ex => ex.directoryId === currentDirectoryId)
-    : exercises;
+    ? languageExercises.filter(ex => ex.directoryId === currentDirectoryId)
+    : languageExercises;
   
   // Then apply additional filters to the directory-filtered exercises
   const filteredExercises = directoryExercises
@@ -187,9 +191,10 @@ const ExercisesPage: React.FC = () => {
   return (
     <DirectoryProvider>
       <div className="container mx-auto px-4 py-8" key={key}>
-        {/* The key prop here will force a re-render when changed */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Your Exercise Library</h1>
+          <h1 className="text-2xl font-bold">
+            Your {settings.selectedLanguage.charAt(0).toUpperCase() + settings.selectedLanguage.slice(1)} Exercises
+          </h1>
           <Button onClick={() => setIsAddModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" /> New Exercise
           </Button>

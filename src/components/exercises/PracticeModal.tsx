@@ -7,6 +7,7 @@ import {
 import { Exercise } from '@/types';
 import DictationPractice from '@/components/DictationPractice';
 import VocabularyHighlighter from '@/components/VocabularyHighlighter';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 interface PracticeModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   onComplete
 }) => {
   const [showResults, setShowResults] = useState(false);
+  const { settings } = useUserSettingsContext();
   
   const handleComplete = (accuracy: number) => {
     onComplete(accuracy);
@@ -46,7 +48,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     }
   };
   
-  if (!exercise) return null;
+  // If the exercise doesn't match the selected language, don't render
+  if (!exercise || exercise.language !== settings.selectedLanguage) return null;
   
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -57,7 +60,6 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
           showResults={showResults}
           onTryAgain={() => setShowResults(false)}
         />
-        {/* VocabularyHighlighter is now conditionally rendered directly in DictationPractice */}
       </DialogContent>
     </Dialog>
   );
