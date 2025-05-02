@@ -4,7 +4,7 @@ import { Exercise } from '@/types';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Check, Move } from 'lucide-react';
+import { Clock, MoreVertical, Check } from 'lucide-react';
 import MoveExerciseModal from './MoveExerciseModal';
 
 interface ExerciseCardProps {
@@ -29,90 +29,81 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
     ? directories.find(dir => dir.id === exercise.directoryId)?.name 
     : null;
   
+  // Calculate duration in minutes (mock data for now)
+  const duration = exercise.duration || (Math.floor(Math.random() * 4) + 2) + ":" + (Math.floor(Math.random() * 60)).toString().padStart(2, '0') + " min";
+  
+  // Format progress status
+  const getProgressStatus = () => {
+    if (isCompleted) {
+      return { text: "Completed", color: "text-green-600" };
+    }
+    if (completionCount > 0) {
+      return { text: `In progress (${completionCount}/3)`, color: "text-amber-500" };
+    }
+    return { text: "Not started", color: "text-gray-400" };
+  };
+  
+  const progressStatus = getProgressStatus();
+  
   return (
     <>
-      <Card className={`overflow-hidden ${isCompleted ? 'border-success border-2' : ''}`}>
+      <Card className="overflow-hidden hover:shadow-md transition-all duration-200">
         <CardContent className="p-4">
-          <div className="mb-2 flex justify-between items-center">
-            <h3 className="font-medium text-lg">{title}</h3>
-            <div className="flex gap-2">
-              {directoryName && (
-                <span className="text-xs px-2 py-1 bg-muted/70 rounded-full truncate max-w-[100px]">
-                  {directoryName}
+          <div className="flex justify-between items-start mb-2">
+            <div>
+              {/* Language and tag pills */}
+              <div className="flex gap-1 mb-2">
+                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full capitalize">
+                  {language}
                 </span>
-              )}
-              <span className="text-xs px-2 py-1 bg-muted rounded-full capitalize">
-                {language}
-              </span>
+                {tags.length > 0 && (
+                  <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full">
+                    {tags[0]}
+                  </span>
+                )}
+              </div>
+              
+              {/* Exercise title */}
+              <h3 className="font-medium text-lg mb-1">{title}</h3>
+              
+              {/* Exercise description */}
+              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                {text}
+              </p>
             </div>
+            
+            {/* Menu (three dots) */}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => {}}
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
           </div>
           
-          <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
-            {text}
-          </p>
-          
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {tags.map(tag => (
-                <span 
-                  key={tag}
-                  className="text-xs px-2 py-0.5 bg-muted rounded-full"
-                >
-                  {tag}
-                </span>
-              ))}
+          {/* Status indicators */}
+          <div className="flex items-center justify-between text-xs mt-4">
+            <div className="flex items-center gap-1 text-gray-500">
+              <Clock className="h-3.5 w-3.5" />
+              <span>{duration}</span>
             </div>
-          )}
-          
-          <div className="mt-4 flex items-center">
-            {isCompleted ? (
-              <div className="flex items-center text-success gap-1 text-sm">
-                <Check className="h-4 w-4" />
-                <span>Completed</span>
-              </div>
-            ) : (
-              <div className="text-xs text-muted-foreground">
-                Progress: {completionCount}/3 successful attempts
-              </div>
-            )}
+            
+            <div className={`flex items-center gap-1 ${progressStatus.color}`}>
+              {isCompleted && <Check className="h-3.5 w-3.5" />}
+              <span>{progressStatus.text}</span>
+            </div>
           </div>
         </CardContent>
         
-        <CardFooter className="p-4 pt-0 flex justify-between gap-2">
+        <CardFooter className="border-t p-4 flex justify-center bg-gray-50">
           <Button 
             onClick={onPractice} 
-            className="flex-1"
-            variant="default"
+            variant="outline"
+            className="w-full"
           >
-            <Play className="h-4 w-4 mr-2" /> Practice
-          </Button>
-          
-          <Button 
-            onClick={() => setIsMoveModalOpen(true)}
-            variant="outline" 
-            size="icon"
-            title="Move to folder"
-          >
-            <span className="sr-only">Move</span>
-            <Move className="h-4 w-4" />
-          </Button>
-          
-          <Button 
-            onClick={onEdit} 
-            variant="outline" 
-            size="icon"
-          >
-            <span className="sr-only">Edit</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"></path></svg>
-          </Button>
-          
-          <Button 
-            onClick={onDelete} 
-            variant="outline" 
-            size="icon"
-          >
-            <span className="sr-only">Delete</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+            {completionCount > 0 && !isCompleted ? 'Continue Dictation' : 'Start Dictation'}
           </Button>
         </CardFooter>
       </Card>
