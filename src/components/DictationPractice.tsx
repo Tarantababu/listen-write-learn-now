@@ -21,13 +21,15 @@ interface DictationPracticeProps {
   onComplete: (accuracy: number) => void;
   showResults?: boolean;
   onTryAgain?: () => void;
+  hideVocabularyTab?: boolean;
 }
 
 const DictationPractice: React.FC<DictationPracticeProps> = ({
   exercise,
   onComplete,
   showResults = false,
-  onTryAgain
+  onTryAgain,
+  hideVocabularyTab = false
 }) => {
   const [userInput, setUserInput] = useState('');
   const [accuracy, setAccuracy] = useState<number | null>(null);
@@ -281,10 +283,12 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
         <div className="overflow-hidden">
           <Tabs defaultValue="summary" className="w-full">
             <div className="px-6 pt-4">
-              <TabsList className="w-full grid grid-cols-3">
+              <TabsList className={cn("w-full", hideVocabularyTab ? "grid-cols-2" : "grid-cols-3")}>
                 <TabsTrigger value="summary">Summary</TabsTrigger>
                 <TabsTrigger value="comparison">Comparison</TabsTrigger>
-                <TabsTrigger value="vocabulary">Vocabulary</TabsTrigger>
+                {!hideVocabularyTab && (
+                  <TabsTrigger value="vocabulary">Vocabulary</TabsTrigger>
+                )}
               </TabsList>
             </div>
 
@@ -443,11 +447,13 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
               </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="vocabulary" className="mt-0">
-              <ScrollArea className="h-[65vh]">
-                <VocabularyHighlighter exercise={exercise} />
-              </ScrollArea>
-            </TabsContent>
+            {!hideVocabularyTab && (
+              <TabsContent value="vocabulary" className="mt-0">
+                <ScrollArea className="h-[65vh]">
+                  <VocabularyHighlighter exercise={exercise} />
+                </ScrollArea>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       )}

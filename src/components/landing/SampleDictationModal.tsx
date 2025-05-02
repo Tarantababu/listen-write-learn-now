@@ -73,6 +73,7 @@ export function SampleDictationModal({ open, onOpenChange }: SampleDictationModa
               onComplete={handleComplete} 
               showResults={completed}
               onTryAgain={handleTryAgain}
+              hideVocabularyTab={true}
             />
           )}
         </div>
