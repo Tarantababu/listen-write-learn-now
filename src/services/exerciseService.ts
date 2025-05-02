@@ -11,6 +11,7 @@ export const fetchExercises = async (userId: string | undefined) => {
     throw new Error('User ID is required to fetch exercises');
   }
 
+  // Use explicit type casting to avoid deep recursion
   const { data, error } = await supabase
     .from('exercises')
     .select('*')
@@ -54,19 +55,22 @@ export const createExercise = async (
  * Updates an exercise in Supabase
  */
 export const updateExercise = async (userId: string, id: string, updates: Partial<Exercise>) => {
+  // Create an object with only the database fields
+  const updateData: Record<string, any> = {};
+  
+  if (updates.title !== undefined) updateData.title = updates.title;
+  if (updates.text !== undefined) updateData.text = updates.text;
+  if (updates.language !== undefined) updateData.language = updates.language;
+  if (updates.tags !== undefined) updateData.tags = updates.tags;
+  if (updates.audioUrl !== undefined) updateData.audio_url = updates.audioUrl;
+  if (updates.directoryId !== undefined) updateData.directory_id = updates.directoryId;
+  if (updates.completionCount !== undefined) updateData.completion_count = updates.completionCount;
+  if (updates.isCompleted !== undefined) updateData.is_completed = updates.isCompleted;
+  if (updates.archived !== undefined) updateData.archived = updates.archived;
+
   const { error } = await supabase
     .from('exercises')
-    .update({
-      title: updates.title,
-      text: updates.text,
-      language: updates.language,
-      tags: updates.tags,
-      audio_url: updates.audioUrl,
-      directory_id: updates.directoryId,
-      completion_count: updates.completionCount,
-      is_completed: updates.isCompleted,
-      archived: updates.archived
-    })
+    .update(updateData)
     .eq('id', id)
     .eq('user_id', userId);
 

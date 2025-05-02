@@ -81,6 +81,7 @@ export type Database = {
       }
       exercises: {
         Row: {
+          archived: boolean | null
           audio_url: string | null
           completion_count: number | null
           created_at: string
@@ -95,6 +96,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          archived?: boolean | null
           audio_url?: string | null
           completion_count?: number | null
           created_at?: string
@@ -109,6 +111,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          archived?: boolean | null
           audio_url?: string | null
           completion_count?: number | null
           created_at?: string
