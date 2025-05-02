@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { Exercise } from '@/types';
@@ -35,7 +35,7 @@ const MoveExerciseModal: React.FC<MoveExerciseModalProps> = ({
   const [isMoving, setIsMoving] = useState(false);
   
   // Reset state when modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       setBrowsePath([]);
       setSelectedDirectoryId(null);
@@ -72,36 +72,52 @@ const MoveExerciseModal: React.FC<MoveExerciseModalProps> = ({
   };
   
   const handleMove = async () => {
+    if (isMoving) return; // Prevent double submission
+    
     try {
       setIsMoving(true);
       await moveExerciseToDirectory(exercise.id, selectedDirectoryId);
       
-      // Close the modal
-      onOpenChange(false);
+      toast.success(`Exercise moved to ${selectedDirectoryId ? directories.find(d => d.id === selectedDirectoryId)?.name : 'Root'}`);
       
       // Call onSuccess callback if provided
       if (onSuccess) {
         onSuccess();
       }
       
-      toast.success(`Exercise moved to ${selectedDirectoryId ? directories.find(d => d.id === selectedDirectoryId)?.name : 'Root'}`);
+      // Close the modal after a short delay to ensure state updates complete
+      setTimeout(() => {
+        setIsMoving(false);
+        onOpenChange(false);
+      }, 100);
+      
     } catch (error) {
       console.error('Error moving exercise:', error);
       toast.error('Failed to move exercise');
-    } finally {
       setIsMoving(false);
+    }
+  };
+  
+  const handleCancel = () => {
+    if (!isMoving) {
+      onOpenChange(false);
     }
   };
   
   const isCurrentDirectory = exercise.directoryId === selectedDirectoryId;
   
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      // Only allow closing if we're not in the middle of moving
-      if (!isMoving || !open) {
-        onOpenChange(open);
-      }
-    }}>
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        // Only allow closing if we're not in the middle of moving
+        if (!isMoving && !open) {
+          onOpenChange(false);
+        } else if (!isMoving && open) {
+          onOpenChange(true);
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Move Exercise</DialogTitle>
@@ -167,7 +183,7 @@ const MoveExerciseModal: React.FC<MoveExerciseModalProps> = ({
         <div className="flex justify-end gap-2">
           <Button 
             variant="outline" 
-            onClick={() => onOpenChange(false)}
+            onClick={handleCancel}
             disabled={isMoving}
           >
             Cancel

@@ -68,8 +68,15 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
   
   const progressStatus = getProgressStatus();
 
+  const handleOpenMoveModal = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsMoveModalOpen(true);
+  };
+
   const handleMoveSuccess = () => {
-    // Additional actions after successful move if needed
+    // Reset modal state
+    setIsMoveModalOpen(false);
   };
   
   return (
@@ -117,7 +124,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setIsMoveModalOpen(true)} className="cursor-pointer">
+                <DropdownMenuItem onClick={handleOpenMoveModal} className="cursor-pointer">
                   <FolderUp className="mr-2 h-4 w-4" />
                   Move to folder
                 </DropdownMenuItem>
@@ -155,12 +162,15 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
         </CardFooter>
       </Card>
       
-      <MoveExerciseModal
-        exercise={exercise}
-        isOpen={isMoveModalOpen}
-        onOpenChange={setIsMoveModalOpen}
-        onSuccess={handleMoveSuccess}
-      />
+      {/* Move Exercise Modal - Only render when open to avoid stale state */}
+      {isMoveModalOpen && (
+        <MoveExerciseModal
+          exercise={exercise}
+          isOpen={isMoveModalOpen}
+          onOpenChange={setIsMoveModalOpen}
+          onSuccess={handleMoveSuccess}
+        />
+      )}
     </>
   );
 };
