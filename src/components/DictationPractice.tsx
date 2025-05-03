@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Exercise } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -15,6 +14,7 @@ import {
 } from '@/utils/textComparison';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import DictationMicrophone from '@/components/DictationMicrophone';
 
 interface DictationPracticeProps {
   exercise: Exercise;
@@ -180,6 +180,18 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     }, 0);
   };
   
+  // Handle dictation result
+  const handleDictationResult = (text: string) => {
+    setUserInput(text);
+    
+    // Focus back on textarea to allow edits
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }, 100);
+  };
+  
   return (
     <div className="space-y-4">
       {/* Header with exercise title and progress */}
@@ -263,9 +275,19 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
               placeholder="Type what you hear..."
               className="min-h-32 rounded-xl border-gray-200 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             />
-            <p className="text-sm text-gray-500 text-right">
-              Press <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Shift</span> + <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Space</span> to play/pause
-            </p>
+            
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-sm text-gray-500">
+                Press <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Shift</span> + <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Space</span> to play/pause
+              </p>
+              
+              {/* Add microphone dictation button */}
+              <DictationMicrophone 
+                onTextReceived={handleDictationResult}
+                language={exercise.language}
+                isDisabled={showResults}
+              />
+            </div>
           </div>
           
           <div className="flex justify-center">
