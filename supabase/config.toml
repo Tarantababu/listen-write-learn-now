@@ -1,4 +1,10 @@
 
+project_id = "kmpghammoxblhacndimq"
+
 [functions]
   [functions.send-feedback]
+    verify_jwt = true
+  [functions.text-to-speech]
+    verify_jwt = true
+  [functions.speech-to-text]
     verify_jwt = true

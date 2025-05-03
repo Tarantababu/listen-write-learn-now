@@ -7,6 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const ADMIN_EMAIL = "yigitaydin@gmail.com";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -30,26 +32,50 @@ serve(async (req) => {
       );
     }
 
-    // Send email using Supabase's built-in email service
-    // This requires email templates to be set up in the Supabase dashboard
-    const { data, error } = await supabaseClient.auth.admin.generateLink({
-      type: 'recovery',
-      email: Deno.env.get('ADMIN_EMAIL') || 'your-email@example.com',
-      options: {
-        data: {
-          subject: 'New Feedback Submission',
-          feedback_name: name || 'Anonymous',
-          feedback_email: email || 'No email provided',
-          feedback_message: message
+    // Store the feedback in a database table for persistence
+    const { data: feedbackData, error: feedbackError } = await supabaseClient
+      .from('feedback')
+      .insert([
+        { 
+          name: name || 'Anonymous', 
+          email: email || 'No email provided', 
+          message: message 
         }
-      }
-    });
+      ])
+      .select();
 
-    if (error) {
-      throw error;
+    if (feedbackError) {
+      console.error("Error storing feedback:", feedbackError);
+      // Continue execution even if storing fails
     }
 
-    console.log("Feedback sent successfully");
+    // Send notification email to admin
+    const emailSubject = "New Feedback Submission";
+    const emailContent = `
+      <html>
+        <body>
+          <h2>New Feedback Received</h2>
+          <p><strong>From:</strong> ${name || 'Anonymous'}</p>
+          <p><strong>Email:</strong> ${email || 'No email provided'}</p>
+          <p><strong>Message:</strong></p>
+          <p>${message}</p>
+        </body>
+      </html>
+    `;
+
+    // Send email using Supabase Edge Function
+    const { data: emailData, error: emailError } = await supabaseClient.auth.admin.sendEmail({
+      email: ADMIN_EMAIL,
+      subject: emailSubject,
+      html: emailContent
+    });
+
+    if (emailError) {
+      console.error("Error sending email:", emailError);
+      throw emailError;
+    }
+
+    console.log("Feedback sent successfully to", ADMIN_EMAIL);
     
     return new Response(
       JSON.stringify({ success: true, message: "Feedback sent successfully" }),
