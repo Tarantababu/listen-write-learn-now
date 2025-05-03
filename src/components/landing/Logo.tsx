@@ -14,7 +14,14 @@ export function Logo({ className, size = 'default' }: { className?: string, size
         'h-8 w-8': size === 'default',
         'h-10 w-10': size === 'lg'
       })}>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-full w-full">
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          viewBox="0 0 24 24" 
+          className="h-full w-full"
+          width={logoSize}
+          height={logoSize}
+          preserveAspectRatio="xMidYMid meet"
+        >
           <rect 
             width="16" 
             height="16" 
