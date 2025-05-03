@@ -28,10 +28,10 @@ const queryClient = new QueryClient();
 const AuthenticatedApp: React.FC = () => {
   return (
     <UserSettingsProvider>
-      <SubscriptionProvider>
-        <ExerciseProvider>
-          <DirectoryProvider>
-            <VocabularyProvider>
+      <ExerciseProvider>
+        <DirectoryProvider>
+          <VocabularyProvider>
+            <SubscriptionProvider>
               <TooltipProvider>
                 <Toaster />
                 <Sonner position="top-center" />
@@ -57,10 +57,10 @@ const AuthenticatedApp: React.FC = () => {
                   </Routes>
                 </div>
               </TooltipProvider>
-            </VocabularyProvider>
-          </DirectoryProvider>
-        </ExerciseProvider>
-      </SubscriptionProvider>
+            </SubscriptionProvider>
+          </VocabularyProvider>
+        </DirectoryProvider>
+      </ExerciseProvider>
     </UserSettingsProvider>
   );
 };

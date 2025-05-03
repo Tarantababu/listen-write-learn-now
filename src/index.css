@@ -4,100 +4,151 @@
 @tailwind utilities;
 
 @layer base {
-  /* SVG styles */
-  svg {
-    display: inline-block;
-    vertical-align: middle;
-    width: 1em; /* Makes SVGs scale with text */
-    height: 1em; /* Maintains aspect ratio */
-    font-size: inherit; /* Allows parent to control size */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 262 83.3% 57.8%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --accent: 291 70% 50%;
+    --accent-foreground: 210 40% 98%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 262 83.3% 57.8%;
+    --radius: 0.5rem;
+    --success: 142 71% 45%;
+    --success-foreground: 210 40% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 210 40% 98%;
+    --info: 199 89% 48%;
+    --info-foreground: 210 40% 98%;
+    --avatar-size: 2.5rem;
   }
-  
-  /* Update the button/link SVG styling */
-  button svg, a svg, .icon svg {
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-  }
-  
-  /* Add specific SVG size classes */
-  .svg-sm {
-    font-size: 1rem; /* 16px */
-  }
-  
-  .svg-md {
-    font-size: 1.5rem; /* 24px */
-  }
-  
-  .svg-lg {
-    font-size: 2rem; /* 32px */
-  }
-  
-  .svg-xl {
-    font-size: 3rem; /* 48px */
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 263.4 70% 50.4%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --accent: 291 70% 50%;
+    --accent-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 263.4 70% 50.4%;
   }
 }
 
-/* Add this outside of layers if you need immediate fixes */
-.icon-container {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--icon-size, 24px);
-  height: var(--icon-size, 24px);
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 
-/* Hero animation classes */
-.fade-bottom {
-  mask-image: linear-gradient(to bottom, black 60%, transparent 95%);
+@layer components {
+  .gradient-card {
+    @apply relative bg-gradient-to-br from-background via-background to-accent/5 hover:to-accent/10 transition-all border border-border/50 hover:shadow-md;
+  }
 }
 
-@keyframes appear {
-  0% {
+@keyframes fadeIn {
+  from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
-  100% {
+  to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-@keyframes appear-zoom {
-  0% {
+@keyframes slideIn {
+  from {
     opacity: 0;
-    transform: scale(0.9);
+    transform: translateX(-20px);
   }
-  100% {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
     opacity: 1;
     transform: scale(1);
   }
 }
 
-.animate-appear {
-  animation: appear 1s ease-out forwards;
+@keyframes bounceOnce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
 }
 
-.animate-appear-zoom {
-  animation: appear-zoom 1s ease-out forwards;
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
 }
 
-.delay-100 {
-  animation-delay: 100ms;
-}
-
-.delay-300 {
-  animation-delay: 300ms;
-}
-
-.delay-500 {
-  animation-delay: 500ms;
-}
-
-.delay-700 {
-  animation-delay: 700ms;
-}
-
-.delay-1000 {
-  animation-delay: 1000ms;
+@layer utilities {
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out forwards;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out forwards;
+  }
+  
+  .animate-bounce-once {
+    animation: bounceOnce 1s ease-out;
+  }
+  
+  /* Hover effects */
+  .hover-scale {
+    @apply transition-transform hover:scale-105 duration-200;
+  }
+  
+  .hover-glow {
+    @apply transition-shadow hover:shadow-lg hover:shadow-primary/20 duration-300;
+  }
 }

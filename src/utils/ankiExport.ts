@@ -139,14 +139,3 @@ export const downloadAnkiImport = async (vocabularyItems: VocabularyItem[], deck
     return Promise.reject(error);
   }
 };
-
-// Add the exportToAnki function that was missing
-export const exportToAnki = async (vocabularyItems: VocabularyItem[], language: string): Promise<void> => {
-  try {
-    await downloadAnkiImport(vocabularyItems, `${language}_vocabulary`);
-    return Promise.resolve();
-  } catch (error) {
-    console.error('Error exporting to Anki:', error);
-    return Promise.reject(error);
-  }
-};

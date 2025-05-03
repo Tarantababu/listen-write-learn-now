@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -10,7 +9,6 @@ import { Exercise } from '@/types';
 import { toast } from 'sonner';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { useSubscription } from '@/contexts/SubscriptionContext';
 
 // Import the components we've just created
 import FilterBar from '@/components/exercises/FilterBar';
@@ -25,14 +23,9 @@ const ExercisesPage: React.FC = () => {
   const { exercises, selectExercise, selectedExercise, deleteExercise, markProgress } = useExerciseContext();
   const { currentDirectoryId } = useDirectoryContext();
   const { settings } = useUserSettingsContext();
-  const { subscription } = useSubscription();
   const navigate = useNavigate();
   const location = useLocation();
   const [key, setKey] = useState(Date.now()); // Add a key to force re-rendering
-  
-  // Check if user has premium subscription
-  const isPremium = subscription.isSubscribed && subscription.subscriptionTier === 'premium';
-  const FREE_USER_EXERCISE_LIMIT = 3;
   
   // Modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -195,47 +188,19 @@ const ExercisesPage: React.FC = () => {
       }, 300);
     }
   };
-
-  const renderExerciseCount = () => {
-    if (isPremium) {
-      return <span className="text-xs text-muted-foreground">({exercises.length} exercises)</span>;
-    }
-    return (
-      <span className="text-xs text-muted-foreground">
-        ({exercises.length}/{FREE_USER_EXERCISE_LIMIT} exercises)
-      </span>
-    );
-  };
-
-  const handleUpgrade = () => {
-    navigate('/dashboard/subscription');
-  };
   
   return (
     <DirectoryProvider>
       <div className="container mx-auto px-4 py-8" key={key}>
         <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              Your {settings.selectedLanguage.charAt(0).toUpperCase() + settings.selectedLanguage.slice(1)} Exercises
-              {renderExerciseCount()}
-              {currentDirectoryId && (
-                <span className="ml-2 text-muted-foreground">
-                  (in selected folder)
-                </span>
-              )}
-            </h1>
-            {!isPremium && exercises.length >= FREE_USER_EXERCISE_LIMIT && (
-              <div className="mt-1 text-sm text-amber-600">
-                <button 
-                  className="text-blue-500 hover:underline" 
-                  onClick={handleUpgrade}
-                >
-                  Upgrade to premium
-                </button> for unlimited exercises
-              </div>
+          <h1 className="text-2xl font-bold">
+            Your {settings.selectedLanguage.charAt(0).toUpperCase() + settings.selectedLanguage.slice(1)} Exercises
+            {currentDirectoryId && (
+              <span className="ml-2 text-muted-foreground">
+                (in selected folder)
+              </span>
             )}
-          </div>
+          </h1>
           <Button onClick={() => setIsAddModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" /> New Exercise
           </Button>

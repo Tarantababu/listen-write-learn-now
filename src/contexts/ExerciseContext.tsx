@@ -3,7 +3,6 @@ import { Exercise, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { useSubscription } from '@/contexts/SubscriptionContext';
 import { 
   fetchExercises,
   createExercise, 
@@ -16,9 +15,6 @@ import {
   deleteAssociatedCompletions
 } from '@/services/exerciseService';
 import { useLocalExercises } from '@/hooks/useLocalExercises';
-
-// Free user limits
-const FREE_USER_EXERCISE_LIMIT = 3;
 
 interface ExerciseContextProps {
   exercises: Exercise[];
@@ -49,10 +45,6 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const localExercises = useLocalExercises();
-  const { subscription } = useSubscription();
-  
-  // Check if user has premium subscription
-  const isPremium = subscription.isSubscribed && subscription.subscriptionTier === 'premium';
   
   // Ensure audio bucket exists
   useEffect(() => {
@@ -93,17 +85,6 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const addExercise = async (exercise: Omit<Exercise, 'id' | 'createdAt' | 'completionCount' | 'isCompleted'>) => {
     try {
-      // Check if user has reached their exercise limit (include deleted/archived exercises)
-      if (!isPremium && exercises.length >= FREE_USER_EXERCISE_LIMIT) {
-        toast.error(
-          <div className="flex flex-col gap-1">
-            <span>You've reached the maximum number of exercises (3) for free accounts.</span>
-            <span>Upgrade to premium for unlimited exercises.</span>
-          </div>
-        );
-        throw new Error("Exercise limit reached");
-      }
-
       if (!user) {
         // Handle non-authenticated user
         return localExercises.addExercise(exercise);
@@ -114,9 +95,7 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setExercises(prev => [newExercise, ...prev]);
       return newExercise;
     } catch (error: any) {
-      if (error.message !== "Exercise limit reached") {
-        toast.error('Failed to create exercise: ' + error.message);
-      }
+      toast.error('Failed to create exercise: ' + error.message);
       throw error;
     }
   };
