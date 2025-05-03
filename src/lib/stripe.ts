@@ -9,6 +9,8 @@ export const SUBSCRIPTION_PLANS = {
     trialDays: 7,
     features: [
       'Unlimited exercises',
+      'Unlimited vocabulary lists',
+      'Edit exercises anytime',
       'Text-to-speech for all exercises',
       'Advanced analytics',
       'AI-powered vocabulary suggestions'

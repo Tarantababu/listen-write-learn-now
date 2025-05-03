@@ -3,6 +3,7 @@ import React from 'react';
 import { Exercise } from '@/types';
 import ExerciseCard from '@/components/ExerciseCard';
 import CreateExerciseCard from '@/components/exercises/CreateExerciseCard';
+import { useExerciseContext } from '@/contexts/ExerciseContext';
 
 interface ExerciseGridProps {
   paginatedExercises: Exercise[];
@@ -11,33 +12,46 @@ interface ExerciseGridProps {
   onEdit: (exercise: Exercise) => void;
   onDelete: (exercise: Exercise) => void;
   onCreateClick: () => void;
+  canEdit?: boolean;
 }
 
-const ExerciseGrid: React.FC<ExerciseGridProps> = ({
+const ExerciseGrid = ({
   paginatedExercises,
   exercisesPerPage,
   onPractice,
   onEdit,
   onDelete,
-  onCreateClick
-}) => {
+  onCreateClick,
+  canEdit = true
+}: ExerciseGridProps) => {
+  const { canCreateMore } = useExerciseContext();
+  
+  // Calculate empty slots for grid layout
+  const emptySlots = exercisesPerPage - paginatedExercises.length - (canCreateMore ? 1 : 0);
+  const emptySlotArray = emptySlots > 0 ? Array(emptySlots).fill(null) : [];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr mb-6">
-      {paginatedExercises.map(exercise => (
-        <div key={exercise.id} className="h-full">
-          <ExerciseCard
-            exercise={exercise}
-            onPractice={() => onPractice(exercise)}
-            onEdit={() => onEdit(exercise)}
-            onDelete={() => onDelete(exercise)}
-          />
-        </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-6">
+      {paginatedExercises.map((exercise) => (
+        <ExerciseCard
+          key={exercise.id}
+          exercise={exercise}
+          onPractice={() => onPractice(exercise)}
+          onEdit={() => onEdit(exercise)}
+          onDelete={() => onDelete(exercise)}
+          disableEdit={!canEdit}
+        />
       ))}
       
-      {/* Create New Exercise Card - only show if we have room for it */}
-      {paginatedExercises.length < exercisesPerPage && (
+      {/* Only show the create card if the user can create more */}
+      {canCreateMore && (
         <CreateExerciseCard onClick={onCreateClick} />
       )}
+      
+      {/* Empty slots for grid layout */}
+      {emptySlotArray.map((_, index) => (
+        <div key={`empty-${index}`} className="border border-dashed rounded-lg p-6 h-full invisible"></div>
+      ))}
     </div>
   );
 };

@@ -1,308 +1,123 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import VocabularyPlaylist from '@/components/VocabularyPlaylist';
+import VocabularyCard from '@/components/VocabularyCard';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
-import VocabularyCard from '@/components/VocabularyCard';
-import VocabularyPlaylist from '@/components/VocabularyPlaylist';
-import { VocabularyItem } from '@/types';
-import { toast } from 'sonner';
-import { FileDown, Info, Search } from 'lucide-react';
-import { downloadAnkiImport } from '@/utils/ankiExport';
-import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { useIsMobile } from '@/hooks/use-mobile';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Sparkles, PlusCircle } from 'lucide-react';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useNavigate } from 'react-router-dom';
+import UpgradePrompt from '@/components/UpgradePrompt';
 
-const VocabularyPage: React.FC = () => {
-  const { vocabulary, removeVocabularyItem, loading } = useVocabularyContext();
+const VocabularyPage = () => {
+  const { vocabulary, getVocabularyByLanguage, canCreateMore, vocabularyLimit } = useVocabularyContext();
   const { settings } = useUserSettingsContext();
-  const isMobile = useIsMobile();
+  const { subscription } = useSubscription();
+  const navigate = useNavigate();
   
-  const [searchTerm, setSearchTerm] = useState('');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<VocabularyItem | null>(null);
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [isExporting, setIsExporting] = useState(false);
-  const [sortOrder, setSortOrder] = useState<'newest'|'oldest'|'alphabetical'>('newest');
-  const [isActionBarSticky, setIsActionBarSticky] = useState(false);
-  const actionBarRef = useRef<HTMLDivElement>(null);
-  const [currentPlayingId, setCurrentPlayingId] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
   
-  // Filter vocabulary by current language and search term
-  const filteredVocabulary = vocabulary
-    .filter(item => item.language === settings.selectedLanguage)
-    .filter(item => {
-      if (!searchTerm) return true;
-      
-      const search = searchTerm.toLowerCase();
-      return (
-        item.word.toLowerCase().includes(search) ||
-        item.definition.toLowerCase().includes(search) ||
-        item.exampleSentence.toLowerCase().includes(search)
-      );
-    })
-    .sort((a, b) => {
-      if (sortOrder === 'alphabetical') {
-        return a.word.localeCompare(b.word);
-      } else if (sortOrder === 'oldest') {
-        return a.id.localeCompare(b.id);
-      } else {
-        // newest first is default
-        return b.id.localeCompare(a.id);
-      }
-    });
-  
-  // Track scroll to make action bar sticky
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!actionBarRef.current) return;
-      
-      const rect = actionBarRef.current.getBoundingClientRect();
-      if (rect.top <= 0) {
-        setIsActionBarSticky(true);
-      } else {
-        setIsActionBarSticky(false);
-      }
-    };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-  
-  const handleDeleteItem = (item: VocabularyItem) => {
-    setItemToDelete(item);
-    setDeleteDialogOpen(true);
-  };
-  
-  const confirmDelete = () => {
-    if (itemToDelete) {
-      removeVocabularyItem(itemToDelete.id);
-      toast.success('Vocabulary item removed');
-      setDeleteDialogOpen(false);
-      setItemToDelete(null);
-      // Also remove from selected items if present
-      setSelectedItems(prev => prev.filter(id => id !== itemToDelete.id));
-    }
-  };
-  
-  const toggleSelectItem = (id: string) => {
-    setSelectedItems(prev => {
-      if (prev.includes(id)) {
-        return prev.filter(itemId => itemId !== id);
-      } else {
-        return [...prev, id];
-      }
-    });
-  };
-  
-  const handleExportAnki = async () => {
-    try {
-      setIsExporting(true);
-      
-      // If no items are selected, export all filtered items
-      const itemsToExport = selectedItems.length > 0
-        ? filteredVocabulary.filter(item => selectedItems.includes(item.id))
-        : filteredVocabulary;
-        
-      if (itemsToExport.length === 0) {
-        toast.error('No vocabulary items to export');
-        return;
-      }
-      
-      await downloadAnkiImport(
-        itemsToExport, 
-        `${settings.selectedLanguage}_vocabulary_${new Date().toISOString().split('T')[0]}`
-      );
-      
-      toast.success(
-        <div className="flex flex-col gap-1">
-          <div>{itemsToExport.length} vocabulary {itemsToExport.length === 1 ? 'item' : 'items'} exported successfully</div>
-          <div className="text-sm font-light">Follow the README.txt file in the ZIP for import instructions</div>
-        </div>
-      );
-    } catch (error) {
-      console.error('Export error:', error);
-      toast.error('Failed to export vocabulary');
-    } finally {
-      setIsExporting(false);
-    }
-  };
-  
-  const selectAll = () => {
-    setSelectedItems(filteredVocabulary.map(item => item.id));
-  };
-  
-  const deselectAll = () => {
-    setSelectedItems([]);
-  };
-  
-  const updateCurrentPlayingId = (id: string | null) => {
-    setCurrentPlayingId(id);
-  };
-  
-  return (
-    <div className="container mx-auto px-4 py-8 pb-20">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">Vocabulary</h1>
-        <p className="text-muted-foreground">
-          Review and manage your saved vocabulary items
-        </p>
-      </div>
-      
-      {/* Add the Vocabulary Playlist component */}
-      {filteredVocabulary.length > 0 && (
-        <VocabularyPlaylist 
-          vocabularyItems={filteredVocabulary} 
-          onPlayingItemChange={updateCurrentPlayingId}
-        />
-      )}
-      
-      {/* Actions Bar - can be sticky */}
-      <div 
-        ref={actionBarRef}
-        className={`bg-background z-10 pt-2 pb-4 mb-2 ${isActionBarSticky ? 'sticky top-0 shadow-md px-4 -mx-4 pt-4' : ''}`}
-      >
-        <div className="flex flex-col md:flex-row gap-4 mb-2">
-          <div className="flex-1 relative">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search vocabulary..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8"
-            />
-          </div>
+  // Filter vocabulary by currently selected language
+  const languageVocabulary = getVocabularyByLanguage(settings.selectedLanguage);
 
-          <div className="w-full md:w-48">
-            <Select
-              value={sortOrder}
-              onValueChange={(value) => setSortOrder(value as 'newest'|'oldest'|'alphabetical')}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="newest">Newest first</SelectItem>
-                <SelectItem value="oldest">Oldest first</SelectItem>
-                <SelectItem value="alphabetical">Alphabetical</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className={`flex gap-2 ${isMobile ? 'flex-col' : 'flex-row flex-wrap'}`}>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={selectAll}
-              className={`whitespace-nowrap ${isMobile ? 'w-full' : ''}`}
-              disabled={filteredVocabulary.length === 0}
-            >
-              Select All
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={deselectAll}
-              className={`whitespace-nowrap ${isMobile ? 'w-full' : ''}`}
-              disabled={selectedItems.length === 0}
-            >
-              Deselect All
-            </Button>
-            
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    onClick={handleExportAnki}
-                    disabled={isExporting || filteredVocabulary.length === 0}
-                    className={`whitespace-nowrap bg-gradient-to-r from-primary/90 to-accent hover:opacity-90 ${isMobile ? 'w-full' : ''}`}
-                  >
-                    <FileDown className="mr-2 h-4 w-4" />
-                    {isExporting ? "Exporting..." : "Export Vocabulary"}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>Exports a ZIP file containing a text file for Anki import and audio files (if available)</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
-        
-        <div className="text-sm text-muted-foreground">
-          {selectedItems.length > 0 ? (
-            <p>{selectedItems.length} of {filteredVocabulary.length} items selected</p>
-          ) : (
-            <p>Select items to export or use the Export button to export all visible items</p>
-          )}
-        </div>
-      </div>
-      
-      {loading ? (
-        <div className="text-center py-12 gradient-card rounded-lg shadow-sm border border-border">
-          <p className="text-lg mb-2">Loading vocabulary items...</p>
-        </div>
-      ) : filteredVocabulary.length === 0 ? (
-        <div className="text-center py-12 gradient-card rounded-lg shadow-sm border border-border">
-          <p className="text-lg mb-2">Your vocabulary list is empty</p>
-          <p className="text-muted-foreground mb-4">
-            Practice exercises and save words to build your vocabulary
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Vocabulary</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage your saved vocabulary words
           </p>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredVocabulary.map(item => (
-            <div key={item.id} className="relative animate-fade-in">
-              <div className="absolute top-2 right-2 z-10">
-                <Checkbox
-                  checked={selectedItems.includes(item.id)}
-                  onCheckedChange={() => toggleSelectItem(item.id)}
-                  aria-label="Select vocabulary item"
-                />
-              </div>
-              <VocabularyCard
-                item={item}
-                onDelete={() => handleDeleteItem(item)}
-                isHighlighted={item.id === currentPlayingId}
-              />
-            </div>
-          ))}
-        </div>
+        <Button
+          onClick={() => setShowForm(true)}
+          className="mt-4 md:mt-0"
+          disabled={!canCreateMore}
+        >
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Add New Word
+        </Button>
+      </div>
+
+      {/* Subscription Status Alert */}
+      {!subscription.isSubscribed && (
+        <Alert className="mb-6 bg-primary/5 border-primary/20">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              Free users are limited to {vocabularyLimit} vocabulary items. 
+              <strong className="ml-1">
+                {vocabulary.length}/{vocabularyLimit} items used.
+              </strong>
+            </span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="ml-4 border-primary text-primary"
+              onClick={() => navigate('/dashboard/subscription')}
+            >
+              <Sparkles className="h-3 w-3 mr-1" /> Upgrade
+            </Button>
+          </AlertDescription>
+        </Alert>
       )}
       
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove vocabulary item?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove "{itemToDelete?.word}" from your vocabulary list.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setItemToDelete(null)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>
-              Remove
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="text-xl">Your Vocabulary List</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {languageVocabulary.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    You haven't added any vocabulary words yet.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowForm(true)}
+                    className="mt-4"
+                    disabled={!canCreateMore}
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Your First Word
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {languageVocabulary.map((item) => (
+                    <VocabularyCard key={item.id} item={item} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div>
+          <div className="space-y-6">
+            <VocabularyPlaylist 
+              vocabulary={languageVocabulary} 
+              showForm={showForm}
+              onCloseForm={() => setShowForm(false)}
+            />
+            
+            {/* Subscription Upgrade Card */}
+            {!subscription.isSubscribed && (
+              <div className="mt-6">
+                <UpgradePrompt 
+                  title="Unlimited Vocabulary"
+                  message="Premium subscribers can create unlimited vocabulary lists to enhance their learning."
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { VocabularyItem, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -12,6 +13,8 @@ interface VocabularyContextProps {
   getVocabularyByExercise: (exerciseId: string) => VocabularyItem[];
   getVocabularyByLanguage: (language: Language) => VocabularyItem[];
   loading: boolean;
+  canCreateMore: boolean;
+  vocabularyLimit: number;
 }
 
 const VocabularyContext = createContext<VocabularyContextProps | undefined>(undefined);
@@ -28,6 +31,13 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [vocabulary, setVocabulary] = useState<VocabularyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { subscription } = useSubscription();
+  
+  // Define the vocabulary limit for non-premium users
+  const vocabularyLimit = 5;
+  
+  // Determine if user can create more vocabulary items
+  const canCreateMore = subscription.isSubscribed || vocabulary.length < vocabularyLimit;
 
   // Load vocabulary from Supabase when user changes
   useEffect(() => {
@@ -90,6 +100,11 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [vocabulary, user]);
 
   const addVocabularyItem = async (item: Omit<VocabularyItem, 'id'>): Promise<VocabularyItem> => {
+    if (!canCreateMore) {
+      toast.error(`You've reached the limit of ${vocabularyLimit} vocabulary items. Upgrade to premium for unlimited vocabulary.`);
+      throw new Error('Vocabulary limit reached');
+    }
+    
     try {
       if (!user) {
         // Handle non-authenticated user
@@ -175,7 +190,9 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     removeVocabularyItem,
     getVocabularyByExercise,
     getVocabularyByLanguage,
-    loading
+    loading,
+    canCreateMore,
+    vocabularyLimit
   };
 
   return (

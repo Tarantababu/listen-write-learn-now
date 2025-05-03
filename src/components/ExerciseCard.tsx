@@ -1,220 +1,100 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Exercise } from '@/types';
-import { useDirectoryContext } from '@/contexts/DirectoryContext';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { 
-  Clock, 
-  Pencil, 
-  Trash2, 
-  FolderUp,
-  Check 
-} from 'lucide-react';
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import MoveExerciseModal from './MoveExerciseModal';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Edit, Trash, Play } from 'lucide-react';
+import LevelBadge from './LevelBadge';
+import { formatDateTime } from '@/utils/trendUtils';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ExerciseCardProps {
   exercise: Exercise;
   onPractice: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  disableEdit?: boolean;
 }
 
-const ExerciseCard: React.FC<ExerciseCardProps> = ({
-  exercise,
-  onPractice,
-  onEdit,
-  onDelete
+const ExerciseCard: React.FC<ExerciseCardProps> = ({ 
+  exercise, 
+  onPractice, 
+  onEdit, 
+  onDelete,
+  disableEdit = false
 }) => {
-  const { title, text, tags, completionCount, isCompleted, language } = exercise;
-  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
-  const { directories } = useDirectoryContext();
+  const { title, text, tags, completionCount, isCompleted, createdAt } = exercise;
   
-  // Get directory name if exercise is in a directory
-  const directoryName = exercise.directoryId 
-    ? directories.find(dir => dir.id === exercise.directoryId)?.name 
-    : null;
-  
-  // Format the exercise text to estimate reading time
-  // A typical person reads about 200-250 words per minute
-  const wordCount = text.split(/\s+/).length;
-  const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 200));
-  
-  // Format time as minutes:seconds
-  const formatTime = () => {
-    if (readingTimeMinutes < 1) {
-      return "30s";
-    } else if (readingTimeMinutes === 1) {
-      return "1:00 min";
-    } else {
-      return `${readingTimeMinutes}:00 min`;
-    }
-  };
-  
-  const duration = formatTime();
-  
-  // Format progress status
-  const getProgressStatus = () => {
-    if (isCompleted) {
-      return { text: "Completed", color: "text-green-600" };
-    }
-    if (completionCount > 0) {
-      return { text: `In progress (${completionCount}/3)`, color: "text-amber-500" };
-    }
-    return { text: "Not started", color: "text-gray-400" };
-  };
-  
-  const progressStatus = getProgressStatus();
-
-  const handleOpenMoveModal = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsMoveModalOpen(true);
-  };
-
-  // Fixed event handlers to properly stop propagation
-  const handleEdit = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onEdit();
-  };
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onDelete();
-  };
-
-  const handleMoveSuccess = () => {
-    // Reset modal state
-    setIsMoveModalOpen(false);
-  };
+  // Truncate text for display
+  const truncatedText = text.length > 100 ? `${text.substring(0, 100)}...` : text;
   
   return (
-    <>
-      <Card className="h-full flex flex-col overflow-hidden hover:shadow-md transition-all duration-200">
-        <CardContent className="p-4 flex-grow">
-          <div className="flex justify-between items-start mb-2">
-            <div className="flex-grow">
-              {/* Language and tag pills */}
-              <div className="flex gap-1 mb-2">
-                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full capitalize">
-                  {language}
-                </span>
-                {tags.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full">
-                    {tags[0]}
-                  </span>
-                )}
-              </div>
-              
-              {/* Exercise title */}
-              <h3 className="font-medium text-lg mb-1">{title}</h3>
-              
-              {/* Exercise description */}
-              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                {text}
-              </p>
-            </div>
+    <Card className={`h-full flex flex-col transition-all ${isCompleted ? 'border-primary/30 shadow-sm' : ''}`}>
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
+          <CardTitle className="text-lg font-medium">
+            {title}
+          </CardTitle>
+          <LevelBadge completionCount={completionCount} isCompleted={isCompleted} />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Created on {formatDateTime(createdAt)}
+        </p>
+      </CardHeader>
+      <CardContent className="pb-2 flex-1">
+        <p className="text-sm text-muted-foreground mb-4">{truncatedText}</p>
+        {tags && tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="px-2 py-0.5 bg-muted text-xs rounded-full"
+              >
+                {tag}
+              </span>
+            ))}
           </div>
-          
-          {/* Status indicators */}
-          <div className="flex items-center justify-between text-xs mt-auto">
-            <div className="flex items-center gap-1 text-gray-500">
-              <Clock className="h-3.5 w-3.5" />
-              <span>{duration}</span>
-            </div>
-            
-            <div className={`flex items-center gap-1 ${progressStatus.color}`}>
-              {isCompleted && <Check className="h-3.5 w-3.5" />}
-              <span>{progressStatus.text}</span>
-            </div>
-          </div>
-        </CardContent>
-        
-        {/* Action buttons */}
-        <div className="border-t p-3 flex items-center justify-between bg-gray-50">
-          <div className="flex items-center space-x-1">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    onClick={handleEdit} 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-8 w-8 rounded-full"
-                  >
-                    <Pencil className="h-3.5 w-3.5 text-gray-600" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Edit</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    onClick={handleOpenMoveModal} 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-8 w-8 rounded-full"
-                  >
-                    <FolderUp className="h-3.5 w-3.5 text-gray-600" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Move to folder</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    onClick={handleDelete} 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-8 w-8 rounded-full text-red-500 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Delete</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          
-          <Button 
-            onClick={onPractice} 
-            variant="outline"
+        )}
+      </CardContent>
+      <CardFooter className="pt-2 flex justify-between gap-2">
+        <div className="flex-1">
+          <Button
+            onClick={onPractice}
+            className="w-full"
             size="sm"
-            className="text-xs"
+            variant="outline"
           >
-            {completionCount > 0 && !isCompleted ? 'Continue' : 'Start'} Dictation
+            <Play className="h-4 w-4 mr-1" /> Practice
           </Button>
         </div>
-      </Card>
-      
-      {/* Move Exercise Modal - Always render the dialog but control visibility with open prop */}
-      <MoveExerciseModal
-        exercise={exercise}
-        isOpen={isMoveModalOpen}
-        onOpenChange={setIsMoveModalOpen}
-        onSuccess={handleMoveSuccess}
-      />
-    </>
+        <div className="flex gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={onEdit}
+                  size="icon"
+                  variant="ghost"
+                  className={disableEdit ? 'opacity-50 cursor-not-allowed' : ''}
+                  disabled={disableEdit}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              {disableEdit && (
+                <TooltipContent>
+                  <p>Upgrade to premium to edit exercises</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+          <Button onClick={onDelete} size="icon" variant="ghost">
+            <Trash className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardFooter>
+    </Card>
   );
 };
 

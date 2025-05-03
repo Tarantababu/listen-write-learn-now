@@ -9,6 +9,7 @@ import { Exercise } from '@/types';
 import { toast } from 'sonner';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 // Import the components we've just created
 import FilterBar from '@/components/exercises/FilterBar';
@@ -18,14 +19,27 @@ import PaginationControls from '@/components/exercises/PaginationControls';
 import ExerciseFormModal from '@/components/exercises/ExerciseFormModal';
 import DeleteExerciseDialog from '@/components/exercises/DeleteExerciseDialog';
 import PracticeModal from '@/components/exercises/PracticeModal';
+import UpgradePrompt from '@/components/UpgradePrompt';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Sparkles } from 'lucide-react';
 
 const ExercisesPage: React.FC = () => {
-  const { exercises, selectExercise, selectedExercise, deleteExercise, markProgress } = useExerciseContext();
+  const { 
+    exercises, 
+    selectExercise, 
+    selectedExercise, 
+    deleteExercise, 
+    markProgress, 
+    canCreateMore, 
+    exerciseLimit,
+    canEdit 
+  } = useExerciseContext();
   const { currentDirectoryId } = useDirectoryContext();
   const { settings } = useUserSettingsContext();
   const navigate = useNavigate();
   const location = useLocation();
   const [key, setKey] = useState(Date.now()); // Add a key to force re-rendering
+  const { subscription } = useSubscription();
   
   // Modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -113,6 +127,10 @@ const ExercisesPage: React.FC = () => {
   };
   
   const handleEdit = (exercise: Exercise) => {
+    if (!canEdit) {
+      toast.error("Editing exercises requires a premium subscription");
+      return;
+    }
     setExerciseToEdit(exercise);
     setIsEditModalOpen(true);
   };
@@ -201,16 +219,52 @@ const ExercisesPage: React.FC = () => {
               </span>
             )}
           </h1>
-          <Button onClick={() => setIsAddModalOpen(true)}>
+          <Button 
+            onClick={() => setIsAddModalOpen(true)} 
+            disabled={!canCreateMore}
+          >
             <Plus className="h-4 w-4 mr-2" /> New Exercise
           </Button>
         </div>
+        
+        {/* Subscription Status Alert */}
+        {!subscription.isSubscribed && (
+          <Alert className="mb-6 bg-primary/5 border-primary/20">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>
+                Free users are limited to {exerciseLimit} exercises and cannot edit exercises. 
+                <strong className="ml-1">
+                  {exercises.length}/{exerciseLimit} exercises used.
+                </strong>
+              </span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="ml-4 border-primary text-primary"
+                onClick={() => navigate('/dashboard/subscription')}
+              >
+                <Sparkles className="h-3 w-3 mr-1" /> Upgrade
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {/* Directory Browser */}
           <div className="md:col-span-1 border rounded-lg p-4">
             <h2 className="text-lg font-medium mb-4">Folders</h2>
             <DirectoryBrowser />
+            
+            {/* Subscription Upgrade Card */}
+            {!subscription.isSubscribed && (
+              <div className="mt-6">
+                <UpgradePrompt 
+                  title="Unlock Full Features"
+                  message="Premium subscribers can create unlimited exercises and edit them anytime."
+                />
+              </div>
+            )}
           </div>
           
           {/* Exercise Content */}
@@ -226,7 +280,7 @@ const ExercisesPage: React.FC = () => {
             />
             
             {filteredExercises.length === 0 ? (
-              <EmptyStateMessage onCreateExercise={() => setIsAddModalOpen(true)} />
+              <EmptyStateMessage onCreateExercise={() => canCreateMore ? setIsAddModalOpen(true) : null} />
             ) : (
               <>
                 {/* Grid of exercises */}
@@ -237,6 +291,7 @@ const ExercisesPage: React.FC = () => {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onCreateClick={() => setIsAddModalOpen(true)}
+                  canEdit={canEdit}
                 />
                 
                 {/* Pagination */}

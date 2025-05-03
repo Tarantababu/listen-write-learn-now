@@ -1,8 +1,10 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Exercise, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { 
   fetchExercises,
   createExercise, 
@@ -27,6 +29,9 @@ interface ExerciseContextProps {
   filterExercisesByLanguage: (language: Language) => Exercise[];
   moveExerciseToDirectory: (exerciseId: string, directoryId: string | null) => Promise<void>;
   loading: boolean;
+  canCreateMore: boolean;
+  canEdit: boolean;
+  exerciseLimit: number;
 }
 
 const ExerciseContext = createContext<ExerciseContextProps | undefined>(undefined);
@@ -45,6 +50,16 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const localExercises = useLocalExercises();
+  const { subscription } = useSubscription();
+  
+  // Define the exercise limit for non-premium users
+  const exerciseLimit = 3;
+  
+  // Determine if user can create more exercises
+  const canCreateMore = subscription.isSubscribed || exercises.length < exerciseLimit;
+  
+  // Determine if user can edit exercises (only premium users can)
+  const canEdit = subscription.isSubscribed;
   
   // Ensure audio bucket exists
   useEffect(() => {
@@ -84,6 +99,11 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [user, localExercises.exercises]);
 
   const addExercise = async (exercise: Omit<Exercise, 'id' | 'createdAt' | 'completionCount' | 'isCompleted'>) => {
+    if (!canCreateMore) {
+      toast.error(`You've reached the limit of ${exerciseLimit} exercises. Upgrade to premium for unlimited exercises.`);
+      throw new Error('Exercise limit reached');
+    }
+    
     try {
       if (!user) {
         // Handle non-authenticated user
@@ -101,6 +121,12 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const updateExercise = async (id: string, updates: Partial<Exercise>) => {
+    // Check if user has edit permission
+    if (!canEdit && user) {
+      toast.error('Upgrade to premium to edit exercises.');
+      throw new Error('Premium subscription required to edit exercises');
+    }
+    
     try {
       if (!user) {
         // Handle non-authenticated user
@@ -234,7 +260,10 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     markProgress,
     filterExercisesByLanguage,
     moveExerciseToDirectory,
-    loading
+    loading,
+    canCreateMore,
+    canEdit,
+    exerciseLimit
   };
 
   return (
