@@ -71,8 +71,11 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         
         if (data && data.avatar_url) {
           setAvatarUrl(data.avatar_url);
+          // Store the avatar URL in sessionStorage to persist across page navigation
+          sessionStorage.setItem('userAvatarUrl', data.avatar_url);
         } else {
           setAvatarUrl(null);
+          sessionStorage.removeItem('userAvatarUrl');
         }
       } catch (error) {
         console.error('Error fetching avatar:', error);
@@ -80,6 +83,13 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     };
     
+    // First check if we have a cached avatar URL in sessionStorage
+    const cachedAvatarUrl = sessionStorage.getItem('userAvatarUrl');
+    if (cachedAvatarUrl) {
+      setAvatarUrl(cachedAvatarUrl);
+    }
+    
+    // Then fetch the latest from the server
     fetchAvatarUrl();
   }, [user]);
 
@@ -179,8 +189,9 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       if (updateError) throw updateError;
 
-      // Update local state
+      // Update local state and sessionStorage
       setAvatarUrl(newAvatarUrl);
+      sessionStorage.setItem('userAvatarUrl', newAvatarUrl);
       
       toast.success('Avatar updated successfully');
       return newAvatarUrl;
