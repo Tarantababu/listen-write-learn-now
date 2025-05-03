@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Loader, Pause, Play } from 'lucide-react';
@@ -236,6 +237,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       setIsAnimating(false);
       
       // When paused, update the transcript with current session text
+      // This is crucial for accumulating text between pause/resume cycles
       setTranscript(prev => {
         const updatedTranscript = prev + (currentSessionText ? ' ' + currentSessionText.trim() : '');
         return updatedTranscript.trim() + ' ';
@@ -259,6 +261,9 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       setIsPaused(false);
       // Resume animation when recording resumes
       setIsAnimating(true);
+      
+      // Important: currentSessionText is reset when paused, 
+      // and transcript now contains all previous text
       
       toast({
         title: "Recording resumed",
