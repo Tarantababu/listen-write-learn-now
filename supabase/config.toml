@@ -1,33 +1,4 @@
 
-project_id = "kmpghammoxblhacndimq"
-
-[api]
-enabled = true
-port = 54321
-schemas = ["public", "storage"]
-
-[db]
-port = 54322
-
-[studio]
-enabled = true
-port = 54323
-api_url = "http://localhost"
-
-[inbucket]
-enabled = true
-port = 54324
-
-[storage]
-enabled = true
-
-[auth]
-enabled = true
-site_url = "http://localhost:3000"
-
-[functions.text-to-speech]
-verify_jwt = true
-
-[functions.speech-to-text]
-verify_jwt = true
-
+[functions]
+  [functions.send-feedback]
+    verify_jwt = true

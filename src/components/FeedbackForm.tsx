@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@supabase/supabase-js';
 
 interface FeedbackFormProps {
   className?: string;
@@ -30,21 +31,18 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ className }) => {
     setIsSubmitting(true);
     
     try {
-      // In a real application, you would send this to your backend
-      // For now, we'll simulate sending an email
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const supabase = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY
+      );
       
-      // Email content for demonstration purposes
-      const emailContent = `
-        Name: ${name || 'Not provided'}
-        Email: ${email || 'Not provided'}
-        Message: ${message}
-      `;
+      const { data, error } = await supabase.functions.invoke('send-feedback', {
+        body: { name, email, message }
+      });
       
-      console.log('Feedback email content:', emailContent);
-      
-      // In a real application, you would use a service like EmailJS or a backend API
-      // For this demo, we'll just show a success message
+      if (error) {
+        throw error;
+      }
       
       toast.success('Feedback sent successfully');
       setMessage('');
