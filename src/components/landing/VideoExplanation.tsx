@@ -14,12 +14,18 @@ export function VideoExplanation() {
         
         <div className="max-w-4xl mx-auto rounded-xl overflow-hidden border shadow-lg">
           <div className="aspect-video w-full">
-            <iframe
-              src="https://app.guidde.com/share/playbooks/soJN2AGizD8NwNKcTTmJT1?origin=S7lSOMG6LUYxSkWdTvKHDQF8FdF2"
+            <iframe 
+              width="100%" 
+              height="100%" 
+              src="https://embed.app.guidde.com/playbooks/soJN2AGizD8NwNKcTTmJT1" 
+              title="How to create exercises and do dictation" 
+              frameBorder="0" 
+              referrerPolicy="unsafe-url" 
+              allowFullScreen={true} 
+              allow="clipboard-write" 
+              sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts allow-forms allow-same-origin allow-presentation" 
               className="w-full h-full"
-              title="ListenWriteLearn Demo Video"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
+              style={{ borderRadius: '10px' }}
             ></iframe>
           </div>
         </div>
