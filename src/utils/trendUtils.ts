@@ -1,10 +1,15 @@
 
-
 import { subDays, isAfter, format, startOfDay } from 'date-fns';
 
 export interface TrendData {
   value: number;
   label: string;
+}
+
+// Format a date object to a readable string format
+export function formatDateTime(date: Date | string | number): string {
+  const dateObj = date instanceof Date ? date : new Date(date);
+  return format(dateObj, 'MMM d, yyyy');
 }
 
 // Calculate trend compared to the previous period (week, month, day)

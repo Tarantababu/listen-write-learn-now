@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import UpgradePrompt from '@/components/UpgradePrompt';
 
 const VocabularyPage = () => {
-  const { vocabulary, getVocabularyByLanguage, canCreateMore, vocabularyLimit } = useVocabularyContext();
+  const { vocabulary, getVocabularyByLanguage, canCreateMore, vocabularyLimit, removeVocabularyItem } = useVocabularyContext();
   const { settings } = useUserSettingsContext();
   const { subscription } = useSubscription();
   const navigate = useNavigate();
@@ -22,6 +22,11 @@ const VocabularyPage = () => {
   
   // Filter vocabulary by currently selected language
   const languageVocabulary = getVocabularyByLanguage(settings.selectedLanguage);
+
+  // Handle vocabulary deletion
+  const handleDeleteVocabularyItem = (id: string) => {
+    removeVocabularyItem(id);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -90,7 +95,11 @@ const VocabularyPage = () => {
               ) : (
                 <div className="space-y-4">
                   {languageVocabulary.map((item) => (
-                    <VocabularyCard key={item.id} item={item} />
+                    <VocabularyCard 
+                      key={item.id} 
+                      item={item} 
+                      onDelete={() => handleDeleteVocabularyItem(item.id)}
+                    />
                   ))}
                 </div>
               )}

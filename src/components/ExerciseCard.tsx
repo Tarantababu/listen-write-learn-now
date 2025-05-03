@@ -36,7 +36,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
           <CardTitle className="text-lg font-medium">
             {title}
           </CardTitle>
-          <LevelBadge completionCount={completionCount} isCompleted={isCompleted} />
+          <LevelBadge masteredWords={completionCount} />
         </div>
         <p className="text-xs text-muted-foreground">
           Created on {formatDateTime(createdAt)}
