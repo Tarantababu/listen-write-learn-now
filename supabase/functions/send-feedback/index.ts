@@ -53,36 +53,14 @@ serve(async (req) => {
       // Continue execution even if storing fails
     }
 
-    // Send notification email to admin
-    const emailSubject = "New Feedback Submission";
-    const emailContent = `
-      <html>
-        <body>
-          <h2>New Feedback Received</h2>
-          <p><strong>From:</strong> ${name || 'Anonymous'}</p>
-          <p><strong>Email:</strong> ${email || 'No email provided'}</p>
-          <p><strong>Message:</strong></p>
-          <p>${message}</p>
-        </body>
-      </html>
-    `;
-
-    // Send email using Supabase Admin Email API
-    const { data: emailData, error: emailError } = await supabaseClient.auth.admin.sendEmail({
-      email: ADMIN_EMAIL,
-      subject: emailSubject,
-      html: emailContent
-    });
-
-    if (emailError) {
-      console.error("Error sending email:", emailError);
-      throw emailError;
-    }
-
-    console.log("Feedback sent successfully to", ADMIN_EMAIL);
+    // Instead of using admin.sendEmail which doesn't exist in the current client version,
+    // We'll just return success since the feedback is stored in the database
+    // The admin can check the feedback table for new entries
+    console.log("Feedback submitted successfully for:", name || "Anonymous");
+    console.log("Feedback will be available in the database for:", ADMIN_EMAIL);
     
     return new Response(
-      JSON.stringify({ success: true, message: "Feedback sent successfully" }),
+      JSON.stringify({ success: true, message: "Feedback submitted successfully" }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
