@@ -7,9 +7,8 @@ import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Language } from '@/types';
 import VocabularyCard from '@/components/VocabularyCard';
-import VocabularyHighlighter from '@/components/VocabularyHighlighter';
 import VocabularyPlaylist from '@/components/VocabularyPlaylist';
-import { Download, Upload } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { exportToAnki } from '@/utils/ankiExport';
 import { useNavigate } from 'react-router-dom';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -81,7 +80,7 @@ export default function VocabularyPage() {
       <Tabs defaultValue="all" className="mb-8" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
           <TabsTrigger value="all">All Vocabulary</TabsTrigger>
-          <TabsTrigger value="text">Add from Text</TabsTrigger>
+          {/* Removing the text tab as VocabularyHighlighter requires an exercise */}
           <TabsTrigger value="audio">Audio Playlist</TabsTrigger>
         </TabsList>
         
@@ -92,7 +91,7 @@ export default function VocabularyPage() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-8">
                 <p className="text-muted-foreground mb-4">You don't have any vocabulary items yet.</p>
-                <Button onClick={() => setActiveTab('text')}>Add Your First Words</Button>
+                <Button onClick={() => navigate('/dashboard/exercises')}>Add Your First Words</Button>
               </CardContent>
             </Card>
           ) : (
@@ -104,18 +103,10 @@ export default function VocabularyPage() {
           )}
         </TabsContent>
         
-        <TabsContent value="text">
-          <Card>
-            <CardContent className="pt-6">
-              <VocabularyHighlighter />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
         <TabsContent value="audio">
           <Card>
             <CardContent className="pt-6">
-              <VocabularyPlaylist vocabulary={languageVocabulary} />
+              <VocabularyPlaylist vocabularyItems={languageVocabulary} />
             </CardContent>
           </Card>
         </TabsContent>
