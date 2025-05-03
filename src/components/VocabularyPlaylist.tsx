@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { VocabularyItem } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -18,10 +19,9 @@ interface VocabularyPlaylistProps {
   vocabulary: VocabularyItem[];
   showForm: boolean;
   onCloseForm: () => void;
-  compact?: boolean; // Added the compact prop as an optional boolean
 }
 
-const VocabularyPlaylist = ({ vocabulary, showForm, onCloseForm, compact = false }: VocabularyPlaylistProps) => {
+const VocabularyPlaylist = ({ vocabulary, showForm, onCloseForm }: VocabularyPlaylistProps) => {
   const { addVocabularyItem, canCreateMore } = useVocabularyContext();
   const { settings } = useUserSettingsContext();
   const { subscription } = useSubscription();
