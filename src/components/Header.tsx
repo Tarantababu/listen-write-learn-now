@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -51,7 +52,7 @@ const Header: React.FC = () => {
           >
             <Headphones className="h-5 w-5 text-primary" />
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent hidden sm:inline-block">
-              ListenWriteLearn
+              lwlnow
             </span>
           </Link>
           
