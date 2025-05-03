@@ -9,6 +9,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Language code mapping function (converts language names to ISO codes)
+function getLanguageCode(language: string): string {
+  const languageMap: Record<string, string> = {
+    'english': 'en',
+    'spanish': 'es',
+    'french': 'fr',
+    'german': 'de',
+    'italian': 'it',
+    'portuguese': 'pt',
+    'russian': 'ru',
+    'japanese': 'ja',
+    'korean': 'ko',
+    'chinese': 'zh',
+    'hindi': 'hi',
+    'arabic': 'ar',
+    'dutch': 'nl',
+    'turkish': 'tr',
+    'swedish': 'sv',
+    'polish': 'pl',
+  };
+
+  return languageMap[language.toLowerCase()] || 'en';
+}
+
 // Process base64 in chunks to prevent memory issues
 function processBase64Chunks(base64String: string, chunkSize = 32768) {
   const chunks: Uint8Array[] = [];
@@ -53,7 +77,8 @@ serve(async (req) => {
       throw new Error('No audio data provided');
     }
 
-    console.log(`[SPEECH-TO-TEXT] Processing audio for language: ${language || 'default'}`);
+    const languageCode = language ? getLanguageCode(language) : 'en';
+    console.log(`[SPEECH-TO-TEXT] Processing audio for language: ${language} (code: ${languageCode})`);
     
     // Process audio in chunks to avoid memory issues
     const binaryAudio = processBase64Chunks(audio);
@@ -65,9 +90,9 @@ serve(async (req) => {
     formData.append('model', 'whisper-1');
     
     // Add language parameter if provided
-    if (language && language !== 'english') {
-      console.log(`[SPEECH-TO-TEXT] Setting language parameter: ${language}`);
-      formData.append('language', language);
+    if (language && language.toLowerCase() !== 'english') {
+      console.log(`[SPEECH-TO-TEXT] Setting language parameter: ${languageCode}`);
+      formData.append('language', languageCode);
     }
 
     // Send to OpenAI for transcription

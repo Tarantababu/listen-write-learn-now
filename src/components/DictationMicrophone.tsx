@@ -13,6 +13,47 @@ interface DictationMicrophoneProps {
   isDisabled?: boolean;
 }
 
+// SpeechRecognition is not in the standard TypeScript definitions, so we need to define it
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onend: ((event: Event) => void) | null;
+}
+
+// Creating a namespace for the Web Speech API
+declare global {
+  interface Window {
+    SpeechRecognition: new () => SpeechRecognition;
+    webkitSpeechRecognition: new () => SpeechRecognition;
+  }
+}
+
 const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   onTextReceived,
   language,
@@ -21,10 +62,97 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
   const { toast } = useToast();
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const isMobile = useIsMobile();
+  
+  // Map language codes to BCP 47 language tags for the Web Speech API
+  const getLanguageCode = (lang: string): string => {
+    const langMap: Record<string, string> = {
+      'english': 'en-US',
+      'spanish': 'es-ES',
+      'french': 'fr-FR',
+      'german': 'de-DE',
+      'italian': 'it-IT',
+      'portuguese': 'pt-PT',
+      'russian': 'ru-RU',
+      'japanese': 'ja-JP',
+      'korean': 'ko-KR',
+      'chinese': 'zh-CN',
+      'hindi': 'hi-IN',
+      'arabic': 'ar-SA',
+      'dutch': 'nl-NL',
+      'turkish': 'tr-TR',
+      'swedish': 'sv-SE',
+      'polish': 'pl-PL'
+    };
+    
+    return langMap[lang.toLowerCase()] || 'en-US';
+  };
+
+  // Initialize Web Speech Recognition
+  const initSpeechRecognition = () => {
+    // Check if browser supports speech recognition
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast({
+        title: "Speech Recognition Not Supported",
+        description: "Your browser doesn't support speech recognition. Try using a modern browser like Chrome.",
+        variant: "destructive",
+      });
+      return null;
+    }
+    
+    // Create speech recognition instance
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognitionInstance = new SpeechRecognition();
+    
+    // Configure recognition
+    recognitionInstance.continuous = true;
+    recognitionInstance.interimResults = true;
+    recognitionInstance.lang = getLanguageCode(language);
+    
+    // Handle recognition results
+    recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
+      let interimTranscript = '';
+      let finalTranscript = transcript;
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result[0] && result[0].transcript) {
+          if (result.isFinal) {
+            finalTranscript += result[0].transcript + ' ';
+          } else {
+            interimTranscript += result[0].transcript;
+          }
+        }
+      }
+      
+      // Update transcript and send to parent component
+      setTranscript(finalTranscript);
+      onTextReceived(finalTranscript + interimTranscript);
+    };
+    
+    // Handle errors
+    recognitionInstance.onerror = (event) => {
+      console.error('Speech recognition error:', event);
+    };
+    
+    // Handle end of speech recognition
+    recognitionInstance.onend = () => {
+      // If recording was manually stopped or paused, don't restart
+      if (isPaused || !isRecording) return;
+      
+      // If recording is still active but recognition ended on its own, restart it
+      if (isRecording) {
+        recognitionInstance.start();
+      }
+    };
+    
+    return recognitionInstance;
+  };
 
   useEffect(() => {
     // Clean up on unmount
@@ -32,15 +160,21 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
       }
+      
+      if (recognition) {
+        recognition.stop();
+      }
     };
-  }, [mediaRecorder]);
+  }, [mediaRecorder, recognition]);
 
   const startRecording = async () => {
     try {
+      // Get access to microphone
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       
       setAudioChunks([]);
+      setTranscript('');
       
       recorder.addEventListener('dataavailable', (event) => {
         if (event.data.size > 0) {
@@ -48,16 +182,17 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
         }
       });
 
-      recorder.addEventListener('stop', () => {
-        if (isRecording && !isPaused) { // Only process if we're still in recording state (not canceled or paused)
-          processAudio();
-        }
-      });
-
       recorder.start();
       setMediaRecorder(recorder);
       setIsRecording(true);
       setIsPaused(false);
+      
+      // Initialize and start speech recognition
+      const recognitionInstance = initSpeechRecognition();
+      if (recognitionInstance) {
+        setRecognition(recognitionInstance);
+        recognitionInstance.start();
+      }
       
       toast({
         title: "Recording started",
@@ -77,6 +212,9 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   const pauseRecording = () => {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
       mediaRecorder.pause();
+      if (recognition) {
+        recognition.stop();
+      }
       setIsPaused(true);
       
       toast({
@@ -90,6 +228,9 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   const resumeRecording = () => {
     if (mediaRecorder && mediaRecorder.state === 'paused') {
       mediaRecorder.resume();
+      if (recognition) {
+        recognition.start();
+      }
       setIsPaused(false);
       
       toast({
@@ -101,6 +242,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   };
 
   const stopRecording = () => {
+    // Stop media recorder
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
       mediaRecorder.stop();
       
@@ -109,6 +251,11 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
       }
     }
+    
+    // Stop speech recognition
+    if (recognition) {
+      recognition.stop();
+    }
   };
 
   const cancelRecording = () => {
@@ -116,6 +263,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
     setIsPaused(false);
     stopRecording();
     setAudioChunks([]);
+    setTranscript('');
     
     toast({
       title: "Recording cancelled",
@@ -156,8 +304,11 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
           }
           
           if (data?.text) {
-            // Pass the transcribed text to the parent component
-            onTextReceived(data.text);
+            // Combine with any existing transcript and pass to the parent component
+            const fullTranscript = transcript ? transcript.trim() + ' ' + data.text : data.text;
+            setTranscript(fullTranscript);
+            onTextReceived(fullTranscript);
+            
             toast({
               title: "Transcription complete",
               description: "Your speech has been converted to text",
@@ -194,7 +345,16 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
     setIsRecording(false);
     setIsPaused(false);
     stopRecording();
-    // The processAudio function will be called by the stop event listener
+    
+    // Use any text we already have from real-time recognition
+    if (transcript) {
+      onTextReceived(transcript);
+    }
+    
+    // Process the recorded audio for higher accuracy if needed
+    if (audioChunks.length > 0) {
+      processAudio();
+    }
   };
 
   return (
