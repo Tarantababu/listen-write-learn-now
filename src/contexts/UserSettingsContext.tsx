@@ -41,7 +41,6 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // This ensures we always have the language preference available immediately
   useEffect(() => {
     const savedSettings = localStorage.getItem('userSettings');
-    const savedAvatarUrl = localStorage.getItem('userAvatarUrl');
     
     if (savedSettings) {
       try {
@@ -50,11 +49,39 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.error("Failed to parse saved settings", e);
       }
     }
-    
-    if (savedAvatarUrl) {
-      setAvatarUrl(savedAvatarUrl);
-    }
   }, []);
+
+  // Load avatar from Supabase when user changes
+  useEffect(() => {
+    if (!user) {
+      setAvatarUrl(null);
+      setLoading(false);
+      return;
+    }
+    
+    const fetchAvatarUrl = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .single();
+          
+        if (error) throw error;
+        
+        if (data && data.avatar_url) {
+          setAvatarUrl(data.avatar_url);
+        } else {
+          setAvatarUrl(null);
+        }
+      } catch (error) {
+        console.error('Error fetching avatar:', error);
+        setAvatarUrl(null);
+      }
+    };
+    
+    fetchAvatarUrl();
+  }, [user]);
 
   // Load settings from Supabase when user changes
   useEffect(() => {
@@ -68,7 +95,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setLoading(true);
         const { data, error } = await supabase
           .from('profiles')
-          .select('learning_languages, selected_language, avatar_url')
+          .select('learning_languages, selected_language')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -79,11 +106,6 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             learningLanguages: data.learning_languages as Language[] || defaultSettings.learningLanguages,
             selectedLanguage: data.selected_language as Language || defaultSettings.selectedLanguage
           });
-          
-          if (data.avatar_url) {
-            setAvatarUrl(data.avatar_url);
-            localStorage.setItem('userAvatarUrl', data.avatar_url);
-          }
         }
       } catch (error) {
         console.error('Error fetching user settings:', error);
@@ -147,22 +169,21 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         .from('user-content')
         .getPublicUrl(filePath);
 
-      const avatarUrl = data.publicUrl;
+      const newAvatarUrl = data.publicUrl;
 
       // Update the profile
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: avatarUrl })
+        .update({ avatar_url: newAvatarUrl })
         .eq('id', user.id);
 
       if (updateError) throw updateError;
 
-      // Update local state and localStorage
-      setAvatarUrl(avatarUrl);
-      localStorage.setItem('userAvatarUrl', avatarUrl);
+      // Update local state
+      setAvatarUrl(newAvatarUrl);
       
       toast.success('Avatar updated successfully');
-      return avatarUrl;
+      return newAvatarUrl;
     } catch (error: any) {
       console.error('Error uploading avatar:', error);
       toast.error('Failed to upload avatar: ' + error.message);
