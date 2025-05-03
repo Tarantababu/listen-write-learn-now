@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import VocabularyPlaylist from '@/components/VocabularyPlaylist';
 import VocabularyCard from '@/components/VocabularyCard';
@@ -7,7 +7,7 @@ import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Sparkles, PlusCircle } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useNavigate } from 'react-router-dom';
 import UpgradePrompt from '@/components/UpgradePrompt';
@@ -17,7 +17,6 @@ const VocabularyPage = () => {
   const {
     vocabulary,
     getVocabularyByLanguage,
-    canCreateMore,
     vocabularyLimit,
     removeVocabularyItem
   } = useVocabularyContext();
@@ -28,7 +27,6 @@ const VocabularyPage = () => {
     subscription
   } = useSubscription();
   const navigate = useNavigate();
-  const [showForm, setShowForm] = useState(false);
   const isMobile = useIsMobile();
 
   // Filter vocabulary by currently selected language
@@ -48,13 +46,6 @@ const VocabularyPage = () => {
             Manage your saved vocabulary words
           </p>
         </div>
-        
-        {!isMobile && canCreateMore && (
-          <Button onClick={() => setShowForm(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Word
-          </Button>
-        )}
       </div>
 
       {/* Subscription Status Alert */}
@@ -80,33 +71,7 @@ const VocabularyPage = () => {
         </Alert>
       )}
       
-      {/* Mobile Add Button */}
-      {isMobile && canCreateMore && (
-        <Button 
-          onClick={() => setShowForm(true)} 
-          className="w-full mb-4"
-          size="sm"
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add New Word
-        </Button>
-      )}
-      
       <div className="grid grid-cols-1 gap-4 sm:gap-6">
-        {/* Vocabulary Form for mobile */}
-        {isMobile && showForm && (
-          <Card className="animate-fade-in">
-            <CardContent className="pt-6">
-              <VocabularyPlaylist 
-                vocabulary={languageVocabulary} 
-                showForm={showForm} 
-                onCloseForm={() => setShowForm(false)} 
-                compact={true}
-              />
-            </CardContent>
-          </Card>
-        )}
-        
         {/* Vocabulary List */}
         <Card className="h-full">
           <CardHeader className="pb-2">
@@ -118,15 +83,9 @@ const VocabularyPage = () => {
                 <p className="text-muted-foreground text-sm">
                   You haven't added any vocabulary words yet.
                 </p>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowForm(true)} 
-                  className="mt-4" 
-                  disabled={!canCreateMore}
-                >
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Your First Word
-                </Button>
+                <p className="text-muted-foreground text-sm mt-2">
+                  Add words through the Vocabulary Builder when reading exercises.
+                </p>
               </div>
             ) : (
               <div className="space-y-3 sm:space-y-4">
@@ -142,18 +101,12 @@ const VocabularyPage = () => {
           </CardContent>
         </Card>
         
-        {/* Vocabulary Form for desktop */}
-        {!isMobile && (
-          <Card className="h-full">
-            <CardContent className="pt-6">
-              <VocabularyPlaylist 
-                vocabulary={languageVocabulary} 
-                showForm={showForm} 
-                onCloseForm={() => setShowForm(false)} 
-              />
-            </CardContent>
-          </Card>
-        )}
+        {/* Vocabulary Playlist */}
+        <Card className="h-full">
+          <CardContent className="pt-6">
+            <VocabularyPlaylist vocabulary={languageVocabulary} />
+          </CardContent>
+        </Card>
         
         {/* Subscription Upgrade Card */}
         {!subscription.isSubscribed && (
