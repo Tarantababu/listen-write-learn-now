@@ -31,6 +31,7 @@
     --info: 199 89% 48%;
     --info-foreground: 210 40% 98%;
     --avatar-size: 2.5rem;
+    --icon-size: 24px; /* Default icon size variable */
   }
 
   .dark {
@@ -75,16 +76,38 @@
   .caption {
     @apply text-caption;
   }
-  /* Global SVG sizing fix */
+  
+  /* Enhanced Global SVG sizing fix */
   svg {
     display: inline-block;
     vertical-align: middle;
+    width: 1em; /* Makes SVGs scale with text */
+    height: 1em; /* Maintains aspect ratio */
+    font-size: inherit; /* Allows parent to control size */
   }
+  
   /* Fix for icon SVGs in buttons and interactive elements */
   button svg, a svg, .icon svg {
     width: 100%;
     height: 100%;
     max-width: 100%;
+  }
+  
+  /* SVG size classes */
+  .svg-sm {
+    font-size: 1rem; /* 16px */
+  }
+  
+  .svg-md {
+    font-size: 1.5rem; /* 24px */
+  }
+  
+  .svg-lg {
+    font-size: 2rem; /* 32px */
+  }
+  
+  .svg-xl {
+    font-size: 3rem; /* 48px */
   }
 }
 
@@ -110,6 +133,15 @@
   /* Code input for dictation */
   .code-input {
     @apply font-mono spellcheck-false;
+  }
+  
+  /* Icon container for better control */
+  .icon-container {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--icon-size, 24px);
+    height: var(--icon-size, 24px);
   }
 }
 

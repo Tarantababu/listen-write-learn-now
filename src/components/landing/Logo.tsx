@@ -22,6 +22,7 @@ export function Logo({ className, size = 'default' }: { className?: string, size
           fill="none"
           preserveAspectRatio="xMidYMid meet"
           className="inline-block"
+          style={{ minWidth: logoSize, minHeight: logoSize }} // Ensure minimum dimensions
         >
           <rect 
             width="16" 
