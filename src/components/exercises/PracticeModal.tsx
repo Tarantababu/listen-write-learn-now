@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
-  DialogContent
+  DialogContent,
+  DialogTitle
 } from '@/components/ui/dialog';
 import { Exercise } from '@/types';
 import DictationPractice from '@/components/DictationPractice';
@@ -54,6 +55,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl p-0 overflow-hidden max-h-[90vh]">
+        <DialogTitle className="sr-only">{exercise.title} Practice</DialogTitle>
         <DictationPractice
           exercise={exercise}
           onComplete={handleComplete}
