@@ -5,7 +5,7 @@ import Header from './Header';
 
 const Layout: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-accent-beige/30">
       <Header />
       <main className="flex-1">
         <Outlet />

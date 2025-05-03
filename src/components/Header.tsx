@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -42,15 +43,15 @@ const Header: React.FC = () => {
   const languageFlag = getLanguageFlag(settings.selectedLanguage);
 
   return (
-    <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur">
+    <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur h-16">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <Link 
             to="/dashboard" 
             className="flex items-center gap-2 text-lg font-semibold"
           >
-            <Headphones className="h-5 w-5 text-primary" />
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent hidden sm:inline-block">
+            <Headphones className="h-5 w-5 text-action-blue" />
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-action-blue to-primary hidden sm:inline-block">
               ListenWriteLearn
             </span>
           </Link>
@@ -61,9 +62,10 @@ const Header: React.FC = () => {
                 asChild 
                 variant={isActive('/dashboard') && !isActive('/dashboard/exercises') && !isActive('/dashboard/vocabulary') ? "default" : "ghost"}
                 className="transition-all"
+                size="sm"
               >
                 <Link to="/dashboard">
-                  <Home className="h-4 w-4 mr-1" />
+                  <Home className="h-5 w-5 mr-1" />
                   Dashboard
                 </Link>
               </Button>
@@ -72,9 +74,10 @@ const Header: React.FC = () => {
                 asChild 
                 variant={isActive('/dashboard/exercises') ? "default" : "ghost"}
                 className="transition-all"
+                size="sm"
               >
                 <Link to="/dashboard/exercises">
-                  <BookOpen className="h-4 w-4 mr-1" />
+                  <BookOpen className="h-5 w-5 mr-1" />
                   Exercises
                 </Link>
               </Button>
@@ -83,9 +86,10 @@ const Header: React.FC = () => {
                 asChild 
                 variant={isActive('/dashboard/vocabulary') ? "default" : "ghost"}
                 className="transition-all"
+                size="sm"
               >
                 <Link to="/dashboard/vocabulary">
-                  <BookOpen className="h-4 w-4 mr-1" />
+                  <BookOpen className="h-5 w-5 mr-1" />
                   Vocabulary
                 </Link>
               </Button>
@@ -94,9 +98,10 @@ const Header: React.FC = () => {
                 asChild 
                 variant={isActive('/dashboard/subscription') ? "default" : "ghost"}
                 className="transition-all"
+                size="sm"
               >
                 <Link to="/dashboard/subscription">
-                  <CreditCard className="h-4 w-4 mr-1" />
+                  <CreditCard className="h-5 w-5 mr-1" />
                   Subscription
                 </Link>
               </Button>
@@ -123,15 +128,15 @@ const Header: React.FC = () => {
           {user ? (
             <>
               {subscription.isSubscribed && (
-                <span className="hidden sm:flex items-center text-xs font-medium bg-primary/15 text-primary px-2 py-1 rounded animate-fade-in">
-                  <Crown className="h-3 w-3 mr-1" />
+                <span className="hidden sm:flex items-center text-xs font-medium bg-action-blue/15 text-action-blue px-2 py-1 rounded animate-fade-in">
+                  <Crown className="h-4 w-4 mr-1" />
                   Premium
                 </span>
               )}
               <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full p-0 h-8 w-8">
-                    {isMobile ? <Menu className="h-4 w-4" /> : <UserAvatar size="sm" />}
+                    {isMobile ? <Menu className="h-5 w-5" /> : <UserAvatar size="sm" />}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -139,24 +144,24 @@ const Header: React.FC = () => {
                     <>
                       <DropdownMenuItem asChild>
                         <Link to="/dashboard">
-                          <Home className="h-4 w-4 mr-2" /> Dashboard
+                          <Home className="h-5 w-5 mr-2" /> Dashboard
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to="/dashboard/exercises">
-                          <BookOpen className="h-4 w-4 mr-2" /> Exercises
+                          <BookOpen className="h-5 w-5 mr-2" /> Exercises
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to="/dashboard/vocabulary">
-                          <BookOpen className="h-4 w-4 mr-2" /> Vocabulary
+                          <BookOpen className="h-5 w-5 mr-2" /> Vocabulary
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to="/dashboard/subscription">
-                          <CreditCard className="h-4 w-4 mr-2" /> Subscription
+                          <CreditCard className="h-5 w-5 mr-2" /> Subscription
                           {subscription.isSubscribed && (
-                            <Crown className="h-3 w-3 ml-1 text-primary" />
+                            <Crown className="h-4 w-4 ml-1 text-action-blue" />
                           )}
                         </Link>
                       </DropdownMenuItem>
@@ -165,19 +170,19 @@ const Header: React.FC = () => {
                   )}
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard/settings">
-                      <Settings className="h-4 w-4 mr-2" /> Settings
+                      <Settings className="h-5 w-5 mr-2" /> Settings
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={signOut}>
-                    <LogOut className="h-4 w-4 mr-2" /> Log out
+                    <LogOut className="h-5 w-5 mr-2" /> Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
           ) : (
             <>
-              <Button asChild variant="ghost" className="transition-all">
+              <Button asChild variant="outline" className="transition-all">
                 <Link to="/login">Log in</Link>
               </Button>
               <Button asChild className="transition-all">

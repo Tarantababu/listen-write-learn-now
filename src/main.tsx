@@ -10,4 +10,15 @@ const root = createRoot(rootElement!);
 // Set initial scroll position to top
 window.scrollTo(0, 0);
 
+// Add Inter and Fira Code fonts
+const interFont = document.createElement('link');
+interFont.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
+interFont.rel = 'stylesheet';
+document.head.appendChild(interFont);
+
+const firaCodeFont = document.createElement('link');
+firaCodeFont.href = 'https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap';
+firaCodeFont.rel = 'stylesheet';
+document.head.appendChild(firaCodeFont);
+
 root.render(<App />);

@@ -17,7 +17,11 @@ const Index: React.FC = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  return <LandingPage />;
+  return (
+    <div className="bg-accent-beige/30 min-h-screen">
+      <LandingPage />
+    </div>
+  );
 };
 
 export default Index;

@@ -67,6 +67,12 @@ export default {
           			DEFAULT: '#10B981',
           			light: '#D1FAE5',
         		},
+				// Adding design system colors
+				'primary-gray': '#2F2F2F',
+				'accent-beige': '#FAF7F3',
+				'action-blue': '#2A70F3',
+				'success-green': '#2EB67D',
+				'error-red': '#E74C3C',
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -99,8 +105,31 @@ export default {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
         		'pulse-light': 'pulse-light 2s infinite'
-			}
+			},
+			// Adding the 8pt spacing system
+			spacing: {
+				'8': '8px',
+				'16': '16px',
+				'24': '24px',
+				'32': '32px',
+				'40': '40px',
+				'48': '48px',
+				'56': '56px',
+				'64': '64px',
+			},
+			// Typography settings
+			fontFamily: {
+				'sans': ['Inter', 'sans-serif'],
+				'mono': ['Fira Code', 'monospace'],
+			},
+			fontSize: {
+				'h1': '32px',
+				'h2': '24px',
+				'body': '16px',
+				'caption': '13px',
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
 } satisfies Config;
+
