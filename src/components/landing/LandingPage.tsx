@@ -3,6 +3,7 @@ import React from 'react';
 import { LandingHeader } from './LandingHeader';
 import { Hero } from './Hero';
 import { Features } from './Features';
+import { VideoExplanation } from './VideoExplanation';
 import { AudienceSection } from './AudienceSection';
 import { CTASection } from './CTASection';
 import { Footer } from './Footer';
@@ -14,6 +15,7 @@ export function LandingPage() {
       <main className="flex-grow">
         <Hero />
         <Features />
+        <VideoExplanation />
         <AudienceSection />
         <CTASection />
       </main>
