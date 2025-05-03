@@ -34,17 +34,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // First set up auth state listener to avoid missing auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event);
         setSession(session);
         setUser(session?.user ?? null);
         
         if (event === 'SIGNED_IN') {
           // Initialize user profile on sign in
           setTimeout(() => {
-            initializeUserProfile(session!.user.id);
+            if (session?.user) {
+              initializeUserProfile(session.user.id);
+            }
           }, 0);
           
           // Redirect to dashboard on sign in
           navigate('/dashboard');
+        }
+        
+        if (event === 'SIGNED_OUT') {
+          // Don't clear localStorage here, as it might interfere with persistence
+          console.log('User signed out');
         }
       }
     );
@@ -70,6 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize user profile if it doesn't exist
   const initializeUserProfile = async (userId: string) => {
     try {
+      console.log('Initializing user profile for:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -80,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // If profile doesn't exist, create one with default settings
       if (!data) {
+        console.log('Creating new profile for user:', userId);
         const { error } = await supabase
           .from('profiles')
           .insert({
@@ -89,6 +99,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         
         if (error) throw error;
+      } else {
+        console.log('Profile already exists for user:', userId);
       }
     } catch (error) {
       console.error('Error initializing user profile:', error);
@@ -132,6 +144,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // Don't clear user-specific localStorage items here
+      // That's handled by the UserSettingsContext when the user state changes
       
       toast.success('Signed out successfully');
       navigate('/login');

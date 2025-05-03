@@ -47,8 +47,14 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ className = '', size = 'md' }) 
         <AvatarImage 
           src={avatarUrl} 
           alt="User" 
-          onError={() => setImageError(true)}
-          onLoad={() => setIsLoading(false)}
+          onError={() => {
+            console.error('Avatar image failed to load:', avatarUrl);
+            setImageError(true);
+          }}
+          onLoad={() => {
+            console.log('Avatar image loaded successfully:', avatarUrl);
+            setIsLoading(false);
+          }}
           className={`transition-opacity duration-300 ${isLoading ? 'opacity-50' : 'opacity-100'}`}
         />
       ) : (

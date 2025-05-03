@@ -43,6 +43,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Check cached avatarUrl in localStorage first for immediate display
       const cachedAvatarUrl = localStorage.getItem(`userAvatarUrl:${user.id}`);
       if (cachedAvatarUrl) {
+        console.log('Avatar loaded from localStorage cache:', cachedAvatarUrl);
         setAvatarUrl(cachedAvatarUrl);
       }
       
@@ -51,19 +52,22 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } else {
       // Clear avatar when there's no user
       setAvatarUrl(null);
-      // Clean up any stored avatar URLs when user logs out
-      if (typeof localStorage !== 'undefined') {
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith('userAvatarUrl:')) {
-            keysToRemove.push(key);
-          }
-        }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-      }
     }
   }, [user]);
+
+  const clearCachedAvatars = () => {
+    // Clean up any stored avatar URLs when user logs out
+    if (typeof localStorage !== 'undefined') {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('userAvatarUrl:')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+    }
+  };
   
   // Load settings from localStorage first, then override with Supabase if authenticated
   useEffect(() => {
@@ -80,11 +84,12 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const fetchUserAvatar = async (userId: string) => {
     try {
+      console.log('Fetching avatar for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('avatar_url')
         .eq('id', userId)
-        .maybeSingle(); // Using maybeSingle instead of single to avoid errors if no profile exists
+        .maybeSingle();
           
       if (error) throw error;
       
@@ -93,6 +98,8 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setAvatarUrl(data.avatar_url);
         // Store the avatar URL in localStorage with the user ID to ensure it's user-specific
         localStorage.setItem(`userAvatarUrl:${userId}`, data.avatar_url);
+      } else {
+        console.log('No avatar found for user in database');
       }
     } catch (error) {
       console.error('Error fetching avatar:', error);
@@ -104,6 +111,8 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const fetchSettings = async () => {
       if (!user) {
         setLoading(false);
+        // Clear avatar when user logs out
+        setAvatarUrl(null);
         return;
       }
 
@@ -111,7 +120,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setLoading(true);
         const { data, error } = await supabase
           .from('profiles')
-          .select('learning_languages, selected_language')
+          .select('learning_languages, selected_language, avatar_url')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -122,6 +131,12 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             learningLanguages: data.learning_languages as Language[] || defaultSettings.learningLanguages,
             selectedLanguage: data.selected_language as Language || defaultSettings.selectedLanguage
           });
+          
+          // Set avatar URL if available from profile
+          if (data.avatar_url) {
+            setAvatarUrl(data.avatar_url);
+            localStorage.setItem(`userAvatarUrl:${user.id}`, data.avatar_url);
+          }
         }
       } catch (error) {
         console.error('Error fetching user settings:', error);
@@ -138,6 +153,15 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     localStorage.setItem('userSettings', JSON.stringify(settings));
   }, [settings]);
+
+  // Add a cleanup effect for when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (!user) {
+        clearCachedAvatars();
+      }
+    };
+  }, [user]);
 
   const updateSettings = async (updates: Partial<UserSettings>) => {
     try {
