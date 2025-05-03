@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Exercise, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,7 +51,7 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const localExercises = useLocalExercises();
   const { subscription } = useSubscription();
   
-  // Define the exercise limit for non-premium users
+  // Define the exercise limit for non-premium users - updated to 3
   const exerciseLimit = 3;
   
   // Determine if user can create more exercises

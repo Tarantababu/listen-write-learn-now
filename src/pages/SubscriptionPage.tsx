@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -265,19 +264,19 @@ const SubscriptionPage: React.FC = () => {
                   <ul className="space-y-1">
                     <li className="flex items-center">
                       <Check className="h-4 w-4 text-green-500 mr-2" />
-                      <span>Unlimited exercises</span>
+                      <span>Unlimited Exercises</span>
                     </li>
                     <li className="flex items-center">
                       <Check className="h-4 w-4 text-green-500 mr-2" />
-                      <span>Text-to-speech for all exercises</span>
+                      <span>Progress Tracking</span>
                     </li>
                     <li className="flex items-center">
                       <Check className="h-4 w-4 text-green-500 mr-2" />
-                      <span>Advanced analytics</span>
+                      <span>AI created Text-to-Speech</span>
                     </li>
                     <li className="flex items-center">
                       <Check className="h-4 w-4 text-green-500 mr-2" />
-                      <span>AI-powered vocabulary suggestions</span>
+                      <span>AI powered vocabulary</span>
                     </li>
                   </ul>
                 </div>
@@ -296,23 +295,23 @@ const SubscriptionPage: React.FC = () => {
                   <ul className="space-y-1">
                     <li className="flex items-center">
                       <Check className="h-4 w-4 text-green-500 mr-2" />
-                      <span>5 exercises</span>
+                      <span>3 exercises</span>
                     </li>
                     <li className="flex items-center">
                       <Check className="h-4 w-4 text-green-500 mr-2" />
-                      <span>Basic progress tracking</span>
+                      <span>5 vocabulary</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-2" />
+                      <span>Progress Tracking</span>
                     </li>
                     <li className="flex items-center">
                       <X className="h-4 w-4 text-red-500 mr-2" />
-                      <span className="text-muted-foreground">Text-to-speech</span>
+                      <span className="text-muted-foreground">AI created Text-to-Speech</span>
                     </li>
                     <li className="flex items-center">
                       <X className="h-4 w-4 text-red-500 mr-2" />
-                      <span className="text-muted-foreground">Advanced analytics</span>
-                    </li>
-                    <li className="flex items-center">
-                      <X className="h-4 w-4 text-red-500 mr-2" />
-                      <span className="text-muted-foreground">AI-powered vocabulary</span>
+                      <span className="text-muted-foreground">AI powered vocabulary</span>
                     </li>
                   </ul>
                 </div>
