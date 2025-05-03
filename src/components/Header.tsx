@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -13,10 +13,14 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { 
+  Headphones, 
+  Menu, 
   LogOut, 
+  BookOpen, 
+  Home, 
   Settings, 
-  Crown,
-  Menu
+  CreditCard,
+  Crown
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getLanguageFlag } from '@/utils/languageUtils';
@@ -28,8 +32,14 @@ const Header: React.FC = () => {
   const { user, signOut } = useAuth();
   const { subscription } = useSubscription();
   const { settings } = useUserSettingsContext();
+  const location = useLocation();
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+
+  const isActive = (path: string) => {
+    return location.pathname === path 
+      || (path !== '/dashboard' && location.pathname.startsWith(path));
+  };
 
   const languageFlag = getLanguageFlag(settings.selectedLanguage);
 
@@ -43,6 +53,58 @@ const Header: React.FC = () => {
           >
             <Logo className="text-primary-gray" />
           </Link>
+          
+          {!isMobile && user && (
+            <nav className="flex items-center gap-1">
+              <Button 
+                asChild 
+                variant={isActive('/dashboard') && !isActive('/dashboard/exercises') && !isActive('/dashboard/vocabulary') ? "default" : "ghost"}
+                className="transition-all"
+                size="sm"
+              >
+                <Link to="/dashboard">
+                  <Home className="h-5 w-5 mr-1" />
+                  Dashboard
+                </Link>
+              </Button>
+              
+              <Button 
+                asChild 
+                variant={isActive('/dashboard/exercises') ? "default" : "ghost"}
+                className="transition-all"
+                size="sm"
+              >
+                <Link to="/dashboard/exercises">
+                  <BookOpen className="h-5 w-5 mr-1" />
+                  Exercises
+                </Link>
+              </Button>
+              
+              <Button 
+                asChild 
+                variant={isActive('/dashboard/vocabulary') ? "default" : "ghost"}
+                className="transition-all"
+                size="sm"
+              >
+                <Link to="/dashboard/vocabulary">
+                  <BookOpen className="h-5 w-5 mr-1" />
+                  Vocabulary
+                </Link>
+              </Button>
+              
+              <Button 
+                asChild 
+                variant={isActive('/dashboard/subscription') ? "default" : "ghost"}
+                className="transition-all"
+                size="sm"
+              >
+                <Link to="/dashboard/subscription">
+                  <CreditCard className="h-5 w-5 mr-1" />
+                  Subscription
+                </Link>
+              </Button>
+            </nav>
+          )}
         </div>
         
         <div className="flex items-center gap-2">
@@ -76,6 +138,34 @@ const Header: React.FC = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {isMobile && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard">
+                          <Home className="h-5 w-5 mr-2" /> Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard/exercises">
+                          <BookOpen className="h-5 w-5 mr-2" /> Exercises
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard/vocabulary">
+                          <BookOpen className="h-5 w-5 mr-2" /> Vocabulary
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard/subscription">
+                          <CreditCard className="h-5 w-5 mr-2" /> Subscription
+                          {subscription.isSubscribed && (
+                            <Crown className="h-4 w-4 ml-1 text-action-blue" />
+                          )}
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard/settings">
                       <Settings className="h-5 w-5 mr-2" /> Settings
