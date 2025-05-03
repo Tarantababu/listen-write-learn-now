@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +12,12 @@ interface UserAvatarProps {
 const UserAvatar: React.FC<UserAvatarProps> = ({ className = '', size = 'md' }) => {
   const { avatarUrl } = useUserSettingsContext();
   const { user } = useAuth();
+  const [imageError, setImageError] = useState(false);
+  
+  // Reset error state if avatarUrl changes
+  useEffect(() => {
+    setImageError(false);
+  }, [avatarUrl]);
   
   const sizeClasses = {
     sm: 'h-8 w-8',
@@ -33,7 +39,13 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ className = '', size = 'md' }) 
   
   return (
     <Avatar className={`${sizeClasses[size]} ${className} ring-2 ring-primary/20 hover:ring-primary/40 transition-all duration-300`}>
-      <AvatarImage src={avatarUrl || undefined} alt="User" />
+      {avatarUrl && !imageError ? (
+        <AvatarImage 
+          src={avatarUrl} 
+          alt="User" 
+          onError={() => setImageError(true)}
+        />
+      ) : null}
       <AvatarFallback className="bg-primary/10 text-primary">
         {getInitials()}
       </AvatarFallback>

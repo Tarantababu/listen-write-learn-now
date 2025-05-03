@@ -37,6 +37,20 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const { user } = useAuth();
   
+  // Initialize avatar from sessionStorage if available
+  useEffect(() => {
+    // Check if we have a cached avatar URL for this specific user
+    if (user) {
+      const cachedAvatarUrl = sessionStorage.getItem(`userAvatarUrl:${user.id}`);
+      if (cachedAvatarUrl) {
+        setAvatarUrl(cachedAvatarUrl);
+      }
+    } else {
+      // Clear avatar when there's no user
+      setAvatarUrl(null);
+    }
+  }, [user]);
+  
   // Load settings from localStorage first, then override with Supabase if authenticated
   // This ensures we always have the language preference available immediately
   useEffect(() => {
@@ -70,12 +84,13 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (error) throw error;
         
         if (data && data.avatar_url) {
+          console.log('Avatar loaded from database:', data.avatar_url);
           setAvatarUrl(data.avatar_url);
-          // Store the avatar URL in sessionStorage to persist across page navigation
-          sessionStorage.setItem('userAvatarUrl', data.avatar_url);
+          // Store the avatar URL in sessionStorage with the user ID to ensure it's user-specific
+          sessionStorage.setItem(`userAvatarUrl:${user.id}`, data.avatar_url);
         } else {
           setAvatarUrl(null);
-          sessionStorage.removeItem('userAvatarUrl');
+          sessionStorage.removeItem(`userAvatarUrl:${user.id}`);
         }
       } catch (error) {
         console.error('Error fetching avatar:', error);
@@ -83,13 +98,6 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     };
     
-    // First check if we have a cached avatar URL in sessionStorage
-    const cachedAvatarUrl = sessionStorage.getItem('userAvatarUrl');
-    if (cachedAvatarUrl) {
-      setAvatarUrl(cachedAvatarUrl);
-    }
-    
-    // Then fetch the latest from the server
     fetchAvatarUrl();
   }, [user]);
 
@@ -189,9 +197,10 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       if (updateError) throw updateError;
 
-      // Update local state and sessionStorage
+      // Update local state and sessionStorage with user-specific key
       setAvatarUrl(newAvatarUrl);
-      sessionStorage.setItem('userAvatarUrl', newAvatarUrl);
+      sessionStorage.setItem(`userAvatarUrl:${user.id}`, newAvatarUrl);
+      console.log('Avatar updated and cached:', newAvatarUrl);
       
       toast.success('Avatar updated successfully');
       return newAvatarUrl;
