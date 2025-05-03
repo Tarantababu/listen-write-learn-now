@@ -7,7 +7,7 @@ import UserAvatar from './UserAvatar';
 import { Loader2, Upload } from 'lucide-react';
 
 const AvatarUpload: React.FC = () => {
-  const { uploadAvatar } = useUserSettingsContext();
+  const { uploadAvatar, avatarUrl } = useUserSettingsContext();
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -30,10 +30,12 @@ const AvatarUpload: React.FC = () => {
     setIsUploading(true);
     try {
       await uploadAvatar(file);
+      toast.success('Avatar updated successfully');
     } catch (error) {
-      // Error already handled in uploadAvatar
+      console.error('Error uploading avatar:', error);
+      toast.error('Failed to upload avatar');
     } finally {
-      setIsUploading(false);
+      setIsLoading(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }

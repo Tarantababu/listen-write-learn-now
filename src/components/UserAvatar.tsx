@@ -13,14 +13,12 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ className = '', size = 'md' }) 
   const { avatarUrl } = useUserSettingsContext();
   const { user } = useAuth();
   const [imageError, setImageError] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Reset error state if avatarUrl changes
   useEffect(() => {
     setImageError(false);
-    if (avatarUrl) {
-      setIsLoading(true);
-    }
+    setIsLoading(!!avatarUrl);
   }, [avatarUrl]);
   
   const sizeClasses = {
@@ -43,15 +41,15 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ className = '', size = 'md' }) 
   
   return (
     <Avatar className={`${sizeClasses[size]} ${className} ring-2 ring-primary/20 hover:ring-primary/40 transition-all duration-300`}>
-      {avatarUrl && !imageError ? (
+      {avatarUrl && !imageError && (
         <AvatarImage 
           src={avatarUrl} 
           alt="User" 
           onError={() => setImageError(true)}
           onLoad={() => setIsLoading(false)}
-          className={isLoading ? 'opacity-50' : 'opacity-100'}
+          className={`transition-opacity duration-300 ${isLoading ? 'opacity-50' : 'opacity-100'}`}
         />
-      ) : null}
+      )}
       <AvatarFallback className="bg-primary/10 text-primary">
         {getInitials()}
       </AvatarFallback>
