@@ -35,7 +35,7 @@ const AvatarUpload: React.FC = () => {
       console.error('Error uploading avatar:', error);
       toast.error('Failed to upload avatar');
     } finally {
-      setIsUploading(false); // Fixed: Changed setIsLoading to setIsUploading
+      setIsUploading(false); // Correctly using setIsUploading
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }

@@ -37,22 +37,35 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const { user } = useAuth();
   
-  // Initialize avatar from sessionStorage if available
+  // Initialize avatar from localStorage if available
   useEffect(() => {
-    // Check if we have a cached avatar URL for this specific user
     if (user) {
-      const cachedAvatarUrl = sessionStorage.getItem(`userAvatarUrl:${user.id}`);
+      // Check cached avatarUrl in localStorage first for immediate display
+      const cachedAvatarUrl = localStorage.getItem(`userAvatarUrl:${user.id}`);
       if (cachedAvatarUrl) {
         setAvatarUrl(cachedAvatarUrl);
       }
+      
+      // Then fetch the latest from the database
+      fetchUserAvatar(user.id);
     } else {
       // Clear avatar when there's no user
       setAvatarUrl(null);
+      // Clean up any stored avatar URLs when user logs out
+      if (typeof localStorage !== 'undefined') {
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('userAvatarUrl:')) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+      }
     }
   }, [user]);
   
   // Load settings from localStorage first, then override with Supabase if authenticated
-  // This ensures we always have the language preference available immediately
   useEffect(() => {
     const savedSettings = localStorage.getItem('userSettings');
     
@@ -65,41 +78,26 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, []);
 
-  // Load avatar from Supabase when user changes
-  useEffect(() => {
-    if (!user) {
-      setAvatarUrl(null);
-      setLoading(false);
-      return;
-    }
-    
-    const fetchAvatarUrl = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('avatar_url')
-          .eq('id', user.id)
-          .single();
+  const fetchUserAvatar = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', userId)
+        .maybeSingle(); // Using maybeSingle instead of single to avoid errors if no profile exists
           
-        if (error) throw error;
-        
-        if (data && data.avatar_url) {
-          console.log('Avatar loaded from database:', data.avatar_url);
-          setAvatarUrl(data.avatar_url);
-          // Store the avatar URL in sessionStorage with the user ID to ensure it's user-specific
-          sessionStorage.setItem(`userAvatarUrl:${user.id}`, data.avatar_url);
-        } else {
-          setAvatarUrl(null);
-          sessionStorage.removeItem(`userAvatarUrl:${user.id}`);
-        }
-      } catch (error) {
-        console.error('Error fetching avatar:', error);
-        setAvatarUrl(null);
+      if (error) throw error;
+      
+      if (data && data.avatar_url) {
+        console.log('Avatar loaded from database:', data.avatar_url);
+        setAvatarUrl(data.avatar_url);
+        // Store the avatar URL in localStorage with the user ID to ensure it's user-specific
+        localStorage.setItem(`userAvatarUrl:${userId}`, data.avatar_url);
       }
-    };
-    
-    fetchAvatarUrl();
-  }, [user]);
+    } catch (error) {
+      console.error('Error fetching avatar:', error);
+    }
+  };
 
   // Load settings from Supabase when user changes
   useEffect(() => {
@@ -197,9 +195,9 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       if (updateError) throw updateError;
 
-      // Update local state and sessionStorage with user-specific key
+      // Update local state and localStorage with user-specific key
       setAvatarUrl(newAvatarUrl);
-      sessionStorage.setItem(`userAvatarUrl:${user.id}`, newAvatarUrl);
+      localStorage.setItem(`userAvatarUrl:${user.id}`, newAvatarUrl);
       console.log('Avatar updated and cached:', newAvatarUrl);
       
       toast.success('Avatar updated successfully');
