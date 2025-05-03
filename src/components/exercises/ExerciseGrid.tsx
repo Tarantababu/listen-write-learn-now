@@ -11,6 +11,7 @@ interface ExerciseGridProps {
   onPractice: (exercise: Exercise) => void;
   onEdit: (exercise: Exercise) => void;
   onDelete: (exercise: Exercise) => void;
+  onMove: (exercise: Exercise) => void;
   onCreateClick: () => void;
   canEdit?: boolean;
 }
@@ -21,6 +22,7 @@ const ExerciseGrid = ({
   onPractice,
   onEdit,
   onDelete,
+  onMove,
   onCreateClick,
   canEdit = true
 }: ExerciseGridProps) => {
@@ -39,6 +41,7 @@ const ExerciseGrid = ({
           onPractice={() => onPractice(exercise)}
           onEdit={() => onEdit(exercise)}
           onDelete={() => onDelete(exercise)}
+          onMove={() => onMove(exercise)}
           disableEdit={!canEdit}
         />
       ))}

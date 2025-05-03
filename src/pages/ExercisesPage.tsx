@@ -19,6 +19,7 @@ import PaginationControls from '@/components/exercises/PaginationControls';
 import ExerciseFormModal from '@/components/exercises/ExerciseFormModal';
 import DeleteExerciseDialog from '@/components/exercises/DeleteExerciseDialog';
 import PracticeModal from '@/components/exercises/PracticeModal';
+import MoveExerciseModal from '@/components/MoveExerciseModal';
 import UpgradePrompt from '@/components/UpgradePrompt';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Sparkles } from 'lucide-react';
@@ -46,11 +47,13 @@ const ExercisesPage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPracticeModalOpen, setIsPracticeModalOpen] = useState(false);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   
   // Selected exercise state
   const [exerciseToEdit, setExerciseToEdit] = useState<Exercise | null>(null);
   const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
   const [exerciseToPractice, setExerciseToPractice] = useState<Exercise | null>(null);
+  const [exerciseToMove, setExerciseToMove] = useState<Exercise | null>(null);
   
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -140,6 +143,11 @@ const ExercisesPage: React.FC = () => {
     setIsDeleteDialogOpen(true);
   };
   
+  const handleMove = (exercise: Exercise) => {
+    setExerciseToMove(exercise);
+    setIsMoveModalOpen(true);
+  };
+  
   const confirmDelete = () => {
     if (exerciseToDelete) {
       deleteExercise(exerciseToDelete.id);
@@ -204,6 +212,16 @@ const ExercisesPage: React.FC = () => {
         setExerciseToDelete(null);
         refreshPage();
       }, 300);
+    }
+  };
+
+  const handleMoveModalClose = (open: boolean) => {
+    setIsMoveModalOpen(open);
+    if (!open) {
+      setTimeout(() => {
+        setExerciseToMove(null);
+        refreshPage();
+      }, 300); // Wait for animation to finish
     }
   };
   
@@ -290,6 +308,7 @@ const ExercisesPage: React.FC = () => {
                   onPractice={handlePractice}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  onMove={handleMove}
                   onCreateClick={() => setIsAddModalOpen(true)}
                   canEdit={canEdit}
                 />
@@ -333,6 +352,16 @@ const ExercisesPage: React.FC = () => {
             onOpenChange={handlePracticeModalClose}
             exercise={exerciseToPractice}
             onComplete={handlePracticeComplete}
+          />
+        )}
+        
+        {/* Move exercise modal */}
+        {exerciseToMove && (
+          <MoveExerciseModal
+            isOpen={isMoveModalOpen}
+            onOpenChange={handleMoveModalClose}
+            exercise={exerciseToMove}
+            onSuccess={refreshPage}
           />
         )}
       </div>
