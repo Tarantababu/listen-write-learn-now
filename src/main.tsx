@@ -21,7 +21,7 @@ firaCodeFont.href = 'https://fonts.googleapis.com/css2?family=Fira+Code:wght@400
 firaCodeFont.rel = 'stylesheet';
 document.head.appendChild(firaCodeFont);
 
-// Add favicon
+// Add favicon with absolute path
 const favicon = document.createElement('link');
 favicon.rel = 'icon';
 favicon.href = '/src/assets/lwlnow-favicon.svg';
