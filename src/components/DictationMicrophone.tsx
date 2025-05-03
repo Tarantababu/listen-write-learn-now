@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Loader, Pause, Play } from 'lucide-react';
@@ -64,13 +63,21 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [transcript, setTranscript] = useState(existingText);
-  const [currentSessionText, setCurrentSessionText] = useState('');
+  
+  // Buffer for the current dictation session
+  const [dictationBuffer, setDictationBuffer] = useState('');
+  
+  // The existing text from the parent component
+  const [initialText, setInitialText] = useState(existingText);
+  
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
   const { toast } = useToast();
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const isMobile = useIsMobile();
+  
+  // Animation state
+  const [isAnimating, setIsAnimating] = useState(false);
   
   // Map language codes to BCP 47 language tags for the Web Speech API
   const getLanguageCode = (lang: string): string => {
@@ -133,16 +140,17 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
         }
       }
       
-      // Update current session text
+      // Update dictation buffer with new text
       if (finalTranscript) {
-        setCurrentSessionText(prev => prev + finalTranscript);
+        setDictationBuffer(prev => prev + finalTranscript);
       }
       
-      // Combine existing transcript with new text
-      const combinedText = transcript + (currentSessionText + finalTranscript + interimTranscript).trim();
+      // Show intermediate results in the text area, but don't commit yet
+      // This combines the initial text + buffer + current interim results
+      const previewText = initialText + (dictationBuffer + interimTranscript).trim();
       
-      // Send to parent component for immediate update
-      onTextReceived(combinedText);
+      // Send to parent component for immediate preview
+      onTextReceived(previewText);
     };
     
     // Handle errors
@@ -165,6 +173,11 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   };
 
   useEffect(() => {
+    // Update initialText when existingText prop changes
+    setInitialText(existingText);
+  }, [existingText]);
+
+  useEffect(() => {
     // Clean up on unmount
     return () => {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
@@ -176,9 +189,6 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       }
     };
   }, [mediaRecorder, recognition]);
-
-  // Add dictation animation related state
-  const [isAnimating, setIsAnimating] = useState(false);
   
   const startRecording = async () => {
     try {
@@ -187,8 +197,10 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       const recorder = new MediaRecorder(stream);
       
       setAudioChunks([]);
-      // Keep existing transcript when starting new recording
-      setCurrentSessionText('');
+      
+      // Clear the dictation buffer for a new recording session
+      // But keep the initialText (which comes from the parent)
+      setDictationBuffer('');
       
       // Start animation when recording starts
       setIsAnimating(true);
@@ -236,14 +248,6 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       // Pause animation when recording is paused
       setIsAnimating(false);
       
-      // When paused, update the transcript with current session text
-      // This is crucial for accumulating text between pause/resume cycles
-      setTranscript(prev => {
-        const updatedTranscript = prev + (currentSessionText ? ' ' + currentSessionText.trim() : '');
-        return updatedTranscript.trim() + ' ';
-      });
-      setCurrentSessionText('');
-      
       toast({
         title: "Recording paused",
         description: "Press resume when you're ready to continue",
@@ -261,9 +265,6 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       setIsPaused(false);
       // Resume animation when recording resumes
       setIsAnimating(true);
-      
-      // Important: currentSessionText is reset when paused, 
-      // and transcript now contains all previous text
       
       toast({
         title: "Recording resumed",
@@ -291,13 +292,6 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
     
     // Stop animation when recording stops
     setIsAnimating(false);
-    
-    // When stopping, update the transcript with current session text
-    setTranscript(prev => {
-      const updatedTranscript = prev + (currentSessionText ? ' ' + currentSessionText.trim() : '');
-      return updatedTranscript.trim() + ' ';
-    });
-    setCurrentSessionText('');
   };
 
   const cancelRecording = () => {
@@ -305,9 +299,13 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
     setIsPaused(false);
     stopRecording();
     setAudioChunks([]);
+    // Clear dictation buffer on cancel
+    setDictationBuffer('');
     // Stop animation
     setIsAnimating(false);
-    // Do not reset transcript on cancel
+    
+    // Return to the initial text
+    onTextReceived(initialText);
     
     toast({
       title: "Recording cancelled",
@@ -348,10 +346,14 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
           }
           
           if (data?.text) {
-            // Combine with transcript and pass to the parent component
-            const fullTranscript = transcript + ' ' + data.text;
-            setTranscript(fullTranscript.trim() + ' ');
-            onTextReceived(fullTranscript);
+            // Combine with initial text and buffer, then pass to parent component
+            const completedText = initialText + ' ' + data.text;
+            
+            // Update the buffer with the more accurate transcription
+            setDictationBuffer(data.text);
+            
+            // Send the completed text to parent
+            onTextReceived(completedText);
             
             toast({
               title: "Transcription complete",
@@ -385,14 +387,17 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   };
 
   const handleDone = () => {
-    // When "Done" is clicked, stop recording and process the audio
+    // When "Done" is clicked, stop recording and commit the buffer
     setIsRecording(false);
     setIsPaused(false);
     stopRecording();
     
-    // Update with the current accumulated text
-    const accumulatedText = transcript.trim() + (currentSessionText ? ' ' + currentSessionText.trim() : '');
-    onTextReceived(accumulatedText);
+    // Combine the initial text with the buffer and send to parent
+    const committedText = initialText ? 
+      initialText.trim() + ' ' + dictationBuffer.trim() : 
+      dictationBuffer.trim();
+      
+    onTextReceived(committedText);
     
     // Process the recorded audio for higher accuracy if needed
     if (audioChunks.length > 0) {
