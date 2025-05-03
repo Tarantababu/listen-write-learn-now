@@ -100,6 +100,7 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [vocabulary, user]);
 
   const addVocabularyItem = async (item: Omit<VocabularyItem, 'id'>): Promise<VocabularyItem> => {
+    // Check if user can create more vocabulary items
     if (!canCreateMore) {
       toast.error(`You've reached the limit of ${vocabularyLimit} vocabulary items. Upgrade to premium for unlimited vocabulary.`);
       throw new Error('Vocabulary limit reached');
