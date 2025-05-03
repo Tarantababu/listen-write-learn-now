@@ -23,6 +23,19 @@ const audiences = [
   }
 ];
 
+const languages = [
+  { code: "EN", name: "English", bgColor: "bg-blue-100" },
+  { code: "DE", name: "German", bgColor: "bg-red-100" },
+  { code: "ES", name: "Spanish", bgColor: "bg-yellow-100" },
+  { code: "FR", name: "French", bgColor: "bg-indigo-100" },
+  { code: "PT", name: "Portuguese", bgColor: "bg-green-100" },
+  { code: "IT", name: "Italian", bgColor: "bg-pink-100" },
+  { code: "TR", name: "Turkish", bgColor: "bg-orange-100" },
+  { code: "SV", name: "Swedish", bgColor: "bg-blue-100" },
+  { code: "NL", name: "Dutch", bgColor: "bg-purple-100" },
+  { code: "NO", name: "Norwegian", bgColor: "bg-teal-100" }
+];
+
 export function AudienceSection() {
   return (
     <section id="for-who" className="py-20">
@@ -74,19 +87,15 @@ export function AudienceSection() {
         <div className="mt-16 flex flex-col items-center justify-center space-y-4 text-center">
           <div className="space-y-2">
             <h3 className="text-2xl font-bold">Language Support</h3>
-            <div className="flex flex-wrap items-center justify-center gap-6 mt-6">
-              <div className="flex items-center gap-2">
-                <div className="size-10 rounded-full bg-red-100 flex items-center justify-center">
-                  <span className="font-medium">DE</span>
+            <div className="flex flex-wrap items-center justify-center gap-4 mt-6">
+              {languages.map((lang) => (
+                <div key={lang.code} className="flex items-center gap-2">
+                  <div className={`size-10 rounded-full ${lang.bgColor} flex items-center justify-center`}>
+                    <span className="font-medium">{lang.code}</span>
+                  </div>
+                  <span>{lang.name}</span>
                 </div>
-                <span>German</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="size-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <span className="font-medium">EN</span>
-                </div>
-                <span>English</span>
-              </div>
+              ))}
             </div>
           </div>
         </div>

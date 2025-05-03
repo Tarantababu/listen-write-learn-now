@@ -17,7 +17,7 @@ interface UserSettingsContextProps {
 }
 
 const defaultSettings: UserSettings = {
-  learningLanguages: ['english', 'german'] as Language[],
+  learningLanguages: ['english', 'german', 'spanish', 'french'] as Language[],
   selectedLanguage: 'english' as Language
 };
 

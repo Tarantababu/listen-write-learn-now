@@ -1,4 +1,15 @@
-export type Language = 'english' | 'german';
+
+export type Language = 
+  | 'english' 
+  | 'german' 
+  | 'spanish' 
+  | 'french' 
+  | 'portuguese' 
+  | 'italian'
+  | 'turkish'
+  | 'swedish'
+  | 'dutch'
+  | 'norwegian';
 
 export interface Exercise {
   id: string;

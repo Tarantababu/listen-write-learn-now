@@ -24,7 +24,13 @@ serve(async (req) => {
       'english': 'onyx',
       'german': 'alloy',
       'french': 'nova',
-      'spanish': 'shimmer'
+      'spanish': 'shimmer',
+      'portuguese': 'alloy',
+      'italian': 'nova',
+      'turkish': 'shimmer',
+      'swedish': 'onyx',
+      'dutch': 'alloy',
+      'norwegian': 'nova'
     };
 
     const voice = voiceMap[language.toLowerCase()] || 'onyx';

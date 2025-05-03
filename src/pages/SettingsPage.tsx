@@ -25,7 +25,19 @@ const SettingsPage: React.FC = () => {
     loading
   } = useUserSettingsContext();
   
-  const availableLanguages: Language[] = ['english', 'german'];
+  const availableLanguages: Language[] = [
+    'english', 
+    'german', 
+    'spanish', 
+    'french', 
+    'portuguese', 
+    'italian',
+    'turkish',
+    'swedish',
+    'dutch',
+    'norwegian'
+  ];
+  
   const [updatingLanguage, setUpdatingLanguage] = useState<string | null>(null);
   const isMobile = useIsMobile();
   
