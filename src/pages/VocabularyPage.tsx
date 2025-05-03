@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import VocabularyPlaylist from '@/components/VocabularyPlaylist';
@@ -11,15 +10,23 @@ import { Sparkles, PlusCircle } from 'lucide-react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useNavigate } from 'react-router-dom';
 import UpgradePrompt from '@/components/UpgradePrompt';
-
 const VocabularyPage = () => {
-  const { vocabulary, getVocabularyByLanguage, canCreateMore, vocabularyLimit, removeVocabularyItem } = useVocabularyContext();
-  const { settings } = useUserSettingsContext();
-  const { subscription } = useSubscription();
+  const {
+    vocabulary,
+    getVocabularyByLanguage,
+    canCreateMore,
+    vocabularyLimit,
+    removeVocabularyItem
+  } = useVocabularyContext();
+  const {
+    settings
+  } = useUserSettingsContext();
+  const {
+    subscription
+  } = useSubscription();
   const navigate = useNavigate();
-  
   const [showForm, setShowForm] = useState(false);
-  
+
   // Filter vocabulary by currently selected language
   const languageVocabulary = getVocabularyByLanguage(settings.selectedLanguage);
 
@@ -27,9 +34,7 @@ const VocabularyPage = () => {
   const handleDeleteVocabularyItem = (id: string) => {
     removeVocabularyItem(id);
   };
-
-  return (
-    <div className="container mx-auto px-4 py-8">
+  return <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">Vocabulary</h1>
@@ -37,19 +42,11 @@ const VocabularyPage = () => {
             Manage your saved vocabulary words
           </p>
         </div>
-        <Button
-          onClick={() => setShowForm(true)}
-          className="mt-4 md:mt-0"
-          disabled={!canCreateMore}
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add New Word
-        </Button>
+        
       </div>
 
       {/* Subscription Status Alert */}
-      {!subscription.isSubscribed && (
-        <Alert className="mb-6 bg-primary/5 border-primary/20">
+      {!subscription.isSubscribed && <Alert className="mb-6 bg-primary/5 border-primary/20">
           <Sparkles className="h-4 w-4 text-primary" />
           <AlertDescription className="flex items-center justify-between">
             <span>
@@ -58,17 +55,11 @@ const VocabularyPage = () => {
                 {vocabulary.length}/{vocabularyLimit} items used.
               </strong>
             </span>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="ml-4 border-primary text-primary"
-              onClick={() => navigate('/dashboard/subscription')}
-            >
+            <Button variant="outline" size="sm" className="ml-4 border-primary text-primary" onClick={() => navigate('/dashboard/subscription')}>
               <Sparkles className="h-3 w-3 mr-1" /> Upgrade
             </Button>
           </AlertDescription>
-        </Alert>
-      )}
+        </Alert>}
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
@@ -77,58 +68,32 @@ const VocabularyPage = () => {
               <CardTitle className="text-xl">Your Vocabulary List</CardTitle>
             </CardHeader>
             <CardContent>
-              {languageVocabulary.length === 0 ? (
-                <div className="text-center py-8">
+              {languageVocabulary.length === 0 ? <div className="text-center py-8">
                   <p className="text-muted-foreground">
                     You haven't added any vocabulary words yet.
                   </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowForm(true)}
-                    className="mt-4"
-                    disabled={!canCreateMore}
-                  >
+                  <Button variant="outline" onClick={() => setShowForm(true)} className="mt-4" disabled={!canCreateMore}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Your First Word
                   </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {languageVocabulary.map((item) => (
-                    <VocabularyCard 
-                      key={item.id} 
-                      item={item} 
-                      onDelete={() => handleDeleteVocabularyItem(item.id)}
-                    />
-                  ))}
-                </div>
-              )}
+                </div> : <div className="space-y-4">
+                  {languageVocabulary.map(item => <VocabularyCard key={item.id} item={item} onDelete={() => handleDeleteVocabularyItem(item.id)} />)}
+                </div>}
             </CardContent>
           </Card>
         </div>
         
         <div>
           <div className="space-y-6">
-            <VocabularyPlaylist 
-              vocabulary={languageVocabulary} 
-              showForm={showForm}
-              onCloseForm={() => setShowForm(false)}
-            />
+            <VocabularyPlaylist vocabulary={languageVocabulary} showForm={showForm} onCloseForm={() => setShowForm(false)} />
             
             {/* Subscription Upgrade Card */}
-            {!subscription.isSubscribed && (
-              <div className="mt-6">
-                <UpgradePrompt 
-                  title="Unlimited Vocabulary"
-                  message="Premium subscribers can create unlimited vocabulary lists to enhance their learning."
-                />
-              </div>
-            )}
+            {!subscription.isSubscribed && <div className="mt-6">
+                <UpgradePrompt title="Unlimited Vocabulary" message="Premium subscribers can create unlimited vocabulary lists to enhance their learning." />
+              </div>}
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default VocabularyPage;
