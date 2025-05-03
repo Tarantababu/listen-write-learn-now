@@ -74,15 +74,15 @@ const FilterBar: React.FC<FilterBarProps> = ({
         </Select>
         
         <Select
-          value={selectedTag || ""}
-          onValueChange={(value) => setSelectedTag(value || null)}
+          value={selectedTag || "all-tags"}
+          onValueChange={(value) => setSelectedTag(value === "all-tags" ? null : value)}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder="All Tags" />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              <SelectItem value="">All Tags</SelectItem>
+              <SelectItem value="all-tags">All Tags</SelectItem>
               {allTags.map(tag => (
                 <SelectItem key={tag} value={tag}>{tag}</SelectItem>
               ))}
