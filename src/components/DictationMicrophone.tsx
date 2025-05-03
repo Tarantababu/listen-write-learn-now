@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Loader, Pause, Play } from 'lucide-react';
@@ -11,6 +10,7 @@ interface DictationMicrophoneProps {
   onTextReceived: (text: string) => void;
   language: string;
   isDisabled?: boolean;
+  existingText?: string; // Add prop for existing text
 }
 
 // SpeechRecognition is not in the standard TypeScript definitions, so we need to define it
@@ -57,12 +57,14 @@ declare global {
 const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   onTextReceived,
   language,
-  isDisabled = false
+  isDisabled = false,
+  existingText = ''
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [transcript, setTranscript] = useState('');
+  const [transcript, setTranscript] = useState(existingText);
+  const [currentSessionText, setCurrentSessionText] = useState('');
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
   const { toast } = useToast();
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
@@ -117,7 +119,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
     // Handle recognition results
     recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
       let interimTranscript = '';
-      let finalTranscript = transcript;
+      let finalTranscript = '';
       
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
@@ -130,9 +132,16 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
         }
       }
       
-      // Update transcript and send to parent component
-      setTranscript(finalTranscript);
-      onTextReceived(finalTranscript + interimTranscript);
+      // Update current session text
+      if (finalTranscript) {
+        setCurrentSessionText(prev => prev + finalTranscript);
+      }
+      
+      // Combine existing transcript with new text
+      const combinedText = transcript + (currentSessionText + finalTranscript + interimTranscript).trim();
+      
+      // Send to parent component for immediate update
+      onTextReceived(combinedText);
     };
     
     // Handle errors
@@ -174,7 +183,8 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       const recorder = new MediaRecorder(stream);
       
       setAudioChunks([]);
-      setTranscript('');
+      // Keep existing transcript when starting new recording
+      setCurrentSessionText('');
       
       recorder.addEventListener('dataavailable', (event) => {
         if (event.data.size > 0) {
@@ -217,6 +227,13 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       }
       setIsPaused(true);
       
+      // When paused, update the transcript with current session text
+      setTranscript(prev => {
+        const updatedTranscript = prev + (currentSessionText ? ' ' + currentSessionText.trim() : '');
+        return updatedTranscript.trim() + ' ';
+      });
+      setCurrentSessionText('');
+      
       toast({
         title: "Recording paused",
         description: "Press resume when you're ready to continue",
@@ -256,6 +273,13 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
     if (recognition) {
       recognition.stop();
     }
+    
+    // When stopping, update the transcript with current session text
+    setTranscript(prev => {
+      const updatedTranscript = prev + (currentSessionText ? ' ' + currentSessionText.trim() : '');
+      return updatedTranscript.trim() + ' ';
+    });
+    setCurrentSessionText('');
   };
 
   const cancelRecording = () => {
@@ -263,7 +287,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
     setIsPaused(false);
     stopRecording();
     setAudioChunks([]);
-    setTranscript('');
+    // Do not reset transcript on cancel
     
     toast({
       title: "Recording cancelled",
@@ -304,9 +328,9 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
           }
           
           if (data?.text) {
-            // Combine with any existing transcript and pass to the parent component
-            const fullTranscript = transcript ? transcript.trim() + ' ' + data.text : data.text;
-            setTranscript(fullTranscript);
+            // Combine with transcript and pass to the parent component
+            const fullTranscript = transcript + ' ' + data.text;
+            setTranscript(fullTranscript.trim() + ' ');
             onTextReceived(fullTranscript);
             
             toast({
@@ -346,10 +370,9 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
     setIsPaused(false);
     stopRecording();
     
-    // Use any text we already have from real-time recognition
-    if (transcript) {
-      onTextReceived(transcript);
-    }
+    // Update with the current accumulated text
+    const accumulatedText = transcript.trim() + (currentSessionText ? ' ' + currentSessionText.trim() : '');
+    onTextReceived(accumulatedText);
     
     // Process the recorded audio for higher accuracy if needed
     if (audioChunks.length > 0) {

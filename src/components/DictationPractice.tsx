@@ -282,11 +282,12 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
                 Press <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Shift</span> + <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Space</span> to play/pause
               </p>
               
-              {/* Add microphone dictation button */}
+              {/* Updated microphone dictation button with existing text */}
               <DictationMicrophone 
                 onTextReceived={handleDictationResult}
                 language={exercise.language}
                 isDisabled={showResults}
+                existingText={userInput}
               />
             </div>
           </div>
