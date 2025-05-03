@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Exercise } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -74,6 +73,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       extra: result.extra
     });
     
+    // Call onComplete immediately with the accuracy result
     onComplete(result.accuracy);
 
     if (result.accuracy >= 95) {

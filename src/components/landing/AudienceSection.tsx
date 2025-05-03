@@ -3,6 +3,8 @@ import React from 'react';
 import { Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AnimatedGroup } from '@/components/ui/animated-group';
+import { getLanguageFlag } from '@/utils/languageUtils';
+import { Language } from '@/types';
 
 const audiences = [
   {
@@ -24,16 +26,16 @@ const audiences = [
 ];
 
 const languages = [
-  { code: "EN", name: "English", bgColor: "bg-blue-100" },
-  { code: "DE", name: "German", bgColor: "bg-red-100" },
-  { code: "ES", name: "Spanish", bgColor: "bg-yellow-100" },
-  { code: "FR", name: "French", bgColor: "bg-indigo-100" },
-  { code: "PT", name: "Portuguese", bgColor: "bg-green-100" },
-  { code: "IT", name: "Italian", bgColor: "bg-pink-100" },
-  { code: "TR", name: "Turkish", bgColor: "bg-orange-100" },
-  { code: "SV", name: "Swedish", bgColor: "bg-blue-100" },
-  { code: "NL", name: "Dutch", bgColor: "bg-purple-100" },
-  { code: "NO", name: "Norwegian", bgColor: "bg-teal-100" }
+  { code: "english", name: "English" },
+  { code: "german", name: "German" },
+  { code: "spanish", name: "Spanish" },
+  { code: "french", name: "French" },
+  { code: "portuguese", name: "Portuguese" },
+  { code: "italian", name: "Italian" },
+  { code: "turkish", name: "Turkish" },
+  { code: "swedish", name: "Swedish" },
+  { code: "dutch", name: "Dutch" },
+  { code: "norwegian", name: "Norwegian" }
 ];
 
 export function AudienceSection() {
@@ -90,8 +92,8 @@ export function AudienceSection() {
             <div className="flex flex-wrap items-center justify-center gap-4 mt-6">
               {languages.map((lang) => (
                 <div key={lang.code} className="flex items-center gap-2">
-                  <div className={`size-10 rounded-full ${lang.bgColor} flex items-center justify-center`}>
-                    <span className="font-medium">{lang.code}</span>
+                  <div className="size-10 rounded-full flex items-center justify-center">
+                    <span className="text-xl">{getLanguageFlag(lang.code as Language)}</span>
                   </div>
                   <span>{lang.name}</span>
                 </div>

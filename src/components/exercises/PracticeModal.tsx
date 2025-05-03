@@ -27,6 +27,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   const { settings } = useUserSettingsContext();
   
   const handleComplete = (accuracy: number) => {
+    // Update progress first and then show results
     onComplete(accuracy);
     setShowResults(true);
   };
