@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff, Loader } from 'lucide-react';
+import { Mic, MicOff, Loader, Pause, Play } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   isDisabled = false
 }) => {
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
@@ -48,7 +49,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       });
 
       recorder.addEventListener('stop', () => {
-        if (isRecording) { // Only process if we're still in recording state (not canceled)
+        if (isRecording && !isPaused) { // Only process if we're still in recording state (not canceled or paused)
           processAudio();
         }
       });
@@ -56,6 +57,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       recorder.start();
       setMediaRecorder(recorder);
       setIsRecording(true);
+      setIsPaused(false);
       
       toast({
         title: "Recording started",
@@ -68,6 +70,32 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
         title: "Microphone access error",
         description: "Please allow microphone access to use this feature",
         variant: "destructive",
+      });
+    }
+  };
+
+  const pauseRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.pause();
+      setIsPaused(true);
+      
+      toast({
+        title: "Recording paused",
+        description: "Press resume when you're ready to continue",
+        duration: 2000,
+      });
+    }
+  };
+
+  const resumeRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'paused') {
+      mediaRecorder.resume();
+      setIsPaused(false);
+      
+      toast({
+        title: "Recording resumed",
+        description: "Continue speaking into your microphone",
+        duration: 2000,
       });
     }
   };
@@ -85,6 +113,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
 
   const cancelRecording = () => {
     setIsRecording(false);
+    setIsPaused(false);
     stopRecording();
     setAudioChunks([]);
     
@@ -97,6 +126,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   const processAudio = async () => {
     if (audioChunks.length === 0) {
       setIsRecording(false);
+      setIsPaused(false);
       return;
     }
     
@@ -149,12 +179,14 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       });
     } finally {
       setIsRecording(false);
+      setIsPaused(false);
       setIsProcessing(false);
     }
   };
 
   const handleDone = () => {
     setIsRecording(false);
+    setIsPaused(false);
     stopRecording();
   };
 
@@ -185,6 +217,28 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
         </Button>
       ) : (
         <div className="flex items-center gap-2">
+          {isPaused ? (
+            <Button 
+              onClick={resumeRecording}
+              size="sm"
+              variant="outline"
+              className="flex gap-2 items-center bg-green-50 border-green-200 hover:bg-green-100"
+            >
+              <Play className="h-4 w-4 text-green-600" />
+              <span>Resume</span>
+            </Button>
+          ) : (
+            <Button 
+              onClick={pauseRecording}
+              size="sm"
+              variant="outline"
+              className="flex gap-2 items-center bg-amber-50 border-amber-200 hover:bg-amber-100"
+            >
+              <Pause className="h-4 w-4 text-amber-600" />
+              <span>Pause</span>
+            </Button>
+          )}
+          
           <Button
             onClick={handleDone}
             size="sm" 
@@ -193,6 +247,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
           >
             <span>Done</span>
           </Button>
+          
           <Button
             onClick={cancelRecording}
             size="sm"

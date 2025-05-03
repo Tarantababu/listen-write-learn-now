@@ -1,7 +1,9 @@
 
+// Importing necessary dependencies
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// Define CORS headers to allow cross-origin requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -44,57 +46,60 @@ serve(async (req) => {
   }
 
   try {
+    console.log("[SPEECH-TO-TEXT] Function called");
     const { audio, language } = await req.json();
     
     if (!audio) {
       throw new Error('No audio data provided');
     }
 
-    console.log(`Processing audio for language: ${language}`);
+    console.log(`[SPEECH-TO-TEXT] Processing audio for language: ${language || 'default'}`);
     
-    // Process audio in chunks
+    // Process audio in chunks to avoid memory issues
     const binaryAudio = processBase64Chunks(audio);
     
-    // Prepare form data
+    // Prepare form data for OpenAI API
     const formData = new FormData();
     const blob = new Blob([binaryAudio], { type: 'audio/webm' });
     formData.append('file', blob, 'audio.webm');
     formData.append('model', 'whisper-1');
     
-    // Add language parameter if provided (helps with accuracy)
-    if (language) {
-      formData.append('language', language === 'english' ? 'en' : 
-                               language === 'german' ? 'de' : 
-                               language === 'spanish' ? 'es' : 
-                               language === 'french' ? 'fr' : '');
+    // Add language parameter if provided
+    if (language && language !== 'english') {
+      formData.append('language', language);
     }
 
-    // Send to OpenAI
+    // Send to OpenAI for transcription
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
+      throw new Error('OpenAI API key is not configured');
+    }
+
+    console.log("[SPEECH-TO-TEXT] Sending request to OpenAI");
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Authorization': `Bearer ${openaiApiKey}`,
       },
       body: formData,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, response.statusText);
-      console.error('Error details:', errorText);
+      console.error(`[SPEECH-TO-TEXT] OpenAI API error: ${errorText}`);
       throw new Error(`OpenAI API error: ${errorText}`);
     }
 
     const result = await response.json();
-    console.log('Transcription successful');
-
+    console.log(`[SPEECH-TO-TEXT] Transcription successful: ${result.text.substring(0, 50)}...`);
+    
     return new Response(
       JSON.stringify({ text: result.text }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
   } catch (error) {
-    console.error('Error in speech-to-text function:', error);
+    console.error(`[SPEECH-TO-TEXT] Error: ${error.message}`);
+    
     return new Response(
       JSON.stringify({ error: error.message }),
       {
