@@ -14,8 +14,8 @@ export function LandingPage() {
       <LandingHeader />
       <main className="flex-grow">
         <Hero />
-        <Features />
         <VideoExplanation />
+        <Features />
         <AudienceSection />
         <CTASection />
       </main>
