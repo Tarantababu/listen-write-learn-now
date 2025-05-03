@@ -9,7 +9,7 @@ export function Logo({ className, size = 'default' }: { className?: string, size
   
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <div className={cn("flex-shrink-0", {
+      <div className={cn("flex-shrink-0 flex items-center justify-center", {
         'h-6 w-6': size === 'sm',
         'h-8 w-8': size === 'default',
         'h-10 w-10': size === 'lg'
@@ -17,10 +17,11 @@ export function Logo({ className, size = 'default' }: { className?: string, size
         <svg 
           xmlns="http://www.w3.org/2000/svg" 
           viewBox="0 0 24 24" 
-          className="h-full w-full"
           width={logoSize}
           height={logoSize}
+          fill="none"
           preserveAspectRatio="xMidYMid meet"
+          className="inline-block"
         >
           <rect 
             width="16" 
