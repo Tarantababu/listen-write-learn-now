@@ -10,7 +10,7 @@ interface DictationMicrophoneProps {
   onTextReceived: (text: string) => void;
   language: string;
   isDisabled?: boolean;
-  existingText?: string; // Add prop for existing text
+  existingText?: string;
 }
 
 // SpeechRecognition is not in the standard TypeScript definitions, so we need to define it
@@ -176,6 +176,9 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
     };
   }, [mediaRecorder, recognition]);
 
+  // Add dictation animation related state
+  const [isAnimating, setIsAnimating] = useState(false);
+  
   const startRecording = async () => {
     try {
       // Get access to microphone
@@ -185,6 +188,9 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       setAudioChunks([]);
       // Keep existing transcript when starting new recording
       setCurrentSessionText('');
+      
+      // Start animation when recording starts
+      setIsAnimating(true);
       
       recorder.addEventListener('dataavailable', (event) => {
         if (event.data.size > 0) {
@@ -226,6 +232,8 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
         recognition.stop();
       }
       setIsPaused(true);
+      // Pause animation when recording is paused
+      setIsAnimating(false);
       
       // When paused, update the transcript with current session text
       setTranscript(prev => {
@@ -249,6 +257,8 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
         recognition.start();
       }
       setIsPaused(false);
+      // Resume animation when recording resumes
+      setIsAnimating(true);
       
       toast({
         title: "Recording resumed",
@@ -274,6 +284,9 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       recognition.stop();
     }
     
+    // Stop animation when recording stops
+    setIsAnimating(false);
+    
     // When stopping, update the transcript with current session text
     setTranscript(prev => {
       const updatedTranscript = prev + (currentSessionText ? ' ' + currentSessionText.trim() : '');
@@ -287,6 +300,8 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
     setIsPaused(false);
     stopRecording();
     setAudioChunks([]);
+    // Stop animation
+    setIsAnimating(false);
     // Do not reset transcript on cancel
     
     toast({
@@ -381,73 +396,102 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   };
 
   return (
-    <div className="flex items-center gap-2">
-      {!isRecording ? (
-        <Button
-          onClick={startRecording}
-          size="sm"
-          variant="outline"
-          disabled={isDisabled || isProcessing}
-          className={cn(
-            "flex gap-2 items-center",
-            isMobile ? "w-full justify-center" : ""
-          )}
-        >
-          {isProcessing ? (
-            <>
-              <Loader className="h-4 w-4 animate-spin" />
-              <span>Processing...</span>
-            </>
-          ) : (
-            <>
-              <Mic className="h-4 w-4 text-red-500" />
-              <span>{isMobile ? "Dictate" : "Dictate with microphone"}</span>
-            </>
-          )}
-        </Button>
-      ) : (
-        <div className="flex items-center gap-2">
-          {isPaused ? (
-            <Button 
-              onClick={resumeRecording}
-              size="sm"
-              variant="outline"
-              className="flex gap-2 items-center bg-green-50 border-green-200 hover:bg-green-100"
-            >
-              <Play className="h-4 w-4 text-green-600" />
-              <span>Resume</span>
-            </Button>
-          ) : (
-            <Button 
-              onClick={pauseRecording}
-              size="sm"
-              variant="outline"
-              className="flex gap-2 items-center bg-amber-50 border-amber-200 hover:bg-amber-100"
-            >
-              <Pause className="h-4 w-4 text-amber-600" />
-              <span>Pause</span>
-            </Button>
-          )}
-          
-          <Button
-            onClick={handleDone}
-            size="sm" 
-            variant="default"
-            className="bg-red-500 hover:bg-red-600"
-          >
-            <span>Done</span>
-          </Button>
-          
-          <Button
-            onClick={cancelRecording}
-            size="sm"
-            variant="outline"
-          >
-            <MicOff className="h-4 w-4 mr-2" />
-            <span>Cancel</span>
-          </Button>
+    <div className="flex flex-col">
+      {isRecording && (
+        <div className="mb-2 flex items-center">
+          <div className="flex space-x-1">
+            <span 
+              className={cn(
+                "inline-block h-2 w-2 rounded-full bg-red-500",
+                isAnimating && "animate-pulse"
+              )}
+            />
+            <span 
+              className={cn(
+                "inline-block h-2 w-2 rounded-full bg-red-500",
+                isAnimating && "animate-pulse delay-150"
+              )}
+            />
+            <span 
+              className={cn(
+                "inline-block h-2 w-2 rounded-full bg-red-500",
+                isAnimating && "animate-pulse delay-300"
+              )}
+            />
+          </div>
+          <span className="ml-2 text-sm font-medium text-primary">
+            {isAnimating ? "Listening..." : "Paused"}
+          </span>
         </div>
       )}
+      <div className="flex items-center gap-2">
+        {!isRecording ? (
+          <Button
+            onClick={startRecording}
+            size="sm"
+            variant="outline"
+            disabled={isDisabled || isProcessing}
+            className={cn(
+              "flex gap-2 items-center",
+              isMobile ? "w-full justify-center" : ""
+            )}
+          >
+            {isProcessing ? (
+              <>
+                <Loader className="h-4 w-4 animate-spin" />
+                <span>Processing...</span>
+              </>
+            ) : (
+              <>
+                <Mic className="h-4 w-4 text-red-500" />
+                <span>{isMobile ? "Dictate" : "Dictate with microphone"}</span>
+              </>
+            )}
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2">
+            {isPaused ? (
+              <Button 
+                onClick={resumeRecording}
+                size="sm"
+                variant="outline"
+                className="flex gap-2 items-center bg-green-50 border-green-200 hover:bg-green-100"
+              >
+                <Play className="h-4 w-4 text-green-600" />
+                <span>Resume</span>
+              </Button>
+            ) : (
+              <Button 
+                onClick={pauseRecording}
+                size="sm"
+                variant="outline"
+                className="flex gap-2 items-center bg-amber-50 border-amber-200 hover:bg-amber-100"
+              >
+                <Pause className="h-4 w-4 text-amber-600" />
+                <span>Pause</span>
+              </Button>
+            )}
+            
+            <Button
+              onClick={handleDone}
+              size="sm" 
+              variant="default"
+              className="bg-red-500 hover:bg-red-600"
+            >
+              <span>Done</span>
+            </Button>
+            
+            <Button
+              onClick={cancelRecording}
+              size="sm"
+              variant="outline"
+            >
+              <MicOff className="h-4 w-4 mr-2" />
+              <span>Cancel</span>
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
