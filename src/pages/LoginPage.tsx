@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Headphones, Home } from 'lucide-react';
+import { Loader2, Home } from 'lucide-react';
+import { Logo } from '@/components/landing/Logo';
 
 const LoginPage: React.FC = () => {
   const { signIn, user } = useAuth();
@@ -46,10 +47,7 @@ const LoginPage: React.FC = () => {
       <Card className="w-full max-w-md shadow-lg animate-slide-in gradient-card">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="flex items-center gap-2">
-              <Headphones className="h-8 w-8 text-primary" />
-              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">ListenWriteLearn</h1>
-            </div>
+            <Logo className="text-primary-gray" />
           </div>
           <CardTitle className="text-2xl">Log In</CardTitle>
           <CardDescription>

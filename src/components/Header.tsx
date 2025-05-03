@@ -26,6 +26,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { getLanguageFlag } from '@/utils/languageUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import UserAvatar from './UserAvatar';
+import { Logo } from './landing/Logo';
 
 const Header: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -44,16 +45,13 @@ const Header: React.FC = () => {
 
   return (
     <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur h-16">
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container mx-auto px-4 flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <Link 
             to="/dashboard" 
             className="flex items-center gap-2 text-lg font-semibold"
           >
-            <Headphones className="h-5 w-5 text-action-blue" />
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-action-blue to-primary hidden sm:inline-block">
-              ListenWriteLearn
-            </span>
+            <Logo className="text-primary-gray" />
           </Link>
           
           {!isMobile && user && (

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CheckCircle2, Home } from 'lucide-react';
+import { Logo } from '@/components/landing/Logo';
 
 const SignUpPage: React.FC = () => {
   const { signUp, user } = useAuth();
@@ -60,6 +61,9 @@ const SignUpPage: React.FC = () => {
           >
             <Home size={20} />
           </Link>
+          <div className="flex justify-center mb-4">
+            <Logo className="text-primary-gray" />
+          </div>
           <CardTitle className="text-2xl">Create an Account</CardTitle>
           <CardDescription>
             Enter your details to create a new account
