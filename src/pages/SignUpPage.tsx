@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle2, Home } from 'lucide-react';
+import { Loader2, CheckCircle2, Home, Headphones } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const SignUpPage: React.FC = () => {
   const { signUp, user } = useAuth();
@@ -17,6 +18,7 @@ const SignUpPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const isMobile = useIsMobile();
 
   // If user is already logged in, redirect to dashboard page
   if (user) {
@@ -50,27 +52,33 @@ const SignUpPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center relative">
-          <Link 
-            to="/" 
-            className="absolute left-4 top-4 p-2 rounded-full hover:bg-muted transition-colors" 
-            aria-label="Back to homepage"
-          >
-            <Home size={20} />
-          </Link>
-          <CardTitle className="text-2xl">Create an Account</CardTitle>
-          <CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 bg-gradient-to-br from-background via-background to-accent/10">
+      <Link to="/" className="absolute top-4 left-4 text-primary hover:text-accent transition-colors animate-fade-in">
+        <Button variant="ghost" size={isMobile ? "sm" : "default"} className="flex items-center gap-1 sm:gap-2">
+          <Home className="h-4 w-4" />
+          <span>{isMobile ? "Home" : "Back to Home"}</span>
+        </Button>
+      </Link>
+      
+      <Card className="w-full max-w-md shadow-lg animate-slide-in gradient-card">
+        <CardHeader className="text-center pb-4 sm:pb-6">
+          <div className="flex justify-center mb-2 sm:mb-4">
+            <div className="flex items-center gap-2">
+              <Headphones className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">ListenWriteLearn</h1>
+            </div>
+          </div>
+          <CardTitle className="text-xl sm:text-2xl">Create an Account</CardTitle>
+          <CardDescription className="text-sm">
             Enter your details to create a new account
           </CardDescription>
         </CardHeader>
         <CardContent>
           {success ? (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <Alert className="bg-primary/10 border-primary/20">
                 <CheckCircle2 className="h-4 w-4 text-primary" />
-                <AlertDescription>
+                <AlertDescription className="text-xs sm:text-sm">
                   Account created successfully! Check your email for verification instructions.
                 </AlertDescription>
               </Alert>
@@ -81,8 +89,8 @@ const SignUpPage: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+              <div className="space-y-1 sm:space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input 
                   id="email"
@@ -93,7 +101,7 @@ const SignUpPage: React.FC = () => {
                   required
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1 sm:space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input 
                   id="password"
@@ -104,7 +112,7 @@ const SignUpPage: React.FC = () => {
                   required
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1 sm:space-y-2">
                 <Label htmlFor="confirm-password">Confirm Password</Label>
                 <Input 
                   id="confirm-password"
@@ -117,12 +125,12 @@ const SignUpPage: React.FC = () => {
               </div>
               
               {error && (
-                <div className="text-sm text-destructive">{error}</div>
+                <div className="text-xs sm:text-sm text-destructive">{error}</div>
               )}
 
               <Button 
                 type="submit" 
-                className="w-full"
+                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -137,8 +145,8 @@ const SignUpPage: React.FC = () => {
             </form>
           )}
         </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-muted-foreground">
+        <CardFooter className="flex justify-center pt-0 pb-6">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Already have an account?{' '}
             <Link to="/login" className="text-primary hover:underline">
               Sign in

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Headphones, Home } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const LoginPage: React.FC = () => {
   const { signIn, user } = useAuth();
@@ -14,6 +15,7 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const isMobile = useIsMobile();
 
   // If user is already logged in, redirect to dashboard page
   if (user) {
@@ -37,28 +39,28 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 bg-gradient-to-br from-background via-background to-accent/10">
       <Link to="/" className="absolute top-4 left-4 text-primary hover:text-accent transition-colors animate-fade-in">
-        <Button variant="ghost" className="flex items-center gap-2">
+        <Button variant="ghost" size={isMobile ? "sm" : "default"} className="flex items-center gap-1 sm:gap-2">
           <Home className="h-4 w-4" />
-          <span>Back to Home</span>
+          <span>{isMobile ? "Home" : "Back to Home"}</span>
         </Button>
       </Link>
       
       <Card className="w-full max-w-md shadow-lg animate-slide-in gradient-card">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
+        <CardHeader className="text-center pb-4 sm:pb-6">
+          <div className="flex justify-center mb-2 sm:mb-4">
             <div className="flex items-center gap-2">
-              <Headphones className="h-8 w-8 text-primary" />
-              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">ListenWriteLearn</h1>
+              <Headphones className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">ListenWriteLearn</h1>
             </div>
           </div>
-          <CardTitle className="text-2xl">Log In</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-xl sm:text-2xl">Log In</CardTitle>
+          <CardDescription className="text-sm">
             Enter your email and password to access your account
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
+          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+            <div className="space-y-1 sm:space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input 
                 id="email"
@@ -70,7 +72,7 @@ const LoginPage: React.FC = () => {
                 className="border-input focus:border-primary"
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1 sm:space-y-2">
               <div className="flex justify-between">
                 <Label htmlFor="password">Password</Label>
                 <Link 
@@ -92,7 +94,7 @@ const LoginPage: React.FC = () => {
             </div>
             
             {error && (
-              <div className="text-sm text-destructive">{error}</div>
+              <div className="text-xs sm:text-sm text-destructive">{error}</div>
             )}
 
             <Button 
@@ -111,8 +113,8 @@ const LoginPage: React.FC = () => {
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-muted-foreground">
+        <CardFooter className="flex justify-center pt-0 pb-6">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Don't have an account?{' '}
             <Link to="/signup" className="text-primary hover:underline">
               Create account
