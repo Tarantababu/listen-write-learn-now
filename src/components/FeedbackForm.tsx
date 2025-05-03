@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FeedbackFormProps {
   className?: string;
@@ -31,11 +31,6 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ className }) => {
     setIsSubmitting(true);
     
     try {
-      const supabase = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      );
-      
       const { data, error } = await supabase.functions.invoke('send-feedback', {
         body: { name, email, message }
       });

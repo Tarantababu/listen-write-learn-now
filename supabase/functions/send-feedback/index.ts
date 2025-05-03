@@ -16,10 +16,14 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Required environment variables are missing');
+    }
+    
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
     
     const body = await req.json();
     const { name, email, message } = body;
@@ -63,7 +67,7 @@ serve(async (req) => {
       </html>
     `;
 
-    // Send email using Supabase Edge Function
+    // Send email using Supabase Admin Email API
     const { data: emailData, error: emailError } = await supabaseClient.auth.admin.sendEmail({
       email: ADMIN_EMAIL,
       subject: emailSubject,
