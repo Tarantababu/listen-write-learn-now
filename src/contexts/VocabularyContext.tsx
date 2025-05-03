@@ -1,9 +1,12 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { VocabularyItem, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+// Free user limits
+const FREE_USER_VOCABULARY_LIMIT = 5;
 
 interface VocabularyContextProps {
   vocabulary: VocabularyItem[];
@@ -28,6 +31,10 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [vocabulary, setVocabulary] = useState<VocabularyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { subscription } = useSubscription();
+  
+  // Check if user has premium subscription
+  const isPremium = subscription.isSubscribed && subscription.subscriptionTier === 'premium';
 
   // Load vocabulary from Supabase when user changes
   useEffect(() => {
@@ -91,6 +98,17 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const addVocabularyItem = async (item: Omit<VocabularyItem, 'id'>): Promise<VocabularyItem> => {
     try {
+      // Check if user has reached their vocabulary limit
+      if (!isPremium && vocabulary.length >= FREE_USER_VOCABULARY_LIMIT) {
+        toast.error(
+          <div className="flex flex-col gap-1">
+            <span>You've reached the maximum number of vocabulary items (5) for free accounts.</span>
+            <span>Upgrade to premium for unlimited vocabulary lists.</span>
+          </div>
+        );
+        throw new Error("Vocabulary limit reached");
+      }
+
       if (!user) {
         // Handle non-authenticated user
         const newItem: VocabularyItem = {
@@ -132,7 +150,9 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setVocabulary(prev => [newItem, ...prev]);
       return newItem;
     } catch (error: any) {
-      toast.error('Failed to create vocabulary item: ' + error.message);
+      if (error.message !== "Vocabulary limit reached") {
+        toast.error('Failed to create vocabulary item: ' + error.message);
+      }
       throw error;
     }
   };
