@@ -51,16 +51,16 @@ const SignUpPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center relative">
-          <Link 
-            to="/" 
-            className="absolute left-4 top-4 p-2 rounded-full hover:bg-muted transition-colors" 
-            aria-label="Back to homepage"
-          >
-            <Home size={20} />
-          </Link>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 bg-gradient-to-br from-background via-background to-accent/10">
+      <Link to="/" className="absolute top-4 left-4 text-primary hover:text-accent transition-colors animate-fade-in">
+        <Button variant="ghost" className="flex items-center gap-2">
+          <Home className="h-4 w-4" />
+          <span>Back to Home</span>
+        </Button>
+      </Link>
+      
+      <Card className="w-full max-w-md shadow-lg animate-slide-in gradient-card">
+        <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <Logo className="text-primary-gray" />
           </div>
@@ -78,7 +78,7 @@ const SignUpPage: React.FC = () => {
                   Account created successfully! Check your email for verification instructions.
                 </AlertDescription>
               </Alert>
-              <Button asChild className="w-full">
+              <Button asChild className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90">
                 <Link to="/login">
                   Proceed to Login
                 </Link>
@@ -95,6 +95,7 @@ const SignUpPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="border-input focus:border-primary"
                 />
               </div>
               <div className="space-y-2">
@@ -106,6 +107,7 @@ const SignUpPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="border-input focus:border-primary"
                 />
               </div>
               <div className="space-y-2">
@@ -117,6 +119,7 @@ const SignUpPage: React.FC = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
+                  className="border-input focus:border-primary"
                 />
               </div>
               
@@ -126,7 +129,7 @@ const SignUpPage: React.FC = () => {
 
               <Button 
                 type="submit" 
-                className="w-full"
+                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
                 disabled={isLoading}
               >
                 {isLoading ? (
