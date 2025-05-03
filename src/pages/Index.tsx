@@ -2,7 +2,11 @@
 import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { LandingPage } from '@/components/landing/LandingPage';
+import { HeroSectionDemo } from '@/components/landing/HeroSectionDemo';
+import { Features } from '@/components/landing/Features';
+import { AudienceSection } from '@/components/landing/AudienceSection';
+import { CTASection } from '@/components/landing/CTASection';
+import { Footer } from '@/components/landing/Footer';
 
 const Index: React.FC = () => {
   const { user } = useAuth();
@@ -19,7 +23,11 @@ const Index: React.FC = () => {
 
   return (
     <div className="bg-accent-beige/30 min-h-screen">
-      <LandingPage />
+      <HeroSectionDemo />
+      <Features />
+      <AudienceSection />
+      <CTASection />
+      <Footer />
     </div>
   );
 };

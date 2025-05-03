@@ -1,83 +1,10 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 18%; /* Primary Gray */
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 18%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 18%;
-    --primary: 217 98% 56%; /* Action Blue */
-    --primary-foreground: 210 40% 98%;
-    --secondary: 30 30% 96%; /* Accent Beige */
-    --secondary-foreground: 0 0% 18%;
-    --accent: 30 30% 96%; /* Accent Beige */
-    --accent-foreground: 0 0% 18%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --destructive: 1.1 90.8% 57.1%; /* Error Red */
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 217 98% 56%; /* Action Blue */
-    --radius: 0.5rem;
-    --success: 160 64.7% 44.7%; /* Success Green */
-    --success-foreground: 210 40% 98%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 210 40% 98%;
-    --info: 199 89% 48%;
-    --info-foreground: 210 40% 98%;
-    --avatar-size: 2.5rem;
-    --icon-size: 24px; /* Default icon size variable */
-  }
-
-  .dark {
-    --background: 0 0% 18%; /* Primary Gray */
-    --foreground: 210 40% 98%;
-    --card: 0 0% 18%;
-    --card-foreground: 210 40% 98%;
-    --popover: 0 0% 18%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217 98% 56%; /* Action Blue */
-    --primary-foreground: 210 40% 98%;
-    --secondary: 30 10% 15%;
-    --secondary-foreground: 210 40% 98%;
-    --accent: 217 98% 56%; /* Action Blue */
-    --accent-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 217 98% 56%; /* Action Blue */
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground font-sans;
-  }
-  h1 {
-    @apply text-h1 font-bold;
-  }
-  h2 {
-    @apply text-h2 font-bold;
-  }
-  p {
-    @apply text-body;
-  }
-  .caption {
-    @apply text-caption;
-  }
-  
-  /* Enhanced Global SVG sizing fix */
+  /* SVG styles */
   svg {
     display: inline-block;
     vertical-align: middle;
@@ -86,14 +13,14 @@
     font-size: inherit; /* Allows parent to control size */
   }
   
-  /* Fix for icon SVGs in buttons and interactive elements */
+  /* Update the button/link SVG styling */
   button svg, a svg, .icon svg {
     width: 100%;
     height: 100%;
     max-width: 100%;
   }
   
-  /* SVG size classes */
+  /* Add specific SVG size classes */
   .svg-sm {
     font-size: 1rem; /* 16px */
   }
@@ -111,131 +38,66 @@
   }
 }
 
-@layer components {
-  .gradient-card {
-    @apply relative bg-gradient-to-br from-background via-background to-accent/5 hover:to-accent/10 transition-all border border-border/50 hover:shadow-md;
-  }
-  
-  /* Button styles based on design spec */
-  .button-primary {
-    @apply bg-action-blue text-white rounded-lg px-6 py-3;
-  }
-  
-  .button-secondary {
-    @apply border border-action-blue text-action-blue bg-transparent rounded-lg px-6 py-3;
-  }
-
-  /* Input styles */
-  .input-focused {
-    @apply focus:border-action-blue focus:ring-1 focus:ring-action-blue;
-  }
-
-  /* Code input for dictation */
-  .code-input {
-    @apply font-mono spellcheck-false;
-  }
-  
-  /* Icon container for better control */
-  .icon-container {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--icon-size, 24px);
-    height: var(--icon-size, 24px);
-  }
+/* Add this outside of layers if you need immediate fixes */
+.icon-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-size, 24px);
+  height: var(--icon-size, 24px);
 }
 
-@keyframes fadeIn {
-  from {
+/* Hero animation classes */
+.fade-bottom {
+  mask-image: linear-gradient(to bottom, black 60%, transparent 95%);
+}
+
+@keyframes appear {
+  0% {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
-  to {
+  100% {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-@keyframes slideIn {
-  from {
+@keyframes appear-zoom {
+  0% {
     opacity: 0;
-    transform: translateX(-20px);
+    transform: scale(0.9);
   }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
+  100% {
     opacity: 1;
     transform: scale(1);
   }
 }
 
-@keyframes bounceOnce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
-  }
+.animate-appear {
+  animation: appear 1s ease-out forwards;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 0.5;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.1);
-  }
+.animate-appear-zoom {
+  animation: appear-zoom 1s ease-out forwards;
 }
 
-@layer utilities {
-  /* Animation utilities */
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-out forwards;
-  }
-  
-  .animate-slide-in {
-    animation: slideIn 0.3s ease-out forwards;
-  }
-  
-  .animate-scale-in {
-    animation: scaleIn 0.2s ease-out forwards;
-  }
-  
-  .animate-bounce-once {
-    animation: bounceOnce 1s ease-out;
-  }
-  
-  /* Hover effects */
-  .hover-scale {
-    @apply transition-transform hover:scale-105 duration-200;
-  }
-  
-  .hover-glow {
-    @apply transition-shadow hover:shadow-lg hover:shadow-primary/20 duration-300;
-  }
+.delay-100 {
+  animation-delay: 100ms;
+}
 
-  /* 8pt spacing system utility classes */
-  .space-8 {
-    @apply p-2;
-  }
-  .space-16 {
-    @apply p-4;
-  }
-  .space-24 {
-    @apply p-6;
-  }
-  .space-32 {
-    @apply p-8;
-  }
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+.delay-500 {
+  animation-delay: 500ms;
+}
+
+.delay-700 {
+  animation-delay: 700ms;
+}
+
+.delay-1000 {
+  animation-delay: 1000ms;
 }
