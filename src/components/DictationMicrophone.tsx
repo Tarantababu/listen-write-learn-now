@@ -143,16 +143,20 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
         if (typeof reader.result === 'string') {
           const base64Audio = reader.result.split(',')[1];
           
-          // Send to Supabase Edge Function
+          console.log(`Processing audio with language: ${language}`);
+          
+          // Send to Supabase Edge Function with language parameter
           const { data, error } = await supabase.functions.invoke('speech-to-text', {
             body: { audio: base64Audio, language }
           });
           
           if (error) {
+            console.error('Speech-to-text function error:', error);
             throw error;
           }
           
           if (data?.text) {
+            // Pass the transcribed text to the parent component
             onTextReceived(data.text);
             toast({
               title: "Transcription complete",
@@ -160,6 +164,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
               duration: 2000,
             });
           } else {
+            console.error('No text in response:', data);
             toast({
               title: "Transcription error",
               description: "No text was recognized. Please try again.",
@@ -185,9 +190,11 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   };
 
   const handleDone = () => {
+    // When "Done" is clicked, stop recording and process the audio
     setIsRecording(false);
     setIsPaused(false);
     stopRecording();
+    // The processAudio function will be called by the stop event listener
   };
 
   return (

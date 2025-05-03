@@ -66,6 +66,7 @@ serve(async (req) => {
     
     // Add language parameter if provided
     if (language && language !== 'english') {
+      console.log(`[SPEECH-TO-TEXT] Setting language parameter: ${language}`);
       formData.append('language', language);
     }
 
