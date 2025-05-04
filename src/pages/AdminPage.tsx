@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { VisitorStats } from '@/components/admin/VisitorStats';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const AdminPage: React.FC = () => {
   const { user } = useAuth();
@@ -33,7 +34,17 @@ const AdminPage: React.FC = () => {
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
       </div>
       
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Welcome to the Admin Dashboard</CardTitle>
+          <CardDescription>
+            Here you can monitor visitor statistics and manage your site
+          </CardDescription>
+        </CardHeader>
+      </Card>
+      
       <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">Visitor Analytics</h2>
         <VisitorStats />
       </div>
     </div>

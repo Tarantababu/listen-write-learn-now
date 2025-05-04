@@ -4,6 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays, parseISO } from 'date-fns';
+import StatsCard from '@/components/StatsCard';
+import { Chart } from '@/components/ui/chart';
+import { Activity, Users } from 'lucide-react';
+import { calculateTrend, compareWithPreviousDay } from '@/utils/trendUtils';
 
 type VisitorCount = {
   date: string;
@@ -19,6 +23,8 @@ export function VisitorStats() {
   const [visitorCounts, setVisitorCounts] = useState<VisitorCount[]>([]);
   const [pageCounts, setPageCounts] = useState<PageCount[]>([]);
   const [totalVisitors, setTotalVisitors] = useState<number>(0);
+  const [uniqueVisitors, setUniqueVisitors] = useState<number>(0);
+  const [todayVisitors, setTodayVisitors] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,13 +33,35 @@ export function VisitorStats() {
       try {
         setLoading(true);
         
-        // Get total visitor count
-        const { count, error: countError } = await supabase
+        // Get total visitor count (raw visits)
+        const { count: totalCount, error: countError } = await supabase
           .from('visitors')
           .select('*', { count: 'exact', head: true });
         
         if (countError) throw countError;
-        setTotalVisitors(count || 0);
+        setTotalVisitors(totalCount || 0);
+        
+        // Get unique visitor count
+        const { data: uniqueData, error: uniqueError } = await supabase
+          .from('visitors')
+          .select('visitor_id')
+          .limit(10000);
+        
+        if (uniqueError) throw uniqueError;
+        
+        // Count unique visitor IDs
+        const uniqueIds = new Set(uniqueData?.map(visitor => visitor.visitor_id));
+        setUniqueVisitors(uniqueIds.size);
+        
+        // Get today's visitor count
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const { count: todayCount, error: todayError } = await supabase
+          .from('visitors')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', today);
+        
+        if (todayError) throw todayError;
+        setTodayVisitors(todayCount || 0);
         
         // Get visitor counts by day for the last 30 days
         const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
@@ -48,6 +76,13 @@ export function VisitorStats() {
         // Process data to count visitors per day
         const dailyCounts: Record<string, number> = {};
         
+        // Initialize all days in the last 30 days with 0
+        for (let i = 30; i >= 0; i--) {
+          const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
+          dailyCounts[date] = 0;
+        }
+        
+        // Fill in actual counts
         dailyData?.forEach((visitor) => {
           const date = format(parseISO(visitor.created_at), 'yyyy-MM-dd');
           dailyCounts[date] = (dailyCounts[date] || 0) + 1;
@@ -93,6 +128,25 @@ export function VisitorStats() {
     fetchVisitorStats();
   }, []);
 
+  // Calculate trends
+  const calculateVisitorTrend = () => {
+    if (visitorCounts.length < 2) return { value: 0, label: 'No previous data' };
+    
+    const today = new Date();
+    const yesterday = subDays(today, 1);
+    
+    const todayStr = format(today, 'MMM dd');
+    const yesterdayStr = format(yesterday, 'MMM dd');
+    
+    const todayData = visitorCounts.find(item => item.date === todayStr);
+    const yesterdayData = visitorCounts.find(item => item.date === yesterdayStr);
+    
+    const todayValue = todayData?.count || 0;
+    const yesterdayValue = yesterdayData?.count || 0;
+    
+    return calculateTrend(todayValue, yesterdayValue);
+  };
+
   if (loading) {
     return (
       <Card>
@@ -125,15 +179,28 @@ export function VisitorStats() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Total Visitors</CardTitle>
-          <CardDescription>Number of unique visitors tracked since launch</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-4xl font-bold">{totalVisitors}</div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatsCard
+          title="Total Page Views"
+          value={totalVisitors}
+          icon={<Activity className="h-4 w-4" />}
+          description="Total page views since tracking began"
+        />
+        
+        <StatsCard
+          title="Unique Visitors"
+          value={uniqueVisitors}
+          icon={<Users className="h-4 w-4" />}
+          description="Number of unique visitors tracked"
+        />
+        
+        <StatsCard
+          title="Today's Visitors"
+          value={todayVisitors}
+          description="Visitors today"
+          trend={calculateVisitorTrend()}
+        />
+      </div>
 
       <Card>
         <CardHeader>
