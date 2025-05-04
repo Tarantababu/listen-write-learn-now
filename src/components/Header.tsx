@@ -22,7 +22,8 @@ import {
   CreditCard,
   Crown,
   LayoutDashboard,
-  Book
+  Book,
+  Shield
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getLanguageFlag } from '@/utils/languageUtils';
@@ -37,6 +38,9 @@ const Header: React.FC = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+
+  // Check if user is an admin (match with the email in RLS policy)
+  const isAdmin = user?.email === 'yigitaydin@gmail.com';
 
   const isActive = (path: string) => {
     return location.pathname === path 
@@ -108,6 +112,20 @@ const Header: React.FC = () => {
                   <span className="hidden sm:inline">Subscription</span>
                 </Link>
               </Button>
+              
+              {isAdmin && (
+                <Button 
+                  asChild 
+                  variant={isActive('/dashboard/admin') ? "default" : "ghost"}
+                  size="sm"
+                  className="transition-all bg-amber-500/10 hover:bg-amber-500/20"
+                >
+                  <Link to="/dashboard/admin">
+                    <Shield className="h-4 w-4 sm:mr-1 text-amber-500" />
+                    <span className="hidden sm:inline text-amber-500">Admin</span>
+                  </Link>
+                </Button>
+              )}
             </nav>
           )}
         </div>
@@ -135,6 +153,27 @@ const Header: React.FC = () => {
                   <Crown className="h-3 w-3 mr-1" />
                   Premium
                 </span>
+              )}
+              {isAdmin && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        asChild
+                        variant="ghost" 
+                        size="icon" 
+                        className="rounded-full text-amber-500 hover:text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                      >
+                        <Link to="/dashboard/admin">
+                          <Shield className="h-5 w-5" />
+                        </Link>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Admin Dashboard</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
               <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <DropdownMenuTrigger asChild>
@@ -171,6 +210,13 @@ const Header: React.FC = () => {
                           )}
                         </Link>
                       </DropdownMenuItem>
+                      {isAdmin && (
+                        <DropdownMenuItem asChild>
+                          <Link to="/dashboard/admin" className="flex items-center w-full">
+                            <Shield className="h-4 w-4 mr-2 text-amber-500" /> Admin Dashboard
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuSeparator />
                     </>
                   )}
