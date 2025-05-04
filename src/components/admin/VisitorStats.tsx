@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays, parseISO } from 'date-fns';
 import StatsCard from '@/components/StatsCard';
-import { Chart } from '@/components/ui/chart';
 import { Activity, Users } from 'lucide-react';
 import { calculateTrend, compareWithPreviousDay } from '@/utils/trendUtils';
 
