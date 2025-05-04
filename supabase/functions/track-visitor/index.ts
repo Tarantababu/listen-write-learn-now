@@ -37,14 +37,16 @@ serve(async (req) => {
       );
     }
     
-    // Use our database function to track the visitor
-    const { data, error } = await supabaseClient.rpc('track_visitor', {
-      visitor_id: visitorId,
-      page,
-      referer: referer || null,
-      user_agent: userAgent || null,
-      ip_address: ipAddress
-    });
+    // Direct insert instead of using RPC
+    const { data, error } = await supabaseClient
+      .from('visitors')
+      .insert([{
+        visitor_id: visitorId,
+        page,
+        referer: referer || null,
+        user_agent: userAgent || null,
+        ip_address: ipAddress
+      }]);
     
     if (error) {
       console.error("Error tracking visitor:", error);

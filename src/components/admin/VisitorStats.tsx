@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,11 +31,12 @@ export function VisitorStats() {
     async function fetchVisitorStats() {
       try {
         setLoading(true);
+        setError(null);
         
         // Get total visitor count (raw visits)
         const { count: totalCount, error: countError } = await supabase
           .from('visitors')
-          .select('*', { count: 'exact', head: true });
+          .select('*', { count: 'exact', head: false }); // Changed head to false
         
         if (countError) throw countError;
         setTotalVisitors(totalCount || 0);
@@ -42,8 +44,7 @@ export function VisitorStats() {
         // Get unique visitor count
         const { data: uniqueData, error: uniqueError } = await supabase
           .from('visitors')
-          .select('visitor_id')
-          .limit(10000);
+          .select('visitor_id');
         
         if (uniqueError) throw uniqueError;
         
@@ -55,7 +56,7 @@ export function VisitorStats() {
         const today = format(new Date(), 'yyyy-MM-dd');
         const { count: todayCount, error: todayError } = await supabase
           .from('visitors')
-          .select('*', { count: 'exact', head: true })
+          .select('*', { count: 'exact', head: false }) // Changed head to false
           .gte('created_at', today);
         
         if (todayError) throw todayError;
@@ -117,7 +118,7 @@ export function VisitorStats() {
         setPageCounts(pagesArray);
       } catch (err) {
         console.error('Error fetching visitor stats:', err);
-        setError('Failed to load visitor statistics');
+        setError('Failed to load visitor statistics. Please ensure you have the correct permissions.');
       } finally {
         setLoading(false);
       }
