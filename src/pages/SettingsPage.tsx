@@ -14,6 +14,7 @@ import FeedbackForm from '@/components/FeedbackForm';
 import AvatarUpload from '@/components/AvatarUpload';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
+import ResetLanguageProgress from '@/components/ResetLanguageProgress';
 
 const SettingsPage: React.FC = () => {
   const {
@@ -167,6 +168,15 @@ const SettingsPage: React.FC = () => {
             <p className="text-xs sm:text-sm text-muted-foreground mt-4">
               Your active language determines which exercises and vocabulary items are displayed throughout the app.
             </p>
+            
+            {/* Add reset progress option */}
+            <div className="mt-6">
+              <h3 className="text-sm font-medium mb-2">Reset Progress</h3>
+              <ResetLanguageProgress className="w-full" />
+              <p className="text-xs text-muted-foreground mt-2">
+                This will reset all your progress for the selected language and cannot be undone.
+              </p>
+            </div>
           </CardContent>
         </Card>
         

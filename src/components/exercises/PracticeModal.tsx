@@ -8,6 +8,7 @@ import {
 import { Exercise } from '@/types';
 import DictationPractice from '@/components/DictationPractice';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useExerciseContext } from '@/contexts/ExerciseContext';
 
 interface PracticeModalProps {
   isOpen: boolean;
@@ -25,13 +26,25 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   const [showResults, setShowResults] = useState(false);
   const [updatedExercise, setUpdatedExercise] = useState<Exercise | null>(exercise);
   const { settings } = useUserSettingsContext();
+  const { exercises } = useExerciseContext();
   
-  // Update the local exercise state when the prop changes
+  // Update the local exercise state when the prop changes or when exercises are updated 
+  // (could happen after a progress reset)
   useEffect(() => {
-    setUpdatedExercise(exercise);
-  }, [exercise]);
+    if (exercise) {
+      // If there's an exercise, find the latest version from the exercises context
+      const latestExerciseData = exercises.find(ex => ex.id === exercise.id);
+      setUpdatedExercise(latestExerciseData || exercise);
+    } else {
+      setUpdatedExercise(null);
+    }
+  }, [exercise, exercises]);
   
   const handleComplete = (accuracy: number) => {
+    // Update progress and show results
+    onComplete(accuracy);
+    setShowResults(true);
+    
     // Update local exercise state to reflect progress immediately
     if (updatedExercise && accuracy >= 95) {
       const newCompletionCount = Math.min(3, updatedExercise.completionCount + 1);
@@ -43,10 +56,6 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         isCompleted
       });
     }
-    
-    // Update progress and show results
-    onComplete(accuracy);
-    setShowResults(true);
   };
   
   // Reset when modal opens or closes

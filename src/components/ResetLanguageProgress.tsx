@@ -1,0 +1,147 @@
+
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { RefreshCcw } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useExerciseContext } from '@/contexts/ExerciseContext';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { Language } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface ResetLanguageProgressProps {
+  className?: string;
+}
+
+const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({ 
+  className 
+}) => {
+  const { user } = useAuth();
+  const { settings } = useUserSettingsContext();
+  const { exercises, markProgress } = useExerciseContext();
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetProgress = async () => {
+    try {
+      setIsResetting(true);
+      
+      if (!user) {
+        // Handle local storage reset for non-authenticated users
+        const currentLanguage = settings.selectedLanguage;
+        const languageExercises = exercises.filter(ex => ex.language === currentLanguage);
+        
+        // Reset each exercise's progress locally
+        for (const exercise of languageExercises) {
+          await markProgress(exercise.id, 0);
+        }
+      } else {
+        // Reset authenticated user's progress in the database
+        const currentLanguage = settings.selectedLanguage;
+        
+        // Reset exercise completion counts for the selected language
+        const { error: exerciseError } = await supabase
+          .from('exercises')
+          .update({ 
+            completion_count: 0, 
+            is_completed: false 
+          })
+          .eq('user_id', user.id)
+          .eq('language', currentLanguage);
+          
+        if (exerciseError) throw exerciseError;
+        
+        // Delete completion records for the selected language's exercises
+        // First get all exercise IDs for the current language
+        const { data: languageExercises, error: fetchError } = await supabase
+          .from('exercises')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('language', currentLanguage);
+          
+        if (fetchError) throw fetchError;
+        
+        if (languageExercises && languageExercises.length > 0) {
+          const exerciseIds = languageExercises.map(ex => ex.id);
+          
+          // Delete all completions for these exercises
+          const { error: completionsError } = await supabase
+            .from('completions')
+            .delete()
+            .eq('user_id', user.id)
+            .in('exercise_id', exerciseIds);
+            
+          if (completionsError) throw completionsError;
+        }
+      }
+      
+      toast.success(`Progress for ${settings.selectedLanguage} has been reset successfully`);
+      
+      // Close the dialog
+      setIsResetDialogOpen(false);
+    } catch (error) {
+      console.error('Error resetting progress:', error);
+      toast.error('Failed to reset progress. Please try again.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  return (
+    <div className={className}>
+      <Button 
+        variant="outline" 
+        size="sm"
+        className="text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/60"
+        onClick={() => setIsResetDialogOpen(true)}
+      >
+        <RefreshCcw className="h-4 w-4 mr-2" />
+        Reset Progress for {settings.selectedLanguage}
+      </Button>
+      
+      <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Language Progress</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reset all your progress for <strong className="capitalize">{settings.selectedLanguage}</strong>?
+              <div className="mt-2 p-2 bg-destructive/10 text-destructive rounded-md text-sm">
+                This will:
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li>Reset all exercise completion statuses</li>
+                  <li>Remove all completion records</li>
+                  <li>Cannot be undone</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                handleResetProgress();
+              }}
+              disabled={isResetting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isResetting ? 'Resetting...' : 'Reset Progress'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
+
+export default ResetLanguageProgress;
