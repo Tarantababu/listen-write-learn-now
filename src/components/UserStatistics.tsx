@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { format, subDays, isSameDay, differenceInDays, startOfDay, subMonths } from 'date-fns';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
@@ -174,10 +173,25 @@ const UserStatistics: React.FC = () => {
   const streak = calculateStreak();
 
   // 6. Heatmap data
-  const activityHeatmap = Object.entries(wordsByDay).map(([dateStr, count]) => ({
-    date: new Date(dateStr),
-    count
-  }));
+  const activityHeatmap = useMemo(() => {
+    // Start with word activity data
+    const baseData = Object.entries(wordsByDay).map(([dateStr, count]) => ({
+      date: new Date(dateStr),
+      count
+    }));
+    
+    // Add mastered words data
+    return baseData.map(item => {
+      const dateStr = format(item.date, 'yyyy-MM-dd');
+      const masteredWordsSet = masteredWordsByDay[dateStr];
+      const masteredWordsCount = masteredWordsSet ? masteredWordsSet.size : 0;
+      
+      return {
+        ...item,
+        masteredWords: masteredWordsCount
+      };
+    });
+  }, [wordsByDay, masteredWordsByDay]);
 
   // 7. Level information based on mastered words
   const userLevel = getUserLevel(masteredWords.size);

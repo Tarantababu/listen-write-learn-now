@@ -2,11 +2,13 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
-import { format, subMonths, isWithinInterval, differenceInCalendarDays } from 'date-fns';
+import { format, subMonths, isWithinInterval, differenceInCalendarDays, isSameDay } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ActivityData {
   date: Date;
   count: number;
+  masteredWords?: number; // Added masteredWords property
 }
 
 interface StatsHeatmapProps {
@@ -57,11 +59,41 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
     return modifiers;
   }, [filteredActivityData]);
 
+  // Get mastered words count for a specific date
+  const getMasteredWordsForDate = (date: Date): number => {
+    const activity = filteredActivityData.find(a => isSameDay(a.date, date));
+    return activity?.masteredWords || 0;
+  };
+
+  // Custom day renderer with tooltip
+  const renderDay = (day: Date) => {
+    const masteredCount = getMasteredWordsForDate(day);
+    const hasActivity = masteredCount > 0;
+
+    return (
+      <TooltipProvider>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <div className="w-full h-full flex items-center justify-center">
+              {format(day, 'd')}
+            </div>
+          </TooltipTrigger>
+          {hasActivity && (
+            <TooltipContent className="p-2 text-xs bg-background border border-border">
+              <p><strong>{format(day, 'MMMM d, yyyy')}</strong></p>
+              <p>{masteredCount} mastered word{masteredCount !== 1 ? 's' : ''}</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
   return (
     <Card className="col-span-full animate-fade-in">
       <CardHeader>
         <CardTitle className="text-sm font-medium text-muted-foreground">
-          Activity Heatmap - Last 3 Months
+          Mastered Words Heatmap - Last 3 Months
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -81,6 +113,9 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
               activityMedium: "bg-green-600 hover:bg-green-500 text-white",
               activityLow: "bg-green-500 hover:bg-green-400 text-white",
               activityMinimal: "bg-green-300 hover:bg-green-200"
+            }}
+            components={{
+              Day: ({ date }) => renderDay(date)
             }}
             ISOWeek
             fixedWeeks
