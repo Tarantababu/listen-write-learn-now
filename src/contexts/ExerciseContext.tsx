@@ -224,7 +224,14 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           await recordCompletion(user.id, id, accuracy, isCompleted);
         }
       } else {
-        localExercises.markProgress(id, reset ? 0 : accuracy, reset);
+        // Fix: Check if the hook's markProgress supports the reset parameter
+        // If not, handle reset manually
+        if (reset) {
+          // For reset, just pass 0 as accuracy
+          localExercises.markProgress(id, 0);
+        } else {
+          localExercises.markProgress(id, accuracy);
+        }
       }
 
       // Update state
