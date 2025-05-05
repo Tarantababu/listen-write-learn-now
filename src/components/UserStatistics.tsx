@@ -249,29 +249,42 @@ const UserStatistics: React.FC = () => {
         </div>
       </div>
       
-      <div className="bg-muted/40 p-4 rounded-lg animate-fade-in">
-        <div className="flex items-center gap-2 mb-2">
+      <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-slate-800 dark:to-purple-900/30 p-5 rounded-lg animate-fade-in shadow-sm border border-purple-100 dark:border-purple-900/20">
+        <div className="flex items-center gap-2 mb-3">
           <Award className="h-5 w-5 text-amber-500" />
           <h3 className="font-medium">Language Level</h3>
           <LevelInfoTooltip />
         </div>
         
-        {/* Level visualization with colored bars */}
-        <div className="flex items-end h-8 mb-3 gap-0.5">
+        {/* Level visualization with colorful bars */}
+        <div className="flex items-end h-10 mb-4 gap-1">
           {LANGUAGE_LEVELS.map((level, idx) => {
             const isCurrentOrPast = level.minWords <= masteredWords.size;
             const isCurrentLevel = userLevel.level === level.level;
             
+            // More vibrant colors for the level bars
+            const levelColors = [
+              'bg-gradient-to-t from-pink-400 to-pink-300',
+              'bg-gradient-to-t from-purple-400 to-purple-300',
+              'bg-gradient-to-t from-blue-400 to-blue-300',
+              'bg-gradient-to-t from-cyan-400 to-cyan-300',
+              'bg-gradient-to-t from-teal-400 to-teal-300',
+              'bg-gradient-to-t from-green-400 to-green-300',
+              'bg-gradient-to-t from-yellow-400 to-yellow-300',
+            ];
+            
+            const colorClass = isCurrentOrPast ? levelColors[idx % levelColors.length] : 'bg-gray-100 dark:bg-gray-700';
+            
             return (
               <div 
                 key={level.level}
-                className={`flex-1 rounded-sm transition-all duration-300 relative ${
-                  isCurrentOrPast ? level.color : 'bg-gray-100'
-                } ${isCurrentLevel ? 'ring-2 ring-offset-1 ring-primary/30' : ''}`}
+                className={`flex-1 rounded-sm transition-all duration-500 relative ${colorClass} ${
+                  isCurrentLevel ? 'ring-2 ring-offset-2 ring-primary/70 shadow-lg' : ''
+                }`}
                 style={{ height: `${Math.max(40, 40 + (idx * 8))}%` }}
               >
                 {isCurrentLevel && (
-                  <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-xs font-medium">
+                  <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-xs font-medium bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full shadow-sm border border-purple-100 dark:border-purple-900/20">
                     You
                   </div>
                 )}
@@ -280,16 +293,16 @@ const UserStatistics: React.FC = () => {
           })}
         </div>
         
-        <p className="text-sm mb-2">{levelDescription}</p>
+        <p className="text-sm mb-2 font-medium text-purple-700 dark:text-purple-300">{levelDescription}</p>
         <Progress 
           value={levelProgress} 
-          className="h-2" 
-          indicatorClassName={userLevel.color} 
+          className="h-2.5 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-slate-700 dark:to-slate-600" 
+          indicatorClassName="bg-gradient-to-r from-purple-500 to-blue-500 dark:from-purple-400 dark:to-blue-400" 
         />
-        <div className="flex justify-between mt-1">
-          <span className="text-xs text-muted-foreground">{userLevel.level}</span>
+        <div className="flex justify-between mt-1.5">
+          <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">{userLevel.level}</span>
           {userLevel.maxWords !== null && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
               {userLevel.level.charAt(0)}{Number(userLevel.level.charAt(1)) + 1}
             </span>
           )}
@@ -297,54 +310,61 @@ const UserStatistics: React.FC = () => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* StatsCard components with updated color schemes */}
         <StatsCard 
           title="Mastered Words" 
           value={masteredWords.size} 
-          icon={<Trophy />}
+          icon={<Trophy className="text-amber-500" />}
           description="Words completed with 95%+ accuracy at least 3 times" 
           progress={levelProgress}
-          progressColor={userLevel.color}
+          progressColor="bg-gradient-to-r from-amber-500 to-yellow-400"
           trend={masteredWordsTrend}
+          className="border-amber-100 dark:border-amber-900/20"
         />
         
         <StatsCard 
           title="Total Words Dictated" 
           value={totalWordsDictated}
-          icon={<BookOpen />}
+          icon={<BookOpen className="text-blue-500" />}
           description="Total word count from all exercises"
           trend={wordsTrend}
+          className="border-blue-100 dark:border-blue-900/20"
         />
         
         <StatsCard 
           title="Unique Words Completed" 
           value={uniqueWordsCompleted.size}
-          icon={<Star />}
+          icon={<Star className="text-pink-500" />}
           description="Words dictated correctly at least once" 
           trend={uniqueWordsTrend}
+          className="border-pink-100 dark:border-pink-900/20"
         />
         
         <StatsCard 
           title="Words Per Day" 
           value={wordsPerDay}
-          icon={<ChartBar />}
+          icon={<ChartBar className="text-teal-500" />}
           description={`Average across ${activeDays} active days`} 
           trend={wordsPerDayTrend}
+          className="border-teal-100 dark:border-teal-900/20"
         />
         
         <StatsCard 
           title="Learning Streak" 
           value={streak}
-          icon={<CalendarDays />}
+          icon={<CalendarDays className="text-green-500" />}
           description="Consecutive days with activity" 
           trend={streakTrend}
+          className="border-green-100 dark:border-green-900/20"
         />
 
         <StatsCard
           title="Vocabulary Items"
           value={vocabulary.filter(item => item.language === currentLanguage).length}
-          icon={<BookOpen />}
+          icon={<BookOpen className="text-purple-500" />}
           description="Words saved to your vocabulary list"
           trend={vocabTrend}
+          className="border-purple-100 dark:border-purple-900/20"
         />
       </div>
       

@@ -25,6 +25,17 @@ const levels: LevelInfo[] = [
   { level: 'C2', minWords: 12001, maxWords: null, description: 'Demonstrates native-like control over idiomatic, technical, and literary language', cefrEquivalent: 'C2' }
 ];
 
+// Colors for each level to make the table more visually engaging
+const levelColors = [
+  'bg-pink-50 border-pink-200 hover:bg-pink-100',
+  'bg-purple-50 border-purple-200 hover:bg-purple-100',
+  'bg-blue-50 border-blue-200 hover:bg-blue-100',
+  'bg-cyan-50 border-cyan-200 hover:bg-cyan-100',
+  'bg-teal-50 border-teal-200 hover:bg-teal-100',
+  'bg-green-50 border-green-200 hover:bg-green-100',
+  'bg-yellow-50 border-yellow-200 hover:bg-yellow-100',
+];
+
 const LevelInfoTooltip: React.FC = () => {
   return (
     <Popover>
@@ -35,19 +46,19 @@ const LevelInfoTooltip: React.FC = () => {
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start" sideOffset={4}>
         <div className="p-4 bg-background border rounded-md shadow-md">
-          <h4 className="font-medium mb-3 text-sm">Language Proficiency Levels</h4>
+          <h4 className="font-medium mb-3 text-sm text-purple-700 dark:text-purple-300">Language Proficiency Levels</h4>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead className="bg-muted">
+              <thead className="bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium">Level</th>
-                  <th className="px-3 py-2 text-left font-medium">Words</th>
-                  <th className="px-3 py-2 text-left font-medium">CEFR</th>
+                  <th className="px-3 py-2 text-left font-medium text-purple-700 dark:text-purple-300">Level</th>
+                  <th className="px-3 py-2 text-left font-medium text-blue-700 dark:text-blue-300">Words</th>
+                  <th className="px-3 py-2 text-left font-medium text-indigo-700 dark:text-indigo-300">CEFR</th>
                 </tr>
               </thead>
               <tbody>
-                {levels.map((level) => (
-                  <tr key={level.level} className="border-t hover:bg-muted/50">
+                {levels.map((level, index) => (
+                  <tr key={level.level} className={`border-t hover:bg-muted/50 ${levelColors[index % levelColors.length]} dark:bg-opacity-10 dark:hover:bg-opacity-20`}>
                     <td className="px-3 py-2 font-medium">{level.level}</td>
                     <td className="px-3 py-2">
                       {level.maxWords 

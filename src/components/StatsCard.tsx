@@ -43,7 +43,7 @@ const StatsCard: React.FC<StatsCardProps> = ({
           <TooltipTrigger asChild>
             <div className={cn(
               "flex items-center gap-1 text-xs font-medium",
-              isPositive ? "text-green-600" : "text-red-500"
+              isPositive ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
             )}>
               <Icon className={cn(
                 "h-3 w-3 transition-transform",
@@ -61,10 +61,13 @@ const StatsCard: React.FC<StatsCardProps> = ({
   };
 
   return (
-    <Card className={cn("overflow-hidden hover:shadow-md transition-all duration-300 animate-fade-in", className)}>
+    <Card className={cn(
+      "overflow-hidden hover:shadow-md transition-all duration-300 animate-fade-in bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900", 
+      className
+    )}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        {icon && <div className="h-4 w-4 text-muted-foreground">{icon}</div>}
+        {icon && <div className="h-4 w-4">{icon}</div>}
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
