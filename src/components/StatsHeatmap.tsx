@@ -96,11 +96,21 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
     );
   };
 
+  // Calculate total mastered words for the current month
+  const totalMasteredWordsThisMonth = useMemo(() => {
+    return filteredActivityData.reduce((total, activity) => 
+      total + (activity.masteredWords || 0), 0
+    );
+  }, [filteredActivityData]);
+
   return (
     <Card className="col-span-full animate-fade-in">
       <CardHeader>
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          Mastered Words Heatmap - {format(currentMonthStart, 'MMMM yyyy')}
+        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
+          <span>Mastered Words Heatmap - {format(currentMonthStart, 'MMMM yyyy')}</span>
+          <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full">
+            {totalMasteredWordsThisMonth} words this month
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>

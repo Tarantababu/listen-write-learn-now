@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { format, subDays, isSameDay, differenceInDays, startOfDay, subMonths } from 'date-fns';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -28,6 +29,15 @@ const UserStatistics: React.FC = () => {
   const { settings } = useUserSettingsContext();
   const [completions, setCompletions] = useState<CompletionData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Helper function to normalize text (reused from textComparison.ts)
+  const normalizeText = (text: string): string => {
+    return text
+      .toLowerCase()
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
 
   // Fetch completion data from Supabase
   useEffect(() => {
@@ -72,62 +82,59 @@ const UserStatistics: React.FC = () => {
     fetchCompletionData();
   }, [user, exercises]);
 
-  // Helper function to normalize text (reused from textComparison.ts)
-  const normalizeText = (text: string): string => {
-    return text
-      .toLowerCase()
-      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  };
-
   // Calculate statistics
   const currentLanguage = settings.selectedLanguage;
   
-  // 1. Mastered words (completed 3+ times with high accuracy)
-  const masteredWords = completions.reduce((mastered: Set<string>, completion) => {
-    const exercise = exercises.find(ex => ex.id === completion.exerciseId);
-    if (!exercise || exercise.language !== currentLanguage || completion.accuracy < 95) return mastered;
+  // Calculate mastered words - words from exercises completed 3+ times with high accuracy
+  const masteredWordsMap = useMemo(() => {
+    const masteredMap = new Map<string, Set<string>>();
+    const exercisesById = new Map(exercises.map(ex => [ex.id, ex]));
     
-    // Count completions per exercise with good accuracy
-    const highAccuracyCompletionsForExercise = completions.filter(
-      c => c.exerciseId === completion.exerciseId && c.accuracy >= 95
-    ).length;
+    // Create a count of high accuracy completions per exercise
+    const exerciseCompletions = new Map<string, number>();
     
-    // If completed 3+ times with high accuracy, add its words to mastered set
-    if (highAccuracyCompletionsForExercise >= 3) {
-      const words = normalizeText(exercise.text).split(' ');
-      words.forEach(word => mastered.add(word));
-    }
-    
-    return mastered;
-  }, new Set<string>());
-
-  // Calculate mastered words by day
-  const masteredWordsByDay = useMemo(() => {
-    const wordsByDay: Record<string, Set<string>> = {};
-    
+    // Count high accuracy completions per exercise
     completions.forEach(completion => {
-      const exercise = exercises.find(ex => ex.id === completion.exerciseId);
+      const exercise = exercisesById.get(completion.exerciseId);
       if (!exercise || exercise.language !== currentLanguage || completion.accuracy < 95) return;
       
-      // Count completions per exercise with good accuracy
-      const highAccuracyCompletionsForExercise = completions.filter(
-        c => c.exerciseId === completion.exerciseId && c.accuracy >= 95
-      ).length;
+      const count = exerciseCompletions.get(completion.exerciseId) || 0;
+      exerciseCompletions.set(completion.exerciseId, count + 1);
+    });
+    
+    // For each date, collect mastered words (from exercises completed at least 3 times with high accuracy)
+    completions.forEach(completion => {
+      const exercise = exercisesById.get(completion.exerciseId);
+      if (!exercise || exercise.language !== currentLanguage) return;
       
-      // If completed 3+ times with high accuracy, add its words to the day's mastered set
-      if (highAccuracyCompletionsForExercise >= 3) {
+      const highAccuracyCount = exerciseCompletions.get(completion.exerciseId) || 0;
+      
+      // Only consider as mastered if completed at least 3 times with high accuracy
+      if (highAccuracyCount >= 3) {
         const dateStr = format(completion.date, 'yyyy-MM-dd');
-        if (!wordsByDay[dateStr]) wordsByDay[dateStr] = new Set<string>();
+        if (!masteredMap.has(dateStr)) {
+          masteredMap.set(dateStr, new Set<string>());
+        }
         
         const words = normalizeText(exercise.text).split(' ');
-        words.forEach(word => wordsByDay[dateStr].add(word));
+        const dateSet = masteredMap.get(dateStr)!;
+        words.forEach(word => dateSet.add(word));
       }
     });
     
-    return wordsByDay;
+    return masteredMap;
   }, [completions, exercises, currentLanguage]);
+  
+  // Get all unique mastered words across all dates
+  const masteredWords = useMemo(() => {
+    const allMastered = new Set<string>();
+    for (const wordSet of masteredWordsMap.values()) {
+      for (const word of wordSet) {
+        allMastered.add(word);
+      }
+    }
+    return allMastered;
+  }, [masteredWordsMap]);
 
   // 2. Total words dictated
   const totalWordsDictated = completions
@@ -138,14 +145,17 @@ const UserStatistics: React.FC = () => {
     .reduce((total, c) => total + c.words, 0);
 
   // 3. Unique words completed (at least once with 95%+ accuracy)
-  const uniqueWordsCompleted = new Set<string>();
-  completions.forEach(completion => {
-    const exercise = exercises.find(ex => ex.id === completion.exerciseId);
-    if (exercise && exercise.language === currentLanguage && completion.accuracy >= 95) {
-      const words = normalizeText(exercise.text).split(' ');
-      words.forEach(word => uniqueWordsCompleted.add(word));
-    }
-  });
+  const uniqueWordsCompleted = useMemo(() => {
+    const uniqueWords = new Set<string>();
+    completions.forEach(completion => {
+      const exercise = exercises.find(ex => ex.id === completion.exerciseId);
+      if (exercise && exercise.language === currentLanguage && completion.accuracy >= 95) {
+        const words = normalizeText(exercise.text).split(' ');
+        words.forEach(word => uniqueWords.add(word));
+      }
+    });
+    return uniqueWords;
+  }, [completions, exercises, currentLanguage]);
 
   // 4. Words per day
   const wordsByDay = completions.reduce((acc: Record<string, number>, completion) => {
@@ -200,13 +210,13 @@ const UserStatistics: React.FC = () => {
 
   // 6. Heatmap data - updated to focus on mastered words count per day
   const activityHeatmap = useMemo(() => {
-    // Create base data structure from masteredWordsByDay
-    return Object.entries(masteredWordsByDay).map(([dateStr, wordsSet]) => ({
+    // Create data from masteredWordsMap
+    return Array.from(masteredWordsMap.entries()).map(([dateStr, wordsSet]) => ({
       date: new Date(dateStr),
       count: 1, // We just need a count to indicate there was activity
       masteredWords: wordsSet.size // Number of unique mastered words for this day
     }));
-  }, [masteredWordsByDay]);
+  }, [masteredWordsMap]);
 
   // 7. Level information based on mastered words
   const userLevel = getUserLevel(masteredWords.size);
