@@ -68,10 +68,11 @@ const LevelInfoTooltip: React.FC<{ userLevel?: string }> = ({ userLevel = "A0" }
                 {levels.map((level, index) => {
                   // Determine if this is a future level based on user's current level
                   const isCurrentLevel = level.level === userLevel;
-                  const isFutureLevel = !isCurrentLevel && 
-                    (userLevel ? level.level.charCodeAt(0) > userLevel.charCodeAt(0) || 
-                    (level.level.charCodeAt(0) === userLevel.charCodeAt(0) && 
-                    parseInt(level.level.charAt(1)) > parseInt(userLevel.charAt(1)))) : false;
+                  const isFutureLevel = !isCurrentLevel && userLevel 
+                    ? (level.level.charCodeAt(0) > userLevel.charCodeAt(0) || 
+                      (level.level.charCodeAt(0) === userLevel.charCodeAt(0) && 
+                       parseInt(level.level.charAt(1)) > parseInt(userLevel.charAt(1))))
+                    : false;
                   
                   return (
                     <HoverCard key={level.level} openDelay={200} closeDelay={100}>
