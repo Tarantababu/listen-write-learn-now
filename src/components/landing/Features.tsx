@@ -46,10 +46,10 @@ export function Features() {
           </p>
         </div>
 
-        <div className="mt-16 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="mt-16 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center justify-center">
           <AnimatedGroup
             variants={transitionVariants}
-            className="space-y-10 lg:max-w-xl">
+            className="space-y-10 mx-auto lg:max-w-xl">
             <div className="space-y-4">
               <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">Listen, Write, Learn</h3>
               <p className="text-lg text-muted-foreground">
