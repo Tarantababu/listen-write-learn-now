@@ -28,7 +28,7 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
   const activityModifiers = useMemo(() => {
     const modifiers: Record<string, Date[]> = {};
     
-    // Group dates by their intensity level
+    // Group dates by their intensity level using the new ranges
     const intensityLevels = {
       high: [] as Date[],
       medium: [] as Date[],
@@ -37,11 +37,11 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
     };
     
     filteredActivityData.forEach(activity => {
-      if (activity.count >= 15) {
+      if (activity.count > 350) {
         intensityLevels.high.push(activity.date);
-      } else if (activity.count >= 10) {
+      } else if (activity.count > 150) {
         intensityLevels.medium.push(activity.date);
-      } else if (activity.count >= 5) {
+      } else if (activity.count > 50) {
         intensityLevels.low.push(activity.date);
       } else {
         intensityLevels.minimal.push(activity.date);
@@ -90,19 +90,19 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
         <div className="flex justify-end mt-4 gap-2">
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm bg-green-300"></div>
-            <span className="text-xs">1-4</span>
+            <span className="text-xs">1-50</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm bg-green-500"></div>
-            <span className="text-xs">5-9</span>
+            <span className="text-xs">51-150</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm bg-green-600"></div>
-            <span className="text-xs">10-14</span>
+            <span className="text-xs">151-350</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm bg-green-800"></div>
-            <span className="text-xs">15+</span>
+            <span className="text-xs">350+</span>
           </div>
         </div>
       </CardContent>
