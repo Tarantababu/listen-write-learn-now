@@ -1,14 +1,19 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { SampleDictationModal } from './SampleDictationModal';
+
 export function CTASection() {
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
+  
   const handleOpenSample = () => {
     setSampleModalOpen(true);
   };
-  return <section id="cta" className="py-20 bg-primary/5">
+  
+  return (
+    <section id="cta" className="py-20 bg-primary/5">
       <div className="container px-4 md:px-6">
         <div className="flex flex-col items-center justify-center space-y-8 text-center">
           <div className="space-y-4">
@@ -23,17 +28,36 @@ export function CTASection() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-            <Button variant="outline" size="lg" className="rounded-xl px-6" onClick={handleOpenSample}>
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="rounded-xl px-6" 
+              onClick={handleOpenSample}
+            >
               <span className="text-nowrap">Try a Sample</span>
             </Button>
-          </div>
-          
-          <div className="pt-8 text-center text-sm text-muted-foreground">
-            
           </div>
         </div>
       </div>
 
+      {/* Product Hunt badge */}
+      <div className="flex justify-center mt-12">
+        <a 
+          href="https://www.producthunt.com/posts/lwlnow?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-lwlnow" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          aria-label="View lwlnow on Product Hunt"
+        >
+          <img 
+            src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=961139&theme=light&t=1746390894369" 
+            alt="lwlnow - Learn languages by listening, typing, and mastering." 
+            width="250" 
+            height="54" 
+          />
+        </a>
+      </div>
+
       <SampleDictationModal open={sampleModalOpen} onOpenChange={setSampleModalOpen} />
-    </section>;
+    </section>
+  );
 }

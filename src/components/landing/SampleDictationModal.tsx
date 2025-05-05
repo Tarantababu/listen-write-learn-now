@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import DictationPractice from '@/components/DictationPractice';
 import { Exercise } from '@/types';
 import { Loader2 } from 'lucide-react';
+
 interface SampleDictationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -13,6 +15,7 @@ interface SampleDictationModalProps {
 
 // Pre-defined audio URL for all visitors
 const staticAudioUrl = "https://kmpghammoxblhacndimq.supabase.co/storage/v1/object/public/audio//exercise_1746223427671.mp3";
+
 export function SampleDictationModal({
   open,
   onOpenChange,
@@ -26,6 +29,7 @@ export function SampleDictationModal({
 
   // For embedded version, use a shorter text sample
   const embeddedSampleText = "Listen carefully and type what you hear. This simple exercise improves your listening comprehension and spelling at the same time.";
+  
   const sampleExercise: Exercise = {
     id: 'sample-exercise',
     title: 'Try Dictation Practice',
@@ -38,9 +42,11 @@ export function SampleDictationModal({
     createdAt: new Date(),
     directoryId: null
   };
+  
   const handleComplete = (accuracy: number) => {
     setCompleted(true);
   };
+  
   const handleTryAgain = () => {
     setCompleted(false);
   };
@@ -55,11 +61,42 @@ export function SampleDictationModal({
 
   // For embedded mode, render directly in a div instead of a modal
   if (embedded) {
-    return;
+    return (
+      <div className="border rounded-lg shadow-md p-4 bg-background">
+        <h2 className="text-xl font-semibold mb-2">Try Dictation Practice</h2>
+        <p className="text-muted-foreground mb-4">
+          Listen to the audio and type what you hear. Submit to see your accuracy.
+        </p>
+        
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="mt-4 text-muted-foreground">Loading audio sample...</p>
+          </div>
+        ) : (
+          <DictationPractice 
+            exercise={sampleExercise} 
+            onComplete={handleComplete} 
+            showResults={completed} 
+            onTryAgain={handleTryAgain}
+            hideVocabularyTab={true}
+          />
+        )}
+        
+        {completed && (
+          <div className="mt-4 flex justify-end">
+            <Button asChild>
+              <Link to="/signup">Sign Up Now</Link>
+            </Button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   // Regular modal view
-  return <Dialog open={open} onOpenChange={handleOpenChange}>
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>Try Dictation Practice</DialogTitle>
@@ -69,21 +106,38 @@ export function SampleDictationModal({
         </DialogHeader>
         
         <div className="flex-1 overflow-auto">
-          {loading ? <div className="flex flex-col items-center justify-center h-full">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-full">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p className="mt-4 text-muted-foreground">Loading audio sample...</p>
-            </div> : <DictationPractice exercise={sampleExercise} onComplete={handleComplete} showResults={completed} onTryAgain={handleTryAgain} hideVocabularyTab={true} />}
+            </div>
+          ) : (
+            <DictationPractice 
+              exercise={sampleExercise} 
+              onComplete={handleComplete} 
+              showResults={completed} 
+              onTryAgain={handleTryAgain}
+              hideVocabularyTab={true} 
+            />
+          )}
         </div>
         
         <div className="mt-4 flex justify-between items-center p-3 border-t">
           <div className="text-sm text-muted-foreground">
-            {completed ? <span>Like what you see? Sign up for full access.</span> : <span>Press <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Shift</span> + <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Space</span> to play/pause</span>}
+            {completed ? (
+              <span>Like what you see? Sign up for full access.</span>
+            ) : (
+              <span>Press <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Shift</span> + <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Space</span> to play/pause</span>
+            )}
           </div>
           
-          {completed && <Button asChild>
+          {completed && (
+            <Button asChild>
               <Link to="/signup">Sign Up Now</Link>
-            </Button>}
+            </Button>
+          )}
         </div>
       </DialogContent>
-    </Dialog>;
+    </Dialog>
+  );
 }
