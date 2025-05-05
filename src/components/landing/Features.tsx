@@ -36,7 +36,7 @@ const transitionVariants = {
 export function Features() {
   return (
     <section id="features" className="py-20 overflow-hidden">
-      <div className="container px-4 md:px-6 mx-auto">
+      <div className="container max-w-6xl px-4 md:px-6 mx-auto">
         <div className="text-center space-y-4">
           <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">How It Works</h2>
           <p className="mx-auto max-w-[700px] text-muted-foreground text-lg">
