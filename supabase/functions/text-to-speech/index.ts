@@ -18,22 +18,32 @@ serve(async (req) => {
     if (!text || !language) {
       throw new Error('Text and language are required');
     }
-
-    // Map language to appropriate voice
+    
+    // Enhanced language to voice mapping with more consistent voice assignments
+    // Each language is paired with a specific voice to ensure consistency
     const voiceMap = {
-      'english': 'onyx',
-      'german': 'alloy',
-      'french': 'nova',
-      'spanish': 'shimmer',
-      'portuguese': 'alloy',
-      'italian': 'nova',
-      'turkish': 'shimmer',
-      'swedish': 'onyx',
-      'dutch': 'alloy',
-      'norwegian': 'nova'
+      'english': 'onyx',      // English - deep, versatile voice
+      'german': 'alloy',      // German - clear, neutral voice
+      'french': 'nova',       // French - warm, natural voice
+      'spanish': 'shimmer',   // Spanish - bright, melodic voice
+      'portuguese': 'echo',   // Portuguese - resonant voice
+      'italian': 'fable',     // Italian - expressive voice
+      'dutch': 'alloy',       // Dutch - clear, neutral voice
+      'turkish': 'shimmer',   // Turkish - bright, melodic voice
+      'swedish': 'onyx',      // Swedish - deep, versatile voice
+      'norwegian': 'nova',    // Norwegian - warm, natural voice
+      'russian': 'echo',      // Russian - resonant voice
+      'polish': 'fable',      // Polish - expressive voice
+      'chinese': 'nova',      // Chinese - warm, natural voice
+      'japanese': 'shimmer',  // Japanese - bright, melodic voice
+      'korean': 'alloy',      // Korean - clear, neutral voice
+      'arabic': 'onyx'        // Arabic - deep, versatile voice
     };
 
+    // Default to 'onyx' if language not in map
     const voice = voiceMap[language.toLowerCase()] || 'onyx';
+    
+    console.log(`Generating speech for language: ${language}, using voice: ${voice}`);
 
     // Call OpenAI API
     const response = await fetch('https://api.openai.com/v1/audio/speech', {
