@@ -82,14 +82,29 @@ export const handler = async (req: Request): Promise<Response> => {
       });
     }
     
-    // Log the counts for debugging
-    console.log(`[GET-ADMIN-STATS] Found ${profilesCount} total users and ${subscribedCount} subscribed users`);
+    // Get subscribe button click count
+    const { count: subscribeButtonClickCount, error: clickError } = await supabaseAdmin
+      .from('visitors')
+      .select('*', { count: 'exact', head: true })
+      .like('page', 'button_click:subscribe%');
+      
+    if (clickError) {
+      console.log("[GET-ADMIN-STATS] Error fetching subscribe button clicks:", clickError);
+      return new Response(JSON.stringify({ error: clickError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     
-    // Return both counts
+    // Log the counts for debugging
+    console.log(`[GET-ADMIN-STATS] Found ${profilesCount} total users, ${subscribedCount} subscribed users, and ${subscribeButtonClickCount} subscribe button clicks`);
+    
+    // Return all counts
     return new Response(
       JSON.stringify({ 
         totalUsers: profilesCount || 0,
-        subscribedUsers: subscribedCount || 0
+        subscribedUsers: subscribedCount || 0,
+        subscribeButtonClicks: subscribeButtonClickCount || 0
       }),
       {
         status: 200,

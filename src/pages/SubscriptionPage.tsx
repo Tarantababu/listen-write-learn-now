@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, Check, X, CreditCard, Shield, CalendarClock, Award, AlertTriangle, Ban } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
+import { trackButtonClick } from '@/utils/visitorTracking';
 
 const SubscriptionPage: React.FC = () => {
   const { subscription, checkSubscription, createCheckoutSession, openCustomerPortal } = useSubscription();
@@ -348,7 +349,10 @@ const SubscriptionPage: React.FC = () => {
               </Button>
             ) : (
               <Button
-                onClick={handleSubscribe}
+                onClick={() => {
+                  trackButtonClick('subscribe');
+                  handleSubscribe();
+                }}
                 className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
                 disabled={isProcessing}
               >

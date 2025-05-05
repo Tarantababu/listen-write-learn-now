@@ -1,86 +1,108 @@
 
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, UserPlus } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
+import StatsCard from '@/components/StatsCard';
+import { Users, CreditCard, MousePointerClick } from 'lucide-react';
 
 export function AdminStats() {
-  const { user, session } = useAuth();
-  
-  // Use React Query to fetch admin stats from the edge function
-  const { data: statsData, isLoading: isLoadingStats, error } = useQuery({
-    queryKey: ['admin-stats'],
-    queryFn: async () => {
-      if (!session?.access_token) {
-        console.log('No access token available for admin stats');
-        return null;
-      }
-      
-      console.log('Fetching admin stats with token');
-      
-      // Call the edge function with the auth token
-      const { data, error } = await supabase.functions.invoke('get-admin-stats', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
-      
-      if (error) {
-        console.error('Error fetching admin stats:', error);
-        toast.error('Failed to load admin statistics');
-        throw error;
-      }
-      
-      console.log('Admin stats data received:', data);
-      return data;
-    },
-    enabled: !!session?.access_token // Only run the query if we have an access token
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    subscribedUsers: 0,
+    subscribeButtonClicks: 0
   });
 
-  // Display error message if there's an error
+  useEffect(() => {
+    async function fetchAdminStats() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        if (!user) {
+          setError('Authentication required');
+          return;
+        }
+
+        const { data, error } = await supabase.functions.invoke('get-admin-stats');
+
+        if (error) {
+          console.error('Error fetching admin stats:', error);
+          setError('Failed to load admin statistics');
+          return;
+        }
+
+        setStats({
+          totalUsers: data.totalUsers || 0,
+          subscribedUsers: data.subscribedUsers || 0,
+          subscribeButtonClicks: data.subscribeButtonClicks || 0
+        });
+      } catch (err) {
+        console.error('Unexpected error fetching admin stats:', err);
+        setError('An unexpected error occurred');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchAdminStats();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Admin Statistics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center items-center h-40">
+            <p>Loading admin statistics...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (error) {
-    console.error('Error in admin stats query:', error);
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Admin Statistics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center items-center h-40 text-red-500">
+            <p>{error}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Accounts</CardTitle>
-          <Users className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {isLoadingStats ? (
-            <Skeleton className="h-8 w-20" />
-          ) : (
-            <div className="text-2xl font-bold">
-              {typeof statsData?.totalUsers === 'number' ? statsData.totalUsers : 'N/A'}
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground mt-1">Registered users</p>
-        </CardContent>
-      </Card>
+    <div className="grid gap-4 md:grid-cols-3">
+      <StatsCard
+        title="Total Users"
+        value={stats.totalUsers}
+        icon={<Users className="h-4 w-4" />}
+        description="Total registered users"
+      />
       
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Subscribed Users</CardTitle>
-          <UserPlus className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {isLoadingStats ? (
-            <Skeleton className="h-8 w-20" />
-          ) : (
-            <div className="text-2xl font-bold">
-              {typeof statsData?.subscribedUsers === 'number' ? statsData.subscribedUsers : 'N/A'}
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground mt-1">Premium subscribers</p>
-        </CardContent>
-      </Card>
+      <StatsCard
+        title="Subscribed Users"
+        value={stats.subscribedUsers}
+        icon={<CreditCard className="h-4 w-4" />}
+        description="Users with active subscriptions"
+      />
+      
+      <StatsCard
+        title="Subscribe Button Clicks"
+        value={stats.subscribeButtonClicks}
+        icon={<MousePointerClick className="h-4 w-4" />}
+        description="Number of times users clicked Subscribe"
+      />
     </div>
   );
 }

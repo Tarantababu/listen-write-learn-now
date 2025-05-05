@@ -40,3 +40,25 @@ export const trackPageView = async (page: string): Promise<void> => {
     console.error('Failed to track page view:', error);
   }
 };
+
+/**
+ * Track a button click event
+ */
+export const trackButtonClick = async (buttonName: string): Promise<void> => {
+  try {
+    const visitorId = getVisitorId();
+    
+    await supabase.functions.invoke('track-visitor', {
+      body: {
+        visitorId,
+        page: `button_click:${buttonName}`,
+        referer: document.referrer || null,
+        userAgent: navigator.userAgent
+      }
+    });
+    
+    console.log(`Button click tracked: ${buttonName}`);
+  } catch (error) {
+    console.error('Failed to track button click:', error);
+  }
+};
