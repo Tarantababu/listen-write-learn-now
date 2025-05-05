@@ -52,6 +52,12 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     extra: 0
   });
   
+  const [progressValue, setProgressValue] = useState((exercise.completionCount / 3) * 100);
+  
+  useEffect(() => {
+    setProgressValue((exercise.completionCount / 3) * 100);
+  }, [exercise.completionCount]);
+  
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
@@ -73,7 +79,14 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       extra: result.extra
     });
     
-    // Call onComplete immediately with the accuracy result
+    // Calculate new progress value if accuracy is sufficient (>= 95%)
+    let newCompletionCount = exercise.completionCount;
+    if (result.accuracy >= 95) {
+      newCompletionCount = Math.min(3, newCompletionCount + 1);
+      setProgressValue((newCompletionCount / 3) * 100);
+    }
+    
+    // Call onComplete with the accuracy result
     onComplete(result.accuracy);
 
     if (result.accuracy >= 95) {
@@ -202,7 +215,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-600">Progress: {exercise.completionCount}/3</span>
             <Progress 
-              value={(exercise.completionCount / 3) * 100} 
+              value={progressValue} 
               className="w-32 h-2" 
               indicatorClassName="bg-indigo-600"
             />

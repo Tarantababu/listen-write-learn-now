@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Exercise } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -28,11 +27,16 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
 }) => {
   const { title, text, tags, completionCount, isCompleted, createdAt } = exercise;
   
+  // Add state to track progress updates
+  const [progressPercentage, setProgressPercentage] = useState(Math.min(100, (completionCount / 3) * 100));
+  
+  // Update progress percentage when exercise changes
+  useEffect(() => {
+    setProgressPercentage(Math.min(100, (completionCount / 3) * 100));
+  }, [completionCount]);
+  
   // Truncate text for display
   const truncatedText = text.length > 100 ? `${text.substring(0, 100)}...` : text;
-  
-  // Calculate progress percentage (out of 3 completions needed)
-  const progressPercentage = Math.min(100, (completionCount / 3) * 100);
   
   return (
     <Card className={`h-full flex flex-col transition-all ${isCompleted ? 'border-primary/30 shadow-sm' : ''}`}>
