@@ -98,12 +98,14 @@ const LevelInfoTooltip: React.FC<{ userLevel?: string }> = ({ userLevel = "A0" }
                       <HoverCardContent className="p-3 text-xs w-72 bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
                         <div className="space-y-2">
                           <h5 className="font-semibold text-sm flex items-center gap-1.5">
-                            <span className={`inline-block w-2 h-2 rounded-full ${level.level === 'A0' ? 'bg-pink-400' : 
+                            <span className={`inline-block w-2 h-2 rounded-full ${
+                              level.level === 'A0' ? 'bg-pink-400' : 
                               level.level === 'A1' ? 'bg-purple-400' : 
                               level.level === 'A2' ? 'bg-blue-400' : 
                               level.level === 'B1' ? 'bg-cyan-400' : 
                               level.level === 'B2' ? 'bg-teal-400' : 
-                              level.level === 'C1' ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
+                              level.level === 'C1' ? 'bg-green-400' : 'bg-yellow-400'
+                            }`}></span>
                             Level {level.level}
                             {isCurrentLevel && <span className="text-xs font-normal text-primary ml-1">(current)</span>}
                           </h5>
