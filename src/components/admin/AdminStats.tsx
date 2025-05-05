@@ -11,7 +11,7 @@ export function AdminStats() {
     queryKey: ['admin-total-accounts'],
     queryFn: async () => {
       const { count, error } = await supabase
-        .from('auth.users')
+        .from('profiles')
         .select('*', { count: 'exact', head: true });
       
       if (error) {
