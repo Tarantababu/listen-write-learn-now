@@ -307,11 +307,29 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
         <div className="overflow-hidden">
           <Tabs defaultValue="summary" className="w-full">
             <div className="px-6 pt-4">
-              <TabsList className={cn("w-full", hideVocabularyTab ? "grid-cols-2" : "grid-cols-3")}>
-                <TabsTrigger value="summary">Summary</TabsTrigger>
-                <TabsTrigger value="comparison">Comparison</TabsTrigger>
+              <TabsList className={cn(
+                "w-full border border-gray-200 p-1 rounded-lg bg-gray-50", 
+                hideVocabularyTab ? "grid-cols-2" : "grid-cols-3"
+              )}>
+                <TabsTrigger 
+                  value="summary" 
+                  className="rounded-md py-2.5 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=active]:font-semibold"
+                >
+                  Summary
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="comparison" 
+                  className="rounded-md py-2.5 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=active]:font-semibold"
+                >
+                  Comparison
+                </TabsTrigger>
                 {!hideVocabularyTab && (
-                  <TabsTrigger value="vocabulary">Vocabulary</TabsTrigger>
+                  <TabsTrigger 
+                    value="vocabulary" 
+                    className="rounded-md py-2.5 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=active]:font-semibold"
+                  >
+                    Vocabulary
+                  </TabsTrigger>
                 )}
               </TabsList>
             </div>
