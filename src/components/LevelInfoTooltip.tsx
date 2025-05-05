@@ -5,6 +5,11 @@ import {
   PopoverContent,
   PopoverTrigger
 } from '@/components/ui/popover';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger
+} from '@/components/ui/hover-card';
 import { HelpCircle } from 'lucide-react';
 
 interface LevelInfo {
@@ -25,18 +30,21 @@ const levels: LevelInfo[] = [
   { level: 'C2', minWords: 12001, maxWords: null, description: 'Demonstrates native-like control over idiomatic, technical, and literary language', cefrEquivalent: 'C2' }
 ];
 
-// Colors for each level to make the table more visually engaging
+// Enhanced color palette for more visual engagement
 const levelColors = [
-  'bg-pink-50 border-pink-200 hover:bg-pink-100',
-  'bg-purple-50 border-purple-200 hover:bg-purple-100',
-  'bg-blue-50 border-blue-200 hover:bg-blue-100',
-  'bg-cyan-50 border-cyan-200 hover:bg-cyan-100',
-  'bg-teal-50 border-teal-200 hover:bg-teal-100',
-  'bg-green-50 border-green-200 hover:bg-green-100',
-  'bg-yellow-50 border-yellow-200 hover:bg-yellow-100',
+  'bg-gradient-to-r from-pink-100 to-pink-50 border-pink-200 hover:bg-pink-100',
+  'bg-gradient-to-r from-purple-100 to-purple-50 border-purple-200 hover:bg-purple-100',
+  'bg-gradient-to-r from-blue-100 to-blue-50 border-blue-200 hover:bg-blue-100',
+  'bg-gradient-to-r from-cyan-100 to-cyan-50 border-cyan-200 hover:bg-cyan-100',
+  'bg-gradient-to-r from-teal-100 to-teal-50 border-teal-200 hover:bg-teal-100',
+  'bg-gradient-to-r from-green-100 to-green-50 border-green-200 hover:bg-green-100',
+  'bg-gradient-to-r from-yellow-100 to-yellow-50 border-yellow-200 hover:bg-yellow-100',
 ];
 
-const LevelInfoTooltip: React.FC = () => {
+// Future level styles - more transparent/faded
+const futureLevelStyles = "opacity-50 dark:opacity-40 saturate-50";
+
+const LevelInfoTooltip: React.FC<{ userLevel?: string }> = ({ userLevel = "A0" }) => {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -57,22 +65,65 @@ const LevelInfoTooltip: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {levels.map((level, index) => (
-                  <tr key={level.level} className={`border-t hover:bg-muted/50 ${levelColors[index % levelColors.length]} dark:bg-opacity-10 dark:hover:bg-opacity-20`}>
-                    <td className="px-3 py-2 font-medium">{level.level}</td>
-                    <td className="px-3 py-2">
-                      {level.maxWords 
-                        ? `${level.minWords.toLocaleString()}-${level.maxWords.toLocaleString()}`
-                        : `${level.minWords.toLocaleString()}+`}
-                    </td>
-                    <td className="px-3 py-2">{level.cefrEquivalent}</td>
-                  </tr>
-                ))}
+                {levels.map((level, index) => {
+                  // Determine if this is a future level based on user's current level
+                  const isCurrentLevel = level.level === userLevel;
+                  const isFutureLevel = !isCurrentLevel && 
+                    (userLevel ? level.level.charCodeAt(0) > userLevel.charCodeAt(0) || 
+                    (level.level.charCodeAt(0) === userLevel.charCodeAt(0) && 
+                    parseInt(level.level.charAt(1)) > parseInt(userLevel.charAt(1)))) : false;
+                  
+                  return (
+                    <HoverCard key={level.level} openDelay={200} closeDelay={100}>
+                      <HoverCardTrigger asChild>
+                        <tr 
+                          className={`
+                            border-t hover:bg-muted/50 
+                            ${levelColors[index % levelColors.length]} 
+                            dark:bg-opacity-10 dark:hover:bg-opacity-20
+                            ${isCurrentLevel ? 'ring-1 ring-inset ring-primary/30' : ''}
+                            ${isFutureLevel ? futureLevelStyles : ''}
+                            transition-all duration-300
+                          `}
+                        >
+                          <td className="px-3 py-2 font-medium">{level.level}</td>
+                          <td className="px-3 py-2">
+                            {level.maxWords 
+                              ? `${level.minWords.toLocaleString()}-${level.maxWords.toLocaleString()}`
+                              : `${level.minWords.toLocaleString()}+`}
+                          </td>
+                          <td className="px-3 py-2">{level.cefrEquivalent}</td>
+                        </tr>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="p-3 text-xs w-72 bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
+                        <div className="space-y-2">
+                          <h5 className="font-semibold text-sm flex items-center gap-1.5">
+                            <span className={`inline-block w-2 h-2 rounded-full ${level.level === 'A0' ? 'bg-pink-400' : 
+                              level.level === 'A1' ? 'bg-purple-400' : 
+                              level.level === 'A2' ? 'bg-blue-400' : 
+                              level.level === 'B1' ? 'bg-cyan-400' : 
+                              level.level === 'B2' ? 'bg-teal-400' : 
+                              level.level === 'C1' ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
+                            Level {level.level}
+                            {isCurrentLevel && <span className="text-xs font-normal text-primary ml-1">(current)</span>}
+                          </h5>
+                          <p className="text-muted-foreground leading-relaxed">{level.description}</p>
+                          <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded text-slate-700 dark:text-slate-300">
+                            <span className="font-medium">Target vocabulary:</span> {level.maxWords 
+                              ? `${level.minWords.toLocaleString()}-${level.maxWords.toLocaleString()} words`
+                              : `${level.minWords.toLocaleString()}+ words`}
+                          </div>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          <div className="mt-3 text-xs text-muted-foreground">
-            <p>Hover over any level to see description</p>
+          <div className="mt-3 text-xs text-muted-foreground flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-primary/70"></div>
+            <p>Hover over any level to see detailed description</p>
           </div>
         </div>
       </PopoverContent>
