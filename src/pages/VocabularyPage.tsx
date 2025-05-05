@@ -12,6 +12,8 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useNavigate } from 'react-router-dom';
 import UpgradePrompt from '@/components/UpgradePrompt';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import VocabularyExport from '@/components/VocabularyExport';
 
 const VocabularyPage = () => {
   const {
@@ -71,52 +73,71 @@ const VocabularyPage = () => {
         </Alert>
       )}
       
-      <div className="grid grid-cols-1 gap-4 sm:gap-6">
-        {/* Vocabulary List */}
-        <Card className="h-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg sm:text-xl">Your Vocabulary List</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {languageVocabulary.length === 0 ? (
-              <div className="text-center py-6 sm:py-8">
-                <p className="text-muted-foreground text-sm">
-                  You haven't added any vocabulary words yet.
-                </p>
-                <p className="text-muted-foreground text-sm mt-2">
-                  Add words through the Vocabulary Builder when reading exercises.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3 sm:space-y-4">
-                {languageVocabulary.map(item => (
-                  <VocabularyCard 
-                    key={item.id} 
-                    item={item} 
-                    onDelete={() => handleDeleteVocabularyItem(item.id)} 
-                  />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        {/* Left column: Vocabulary List */}
+        <div className="md:col-span-2 space-y-4">
+          <Card className="h-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg sm:text-xl">Your Vocabulary List</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {languageVocabulary.length === 0 ? (
+                <div className="text-center py-6 sm:py-8">
+                  <p className="text-muted-foreground text-sm">
+                    You haven't added any vocabulary words yet.
+                  </p>
+                  <p className="text-muted-foreground text-sm mt-2">
+                    Add words through the Vocabulary Builder when reading exercises.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 sm:space-y-4">
+                  {languageVocabulary.map(item => (
+                    <VocabularyCard 
+                      key={item.id} 
+                      item={item} 
+                      onDelete={() => handleDeleteVocabularyItem(item.id)} 
+                    />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
         
-        {/* Vocabulary Playlist */}
-        <Card className="h-full">
-          <CardContent className="pt-6">
-            <VocabularyPlaylist vocabulary={languageVocabulary} />
-          </CardContent>
-        </Card>
-        
-        {/* Subscription Upgrade Card */}
-        {!subscription.isSubscribed && (
-          <div className="mt-2 sm:mt-4">
-            <UpgradePrompt 
-              title="Unlimited Vocabulary" 
-              message="Premium subscribers can create unlimited vocabulary lists to enhance their learning." 
-            />
-          </div>
-        )}
+        {/* Right column: Tools and actions */}
+        <div className="space-y-4">
+          {/* Tools Tabs */}
+          <Card className="h-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg sm:text-xl">Vocabulary Tools</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="practice" className="w-full">
+                <TabsList className="w-full mb-4">
+                  <TabsTrigger value="practice" className="flex-1">Practice</TabsTrigger>
+                  <TabsTrigger value="export" className="flex-1">Export</TabsTrigger>
+                </TabsList>
+                <TabsContent value="practice">
+                  <VocabularyPlaylist vocabulary={languageVocabulary} />
+                </TabsContent>
+                <TabsContent value="export">
+                  <VocabularyExport vocabulary={languageVocabulary} />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+          
+          {/* Subscription Upgrade Card */}
+          {!subscription.isSubscribed && (
+            <div className="mt-2 sm:mt-4">
+              <UpgradePrompt 
+                title="Unlimited Vocabulary" 
+                message="Premium subscribers can create unlimited vocabulary lists and export all their flashcards with audio." 
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
