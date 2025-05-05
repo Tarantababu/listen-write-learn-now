@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Exercise } from '@/types';
 
@@ -58,6 +57,16 @@ export const useLocalExercises = () => {
     const exercise = exercises.find(ex => ex.id === id);
     if (!exercise) return;
 
+    // If accuracy is 0, it means we're resetting progress
+    if (accuracy === 0) {
+      updateExercise(id, {
+        completionCount: 0,
+        isCompleted: false
+      });
+      return;
+    }
+
+    // Otherwise, handle normal progress tracking
     let newCompletionCount = exercise.completionCount;
     let isCompleted = exercise.isCompleted;
 
@@ -74,11 +83,23 @@ export const useLocalExercises = () => {
     });
   };
 
+  // New method to reset progress for all exercises of a specific language
+  const resetLanguageProgress = (language: string) => {
+    const updatedExercises = exercises.map(exercise => 
+      exercise.language === language 
+        ? { ...exercise, completionCount: 0, isCompleted: false }
+        : exercise
+    );
+    
+    setExercises(updatedExercises);
+  };
+
   return {
     exercises,
     addExercise,
     updateExercise,
     deleteExercise,
-    markProgress
+    markProgress,
+    resetLanguageProgress
   };
 };

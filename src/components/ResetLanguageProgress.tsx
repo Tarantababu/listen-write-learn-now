@@ -19,6 +19,7 @@ import { Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { deleteAssociatedCompletions } from '@/services/exerciseService';
+import { useLocalExercises } from '@/hooks/useLocalExercises';
 
 interface ResetLanguageProgressProps {
   className?: string;
@@ -30,6 +31,7 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
   const { user } = useAuth();
   const { settings } = useUserSettingsContext();
   const { exercises, markProgress } = useExerciseContext();
+  const localExercises = useLocalExercises();
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
@@ -40,11 +42,14 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
       if (!user) {
         // Handle local storage reset for non-authenticated users
         const currentLanguage = settings.selectedLanguage;
-        const languageExercises = exercises.filter(ex => ex.language === currentLanguage);
         
-        // Reset each exercise's progress locally
+        // Use the new resetLanguageProgress method for non-authenticated users
+        localExercises.resetLanguageProgress(currentLanguage);
+        
+        // Also update the exercises in the context for immediate UI update
+        const languageExercises = exercises.filter(ex => ex.language === currentLanguage);
         for (const exercise of languageExercises) {
-          await markProgress(exercise.id, 0, true); // Added a reset flag parameter
+          await markProgress(exercise.id, 0, true);
         }
         
         toast.success(`Progress for ${settings.selectedLanguage} has been reset successfully`);
@@ -76,17 +81,17 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
             
           if (exerciseError) throw exerciseError;
           
-          // Delete all completions for these exercises using the service function
+          // Delete all completions for these exercises
           for (const exerciseId of exerciseIds) {
             await deleteAssociatedCompletions(user.id, exerciseId);
           }
+          
+          // Refresh the exercises in context after reset
+          for (const exercise of exercises.filter(ex => ex.language === currentLanguage)) {
+            await markProgress(exercise.id, 0, true);
+          }
         }
         
-        // Refresh the exercises in context after reset
-        await Promise.all(exercises
-          .filter(ex => ex.language === currentLanguage)
-          .map(exercise => markProgress(exercise.id, 0, true))); // Added reset flag
-          
         toast.success(`Progress for ${settings.selectedLanguage} has been reset successfully`);
       }
       

@@ -99,10 +99,12 @@ export const deleteAssociatedVocabulary = async (userId: string, exerciseId: str
  */
 export const deleteAssociatedCompletions = async (userId: string, exerciseId: string) => {
   try {
+    console.log(`Attempting to delete completions for exercise ${exerciseId} and user ${userId}`);
+    
     // Delete completion records associated with the exercise
-    const { error } = await supabase
+    const { error, count } = await supabase
       .from('completions')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('exercise_id', exerciseId)
       .eq('user_id', userId);
 
@@ -111,7 +113,7 @@ export const deleteAssociatedCompletions = async (userId: string, exerciseId: st
       throw error;
     }
     
-    console.log(`Successfully deleted completions for exercise ${exerciseId}`);
+    console.log(`Successfully deleted ${count} completion records for exercise ${exerciseId}`);
     return true;
   } catch (error) {
     console.error('Error deleting associated completions:', error);
