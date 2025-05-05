@@ -4,6 +4,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { VisitorStats } from '@/components/admin/VisitorStats';
 import { AdminStats } from '@/components/admin/AdminStats';
+import { FeedbackList } from '@/components/admin/FeedbackList';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +53,11 @@ const AdminPage: React.FC = () => {
       <div className="mb-8">
         <h2 className="text-xl font-semibold mb-4">Visitor Analytics</h2>
         <VisitorStats />
+      </div>
+      
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">User Feedback</h2>
+        <FeedbackList />
       </div>
     </div>
   );
