@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, FileExport, Loader2 } from 'lucide-react';
+import { AlertCircle, FileText, Loader2 } from 'lucide-react';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { downloadAnkiImport } from '@/utils/ankiExport';
@@ -66,7 +66,7 @@ const VocabularyExport: React.FC<VocabularyExportProps> = ({ vocabulary }) => {
             </>
           ) : (
             <>
-              <FileExport className="mr-2 h-4 w-4" />
+              <FileText className="mr-2 h-4 w-4" />
               Export as Anki Flashcards
             </>
           )}
