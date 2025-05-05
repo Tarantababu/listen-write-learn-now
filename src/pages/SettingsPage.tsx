@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +14,6 @@ import AvatarUpload from '@/components/AvatarUpload';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ResetLanguageProgress from '@/components/ResetLanguageProgress';
-
 const SettingsPage: React.FC = () => {
   const {
     settings,
@@ -25,23 +23,9 @@ const SettingsPage: React.FC = () => {
     removeLearningLanguage,
     loading
   } = useUserSettingsContext();
-  
-  const availableLanguages: Language[] = [
-    'english', 
-    'german', 
-    'spanish', 
-    'french', 
-    'portuguese', 
-    'italian',
-    'turkish',
-    'swedish',
-    'dutch',
-    'norwegian'
-  ];
-  
+  const availableLanguages: Language[] = ['english', 'german', 'spanish', 'french', 'portuguese', 'italian', 'turkish', 'swedish', 'dutch', 'norwegian'];
   const [updatingLanguage, setUpdatingLanguage] = useState<string | null>(null);
   const isMobile = useIsMobile();
-  
   const handleLanguageToggle = async (language: Language, isChecked: boolean) => {
     try {
       setUpdatingLanguage(language);
@@ -59,7 +43,6 @@ const SettingsPage: React.FC = () => {
       setUpdatingLanguage(null);
     }
   };
-  
   const handleLanguageSelect = async (language: Language) => {
     try {
       setUpdatingLanguage(language);
@@ -72,20 +55,15 @@ const SettingsPage: React.FC = () => {
       setUpdatingLanguage(null);
     }
   };
-  
   if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
+    return <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
         <div className="flex flex-col items-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
           <p className="text-muted-foreground">Loading settings...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-  
-  return (
-    <div className="container mx-auto px-4 py-6 max-w-3xl">
+  return <div className="container mx-auto px-4 py-6 max-w-3xl">
       <div className="mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent flex items-center">
           <Settings className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
@@ -127,20 +105,13 @@ const SettingsPage: React.FC = () => {
           </CardHeader>
           <CardContent className="pt-2">
             <div className="space-y-3 sm:space-y-4">
-              {availableLanguages.map(language => (
-                <div key={language} className="flex items-center space-x-2">
-                  <Checkbox 
-                    id={`language-${language}`} 
-                    checked={settings.learningLanguages.includes(language)} 
-                    onCheckedChange={checked => handleLanguageToggle(language, checked as boolean)} 
-                    disabled={updatingLanguage === language || settings.learningLanguages.length === 1 && settings.learningLanguages.includes(language)} 
-                  />
+              {availableLanguages.map(language => <div key={language} className="flex items-center space-x-2">
+                  <Checkbox id={`language-${language}`} checked={settings.learningLanguages.includes(language)} onCheckedChange={checked => handleLanguageToggle(language, checked as boolean)} disabled={updatingLanguage === language || settings.learningLanguages.length === 1 && settings.learningLanguages.includes(language)} />
                   <Label htmlFor={`language-${language}`} className="capitalize text-sm sm:text-base">
                     {language}
                     {updatingLanguage === language && <Loader2 className="h-3 w-3 animate-spin ml-2 inline" />}
                   </Label>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CardContent>
         </Card>
@@ -154,15 +125,13 @@ const SettingsPage: React.FC = () => {
           </CardHeader>
           <CardContent className="pt-2">
             <RadioGroup value={settings.selectedLanguage} onValueChange={value => handleLanguageSelect(value as Language)}>
-              {settings.learningLanguages.map(language => (
-                <div key={language} className="flex items-center space-x-2 mb-2">
+              {settings.learningLanguages.map(language => <div key={language} className="flex items-center space-x-2 mb-2">
                   <RadioGroupItem value={language} id={`active-${language}`} disabled={updatingLanguage === language} />
                   <Label htmlFor={`active-${language}`} className="capitalize text-sm sm:text-base">
                     {language}
                     {updatingLanguage === language && <Loader2 className="h-3 w-3 animate-spin ml-2 inline" />}
                   </Label>
-                </div>
-              ))}
+                </div>)}
             </RadioGroup>
             
             <p className="text-xs sm:text-sm text-muted-foreground mt-4">
@@ -170,13 +139,7 @@ const SettingsPage: React.FC = () => {
             </p>
             
             {/* Add reset progress option */}
-            <div className="mt-6">
-              <h3 className="text-sm font-medium mb-2">Reset Progress</h3>
-              <ResetLanguageProgress className="w-full" />
-              <p className="text-xs text-muted-foreground mt-2">
-                This will reset all your progress for the selected language and cannot be undone.
-              </p>
-            </div>
+            
           </CardContent>
         </Card>
         
@@ -213,8 +176,6 @@ const SettingsPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default SettingsPage;
