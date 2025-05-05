@@ -38,6 +38,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(200); // Default duration in seconds
+  const [internalShowResults, setInternalShowResults] = useState(showResults);
   const [stats, setStats] = useState<{
     correct: number;
     almost: number;
@@ -53,6 +54,11 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   });
   
   const [progressValue, setProgressValue] = useState((exercise.completionCount / 3) * 100);
+  
+  // Sync with external showResults prop
+  useEffect(() => {
+    setInternalShowResults(showResults);
+  }, [showResults]);
   
   useEffect(() => {
     setProgressValue((exercise.completionCount / 3) * 100);
@@ -78,6 +84,9 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       missing: result.missing,
       extra: result.extra
     });
+    
+    // Set internal results state
+    setInternalShowResults(true);
     
     // Calculate new progress value if accuracy is sufficient (>= 95%)
     let newCompletionCount = exercise.completionCount;
@@ -175,13 +184,14 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   
   // Auto-focus textarea
   useEffect(() => {
-    if (textareaRef.current && !showResults) {
+    if (textareaRef.current && !internalShowResults) {
       textareaRef.current.focus();
     }
-  }, [showResults]);
+  }, [internalShowResults]);
 
   const handleTryAgain = () => {
     setUserInput('');
+    setInternalShowResults(false);
     if (onTryAgain) {
       onTryAgain();
     }
@@ -233,7 +243,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
         </div>
       </div>
       
-      {!showResults ? (
+      {!internalShowResults ? (
         <div className="p-6 space-y-8">
           {/* Audio player */}
           <div className="flex flex-col items-center justify-center">
@@ -299,7 +309,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
               <DictationMicrophone 
                 onTextReceived={handleDictationResult}
                 language={exercise.language}
-                isDisabled={showResults}
+                isDisabled={internalShowResults}
                 existingText={userInput}
               />
             </div>

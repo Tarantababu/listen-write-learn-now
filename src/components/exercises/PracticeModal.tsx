@@ -58,17 +58,15 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     }
   };
   
-  // Reset when modal opens or closes
+  // Only reset the results display when modal is closed, not when it opens
   useEffect(() => {
-    if (isOpen) {
-      // When modal just opened, reset the results display
+    if (!isOpen) {
+      // Reset the state when modal is fully closed
       setShowResults(false);
-      
-      // Refresh exercise data in case it was updated (e.g., after reset)
-      if (exercise) {
-        const latestExerciseData = exercises.find(ex => ex.id === exercise.id);
-        setUpdatedExercise(latestExerciseData || exercise);
-      }
+    } else if (exercise) {
+      // Refresh exercise data when modal opens
+      const latestExerciseData = exercises.find(ex => ex.id === exercise.id);
+      setUpdatedExercise(latestExerciseData || exercise);
     }
   }, [isOpen, exercise, exercises]);
   
