@@ -198,26 +198,15 @@ const UserStatistics: React.FC = () => {
 
   const streak = calculateStreak();
 
-  // 6. Heatmap data
+  // 6. Heatmap data - updated to focus on mastered words count per day
   const activityHeatmap = useMemo(() => {
-    // Start with word activity data
-    const baseData = Object.entries(wordsByDay).map(([dateStr, count]) => ({
+    // Create base data structure from masteredWordsByDay
+    return Object.entries(masteredWordsByDay).map(([dateStr, wordsSet]) => ({
       date: new Date(dateStr),
-      count
+      count: 1, // We just need a count to indicate there was activity
+      masteredWords: wordsSet.size // Number of unique mastered words for this day
     }));
-    
-    // Add mastered words data
-    return baseData.map(item => {
-      const dateStr = format(item.date, 'yyyy-MM-dd');
-      const masteredWordsSet = masteredWordsByDay[dateStr];
-      const masteredWordsCount = masteredWordsSet ? masteredWordsSet.size : 0;
-      
-      return {
-        ...item,
-        masteredWords: masteredWordsCount
-      };
-    });
-  }, [wordsByDay, masteredWordsByDay]);
+  }, [masteredWordsByDay]);
 
   // 7. Level information based on mastered words
   const userLevel = getUserLevel(masteredWords.size);

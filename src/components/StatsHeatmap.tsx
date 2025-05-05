@@ -2,13 +2,13 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
-import { format, subMonths, isWithinInterval, differenceInCalendarDays, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isWithinInterval, isSameDay } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ActivityData {
   date: Date;
   count: number;
-  masteredWords?: number; // Added masteredWords property
+  masteredWords?: number;
 }
 
 interface StatsHeatmapProps {
@@ -17,20 +17,21 @@ interface StatsHeatmapProps {
 
 const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
   const today = new Date();
-  const threeMonthsAgo = subMonths(today, 3);
+  const currentMonthStart = startOfMonth(today);
+  const currentMonthEnd = endOfMonth(today);
 
-  // Filter activity data to only show the last 3 months
+  // Filter activity data to only show the current month
   const filteredActivityData = useMemo(() => {
     return activityData.filter(activity => 
-      isWithinInterval(activity.date, { start: threeMonthsAgo, end: today })
+      isWithinInterval(activity.date, { start: currentMonthStart, end: currentMonthEnd })
     );
-  }, [activityData, threeMonthsAgo, today]);
+  }, [activityData, currentMonthStart, currentMonthEnd]);
 
   // Create explicit day modifiers for each activity day with its corresponding class
   const activityModifiers = useMemo(() => {
     const modifiers: Record<string, Date[]> = {};
     
-    // Group dates by their intensity level using the new ranges
+    // Group dates by their mastered words count using new ranges
     const intensityLevels = {
       high: [] as Date[],
       medium: [] as Date[],
@@ -39,13 +40,14 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
     };
     
     filteredActivityData.forEach(activity => {
-      if (activity.count > 350) {
+      const masteredCount = activity.masteredWords || 0;
+      if (masteredCount > 20) {
         intensityLevels.high.push(activity.date);
-      } else if (activity.count > 150) {
+      } else if (masteredCount > 10) {
         intensityLevels.medium.push(activity.date);
-      } else if (activity.count > 50) {
+      } else if (masteredCount > 3) {
         intensityLevels.low.push(activity.date);
-      } else {
+      } else if (masteredCount > 0) {
         intensityLevels.minimal.push(activity.date);
       }
     });
@@ -74,8 +76,13 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
       <TooltipProvider>
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
-            <div className="w-full h-full flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center relative">
               {format(day, 'd')}
+              {hasActivity && (
+                <span className="absolute top-1 right-1 text-[9px] font-medium">
+                  {masteredCount}
+                </span>
+              )}
             </div>
           </TooltipTrigger>
           {hasActivity && (
@@ -93,16 +100,14 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
     <Card className="col-span-full animate-fade-in">
       <CardHeader>
         <CardTitle className="text-sm font-medium text-muted-foreground">
-          Mastered Words Heatmap - Last 3 Months
+          Mastered Words Heatmap - {format(currentMonthStart, 'MMMM yyyy')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
           <Calendar 
-            mode="range"
-            numberOfMonths={3}
-            fromMonth={threeMonthsAgo}
-            toMonth={today}
+            mode="default"
+            numberOfMonths={1}
             defaultMonth={today}
             classNames={{
               day_today: "border border-primary",
@@ -125,19 +130,19 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
         <div className="flex justify-end mt-4 gap-2">
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm bg-green-300"></div>
-            <span className="text-xs">1-50</span>
+            <span className="text-xs">1-3</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm bg-green-500"></div>
-            <span className="text-xs">51-150</span>
+            <span className="text-xs">4-10</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm bg-green-600"></div>
-            <span className="text-xs">151-350</span>
+            <span className="text-xs">11-20</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm bg-green-800"></div>
-            <span className="text-xs">350+</span>
+            <span className="text-xs">20+</span>
           </div>
         </div>
       </CardContent>
