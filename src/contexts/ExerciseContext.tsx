@@ -24,7 +24,7 @@ interface ExerciseContextProps {
   updateExercise: (id: string, updates: Partial<Exercise>) => Promise<void>;
   deleteExercise: (id: string) => Promise<void>;
   selectExercise: (id: string | null) => void;
-  markProgress: (id: string, accuracy: number) => Promise<void>;
+  markProgress: (id: string, accuracy: number, reset?: boolean) => Promise<void>;
   filterExercisesByLanguage: (language: Language) => Exercise[];
   moveExerciseToDirectory: (exerciseId: string, directoryId: string | null) => Promise<void>;
   loading: boolean;
@@ -184,7 +184,7 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setSelectedExercise(exercise || null);
   };
 
-  const markProgress = async (id: string, accuracy: number) => {
+  const markProgress = async (id: string, accuracy: number, reset: boolean = false) => {
     try {
       const exercise = exercises.find(ex => ex.id === id);
       if (!exercise) return;
@@ -193,8 +193,13 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       let newCompletionCount = exercise.completionCount;
       let isCompleted = exercise.isCompleted;
 
-      // If accuracy is > 95%, increment completion count
-      if (accuracy >= 95) {
+      // If reset is true, force completion count to 0
+      if (reset) {
+        newCompletionCount = 0;
+        isCompleted = false;
+      } 
+      // Otherwise handle normal progress update
+      else if (accuracy >= 95) {
         newCompletionCount += 1;
         // Mark as completed if they've achieved >95% accuracy three times
         isCompleted = newCompletionCount >= 3;
@@ -214,10 +219,12 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           isCompleted
         });
 
-        // Also save completion record
-        await recordCompletion(user.id, id, accuracy, isCompleted);
+        // Only save completion record if not resetting
+        if (!reset && accuracy > 0) {
+          await recordCompletion(user.id, id, accuracy, isCompleted);
+        }
       } else {
-        localExercises.markProgress(id, accuracy);
+        localExercises.markProgress(id, reset ? 0 : accuracy, reset);
       }
 
       // Update state

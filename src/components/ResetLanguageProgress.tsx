@@ -18,6 +18,7 @@ import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { deleteAssociatedCompletions } from '@/services/exerciseService';
 
 interface ResetLanguageProgressProps {
   className?: string;
@@ -43,26 +44,15 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
         
         // Reset each exercise's progress locally
         for (const exercise of languageExercises) {
-          await markProgress(exercise.id, 0);
+          await markProgress(exercise.id, 0, true); // Added a reset flag parameter
         }
+        
+        toast.success(`Progress for ${settings.selectedLanguage} has been reset successfully`);
       } else {
         // Reset authenticated user's progress in the database
         const currentLanguage = settings.selectedLanguage;
         
-        // Reset exercise completion counts for the selected language
-        const { error: exerciseError } = await supabase
-          .from('exercises')
-          .update({ 
-            completion_count: 0, 
-            is_completed: false 
-          })
-          .eq('user_id', user.id)
-          .eq('language', currentLanguage);
-          
-        if (exerciseError) throw exerciseError;
-        
-        // Delete completion records for the selected language's exercises
-        // First get all exercise IDs for the current language
+        // Get all exercise IDs for the current language to properly remove completions
         const { data: languageExercises, error: fetchError } = await supabase
           .from('exercises')
           .select('id')
@@ -74,18 +64,31 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
         if (languageExercises && languageExercises.length > 0) {
           const exerciseIds = languageExercises.map(ex => ex.id);
           
-          // Delete all completions for these exercises
-          const { error: completionsError } = await supabase
-            .from('completions')
-            .delete()
+          // Reset exercise completion counts for the selected language
+          const { error: exerciseError } = await supabase
+            .from('exercises')
+            .update({ 
+              completion_count: 0, 
+              is_completed: false 
+            })
             .eq('user_id', user.id)
-            .in('exercise_id', exerciseIds);
+            .eq('language', currentLanguage);
             
-          if (completionsError) throw completionsError;
+          if (exerciseError) throw exerciseError;
+          
+          // Delete all completions for these exercises using the service function
+          for (const exerciseId of exerciseIds) {
+            await deleteAssociatedCompletions(user.id, exerciseId);
+          }
         }
+        
+        // Refresh the exercises in context after reset
+        await Promise.all(exercises
+          .filter(ex => ex.language === currentLanguage)
+          .map(exercise => markProgress(exercise.id, 0, true))); // Added reset flag
+          
+        toast.success(`Progress for ${settings.selectedLanguage} has been reset successfully`);
       }
-      
-      toast.success(`Progress for ${settings.selectedLanguage} has been reset successfully`);
       
       // Close the dialog
       setIsResetDialogOpen(false);

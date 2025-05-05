@@ -28,8 +28,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   const { settings } = useUserSettingsContext();
   const { exercises } = useExerciseContext();
   
-  // Update the local exercise state when the prop changes or when exercises are updated 
-  // (could happen after a progress reset)
+  // Update the local exercise state immediately when the prop changes or when exercises are updated 
+  // (happens after a progress reset or any other completion event)
   useEffect(() => {
     if (exercise) {
       // If there's an exercise, find the latest version from the exercises context
@@ -61,10 +61,16 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   // Reset when modal opens or closes
   useEffect(() => {
     if (isOpen) {
-      // Modal just opened
+      // When modal just opened, reset the results display
       setShowResults(false);
+      
+      // Refresh exercise data in case it was updated (e.g., after reset)
+      if (exercise) {
+        const latestExerciseData = exercises.find(ex => ex.id === exercise.id);
+        setUpdatedExercise(latestExerciseData || exercise);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, exercise, exercises]);
   
   // Safe handling of modal open state change
   const handleOpenChange = (open: boolean) => {
