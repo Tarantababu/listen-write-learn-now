@@ -35,32 +35,34 @@ const transitionVariants = {
 
 export function Features() {
   return (
-    <section id="features" className="py-20 overflow-hidden">
-      <div className="container max-w-6xl px-4 md:px-6 mx-auto">
-        <div className="text-center space-y-4">
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">How It Works</h2>
-          <p className="mx-auto max-w-[700px] text-muted-foreground text-lg">
+    <section id="features" className="relative py-24 overflow-hidden bg-gradient-to-b from-background to-background/80">
+      <div className="container relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center space-y-4 mb-16">
+          <h2 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80">
+            How It Works
+          </h2>
+          <p className="mx-auto max-w-2xl text-lg sm:text-xl text-muted-foreground">
             A simple but powerful method that trains multiple skills at once
           </p>
         </div>
 
-        <div className="mt-16 grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+        <div className="mt-16 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <AnimatedGroup
             variants={transitionVariants}
-            className="space-y-8 lg:max-w-xl">
-            <div>
-              <h3 className="text-2xl font-bold">Listen, Write, Learn</h3>
-              <p className="mt-2 text-muted-foreground">
+            className="space-y-10 lg:max-w-xl">
+            <div className="space-y-4">
+              <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">Listen, Write, Learn</h3>
+              <p className="text-lg text-muted-foreground">
                 Our dictation method combines listening practice with writing, reinforcing both skills simultaneously and creating stronger neural connections.
               </p>
             </div>
 
-            <ul className="space-y-4">
-              <li className="flex gap-3">
-                <Check className="h-6 w-6 text-primary flex-shrink-0" />
+            <ul className="space-y-6">
+              <li className="flex gap-4">
+                <Check className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
                 <div>
-                  <p className="font-medium">Improved Listening Comprehension</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="font-semibold text-lg">Improved Listening Comprehension</p>
+                  <p className="text-muted-foreground mt-1">
                     Train your ears to pick up natural speech patterns, accents and intonation.
                   </p>
                 </div>
@@ -94,12 +96,14 @@ export function Features() {
               </li>
             </ul>
 
-            <div className="pt-4">
-              <Link to="/signup" className="text-primary font-medium inline-flex items-center">
+            <div className="pt-6">
+              <Link 
+                to="/signup" 
+                className="inline-flex items-center text-lg font-semibold text-primary hover:text-primary/80 transition-colors">
                 Start practicing
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-1"
+                  className="h-5 w-5 ml-2"
                   viewBox="0 0 20 20"
                   fill="currentColor">
                   <path
