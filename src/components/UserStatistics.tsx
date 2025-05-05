@@ -254,8 +254,37 @@ const UserStatistics: React.FC = () => {
           <h3 className="font-medium">Language Level</h3>
           <LevelInfoTooltip />
         </div>
+        
+        {/* Level visualization with colored bars */}
+        <div className="flex items-end h-8 mb-3 gap-0.5">
+          {LANGUAGE_LEVELS.map((level, idx) => {
+            const isCurrentOrPast = level.minWords <= masteredWords.size;
+            const isCurrentLevel = userLevel.level === level.level;
+            
+            return (
+              <div 
+                key={level.level}
+                className={`flex-1 rounded-sm transition-all duration-300 relative ${
+                  isCurrentOrPast ? level.color : 'bg-gray-100'
+                } ${isCurrentLevel ? 'ring-2 ring-offset-1 ring-primary/30' : ''}`}
+                style={{ height: `${Math.max(40, 40 + (idx * 8))}%` }}
+              >
+                {isCurrentLevel && (
+                  <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 text-xs font-medium">
+                    You
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        
         <p className="text-sm mb-2">{levelDescription}</p>
-        <Progress value={levelProgress} className="h-2" />
+        <Progress 
+          value={levelProgress} 
+          className="h-2" 
+          indicatorClassName={userLevel.color} 
+        />
         <div className="flex justify-between mt-1">
           <span className="text-xs text-muted-foreground">{userLevel.level}</span>
           {userLevel.maxWords !== null && (

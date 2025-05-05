@@ -14,6 +14,7 @@ import UpgradePrompt from '@/components/UpgradePrompt';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import VocabularyExport from '@/components/VocabularyExport';
+import LanguageLevelProgress from '@/components/LanguageLevelProgress';
 
 const VocabularyPage = () => {
   const {
@@ -107,6 +108,16 @@ const VocabularyPage = () => {
         
         {/* Right column: Tools and actions */}
         <div className="space-y-4">
+          {/* Language Level Progress */}
+          <Card className="h-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg sm:text-xl">Language Proficiency</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <LanguageLevelProgress masteredWords={languageVocabulary.length} />
+            </CardContent>
+          </Card>
+          
           {/* Tools Tabs */}
           <Card className="h-full">
             <CardHeader className="pb-2">
