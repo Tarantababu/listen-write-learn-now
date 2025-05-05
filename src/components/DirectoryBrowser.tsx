@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -126,14 +127,14 @@ const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({
   return (
     <>
       <div className={cn("space-y-4", className)}>
-        {/* All Exercises Button */}
+        {/* All Exercises Button - Updated with softer colors */}
         <Button
           variant="outline"
           size="sm"
           onClick={() => handleNavigateToDirectory(null)}
           className={cn(
             "w-full flex justify-start mb-2", 
-            !currentDirectoryId && "bg-accent font-medium"
+            !currentDirectoryId && "bg-secondary/50 text-secondary-foreground font-medium"
           )}
         >
           <Home className="h-4 w-4 mr-2 text-muted-foreground" />
