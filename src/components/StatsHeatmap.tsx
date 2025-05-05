@@ -111,6 +111,13 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
             defaultMonth={today}
             classNames={{
               day_today: "border border-primary",
+              day_selected: "",
+              day_disabled: "",
+              day_range_start: "",
+              day_range_middle: "",
+              day_range_end: "",
+              day_hidden: "invisible",
+              day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
             }}
             modifiers={activityModifiers}
             modifiersClassNames={{
