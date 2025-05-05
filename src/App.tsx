@@ -19,6 +19,7 @@ import VocabularyPage from "@/pages/VocabularyPage";
 import SettingsPage from "@/pages/SettingsPage";
 import SubscriptionPage from "@/pages/SubscriptionPage";
 import AdminPage from "@/pages/AdminPage";
+import TutorialPage from "@/pages/TutorialPage";
 import NotFound from "@/pages/NotFound";
 import LoginPage from "@/pages/LoginPage";
 import SignUpPage from "@/pages/SignUpPage";
@@ -56,6 +57,7 @@ const AuthenticatedApp: React.FC = () => {
                         <Route path="settings" element={<SettingsPage />} />
                         <Route path="subscription" element={<SubscriptionPage />} />
                         <Route path="admin" element={<AdminPage />} />
+                        <Route path="tutorial" element={<TutorialPage />} />
                       </Route>
                     </Route>
                     

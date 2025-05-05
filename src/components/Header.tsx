@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -23,7 +22,8 @@ import {
   Crown,
   LayoutDashboard,
   Book,
-  Shield
+  Shield,
+  HelpCircle
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getLanguageFlag } from '@/utils/languageUtils';
@@ -223,6 +223,11 @@ const Header: React.FC = () => {
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard/settings" className="flex items-center w-full">
                       <Settings className="h-4 w-4 mr-2" /> Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/tutorial" className="flex items-center w-full">
+                      <HelpCircle className="h-4 w-4 mr-2" /> Tutorial
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
