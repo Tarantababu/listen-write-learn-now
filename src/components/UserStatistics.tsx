@@ -103,6 +103,32 @@ const UserStatistics: React.FC = () => {
     return mastered;
   }, new Set<string>());
 
+  // Calculate mastered words by day
+  const masteredWordsByDay = useMemo(() => {
+    const wordsByDay: Record<string, Set<string>> = {};
+    
+    completions.forEach(completion => {
+      const exercise = exercises.find(ex => ex.id === completion.exerciseId);
+      if (!exercise || exercise.language !== currentLanguage || completion.accuracy < 95) return;
+      
+      // Count completions per exercise with good accuracy
+      const highAccuracyCompletionsForExercise = completions.filter(
+        c => c.exerciseId === completion.exerciseId && c.accuracy >= 95
+      ).length;
+      
+      // If completed 3+ times with high accuracy, add its words to the day's mastered set
+      if (highAccuracyCompletionsForExercise >= 3) {
+        const dateStr = format(completion.date, 'yyyy-MM-dd');
+        if (!wordsByDay[dateStr]) wordsByDay[dateStr] = new Set<string>();
+        
+        const words = normalizeText(exercise.text).split(' ');
+        words.forEach(word => wordsByDay[dateStr].add(word));
+      }
+    });
+    
+    return wordsByDay;
+  }, [completions, exercises, currentLanguage]);
+
   // 2. Total words dictated
   const totalWordsDictated = completions
     .filter(c => {
