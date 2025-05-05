@@ -41,11 +41,13 @@ export const handler = async (req: Request): Promise<Response> => {
       });
     }
     
-    // Get total users count using the admin client
-    const { data: usersData, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
+    // Get total profiles count 
+    const { count: profilesCount, error: profilesError } = await supabaseAdmin
+      .from('profiles')
+      .select('*', { count: 'exact', head: false });
     
-    if (usersError) {
-      return new Response(JSON.stringify({ error: usersError.message }), {
+    if (profilesError) {
+      return new Response(JSON.stringify({ error: profilesError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -67,7 +69,7 @@ export const handler = async (req: Request): Promise<Response> => {
     // Return both counts
     return new Response(
       JSON.stringify({ 
-        totalUsers: usersData.users.length,
+        totalUsers: profilesCount || 0,
         subscribedUsers: subscribedCount || 0
       }),
       {
