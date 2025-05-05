@@ -6,19 +6,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, UserPlus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 export function AdminStats() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   
   // Use React Query to fetch admin stats from the edge function
-  const { data: statsData, isLoading: isLoadingStats } = useQuery({
+  const { data: statsData, isLoading: isLoadingStats, error } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
-      if (!user) return null;
+      if (!session?.access_token) {
+        console.log('No access token available for admin stats');
+        return null;
+      }
       
-      // Get the current session for the auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return null;
+      console.log('Fetching admin stats with token');
       
       // Call the edge function with the auth token
       const { data, error } = await supabase.functions.invoke('get-admin-stats', {
@@ -29,13 +31,20 @@ export function AdminStats() {
       
       if (error) {
         console.error('Error fetching admin stats:', error);
-        return null;
+        toast.error('Failed to load admin statistics');
+        throw error;
       }
       
+      console.log('Admin stats data received:', data);
       return data;
     },
-    enabled: !!user // Only run the query if the user is logged in
+    enabled: !!session?.access_token // Only run the query if we have an access token
   });
+
+  // Display error message if there's an error
+  if (error) {
+    console.error('Error in admin stats query:', error);
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -48,7 +57,9 @@ export function AdminStats() {
           {isLoadingStats ? (
             <Skeleton className="h-8 w-20" />
           ) : (
-            <div className="text-2xl font-bold">{statsData?.totalUsers ?? 'N/A'}</div>
+            <div className="text-2xl font-bold">
+              {typeof statsData?.totalUsers === 'number' ? statsData.totalUsers : 'N/A'}
+            </div>
           )}
           <p className="text-xs text-muted-foreground mt-1">Registered users</p>
         </CardContent>
@@ -63,7 +74,9 @@ export function AdminStats() {
           {isLoadingStats ? (
             <Skeleton className="h-8 w-20" />
           ) : (
-            <div className="text-2xl font-bold">{statsData?.subscribedUsers ?? 'N/A'}</div>
+            <div className="text-2xl font-bold">
+              {typeof statsData?.subscribedUsers === 'number' ? statsData.subscribedUsers : 'N/A'}
+            </div>
           )}
           <p className="text-xs text-muted-foreground mt-1">Premium subscribers</p>
         </CardContent>

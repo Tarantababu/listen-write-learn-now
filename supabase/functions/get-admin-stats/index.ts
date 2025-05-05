@@ -24,6 +24,7 @@ export const handler = async (req: Request): Promise<Response> => {
     const authHeader = req.headers.get('Authorization');
     
     if (!authHeader) {
+      console.log("[GET-ADMIN-STATS] No authorization header found");
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -34,19 +35,33 @@ export const handler = async (req: Request): Promise<Response> => {
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
-    if (authError || !user || user.email !== Deno.env.get('ADMIN_EMAIL')) {
+    if (authError || !user) {
+      console.log("[GET-ADMIN-STATS] Auth error or no user found:", authError);
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check if the user is an admin
+    const adminEmail = Deno.env.get('ADMIN_EMAIL');
+    if (user.email !== adminEmail) {
+      console.log(`[GET-ADMIN-STATS] User ${user.email} is not admin (${adminEmail})`);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     
+    console.log(`[GET-ADMIN-STATS] Admin authenticated: ${user.email}`);
+    
     // Get total profiles count 
     const { count: profilesCount, error: profilesError } = await supabaseAdmin
       .from('profiles')
-      .select('*', { count: 'exact', head: false });
+      .select('*', { count: 'exact', head: true });
     
     if (profilesError) {
+      console.log("[GET-ADMIN-STATS] Error fetching profiles:", profilesError);
       return new Response(JSON.stringify({ error: profilesError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -56,15 +71,19 @@ export const handler = async (req: Request): Promise<Response> => {
     // Get subscribed users count
     const { count: subscribedCount, error: subscribedError } = await supabaseAdmin
       .from('subscribers')
-      .select('*', { count: 'exact', head: false })
+      .select('*', { count: 'exact', head: true })
       .eq('subscribed', true);
       
     if (subscribedError) {
+      console.log("[GET-ADMIN-STATS] Error fetching subscribers:", subscribedError);
       return new Response(JSON.stringify({ error: subscribedError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    
+    // Log the counts for debugging
+    console.log(`[GET-ADMIN-STATS] Found ${profilesCount} total users and ${subscribedCount} subscribed users`);
     
     // Return both counts
     return new Response(
@@ -79,6 +98,7 @@ export const handler = async (req: Request): Promise<Response> => {
     );
     
   } catch (error) {
+    console.log("[GET-ADMIN-STATS] Unexpected error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
