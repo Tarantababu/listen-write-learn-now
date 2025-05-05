@@ -12,7 +12,7 @@ export function AdminStats() {
     queryFn: async () => {
       const { count, error } = await supabase
         .from('profiles')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: false });
       
       if (error) {
         console.error('Error fetching total accounts:', error);
@@ -28,7 +28,7 @@ export function AdminStats() {
     queryFn: async () => {
       const { count, error } = await supabase
         .from('subscribers')
-        .select('*', { count: 'exact', head: true })
+        .select('*', { count: 'exact', head: false })
         .eq('subscribed', true);
       
       if (error) {
