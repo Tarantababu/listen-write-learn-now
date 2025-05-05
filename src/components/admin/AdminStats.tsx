@@ -5,39 +5,36 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, UserPlus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function AdminStats() {
-  const { data: totalAccounts, isLoading: loadingAccounts } = useQuery({
-    queryKey: ['admin-total-accounts'],
+  const { user } = useAuth();
+  
+  // Use React Query to fetch admin stats from the edge function
+  const { data: statsData, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['admin-stats'],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: false });
+      if (!user) return null;
+      
+      // Get the current session for the auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
+      
+      // Call the edge function with the auth token
+      const { data, error } = await supabase.functions.invoke('get-admin-stats', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
       
       if (error) {
-        console.error('Error fetching total accounts:', error);
+        console.error('Error fetching admin stats:', error);
         return null;
       }
       
-      return count || 0;
-    }
-  });
-
-  const { data: subscribedCount, isLoading: loadingSubscribed } = useQuery({
-    queryKey: ['admin-subscribed-count'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('subscribers')
-        .select('*', { count: 'exact', head: false })
-        .eq('subscribed', true);
-      
-      if (error) {
-        console.error('Error fetching subscribed users:', error);
-        return null;
-      }
-      
-      return count || 0;
-    }
+      return data;
+    },
+    enabled: !!user // Only run the query if the user is logged in
   });
 
   return (
@@ -48,10 +45,10 @@ export function AdminStats() {
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          {loadingAccounts ? (
+          {isLoadingStats ? (
             <Skeleton className="h-8 w-20" />
           ) : (
-            <div className="text-2xl font-bold">{totalAccounts ?? 'N/A'}</div>
+            <div className="text-2xl font-bold">{statsData?.totalUsers ?? 'N/A'}</div>
           )}
           <p className="text-xs text-muted-foreground mt-1">Registered users</p>
         </CardContent>
@@ -63,10 +60,10 @@ export function AdminStats() {
           <UserPlus className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          {loadingSubscribed ? (
+          {isLoadingStats ? (
             <Skeleton className="h-8 w-20" />
           ) : (
-            <div className="text-2xl font-bold">{subscribedCount ?? 'N/A'}</div>
+            <div className="text-2xl font-bold">{statsData?.subscribedUsers ?? 'N/A'}</div>
           )}
           <p className="text-xs text-muted-foreground mt-1">Premium subscribers</p>
         </CardContent>
