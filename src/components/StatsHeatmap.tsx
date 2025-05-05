@@ -110,21 +110,21 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
             numberOfMonths={1}
             defaultMonth={today}
             classNames={{
-              day_today: "border border-primary",
+              day_today: "border-2 border-primary",
               day_selected: "",
               day_disabled: "",
               day_range_start: "",
               day_range_middle: "",
               day_range_end: "",
               day_hidden: "invisible",
-              day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
+              day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm",
             }}
             modifiers={activityModifiers}
             modifiersClassNames={{
-              activityHigh: "bg-green-800 hover:bg-green-700 text-white",
-              activityMedium: "bg-green-600 hover:bg-green-500 text-white",
-              activityLow: "bg-green-500 hover:bg-green-400 text-white",
-              activityMinimal: "bg-green-300 hover:bg-green-200"
+              activityHigh: "bg-green-800 hover:bg-green-700 text-white shadow-md border-green-900",
+              activityMedium: "bg-green-600 hover:bg-green-500 text-white shadow-md border-green-700",
+              activityLow: "bg-green-500 hover:bg-green-400 text-white shadow-sm border-green-600",
+              activityMinimal: "bg-green-300 hover:bg-green-200 border-green-400"
             }}
             components={{
               Day: ({ date }) => renderDay(date)
@@ -136,19 +136,19 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
         </div>
         <div className="flex justify-end mt-4 gap-2">
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm bg-green-300"></div>
+            <div className="h-3 w-3 rounded-sm bg-green-300 border border-green-400 shadow-sm"></div>
             <span className="text-xs">1-50</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm bg-green-500"></div>
+            <div className="h-3 w-3 rounded-sm bg-green-500 border border-green-600 shadow-sm"></div>
             <span className="text-xs">51-150</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm bg-green-600"></div>
+            <div className="h-3 w-3 rounded-sm bg-green-600 border border-green-700 shadow-sm"></div>
             <span className="text-xs">151-350</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm bg-green-800"></div>
+            <div className="h-3 w-3 rounded-sm bg-green-800 border border-green-900 shadow-sm"></div>
             <span className="text-xs">350+</span>
           </div>
         </div>
