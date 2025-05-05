@@ -41,11 +41,11 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
     
     filteredActivityData.forEach(activity => {
       const masteredCount = activity.masteredWords || 0;
-      if (masteredCount > 20) {
+      if (masteredCount > 350) {
         intensityLevels.high.push(activity.date);
-      } else if (masteredCount > 10) {
+      } else if (masteredCount > 150) {
         intensityLevels.medium.push(activity.date);
-      } else if (masteredCount > 3) {
+      } else if (masteredCount > 50) {
         intensityLevels.low.push(activity.date);
       } else if (masteredCount > 0) {
         intensityLevels.minimal.push(activity.date);
@@ -130,19 +130,19 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
         <div className="flex justify-end mt-4 gap-2">
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm bg-green-300"></div>
-            <span className="text-xs">1-3</span>
+            <span className="text-xs">1-50</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm bg-green-500"></div>
-            <span className="text-xs">4-10</span>
+            <span className="text-xs">51-150</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm bg-green-600"></div>
-            <span className="text-xs">11-20</span>
+            <span className="text-xs">151-350</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-sm bg-green-800"></div>
-            <span className="text-xs">20+</span>
+            <span className="text-xs">350+</span>
           </div>
         </div>
       </CardContent>
