@@ -193,41 +193,47 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
   };
 
   return (
-    <div className="mt-8 border-t pt-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Book className="h-5 w-5" />
-        <h3 className="font-medium">Vocabulary Building</h3>
-      </div>
-      
-      <div className="bg-muted p-4 rounded-md mb-4">
-        <p className="text-sm mb-2">Select any word or phrase from the text to add it to your vocabulary:</p>
-        <div 
-          className="p-3 bg-background rounded border text-sm cursor-text whitespace-pre-wrap"
-          onMouseUp={handleTextSelection}
-        >
-          {exercise.text}
+    <div className="mt-12 border-t pt-8 max-w-4xl mx-auto">
+      <div className="bg-gradient-to-r from-background to-accent/5 p-6 rounded-xl shadow-sm border border-border/50">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="bg-primary/10 p-2 rounded-full">
+            <Book className="h-5 w-5 text-primary" />
+          </div>
+          <h3 className="font-medium text-lg">Vocabulary Building</h3>
         </div>
-      </div>
-      
-      <div className="flex gap-2">
-        <Input 
-          value={selectedWord} 
-          onChange={e => setSelectedWord(e.target.value)} 
-          placeholder="Selected word or phrase"
-        />
-        <Button
-          onClick={handleAddToVocabulary}
-          disabled={!selectedWord.trim() || isGeneratingInfo}
-        >
-          {isGeneratingInfo ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Loading...
-            </>
-          ) : (
-            'Add to Vocabulary'
-          )}
-        </Button>
+        
+        <div className="bg-muted/80 p-5 rounded-lg mb-5">
+          <p className="text-sm mb-3 text-muted-foreground">Select any word or phrase from the text to add it to your vocabulary:</p>
+          <div 
+            className="p-4 bg-background rounded-md border text-sm cursor-text whitespace-pre-wrap animate-fade-in hover:border-primary/30 transition-colors"
+            onMouseUp={handleTextSelection}
+          >
+            {exercise.text}
+          </div>
+        </div>
+        
+        <div className="flex gap-3 max-w-2xl mx-auto">
+          <Input 
+            value={selectedWord} 
+            onChange={e => setSelectedWord(e.target.value)} 
+            placeholder="Selected word or phrase"
+            className="flex-grow"
+          />
+          <Button
+            onClick={handleAddToVocabulary}
+            disabled={!selectedWord.trim() || isGeneratingInfo}
+            className="hover-glow"
+          >
+            {isGeneratingInfo ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              'Add to Vocabulary'
+            )}
+          </Button>
+        </div>
       </div>
       
       <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
