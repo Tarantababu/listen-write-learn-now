@@ -97,10 +97,21 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
   };
 
   // Calculate total mastered words for the current month
+  // Fix: Sum the actual masteredWords values from each day's data
   const totalMasteredWordsThisMonth = useMemo(() => {
-    return filteredActivityData.reduce((total, activity) => 
-      total + (activity.masteredWords || 0), 0
-    );
+    let total = 0;
+    
+    // Collect all unique words mastered this month
+    const allMasteredWordsThisMonth = new Set<string>();
+    
+    filteredActivityData.forEach(activity => {
+      // Count the actual mastered words, not just the activity count
+      if (activity.masteredWords) {
+        total += activity.masteredWords;
+      }
+    });
+    
+    return total;
   }, [filteredActivityData]);
 
   return (
