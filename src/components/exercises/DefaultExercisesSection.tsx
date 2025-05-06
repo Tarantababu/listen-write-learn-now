@@ -5,8 +5,14 @@ import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Languages, Folder } from 'lucide-react';
+import { Copy, Languages, Folder, ChevronDown } from 'lucide-react';
 import { Language } from '@/types';
+import { 
+  Accordion, 
+  AccordionContent, 
+  AccordionItem, 
+  AccordionTrigger 
+} from '@/components/ui/accordion';
 
 interface DefaultExerciseItem {
   id: string;
@@ -15,6 +21,7 @@ interface DefaultExerciseItem {
   language: Language;
   tags: string[];
   audio_url?: string;
+  created_at: string;
 }
 
 const DefaultExercisesSection: React.FC = () => {
@@ -22,9 +29,10 @@ const DefaultExercisesSection: React.FC = () => {
   const { settings } = useUserSettingsContext();
   
   // Filter default exercises by the user's selected language
-  const filteredExercises = defaultExercises.filter(
-    ex => ex.language === settings.selectedLanguage
-  );
+  const filteredExercises = defaultExercises
+    .filter(ex => ex.language === settings.selectedLanguage)
+    // Sort by creation date in ascending order (oldest first)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   
   // Check which default exercises the user already has
   const userDefaultExerciseIds = exercises.map(ex => ex.default_exercise_id).filter(Boolean);
@@ -65,45 +73,49 @@ const DefaultExercisesSection: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Accordion type="single" collapsible className="w-full">
           {filteredExercises.map((exercise: DefaultExerciseItem) => {
             const alreadyAdded = userDefaultExerciseIds.includes(exercise.id);
+            const creationDate = new Date(exercise.created_at).toLocaleDateString();
             
             return (
-              <Card key={exercise.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-sm font-medium">{exercise.title}</CardTitle>
+              <AccordionItem key={exercise.id} value={exercise.id}>
+                <AccordionTrigger className="py-2">
+                  <div className="flex flex-col items-start text-left">
+                    <div className="font-medium">{exercise.title}</div>
+                    <div className="text-xs text-muted-foreground flex items-center">
+                      <Languages className="h-3 w-3 mr-1" />
+                      <span className="capitalize mr-2">{exercise.language}</span>
+                      <span>Created: {creationDate}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                    <Languages className="h-3 w-3" />
-                    <span className="capitalize">{exercise.language}</span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="px-1 py-2">
+                    <div className="text-sm text-muted-foreground mb-3">
+                      {exercise.text}
+                    </div>
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {exercise.tags?.map(tag => (
+                        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                      ))}
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant={alreadyAdded ? "outline" : "default"}
+                      className="w-full"
+                      onClick={() => handleCopyExercise(exercise.id)}
+                      disabled={alreadyAdded}
+                    >
+                      <Copy className="h-3 w-3 mr-1" />
+                      {alreadyAdded ? 'Already Added' : 'Add to My Exercises'}
+                    </Button>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                    {exercise.text}
-                  </div>
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {exercise.tags?.map(tag => (
-                      <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-                    ))}
-                  </div>
-                  <Button 
-                    size="sm" 
-                    variant={alreadyAdded ? "outline" : "default"}
-                    className="w-full"
-                    onClick={() => handleCopyExercise(exercise.id)}
-                    disabled={alreadyAdded}
-                  >
-                    <Copy className="h-3 w-3 mr-1" />
-                    {alreadyAdded ? 'Already Added' : 'Add to My Exercises'}
-                  </Button>
-                </CardContent>
-              </Card>
+                </AccordionContent>
+              </AccordionItem>
             );
           })}
-        </div>
+        </Accordion>
       </CardContent>
     </Card>
   );
