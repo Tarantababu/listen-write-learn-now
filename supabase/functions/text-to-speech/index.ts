@@ -19,12 +19,12 @@ serve(async (req) => {
       throw new Error('Text and language are required');
     }
     
-    // Optimize language to voice mapping for best quality audio
+    // Enhanced language to voice mapping for optimal quality audio
     const languageModelMap = {
       'english': { voice: 'onyx', model: 'tts-1-hd', code: 'en', speed: 1.0 },
       'german': { voice: 'nova', model: 'tts-1-hd', code: 'de', speed: 0.9 },
       'french': { voice: 'nova', model: 'tts-1-hd', code: 'fr', speed: 0.9 },
-      'spanish': { voice: 'shimmer', model: 'tts-1-hd', code: 'es', speed: 0.75 },
+      'spanish': { voice: 'shimmer', model: 'tts-1-hd', code: 'es', speed: 0.75 }, // Reduced speed for Spanish
       'portuguese': { voice: 'echo', model: 'tts-1-hd', code: 'pt', speed: 0.9 },
       'italian': { voice: 'nova', model: 'tts-1-hd', code: 'it', speed: 0.9 },
       'dutch': { voice: 'nova', model: 'tts-1-hd', code: 'nl', speed: 0.9 },
@@ -45,7 +45,7 @@ serve(async (req) => {
     
     console.log(`Generating speech for language: ${language} (${code}), using voice: ${voice}, model: ${model}, speed: ${speed}`);
 
-    // Process text for optimal TTS quality
+    // Enhanced text processing for optimal TTS quality
     let processedText = text;
     
     // For Spanish: ensure proper punctuation and formatting
