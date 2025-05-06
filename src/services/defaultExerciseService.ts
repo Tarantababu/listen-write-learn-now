@@ -5,6 +5,17 @@ import { toast } from 'sonner';
 import { mapExerciseFromDb } from './exerciseService';
 
 /**
+ * Ensures that the audio storage bucket exists
+ */
+export const ensureAudioBucket = async () => {
+  try {
+    await supabase.functions.invoke('ensure-audio-bucket');
+  } catch (error) {
+    console.warn('Audio bucket check failed, but this is non-blocking:', error);
+  }
+};
+
+/**
  * Fetches all default exercises from Supabase
  */
 export const fetchDefaultExercises = async () => {
@@ -31,6 +42,9 @@ export const createDefaultExercise = async (
     audioUrl?: string;
   }
 ) => {
+  // First ensure the audio bucket exists
+  await ensureAudioBucket();
+
   const { data, error } = await supabase
     .from('default_exercises')
     .insert({

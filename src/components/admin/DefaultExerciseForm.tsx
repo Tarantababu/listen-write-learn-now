@@ -9,6 +9,7 @@ import { Language } from '@/types';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { createDefaultExercise } from '@/services/defaultExerciseService';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Select,
   SelectContent,
@@ -39,6 +40,7 @@ const DefaultExerciseForm: React.FC = () => {
   const [tagInput, setTagInput] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -68,6 +70,54 @@ const DefaultExerciseForm: React.FC = () => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
+  const generateAudio = async (text: string, language: Language): Promise<string | null> => {
+    try {
+      setIsGeneratingAudio(true);
+      toast.info('Generating audio file...');
+
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: { text, language }
+      });
+
+      if (error) {
+        console.error('Error invoking text-to-speech function:', error);
+        throw error;
+      }
+
+      if (!data || !data.audioContent) {
+        throw new Error('No audio content received');
+      }
+
+      const audioContent = data.audioContent;
+      const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
+      
+      const fileName = `default_exercise_${Date.now()}.mp3`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('audio')
+        .upload(fileName, blob, {
+          contentType: 'audio/mp3'
+        });
+
+      if (uploadError) {
+        console.error('Error uploading audio:', uploadError);
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('audio')
+        .getPublicUrl(fileName);
+
+      toast.success('Audio file generated successfully');
+      return publicUrl;
+    } catch (error) {
+      console.error('Error generating audio:', error);
+      toast.error('Failed to generate audio for the exercise');
+      return null;
+    } finally {
+      setIsGeneratingAudio(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -76,11 +126,15 @@ const DefaultExerciseForm: React.FC = () => {
     try {
       setIsLoading(true);
 
+      // Generate audio
+      const audioUrl = await generateAudio(text, language);
+      
       await createDefaultExercise(user.id, {
         title,
         text,
         language,
         tags,
+        audioUrl
       });
       
       toast.success('Default exercise created successfully');
@@ -109,7 +163,7 @@ const DefaultExerciseForm: React.FC = () => {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Enter a title for the default exercise"
           className={errors.title ? "border-destructive" : ""}
-          disabled={isLoading}
+          disabled={isLoading || isGeneratingAudio}
         />
         {errors.title && (
           <p className="text-xs text-destructive mt-1">{errors.title}</p>
@@ -121,7 +175,7 @@ const DefaultExerciseForm: React.FC = () => {
         <Select
           value={language}
           onValueChange={(value) => setLanguage(value as Language)}
-          disabled={isLoading}
+          disabled={isLoading || isGeneratingAudio}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select a language" />
@@ -144,7 +198,7 @@ const DefaultExerciseForm: React.FC = () => {
           onChange={(e) => setText(e.target.value)}
           placeholder="Enter the text for dictation practice"
           className={`min-h-32 ${errors.text ? "border-destructive" : ""}`}
-          disabled={isLoading}
+          disabled={isLoading || isGeneratingAudio}
         />
         {errors.text && (
           <p className="text-xs text-destructive mt-1">{errors.text}</p>
@@ -159,13 +213,13 @@ const DefaultExerciseForm: React.FC = () => {
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
             placeholder="Add tags (e.g., beginner, grammar)"
-            disabled={isLoading}
+            disabled={isLoading || isGeneratingAudio}
           />
           <Button 
             type="button" 
             variant="outline" 
             onClick={handleAddTag}
-            disabled={isLoading}
+            disabled={isLoading || isGeneratingAudio}
           >
             Add
           </Button>
@@ -183,7 +237,7 @@ const DefaultExerciseForm: React.FC = () => {
                   type="button"
                   onClick={() => handleRemoveTag(tag)}
                   className="text-muted-foreground hover:text-destructive"
-                  disabled={isLoading}
+                  disabled={isLoading || isGeneratingAudio}
                 >
                   &times;
                 </button>
@@ -194,9 +248,14 @@ const DefaultExerciseForm: React.FC = () => {
       </div>
       
       <div className="flex justify-end">
-        <Button type="submit" disabled={isLoading}>
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Create Default Exercise
+        <Button type="submit" disabled={isLoading || isGeneratingAudio}>
+          {(isLoading || isGeneratingAudio) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isGeneratingAudio 
+            ? 'Generating Audio...' 
+            : isLoading 
+              ? 'Creating...' 
+              : 'Create Default Exercise'
+          }
         </Button>
       </div>
     </form>

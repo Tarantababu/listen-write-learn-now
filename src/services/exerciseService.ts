@@ -1,7 +1,7 @@
-
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ensureAudioBucket } from '@/services/defaultExerciseService';
 
 /**
  * Fetches exercises from Supabase for an authenticated user
@@ -25,12 +25,15 @@ export const fetchExercises = async (userId: string | undefined) => {
 };
 
 /**
- * Creates an exercise in Supabase
+ * Creates a new exercise for the current user
  */
 export const createExercise = async (
   userId: string, 
   exercise: Omit<Exercise, 'id' | 'createdAt' | 'completionCount' | 'isCompleted'>
 ) => {
+  // Ensure audio bucket exists
+  await ensureAudioBucket();
+
   const { data, error } = await supabase
     .from('exercises')
     .insert({

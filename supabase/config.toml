@@ -1,18 +1,69 @@
 
 project_id = "kmpghammoxblhacndimq"
+
 [api]
 enabled = true
 port = 54321
-schemas = ["public", "storage"]
-
-[api.headers.development]
-Access-Control-Allow-Origin = "*"
-Access-Control-Allow-Headers = "*"
-Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+schemas = []
 
 [db]
 port = 54322
+shadow_port = 54320
+major_version = 15
+
+[realtime]
+enabled = true
+
+[storage]
+enabled = true
 
 [studio]
 enabled = true
 port = 54323
+api_url = "http://localhost"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+
+[analytics]
+enabled = true
+port = 54327
+
+[experimental.functions]
+[functions.check-subscription]
+verify_jwt = true
+
+[functions.create-checkout]
+verify_jwt = true
+
+[functions.customer-portal]
+verify_jwt = true
+
+[functions.generate-vocabulary-info]
+verify_jwt = true
+
+[functions.get-admin-stats]
+verify_jwt = true
+
+[functions.send-feedback]
+verify_jwt = true
+
+[functions.track-visitor]
+verify_jwt = false
+
+[functions.create-audio-bucket]
+verify_jwt = true
+
+[functions.ensure-audio-bucket]
+verify_jwt = true
+
+[functions.text-to-speech]
+verify_jwt = false 
+
+[functions.speech-to-text]
+verify_jwt = false
