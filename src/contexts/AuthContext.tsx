@@ -46,6 +46,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Redirect to dashboard on sign in
           navigate('/dashboard');
         }
+        
+        if (event === 'SIGNED_OUT') {
+          // Ensure we redirect on sign out event
+          navigate('/login');
+        }
       }
     );
 
@@ -130,10 +135,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      // Check if we have a session before attempting to sign out
-      const { data: sessionData } = await supabase.auth.getSession();
+      // Clear local state first to ensure UI responds immediately
+      setSession(null);
+      setUser(null);
       
-      // Attempt sign out regardless of session state
+      // Attempt sign out
       const { error } = await supabase.auth.signOut();
       
       // If there's an error that's not related to missing session, throw it
@@ -141,16 +147,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      // Always clear the local state and redirect
+      // Always show success message and redirect
       toast.success('Signed out successfully');
-      navigate('/login');
+      
+      // Explicitly redirect to login page
+      window.location.href = '/login'; // Force full page refresh to clear any remaining state
     } catch (error: any) {
       // Only show error toast for non-session-missing errors
       if (!error.message.includes('Auth session missing')) {
         toast.error(error.message || 'Failed to sign out');
       } else {
-        // For session missing errors, still navigate to login
-        navigate('/login');
+        // For session missing errors, still show success and redirect
+        toast.success('Signed out successfully');
+        window.location.href = '/login';
       }
     }
   };

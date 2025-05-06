@@ -32,16 +32,23 @@ export async function signIn(email: string, password: string) {
 
 export async function signOut() {
   try {
+    // Attempt sign out
     const { error } = await supabase.auth.signOut();
     
     if (error && !error.message.includes('Auth session missing')) {
       toast.error(error.message);
       throw error;
     }
+    
+    // Redirect to login page with full page refresh to clear state
+    window.location.href = '/login';
   } catch (error: any) {
     if (!error.message.includes('Auth session missing')) {
       toast.error(error.message);
       throw error;
+    } else {
+      // Even with session missing error, redirect to login
+      window.location.href = '/login';
     }
   }
 }
