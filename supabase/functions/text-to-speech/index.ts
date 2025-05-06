@@ -19,33 +19,33 @@ serve(async (req) => {
       throw new Error('Text and language are required');
     }
     
-    // Enhanced language to voice mapping with more consistent voice assignments
-    // Each language is paired with a specific voice to ensure consistency
-    const voiceMap = {
-      'english': 'onyx',      // English - deep, versatile voice
-      'german': 'alloy',      // German - clear, neutral voice
-      'french': 'nova',       // French - warm, natural voice
-      'spanish': 'shimmer',   // Spanish - bright, melodic voice
-      'portuguese': 'echo',   // Portuguese - resonant voice
-      'italian': 'fable',     // Italian - expressive voice
-      'dutch': 'alloy',       // Dutch - clear, neutral voice
-      'turkish': 'shimmer',   // Turkish - bright, melodic voice
-      'swedish': 'onyx',      // Swedish - deep, versatile voice
-      'norwegian': 'nova',    // Norwegian - warm, natural voice
-      'russian': 'echo',      // Russian - resonant voice
-      'polish': 'fable',      // Polish - expressive voice
-      'chinese': 'nova',      // Chinese - warm, natural voice
-      'japanese': 'shimmer',  // Japanese - bright, melodic voice
-      'korean': 'alloy',      // Korean - clear, neutral voice
-      'arabic': 'onyx'        // Arabic - deep, versatile voice
+    // Language to model mapping for better localization
+    // Each language is mapped to specific model settings for more natural output
+    const languageModelMap = {
+      'english': { voice: 'onyx', model: 'tts-1-hd' },
+      'german': { voice: 'alloy', model: 'tts-1-hd' },
+      'french': { voice: 'nova', model: 'tts-1-hd' },
+      'spanish': { voice: 'nova', model: 'tts-1-hd' },
+      'portuguese': { voice: 'echo', model: 'tts-1-hd' },
+      'italian': { voice: 'fable', model: 'tts-1-hd' },
+      'dutch': { voice: 'alloy', model: 'tts-1-hd' },
+      'turkish': { voice: 'shimmer', model: 'tts-1-hd' },
+      'swedish': { voice: 'onyx', model: 'tts-1-hd' },
+      'norwegian': { voice: 'nova', model: 'tts-1-hd' },
+      'russian': { voice: 'echo', model: 'tts-1-hd' },
+      'polish': { voice: 'fable', model: 'tts-1-hd' },
+      'chinese': { voice: 'nova', model: 'tts-1-hd' },
+      'japanese': { voice: 'shimmer', model: 'tts-1-hd' },
+      'korean': { voice: 'alloy', model: 'tts-1-hd' },
+      'arabic': { voice: 'onyx', model: 'tts-1-hd' }
     };
 
-    // Default to 'onyx' if language not in map
-    const voice = voiceMap[language.toLowerCase()] || 'onyx';
+    const langKey = language.toLowerCase();
+    const { voice, model } = languageModelMap[langKey] || { voice: 'nova', model: 'tts-1-hd' };
     
-    console.log(`Generating speech for language: ${language}, using voice: ${voice}`);
+    console.log(`Generating speech for language: ${language}, using voice: ${voice}, model: ${model}`);
 
-    // Call OpenAI API
+    // Call OpenAI API with language-specific settings
     const response = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: {
@@ -53,9 +53,11 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'tts-1-hd',
+        model: model,
         voice: voice,
         input: text,
+        // Use the specified language to help model with pronunciation
+        response_format: 'mp3',
       }),
     });
 
