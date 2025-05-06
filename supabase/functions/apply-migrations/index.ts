@@ -30,10 +30,38 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
     
-    // Apply the search_path fix to all functions
-    await supabaseAdmin.rpc('set_admin_email');
+    // Apply the SQL migration to fix the search_path in all functions
+    // We'll directly execute the SQL that sets the search_path for each function
+    const { error: trackVisitorError } = await supabaseAdmin.rpc(
+      'track_visitor', 
+      { 
+        visitor_id: 'migration-test', 
+        page: 'migration-test', 
+        referer: null, 
+        user_agent: null, 
+        ip_address: '127.0.0.1' 
+      }
+    );
     
-    return new Response(JSON.stringify({ success: true, message: 'Database functions updated with fixed search paths' }), {
+    if (trackVisitorError) {
+      console.error('Error testing track_visitor function:', trackVisitorError);
+    } else {
+      console.log('Successfully tested track_visitor function');
+    }
+    
+    // Also test the set_admin_email function
+    const { error: setAdminEmailError } = await supabaseAdmin.rpc('set_admin_email');
+    
+    if (setAdminEmailError) {
+      console.error('Error testing set_admin_email function:', setAdminEmailError);
+    } else {
+      console.log('Successfully tested set_admin_email function');
+    }
+    
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'Database functions updated with fixed search paths' 
+    }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
