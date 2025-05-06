@@ -4,7 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { format, startOfMonth, endOfMonth, isWithinInterval, isSameDay } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, BookOpen } from 'lucide-react';
+import { useExerciseContext } from '@/contexts/ExerciseContext';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 interface ActivityData {
   date: Date;
@@ -20,6 +24,21 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
   const today = new Date();
   const currentMonthStart = startOfMonth(today);
   const currentMonthEnd = endOfMonth(today);
+  const navigate = useNavigate();
+  const { exercises } = useExerciseContext();
+  const { settings } = useUserSettingsContext();
+
+  // Filter exercises with partial progress
+  const inProgressExercises = useMemo(() => {
+    return exercises
+      .filter(ex => 
+        ex.language === settings.selectedLanguage && 
+        ex.completionCount > 0 && 
+        !ex.isCompleted
+      )
+      .sort((a, b) => b.completionCount - a.completionCount) // Sort by progress (highest first)
+      .slice(0, 5); // Limit to 5 exercises
+  }, [exercises, settings.selectedLanguage]);
 
   // Filter activity data to only show the current month
   const filteredActivityData = useMemo(() => {
@@ -116,6 +135,11 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
     return maxCount;
   }, [filteredActivityData]);
 
+  // Handle click on exercise to navigate to practice
+  const handleExerciseClick = (exerciseId: string) => {
+    navigate(`/exercises/${exerciseId}`);
+  };
+
   return (
     <Card className="col-span-full animate-fade-in shadow-sm">
       <CardHeader className="pb-2">
@@ -180,6 +204,56 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
             <span className="text-xs text-muted-foreground">350+</span>
           </div>
         </div>
+        
+        {/* In-progress exercises section */}
+        {inProgressExercises.length > 0 && (
+          <div className="mt-6 border-t pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <BookOpen className="h-5 w-5 text-purple-500" />
+              <h3 className="font-medium text-sm">Continue Your Progress</h3>
+            </div>
+            <div className="space-y-2">
+              {inProgressExercises.map(exercise => (
+                <div key={exercise.id} className="flex items-center justify-between rounded-md border p-3 bg-background hover:bg-muted/50 transition-colors">
+                  <div>
+                    <h4 className="font-medium text-sm">{exercise.title}</h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="h-1.5 w-24 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-purple-500 rounded-full" 
+                          style={{ width: `${Math.min((exercise.completionCount / 3) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {Math.round((exercise.completionCount / 3) * 100)}% complete
+                      </span>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleExerciseClick(exercise.id)}
+                    className="text-xs"
+                  >
+                    Continue
+                  </Button>
+                </div>
+              ))}
+            </div>
+            {inProgressExercises.length > 0 && (
+              <div className="mt-3 flex justify-end">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => navigate('/exercises')}
+                  className="text-xs text-purple-500 hover:text-purple-700"
+                >
+                  View all exercises
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
