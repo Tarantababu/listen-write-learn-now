@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -26,11 +27,16 @@ serve(async (req) => {
       speed: 1.0           // Normal speed
     };
     
-    console.log(`Generating speech for text (length: ${text.length}), using voice: ${voiceSettings.voice}, model: ${voiceSettings.model}`);
-
     // Enhanced text processing for optimal TTS quality
     let processedText = text;
     
+    // For Spanish text, add "[in English]:" prefix to ensure proper processing in English
+    if (language.toLowerCase() === 'spanish') {
+      processedText = `[in English]: ${text}`;
+    }
+    
+    console.log(`Generating speech for text (length: ${processedText.length}), using voice: ${voiceSettings.voice}, model: ${voiceSettings.model}`);
+
     // Split long text into chunks if needed (max 300 chars)
     const textChunks = splitTextIntoChunks(processedText, 300);
     const audioBuffers = [];
