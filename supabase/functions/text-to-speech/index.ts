@@ -19,31 +19,17 @@ serve(async (req) => {
       throw new Error('Text and language are required');
     }
     
-    // Always use English voices for optimal audio quality regardless of selected language
-    // This will maintain the language parameter for database relationships only
-    const voiceSettings = {
-      voice: 'nova',       // Best all-purpose voice
-      model: 'tts-1-hd',   // Highest quality model
-      speed: 1.0           // Normal speed
-    };
+    // Define language-specific voice settings
+    const voiceSettings = getVoiceSettingsForLanguage(language.toLowerCase());
     
-    // Enhanced text processing for optimal TTS quality
-    let processedText = text;
-    
-    // For Spanish text, add "[in English]:" prefix to ensure proper processing in English
-    if (language.toLowerCase() === 'spanish') {
-      processedText = `[in English]: ${text}`;
-    }
-    
-    console.log(`Generating speech for text (length: ${processedText.length}), using voice: ${voiceSettings.voice}, model: ${voiceSettings.model}`);
+    console.log(`Generating speech for text (length: ${text.length}), using voice: ${voiceSettings.voice}, model: ${voiceSettings.model}`);
 
     // Split long text into chunks if needed (max 300 chars)
-    const textChunks = splitTextIntoChunks(processedText, 300);
+    const textChunks = splitTextIntoChunks(text, 300);
     const audioBuffers = [];
 
     for (const chunk of textChunks) {
-      // Call OpenAI API with optimized settings for each chunk
-      // Using English voices only, not passing language parameter to the API
+      // Call OpenAI API with language-specific settings
       const response = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: {
@@ -104,6 +90,69 @@ serve(async (req) => {
     );
   }
 });
+
+// Function to determine voice settings based on language
+function getVoiceSettingsForLanguage(language: string) {
+  const model = 'gpt-4o-mini-tts'; // New model for all languages
+  let voice = 'nova';  // Default voice
+  let speed = 1.0;     // Default speed
+  
+  // Select appropriate voices for each language
+  switch (language) {
+    case 'english':
+      voice = 'nova';  // English voice
+      break;
+    case 'spanish':
+      voice = 'shimmer';  // Spanish voice
+      break;
+    case 'french':
+      voice = 'alloy';  // French voice
+      break;
+    case 'german':
+      voice = 'echo';   // German voice
+      break;
+    case 'italian':
+      voice = 'fable';  // Italian voice
+      break;
+    case 'portuguese':
+      voice = 'shimmer';  // Portuguese voice
+      break;
+    case 'turkish':
+      voice = 'onyx';   // Turkish voice
+      break;
+    case 'swedish':
+      voice = 'nova';   // Swedish voice
+      break;
+    case 'dutch':
+      voice = 'echo';   // Dutch voice
+      break;
+    case 'norwegian':
+      voice = 'alloy';  // Norwegian voice
+      break;
+    case 'russian':
+      voice = 'fable';  // Russian voice
+      break;
+    case 'polish':
+      voice = 'onyx';   // Polish voice
+      break;
+    case 'chinese':
+      voice = 'shimmer';  // Chinese voice
+      break;
+    case 'japanese':
+      voice = 'alloy';  // Japanese voice
+      break;
+    case 'korean':
+      voice = 'echo';   // Korean voice
+      break;
+    case 'arabic':
+      voice = 'nova';   // Arabic voice
+      break;
+    default:
+      voice = 'nova';   // Default to nova for unknown languages
+  }
+  
+  return { model, voice, speed };
+}
 
 // Helper function to split text into chunks at logical sentence boundaries
 function splitTextIntoChunks(text: string, maxChunkSize: number): string[] {
