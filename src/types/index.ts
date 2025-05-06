@@ -1,3 +1,4 @@
+
 export type Language = 
   | 'english' 
   | 'german' 
@@ -8,7 +9,13 @@ export type Language =
   | 'turkish'
   | 'swedish'
   | 'dutch'
-  | 'norwegian';
+  | 'norwegian'
+  | 'russian'
+  | 'polish'
+  | 'chinese'
+  | 'japanese'
+  | 'korean'
+  | 'arabic';
 
 export interface Exercise {
   id: string;

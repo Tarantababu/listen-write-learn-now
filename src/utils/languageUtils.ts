@@ -23,6 +23,18 @@ export function getLanguageFlag(language: Language): string {
       return '🇳🇱';
     case 'norwegian':
       return '🇳🇴';
+    case 'russian':
+      return '🇷🇺';
+    case 'polish':
+      return '🇵🇱';
+    case 'chinese':
+      return '🇨🇳';
+    case 'japanese':
+      return '🇯🇵';
+    case 'korean':
+      return '🇰🇷';
+    case 'arabic':
+      return '🇸🇦';
     default:
       return '🌍';
   }
@@ -50,6 +62,18 @@ export function getLanguageStatsPrefix(language: Language): string {
       return 'Dutch';
     case 'norwegian':
       return 'Norwegian';
+    case 'russian':
+      return 'Russian';
+    case 'polish':
+      return 'Polish';
+    case 'chinese':
+      return 'Chinese';
+    case 'japanese':
+      return 'Japanese';
+    case 'korean':
+      return 'Korean';
+    case 'arabic':
+      return 'Arabic';
     default:
       return language;
   }
