@@ -17,12 +17,12 @@ export interface Exercise {
   language: Language;
   tags: string[];
   audioUrl?: string;
-  directoryId?: string | null;
+  directoryId: string | null;
   createdAt: Date;
   completionCount: number;
   isCompleted: boolean;
   archived?: boolean;
-  default_exercise_id?: string | null;
+  default_exercise_id?: string;  // Add this line to include the default exercise ID
 }
 
 export interface Directory {

@@ -1,7 +1,8 @@
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ensureAudioBucket } from '@/services/defaultExerciseService';
+// Remove the import that's causing the conflict since we have our own implementation
+// import { ensureAudioBucket } from '@/services/defaultExerciseService';
 
 /**
  * Fetches exercises from Supabase for an authenticated user
@@ -192,8 +193,9 @@ export const mapExerciseFromDb = (ex: any): Exercise => ({
  */
 export const ensureAudioBucket = async () => {
   try {
-    await supabase.functions.invoke('create-audio-bucket', { body: {} });
+    // Changed to use the ensure-audio-bucket edge function instead of create-audio-bucket
+    await supabase.functions.invoke('ensure-audio-bucket');
   } catch (error) {
-    console.error('Error creating audio bucket:', error);
+    console.error('Error ensuring audio bucket exists:', error);
   }
 };
