@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DictationMicrophone from '@/components/DictationMicrophone';
+import DictationTips from '@/components/DictationTips';
 
 interface DictationPracticeProps {
   exercise: Exercise;
@@ -304,6 +305,8 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
               <p className="text-sm text-gray-500">
                 Press <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Shift</span> + <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Space</span> to play/pause
               </p>
+              
+              <DictationTips />
               
               {/* Updated microphone dictation button with existing text */}
               <DictationMicrophone 
