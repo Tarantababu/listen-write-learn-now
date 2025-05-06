@@ -61,6 +61,7 @@ serve(async (req) => {
 
     for (const chunk of textChunks) {
       // Call OpenAI API with optimized settings for each chunk
+      // Important: Not passing language parameter to the API call
       const response = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: {
