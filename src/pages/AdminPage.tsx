@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import DefaultExerciseForm from '@/components/admin/DefaultExerciseForm';
 import DefaultExercisesList from '@/components/admin/DefaultExercisesList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AdminMessagesForm from '@/components/admin/AdminMessagesForm';
+import AdminMessagesList from '@/components/admin/AdminMessagesList';
 
 const AdminPage: React.FC = () => {
   const { user } = useAuth();
@@ -52,6 +54,7 @@ const AdminPage: React.FC = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
         <TabsList className="mb-4">
           <TabsTrigger value="default-exercises">Default Exercises</TabsTrigger>
+          <TabsTrigger value="messages">User Messages</TabsTrigger>
           <TabsTrigger value="statistics">Statistics</TabsTrigger>
           <TabsTrigger value="feedback">Feedback</TabsTrigger>
         </TabsList>
@@ -69,6 +72,18 @@ const AdminPage: React.FC = () => {
           <div>
             <h2 className="text-xl font-semibold mb-4">Default Exercises</h2>
             <DefaultExercisesList />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="messages" className="space-y-8">
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Create New Message</h2>
+            <AdminMessagesForm />
+          </div>
+          
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Message History</h2>
+            <AdminMessagesList />
           </div>
         </TabsContent>
         

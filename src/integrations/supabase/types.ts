@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_messages: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          title: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          title: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          title?: string
+        }
+        Relationships: []
+      }
       completions: {
         Row: {
           accuracy: number | null
@@ -274,6 +301,44 @@ export type Database = {
         }
         Relationships: []
       }
+      user_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_archived: boolean
+          is_read: boolean
+          message_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          is_read?: boolean
+          message_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          is_read?: boolean
+          message_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_messages_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "admin_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visitors: {
         Row: {
           created_at: string | null
@@ -356,6 +421,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      set_admin_email: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       track_visitor: {
         Args: {
           visitor_id: string
