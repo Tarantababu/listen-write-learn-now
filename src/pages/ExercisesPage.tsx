@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -80,11 +79,6 @@ const ExercisesPage: React.FC = () => {
   
   const allTags = Array.from(
     new Set(languageExercises.flatMap(exercise => exercise.tags))
-  );
-  
-  // Get all unique languages from exercises
-  const allLanguages = Array.from(
-    new Set(exercises.map(exercise => exercise.language))
   );
   
   // First filter exercises by directory and selected language
@@ -303,7 +297,6 @@ const ExercisesPage: React.FC = () => {
               selectedTag={selectedTag}
               setSelectedTag={setSelectedTag}
               allTags={allTags}
-              allLanguages={allLanguages}
             />
             
             {filteredExercises.length === 0 ? (

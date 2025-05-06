@@ -10,9 +10,7 @@ import {
   SelectTrigger,
   SelectValue 
 } from '@/components/ui/select';
-import { Language } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { getLanguageFlag } from '@/utils/languageUtils';
 
 interface FilterBarProps {
   searchTerm: string;
@@ -20,9 +18,6 @@ interface FilterBarProps {
   selectedTag: string | null;
   setSelectedTag: (tag: string | null) => void;
   allTags: string[];
-  allLanguages: string[];
-  selectedLanguage?: string | null;
-  setSelectedLanguage?: (language: string | null) => void;
 }
 
 const FilterBar: React.FC<FilterBarProps> = ({
@@ -30,10 +25,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
   setSearchTerm,
   selectedTag,
   setSelectedTag,
-  allTags,
-  allLanguages,
-  selectedLanguage,
-  setSelectedLanguage
+  allTags
 }) => {
   const isMobile = useIsMobile();
   
@@ -49,30 +41,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
         />
       </div>
       
-      <div className="flex flex-col sm:flex-row w-full gap-3">
-        <Select
-          value={selectedLanguage || "all-languages"}
-          onValueChange={(value) => {
-            if (setSelectedLanguage) {
-              setSelectedLanguage(value === "all-languages" ? null : value);
-            }
-          }}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="All Languages" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value="all-languages">All Languages</SelectItem>
-              {allLanguages.map(lang => (
-                <SelectItem key={lang} value={lang}>
-                  {getLanguageFlag(lang as Language)} {lang.charAt(0).toUpperCase() + lang.slice(1)}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-        
+      <div className="w-full">
         <Select
           value={selectedTag || "all-tags"}
           onValueChange={(value) => setSelectedTag(value === "all-tags" ? null : value)}
