@@ -46,10 +46,10 @@ export function Features() {
           </p>
         </div>
 
-        <div className="mt-16 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center justify-center">
+        <div className="mt-16">
           <AnimatedGroup
             variants={transitionVariants}
-            className="space-y-10 mx-auto lg:max-w-xl">
+            className="mx-auto max-w-3xl">
             <div className="space-y-4">
               <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">Listen, Write, Learn</h3>
               <p className="text-lg text-muted-foreground">
@@ -57,7 +57,7 @@ export function Features() {
               </p>
             </div>
 
-            <ul className="space-y-6">
+            <ul className="space-y-6 mt-10">
               <li className="flex gap-4">
                 <Check className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
                 <div>
@@ -67,29 +67,29 @@ export function Features() {
                   </p>
                 </div>
               </li>
-              <li className="flex gap-3">
-                <Check className="h-6 w-6 text-primary flex-shrink-0" />
+              <li className="flex gap-4">
+                <Check className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
                 <div>
-                  <p className="font-medium">Enhanced Spelling & Grammar</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="font-semibold text-lg">Enhanced Spelling & Grammar</p>
+                  <p className="text-muted-foreground mt-1">
                     Develop correct spelling habits and grammatical intuition through repeated practice.
                   </p>
                 </div>
               </li>
-              <li className="flex gap-3">
-                <Check className="h-6 w-6 text-primary flex-shrink-0" />
+              <li className="flex gap-4">
+                <Check className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
                 <div>
-                  <p className="font-medium">Expanded Vocabulary</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="font-semibold text-lg">Expanded Vocabulary</p>
+                  <p className="text-muted-foreground mt-1">
                     Learn new words in context, making them easier to remember and use in conversation.
                   </p>
                 </div>
               </li>
-              <li className="flex gap-3">
-                <Check className="h-6 w-6 text-primary flex-shrink-0" />
+              <li className="flex gap-4">
+                <Check className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
                 <div>
-                  <p className="font-medium">Real-Time Feedback</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="font-semibold text-lg">Real-Time Feedback</p>
+                  <p className="text-muted-foreground mt-1">
                     Get immediate corrections and accuracy scores to track your improvement over time.
                   </p>
                 </div>
@@ -116,12 +116,10 @@ export function Features() {
             </div>
           </AnimatedGroup>
           
-          <AnimatedGroup
-            variants={transitionVariants}
-            className="lg:max-w-xl mx-auto">
-            {/* Embedded sample dictation component */}
+          {/* Hidden for now as per design */}
+          <div className="hidden">
             <SampleDictationModal embedded={true} open={false} onOpenChange={() => {}} />
-          </AnimatedGroup>
+          </div>
         </div>
       </div>
     </section>
