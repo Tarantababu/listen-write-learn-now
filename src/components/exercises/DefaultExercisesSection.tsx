@@ -79,7 +79,7 @@ const DefaultExercisesSection: React.FC = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Default {settings.selectedLanguage.charAt(0).toUpperCase() + settings.selectedLanguage.slice(1)} Exercises</CardTitle>
+          <CardTitle className="text-lg">Foundational {settings.selectedLanguage.charAt(0).toUpperCase() + settings.selectedLanguage.slice(1)} Exercises</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-6">
@@ -99,7 +99,7 @@ const DefaultExercisesSection: React.FC = () => {
       <CardHeader>
         <CardTitle className="flex items-center text-lg">
           <Folder className="h-5 w-5 mr-2" />
-          Default {settings.selectedLanguage.charAt(0).toUpperCase() + settings.selectedLanguage.slice(1)} Exercises
+          Foundational {settings.selectedLanguage.charAt(0).toUpperCase() + settings.selectedLanguage.slice(1)} Exercises
         </CardTitle>
       </CardHeader>
       <CardContent>
