@@ -22,29 +22,29 @@ serve(async (req) => {
     // Language to model mapping for better localization
     // Each language is mapped to specific model settings and language code for more natural output
     const languageModelMap = {
-      'english': { voice: 'onyx', model: 'tts-1-hd', code: 'en' },
-      'german': { voice: 'alloy', model: 'tts-1-hd', code: 'de' },
-      'french': { voice: 'nova', model: 'tts-1-hd', code: 'fr' },
-      // Updated Spanish configuration with better voice and settings
-      'spanish': { voice: 'alloy', model: 'tts-1-hd', code: 'es' },
-      'portuguese': { voice: 'echo', model: 'tts-1-hd', code: 'pt' },
-      'italian': { voice: 'fable', model: 'tts-1-hd', code: 'it' },
-      'dutch': { voice: 'alloy', model: 'tts-1-hd', code: 'nl' },
-      'turkish': { voice: 'shimmer', model: 'tts-1-hd', code: 'tr' },
-      'swedish': { voice: 'onyx', model: 'tts-1-hd', code: 'sv' },
-      'norwegian': { voice: 'nova', model: 'tts-1-hd', code: 'no' },
-      'russian': { voice: 'echo', model: 'tts-1-hd', code: 'ru' },
-      'polish': { voice: 'fable', model: 'tts-1-hd', code: 'pl' },
-      'chinese': { voice: 'nova', model: 'tts-1-hd', code: 'zh' },
-      'japanese': { voice: 'shimmer', model: 'tts-1-hd', code: 'ja' },
-      'korean': { voice: 'alloy', model: 'tts-1-hd', code: 'ko' },
-      'arabic': { voice: 'onyx', model: 'tts-1-hd', code: 'ar' }
+      'english': { voice: 'onyx', model: 'tts-1-hd', code: 'en', speed: 1.0 },
+      'german': { voice: 'alloy', model: 'tts-1-hd', code: 'de', speed: 0.9 },
+      'french': { voice: 'nova', model: 'tts-1-hd', code: 'fr', speed: 0.9 },
+      // Updated Spanish configuration with better voice, settings and slower speed
+      'spanish': { voice: 'alloy', model: 'tts-1-hd', code: 'es', speed: 0.75 },
+      'portuguese': { voice: 'echo', model: 'tts-1-hd', code: 'pt', speed: 0.9 },
+      'italian': { voice: 'fable', model: 'tts-1-hd', code: 'it', speed: 0.9 },
+      'dutch': { voice: 'alloy', model: 'tts-1-hd', code: 'nl', speed: 0.9 },
+      'turkish': { voice: 'shimmer', model: 'tts-1-hd', code: 'tr', speed: 0.9 },
+      'swedish': { voice: 'onyx', model: 'tts-1-hd', code: 'sv', speed: 0.9 },
+      'norwegian': { voice: 'nova', model: 'tts-1-hd', code: 'no', speed: 0.9 },
+      'russian': { voice: 'echo', model: 'tts-1-hd', code: 'ru', speed: 0.85 },
+      'polish': { voice: 'fable', model: 'tts-1-hd', code: 'pl', speed: 0.9 },
+      'chinese': { voice: 'nova', model: 'tts-1-hd', code: 'zh', speed: 0.85 },
+      'japanese': { voice: 'shimmer', model: 'tts-1-hd', code: 'ja', speed: 0.85 },
+      'korean': { voice: 'alloy', model: 'tts-1-hd', code: 'ko', speed: 0.85 },
+      'arabic': { voice: 'onyx', model: 'tts-1-hd', code: 'ar', speed: 0.85 }
     };
 
     const langKey = language.toLowerCase();
-    const { voice, model, code } = languageModelMap[langKey] || { voice: 'nova', model: 'tts-1-hd', code: 'en' };
+    const { voice, model, code, speed } = languageModelMap[langKey] || { voice: 'nova', model: 'tts-1-hd', code: 'en', speed: 1.0 };
     
-    console.log(`Generating speech for language: ${language} (${code}), using voice: ${voice}, model: ${model}`);
+    console.log(`Generating speech for language: ${language} (${code}), using voice: ${voice}, model: ${model}, speed: ${speed}`);
 
     // Call OpenAI API with language-specific settings
     const response = await fetch('https://api.openai.com/v1/audio/speech', {
@@ -58,6 +58,7 @@ serve(async (req) => {
         voice: voice,
         input: text,
         response_format: 'mp3',
+        speed: speed, // Apply language-specific speed adjustment
         // Voice settings with specific adjustments for Spanish
         voice_settings: langKey === 'spanish' ? {
           stability: 0.5,  // Reduced stability for more expressive Spanish speech
