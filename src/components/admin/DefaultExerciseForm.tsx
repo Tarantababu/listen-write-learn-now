@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Language } from '@/types';
 import { toast } from 'sonner';
-import { Loader2, HelpCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { createDefaultExercise } from '@/services/defaultExerciseService';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -100,7 +100,7 @@ const DefaultExerciseForm: React.FC = () => {
   const generateAudio = async (text: string, language: Language): Promise<string | null> => {
     try {
       setIsGeneratingAudio(true);
-      toast.info(`Generating audio file in ${languageDisplayNames[language]}...`);
+      toast.info(`Generating audio file...`);
 
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { text, language }
@@ -134,11 +134,11 @@ const DefaultExerciseForm: React.FC = () => {
         .from('audio')
         .getPublicUrl(fileName);
 
-      toast.success(`Audio file generated successfully in ${languageDisplayNames[language]}`);
+      toast.success(`Audio file generated successfully`);
       return publicUrl;
     } catch (error) {
       console.error('Error generating audio:', error);
-      toast.error(`Failed to generate audio for the exercise in ${languageDisplayNames[language]}`);
+      toast.error(`Failed to generate audio for the exercise`);
       return null;
     } finally {
       setIsGeneratingAudio(false);
@@ -153,7 +153,8 @@ const DefaultExerciseForm: React.FC = () => {
     try {
       setIsLoading(true);
 
-      // Generate audio
+      // Generate audio - passing the selected language for database association
+      // but TTS function will use English voice regardless
       const audioUrl = await generateAudio(text, language);
       
       await createDefaultExercise(user.id, {
@@ -202,8 +203,8 @@ const DefaultExerciseForm: React.FC = () => {
           <Label htmlFor="language">Language</Label>
           <PopoverHint side="top" align="start" className="w-80">
             <p className="text-sm">
-              Select the language for this exercise. The audio will be generated in this language.
-              Make sure the text you enter matches the selected language.
+              Select the language for this exercise. The audio will be generated using English voices for optimal quality,
+              but the exercise will be categorized under the selected language.
             </p>
           </PopoverHint>
         </div>

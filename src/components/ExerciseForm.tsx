@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -35,9 +34,8 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   
   const [title, setTitle] = useState(initialValues?.title || '');
   const [text, setText] = useState(initialValues?.text || '');
-  const [language, setLanguage] = useState<Language>(
-    initialValues?.language || settings.selectedLanguage
-  );
+  // Language is now set from user settings, but not shown in the form
+  const language = initialValues?.language || settings.selectedLanguage;
   const [directoryId, setDirectoryId] = useState<string | null>(
     initialValues?.directoryId || currentDirectoryId
   );
@@ -85,7 +83,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   const generateAudio = async (text: string, language: Language): Promise<string | null> => {
     try {
       setIsGeneratingAudio(true);
-      toast.info(`Generating audio file in ${languageDisplayNames[language]}...`);
+      toast.info(`Generating audio file...`);
 
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { text, language }
@@ -119,11 +117,11 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
         .from('audio')
         .getPublicUrl(fileName);
 
-      toast.success(`Audio file generated successfully in ${languageDisplayNames[language]}`);
+      toast.success(`Audio file generated successfully`);
       return publicUrl;
     } catch (error) {
       console.error('Error generating audio:', error);
-      toast.error(`Failed to generate audio for the exercise in ${languageDisplayNames[language]}`);
+      toast.error(`Failed to generate audio for the exercise`);
       return null;
     } finally {
       setIsGeneratingAudio(false);
@@ -138,7 +136,8 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     try {
       setIsSaving(true);
 
-      // Generate audio
+      // Generate audio - passing the current language for database association
+      // but TTS function will use English voice regardless
       const audioUrl = await generateAudio(text, language);
       
       if (initialValues?.id) {
@@ -146,7 +145,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
         await updateExercise(initialValues.id, {
           title,
           text,
-          language,
+          language, // Keep using the language from settings for database association
           tags,
           directoryId,
           ...(audioUrl && { audioUrl })
@@ -157,7 +156,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
         await addExercise({
           title,
           text,
-          language,
+          language, // Keep using the language from settings for database association
           tags,
           directoryId,
           ...(audioUrl && { audioUrl })
@@ -194,7 +193,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     return path.join(" / ") || "Root";
   };
 
-  // Language display names
+  // Language display names - keeping this for reference even though we don't show the dropdown anymore
   const languageDisplayNames: Record<Language, string> = {
     'english': 'English',
     'german': 'German (Deutsch)',
@@ -231,33 +230,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
         )}
       </div>
       
-      <div>
-        <div className="flex items-center gap-2">
-          <Label htmlFor="language">Language</Label>
-          <PopoverHint side="top" align="start" className="w-80">
-            <p className="text-sm">
-              Select the language for this exercise. The audio will be generated in this language.
-              Make sure the text you enter matches the selected language.
-            </p>
-          </PopoverHint>
-        </div>
-        <Select
-          value={language}
-          onValueChange={(value) => setLanguage(value as Language)}
-          disabled={isSaving || isGeneratingAudio}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select a language" />
-          </SelectTrigger>
-          <SelectContent>
-            {settings.learningLanguages.map((lang) => (
-              <SelectItem key={lang} value={lang}>
-                {languageDisplayNames[lang] || lang.charAt(0).toUpperCase() + lang.slice(1)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Language selection div has been removed - language is now automatically set from user settings */}
       
       <div>
         <Label htmlFor="directory">Directory</Label>
