@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { format, startOfMonth, endOfMonth, isWithinInterval, isSameDay } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { CalendarDays } from 'lucide-react';
 
 interface ActivityData {
   date: Date;
@@ -79,7 +80,7 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
             <div className="w-full h-full flex items-center justify-center relative">
               {format(day, 'd')}
               {hasActivity && (
-                <span className="absolute top-1 right-1 text-[9px] font-medium">
+                <span className="absolute top-0.5 right-0.5 text-[8px] font-medium rounded-full bg-background/80 px-1">
                   {masteredCount}
                 </span>
               )}
@@ -116,37 +117,42 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
   }, [filteredActivityData]);
 
   return (
-    <Card className="col-span-full animate-fade-in">
-      <CardHeader>
-        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center justify-between">
-          <span>Mastered Words Heatmap - {format(currentMonthStart, 'MMMM yyyy')}</span>
-          <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full">
+    <Card className="col-span-full animate-fade-in shadow-sm">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5 text-purple-500" />
+            <CardTitle className="text-base font-medium">Activity Calendar</CardTitle>
+          </div>
+          <span className="text-xs bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 px-2 py-1 rounded-full font-medium">
             {totalMasteredWordsThisMonth} words this month
           </span>
-        </CardTitle>
+        </div>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-md border border-border p-1 bg-slate-50 dark:bg-slate-900/30">
           <Calendar 
             mode="default"
             numberOfMonths={1}
             defaultMonth={today}
             classNames={{
-              day_today: "border-2 border-primary",
+              day_today: "border-2 border-purple-500 dark:border-purple-400",
               day_selected: "",
               day_disabled: "",
               day_range_start: "",
               day_range_middle: "",
               day_range_end: "",
               day_hidden: "invisible",
-              day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm",
+              day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 transition-colors duration-200 rounded-md",
+              caption: "flex justify-center pt-2 pb-4 relative items-center",
+              caption_label: "text-sm font-medium",
             }}
             modifiers={activityModifiers}
             modifiersClassNames={{
-              activityHigh: "bg-green-800 hover:bg-green-700 text-white shadow-md border-green-900",
-              activityMedium: "bg-green-600 hover:bg-green-500 text-white shadow-md border-green-700",
-              activityLow: "bg-green-500 hover:bg-green-400 text-white shadow-sm border-green-600",
-              activityMinimal: "bg-green-300 hover:bg-green-200 border-green-400"
+              activityHigh: "bg-green-700 hover:bg-green-600 text-white shadow-md",
+              activityMedium: "bg-green-500 hover:bg-green-400 text-white shadow-md",
+              activityLow: "bg-green-400 hover:bg-green-300 text-white shadow-sm",
+              activityMinimal: "bg-green-200 hover:bg-green-100 text-green-800"
             }}
             components={{
               Day: ({ date }) => renderDay(date)
@@ -156,22 +162,22 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
             showOutsideDays
           />
         </div>
-        <div className="flex justify-end mt-4 gap-2">
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm bg-green-300 border border-green-400 shadow-sm"></div>
-            <span className="text-xs">1-50</span>
+        <div className="flex justify-end mt-4 gap-3">
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded-sm bg-green-200 shadow-sm"></div>
+            <span className="text-xs text-muted-foreground">1-50</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm bg-green-500 border border-green-600 shadow-sm"></div>
-            <span className="text-xs">51-150</span>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded-sm bg-green-400 shadow-sm"></div>
+            <span className="text-xs text-muted-foreground">51-150</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm bg-green-600 border border-green-700 shadow-sm"></div>
-            <span className="text-xs">151-350</span>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded-sm bg-green-500 shadow-sm"></div>
+            <span className="text-xs text-muted-foreground">151-350</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-sm bg-green-800 border border-green-900 shadow-sm"></div>
-            <span className="text-xs">350+</span>
+          <div className="flex items-center gap-1.5">
+            <div className="h-3 w-3 rounded-sm bg-green-700 shadow-sm"></div>
+            <span className="text-xs text-muted-foreground">350+</span>
           </div>
         </div>
       </CardContent>
