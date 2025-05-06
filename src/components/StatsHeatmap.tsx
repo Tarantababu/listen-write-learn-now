@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
@@ -146,14 +145,14 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left column: Calendar and legend - Modified to use full width */}
+          {/* Left column: Calendar and legend */}
           <div className="space-y-4 w-full">
             <div className="overflow-x-auto rounded-md border border-border p-1 bg-slate-50 dark:bg-slate-900/30 w-full">
               <Calendar 
                 mode="default" 
                 numberOfMonths={1} 
                 defaultMonth={today}
-                className="w-full"
+                className="w-full max-w-none" 
                 classNames={{
                   day_today: "border-2 border-purple-500 dark:border-purple-400",
                   day_selected: "",
@@ -165,8 +164,12 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
                   day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 transition-colors duration-200 rounded-md",
                   caption: "flex justify-center pt-2 pb-4 relative items-center",
                   caption_label: "text-sm font-medium",
-                  months: "w-full", // Ensure months take full width
-                  month: "w-full space-y-4" // Ensure month takes full width
+                  months: "w-full flex-grow",
+                  month: "w-full space-y-4",
+                  table: "w-full border-collapse space-y-1",
+                  row: "flex w-full justify-between mt-2",
+                  head_row: "flex w-full justify-between",
+                  cell: "text-center p-0 relative flex-1"
                 }} 
                 modifiers={activityModifiers} 
                 modifiersClassNames={{
