@@ -130,14 +130,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      // Check if we have a session before attempting to sign out
+      const { data: sessionData } = await supabase.auth.getSession();
       
+      // Attempt sign out regardless of session state
+      const { error } = await supabase.auth.signOut();
+      
+      // If there's an error that's not related to missing session, throw it
+      if (error && !error.message.includes('Auth session missing')) {
+        throw error;
+      }
+      
+      // Always clear the local state and redirect
       toast.success('Signed out successfully');
       navigate('/login');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to sign out');
-      throw error;
+      // Only show error toast for non-session-missing errors
+      if (!error.message.includes('Auth session missing')) {
+        toast.error(error.message || 'Failed to sign out');
+      } else {
+        // For session missing errors, still navigate to login
+        navigate('/login');
+      }
     }
   };
 

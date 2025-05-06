@@ -31,11 +31,18 @@ export async function signIn(email: string, password: string) {
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  
-  if (error) {
-    toast.error(error.message);
-    throw error;
+  try {
+    const { error } = await supabase.auth.signOut();
+    
+    if (error && !error.message.includes('Auth session missing')) {
+      toast.error(error.message);
+      throw error;
+    }
+  } catch (error: any) {
+    if (!error.message.includes('Auth session missing')) {
+      toast.error(error.message);
+      throw error;
+    }
   }
 }
 
