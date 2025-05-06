@@ -32,7 +32,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import UserAvatar from './UserAvatar';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Language } from '@/types';
+import { UserMessages } from '@/components/UserMessages';
 
 const Header: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -159,7 +159,7 @@ const Header: React.FC = () => {
             </TooltipProvider>
           )}
           
-          {user ? (
+          {user && (
             <>
               {subscription.isSubscribed && (
                 <span className="hidden sm:flex items-center text-xs font-medium bg-primary/15 text-primary px-2 py-1 rounded animate-fade-in">
@@ -167,6 +167,10 @@ const Header: React.FC = () => {
                   Premium
                 </span>
               )}
+              
+              {/* Add UserMessages component here */}
+              {user && <UserMessages />}
+              
               {isAdmin && (
                 <TooltipProvider>
                   <Tooltip>
@@ -188,6 +192,7 @@ const Header: React.FC = () => {
                   </Tooltip>
                 </TooltipProvider>
               )}
+              
               <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full p-0 h-8 w-8">
