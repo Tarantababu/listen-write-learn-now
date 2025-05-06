@@ -159,7 +159,7 @@ const Header: React.FC = () => {
             </TooltipProvider>
           )}
           
-          {user && (
+          {user ? (
             <>
               {subscription.isSubscribed && (
                 <span className="hidden sm:flex items-center text-xs font-medium bg-primary/15 text-primary px-2 py-1 rounded animate-fade-in">
@@ -169,7 +169,7 @@ const Header: React.FC = () => {
               )}
               
               {/* Add UserMessages component here */}
-              {user && <UserMessages />}
+              <UserMessages />
               
               {isAdmin && (
                 <TooltipProvider>
