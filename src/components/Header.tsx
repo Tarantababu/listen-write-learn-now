@@ -122,18 +122,6 @@ const Header: React.FC = () => {
                 </Link>
               </Button>
               
-              <Button 
-                asChild 
-                variant={isActive('/dashboard/subscription') ? "default" : "ghost"}
-                size="sm"
-                className="transition-all"
-              >
-                <Link to="/dashboard/subscription">
-                  <CreditCard className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Subscription</span>
-                </Link>
-              </Button>
-              
               {isAdmin && (
                 <Button 
                   asChild 
@@ -227,14 +215,6 @@ const Header: React.FC = () => {
                           <Book className="h-4 w-4 mr-2" /> Vocabulary
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/dashboard/subscription" className="flex items-center w-full">
-                          <CreditCard className="h-4 w-4 mr-2" /> Subscription
-                          {subscription.isSubscribed && (
-                            <Crown className="h-3 w-3 ml-1 text-primary" />
-                          )}
-                        </Link>
-                      </DropdownMenuItem>
                       {isAdmin && (
                         <DropdownMenuItem asChild>
                           <Link to="/dashboard/admin" className="flex items-center w-full">
@@ -248,6 +228,14 @@ const Header: React.FC = () => {
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard/settings" className="flex items-center w-full">
                       <Settings className="h-4 w-4 mr-2" /> Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/subscription" className="flex items-center w-full">
+                      <CreditCard className="h-4 w-4 mr-2" /> Subscription
+                      {subscription.isSubscribed && (
+                        <Crown className="h-3 w-3 ml-1 text-primary" />
+                      )}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
