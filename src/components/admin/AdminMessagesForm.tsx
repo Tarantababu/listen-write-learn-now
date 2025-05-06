@@ -39,14 +39,8 @@ export default function AdminMessagesForm() {
         return;
       }
 
-      // Call the set_admin_email function to set the admin email in the database session
-      const { error: adminError } = await supabase.rpc('set_admin_email');
-      if (adminError) {
-        console.error('Error setting admin email:', adminError);
-        throw new Error('Failed to verify admin permissions');
-      }
-
-      // Insert the new message
+      // No need to call set_admin_email function anymore since our RLS is more permissive
+      // Just insert directly - the trigger will handle creating user_message entries
       const { error } = await supabase.from('admin_messages').insert({
         title: values.title,
         content: values.content,

@@ -33,7 +33,8 @@ export const handler = async (req: Request): Promise<Response> => {
     // Get admin email from environment variable
     const adminEmail = Deno.env.get('ADMIN_EMAIL') ?? 'yigitaydin@gmail.com';
     
-    // Run SQL to set app.admin_email
+    // The Supabase function to set app.admin_email session variable
+    // This will make app.admin_email available for RLS policies
     const { error } = await supabaseAdmin.rpc('set_admin_email');
     
     if (error) {

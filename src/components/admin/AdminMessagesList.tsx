@@ -29,13 +29,7 @@ export default function AdminMessagesList() {
     queryKey: ['admin-messages'],
     queryFn: async () => {
       try {
-        // Call set_admin_email function to set the admin email in the database session
-        const { error: adminError } = await supabase.rpc('set_admin_email');
-        if (adminError) {
-          console.error('Error setting admin email:', adminError);
-          throw new Error('Failed to verify admin permissions');
-        }
-
+        // No need to call set_admin_email function anymore with our updated RLS
         // Get all admin messages
         const { data: adminMessages, error } = await supabase
           .from('admin_messages')
@@ -80,13 +74,7 @@ export default function AdminMessagesList() {
 
   const toggleMessageStatus = async (id: string, currentStatus: boolean) => {
     try {
-      // Call set_admin_email function to set the admin email in the database session
-      const { error: adminError } = await supabase.rpc('set_admin_email');
-      if (adminError) {
-        console.error('Error setting admin email:', adminError);
-        throw new Error('Failed to verify admin permissions');
-      }
-      
+      // No need to call set_admin_email function anymore with our updated RLS      
       const { error } = await supabase
         .from('admin_messages')
         .update({ is_active: !currentStatus })
