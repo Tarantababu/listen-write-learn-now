@@ -1,4 +1,3 @@
-
 export type Language = 
   | 'english' 
   | 'german' 
@@ -23,6 +22,7 @@ export interface Exercise {
   completionCount: number;
   isCompleted: boolean;
   archived?: boolean;
+  default_exercise_id?: string | null;
 }
 
 export interface Directory {

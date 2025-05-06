@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Exercise, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,7 +29,7 @@ interface ExerciseContextProps {
   markProgress: (id: string, accuracy: number, reset?: boolean) => Promise<void>;
   filterExercisesByLanguage: (language: Language) => Exercise[];
   moveExerciseToDirectory: (exerciseId: string, directoryId: string | null) => Promise<void>;
-  copyDefaultExercise: (defaultExerciseId: string) => Promise<void>;
+  copyDefaultExercise: (defaultExerciseId: string) => Promise<Exercise>;
   loading: boolean;
   defaultExercisesLoading: boolean;
   canCreateMore: boolean;
