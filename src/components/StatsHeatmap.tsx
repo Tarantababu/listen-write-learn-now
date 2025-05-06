@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
@@ -135,9 +134,9 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
     return maxCount;
   }, [filteredActivityData]);
 
-  // Handle click on exercise to navigate to practice
+  // Handle click on exercise to navigate to practice - FIXED ROUTING
   const handleExerciseClick = (exerciseId: string) => {
-    navigate(`/exercises/${exerciseId}`);
+    navigate(`/dashboard/exercises/${exerciseId}`);
   };
 
   return (
@@ -245,7 +244,7 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  onClick={() => navigate('/exercises')}
+                  onClick={() => navigate('/dashboard/exercises')}
                   className="text-xs text-purple-500 hover:text-purple-700"
                 >
                   View all exercises
