@@ -38,6 +38,7 @@ export const trackPageView = async (page: string): Promise<void> => {
     console.log(`Page view tracked: ${page}`);
   } catch (error) {
     console.error('Failed to track page view:', error);
+    // Continue execution even if tracking fails
   }
 };
 
@@ -60,5 +61,24 @@ export const trackButtonClick = async (buttonName: string): Promise<void> => {
     console.log(`Button click tracked: ${buttonName}`);
   } catch (error) {
     console.error('Failed to track button click:', error);
+    // Continue execution even if tracking fails
+  }
+};
+
+/**
+ * Apply database migrations (admin only)
+ */
+export const applyMigrations = async (): Promise<void> => {
+  try {
+    const { error } = await supabase.functions.invoke('apply-migrations');
+    
+    if (error) {
+      console.error('Failed to apply migrations:', error);
+      return;
+    }
+    
+    console.log('Database migrations applied successfully');
+  } catch (error) {
+    console.error('Failed to apply migrations:', error);
   }
 };

@@ -71,3 +71,5 @@ verify_jwt = false
 [functions.set-admin-email]
 verify_jwt = true
 
+[functions.apply-migrations]
+verify_jwt = true
