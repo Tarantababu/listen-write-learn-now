@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Exercise, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,11 +16,13 @@ import {
   deleteAssociatedVocabulary,
   deleteAssociatedCompletions
 } from '@/services/exerciseService';
+import { fetchDefaultExercises, copyDefaultExerciseToUser, mapToExercise } from '@/services/defaultExerciseService';
 import { useLocalExercises } from '@/hooks/useLocalExercises';
 
 interface ExerciseContextProps {
   exercises: Exercise[];
   selectedExercise: Exercise | null;
+  defaultExercises: any[];
   addExercise: (exercise: Omit<Exercise, 'id' | 'createdAt' | 'completionCount' | 'isCompleted'>) => Promise<Exercise>;
   updateExercise: (id: string, updates: Partial<Exercise>) => Promise<void>;
   deleteExercise: (id: string) => Promise<void>;
@@ -27,7 +30,9 @@ interface ExerciseContextProps {
   markProgress: (id: string, accuracy: number, reset?: boolean) => Promise<void>;
   filterExercisesByLanguage: (language: Language) => Exercise[];
   moveExerciseToDirectory: (exerciseId: string, directoryId: string | null) => Promise<void>;
+  copyDefaultExercise: (defaultExerciseId: string) => Promise<void>;
   loading: boolean;
+  defaultExercisesLoading: boolean;
   canCreateMore: boolean;
   canEdit: boolean;
   exerciseLimit: number;
@@ -45,8 +50,10 @@ export const useExerciseContext = () => {
 
 export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [defaultExercises, setDefaultExercises] = useState<any[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [loading, setLoading] = useState(true);
+  const [defaultExercisesLoading, setDefaultExercisesLoading] = useState(true);
   const { user } = useAuth();
   const localExercises = useLocalExercises();
   const { subscription } = useSubscription();
@@ -89,6 +96,25 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     loadExercises();
   }, [user]);
+
+  // Load default exercises
+  useEffect(() => {
+    const loadDefaultExercises = async () => {
+      try {
+        setDefaultExercisesLoading(true);
+        const data = await fetchDefaultExercises();
+        setDefaultExercises(data);
+      } catch (error) {
+        console.error('Error fetching default exercises:', error);
+        toast.error('Failed to load default exercises');
+        setDefaultExercises([]);
+      } finally {
+        setDefaultExercisesLoading(false);
+      }
+    };
+
+    loadDefaultExercises();
+  }, []);
 
   // For non-authenticated users, use the local exercises
   useEffect(() => {
@@ -259,6 +285,23 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const copyDefaultExercise = async (defaultExerciseId: string) => {
+    if (!user) {
+      toast.error('You need to be logged in to copy default exercises');
+      throw new Error('Authentication required');
+    }
+    
+    try {
+      const newExercise = await copyDefaultExerciseToUser(defaultExerciseId, user.id);
+      setExercises(prev => [newExercise, ...prev]);
+      toast.success('Default exercise copied to your exercises');
+      return newExercise;
+    } catch (error: any) {
+      toast.error('Failed to copy default exercise: ' + error.message);
+      throw error;
+    }
+  };
+
   const filterExercisesByLanguage = (language: Language) => {
     return exercises.filter(ex => ex.language === language);
   };
@@ -266,6 +309,7 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const value = {
     exercises,
     selectedExercise,
+    defaultExercises,
     addExercise,
     updateExercise,
     deleteExercise,
@@ -273,7 +317,9 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     markProgress,
     filterExercisesByLanguage,
     moveExerciseToDirectory,
+    copyDefaultExercise,
     loading,
+    defaultExercisesLoading,
     canCreateMore,
     canEdit,
     exerciseLimit

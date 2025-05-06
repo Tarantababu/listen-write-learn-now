@@ -47,6 +47,42 @@ export type Database = {
           },
         ]
       }
+      default_exercises: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          language: string
+          tags: string[] | null
+          text: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          language: string
+          tags?: string[] | null
+          text: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          language?: string
+          tags?: string[] | null
+          text?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       directories: {
         Row: {
           created_at: string
@@ -85,6 +121,7 @@ export type Database = {
           audio_url: string | null
           completion_count: number | null
           created_at: string
+          default_exercise_id: string | null
           directory_id: string | null
           id: string
           is_completed: boolean | null
@@ -100,6 +137,7 @@ export type Database = {
           audio_url?: string | null
           completion_count?: number | null
           created_at?: string
+          default_exercise_id?: string | null
           directory_id?: string | null
           id?: string
           is_completed?: boolean | null
@@ -115,6 +153,7 @@ export type Database = {
           audio_url?: string | null
           completion_count?: number | null
           created_at?: string
+          default_exercise_id?: string | null
           directory_id?: string | null
           id?: string
           is_completed?: boolean | null
@@ -126,6 +165,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "exercises_default_exercise_id_fkey"
+            columns: ["default_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "default_exercises"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "exercises_directory_id_fkey"
             columns: ["directory_id"]

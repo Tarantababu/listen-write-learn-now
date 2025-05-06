@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -10,6 +11,7 @@ import { toast } from 'sonner';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import DefaultExercisesSection from '@/components/exercises/DefaultExercisesSection';
 
 // Import the components we've just created
 import FilterBar from '@/components/exercises/FilterBar';
@@ -287,6 +289,13 @@ const ExercisesPage: React.FC = () => {
           
           {/* Exercise Content */}
           <div className="md:col-span-3">
+            {/* Default exercises section - only show when not in a directory */}
+            {!currentDirectoryId && (
+              <div className="mb-6">
+                <DefaultExercisesSection />
+              </div>
+            )}
+          
             {/* Search and filters */}
             <FilterBar 
               searchTerm={searchTerm}
