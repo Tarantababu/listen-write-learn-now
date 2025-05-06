@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Exercise, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -66,7 +65,7 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   
   // Determine if user can edit exercises (only premium users can)
   const canEdit = subscription.isSubscribed;
-  
+
   // Ensure audio bucket exists
   useEffect(() => {
     ensureAudioBucket();
@@ -277,8 +276,31 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const moveExerciseToDirectory = async (exerciseId: string, directoryId: string | null) => {
     try {
-      // Remove subscription check - all users can move exercises now
-      await updateExercise(exerciseId, { directoryId });
+      // Instead of calling updateExercise (which checks for premium subscription),
+      // implement directory movement logic directly here
+      const exercise = exercises.find(ex => ex.id === exerciseId);
+      if (!exercise) {
+        throw new Error('Exercise not found');
+      }
+
+      if (!user) {
+        // Handle non-authenticated user
+        localExercises.updateExercise(exerciseId, { directoryId });
+      } else {
+        // Update directly in the database without premium check
+        await updateExerciseInDb(user.id, exerciseId, { directoryId });
+      }
+
+      // Update the state
+      setExercises(exercises.map(ex => 
+        ex.id === exerciseId ? { ...ex, directoryId } : ex
+      ));
+      
+      // Update selected exercise if it's the one being moved
+      if (selectedExercise?.id === exerciseId) {
+        setSelectedExercise(prev => prev ? { ...prev, directoryId } : null);
+      }
+      
       toast.success('Exercise moved successfully');
     } catch (error: any) {
       toast.error('Failed to move exercise: ' + error.message);
