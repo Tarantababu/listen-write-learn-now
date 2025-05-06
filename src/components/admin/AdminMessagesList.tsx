@@ -28,50 +28,64 @@ export default function AdminMessagesList() {
   const { data: messages, isLoading, error, refetch } = useQuery({
     queryKey: ['admin-messages'],
     queryFn: async () => {
-      // Call set_admin_email function
-      await supabase.rpc('set_admin_email');
+      try {
+        // Call set_admin_email function to set the admin email in the database session
+        const { error: adminError } = await supabase.rpc('set_admin_email');
+        if (adminError) {
+          console.error('Error setting admin email:', adminError);
+          throw new Error('Failed to verify admin permissions');
+        }
 
-      // Get all admin messages
-      const { data: adminMessages, error } = await supabase
-        .from('admin_messages')
-        .select('*')
-        .order('created_at', { ascending: false });
+        // Get all admin messages
+        const { data: adminMessages, error } = await supabase
+          .from('admin_messages')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
         
-      if (error) throw error;
-      
-      // For each message, get the count of users who have read it
-      const messagesWithStats = await Promise.all(
-        adminMessages.map(async (message) => {
-          const { count: readCount, error: readError } = await supabase
-            .from('user_messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('message_id', message.id)
-            .eq('is_read', true);
+        // For each message, get the count of users who have read it
+        const messagesWithStats = await Promise.all(
+          adminMessages.map(async (message) => {
+            const { count: readCount, error: readError } = await supabase
+              .from('user_messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('message_id', message.id)
+              .eq('is_read', true);
+              
+            if (readError) throw readError;
             
-          if (readError) throw readError;
-          
-          const { count: totalUsers, error: userError } = await supabase
-            .from('user_messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('message_id', message.id);
+            const { count: totalUsers, error: userError } = await supabase
+              .from('user_messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('message_id', message.id);
+              
+            if (userError) throw userError;
             
-          if (userError) throw userError;
-          
-          return {
-            ...message,
-            read_count: readCount || 0,
-            total_users: totalUsers || 0
-          };
-        })
-      );
-      
-      return messagesWithStats as AdminMessage[];
+            return {
+              ...message,
+              read_count: readCount || 0,
+              total_users: totalUsers || 0
+            };
+          })
+        );
+        
+        return messagesWithStats as AdminMessage[];
+      } catch (error) {
+        console.error('Error fetching admin messages:', error);
+        throw error;
+      }
     }
   });
 
   const toggleMessageStatus = async (id: string, currentStatus: boolean) => {
     try {
-      await supabase.rpc('set_admin_email');
+      // Call set_admin_email function to set the admin email in the database session
+      const { error: adminError } = await supabase.rpc('set_admin_email');
+      if (adminError) {
+        console.error('Error setting admin email:', adminError);
+        throw new Error('Failed to verify admin permissions');
+      }
       
       const { error } = await supabase
         .from('admin_messages')

@@ -39,8 +39,12 @@ export default function AdminMessagesForm() {
         return;
       }
 
-      // Call the set_admin_email function first
-      await supabase.rpc('set_admin_email');
+      // Call the set_admin_email function to set the admin email in the database session
+      const { error: adminError } = await supabase.rpc('set_admin_email');
+      if (adminError) {
+        console.error('Error setting admin email:', adminError);
+        throw new Error('Failed to verify admin permissions');
+      }
 
       // Insert the new message
       const { error } = await supabase.from('admin_messages').insert({
@@ -49,7 +53,10 @@ export default function AdminMessagesForm() {
         created_by: user.id,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Insert error:', error);
+        throw error;
+      }
 
       toast.success('Message sent to all users successfully');
       queryClient.invalidateQueries({ queryKey: ['admin-messages'] });
