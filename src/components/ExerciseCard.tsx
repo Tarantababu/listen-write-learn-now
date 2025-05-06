@@ -1,127 +1,112 @@
-import React, { useState, useEffect } from 'react';
+
+import React from 'react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Exercise } from '@/types';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Edit, Trash, Play, Check, Move } from 'lucide-react';
-import { formatDateTime } from '@/utils/trendUtils';
-import { useSubscription } from '@/contexts/SubscriptionContext';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Progress } from '@/components/ui/progress';
+import { BookOpenCheck, Edit, Trash2, CheckCircle, FolderInput, Calendar } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { format } from 'date-fns';
+import { getLanguageFlag } from '@/utils/languageUtils';
 
 interface ExerciseCardProps {
   exercise: Exercise;
   onPractice: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onMove?: () => void;
-  disableEdit?: boolean;
+  canEdit?: boolean;
+  canMove?: boolean;  // New prop to control move functionality visibility
 }
 
-const ExerciseCard: React.FC<ExerciseCardProps> = ({ 
-  exercise, 
-  onPractice, 
-  onEdit, 
+const ExerciseCard: React.FC<ExerciseCardProps> = ({
+  exercise,
+  onPractice,
+  onEdit,
   onDelete,
   onMove,
-  disableEdit = false
+  canEdit = true,
+  canMove = true  // Default to true so all users can move exercises
 }) => {
-  const { title, text, tags, completionCount, isCompleted, createdAt } = exercise;
+  const { settings } = useUserSettingsContext();
   
-  // Add state to track progress updates
-  const [progressPercentage, setProgressPercentage] = useState(Math.min(100, (completionCount / 3) * 100));
+  // Format the date
+  const formattedDate = format(new Date(exercise.createdAt), 'MMM d, yyyy');
+
+  // Truncate text if it's too long
+  const truncateText = (text: string, maxLength: number) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
   
-  // Update progress percentage when exercise changes
-  useEffect(() => {
-    setProgressPercentage(Math.min(100, (completionCount / 3) * 100));
-  }, [completionCount]);
-  
-  // Truncate text for display
-  const truncatedText = text.length > 100 ? `${text.substring(0, 100)}...` : text;
+  // Get language flag
+  const languageFlag = getLanguageFlag(exercise.language);
   
   return (
-    <Card className={`h-full flex flex-col transition-all ${isCompleted ? 'border-primary/30 shadow-sm' : ''}`}>
+    <Card className={cn(
+      "overflow-hidden h-full flex flex-col transition-all",
+      exercise.isCompleted && "border-green-500/30 bg-green-50/30 dark:bg-green-950/10",
+    )}>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-medium flex items-center gap-1">
-            {title}
-            {isCompleted && <Check className="h-4 w-4 text-primary ml-1" />}
-          </CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg line-clamp-1">
+              {truncateText(exercise.title, 50)}
+            </CardTitle>
+            {exercise.isCompleted && (
+              <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+            )}
+          </div>
+          <div className="text-lg" title={exercise.language}>
+            {languageFlag}
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Created on {formatDateTime(createdAt)}
-        </p>
       </CardHeader>
-      <CardContent className="pb-2 flex-1">
-        <p className="text-sm text-muted-foreground mb-4">{truncatedText}</p>
-        {tags && tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="px-2 py-0.5 bg-muted text-xs rounded-full"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </CardContent>
-      <CardFooter className="pt-2 flex flex-col gap-2">
-        {/* Progress indicator */}
-        <div className="w-full">
-          <div className="flex justify-between text-xs mb-1">
-            <span>Progress</span>
-            <span>{completionCount}/3 completions</span>
-          </div>
-          <Progress 
-            value={progressPercentage} 
-            className="h-2"
-            indicatorClassName={isCompleted ? "bg-primary" : "bg-primary/70"}
-          />
+      <CardContent className="flex-grow pb-2">
+        <p className="text-sm text-muted-foreground line-clamp-4 mb-3">
+          {truncateText(exercise.text, 200)}
+        </p>
+        
+        <div className="flex flex-wrap gap-2 mt-2">
+          {exercise.tags?.length > 0 && exercise.tags.slice(0, 3).map((tag, index) => (
+            <Badge key={index} variant="secondary" className="text-xs py-0">
+              {truncateText(tag, 15)}
+            </Badge>
+          ))}
+          {exercise.tags?.length > 3 && (
+            <Badge variant="outline" className="text-xs py-0">
+              +{exercise.tags.length - 3} more
+            </Badge>
+          )}
         </div>
         
-        {/* Action buttons */}
-        <div className="flex justify-between w-full">
-          <div className="flex-1">
-            <Button
-              onClick={onPractice}
-              className="w-full"
-              size="sm"
-              variant="outline"
-            >
-              <Play className="h-4 w-4 mr-1" /> Practice
+        <div className="flex items-center text-xs text-muted-foreground mt-3">
+          <Calendar className="h-3 w-3 mr-1" />
+          <span>{formattedDate}</span>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between pt-2">
+        <Button variant="default" size="sm" onClick={onPractice}>
+          <BookOpenCheck className="h-4 w-4 mr-2" />
+          Practice
+        </Button>
+        <div className="flex gap-1">
+          {onMove && canMove && (
+            <Button variant="outline" size="icon" onClick={onMove} className="h-8 w-8">
+              <FolderInput className="h-4 w-4" />
             </Button>
-          </div>
-          <div className="flex gap-2">
-            {onMove && (
-              <Button onClick={onMove} size="icon" variant="ghost">
-                <Move className="h-4 w-4" />
-              </Button>
-            )}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    onClick={onEdit}
-                    size="icon"
-                    variant="ghost"
-                    className={disableEdit ? 'opacity-50 cursor-not-allowed' : ''}
-                    disabled={disableEdit}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                {disableEdit && (
-                  <TooltipContent>
-                    <p>Upgrade to premium to edit exercises</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-            <Button onClick={onDelete} size="icon" variant="ghost">
-              <Trash className="h-4 w-4" />
+          )}
+          {onEdit && canEdit && (
+            <Button variant="outline" size="icon" onClick={onEdit} className="h-8 w-8">
+              <Edit className="h-4 w-4" />
             </Button>
-          </div>
+          )}
+          {onDelete && (
+            <Button variant="outline" size="icon" onClick={onDelete} className="h-8 w-8 text-destructive hover:text-destructive">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </CardFooter>
     </Card>

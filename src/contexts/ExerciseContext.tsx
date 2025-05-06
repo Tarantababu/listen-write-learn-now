@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Exercise, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -276,6 +277,7 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const moveExerciseToDirectory = async (exerciseId: string, directoryId: string | null) => {
     try {
+      // Remove subscription check - all users can move exercises now
       await updateExercise(exerciseId, { directoryId });
       toast.success('Exercise moved successfully');
     } catch (error: any) {

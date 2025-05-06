@@ -314,7 +314,7 @@ const ExercisesPage: React.FC = () => {
                   onPractice={handlePractice}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
-                  onMove={handleMove}
+                  onMove={handleMove} // Moving is now available for all users
                   onCreateClick={() => setIsAddModalOpen(true)}
                   canEdit={canEdit}
                 />
