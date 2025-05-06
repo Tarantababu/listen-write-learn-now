@@ -4,15 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Language } from '@/types';
-import { fetchDefaultExercises, deleteDefaultExercise } from '@/services/defaultExerciseService';
-import { Pencil, Trash2, FileText, Languages } from 'lucide-react';
+import { fetchDefaultExercises, deleteDefaultExercise, checkDefaultExerciseUsage } from '@/services/defaultExerciseService';
+import { Pencil, Trash2, FileText, Languages, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 
 interface DefaultExerciseItem {
@@ -32,6 +33,8 @@ const DefaultExercisesList: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [exerciseToDelete, setExerciseToDelete] = useState<DefaultExerciseItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [referenceCount, setReferenceCount] = useState(0);
 
   const loadExercises = async () => {
     try {
@@ -54,18 +57,37 @@ const DefaultExercisesList: React.FC = () => {
     if (!exerciseToDelete) return;
     
     try {
+      setIsDeleting(true);
       await deleteDefaultExercise(exerciseToDelete.id);
       setExercises(exercises.filter(ex => ex.id !== exerciseToDelete.id));
       toast.success('Default exercise deleted successfully');
+      
+      // Show additional message if references were removed
+      if (referenceCount > 0) {
+        toast.info(`${referenceCount} user exercise${referenceCount > 1 ? 's' : ''} updated to remove the reference`);
+      }
+      
       setDeleteDialogOpen(false);
     } catch (error) {
       console.error('Error deleting default exercise:', error);
       toast.error('Failed to delete default exercise');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const confirmDelete = (exercise: DefaultExerciseItem) => {
+  const confirmDelete = async (exercise: DefaultExerciseItem) => {
     setExerciseToDelete(exercise);
+    
+    // Check if there are any references to this default exercise
+    try {
+      const count = await checkDefaultExerciseUsage(exercise.id);
+      setReferenceCount(count);
+    } catch (error) {
+      console.error('Error checking exercise usage:', error);
+      setReferenceCount(0);
+    }
+    
     setDeleteDialogOpen(true);
   };
 
@@ -129,12 +151,30 @@ const DefaultExercisesList: React.FC = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Default Exercise</DialogTitle>
+            <DialogDescription>
+              {referenceCount > 0 ? (
+                <div className="flex items-start space-x-2 mt-2 text-amber-600">
+                  <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                  <p>
+                    This default exercise is used by {referenceCount} user exercise{referenceCount > 1 ? 's' : ''}.
+                    The reference will be removed from those exercises, but the exercises themselves will not be deleted.
+                  </p>
+                </div>
+              ) : (
+                <p>Are you sure you want to delete this default exercise? This action cannot be undone.</p>
+              )}
+            </DialogDescription>
           </DialogHeader>
-          <p>Are you sure you want to delete this default exercise? This action cannot be undone.</p>
-          <div className="flex justify-end space-x-2 mt-4">
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
-          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>Cancel</Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete} 
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

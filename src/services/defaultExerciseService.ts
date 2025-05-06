@@ -95,15 +95,58 @@ export const updateDefaultExercise = async (
 };
 
 /**
- * Deletes a default exercise from Supabase
+ * Checks if a default exercise is referenced by any user exercises
  */
-export const deleteDefaultExercise = async (id: string) => {
-  const { error } = await supabase
-    .from('default_exercises')
-    .delete()
-    .eq('id', id);
+export const checkDefaultExerciseUsage = async (id: string): Promise<number> => {
+  const { count, error } = await supabase
+    .from('exercises')
+    .select('*', { count: 'exact', head: true })
+    .eq('default_exercise_id', id);
 
   if (error) throw error;
+  
+  return count || 0;
+};
+
+/**
+ * Deletes a default exercise from Supabase
+ * Note: This will first nullify any references in user exercises
+ * to avoid foreign key constraint violations
+ */
+export const deleteDefaultExercise = async (id: string) => {
+  // Start a transaction to handle the delete properly
+  try {
+    // First, check if any exercises reference this default exercise
+    const referenceCount = await checkDefaultExerciseUsage(id);
+    
+    if (referenceCount > 0) {
+      // If there are references, update all user exercises to remove the reference
+      const { error: updateError } = await supabase
+        .from('exercises')
+        .update({ default_exercise_id: null })
+        .eq('default_exercise_id', id);
+      
+      if (updateError) {
+        console.error('Error removing references to default exercise:', updateError);
+        throw updateError;
+      }
+      
+      console.log(`Updated ${referenceCount} user exercises to remove reference to default exercise ${id}`);
+    }
+    
+    // Now safe to delete the default exercise
+    const { error } = await supabase
+      .from('default_exercises')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    return true;
+  } catch (error) {
+    console.error('Error in delete default exercise transaction:', error);
+    throw error;
+  }
 };
 
 /**
