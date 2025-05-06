@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -14,12 +15,12 @@ serve(async (req) => {
   try {
     const { text, language } = await req.json();
 
-    if (!text || !language) {
-      throw new Error('Text and language are required');
+    if (!text) {
+      throw new Error('Text is required');
     }
     
     // Always use English voices for optimal audio quality regardless of selected language
-    // This will maintain the language parameter for database relationships only
+    // The language parameter is only retained for database relationship purposes
     const voiceSettings = {
       voice: 'nova',       // Best all-purpose voice
       model: 'tts-1-hd',   // Highest quality model

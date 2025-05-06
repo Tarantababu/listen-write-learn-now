@@ -102,6 +102,8 @@ const DefaultExerciseForm: React.FC = () => {
       setIsGeneratingAudio(true);
       toast.info(`Generating audio file...`);
 
+      // Note: We pass the selected language here for database association,
+      // but the TTS function will use English voices internally
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { text, language }
       });
@@ -203,8 +205,9 @@ const DefaultExerciseForm: React.FC = () => {
           <Label htmlFor="language">Language</Label>
           <PopoverHint side="top" align="start" className="w-80">
             <p className="text-sm">
-              Select the language for this exercise. The audio will be generated using English voices for optimal quality,
-              but the exercise will be categorized under the selected language.
+              Select the language for this exercise. This is used for categorizing the exercise in the database.
+              <strong> Audio will always be generated using English voices for optimal quality</strong>,
+              regardless of the language selected here.
             </p>
           </PopoverHint>
         </div>
