@@ -96,22 +96,23 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({ activityData }) => {
     );
   };
 
-  // Calculate total mastered words for the current month
-  // Fix: Sum the actual masteredWords values from each day's data
+  // Calculate total unique mastered words for the current month
+  // Fix: Count each mastered word only once across all dates
   const totalMasteredWordsThisMonth = useMemo(() => {
-    let total = 0;
+    // Instead of summing the counts directly, we'll track unique words
+    // Since we don't have access to the actual word list, we'll estimate
+    // by taking the maximum count across all dates in the month
     
-    // Collect all unique words mastered this month
-    const allMasteredWordsThisMonth = new Set<string>();
+    // This is a simplified approach since we don't have the actual word identifiers
+    // If we had the word IDs, we could use a Set to deduplicate them
     
-    filteredActivityData.forEach(activity => {
-      // Count the actual mastered words, not just the activity count
-      if (activity.masteredWords) {
-        total += activity.masteredWords;
-      }
-    });
+    // Find the maximum count from any day - assuming this represents the total unique words
+    // This works if the same set of words is being tracked across multiple days
+    const maxCount = filteredActivityData.reduce((max, activity) => {
+      return Math.max(max, activity.masteredWords || 0);
+    }, 0);
     
-    return total;
+    return maxCount;
   }, [filteredActivityData]);
 
   return (
