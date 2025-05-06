@@ -100,7 +100,7 @@ const DefaultExerciseForm: React.FC = () => {
   const generateAudio = async (text: string, language: Language): Promise<string | null> => {
     try {
       setIsGeneratingAudio(true);
-      toast.info(`Generating audio file in ${language}...`);
+      toast.info(`Generating audio file in ${languageDisplayNames[language]}...`);
 
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { text, language }
@@ -134,11 +134,11 @@ const DefaultExerciseForm: React.FC = () => {
         .from('audio')
         .getPublicUrl(fileName);
 
-      toast.success('Audio file generated successfully');
+      toast.success(`Audio file generated successfully in ${languageDisplayNames[language]}`);
       return publicUrl;
     } catch (error) {
       console.error('Error generating audio:', error);
-      toast.error('Failed to generate audio for the exercise');
+      toast.error(`Failed to generate audio for the exercise in ${languageDisplayNames[language]}`);
       return null;
     } finally {
       setIsGeneratingAudio(false);
