@@ -25,7 +25,8 @@ serve(async (req) => {
       'english': { voice: 'onyx', model: 'tts-1-hd', code: 'en' },
       'german': { voice: 'alloy', model: 'tts-1-hd', code: 'de' },
       'french': { voice: 'nova', model: 'tts-1-hd', code: 'fr' },
-      'spanish': { voice: 'nova', model: 'tts-1-hd', code: 'es' },
+      // Modified Spanish configuration to use a better suited voice
+      'spanish': { voice: 'alloy', model: 'tts-1-hd', code: 'es' },
       'portuguese': { voice: 'echo', model: 'tts-1-hd', code: 'pt' },
       'italian': { voice: 'fable', model: 'tts-1-hd', code: 'it' },
       'dutch': { voice: 'alloy', model: 'tts-1-hd', code: 'nl' },
@@ -57,10 +58,10 @@ serve(async (req) => {
         voice: voice,
         input: text,
         response_format: 'mp3',
-        // Add specific language code to help the model generate in the correct language
+        // Enhanced Spanish voice settings for better pronunciation
         voice_settings: {
-          stability: 0.7,
-          similarity_boost: 0.8
+          stability: 0.5,  // Reduced stability for more expressive speech
+          similarity_boost: 0.7, // Adjusted similarity for better Spanish pronunciation
         }
       }),
     });
