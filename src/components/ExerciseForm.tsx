@@ -18,6 +18,7 @@ import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import PopoverHint from './PopoverHint';
 
 interface ExerciseFormProps {
   onSuccess?: () => void;
@@ -84,7 +85,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   const generateAudio = async (text: string, language: Language): Promise<string | null> => {
     try {
       setIsGeneratingAudio(true);
-      toast.info('Generating audio file...');
+      toast.info(`Generating audio file in ${language}...`);
 
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { text, language }
@@ -193,9 +194,25 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     return path.join(" / ") || "Root";
   };
 
-  // Debug directories for troubleshooting
-  console.log("Available directories:", directories);
-  console.log("Current directory ID:", directoryId);
+  // Language display names
+  const languageDisplayNames: Record<Language, string> = {
+    'english': 'English',
+    'german': 'German (Deutsch)',
+    'french': 'French (Français)',
+    'spanish': 'Spanish (Español)',
+    'portuguese': 'Portuguese (Português)',
+    'italian': 'Italian (Italiano)',
+    'dutch': 'Dutch (Nederlands)',
+    'turkish': 'Turkish (Türkçe)',
+    'swedish': 'Swedish (Svenska)',
+    'norwegian': 'Norwegian (Norsk)',
+    'russian': 'Russian (Русский)',
+    'polish': 'Polish (Polski)',
+    'chinese': 'Chinese (中文)',
+    'japanese': 'Japanese (日本語)',
+    'korean': 'Korean (한국어)',
+    'arabic': 'Arabic (العربية)'
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -215,20 +232,31 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       </div>
       
       <div>
-        <Label htmlFor="language">Language</Label>
-        <select
-          id="language"
+        <div className="flex items-center gap-2">
+          <Label htmlFor="language">Language</Label>
+          <PopoverHint side="top" align="start" className="w-80">
+            <p className="text-sm">
+              Select the language for this exercise. The audio will be generated in this language.
+              Make sure the text you enter matches the selected language.
+            </p>
+          </PopoverHint>
+        </div>
+        <Select
           value={language}
-          onChange={(e) => setLanguage(e.target.value as Language)}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          onValueChange={(value) => setLanguage(value as Language)}
           disabled={isSaving || isGeneratingAudio}
         >
-          {settings.learningLanguages.map((lang) => (
-            <option key={lang} value={lang}>
-              {lang.charAt(0).toUpperCase() + lang.slice(1)}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a language" />
+          </SelectTrigger>
+          <SelectContent>
+            {settings.learningLanguages.map((lang) => (
+              <SelectItem key={lang} value={lang}>
+                {languageDisplayNames[lang] || lang.charAt(0).toUpperCase() + lang.slice(1)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
       <div>

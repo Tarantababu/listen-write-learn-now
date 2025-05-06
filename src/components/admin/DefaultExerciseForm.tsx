@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Language } from '@/types';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, HelpCircle } from 'lucide-react';
 import { createDefaultExercise } from '@/services/defaultExerciseService';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import PopoverHint from '@/components/PopoverHint';
 
 const languages: Language[] = [
   'english',
@@ -28,8 +29,34 @@ const languages: Language[] = [
   'turkish',
   'swedish',
   'dutch',
-  'norwegian'
+  'norwegian',
+  'russian',
+  'polish',
+  'chinese',
+  'japanese',
+  'korean',
+  'arabic'
 ];
+
+// Language display names
+const languageDisplayNames: Record<Language, string> = {
+  'english': 'English',
+  'german': 'German (Deutsch)',
+  'french': 'French (Français)',
+  'spanish': 'Spanish (Español)',
+  'portuguese': 'Portuguese (Português)',
+  'italian': 'Italian (Italiano)',
+  'dutch': 'Dutch (Nederlands)',
+  'turkish': 'Turkish (Türkçe)',
+  'swedish': 'Swedish (Svenska)',
+  'norwegian': 'Norwegian (Norsk)',
+  'russian': 'Russian (Русский)',
+  'polish': 'Polish (Polski)',
+  'chinese': 'Chinese (中文)',
+  'japanese': 'Japanese (日本語)',
+  'korean': 'Korean (한국어)',
+  'arabic': 'Arabic (العربية)'
+};
 
 const DefaultExerciseForm: React.FC = () => {
   const { user } = useAuth();
@@ -73,7 +100,7 @@ const DefaultExerciseForm: React.FC = () => {
   const generateAudio = async (text: string, language: Language): Promise<string | null> => {
     try {
       setIsGeneratingAudio(true);
-      toast.info('Generating audio file...');
+      toast.info(`Generating audio file in ${language}...`);
 
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { text, language }
@@ -171,19 +198,27 @@ const DefaultExerciseForm: React.FC = () => {
       </div>
       
       <div>
-        <Label htmlFor="language">Language</Label>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="language">Language</Label>
+          <PopoverHint side="top" align="start" className="w-80">
+            <p className="text-sm">
+              Select the language for this exercise. The audio will be generated in this language.
+              Make sure the text you enter matches the selected language.
+            </p>
+          </PopoverHint>
+        </div>
         <Select
           value={language}
           onValueChange={(value) => setLanguage(value as Language)}
           disabled={isLoading || isGeneratingAudio}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Select a language" />
           </SelectTrigger>
           <SelectContent>
             {languages.map((lang) => (
               <SelectItem key={lang} value={lang}>
-                {lang.charAt(0).toUpperCase() + lang.slice(1)}
+                {languageDisplayNames[lang] || lang.charAt(0).toUpperCase() + lang.slice(1)}
               </SelectItem>
             ))}
           </SelectContent>
