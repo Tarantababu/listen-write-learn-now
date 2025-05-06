@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -30,11 +31,13 @@ import { getLanguageFlag } from '@/utils/languageUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import UserAvatar from './UserAvatar';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { Language } from '@/types';
 
 const Header: React.FC = () => {
   const { user, signOut } = useAuth();
   const { subscription } = useSubscription();
-  const { settings } = useUserSettingsContext();
+  const { settings, selectLanguage } = useUserSettingsContext();
   const location = useLocation();
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -48,6 +51,24 @@ const Header: React.FC = () => {
   };
 
   const languageFlag = getLanguageFlag(settings.selectedLanguage);
+  
+  // Handler for clicking on the language flag
+  const handleLanguageClick = async () => {
+    // Get the next language in the learning languages array
+    const currentIndex = settings.learningLanguages.indexOf(settings.selectedLanguage);
+    const nextIndex = (currentIndex + 1) % settings.learningLanguages.length;
+    const nextLanguage = settings.learningLanguages[nextIndex];
+    
+    try {
+      await selectLanguage(nextLanguage);
+      toast.success(`Switched to ${nextLanguage}`, {
+        description: `Active language changed to ${nextLanguage}`
+      });
+    } catch (error) {
+      console.error('Error switching language:', error);
+      toast.error('Failed to switch language');
+    }
+  };
 
   return (
     <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur">
@@ -135,12 +156,16 @@ const Header: React.FC = () => {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="flex items-center justify-center h-8 w-8 text-lg animate-fade-in hover:scale-110 transition-transform">
+                  <button 
+                    onClick={handleLanguageClick} 
+                    className="flex items-center justify-center h-8 w-8 text-lg animate-fade-in hover:scale-110 transition-transform rounded-full hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label="Cycle through languages"
+                  >
                     {languageFlag}
-                  </span>
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Selected language: {settings.selectedLanguage}</p>
+                  <p>Click to switch language (current: {settings.selectedLanguage})</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
