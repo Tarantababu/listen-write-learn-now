@@ -25,7 +25,7 @@ serve(async (req) => {
       'english': { voice: 'onyx', model: 'tts-1-hd', code: 'en' },
       'german': { voice: 'alloy', model: 'tts-1-hd', code: 'de' },
       'french': { voice: 'nova', model: 'tts-1-hd', code: 'fr' },
-      // Modified Spanish configuration to use a better suited voice
+      // Updated Spanish configuration with better voice and settings
       'spanish': { voice: 'alloy', model: 'tts-1-hd', code: 'es' },
       'portuguese': { voice: 'echo', model: 'tts-1-hd', code: 'pt' },
       'italian': { voice: 'fable', model: 'tts-1-hd', code: 'it' },
@@ -58,11 +58,11 @@ serve(async (req) => {
         voice: voice,
         input: text,
         response_format: 'mp3',
-        // Enhanced Spanish voice settings for better pronunciation
-        voice_settings: {
-          stability: 0.5,  // Reduced stability for more expressive speech
+        // Voice settings with specific adjustments for Spanish
+        voice_settings: langKey === 'spanish' ? {
+          stability: 0.5,  // Reduced stability for more expressive Spanish speech
           similarity_boost: 0.7, // Adjusted similarity for better Spanish pronunciation
-        }
+        } : undefined
       }),
     });
 
