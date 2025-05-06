@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -19,49 +18,26 @@ serve(async (req) => {
       throw new Error('Text and language are required');
     }
     
-    // Enhanced language to voice mapping for optimal quality audio
-    const languageModelMap = {
-      'english': { voice: 'onyx', model: 'tts-1-hd', code: 'en', speed: 1.0 },
-      'german': { voice: 'nova', model: 'tts-1-hd', code: 'de', speed: 0.9 },
-      'french': { voice: 'nova', model: 'tts-1-hd', code: 'fr', speed: 0.9 },
-      'spanish': { voice: 'shimmer', model: 'tts-1-hd', code: 'es', speed: 0.75 }, // Reduced speed for Spanish
-      'portuguese': { voice: 'echo', model: 'tts-1-hd', code: 'pt', speed: 0.9 },
-      'italian': { voice: 'nova', model: 'tts-1-hd', code: 'it', speed: 0.9 },
-      'dutch': { voice: 'nova', model: 'tts-1-hd', code: 'nl', speed: 0.9 },
-      'turkish': { voice: 'shimmer', model: 'tts-1-hd', code: 'tr', speed: 0.9 },
-      'swedish': { voice: 'nova', model: 'tts-1-hd', code: 'sv', speed: 0.9 },
-      'norwegian': { voice: 'nova', model: 'tts-1-hd', code: 'no', speed: 0.9 },
-      'russian': { voice: 'echo', model: 'tts-1-hd', code: 'ru', speed: 0.85 },
-      'polish': { voice: 'fable', model: 'tts-1-hd', code: 'pl', speed: 0.9 },
-      'chinese': { voice: 'nova', model: 'tts-1-hd', code: 'zh', speed: 0.85 },
-      'japanese': { voice: 'shimmer', model: 'tts-1-hd', code: 'ja', speed: 0.85 },
-      'korean': { voice: 'alloy', model: 'tts-1-hd', code: 'ko', speed: 0.85 },
-      'arabic': { voice: 'onyx', model: 'tts-1-hd', code: 'ar', speed: 0.85 }
+    // Always use English voices for optimal audio quality regardless of selected language
+    // This will maintain the language parameter for database relationships only
+    const voiceSettings = {
+      voice: 'nova',       // Best all-purpose voice
+      model: 'tts-1-hd',   // Highest quality model
+      speed: 1.0           // Normal speed
     };
-
-    const langKey = language.toLowerCase();
-    const { voice, model, code, speed } = languageModelMap[langKey] || 
-      { voice: 'onyx', model: 'tts-1-hd', code: 'en', speed: 1.0 };
     
-    console.log(`Generating speech for language: ${language} (${code}), using voice: ${voice}, model: ${model}, speed: ${speed}`);
+    console.log(`Generating speech for text (length: ${text.length}), using voice: ${voiceSettings.voice}, model: ${voiceSettings.model}`);
 
     // Enhanced text processing for optimal TTS quality
     let processedText = text;
     
-    // For Spanish: ensure proper punctuation and formatting
-    if (langKey === 'spanish') {
-      // Add opening question/exclamation marks if missing
-      processedText = processedText.replace(/(?<![¿])(\?)/g, '¿$1');
-      processedText = processedText.replace(/(?<![¡])(!)/g, '¡$1');
-    }
-
     // Split long text into chunks if needed (max 300 chars)
     const textChunks = splitTextIntoChunks(processedText, 300);
     const audioBuffers = [];
 
     for (const chunk of textChunks) {
       // Call OpenAI API with optimized settings for each chunk
-      // Important: Not passing language parameter to the API call
+      // Using English voices only, not passing language parameter to the API
       const response = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: {
@@ -69,11 +45,11 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: model,
-          voice: voice,
+          model: voiceSettings.model,
+          voice: voiceSettings.voice,
           input: chunk,
           response_format: 'mp3',
-          speed: speed
+          speed: voiceSettings.speed
         }),
       });
 
