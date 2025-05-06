@@ -8,6 +8,9 @@ import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Separator } from '@/components/ui/separator';
+
 interface ActivityData {
   date: Date;
   count: number;
@@ -29,6 +32,7 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
   const {
     settings
   } = useUserSettingsContext();
+  const isMobile = useIsMobile();
 
   // Filter exercises with partial progress
   const inProgressExercises = useMemo(() => {
@@ -105,7 +109,6 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
   };
 
   // Calculate total unique mastered words for the current month
-  // Fix: Count each mastered word only once across all dates
   const totalMasteredWordsThisMonth = useMemo(() => {
     // Instead of summing the counts directly, we'll track unique words
     // Since we don't have access to the actual word list, we'll estimate
@@ -122,11 +125,13 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
     return maxCount;
   }, [filteredActivityData]);
 
-  // Handle click on exercise to navigate to practice - FIXED ROUTING
+  // Handle click on exercise to navigate to practice
   const handleExerciseClick = (exerciseId: string) => {
     navigate(`/dashboard/exercises/${exerciseId}`);
   };
-  return <Card className="col-span-full animate-fade-in shadow-sm">
+  
+  return (
+    <Card className="col-span-full animate-fade-in shadow-sm">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -139,79 +144,132 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto rounded-md border border-border p-1 bg-slate-50 dark:bg-slate-900/30">
-          <Calendar mode="default" numberOfMonths={1} defaultMonth={today} classNames={{
-          day_today: "border-2 border-purple-500 dark:border-purple-400",
-          day_selected: "",
-          day_disabled: "",
-          day_range_start: "",
-          day_range_middle: "",
-          day_range_end: "",
-          day_hidden: "invisible",
-          day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 transition-colors duration-200 rounded-md",
-          caption: "flex justify-center pt-2 pb-4 relative items-center",
-          caption_label: "text-sm font-medium"
-        }} modifiers={activityModifiers} modifiersClassNames={{
-          activityHigh: "bg-green-700 hover:bg-green-600 text-white shadow-md",
-          activityMedium: "bg-green-500 hover:bg-green-400 text-white shadow-md",
-          activityLow: "bg-green-400 hover:bg-green-300 text-white shadow-sm",
-          activityMinimal: "bg-green-200 hover:bg-green-100 text-green-800"
-        }} components={{
-          Day: ({
-            date
-          }) => renderDay(date)
-        }} ISOWeek fixedWeeks showOutsideDays />
-        </div>
-        <div className="flex justify-end mt-4 gap-3">
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-sm bg-green-200 shadow-sm"></div>
-            <span className="text-xs text-muted-foreground">1-50</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-sm bg-green-400 shadow-sm"></div>
-            <span className="text-xs text-muted-foreground">51-150</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-sm bg-green-500 shadow-sm"></div>
-            <span className="text-xs text-muted-foreground">151-350</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-sm bg-green-700 shadow-sm"></div>
-            <span className="text-xs text-muted-foreground">350+</span>
-          </div>
-        </div>
-        
-        {/* In-progress exercises section */}
-        {inProgressExercises.length > 0 && <div className="mt-6 border-t pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <BookOpen className="h-5 w-5 text-purple-500" />
-              <h3 className="font-medium text-sm">Continue Your Progress</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left column: Calendar and legend */}
+          <div className="space-y-4">
+            <div className="overflow-x-auto rounded-md border border-border p-1 bg-slate-50 dark:bg-slate-900/30">
+              <Calendar 
+                mode="default" 
+                numberOfMonths={1} 
+                defaultMonth={today} 
+                classNames={{
+                  day_today: "border-2 border-purple-500 dark:border-purple-400",
+                  day_selected: "",
+                  day_disabled: "",
+                  day_range_start: "",
+                  day_range_middle: "",
+                  day_range_end: "",
+                  day_hidden: "invisible",
+                  day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 transition-colors duration-200 rounded-md",
+                  caption: "flex justify-center pt-2 pb-4 relative items-center",
+                  caption_label: "text-sm font-medium"
+                }} 
+                modifiers={activityModifiers} 
+                modifiersClassNames={{
+                  activityHigh: "bg-green-700 hover:bg-green-600 text-white shadow-md",
+                  activityMedium: "bg-green-500 hover:bg-green-400 text-white shadow-md",
+                  activityLow: "bg-green-400 hover:bg-green-300 text-white shadow-sm",
+                  activityMinimal: "bg-green-200 hover:bg-green-100 text-green-800"
+                }} 
+                components={{
+                  Day: ({
+                    date
+                  }) => renderDay(date)
+                }} 
+                ISOWeek 
+                fixedWeeks 
+                showOutsideDays 
+              />
             </div>
-            <div className="space-y-2">
-              {inProgressExercises.map(exercise => <div key={exercise.id} className="flex items-center justify-between rounded-md border p-3 bg-background hover:bg-muted/50 transition-colors">
-                  <div>
-                    <h4 className="font-medium text-sm">{exercise.title}</h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="h-1.5 w-24 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-purple-500 rounded-full" style={{
-                    width: `${Math.min(exercise.completionCount / 3 * 100, 100)}%`
-                  }}></div>
+            <div className="flex justify-end gap-3">
+              <div className="flex items-center gap-1.5">
+                <div className="h-3 w-3 rounded-sm bg-green-200 shadow-sm"></div>
+                <span className="text-xs text-muted-foreground">1-50</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="h-3 w-3 rounded-sm bg-green-400 shadow-sm"></div>
+                <span className="text-xs text-muted-foreground">51-150</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="h-3 w-3 rounded-sm bg-green-500 shadow-sm"></div>
+                <span className="text-xs text-muted-foreground">151-350</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="h-3 w-3 rounded-sm bg-green-700 shadow-sm"></div>
+                <span className="text-xs text-muted-foreground">350+</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Right column: In-progress exercises */}
+          <div className={`${isMobile ? "mt-4" : ""}`}>
+            {inProgressExercises.length > 0 && (
+              <div className={`h-full flex flex-col ${isMobile ? "border-t pt-4 lg:border-t-0 lg:pt-0" : ""}`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <BookOpen className="h-5 w-5 text-purple-500" />
+                  <h3 className="font-medium text-sm">Continue Your Progress</h3>
+                </div>
+                <div className="space-y-2 flex-grow">
+                  {inProgressExercises.map(exercise => (
+                    <div 
+                      key={exercise.id} 
+                      className="flex items-center justify-between rounded-md border p-3 bg-background hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => handleExerciseClick(exercise.id)}
+                    >
+                      <div>
+                        <h4 className="font-medium text-sm">{exercise.title}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="h-1.5 w-24 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-purple-500 rounded-full" 
+                              style={{
+                                width: `${Math.min(exercise.completionCount / 3 * 100, 100)}%`
+                              }}
+                            ></div>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {Math.round(exercise.completionCount / 3 * 100)}% complete
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {Math.round(exercise.completionCount / 3 * 100)}% complete
-                      </span>
+                      <Button variant="ghost" size="sm" className="text-xs">Continue</Button>
                     </div>
-                  </div>
-                  
-                </div>)}
-            </div>
-            {inProgressExercises.length > 0 && <div className="mt-3 flex justify-end">
-                <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/exercises')} className="text-xs text-purple-500 hover:text-purple-700">
-                  View all exercises
+                  ))}
+                </div>
+                <div className="mt-auto pt-3">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => navigate('/dashboard/exercises')} 
+                    className="text-xs text-purple-500 hover:text-purple-700 w-full"
+                  >
+                    View all exercises
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {inProgressExercises.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center border rounded-md p-6 bg-muted/20">
+                <BookOpen className="h-12 w-12 text-muted mb-4" />
+                <h3 className="text-lg font-medium text-center mb-2">No exercises in progress</h3>
+                <p className="text-sm text-muted-foreground text-center mb-4">
+                  Start practicing exercises to track your progress
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/dashboard/exercises')}
+                >
+                  Browse Exercises
                 </Button>
-              </div>}
-          </div>}
+              </div>
+            )}
+          </div>
+        </div>
       </CardContent>
-    </Card>;
+    </Card>
+  );
 };
+
 export default StatsHeatmap;
