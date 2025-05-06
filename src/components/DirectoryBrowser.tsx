@@ -19,19 +19,25 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Directory } from '@/types';
+import { Directory, Exercise, Language } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface DirectoryBrowserProps {
   onSelectExercise?: (exerciseId: string) => void;
+  onExerciseClick?: (exercise: Exercise) => void;
   selectedExerciseId?: string;
   className?: string;
+  showExercises?: boolean;
+  filterByLanguage?: Language;
 }
 
 const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({ 
   onSelectExercise, 
+  onExerciseClick,
   selectedExerciseId,
-  className
+  className,
+  showExercises = false,
+  filterByLanguage
 }) => {
   const { 
     directories, 
@@ -122,7 +128,10 @@ const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({
     ? getChildDirectories(currentDirectoryId)
     : getRootDirectories();
   
-  const currentExercises = exercises.filter(ex => ex.directoryId === currentDirectoryId);
+  // Filter exercises by directory and language if filterByLanguage is provided
+  const filteredExercises = exercises
+    .filter(ex => ex.directoryId === currentDirectoryId)
+    .filter(ex => filterByLanguage ? ex.language === filterByLanguage : true);
   
   return (
     <>
@@ -191,7 +200,7 @@ const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({
             </div>
           ) : (
             <>
-              {currentDirectories.length === 0 && currentExercises.length === 0 && (
+              {currentDirectories.length === 0 && (!showExercises || filteredExercises.length === 0) && (
                 <div className="text-center py-8 text-muted-foreground">
                   This folder is empty
                 </div>
@@ -234,15 +243,18 @@ const DirectoryBrowser: React.FC<DirectoryBrowserProps> = ({
                 </div>
               ))}
               
-              {/* Exercises */}
-              {currentExercises.map(exercise => (
+              {/* Exercises - Only show if showExercises is true */}
+              {showExercises && filteredExercises.map(exercise => (
                 <div 
                   key={exercise.id}
                   className={cn(
                     "flex items-center justify-between p-2 rounded-md hover:bg-accent group",
                     selectedExerciseId === exercise.id && "bg-accent"
                   )}
-                  onClick={() => onSelectExercise && onSelectExercise(exercise.id)}
+                  onClick={() => {
+                    if (onSelectExercise) onSelectExercise(exercise.id);
+                    if (onExerciseClick) onExerciseClick(exercise);
+                  }}
                 >
                   <div className="flex items-center flex-1 cursor-pointer">
                     <File className="h-4 w-4 mr-2 text-muted-foreground" />
