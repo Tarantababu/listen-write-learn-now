@@ -268,7 +268,11 @@ const ExercisesPage: React.FC = () => {
           {/* Directory Browser */}
           <div className="md:col-span-1 border rounded-lg p-4">
             <h2 className="text-lg font-medium mb-4">Folders</h2>
-            <DirectoryBrowser />
+            <DirectoryBrowser 
+              onExerciseClick={handlePractice} 
+              showExercises={true}
+              filterByLanguage={settings.selectedLanguage}
+            />
             
             {/* Subscription Upgrade Card */}
             {!subscription.isSubscribed && (
