@@ -191,7 +191,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               <Card className={`overflow-hidden ${hasExistingAnalysis ? 'border-primary/30 bg-primary/5' : 'border-muted'} transition-colors`}>
                 <CardContent className="p-0">
-                  <Button onClick={handleStartReadingAnalysis} className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-muted/50 transition-colors" variant="ghost" disabled={!analysisAllowed}>
+                  <Button onClick={handleStartReadingAnalysis} variant="ghost" disabled={!analysisAllowed} className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent transition-colors">
                     <div className="flex flex-col items-center text-center space-y-3">
                       <div className="flex items-center justify-center bg-primary/10 w-12 h-12 rounded-full">
                         <Search className="h-6 w-6 text-primary" />
