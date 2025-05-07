@@ -73,7 +73,7 @@ After analyzing each sentence, provide:
 2. A brief overall summary of what the text is about
 
 Format the response as a JSON object with the structure shown in the example below.
-Do not include any text outside of the JSON.
+Do not include any text outside of the JSON, no markdown formatting, no code blocks, just pure JSON.
 
 Example format:
 {
@@ -139,9 +139,20 @@ ${text}
     let analysisContent: VocabularyResponse;
     
     try {
-      // Try to parse the content from ChatGPT response
+      // Get the content from ChatGPT response
       const contentText = data.choices[0].message.content;
-      analysisContent = JSON.parse(contentText);
+      
+      // Check if the response contains markdown code blocks and extract the JSON
+      let jsonText = contentText;
+      
+      // Remove markdown code blocks if present
+      const markdownMatch = contentText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (markdownMatch && markdownMatch[1]) {
+        jsonText = markdownMatch[1];
+      }
+      
+      // Try to parse the JSON
+      analysisContent = JSON.parse(jsonText);
     } catch (parseError) {
       console.error('Error parsing OpenAI response:', parseError);
       return new Response(
