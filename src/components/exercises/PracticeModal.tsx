@@ -207,7 +207,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
               
               <Card className="overflow-hidden border border-muted hover:bg-muted/5 transition-all">
                 <CardContent className="p-0">
-                  <Button onClick={handleStartDictation} variant="ghost" className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-muted/50 transition-colors">
+                  <Button onClick={handleStartDictation} variant="ghost" className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent">
                     <div className="flex flex-col items-center text-center space-y-3">
                       <div className="flex items-center justify-center bg-muted/40 w-12 h-12 rounded-full">
                         <Headphones className="h-6 w-6 text-muted-foreground" />
