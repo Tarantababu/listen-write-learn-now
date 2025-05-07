@@ -53,3 +53,12 @@ export interface UserSettings {
   learningLanguages: Language[];
   selectedLanguage: Language;
 }
+
+// Add Json type for compatibility with Supabase
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];

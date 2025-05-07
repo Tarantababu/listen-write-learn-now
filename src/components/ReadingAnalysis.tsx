@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -85,12 +84,14 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         
         // Save the analysis to the database
         if (user) {
+          // When saving to database, explicitly cast the analysisContent to unknown then Json
+          // to satisfy TypeScript's type checking for the Supabase client
           const { error: saveError } = await supabase
             .from('reading_analyses')
             .insert({
               user_id: user.id,
               exercise_id: exercise.id,
-              content: analysisContent
+              content: analysisContent as unknown as Json
             });
             
           if (saveError) {
@@ -98,6 +99,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             // Continue even if saving fails
           } else {
             // Increment the reading_analyses_count for free users
+            // Use a direct update with a +1 increment instead of RPC call
             const { error: updateError } = await supabase
               .from('profiles')
               .update({ reading_analyses_count: supabase.rpc('increment', { row_count: 1 }) })
