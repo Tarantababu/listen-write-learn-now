@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useModalState } from '@/hooks/useModalState';
 
 interface DeleteExerciseDialogProps {
   isOpen: boolean;
@@ -22,8 +23,30 @@ const DeleteExerciseDialog: React.FC<DeleteExerciseDialogProps> = ({
   onOpenChange,
   onConfirm
 }) => {
+  // Use our persistent modal state
+  const [isDialogOpen, setDialogOpen, handleDialogOpenChange] = 
+    useModalState('delete-exercise-dialog', isOpen);
+    
+  // Sync parent state with our URL-based state
+  React.useEffect(() => {
+    if (isOpen !== isDialogOpen) {
+      setDialogOpen(isOpen);
+    }
+  }, [isOpen, isDialogOpen, setDialogOpen]);
+  
+  React.useEffect(() => {
+    if (onOpenChange && isDialogOpen !== isOpen) {
+      onOpenChange(isDialogOpen);
+    }
+  }, [isDialogOpen, isOpen, onOpenChange]);
+
+  // Handle dialog open state change
+  const handleOpenChange = (open: boolean) => {
+    handleDialogOpenChange(open);
+  };
+  
   return (
-    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+    <AlertDialog open={isDialogOpen} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>

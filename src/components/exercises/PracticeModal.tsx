@@ -12,32 +12,84 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { toast } from 'sonner';
 import { AlertTriangle, BookOpen, Search, Headphones } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { useModalState } from '@/hooks/useModalState';
+
 interface PracticeModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   exercise: Exercise | null;
   onComplete: (accuracy: number) => void;
 }
+
 enum PracticeStage {
-  PROMPT,
-  // Ask user if they want Reading Analysis
-  READING,
-  // Reading Analysis mode
+  PROMPT,  // Ask user if they want Reading Analysis
+  READING, // Reading Analysis mode
   DICTATION // Dictation Practice mode
-  ,
 }
+
 const PracticeModal: React.FC<PracticeModalProps> = ({
   isOpen,
   onOpenChange,
   exercise,
   onComplete
 }) => {
+  // Use the persistent modal state hook with the parent-provided isOpen value
+  const [isPracticeModalOpen, setPracticeModalOpen, handlePracticeModalOpenChange] = 
+    useModalState(`practice-modal-${exercise?.id || 'default'}`, isOpen);
+
+  // Sync the parent state with our URL-based state (bidirectional)
+  useEffect(() => {
+    if (isOpen !== isPracticeModalOpen) {
+      setPracticeModalOpen(isOpen);
+    }
+  }, [isOpen, isPracticeModalOpen, setPracticeModalOpen]);
+
+  useEffect(() => {
+    // Update parent when our modal state changes
+    if (onOpenChange && isPracticeModalOpen !== isOpen) {
+      onOpenChange(isPracticeModalOpen);
+    }
+  }, [isPracticeModalOpen, isOpen, onOpenChange]);
+
+  // Keep existing stage in URL to persist it
+  const [practiceStageParam, setPracticeStageParam] = useModalState(
+    `practice-stage-${exercise?.id || 'default'}`,
+    false
+  );
+  
+  // Derive practice stage from URL parameter
+  const [practiceStage, setPracticeStage] = useState<PracticeStage>(() => {
+    if (practiceStageParam) {
+      const stageValue = new URLSearchParams(window.location.search).get(`practice-stage-${exercise?.id || 'default'}`);
+      if (stageValue === 'reading') return PracticeStage.READING;
+      if (stageValue === 'dictation') return PracticeStage.DICTATION;
+    }
+    return PracticeStage.PROMPT;
+  });
+
+  // Update URL when stage changes
+  useEffect(() => {
+    let paramValue = '';
+    if (practiceStage === PracticeStage.READING) paramValue = 'reading';
+    else if (practiceStage === PracticeStage.DICTATION) paramValue = 'dictation';
+    else paramValue = 'prompt';
+    
+    setPracticeStageParam(!!paramValue);
+    
+    if (paramValue) {
+      const searchParams = new URLSearchParams(window.location.search);
+      searchParams.set(`practice-stage-${exercise?.id || 'default'}`, paramValue);
+      const newRelativePathQuery = `${window.location.pathname}?${searchParams.toString()}`;
+      history.replaceState(null, '', newRelativePathQuery);
+    }
+  }, [practiceStage, exercise?.id, setPracticeStageParam]);
+  
   const [showResults, setShowResults] = useState(false);
   const [updatedExercise, setUpdatedExercise] = useState<Exercise | null>(exercise);
-  const [practiceStage, setPracticeStage] = useState<PracticeStage>(PracticeStage.PROMPT);
   const [hasExistingAnalysis, setHasExistingAnalysis] = useState<boolean>(false);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true);
+  
   const {
     settings
   } = useUserSettingsContext();
@@ -114,10 +166,10 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         console.error('Error in analysis check:', error);
       }
     };
-    if (isOpen) {
+    if (isPracticeModalOpen) {
       checkExistingAnalysis();
     }
-  }, [exercise, user, isOpen, subscription.isSubscribed]);
+  }, [exercise, user, isPracticeModalOpen, subscription.isSubscribed]);
   const handleComplete = (accuracy: number) => {
     // Update progress and show results
     onComplete(accuracy);
@@ -137,32 +189,30 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
 
   // Only reset the results display when modal is closed, not when it opens
   useEffect(() => {
-    if (!isOpen) {
+    if (!isPracticeModalOpen) {
       // Reset the state when modal is fully closed
       setShowResults(false);
-      setPracticeStage(PracticeStage.PROMPT);
+      // Note: We don't reset practiceStage here since we want to persist it
     } else if (exercise) {
       // Refresh exercise data when modal opens
       const latestExerciseData = exercises.find(ex => ex.id === exercise.id);
       setUpdatedExercise(latestExerciseData || exercise);
     }
-  }, [isOpen, exercise, exercises]);
+  }, [isPracticeModalOpen, exercise, exercises]);
 
   // Safe handling of modal open state change
   const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      // Allow animation to complete before fully closing
-      onOpenChange(open);
-    } else {
-      onOpenChange(open);
-    }
+    handlePracticeModalOpenChange(open);
   };
+
   const handleStartDictation = () => {
     setPracticeStage(PracticeStage.DICTATION);
   };
+  
   const handleStartReadingAnalysis = () => {
     setPracticeStage(PracticeStage.READING);
   };
+  
   const handleViewReadingAnalysis = () => {
     // If we're already in dictation mode, we need to switch to reading analysis
     if (practiceStage === PracticeStage.DICTATION) {
@@ -172,7 +222,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
 
   // If the exercise doesn't match the selected language, don't render
   if (!updatedExercise || updatedExercise.language !== settings.selectedLanguage) return null;
-  return <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+  
+  return <Dialog open={isPracticeModalOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl p-0 overflow-hidden max-h-[90vh]">
         <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
         
