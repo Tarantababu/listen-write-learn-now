@@ -7,6 +7,7 @@ import { format, subDays, parseISO } from 'date-fns';
 import StatsCard from '@/components/StatsCard';
 import { Activity, Users, Globe } from 'lucide-react';
 import { calculateTrend, compareWithPreviousDay } from '@/utils/trendUtils';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 
 type VisitorCount = {
   date: string;
@@ -44,7 +45,7 @@ export function VisitorStats() {
         // Get total visitor count (raw visits)
         const { count: totalCount, error: countError } = await supabase
           .from('visitors')
-          .select('*', { count: 'exact', head: false });
+          .select('*', { count: 'exact', head: true });
         
         if (countError) throw countError;
         setTotalVisitors(totalCount || 0);
@@ -64,7 +65,7 @@ export function VisitorStats() {
         const today = format(new Date(), 'yyyy-MM-dd');
         const { count: todayCount, error: todayError } = await supabase
           .from('visitors')
-          .select('*', { count: 'exact', head: false })
+          .select('*', { count: 'exact', head: true })
           .gte('created_at', today);
         
         if (todayError) throw todayError;
@@ -90,10 +91,14 @@ export function VisitorStats() {
         }
         
         // Fill in actual counts
-        dailyData?.forEach((visitor) => {
-          const date = format(parseISO(visitor.created_at), 'yyyy-MM-dd');
-          dailyCounts[date] = (dailyCounts[date] || 0) + 1;
-        });
+        if (dailyData) {
+          dailyData.forEach((visitor) => {
+            if (visitor.created_at) {
+              const date = format(parseISO(visitor.created_at), 'yyyy-MM-dd');
+              dailyCounts[date] = (dailyCounts[date] || 0) + 1;
+            }
+          });
+        }
         
         // Convert to array format for chart
         const dailyCountsArray = Object.entries(dailyCounts).map(([date, count]) => ({
@@ -113,15 +118,19 @@ export function VisitorStats() {
         // Process data to count visits per page
         const pages: Record<string, number> = {};
         
-        pageData?.forEach((visitor) => {
-          pages[visitor.page] = (pages[visitor.page] || 0) + 1;
-        });
+        if (pageData) {
+          pageData.forEach((visitor) => {
+            if (visitor.page) {
+              pages[visitor.page] = (pages[visitor.page] || 0) + 1;
+            }
+          });
+        }
         
-        // Convert to array format for chart
-        const pagesArray = Object.entries(pages).map(([page, count]) => ({
-          page,
-          count
-        }));
+        // Convert to array format for chart and sort by count
+        const pagesArray = Object.entries(pages)
+          .map(([page, count]) => ({ page, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10); // Limit to top 10 pages for better visualization
         
         setPageCounts(pagesArray);
 
@@ -135,19 +144,22 @@ export function VisitorStats() {
         // Process data to count visits per referrer
         const referrers: Record<string, number> = {};
         
-        referrerData?.forEach((visitor) => {
-          const referer = visitor.referer || 'Direct / None';
-          referrers[referer] = (referrers[referer] || 0) + 1;
-        });
+        if (referrerData) {
+          referrerData.forEach((visitor) => {
+            const referer = visitor.referer || 'Direct / None';
+            referrers[referer] = (referrers[referer] || 0) + 1;
+          });
+        }
         
-        // Convert to array format for chart and filter out empty entries
+        // Convert to array format for chart, filter out empty entries and sort
         const referrersArray = Object.entries(referrers)
           .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value); // Sort by count descending
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 8); // Limit to top 8 referrers for better visualization
         
         setReferrerCounts(referrersArray);
         
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching visitor stats:', err);
         setError('Failed to load visitor statistics. Please ensure you have the correct permissions.');
       } finally {
@@ -207,6 +219,17 @@ export function VisitorStats() {
     );
   }
 
+  // Configure chart colors
+  const chartConfig = {
+    visitors: { color: '#8884d8' },
+    pages: { color: '#82ca9d' },
+    sources: {},
+  };
+
+  for (let i = 0; i < referrerCounts.length; i++) {
+    chartConfig.sources[`source${i}`] = { color: COLORS[i % COLORS.length] };
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
@@ -238,28 +261,39 @@ export function VisitorStats() {
         </CardHeader>
         <CardContent>
           <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={visitorCounts}
-                margin={{
-                  top: 20,
-                  right: 30,
-                  left: 20,
-                  bottom: 50,
-                }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date"
-                  angle={-45}
-                  textAnchor="end"
-                  height={70} 
-                />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
+            {visitorCounts.length > 0 ? (
+              <ChartContainer config={chartConfig} className="w-full h-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={visitorCounts}
+                    margin={{
+                      top: 20,
+                      right: 30,
+                      left: 20,
+                      bottom: 50,
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="date"
+                      angle={-45}
+                      textAnchor="end"
+                      height={70} 
+                    />
+                    <YAxis />
+                    <ChartTooltip 
+                      content={<ChartTooltipContent />} 
+                      labelKey="date"
+                    />
+                    <Bar dataKey="count" name="Visitors" fill="var(--color-visitors)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            ) : (
+              <div className="flex justify-center items-center h-full">
+                <p className="text-muted-foreground">No visitor data available for the last 30 days</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -272,27 +306,38 @@ export function VisitorStats() {
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={referrerCounts.slice(0, 8)} // Take top 8 referrers
-                    cx="50%"
-                    cy="50%"
-                    labelLine={true}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    nameKey="name"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {referrerCounts.slice(0, 8).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`${value} views`, 'Count']} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+              {referrerCounts.length > 0 ? (
+                <ChartContainer config={chartConfig} className="w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={referrerCounts}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={true}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        nameKey="name"
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {referrerCounts.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={COLORS[index % COLORS.length]} 
+                          />
+                        ))}
+                      </Pie>
+                      <ChartTooltip formatter={(value) => [`${value} views`, 'Count']} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              ) : (
+                <div className="flex justify-center items-center h-full">
+                  <p className="text-muted-foreground">No referrer data available</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -303,28 +348,39 @@ export function VisitorStats() {
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={pageCounts}
-                  layout="vertical"
-                  margin={{
-                    top: 20,
-                    right: 30,
-                    left: 100,
-                    bottom: 5,
-                  }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis 
-                    dataKey="page" 
-                    type="category" 
-                    width={80} 
-                  />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#82ca9d" />
-                </BarChart>
-              </ResponsiveContainer>
+              {pageCounts.length > 0 ? (
+                <ChartContainer config={chartConfig} className="w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={pageCounts}
+                      layout="vertical"
+                      margin={{
+                        top: 20,
+                        right: 30,
+                        left: 100,
+                        bottom: 5,
+                      }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis 
+                        dataKey="page" 
+                        type="category" 
+                        width={80}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <ChartTooltip 
+                        content={<ChartTooltipContent />}
+                      />
+                      <Bar dataKey="count" name="Views" fill="var(--color-pages)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              ) : (
+                <div className="flex justify-center items-center h-full">
+                  <p className="text-muted-foreground">No page visit data available</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
