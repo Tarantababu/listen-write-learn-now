@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -181,20 +182,20 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         </TabsList>
         
         <TabsContent value="sentence" className="space-y-4">
-          <div className="bg-muted/30 p-4 rounded-lg">
+          <div className="bg-muted/30 p-4 rounded-lg dark:bg-muted/10">
             <p className="text-lg font-medium">
               Sentence {selectedSentenceIndex + 1} of {analysis.sentences.length}
             </p>
             <p className="text-xl mt-2 font-medium">{currentSentence.text}</p>
           </div>
           
-          <ScrollArea className="h-[350px] rounded-md border p-4">
+          <ScrollArea className="h-[350px] rounded-md border p-4 dark:border-muted/30">
             <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-semibold">Key Words</h3>
                 <div className="space-y-3 mt-2">
                   {currentSentence.analysis.words.map((word, i) => (
-                    <div key={i} className="bg-background p-3 rounded-lg border">
+                    <div key={i} className="bg-background p-3 rounded-lg border dark:border-muted/20 dark:bg-muted/5">
                       <div className="flex justify-between">
                         <span className="font-bold text-primary">{word.word}</span>
                         <span className="text-muted-foreground">{word.definition}</span>
@@ -252,12 +253,12 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         </TabsContent>
         
         <TabsContent value="patterns">
-          <ScrollArea className="h-[450px] rounded-md border p-4">
+          <ScrollArea className="h-[450px] rounded-md border p-4 dark:border-muted/30">
             <div className="space-y-4">
               <h3 className="text-xl font-semibold">Common Patterns in this Text</h3>
               <ul className="space-y-3">
                 {analysis.commonPatterns.map((pattern, i) => (
-                  <li key={i} className="bg-muted/30 p-3 rounded-lg">
+                  <li key={i} className="bg-muted/30 p-3 rounded-lg dark:bg-muted/10">
                     {pattern}
                   </li>
                 ))}
@@ -274,12 +275,12 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         
         <TabsContent value="summary">
           <div className="space-y-4">
-            <div className="bg-muted/30 p-4 rounded-lg">
+            <div className="bg-muted/30 p-4 rounded-lg dark:bg-muted/10">
               <h3 className="text-lg font-semibold mb-2">Text Summary</h3>
               <p>{analysis.summary}</p>
             </div>
             
-            <div className="bg-muted/10 p-4 rounded-lg border">
+            <div className="bg-muted/10 p-4 rounded-lg border dark:border-muted/30 dark:bg-muted/5">
               <h3 className="text-lg font-semibold mb-2">Full Text</h3>
               <p className="whitespace-pre-wrap">{exercise.text}</p>
             </div>

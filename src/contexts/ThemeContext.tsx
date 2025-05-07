@@ -36,8 +36,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Apply dark mode class based on theme setting
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
+      
+      // Add classes for dictation practice components which can't be directly modified
+      document.documentElement.classList.add('dark-dictation-mode');
     } else {
       document.documentElement.classList.remove('dark');
+      document.documentElement.classList.remove('dark-dictation-mode');
     }
   }, [theme, isLandingPage]);
 

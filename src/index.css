@@ -78,6 +78,31 @@
   .gradient-card {
     @apply relative bg-gradient-to-br from-background via-background to-accent/5 hover:to-accent/10 transition-all border border-border/50 hover:shadow-md dark:from-background dark:via-background/80 dark:to-accent/10 dark:hover:to-accent/15;
   }
+  
+  /* Add styles for dictation practice in dark mode */
+  .dictation-summary {
+    @apply dark:bg-muted/30;
+  }
+  
+  .word-comparison-container {
+    @apply dark:bg-muted/20 dark:border-muted/40;
+  }
+  
+  .word-comparison-item {
+    @apply dark:bg-background/80 dark:border-muted/30;
+  }
+  
+  .word-comparison-correct {
+    @apply dark:bg-green-950/30 dark:border-green-800/40 dark:text-green-300;
+  }
+  
+  .word-comparison-incorrect {
+    @apply dark:bg-red-950/30 dark:border-red-800/40 dark:text-red-300;
+  }
+  
+  .word-comparison-missing {
+    @apply dark:bg-amber-950/30 dark:border-amber-800/40 dark:text-amber-300;
+  }
 }
 
 @keyframes fadeIn {

@@ -12,6 +12,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { toast } from 'sonner';
 import { AlertTriangle, BookOpen, Search, Headphones } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+
 interface PracticeModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -189,7 +190,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
             </DialogHeader>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              <Card className={`overflow-hidden ${hasExistingAnalysis ? 'border-primary/30 bg-primary/5' : 'border-muted'} transition-colors`}>
+              <Card className={`overflow-hidden ${hasExistingAnalysis ? 'border-primary/30 bg-primary/5 dark:bg-primary/10' : 'border-muted'} transition-colors`}>
                 <CardContent className="p-0">
                   <Button onClick={handleStartReadingAnalysis} variant="ghost" disabled={!analysisAllowed} className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent">
                     <div className="flex flex-col items-center text-center space-y-3">
@@ -205,7 +206,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
                 </CardContent>
               </Card>
               
-              <Card className="overflow-hidden border border-muted hover:bg-muted/5 transition-all">
+              <Card className="overflow-hidden border border-muted hover:bg-muted/5 transition-all dark:hover:bg-muted/10">
                 <CardContent className="p-0">
                   <Button onClick={handleStartDictation} variant="ghost" className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent">
                     <div className="flex flex-col items-center text-center space-y-3">
@@ -220,8 +221,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
               </Card>
             </div>
             
-            {!analysisAllowed && !subscription.isSubscribed && <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-md flex items-start mt-6">
-                <AlertTriangle className="h-5 w-5 text-amber-600 mr-3 flex-shrink-0 mt-0.5" />
+            {!analysisAllowed && !subscription.isSubscribed && <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-md flex items-start mt-6 dark:bg-amber-950/20 dark:border-amber-800/40 dark:text-amber-300">
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-3 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium">Free user limit reached</p>
                   <p className="text-sm mt-1">
