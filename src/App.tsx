@@ -10,6 +10,7 @@ import { UserSettingsProvider } from './contexts/UserSettingsContext';
 import { VocabularyProvider } from './contexts/VocabularyContext';
 import { DirectoryProvider } from './contexts/DirectoryContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
+import { HelmetProvider } from 'react-helmet-async';
 
 import Layout from "@/components/Layout";
 import Index from "@/pages/Index";
@@ -26,6 +27,9 @@ import SignUpPage from "@/pages/SignUpPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsOfService from "@/pages/TermsOfService";
+import CookiePolicy from "@/pages/CookiePolicy";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +51,9 @@ const AuthenticatedApp: React.FC = () => {
                     <Route path="/signup" element={<SignUpPage />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
+                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                    <Route path="/terms-of-service" element={<TermsOfService />} />
+                    <Route path="/cookie-policy" element={<CookiePolicy />} />
                     
                     {/* Protected Routes */}
                     <Route element={<ProtectedRoute />}>
@@ -76,9 +83,11 @@ const AuthenticatedApp: React.FC = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
-      <AuthProvider>
-        <AuthenticatedApp />
-      </AuthProvider>
+      <HelmetProvider>
+        <AuthProvider>
+          <AuthenticatedApp />
+        </AuthProvider>
+      </HelmetProvider>
     </BrowserRouter>
   </QueryClientProvider>
 );

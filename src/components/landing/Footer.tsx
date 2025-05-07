@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Logo } from './Logo';
 
 export function Footer() {
@@ -43,19 +44,40 @@ export function Footer() {
             <h3 className="text-sm font-medium">Legal</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <span className="text-muted-foreground cursor-not-allowed">
+                <Link to="/privacy-policy" className="text-muted-foreground hover:text-foreground transition-colors">
                   Privacy Policy
-                </span>
+                </Link>
               </li>
               <li>
-                <span className="text-muted-foreground cursor-not-allowed">
+                <Link to="/terms-of-service" className="text-muted-foreground hover:text-foreground transition-colors">
                   Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link to="/cookie-policy" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Cookie Policy
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium">Contact</h3>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <span className="text-muted-foreground">
+                  support@lwlnow.com
                 </span>
               </li>
               <li>
-                <span className="text-muted-foreground cursor-not-allowed">
-                  Cookie Policy
-                </span>
+                <a 
+                  href="https://twitter.com/lwlnow" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Twitter
+                </a>
               </li>
             </ul>
           </div>
