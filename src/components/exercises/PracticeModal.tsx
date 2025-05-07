@@ -17,7 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { toast } from 'sonner';
-import { AlertTriangle, BookOpen } from 'lucide-react';
+import { AlertTriangle, BookOpen, Search, Headphones } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface PracticeModalProps {
@@ -193,10 +193,11 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         
         {practiceStage === PracticeStage.PROMPT && (
           <div className="px-6 py-8 space-y-6">
-            <DialogHeader>
+            <DialogHeader className="mb-4">
               <h2 className="text-2xl font-bold mb-2">{updatedExercise.title}</h2>
               <DialogDescription className="text-base">
-                Would you like to start with a Reading Analysis before your dictation practice?
+                <p className="text-lg font-medium mb-2">Boost Your Understanding Before You Start</p>
+                <p>Dive into a Reading Analysis to see how words and grammar work — or skip straight to dictation.</p>
                 {hasExistingAnalysis && (
                   <div className="mt-2 text-sm font-medium text-primary">
                     You have already completed a reading analysis for this exercise.
@@ -206,7 +207,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
             </DialogHeader>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              <Card className={`overflow-hidden border ${hasExistingAnalysis ? 'border-primary/30' : 'border-muted'} transition-colors`}>
+              <Card className={`overflow-hidden ${hasExistingAnalysis ? 'border-primary/30 bg-primary/5' : 'border-muted'} transition-colors`}>
                 <CardContent className="p-0">
                   <Button 
                     onClick={handleStartReadingAnalysis} 
@@ -215,19 +216,21 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
                     disabled={!analysisAllowed}
                   >
                     <div className="flex flex-col items-center text-center space-y-3">
-                      <BookOpen className="h-10 w-10 mb-2 text-primary" />
+                      <div className="flex items-center justify-center bg-primary/10 w-12 h-12 rounded-full">
+                        <Search className="h-6 w-6 text-primary" />
+                      </div>
                       <div className="font-semibold text-lg">
-                        {hasExistingAnalysis ? 'View Reading Analysis' : 'Yes, show Reading Analysis'}
+                        {hasExistingAnalysis ? 'View Reading Analysis' : '🔍 Start with Reading Analysis'}
                       </div>
                       <p className="text-sm text-muted-foreground max-w-xs">
-                        Understand words, grammar, and sentence structures before practicing.
+                        See grammar patterns, word origins, and sentence structures.
                       </p>
                     </div>
                   </Button>
                 </CardContent>
               </Card>
               
-              <Card className="overflow-hidden border border-muted">
+              <Card className="overflow-hidden border border-muted hover:bg-muted/5 transition-all">
                 <CardContent className="p-0">
                   <Button 
                     onClick={handleStartDictation} 
@@ -235,9 +238,12 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
                     className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex flex-col items-center text-center space-y-3">
-                      <div className="font-semibold text-lg">Skip to Dictation</div>
+                      <div className="flex items-center justify-center bg-muted/40 w-12 h-12 rounded-full">
+                        <Headphones className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <div className="font-semibold text-lg">🎧 Start Dictation Now</div>
                       <p className="text-sm text-muted-foreground max-w-xs">
-                        Jump straight into typing what you hear in the audio.
+                        Jump straight into listening and typing.
                       </p>
                     </div>
                   </Button>
