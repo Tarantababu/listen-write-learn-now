@@ -44,6 +44,27 @@ serve(async (req) => {
         console.log("Created increment function successfully");
       }
     }
+    
+    // Create increment_reading_analyses function if it doesn't exist
+    const { data: analysesIncrementExists, error: analysesCheckError } = await supabaseAdmin
+      .from('pg_proc')
+      .select('proname')
+      .eq('proname', 'increment_reading_analyses')
+      .maybeSingle();
+
+    if (analysesCheckError) {
+      console.error("Error checking for increment_reading_analyses function:", analysesCheckError);
+    }
+    
+    if (!analysesIncrementExists) {
+      // Execute the SQL to create the function
+      const { error: createError } = await supabaseAdmin.rpc('increment_reading_analyses');
+      if (createError) {
+        console.error("Error creating increment_reading_analyses function:", createError);
+      } else {
+        console.log("Created increment_reading_analyses function successfully");
+      }
+    }
 
     return new Response(
       JSON.stringify({ success: true, message: 'Applied database migrations successfully' }),

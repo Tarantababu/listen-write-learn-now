@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Exercise } from '@/types';
+import { Exercise, Json } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -99,10 +99,10 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             // Continue even if saving fails
           } else {
             // Increment the reading_analyses_count for free users
-            // Use a direct update with a +1 increment instead of RPC call
+            // Use a direct update with a numerical increment instead of RPC call
             const { error: updateError } = await supabase
               .from('profiles')
-              .update({ reading_analyses_count: supabase.rpc('increment', { row_count: 1 }) })
+              .update({ reading_analyses_count: supabase.rpc('increment_reading_analyses', {}) })
               .eq('id', user.id);
               
             if (updateError) {
