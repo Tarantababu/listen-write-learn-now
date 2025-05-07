@@ -123,6 +123,36 @@ export function Hero() {
               <span className="text-nowrap">Try a Sample</span>
             </Button>
           </AnimatedGroup>
+          
+          {/* Product Hunt badge */}
+          <AnimatedGroup 
+            variants={{
+              container: {
+                visible: {
+                  transition: {
+                    delayChildren: 1.25
+                  }
+                }
+              },
+              ...transitionVariants
+            }} 
+            className="mt-10 flex justify-center">
+            <a 
+              href="https://www.producthunt.com/posts/lwlnow?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-lwlnow" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl"
+              aria-label="View lwlnow on Product Hunt"
+            >
+              <img 
+                src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=961139&theme=light&t=1746390894369" 
+                alt="lwlnow - Learn languages by listening, typing, and mastering." 
+                width="250" 
+                height="54" 
+                className="rounded"
+              />
+            </a>
+          </AnimatedGroup>
         </div>
       </div>
 
