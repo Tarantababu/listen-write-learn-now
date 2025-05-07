@@ -178,7 +178,7 @@ const UserStatistics: React.FC = () => {
       return exercise && exercise.language === currentLanguage && completion.accuracy >= 95;
     });
     
-    // Group by day
+    // Group completions by day
     const completionsByDay = relevantCompletions.reduce((acc: Record<string, CompletionData[]>, completion) => {
       const dateStr = format(completion.date, 'yyyy-MM-dd');
       if (!acc[dateStr]) acc[dateStr] = [];
@@ -186,12 +186,51 @@ const UserStatistics: React.FC = () => {
       return acc;
     }, {});
     
-    // Convert to array format for the heatmap
-    return Object.entries(completionsByDay).map(([dateStr, completionsForDay]) => ({
-      date: new Date(dateStr),
-      count: 1, // We just need a count to indicate there was activity
-      completions: completionsForDay.length
-    }));
+    // For each day, calculate the mastered words count
+    return Object.entries(completionsByDay).map(([dateStr, dailyCompletions]) => {
+      // For each date, calculate the number of mastered words
+      // This is a simplification - we're counting words that would have been mastered by this date
+      // based on having 3+ high accuracy completions of their exercise
+      
+      // Count completions by exercise ID up to this date
+      const exerciseCountMap = new Map<string, number>();
+      
+      // Include all completions up to and including this date
+      completions.filter(c => {
+        const exercise = exercises.find(ex => ex.id === c.exerciseId);
+        const completionDate = new Date(c.date);
+        const currentDate = new Date(dateStr);
+        
+        return exercise 
+          && exercise.language === currentLanguage 
+          && c.accuracy >= 95
+          && (completionDate <= currentDate);
+      }).forEach(c => {
+        const count = exerciseCountMap.get(c.exerciseId) || 0;
+        exerciseCountMap.set(c.exerciseId, count + 1);
+      });
+      
+      // Count mastered words from exercises with 3+ completions
+      const masteredWordsForDay = new Set<string>();
+      
+      exercises
+        .filter(ex => ex.language === currentLanguage)
+        .forEach(exercise => {
+          const completionCount = exerciseCountMap.get(exercise.id) || 0;
+          
+          if (completionCount >= 3) {
+            // This exercise is considered mastered - add all its words
+            const words = normalizeText(exercise.text).split(' ');
+            words.forEach(word => masteredWordsForDay.add(word));
+          }
+        });
+      
+      return {
+        date: new Date(dateStr),
+        count: dailyCompletions.length,
+        masteredWords: masteredWordsForDay.size
+      };
+    });
   }, [completions, exercises, currentLanguage]);
 
   // Calculate vocabulary trend for today vs yesterday

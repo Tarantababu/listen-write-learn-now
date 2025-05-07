@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
@@ -89,22 +90,43 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
   const renderDay = (day: Date) => {
     const masteredCount = getMasteredWordsForDate(day);
     const hasActivity = masteredCount > 0;
-    return <TooltipProvider>
+    
+    // Determine the appropriate color class based on mastered count
+    let colorClass = "text-foreground";
+    if (hasActivity) {
+      if (masteredCount > 350) {
+        colorClass = "text-white"; // High activity - white text on dark green background
+      } else if (masteredCount > 150) {
+        colorClass = "text-white"; // Medium activity - white text on green background
+      } else if (masteredCount > 50) {
+        colorClass = "text-white"; // Low activity - white text on light green background
+      } else {
+        colorClass = "text-green-800"; // Minimal activity - dark green text on very light green
+      }
+    }
+    
+    return (
+      <TooltipProvider>
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
             <div className="w-full h-full flex items-center justify-center relative">
               {format(day, 'd')}
-              {hasActivity && <span className="absolute top-0.5 right-0.5 text-[8px] font-medium rounded-full bg-background/80 px-1">
+              {hasActivity && (
+                <span className={`absolute top-0.5 right-0.5 text-[8px] font-semibold rounded-full px-1 ${colorClass}`}>
                   {masteredCount}
-                </span>}
+                </span>
+              )}
             </div>
           </TooltipTrigger>
-          {hasActivity && <TooltipContent className="p-2 text-xs bg-background border border-border">
+          {hasActivity && (
+            <TooltipContent className="p-2 text-xs bg-background border border-border">
               <p><strong>{format(day, 'MMMM d, yyyy')}</strong></p>
               <p>{masteredCount} mastered word{masteredCount !== 1 ? 's' : ''}</p>
-            </TooltipContent>}
+            </TooltipContent>
+          )}
         </Tooltip>
-      </TooltipProvider>;
+      </TooltipProvider>
+    );
   };
 
   // Calculate total unique mastered words for the current month
@@ -128,6 +150,7 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
   const handleExerciseClick = (exerciseId: string) => {
     navigate(`/dashboard/exercises`);
   };
+  
   return <Card className="col-span-full animate-fade-in shadow-sm">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
