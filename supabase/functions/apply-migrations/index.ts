@@ -26,7 +26,8 @@ serve(async (req) => {
     await supabaseAdmin.rpc('set_admin_email');
 
     // Create increment function if it doesn't exist
-    const { data: functionExists, error: checkError } = await supabaseAdmin.from('pg_proc')
+    const { data: functionExists, error: checkError } = await supabaseAdmin
+      .from('pg_proc')
       .select('proname')
       .eq('proname', 'increment')
       .maybeSingle();

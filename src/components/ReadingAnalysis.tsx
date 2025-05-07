@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -61,7 +62,8 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             throw error;
           }
           
-          setAnalysis(data.content as AnalysisContent);
+          // Type assertion to ensure the content is treated as AnalysisContent
+          setAnalysis(data.content as unknown as AnalysisContent);
           setIsLoading(false);
           return;
         }
@@ -78,7 +80,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
           throw new Error(response.error.message || 'Error generating analysis');
         }
         
-        const analysisContent = response.data.analysis;
+        const analysisContent = response.data.analysis as AnalysisContent;
         setAnalysis(analysisContent);
         
         // Save the analysis to the database
@@ -96,10 +98,14 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             // Continue even if saving fails
           } else {
             // Increment the reading_analyses_count for free users
-            await supabase
+            const { error: updateError } = await supabase
               .from('profiles')
-              .update({ reading_analyses_count: supabase.rpc('increment', { num: 1 }) })
+              .update({ reading_analyses_count: supabase.rpc('increment', { row_count: 1 }) })
               .eq('id', user.id);
+              
+            if (updateError) {
+              console.error('Error updating analysis count:', updateError);
+            }
           }
         }
       } catch (error) {
