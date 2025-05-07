@@ -78,21 +78,21 @@ export function SampleDictationModal({
   // Regular modal view
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="w-[95vw] max-w-4xl h-[85vh] sm:h-auto sm:max-h-[85vh] flex flex-col overflow-hidden rounded-lg shadow-lg border-primary/10 bg-gradient-to-b from-background to-background/95 backdrop-blur-sm">
         {practiceStage === PracticeStage.PROMPT && (
           <>
-            <DialogHeader>
-              <DialogTitle>Try Dictation Practice</DialogTitle>
-              <DialogDescription>
+            <DialogHeader className="bg-primary/5 p-6 rounded-t-lg">
+              <DialogTitle className="text-2xl font-bold">Try Dictation Practice</DialogTitle>
+              <DialogDescription className="text-base opacity-90">
                 Learn languages by listening and typing what you hear. Experience our core learning method.
               </DialogDescription>
             </DialogHeader>
             
-            <div className="flex-1 p-6 space-y-6">
+            <div className="flex-1 p-6 space-y-6 overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                 <Button 
                   onClick={handleStartDictation}
-                  className="h-auto py-6 px-4"
+                  className="h-auto py-6 px-4 hover-glow hover:bg-primary/90"
                 >
                   <div className="flex flex-col items-center text-center space-y-2">
                     <BookOpen className="h-6 w-6 mb-2" />
@@ -104,7 +104,7 @@ export function SampleDictationModal({
                 </Button>
               </div>
               
-              <div className="bg-muted/30 p-4 rounded-lg border border-muted">
+              <div className="bg-muted/30 p-4 rounded-lg border border-muted hover:border-primary/20 transition-colors">
                 <h3 className="font-medium mb-2">What is dictation practice?</h3>
                 <p className="text-sm">
                   Dictation practice helps you improve your listening comprehension, spelling, and
@@ -114,12 +114,12 @@ export function SampleDictationModal({
               </div>
             </div>
             
-            <div className="mt-4 flex justify-between items-center p-3 border-t">
+            <div className="mt-auto flex justify-between items-center p-4 border-t bg-background/50 rounded-b-lg">
               <div className="text-sm text-muted-foreground">
                 <span>Sign up to access all features including vocabulary tools and progress tracking.</span>
               </div>
               
-              <Button asChild>
+              <Button asChild className="hover-scale">
                 <Link to="/signup">Sign Up Now</Link>
               </Button>
             </div>
@@ -145,7 +145,7 @@ export function SampleDictationModal({
               )}
             </div>
             
-            <div className="mt-4 flex justify-between items-center p-3 border-t">
+            <div className="mt-auto flex justify-between items-center p-4 border-t bg-background/50 rounded-b-lg">
               <div className="text-sm text-muted-foreground">
                 {completed ? (
                   <span>Like what you see? Sign up for full access.</span>
@@ -155,7 +155,7 @@ export function SampleDictationModal({
               </div>
               
               {completed && (
-                <Button asChild>
+                <Button asChild className="hover-scale">
                   <Link to="/signup">Sign Up Now</Link>
                 </Button>
               )}
