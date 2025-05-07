@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
@@ -11,14 +10,17 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Separator } from '@/components/ui/separator';
+
 interface ActivityData {
   date: Date;
   count: number;
   masteredWords?: number;
 }
+
 interface StatsHeatmapProps {
   activityData: ActivityData[];
 }
+
 const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
   activityData
 }) => {
@@ -26,26 +28,29 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
   const currentMonthStart = startOfMonth(today);
   const currentMonthEnd = endOfMonth(today);
   const navigate = useNavigate();
-  const {
-    exercises
-  } = useExerciseContext();
-  const {
-    settings
-  } = useUserSettingsContext();
+  const { exercises } = useExerciseContext();
+  const { settings } = useUserSettingsContext();
   const isMobile = useIsMobile();
 
   // Filter exercises with partial progress
   const inProgressExercises = useMemo(() => {
-    return exercises.filter(ex => ex.language === settings.selectedLanguage && ex.completionCount > 0 && !ex.isCompleted).sort((a, b) => b.completionCount - a.completionCount) // Sort by progress (highest first)
+    return exercises.filter(ex => 
+      ex.language === settings.selectedLanguage && 
+      ex.completionCount > 0 && 
+      !ex.isCompleted
+    )
+    .sort((a, b) => b.completionCount - a.completionCount) // Sort by progress (highest first)
     .slice(0, 5); // Limit to 5 exercises
   }, [exercises, settings.selectedLanguage]);
 
   // Filter activity data to only show the current month
   const filteredActivityData = useMemo(() => {
-    return activityData.filter(activity => isWithinInterval(activity.date, {
-      start: currentMonthStart,
-      end: currentMonthEnd
-    }));
+    return activityData.filter(activity => 
+      isWithinInterval(activity.date, {
+        start: currentMonthStart,
+        end: currentMonthEnd
+      })
+    );
   }, [activityData, currentMonthStart, currentMonthEnd]);
 
   // Create explicit day modifiers for each activity day with its corresponding class
@@ -59,6 +64,7 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
       low: [] as Date[],
       minimal: [] as Date[]
     };
+    
     filteredActivityData.forEach(activity => {
       const masteredCount = activity.masteredWords || 0;
       if (masteredCount > 350) {
@@ -77,6 +83,7 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
     if (intensityLevels.medium.length > 0) modifiers.activityMedium = intensityLevels.medium;
     if (intensityLevels.low.length > 0) modifiers.activityLow = intensityLevels.low;
     if (intensityLevels.minimal.length > 0) modifiers.activityMinimal = intensityLevels.minimal;
+    
     return modifiers;
   }, [filteredActivityData]);
 
@@ -86,22 +93,28 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
     return activity?.masteredWords || 0;
   };
 
-  // Custom day renderer with tooltip
+  // Custom day renderer with tooltip - FIXED to show mastered words count clearly
   const renderDay = (day: Date) => {
     const masteredCount = getMasteredWordsForDate(day);
     const hasActivity = masteredCount > 0;
     
-    // Determine the appropriate color class based on mastered count
-    let colorClass = "text-foreground";
+    // Determine the appropriate styles based on mastered count
+    let textColorClass = "text-foreground";
+    let countClass = "text-[8px] font-bold"; // Make all counts bold for better visibility
+    
     if (hasActivity) {
       if (masteredCount > 350) {
-        colorClass = "text-white"; // High activity - white text on dark green background
+        textColorClass = "text-white";
+        countClass += " text-white font-bold";
       } else if (masteredCount > 150) {
-        colorClass = "text-white"; // Medium activity - white text on green background
+        textColorClass = "text-white";
+        countClass += " text-white font-bold";
       } else if (masteredCount > 50) {
-        colorClass = "text-white"; // Low activity - white text on light green background
+        textColorClass = "text-white";
+        countClass += " text-white font-bold";
       } else {
-        colorClass = "text-green-800"; // Minimal activity - dark green text on very light green
+        textColorClass = "text-green-800";
+        countClass += " text-green-900 font-bold";
       }
     }
     
@@ -110,9 +123,9 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
             <div className="w-full h-full flex items-center justify-center relative">
-              {format(day, 'd')}
+              <span className={textColorClass}>{format(day, 'd')}</span>
               {hasActivity && (
-                <span className={`absolute top-0.5 right-0.5 text-[8px] font-semibold rounded-full px-1 ${colorClass}`}>
+                <span className={`absolute top-0.5 right-0.5 text-[8px] font-semibold rounded-full px-1 ${countClass}`}>
                   {masteredCount}
                 </span>
               )}
@@ -131,18 +144,11 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
 
   // Calculate total unique mastered words for the current month
   const totalMasteredWordsThisMonth = useMemo(() => {
-    // Instead of summing the counts directly, we'll track unique words
-    // Since we don't have access to the actual word list, we'll estimate
-    // by taking the maximum count across all dates in the month
-
-    // This is a simplified approach since we don't have the actual word identifiers
-    // If we had the word IDs, we could use a Set to deduplicate them
-
     // Find the maximum count from any day - assuming this represents the total unique words
-    // This works if the same set of words is being tracked across multiple days
     const maxCount = filteredActivityData.reduce((max, activity) => {
       return Math.max(max, activity.masteredWords || 0);
     }, 0);
+    
     return maxCount;
   }, [filteredActivityData]);
 
@@ -151,7 +157,8 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
     navigate(`/dashboard/exercises`);
   };
   
-  return <Card className="col-span-full animate-fade-in shadow-sm">
+  return (
+    <Card className="col-span-full animate-fade-in shadow-sm">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -168,33 +175,43 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
           {/* Left column: Calendar and legend */}
           <div className="space-y-4 w-full">
             <div className="overflow-x-auto rounded-md border border-border p-1 bg-slate-50 dark:bg-slate-900/30 w-full">
-              <Calendar mode="default" numberOfMonths={1} defaultMonth={today} className="w-full max-w-none" classNames={{
-              day_today: "border-2 border-purple-500 dark:border-purple-400",
-              day_selected: "",
-              day_disabled: "",
-              day_range_start: "",
-              day_range_middle: "",
-              day_range_end: "",
-              day_hidden: "invisible",
-              day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 transition-colors duration-200 rounded-md",
-              caption: "flex justify-center pt-2 pb-4 relative items-center",
-              caption_label: "text-sm font-medium",
-              months: "w-full flex-grow",
-              month: "w-full space-y-4",
-              table: "w-full border-collapse space-y-1",
-              row: "flex w-full justify-between mt-2",
-              head_row: "flex w-full justify-between",
-              cell: "text-center p-0 relative flex-1"
-            }} modifiers={activityModifiers} modifiersClassNames={{
-              activityHigh: "bg-green-700 hover:bg-green-600 text-white shadow-md",
-              activityMedium: "bg-green-500 hover:bg-green-400 text-white shadow-md",
-              activityLow: "bg-green-400 hover:bg-green-300 text-white shadow-sm",
-              activityMinimal: "bg-green-200 hover:bg-green-100 text-green-800"
-            }} components={{
-              Day: ({
-                date
-              }) => renderDay(date)
-            }} ISOWeek fixedWeeks showOutsideDays />
+              <Calendar
+                mode="default"
+                numberOfMonths={1}
+                defaultMonth={today}
+                className="w-full max-w-none"
+                classNames={{
+                  day_today: "border-2 border-purple-500 dark:border-purple-400",
+                  day_selected: "",
+                  day_disabled: "",
+                  day_range_start: "",
+                  day_range_middle: "",
+                  day_range_end: "",
+                  day_hidden: "invisible",
+                  day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 transition-colors duration-200 rounded-md",
+                  caption: "flex justify-center pt-2 pb-4 relative items-center",
+                  caption_label: "text-sm font-medium",
+                  months: "w-full flex-grow",
+                  month: "w-full space-y-4",
+                  table: "w-full border-collapse space-y-1",
+                  row: "flex w-full justify-between mt-2",
+                  head_row: "flex w-full justify-between",
+                  cell: "text-center p-0 relative flex-1"
+                }}
+                modifiers={activityModifiers}
+                modifiersClassNames={{
+                  activityHigh: "bg-green-700 hover:bg-green-600 text-white shadow-md",
+                  activityMedium: "bg-green-500 hover:bg-green-400 text-white shadow-md",
+                  activityLow: "bg-green-400 hover:bg-green-300 text-white shadow-sm",
+                  activityMinimal: "bg-green-200 hover:bg-green-100 text-green-800"
+                }}
+                components={{
+                  Day: ({ date }) => renderDay(date)
+                }}
+                ISOWeek
+                fixedWeeks
+                showOutsideDays
+              />
             </div>
             <div className="flex justify-end gap-3">
               <div className="flex items-center gap-1.5">
@@ -218,20 +235,27 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
           
           {/* Right column: In-progress exercises */}
           <div className={`${isMobile ? "mt-4" : ""}`}>
-            {inProgressExercises.length > 0 && <div className={`h-full flex flex-col ${isMobile ? "border-t pt-4 lg:border-t-0 lg:pt-0" : ""}`}>
+            {inProgressExercises.length > 0 && (
+              <div className={`h-full flex flex-col ${isMobile ? "border-t pt-4 lg:border-t-0 lg:pt-0" : ""}`}>
                 <div className="flex items-center gap-2 mb-3">
                   <BookOpen className="h-5 w-5 text-purple-500" />
                   <h3 className="font-medium text-sm">Continue Your Progress</h3>
                 </div>
                 <div className="space-y-2 flex-grow">
-                  {inProgressExercises.map(exercise => <div key={exercise.id} className="flex items-center justify-between rounded-md border p-3 bg-background hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => handleExerciseClick(exercise.id)}>
+                  {inProgressExercises.map(exercise => (
+                    <div
+                      key={exercise.id}
+                      className="flex items-center justify-between rounded-md border p-3 bg-background hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => handleExerciseClick(exercise.id)}
+                    >
                       <div>
                         <h4 className="font-medium text-sm">{exercise.title}</h4>
                         <div className="flex items-center gap-2 mt-1">
                           <div className="h-1.5 w-24 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-purple-500 rounded-full" style={{
-                        width: `${Math.min(exercise.completionCount / 3 * 100, 100)}%`
-                      }}></div>
+                            <div
+                              className="h-full bg-purple-500 rounded-full"
+                              style={{ width: `${Math.min(exercise.completionCount / 3 * 100, 100)}%` }}
+                            ></div>
                           </div>
                           <span className="text-xs text-muted-foreground">
                             {Math.round(exercise.completionCount / 3 * 100)}% complete
@@ -239,16 +263,24 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
                         </div>
                       </div>
                       
-                    </div>)}
+                    </div>
+                  ))}
                 </div>
                 <div className="mt-auto pt-3">
-                  <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/exercises')} className="text-xs text-purple-500 hover:text-purple-700 w-full">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/dashboard/exercises')}
+                    className="text-xs text-purple-500 hover:text-purple-700 w-full"
+                  >
                     View all exercises
                   </Button>
                 </div>
-              </div>}
+              </div>
+            )}
             
-            {inProgressExercises.length === 0 && <div className="h-full flex flex-col items-center justify-center border rounded-md p-6 bg-muted/20">
+            {inProgressExercises.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center border rounded-md p-6 bg-muted/20">
                 <BookOpen className="h-12 w-12 text-muted mb-4" />
                 <h3 className="text-lg font-medium text-center mb-2">No exercises in progress</h3>
                 <p className="text-sm text-muted-foreground text-center mb-4">
@@ -257,10 +289,13 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
                 <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/exercises')}>
                   Browse Exercises
                 </Button>
-              </div>}
+              </div>
+            )}
           </div>
         </div>
       </CardContent>
-    </Card>;
+    </Card>
+  );
 };
+
 export default StatsHeatmap;

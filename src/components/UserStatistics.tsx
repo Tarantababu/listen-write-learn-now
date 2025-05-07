@@ -170,12 +170,12 @@ const UserStatistics: React.FC = () => {
 
   const streak = calculateStreak();
 
-  // Heatmap data - using mastered words count per day
+  // Heatmap data - make sure mastered words are properly calculated per day
   const activityHeatmap = useMemo(() => {
-    // Filter completions for current language and high accuracy
+    // Filter completions for current language only
     const relevantCompletions = completions.filter(completion => {
       const exercise = exercises.find(ex => ex.id === completion.exerciseId);
-      return exercise && exercise.language === currentLanguage && completion.accuracy >= 95;
+      return exercise && exercise.language === currentLanguage;
     });
     
     // Group completions by day
@@ -188,47 +188,48 @@ const UserStatistics: React.FC = () => {
     
     // For each day, calculate the mastered words count
     return Object.entries(completionsByDay).map(([dateStr, dailyCompletions]) => {
-      // For each date, calculate the number of mastered words
-      // This is a simplification - we're counting words that would have been mastered by this date
-      // based on having 3+ high accuracy completions of their exercise
+      // For each date, get a snapshot of mastered words up to and including this date
+      const dateCutoff = new Date(dateStr);
+      dateCutoff.setHours(23, 59, 59);
       
       // Count completions by exercise ID up to this date
-      const exerciseCountMap = new Map<string, number>();
+      const exerciseCompletionCounts = new Map<string, number>();
       
-      // Include all completions up to and including this date
-      completions.filter(c => {
-        const exercise = exercises.find(ex => ex.id === c.exerciseId);
-        const completionDate = new Date(c.date);
-        const currentDate = new Date(dateStr);
-        
-        return exercise 
-          && exercise.language === currentLanguage 
-          && c.accuracy >= 95
-          && (completionDate <= currentDate);
-      }).forEach(c => {
-        const count = exerciseCountMap.get(c.exerciseId) || 0;
-        exerciseCountMap.set(c.exerciseId, count + 1);
-      });
+      // Include all completions up to and including this date,
+      // but only count high accuracy completions (>=95%)
+      completions
+        .filter(c => {
+          const exercise = exercises.find(ex => ex.id === c.exerciseId);
+          return exercise && 
+                 exercise.language === currentLanguage && 
+                 c.accuracy >= 95 && 
+                 c.date <= dateCutoff;
+        })
+        .forEach(c => {
+          const count = exerciseCompletionCounts.get(c.exerciseId) || 0;
+          exerciseCompletionCounts.set(c.exerciseId, count + 1);
+        });
+      
+      // Get all exercises for the current language
+      const langExercises = exercises.filter(ex => ex.language === currentLanguage);
       
       // Count mastered words from exercises with 3+ completions
-      const masteredWordsForDay = new Set<string>();
+      const masteredWordsSet = new Set<string>();
       
-      exercises
-        .filter(ex => ex.language === currentLanguage)
-        .forEach(exercise => {
-          const completionCount = exerciseCountMap.get(exercise.id) || 0;
-          
-          if (completionCount >= 3) {
-            // This exercise is considered mastered - add all its words
-            const words = normalizeText(exercise.text).split(' ');
-            words.forEach(word => masteredWordsForDay.add(word));
-          }
-        });
+      langExercises.forEach(exercise => {
+        const completionCount = exerciseCompletionCounts.get(exercise.id) || 0;
+        
+        if (completionCount >= 3) {
+          // This exercise is considered mastered - add all its words
+          const words = normalizeText(exercise.text).split(' ');
+          words.forEach(word => masteredWordsSet.add(word));
+        }
+      });
       
       return {
         date: new Date(dateStr),
         count: dailyCompletions.length,
-        masteredWords: masteredWordsForDay.size
+        masteredWords: masteredWordsSet.size
       };
     });
   }, [completions, exercises, currentLanguage]);
