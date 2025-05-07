@@ -45,7 +45,7 @@ serve(async (req) => {
       }
     }
     
-    // Create increment_reading_analyses function if it doesn't exist
+    // Check if increment_reading_analyses function exists
     const { data: analysesIncrementExists, error: analysesCheckError } = await supabaseAdmin
       .from('pg_proc')
       .select('proname')
@@ -56,11 +56,22 @@ serve(async (req) => {
       console.error("Error checking for increment_reading_analyses function:", analysesCheckError);
     }
     
+    // If increment_reading_analyses doesn't exist, create it using SQL directly
     if (!analysesIncrementExists) {
-      // Execute the SQL to create the function
-      const { error: createError } = await supabaseAdmin.rpc('increment_reading_analyses');
-      if (createError) {
-        console.error("Error creating increment_reading_analyses function:", createError);
+      // Execute SQL directly to create the function
+      const sql = `
+        CREATE OR REPLACE FUNCTION public.increment_reading_analyses()
+        RETURNS integer
+        LANGUAGE sql
+        AS $$
+          SELECT COALESCE(reading_analyses_count, 0) + 1;
+        $$;
+      `;
+      
+      const { error: sqlError } = await supabaseAdmin.rpc('exec_sql', { sql });
+      
+      if (sqlError) {
+        console.error("Error creating increment_reading_analyses function:", sqlError);
       } else {
         console.log("Created increment_reading_analyses function successfully");
       }

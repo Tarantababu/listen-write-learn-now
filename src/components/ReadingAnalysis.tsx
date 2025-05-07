@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -99,10 +100,10 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             // Continue even if saving fails
           } else {
             // Increment the reading_analyses_count for free users
-            // Use a direct update with a numerical increment instead of RPC call
+            // Use a direct SQL update instead of trying to use RPC
             const { error: updateError } = await supabase
               .from('profiles')
-              .update({ reading_analyses_count: supabase.rpc('increment_reading_analyses', {}) })
+              .update({ reading_analyses_count: supabase.rpc('increment_reading_analyses') })
               .eq('id', user.id);
               
             if (updateError) {
