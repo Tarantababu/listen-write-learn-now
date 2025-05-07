@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -53,6 +54,14 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 263.4 70% 50.4%;
+    --sidebar-background: 222.2 84% 4.9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 263.4 70% 50.4%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 291 70% 50%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-ring: 263.4 70% 50.4%;
   }
 }
 
@@ -67,7 +76,7 @@
 
 @layer components {
   .gradient-card {
-    @apply relative bg-gradient-to-br from-background via-background to-accent/5 hover:to-accent/10 transition-all border border-border/50 hover:shadow-md;
+    @apply relative bg-gradient-to-br from-background via-background to-accent/5 hover:to-accent/10 transition-all border border-border/50 hover:shadow-md dark:from-background dark:via-background/80 dark:to-accent/10 dark:hover:to-accent/15;
   }
 }
 
@@ -149,5 +158,10 @@
   
   .hover-glow {
     @apply transition-shadow hover:shadow-lg hover:shadow-primary/20 duration-300;
+  }
+
+  /* Dark mode specific utilities */
+  .dark-gradient {
+    @apply dark:bg-gradient-to-br dark:from-background/90 dark:via-background/70 dark:to-accent/10;
   }
 }

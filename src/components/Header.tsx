@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -33,6 +32,7 @@ import UserAvatar from './UserAvatar';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { UserMessages } from '@/components/UserMessages';
+import ThemeToggle from './ThemeToggle';
 
 const Header: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -158,6 +158,9 @@ const Header: React.FC = () => {
               </Tooltip>
             </TooltipProvider>
           )}
+          
+          {/* Theme Toggle Added Here */}
+          <ThemeToggle variant="compact" showLabel={false} />
           
           {user ? (
             <>
