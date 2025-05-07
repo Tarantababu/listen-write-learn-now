@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -174,6 +173,13 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     setPracticeStage(PracticeStage.READING);
   };
   
+  const handleViewReadingAnalysis = () => {
+    // If we're already in dictation mode, we need to switch to reading analysis
+    if (practiceStage === PracticeStage.DICTATION) {
+      setPracticeStage(PracticeStage.READING);
+    }
+  };
+  
   // If the exercise doesn't match the selected language, don't render
   if (!updatedExercise || updatedExercise.language !== settings.selectedLanguage) return null;
   
@@ -252,6 +258,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
             onComplete={handleComplete}
             showResults={showResults}
             onTryAgain={() => setShowResults(false)}
+            hasReadingAnalysis={hasExistingAnalysis}
+            onViewReadingAnalysis={hasExistingAnalysis ? handleViewReadingAnalysis : undefined}
           />
         )}
       </DialogContent>

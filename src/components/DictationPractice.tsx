@@ -3,7 +3,7 @@ import { Exercise } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import VocabularyHighlighter from '@/components/VocabularyHighlighter';
@@ -23,6 +23,8 @@ interface DictationPracticeProps {
   showResults?: boolean;
   onTryAgain?: () => void;
   hideVocabularyTab?: boolean;
+  onViewReadingAnalysis?: () => void;
+  hasReadingAnalysis?: boolean;
 }
 
 const DictationPractice: React.FC<DictationPracticeProps> = ({
@@ -30,7 +32,9 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   onComplete,
   showResults = false,
   onTryAgain,
-  hideVocabularyTab = false
+  hideVocabularyTab = false,
+  onViewReadingAnalysis,
+  hasReadingAnalysis = false
 }) => {
   const [userInput, setUserInput] = useState('');
   const [accuracy, setAccuracy] = useState<number | null>(null);
@@ -318,7 +322,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
             </div>
           </div>
           
-          <div className="flex justify-center">
+          <div className="flex justify-center items-center gap-4">
             <Button
               onClick={handleSubmit}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2 rounded-lg text-base"
@@ -326,6 +330,17 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
             >
               Check Answer
             </Button>
+            
+            {hasReadingAnalysis && onViewReadingAnalysis && (
+              <Button
+                onClick={onViewReadingAnalysis}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <BookOpen className="h-4 w-4" />
+                View Reading Analysis
+              </Button>
+            )}
           </div>
         </div>
       ) : (
@@ -455,7 +470,19 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex justify-end pt-4">
+                  <div className="flex justify-between pt-4">
+                    <div>
+                      {hasReadingAnalysis && onViewReadingAnalysis && (
+                        <Button
+                          onClick={onViewReadingAnalysis}
+                          variant="outline"
+                          className="flex items-center gap-2"
+                        >
+                          <BookOpen className="h-4 w-4" />
+                          View Reading Analysis
+                        </Button>
+                      )}
+                    </div>
                     <Button
                       onClick={handleTryAgain}
                       className="bg-indigo-600 hover:bg-indigo-700 text-white"
