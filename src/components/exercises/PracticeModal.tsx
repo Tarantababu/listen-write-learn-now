@@ -3,7 +3,9 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  DialogDescription
+  DialogDescription,
+  DialogHeader,
+  DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Exercise } from '@/types';
@@ -16,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { toast } from 'sonner';
 import { AlertTriangle, BookOpen } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface PracticeModalProps {
   isOpen: boolean;
@@ -189,49 +192,62 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
         
         {practiceStage === PracticeStage.PROMPT && (
-          <div className="p-6 space-y-6">
-            <h2 className="text-2xl font-bold">Practice: {updatedExercise.title}</h2>
-            <DialogDescription>
-              Would you like to start with a Reading Analysis before your dictation practice?
-              {hasExistingAnalysis && (
-                <div className="mt-2 text-sm">
-                  You have already completed a reading analysis for this exercise.
-                </div>
-              )}
-            </DialogDescription>
+          <div className="px-6 py-8 space-y-6">
+            <DialogHeader>
+              <h2 className="text-2xl font-bold mb-2">{updatedExercise.title}</h2>
+              <DialogDescription className="text-base">
+                Would you like to start with a Reading Analysis before your dictation practice?
+                {hasExistingAnalysis && (
+                  <div className="mt-2 text-sm font-medium text-primary">
+                    You have already completed a reading analysis for this exercise.
+                  </div>
+                )}
+              </DialogDescription>
+            </DialogHeader>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-              <Button 
-                onClick={handleStartReadingAnalysis} 
-                className="h-auto py-6 px-4"
-                disabled={!analysisAllowed}
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <BookOpen className="h-6 w-6 mb-2" />
-                  <div className="font-semibold text-base">{hasExistingAnalysis ? 'View Reading Analysis' : 'Yes, show Reading Analysis'}</div>
-                  <p className="text-sm opacity-80">
-                    Understand words, grammar, and sentence structures before practicing.
-                  </p>
-                </div>
-              </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              <Card className={`overflow-hidden border ${hasExistingAnalysis ? 'border-primary/30' : 'border-muted'} transition-colors`}>
+                <CardContent className="p-0">
+                  <Button 
+                    onClick={handleStartReadingAnalysis} 
+                    className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-muted/50 transition-colors"
+                    variant="ghost"
+                    disabled={!analysisAllowed}
+                  >
+                    <div className="flex flex-col items-center text-center space-y-3">
+                      <BookOpen className="h-10 w-10 mb-2 text-primary" />
+                      <div className="font-semibold text-lg">
+                        {hasExistingAnalysis ? 'View Reading Analysis' : 'Yes, show Reading Analysis'}
+                      </div>
+                      <p className="text-sm text-muted-foreground max-w-xs">
+                        Understand words, grammar, and sentence structures before practicing.
+                      </p>
+                    </div>
+                  </Button>
+                </CardContent>
+              </Card>
               
-              <Button 
-                onClick={handleStartDictation} 
-                variant="outline"
-                className="h-auto py-6 px-4"
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <div className="font-semibold text-base">Skip to Dictation</div>
-                  <p className="text-sm opacity-80">
-                    Jump straight into typing what you hear in the audio.
-                  </p>
-                </div>
-              </Button>
+              <Card className="overflow-hidden border border-muted">
+                <CardContent className="p-0">
+                  <Button 
+                    onClick={handleStartDictation} 
+                    variant="ghost"
+                    className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex flex-col items-center text-center space-y-3">
+                      <div className="font-semibold text-lg">Skip to Dictation</div>
+                      <p className="text-sm text-muted-foreground max-w-xs">
+                        Jump straight into typing what you hear in the audio.
+                      </p>
+                    </div>
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
             
             {!analysisAllowed && !subscription.isSubscribed && (
-              <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-md flex items-start mt-4">
-                <AlertTriangle className="h-5 w-5 text-amber-600 mr-2 flex-shrink-0 mt-0.5" />
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-md flex items-start mt-6">
+                <AlertTriangle className="h-5 w-5 text-amber-600 mr-3 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium">Free user limit reached</p>
                   <p className="text-sm mt-1">
