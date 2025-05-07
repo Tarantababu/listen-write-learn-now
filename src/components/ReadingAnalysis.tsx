@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -99,15 +98,28 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             console.error('Error saving analysis:', saveError);
             // Continue even if saving fails
           } else {
-            // Increment the reading_analyses_count for free users
-            // Use a direct SQL update instead of trying to use RPC
-            const { error: updateError } = await supabase
+            // Increment the reading_analyses_count for free users using a direct update
+            // Instead of using RPC which has type issues, use a direct increment
+            const { data: profileData, error: fetchError } = await supabase
               .from('profiles')
-              .update({ reading_analyses_count: supabase.rpc('increment_reading_analyses') })
-              .eq('id', user.id);
+              .select('reading_analyses_count')
+              .eq('id', user.id)
+              .single();
               
-            if (updateError) {
-              console.error('Error updating analysis count:', updateError);
+            if (fetchError) {
+              console.error('Error fetching profile:', fetchError);
+            } else {
+              const currentCount = profileData.reading_analyses_count || 0;
+              const newCount = currentCount + 1;
+              
+              const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ reading_analyses_count: newCount })
+                .eq('id', user.id);
+                
+              if (updateError) {
+                console.error('Error updating analysis count:', updateError);
+              }
             }
           }
         }
