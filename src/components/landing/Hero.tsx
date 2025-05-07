@@ -80,6 +80,9 @@ export function Hero() {
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center sm:mx-auto lg:mr-auto lg:mt-0">
           <AnimatedGroup variants={transitionVariants}>
+            <span className="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium inline-block">
+              📘 Welcome to ListenWriteLearn
+            </span>
             <h1 className="mt-8 max-w-4xl mx-auto text-balance text-6xl md:text-7xl lg:mt-16 xl:text-[5.25rem]">
               Master a New Language Through Dictation
             </h1>
@@ -87,7 +90,7 @@ export function Hero() {
               Train your ear, sharpen your memory, and improve your writing—all in one immersive experience.
             </p>
             <p className="mx-auto mt-4 max-w-2xl text-balance text-md text-muted-foreground">
-              Learn German or English by <em>listening and typing what you hear</em>. Designed for learners who want real progress—not just passive exposure.
+              Master a new language with dictation, repetition, and deep understanding — not memorization.
             </p>
           </AnimatedGroup>
 
