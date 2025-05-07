@@ -12,7 +12,6 @@ import { Exercise } from '@/types';
 import { toast } from 'sonner';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import UpgradePrompt from '@/components/UpgradePrompt';
-import { useModalState } from '@/hooks/useModalState';
 
 interface ExerciseFormModalProps {
   isOpen: boolean;
@@ -28,36 +27,14 @@ const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
   mode
 }) => {
   const { canCreateMore, canEdit, exerciseLimit } = useExerciseContext();
-  
-  // Use our persistent modal state
-  const [isModalOpen, setModalOpen, handleModalOpenChange] = 
-    useModalState(`exercise-form-${initialValues?.id || mode}`, isOpen);
-    
-  // Sync parent state with our URL-based state
-  React.useEffect(() => {
-    if (isOpen !== isModalOpen) {
-      setModalOpen(isOpen);
-    }
-  }, [isOpen, isModalOpen, setModalOpen]);
-  
-  React.useEffect(() => {
-    if (onOpenChange && isModalOpen !== isOpen) {
-      onOpenChange(isModalOpen);
-    }
-  }, [isModalOpen, isOpen, onOpenChange]);
 
   // Check if user can perform the action based on subscription
   const canPerformAction = mode === 'create' ? canCreateMore : canEdit;
 
-  // Handle modal open state change
-  const handleOpenChange = (open: boolean) => {
-    handleModalOpenChange(open);
-  };
-
   if (!canPerformAction) {
     // Show upgrade prompt instead of form
     return (
-      <Dialog open={isModalOpen} onOpenChange={handleOpenChange}>
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
@@ -80,7 +57,7 @@ const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
   }
 
   return (
-    <Dialog open={isModalOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
@@ -96,7 +73,7 @@ const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
         <ExerciseForm 
           initialValues={initialValues}
           onSuccess={() => {
-            handleOpenChange(false);
+            onOpenChange(false);
             toast.success(mode === 'create' ? 'Exercise created' : 'Exercise updated');
           }} 
         />
