@@ -6,12 +6,12 @@ import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Trophy, BookOpen, CalendarDays, Star, ChartBar, Award } from 'lucide-react';
+import { Trophy, BookOpen, CalendarDays } from 'lucide-react';
 import StatsCard from './StatsCard';
 import StatsHeatmap from './StatsHeatmap';
-import { getUserLevel, getWordsToNextLevel, getLevelProgress, formatNumber } from '@/utils/levelSystem';
+import { getUserLevel, getLevelProgress } from '@/utils/levelSystem';
 import LanguageLevelDisplay from './LanguageLevelDisplay';
-import { compareWeeks, groupByDay, compareWithPreviousDay, getTodayValue, getYesterdayValue, calculateTrend } from '@/utils/trendUtils';
+import { compareWithPreviousDay } from '@/utils/trendUtils';
 
 interface CompletionData {
   date: Date;
@@ -80,116 +80,80 @@ const UserStatistics: React.FC = () => {
     fetchCompletionData();
   }, [user, exercises]);
 
-  // Calculate statistics
+  // Current language filter
   const currentLanguage = settings.selectedLanguage;
   
-  // Calculate mastered words - words from exercises completed 3+ times with high accuracy
-  const masteredWordsMap = useMemo(() => {
-    const masteredMap = new Map<string, Set<string>>();
-    const exercisesById = new Map(exercises.map(ex => [ex.id, ex]));
-    
-    // Create a count of high accuracy completions per exercise
-    const exerciseCompletions = new Map<string, number>();
+  // Calculate mastered words - using improved word-by-word tracking
+  const masteredWords = useMemo(() => {
+    // Get all exercises texts for the current language
+    const exercisesById = new Map(exercises
+      .filter(ex => ex.language === currentLanguage)
+      .map(ex => [ex.id, ex]));
     
     // Count high accuracy completions per exercise
+    const exerciseCompletionCounts = new Map<string, number>();
+    
+    // Filter completions for current language only
     completions.forEach(completion => {
       const exercise = exercisesById.get(completion.exerciseId);
-      if (!exercise || exercise.language !== currentLanguage || completion.accuracy < 95) return;
+      if (!exercise || completion.accuracy < 95) return;
       
-      const count = exerciseCompletions.get(completion.exerciseId) || 0;
-      exerciseCompletions.set(completion.exerciseId, count + 1);
+      const count = exerciseCompletionCounts.get(completion.exerciseId) || 0;
+      exerciseCompletionCounts.set(completion.exerciseId, count + 1);
     });
     
-    // For each date, collect mastered words (from exercises completed at least 3 times with high accuracy)
-    completions.forEach(completion => {
-      const exercise = exercisesById.get(completion.exerciseId);
-      if (!exercise || exercise.language !== currentLanguage) return;
+    // Track individual mastered words
+    const masteredWordsSet = new Set<string>();
+    
+    // For each exercise that has at least 3 high accuracy completions
+    exercisesById.forEach((exercise, exerciseId) => {
+      const completionsCount = exerciseCompletionCounts.get(exerciseId) || 0;
       
-      const highAccuracyCount = exerciseCompletions.get(completion.exerciseId) || 0;
-      
-      // Only consider as mastered if completed at least 3 times with high accuracy
-      if (highAccuracyCount >= 3) {
-        const dateStr = format(completion.date, 'yyyy-MM-dd');
-        if (!masteredMap.has(dateStr)) {
-          masteredMap.set(dateStr, new Set<string>());
-        }
-        
+      if (completionsCount >= 3) {
+        // This exercise is mastered - add all its words
         const words = normalizeText(exercise.text).split(' ');
-        const dateSet = masteredMap.get(dateStr)!;
-        words.forEach(word => dateSet.add(word));
+        words.forEach(word => masteredWordsSet.add(word));
       }
     });
     
-    return masteredMap;
-  }, [completions, exercises, currentLanguage]);
-  
-  // Get all unique mastered words across all dates
-  const masteredWords = useMemo(() => {
-    const allMastered = new Set<string>();
-    for (const wordSet of masteredWordsMap.values()) {
-      for (const word of wordSet) {
-        allMastered.add(word);
-      }
-    }
-    return allMastered;
-  }, [masteredWordsMap]);
-
-  // 2. Total words dictated
-  const totalWordsDictated = completions
-    .filter(c => {
-      const exercise = exercises.find(ex => ex.id === c.exerciseId);
-      return exercise && exercise.language === currentLanguage;
-    })
-    .reduce((total, c) => total + c.words, 0);
-
-  // 3. Unique words completed (at least once with 95%+ accuracy)
-  const uniqueWordsCompleted = useMemo(() => {
-    const uniqueWords = new Set<string>();
-    completions.forEach(completion => {
-      const exercise = exercises.find(ex => ex.id === completion.exerciseId);
-      if (exercise && exercise.language === currentLanguage && completion.accuracy >= 95) {
-        const words = normalizeText(exercise.text).split(' ');
-        words.forEach(word => uniqueWords.add(word));
-      }
-    });
-    return uniqueWords;
+    return masteredWordsSet;
   }, [completions, exercises, currentLanguage]);
 
-  // 4. Words per day
-  const wordsByDay = completions.reduce((acc: Record<string, number>, completion) => {
-    const exercise = exercises.find(ex => ex.id === completion.exerciseId);
-    if (!exercise || exercise.language !== currentLanguage) return acc;
-
-    const dateStr = format(completion.date, 'yyyy-MM-dd');
-    acc[dateStr] = (acc[dateStr] || 0) + completion.words;
-    return acc;
-  }, {});
-
-  const activeDays = Object.keys(wordsByDay).length;
-  const wordsPerDay = activeDays ? Math.round(totalWordsDictated / activeDays) : 0;
-
-  // 5. Learning streak (consecutive active days)
+  // Learning streak (only count days with high accuracy completions for current language)
   const calculateStreak = (): number => {
-    const sortedDates = Object.keys(wordsByDay)
+    // Filter completions for current language and high accuracy
+    const relevantCompletions = completions.filter(completion => {
+      const exercise = exercises.find(ex => ex.id === completion.exerciseId);
+      return exercise && exercise.language === currentLanguage && completion.accuracy >= 95;
+    });
+    
+    // Group by day - count a day as active if there's at least one relevant completion
+    const activeCompletionsByDay = relevantCompletions.reduce((acc: Record<string, boolean>, completion) => {
+      const dateStr = format(completion.date, 'yyyy-MM-dd');
+      acc[dateStr] = true;
+      return acc;
+    }, {});
+    
+    const activeDates = Object.keys(activeCompletionsByDay)
       .map(dateStr => new Date(dateStr))
       .sort((a, b) => b.getTime() - a.getTime()); // Sort desc
-
-    if (sortedDates.length === 0) return 0;
+      
+    if (activeDates.length === 0) return 0;
 
     let streak = 1; // Start with at least 1 day if there's activity
     const today = startOfDay(new Date());
     
     // Check if the most recent activity was today or yesterday
-    const mostRecent = startOfDay(sortedDates[0]);
+    const mostRecent = startOfDay(activeDates[0]);
     const daysSinceLastActivity = differenceInDays(today, mostRecent);
     
     // Break streak if no activity today or yesterday
     if (daysSinceLastActivity > 1) return 0;
     
     // Count consecutive days backwards
-    for (let i = 1; i < sortedDates.length; i++) {
-      const current = startOfDay(sortedDates[i]);
-      const prev = startOfDay(sortedDates[i - 1]);
+    for (let i = 1; i < activeDates.length; i++) {
+      const current = startOfDay(activeDates[i]);
+      const prev = startOfDay(activeDates[i - 1]);
       const gap = differenceInDays(prev, current);
       
       if (gap === 1) {
@@ -206,20 +170,30 @@ const UserStatistics: React.FC = () => {
 
   const streak = calculateStreak();
 
-  // 6. Heatmap data - updated to focus on mastered words count per day
+  // Heatmap data - using mastered words count per day
   const activityHeatmap = useMemo(() => {
-    // Create data from masteredWordsMap
-    return Array.from(masteredWordsMap.entries()).map(([dateStr, wordsSet]) => ({
+    // Filter completions for current language and high accuracy
+    const relevantCompletions = completions.filter(completion => {
+      const exercise = exercises.find(ex => ex.id === completion.exerciseId);
+      return exercise && exercise.language === currentLanguage && completion.accuracy >= 95;
+    });
+    
+    // Group by day
+    const completionsByDay = relevantCompletions.reduce((acc: Record<string, CompletionData[]>, completion) => {
+      const dateStr = format(completion.date, 'yyyy-MM-dd');
+      if (!acc[dateStr]) acc[dateStr] = [];
+      acc[dateStr].push(completion);
+      return acc;
+    }, {});
+    
+    // Convert to array format for the heatmap
+    return Object.entries(completionsByDay).map(([dateStr, completionsForDay]) => ({
       date: new Date(dateStr),
       count: 1, // We just need a count to indicate there was activity
-      masteredWords: wordsSet.size // Number of unique mastered words for this day
+      completions: completionsForDay.length
     }));
-  }, [masteredWordsMap]);
+  }, [completions, exercises, currentLanguage]);
 
-  // 8. Calculate trends - using daily comparisons now
-  const wordsByDayObject = groupByDay(activityHeatmap);
-  const wordsTrend = compareWithPreviousDay(wordsByDayObject);
-  
   // Calculate vocabulary trend for today vs yesterday
   const vocabTrend = (() => {
     const vocabularyByDay = vocabulary
@@ -234,34 +208,23 @@ const UserStatistics: React.FC = () => {
     return compareWithPreviousDay(vocabularyByDay);
   })();
 
-  // Calculate mastered words trend (now using yesterday's data)
-  const masteredWordsTrend = compareWithPreviousDay({
-    // Simulating a small increase from yesterday to today
-    [format(new Date(), 'yyyy-MM-dd')]: masteredWords.size,
-    [format(subDays(new Date(), 1), 'yyyy-MM-dd')]: Math.max(0, masteredWords.size - Math.floor(masteredWords.size * 0.02))
-  });
+  // Calculate mastered words trend
+  const masteredWordsTrend = (() => {
+    // Simulating a small increase from yesterday to today for trend display
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+    
+    return compareWithPreviousDay({
+      [today]: masteredWords.size,
+      [yesterday]: Math.max(0, masteredWords.size - Math.floor(masteredWords.size * 0.02))
+    });
+  })();
 
   // Calculate streak trend
   const streakTrend = {
     value: streak > 0 ? 0 : -100, // 0% if streak maintained, -100% if broken
     label: streak > 0 ? 'Streak maintained' : 'Streak broken'
   };
-
-  // Calculate words per day trend
-  const wordsPerDayToday = getTodayValue(wordsByDayObject);
-  const wordsPerDayYesterday = getYesterdayValue(wordsByDayObject);
-  const wordsPerDayTrend = calculateTrend(
-    wordsPerDayToday,
-    wordsPerDayYesterday
-  );
-  wordsPerDayTrend.label = 'Compared to yesterday';
-
-  // Calculate unique words trend
-  const uniqueWordsTrend = calculateTrend(
-    uniqueWordsCompleted.size,
-    Math.max(0, uniqueWordsCompleted.size - 3) // Simulating yesterday's value
-  );
-  uniqueWordsTrend.label = 'Compared to yesterday';
 
   if (isLoading) {
     return <div className="text-center p-4">Loading statistics...</div>;
@@ -274,13 +237,13 @@ const UserStatistics: React.FC = () => {
       {/* Language Level Display */}
       <LanguageLevelDisplay masteredWords={masteredWords.size} />
       
-      {/* Key Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Key Statistics Cards - Only showing the desired ones */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <StatsCard 
           title="Mastered Words" 
           value={masteredWords.size} 
           icon={<Trophy className="text-amber-500" />}
-          description="Words completed with 95%+ accuracy at least 3 times" 
+          description="Words from exercises completed with 95%+ accuracy at least 3 times" 
           progress={getLevelProgress(masteredWords.size)}
           progressColor="bg-gradient-to-r from-amber-500 to-yellow-400"
           trend={masteredWordsTrend}
@@ -291,7 +254,7 @@ const UserStatistics: React.FC = () => {
           title="Learning Streak" 
           value={streak}
           icon={<CalendarDays className="text-green-500" />}
-          description="Consecutive days with learning activity" 
+          description="Consecutive days with high accuracy completions" 
           trend={streakTrend}
           className="animate-fade-in"
         />
@@ -302,33 +265,6 @@ const UserStatistics: React.FC = () => {
           icon={<BookOpen className="text-purple-500" />}
           description="Words saved to your vocabulary list"
           trend={vocabTrend}
-          className="animate-fade-in"
-        />
-        
-        <StatsCard 
-          title="Total Words Dictated" 
-          value={totalWordsDictated}
-          icon={<BookOpen className="text-blue-500" />}
-          description="Total word count from all exercises"
-          trend={wordsTrend}
-          className="animate-fade-in"
-        />
-        
-        <StatsCard 
-          title="Unique Words Completed" 
-          value={uniqueWordsCompleted.size}
-          icon={<Star className="text-pink-500" />}
-          description="Words dictated correctly at least once" 
-          trend={uniqueWordsTrend}
-          className="animate-fade-in"
-        />
-        
-        <StatsCard 
-          title="Words Per Day" 
-          value={wordsPerDay}
-          icon={<ChartBar className="text-teal-500" />}
-          description={`Average across ${activeDays} active days`} 
-          trend={wordsPerDayTrend}
           className="animate-fade-in"
         />
       </div>
