@@ -1,3 +1,4 @@
+
 import { useToast } from "@/hooks/use-toast"
 import {
   Toast,
@@ -13,9 +14,12 @@ export function Toaster() {
 
   return (
     <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
+      {toasts.map(function ({ id, title, description, action, variant, ...props }) {
+        // Don't auto-dismiss error toasts
+        const shouldAutoClose = variant !== 'destructive';
+        
         return (
-          <Toast key={id} {...props}>
+          <Toast key={id} variant={variant} {...props} duration={shouldAutoClose ? 5000 : Infinity}>
             <div className="grid gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && (

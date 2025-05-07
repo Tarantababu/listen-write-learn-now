@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import ExerciseForm from '@/components/ExerciseForm';
 import { Exercise } from '@/types';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import UpgradePrompt from '@/components/UpgradePrompt';
 
@@ -74,7 +74,11 @@ const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
           initialValues={initialValues}
           onSuccess={() => {
             onOpenChange(false);
-            toast.success(mode === 'create' ? 'Exercise created' : 'Exercise updated');
+            // Use more concise success message
+            toast({
+              title: mode === 'create' ? "Exercise created" : "Exercise updated",
+              variant: "success",
+            });
           }} 
         />
       </DialogContent>

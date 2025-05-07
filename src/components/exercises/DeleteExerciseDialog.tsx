@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { toast } from '@/hooks/use-toast';
 
 interface DeleteExerciseDialogProps {
   isOpen: boolean;
@@ -22,6 +23,15 @@ const DeleteExerciseDialog: React.FC<DeleteExerciseDialogProps> = ({
   onOpenChange,
   onConfirm
 }) => {
+  const handleConfirm = () => {
+    onConfirm();
+    // Use concise success message
+    toast({
+      title: "Exercise archived",
+      variant: "success",
+    });
+  };
+
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -33,7 +43,7 @@ const DeleteExerciseDialog: React.FC<DeleteExerciseDialogProps> = ({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="bg-destructive hover:bg-destructive/90">Archive</AlertDialogAction>
+          <AlertDialogAction onClick={handleConfirm} className="bg-destructive hover:bg-destructive/90">Archive</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
