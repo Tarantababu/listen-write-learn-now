@@ -18,6 +18,31 @@ export function LandingPage() {
   useEffect(() => {
     // Track landing page view when component mounts
     trackPageView('landing_page');
+    
+    // Smooth scroll for anchor links
+    const handleAnchorClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest('a');
+      
+      if (link && link.hash && link.hash.startsWith('#')) {
+        e.preventDefault();
+        const id = link.hash.substring(1);
+        const element = document.getElementById(id);
+        
+        if (element) {
+          window.scrollTo({
+            top: element.offsetTop - 100,
+            behavior: 'smooth'
+          });
+        }
+      }
+    };
+    
+    document.addEventListener('click', handleAnchorClick);
+    
+    return () => {
+      document.removeEventListener('click', handleAnchorClick);
+    };
   }, []);
 
   return (
@@ -34,9 +59,6 @@ export function LandingPage() {
         <AudienceSection />
         <StartNowSection />
         <CTASection />
-        
-        {/* Product Hunt Badge */}
-        
       </main>
       <Footer />
     </div>

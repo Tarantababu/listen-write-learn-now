@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 
 export function StartNowSection() {
   return (
-    <section className="py-16 bg-background">
+    <section id="start-now" className="py-16 bg-background">
       <div className="container px-4 md:px-6">
         <div className="text-center">
           <Rocket className="h-12 w-12 text-primary mx-auto mb-4" />

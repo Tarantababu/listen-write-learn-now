@@ -8,10 +8,10 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const menuItems = [
-  { name: 'Features', href: '#features' },
+  { name: 'Method', href: '#method' },
   { name: 'How It Works', href: '#how-it-works' },
-  { name: 'For Who', href: '#for-who' },
-  { name: 'About', href: '#about' },
+  { name: 'Why It Works', href: '#why-it-works' },
+  { name: 'Tools', href: '#tools' },
 ];
 
 export function LandingHeader() {

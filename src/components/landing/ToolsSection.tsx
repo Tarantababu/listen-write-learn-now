@@ -14,7 +14,7 @@ export function ToolsSection() {
   ];
 
   return (
-    <section className="py-16 bg-primary/5">
+    <section id="tools" className="py-16 bg-primary/5">
       <div className="container px-4 md:px-6">
         <div className="text-center mb-10">
           <Lightbulb className="h-12 w-12 text-primary mx-auto mb-4" />

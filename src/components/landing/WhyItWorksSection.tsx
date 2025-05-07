@@ -4,7 +4,7 @@ import { Check } from 'lucide-react';
 
 export function WhyItWorksSection() {
   return (
-    <section className="py-16 bg-background">
+    <section id="why-it-works" className="py-16 bg-background">
       <div className="container px-4 md:px-6">
         <div className="flex flex-col md:flex-row gap-12">
           <div className="md:w-1/2">

@@ -1,7 +1,10 @@
+
 import React from 'react';
 import { Logo } from './Logo';
+
 export function Footer() {
-  return <footer className="border-t bg-muted/40">
+  return (
+    <footer className="border-t bg-muted/40">
       <div className="container px-4 py-12 md:px-6">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-4">
@@ -14,8 +17,8 @@ export function Footer() {
             <h3 className="text-sm font-medium">Platform</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Features
+                <a href="#method" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Method
                 </a>
               </li>
               <li>
@@ -24,13 +27,13 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#for-who" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Who It's For
+                <a href="#tools" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Tools
                 </a>
               </li>
               <li>
-                <a href="#about" className="text-muted-foreground hover:text-foreground transition-colors">
-                  About Us
+                <a href="#why-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Why It Works
                 </a>
               </li>
             </ul>
@@ -40,19 +43,19 @@ export function Footer() {
             <h3 className="text-sm font-medium">Legal</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <span className="text-muted-foreground cursor-not-allowed">
                   Privacy Policy
-                </a>
+                </span>
               </li>
               <li>
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <span className="text-muted-foreground cursor-not-allowed">
                   Terms of Service
-                </a>
+                </span>
               </li>
               <li>
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <span className="text-muted-foreground cursor-not-allowed">
                   Cookie Policy
-                </a>
+                </span>
               </li>
             </ul>
           </div>
@@ -61,5 +64,6 @@ export function Footer() {
           <p>© {new Date().getFullYear()} lwlnow. All rights reserved.</p>
         </div>
       </div>
-    </footer>;
+    </footer>
+  );
 }
