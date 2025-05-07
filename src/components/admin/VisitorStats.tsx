@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -282,8 +281,11 @@ export function VisitorStats() {
                     />
                     <YAxis />
                     <ChartTooltip 
-                      content={<ChartTooltipContent />} 
-                      labelKey="date"
+                      content={
+                        <ChartTooltipContent 
+                          labelFormatter={(label) => `Date: ${label}`}
+                        />
+                      } 
                     />
                     <Bar dataKey="count" name="Visitors" fill="var(--color-visitors)" />
                   </BarChart>
@@ -370,7 +372,11 @@ export function VisitorStats() {
                         tick={{ fontSize: 12 }}
                       />
                       <ChartTooltip 
-                        content={<ChartTooltipContent />}
+                        content={
+                          <ChartTooltipContent 
+                            formatter={(value, name) => [`${value} views`, name]}
+                          />
+                        }
                       />
                       <Bar dataKey="count" name="Views" fill="var(--color-pages)" />
                     </BarChart>
