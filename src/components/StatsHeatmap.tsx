@@ -126,7 +126,7 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
 
   // Handle click on exercise to navigate to practice
   const handleExerciseClick = (exerciseId: string) => {
-    navigate(`/dashboard/exercises/${exerciseId}`);
+    navigate(`/dashboard/exercises`);
   };
   return <Card className="col-span-full animate-fade-in shadow-sm">
       <CardHeader className="pb-2">
