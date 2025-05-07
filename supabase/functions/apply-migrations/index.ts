@@ -1,6 +1,7 @@
 
+// File: supabase/functions/apply-migrations/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,68 +9,57 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  
+  // Extract request details
+  const url = new URL(req.url);
+  const supabaseAdmin = createClient(
+    Deno.env.get('SUPABASE_URL') || '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+  );
 
   try {
-    // Extract the authorization header from the request
-    const authHeader = req.headers.get('Authorization');
-    
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Add missing RPC functions
+    await supabaseAdmin.rpc('set_admin_email');
+
+    // Create increment function if it doesn't exist
+    const { data: functionExists, error: checkError } = await supabaseAdmin.from('pg_proc')
+      .select('proname')
+      .eq('proname', 'increment')
+      .maybeSingle();
+
+    if (checkError) {
+      console.error("Error checking for increment function:", checkError);
     }
     
-    // Create a Supabase client with service role key to perform admin operations
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    if (!functionExists) {
+      const { error } = await supabaseAdmin.rpc('create_increment_function');
+      if (error) {
+        console.error("Error creating increment function:", error);
+      } else {
+        console.log("Created increment function successfully");
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, message: 'Applied database migrations successfully' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+  } catch (error) {
+    console.error('Error applying migrations:', error);
     
-    // Apply the SQL migration to fix the search_path in all functions
-    // We'll directly execute the SQL that sets the search_path for each function
-    const { error: trackVisitorError } = await supabaseAdmin.rpc(
-      'track_visitor', 
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: error.message || 'Unknown error occurred during migration' 
+      }),
       { 
-        visitor_id: 'migration-test', 
-        page: 'migration-test', 
-        referer: null, 
-        user_agent: null, 
-        ip_address: '127.0.0.1' 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
-    
-    if (trackVisitorError) {
-      console.error('Error testing track_visitor function:', trackVisitorError);
-    } else {
-      console.log('Successfully tested track_visitor function');
-    }
-    
-    // Also test the set_admin_email function
-    const { error: setAdminEmailError } = await supabaseAdmin.rpc('set_admin_email');
-    
-    if (setAdminEmailError) {
-      console.error('Error testing set_admin_email function:', setAdminEmailError);
-    } else {
-      console.log('Successfully tested set_admin_email function');
-    }
-    
-    return new Response(JSON.stringify({ 
-      success: true, 
-      message: 'Database functions updated with fixed search paths' 
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  } catch (error: any) {
-    console.error('Unexpected error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
   }
 });

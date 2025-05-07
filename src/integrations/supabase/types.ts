@@ -241,6 +241,7 @@ export type Database = {
           created_at: string
           id: string
           learning_languages: string[]
+          reading_analyses_count: number
           selected_language: string
         }
         Insert: {
@@ -248,6 +249,7 @@ export type Database = {
           created_at?: string
           id: string
           learning_languages?: string[]
+          reading_analyses_count?: number
           selected_language?: string
         }
         Update: {
@@ -255,9 +257,42 @@ export type Database = {
           created_at?: string
           id?: string
           learning_languages?: string[]
+          reading_analyses_count?: number
           selected_language?: string
         }
         Relationships: []
+      }
+      reading_analyses: {
+        Row: {
+          content: Json
+          created_at: string
+          exercise_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content: Json
+          created_at?: string
+          exercise_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          exercise_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_analyses_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscribers: {
         Row: {

@@ -30,6 +30,7 @@ interface ExerciseContextProps {
   filterExercisesByLanguage: (language: Language) => Exercise[];
   moveExerciseToDirectory: (exerciseId: string, directoryId: string | null) => Promise<void>;
   copyDefaultExercise: (defaultExerciseId: string) => Promise<Exercise>;
+  hasReadingAnalysis: (exerciseId: string) => Promise<boolean>;
   loading: boolean;
   defaultExercisesLoading: boolean;
   canCreateMore: boolean;
@@ -329,6 +330,29 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return exercises.filter(ex => ex.language === language);
   };
 
+  // Add a new function to check if an exercise has a reading analysis
+  const hasReadingAnalysis = async (exerciseId: string): Promise<boolean> => {
+    if (!user) return false;
+    
+    try {
+      const { data, error, count } = await supabase
+        .from('reading_analyses')
+        .select('id', { count: 'exact' })
+        .eq('exercise_id', exerciseId)
+        .eq('user_id', user.id);
+        
+      if (error) {
+        console.error('Error checking reading analysis:', error);
+        return false;
+      }
+      
+      return count ? count > 0 : false;
+    } catch (error) {
+      console.error('Error in hasReadingAnalysis:', error);
+      return false;
+    }
+  };
+
   const value = {
     exercises,
     selectedExercise,
@@ -341,6 +365,7 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     filterExercisesByLanguage,
     moveExerciseToDirectory,
     copyDefaultExercise,
+    hasReadingAnalysis,
     loading,
     defaultExercisesLoading,
     canCreateMore,
