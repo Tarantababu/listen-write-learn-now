@@ -42,7 +42,7 @@ const AuthenticatedApp: React.FC = () => {
             <VocabularyProvider>
               <TooltipProvider>
                 <Toaster />
-                <Sonner position="top-center" />
+                <Sonner position="bottom-right" />
                 <div className="min-h-screen flex flex-col">
                   <Routes>
                     {/* Public Routes */}
