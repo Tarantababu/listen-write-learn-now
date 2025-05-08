@@ -14,6 +14,17 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
+// Supported currencies
+const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'TRY'];
+
+// Price mappings in each currency
+const CURRENCY_PRICES = {
+  USD: 499, // $4.99
+  EUR: 499, // €4.99
+  GBP: 399, // £3.99
+  TRY: 14999, // ₺149.99
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,6 +32,20 @@ serve(async (req) => {
 
   try {
     logStep("Function started");
+    
+    // Parse request body for currency preference
+    let currency = 'USD';
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        if (body.currency && SUPPORTED_CURRENCIES.includes(body.currency)) {
+          currency = body.currency;
+          logStep("Using customer-selected currency", { currency });
+        }
+      } catch (e) {
+        logStep("No currency specified or invalid JSON", { error: e.message });
+      }
+    }
 
     // Get Stripe key
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -59,6 +84,9 @@ serve(async (req) => {
       logStep("Found existing customer", { customerId });
     }
 
+    // Get price for the selected currency
+    const unitAmount = CURRENCY_PRICES[currency] || CURRENCY_PRICES.USD;
+
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -66,12 +94,12 @@ serve(async (req) => {
       line_items: [
         {
           price_data: {
-            currency: "usd",
+            currency: currency.toLowerCase(),
             product_data: {
               name: "ListenWriteLearn Premium",
               description: "Monthly subscription with full access to all features",
             },
-            unit_amount: 499, // $4.99 in cents
+            unit_amount: unitAmount,
             recurring: {
               interval: "month",
             },
@@ -87,7 +115,7 @@ serve(async (req) => {
       cancel_url: `${req.headers.get("origin")}/dashboard?subscription=canceled`,
     });
 
-    logStep("Checkout session created", { sessionId: session.id });
+    logStep("Checkout session created", { sessionId: session.id, currency });
 
     // Use service role for secure write operations
     const supabaseService = createClient(

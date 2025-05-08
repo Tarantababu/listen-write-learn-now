@@ -1,9 +1,13 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { SampleDictationModal } from './SampleDictationModal';
+import { FcGoogle } from 'react-icons/fc';
+import { supabase } from '@/integrations/supabase/client';
+
 const transitionVariants = {
   item: {
     hidden: {
@@ -23,11 +27,33 @@ const transitionVariants = {
     }
   }
 };
+
 export function Hero() {
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
   const handleOpenSample = () => {
     setSampleModalOpen(true);
   };
+  
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth-callback`,
+        },
+      });
+
+      if (error) {
+        console.error('Error with Google auth:', error.message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   return <section className="relative pt-24 md:pt-36">
       <div aria-hidden className="z-[2] absolute inset-0 pointer-events-none isolate opacity-50 contain-strict hidden lg:block">
         <div className="w-[35rem] h-[80rem] -translate-y-[350px] absolute left-0 top-0 -rotate-45 rounded-full bg-[radial-gradient(68.54%_68.72%_at_55.02%_31.46%,hsla(0,0%,85%,.08)_0,hsla(0,0%,55%,.02)_50%,hsla(0,0%,45%,0)_80%)]" />
@@ -98,6 +124,20 @@ export function Hero() {
                 </Link>
               </Button>
             </div>
+            
+            <div className="bg-foreground/10 rounded-[14px] border p-0.5">
+              <Button 
+                onClick={handleGoogleSignIn} 
+                variant="outline" 
+                size="lg" 
+                className="rounded-xl px-5 flex items-center gap-2"
+                disabled={isLoading}
+              >
+                <FcGoogle className="h-5 w-5" />
+                <span className="text-nowrap">Continue with Google</span>
+              </Button>
+            </div>
+            
             <Button variant="outline" size="lg" className="rounded-xl px-5" onClick={handleOpenSample}>
               <span className="text-nowrap">Try a Sample</span>
             </Button>

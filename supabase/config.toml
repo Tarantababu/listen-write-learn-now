@@ -5,9 +5,24 @@ project_id = "kmpghammoxblhacndimq"
 enabled = true
 port = 54321
 schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
 
 [db]
 port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[realtime]
+enabled = true
+ip_version = "IPv6"
 
 [studio]
 enabled = true
@@ -20,12 +35,13 @@ port = 54324
 
 [auth]
 enabled = true
-port = 9999
+port = 54325
 
 [storage]
 enabled = true
 
-[edge-functions]
 [functions]
-[functions.generate-vocabulary-info]
-verify_jwt = true
+enabled = true
+
+[functions.stripe-webhook]
+verify_jwt = false

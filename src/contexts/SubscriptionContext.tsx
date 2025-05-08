@@ -21,7 +21,7 @@ interface SubscriptionState {
 interface SubscriptionContextProps {
   subscription: SubscriptionState;
   checkSubscription: () => Promise<void>;
-  createCheckoutSession: () => Promise<string | null>;
+  createCheckoutSession: (currency?: string) => Promise<string | null>;
   openCustomerPortal: () => Promise<string | null>;
 }
 
@@ -124,10 +124,14 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   // Create a Stripe checkout session
-  const createCheckoutSession = async (): Promise<string | null> => {
+  const createCheckoutSession = async (currency?: string): Promise<string | null> => {
     try {
       setSubscription(prev => ({ ...prev, error: null }));
-      const { data, error } = await supabase.functions.invoke('create-checkout');
+      
+      const payload = currency ? { currency } : {};
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: payload
+      });
 
       if (error) {
         console.error('Error creating checkout session:', error);
