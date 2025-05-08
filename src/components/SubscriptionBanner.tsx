@@ -5,9 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Crown, X } from 'lucide-react';
 import { useLocalStorage } from 'react-use';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { formatPrice } from '@/lib/stripe';
 
 const SubscriptionBanner: React.FC = () => {
   const [dismissed, setDismissed] = useLocalStorage('subscription-banner-dismissed', false);
+  const { selectedCurrency } = useSubscription();
 
   if (dismissed) {
     return null;
@@ -29,7 +32,7 @@ const SubscriptionBanner: React.FC = () => {
         <div>
           <h3 className="font-medium">Upgrade to Premium</h3>
           <p className="text-sm text-muted-foreground">
-            Get unlimited exercises and advanced features with a 7-day free trial.
+            Get unlimited exercises and advanced features. Plans from {formatPrice(4.99, selectedCurrency)}/month with a 7-day free trial.
           </p>
         </div>
         <Button 

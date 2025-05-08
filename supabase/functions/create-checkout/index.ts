@@ -14,6 +14,40 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
+// Subscription plan definitions
+const PLANS = {
+  monthly: {
+    name: "Monthly Premium",
+    description: "Full access, cancel anytime",
+    unit_amount: 499, // $4.99
+    interval: "month" as const,
+    interval_count: 1,
+    trial_period_days: 7,
+  },
+  quarterly: {
+    name: "Quarterly Premium",
+    description: "Save 13% vs monthly",
+    unit_amount: 1299, // $12.99
+    interval: "month" as const,
+    interval_count: 3,
+    trial_period_days: 7,
+  },
+  annual: {
+    name: "Annual Premium",
+    description: "Save 25%, billed annually",
+    unit_amount: 4499, // $44.99
+    interval: "year" as const,
+    interval_count: 1,
+    trial_period_days: 7,
+  },
+  lifetime: {
+    name: "Lifetime Access",
+    description: "Pay once, get lifetime access to all current & future features",
+    unit_amount: 11999, // $119.99
+    isOneTime: true,
+  }
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,6 +55,13 @@ serve(async (req) => {
 
   try {
     logStep("Function started");
+
+    // Parse request body
+    const requestData = await req.json().catch(() => ({}));
+    const planId = requestData.planId || 'monthly';
+    const currency = requestData.currency || 'usd';
+    
+    logStep("Request data", { planId, currency });
 
     // Get Stripe key
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -59,35 +100,79 @@ serve(async (req) => {
       logStep("Found existing customer", { customerId });
     }
 
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      customer_email: customerId ? undefined : user.email,
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: "ListenWriteLearn Premium",
-              description: "Monthly subscription with full access to all features",
-            },
-            unit_amount: 499, // $4.99 in cents
-            recurring: {
-              interval: "month",
-            },
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "subscription",
-      subscription_data: {
-        trial_period_days: 7,
-      },
-      success_url: `${req.headers.get("origin")}/dashboard?subscription=success`,
-      cancel_url: `${req.headers.get("origin")}/dashboard?subscription=canceled`,
-    });
+    // Get selected plan
+    const plan = PLANS[planId as keyof typeof PLANS];
+    if (!plan) throw new Error(`Invalid plan ID: ${planId}`);
+    logStep("Plan selected", { plan: planId });
 
-    logStep("Checkout session created", { sessionId: session.id });
+    // Create checkout session based on plan type
+    let session;
+    
+    if (plan.isOneTime) {
+      // Create one-time payment session for lifetime plan
+      session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        customer_email: customerId ? undefined : user.email,
+        line_items: [
+          {
+            price_data: {
+              currency: currency.toLowerCase(),
+              product_data: {
+                name: plan.name,
+                description: plan.description,
+              },
+              unit_amount: plan.unit_amount,
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: `${req.headers.get("origin")}/dashboard?subscription=success&plan=${planId}`,
+        cancel_url: `${req.headers.get("origin")}/dashboard?subscription=canceled`,
+      });
+      
+      logStep("One-time payment checkout session created", { 
+        sessionId: session.id,
+        planId,
+        mode: "payment" 
+      });
+    } else {
+      // Create subscription session for recurring plans
+      session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        customer_email: customerId ? undefined : user.email,
+        line_items: [
+          {
+            price_data: {
+              currency: currency.toLowerCase(),
+              product_data: {
+                name: plan.name,
+                description: plan.description,
+              },
+              unit_amount: plan.unit_amount,
+              recurring: {
+                interval: plan.interval,
+                interval_count: plan.interval_count,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "subscription",
+        subscription_data: {
+          trial_period_days: plan.trial_period_days,
+        },
+        success_url: `${req.headers.get("origin")}/dashboard?subscription=success&plan=${planId}`,
+        cancel_url: `${req.headers.get("origin")}/dashboard?subscription=canceled`,
+      });
+      
+      logStep("Subscription checkout session created", { 
+        sessionId: session.id, 
+        planId,
+        trialDays: plan.trial_period_days,
+        mode: "subscription"
+      });
+    }
 
     // Use service role for secure write operations
     const supabaseService = createClient(
@@ -102,10 +187,11 @@ serve(async (req) => {
       user_id: user.id,
       stripe_customer_id: customerId,
       subscription_status: "pending",
+      pending_plan: planId,
       updated_at: new Date().toISOString()
     }, { onConflict: 'email' });
 
-    logStep("Subscriber record updated");
+    logStep("Subscriber record updated with pending plan", { planId });
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

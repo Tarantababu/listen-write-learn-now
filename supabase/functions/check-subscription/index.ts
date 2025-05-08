@@ -113,7 +113,8 @@ serve(async (req) => {
         subscription_status: null,
         trial_end: null,
         subscription_end: null,
-        canceled_at: null
+        canceled_at: null,
+        plan_type: null
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -123,7 +124,25 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    // Check for all subscriptions including canceled ones
+    // First, check for a lifetime access by looking at completed payments
+    const payments = await stripe.paymentIntents.list({
+      customer: customerId,
+      limit: 100,
+    });
+    
+    // Check if any payment has metadata indicating it's a lifetime plan
+    const lifetimePayment = payments.data.find(payment => 
+      payment.status === "succeeded" && 
+      payment.metadata?.plan === "lifetime"
+    );
+    
+    let hasLifetimeAccess = false;
+    if (lifetimePayment) {
+      hasLifetimeAccess = true;
+      logStep("Lifetime access found", { paymentId: lifetimePayment.id });
+    }
+    
+    // Check for active subscriptions
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "all", // Get all subscriptions to check status
@@ -143,17 +162,40 @@ serve(async (req) => {
     // Prioritize active subscriptions over canceled ones
     const subscription = activeSubscription || canceledSubscription;
     
-    const hasActiveSub = Boolean(subscription);
+    const hasActiveSub = Boolean(subscription) || hasLifetimeAccess;
     let subscriptionTier = "free";
     let subscriptionEnd = null;
     let trialEnd = null;
     let subscriptionStatus = null;
     let canceledAt = null;
+    let planType = null;
 
-    if (hasActiveSub && subscription) {
+    if (hasLifetimeAccess) {
+      subscriptionTier = "premium";
+      subscriptionStatus = "lifetime";
+      planType = "lifetime";
+      logStep("User has lifetime access");
+    } else if (hasActiveSub && subscription) {
       subscriptionStatus = subscription.status;
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       subscriptionTier = "premium";
+      
+      // Determine plan type based on interval
+      const item = subscription.items.data[0];
+      if (item.price.recurring) {
+        const interval = item.price.recurring.interval;
+        const intervalCount = item.price.recurring.interval_count || 1;
+        
+        if (interval === "month" && intervalCount === 1) {
+          planType = "monthly";
+        } else if (interval === "month" && intervalCount === 3) {
+          planType = "quarterly";
+        } else if (interval === "year" && intervalCount === 1) {
+          planType = "annual";
+        }
+      }
+      
+      logStep("Plan type determined", { planType });
       
       // Check if subscription has been canceled
       if (subscription.status === "canceled" || subscription.canceled_at) {
@@ -173,7 +215,8 @@ serve(async (req) => {
         status: subscriptionStatus,
         endDate: subscriptionEnd,
         trialEnd,
-        canceledAt
+        canceledAt,
+        planType
       });
     } else {
       logStep("No active subscription found");
@@ -190,6 +233,7 @@ serve(async (req) => {
       trial_end: trialEnd,
       subscription_end: subscriptionEnd,
       canceled_at: canceledAt,
+      plan_type: planType,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'email' });
 
@@ -197,7 +241,8 @@ serve(async (req) => {
       subscribed: hasActiveSub, 
       subscriptionTier, 
       subscriptionStatus,
-      canceledAt
+      canceledAt,
+      planType
     });
     
     return new Response(JSON.stringify({
@@ -206,7 +251,8 @@ serve(async (req) => {
       subscription_status: subscriptionStatus,
       trial_end: trialEnd,
       subscription_end: subscriptionEnd,
-      canceled_at: canceledAt
+      canceled_at: canceledAt,
+      plan_type: planType
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

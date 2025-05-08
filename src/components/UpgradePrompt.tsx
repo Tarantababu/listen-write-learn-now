@@ -4,6 +4,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import { formatPrice } from '@/lib/stripe';
 
 interface UpgradePromptProps {
   title?: string;
@@ -13,10 +15,13 @@ interface UpgradePromptProps {
 
 const UpgradePrompt: React.FC<UpgradePromptProps> = ({
   title = "Upgrade to Premium",
-  message = "Unlock unlimited exercises, vocabulary lists, and more features with our premium subscription.",
+  message,
   showButton = true
 }) => {
   const navigate = useNavigate();
+  const { selectedCurrency } = useSubscription();
+  
+  const defaultMessage = `Unlock unlimited exercises, vocabulary lists, and more features starting at ${formatPrice(4.99, selectedCurrency)}/month with a 7-day free trial.`;
 
   return (
     <Card className="border-primary/20 bg-primary/5">
@@ -27,7 +32,7 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p>{message}</p>
+        <p>{message || defaultMessage}</p>
       </CardContent>
       {showButton && (
         <CardFooter>
@@ -36,7 +41,7 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({
             className="w-full bg-primary"
           >
             <Sparkles className="h-4 w-4 mr-2" />
-            Upgrade Now
+            View Plans
           </Button>
         </CardFooter>
       )}

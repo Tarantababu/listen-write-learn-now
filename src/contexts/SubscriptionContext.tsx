@@ -5,12 +5,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { SUBSCRIPTION_PLANS, AVAILABLE_CURRENCIES, DEFAULT_CURRENCY } from '@/lib/stripe';
 
 interface SubscriptionState {
   isLoading: boolean;
   isSubscribed: boolean;
   subscriptionTier: string;
   subscriptionStatus: string | null;
+  planType: string | null;
   trialEnd: Date | null;
   subscriptionEnd: Date | null;
   canceledAt: Date | null;
@@ -20,8 +22,10 @@ interface SubscriptionState {
 
 interface SubscriptionContextProps {
   subscription: SubscriptionState;
+  selectedCurrency: string;
+  setSelectedCurrency: (currency: string) => void;
   checkSubscription: () => Promise<void>;
-  createCheckoutSession: () => Promise<string | null>;
+  createCheckoutSession: (planId: string) => Promise<string | null>;
   openCustomerPortal: () => Promise<string | null>;
 }
 
@@ -49,6 +53,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     isSubscribed: false,
     subscriptionTier: 'free',
     subscriptionStatus: null,
+    planType: null,
     trialEnd: null,
     subscriptionEnd: null,
     canceledAt: null,
@@ -57,6 +62,38 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   });
   
   const [portalSetupError, setPortalSetupError] = useState<PortalErrorResponse | null>(null);
+  
+  // Currency selection state
+  const [selectedCurrency, setSelectedCurrency] = useState(() => {
+    // Try to get from localStorage
+    const saved = localStorage.getItem('preferred_currency');
+    if (saved) return saved;
+    
+    // Try to detect from browser
+    try {
+      const browserLocale = navigator.language;
+      if (browserLocale.includes('en-US')) return 'USD';
+      if (browserLocale.includes('en-GB')) return 'GBP';
+      if (browserLocale.includes('de') || browserLocale.includes('fr') || browserLocale.includes('it') || browserLocale.includes('es')) return 'EUR';
+      if (browserLocale.includes('tr')) return 'TRY';
+      if (browserLocale.includes('ja')) return 'JPY';
+      if (browserLocale.includes('en-CA')) return 'CAD';
+      if (browserLocale.includes('en-AU')) return 'AUD';
+      if (browserLocale.includes('pt-BR')) return 'BRL';
+      if (browserLocale.includes('es-MX')) return 'MXN';
+      if (browserLocale.includes('hi') || browserLocale.includes('en-IN')) return 'INR';
+    } catch (e) {
+      console.error("Error detecting locale:", e);
+    }
+    
+    // Default fallback
+    return 'USD';
+  });
+
+  // Save currency preference to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('preferred_currency', selectedCurrency);
+  }, [selectedCurrency]);
 
   // Check subscription status when user changes
   useEffect(() => {
@@ -69,9 +106,47 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         isSubscribed: false,
         subscriptionTier: 'free',
         subscriptionStatus: null,
+        planType: null,
         error: null
       }));
     }
+  }, [user]);
+
+  // Check for URL query params
+  useEffect(() => {
+    const handleSubscriptionCallback = () => {
+      const queryParams = new URLSearchParams(window.location.search);
+      const subscriptionStatus = queryParams.get('subscription');
+      const planType = queryParams.get('plan');
+      
+      if (subscriptionStatus === 'success') {
+        toast.success('Subscription process completed successfully!');
+        checkSubscription();
+        
+        // Clear the URL parameter
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      } else if (subscriptionStatus === 'canceled') {
+        toast.info('Subscription process was canceled');
+        
+        // Clear the URL parameter
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    };
+
+    handleSubscriptionCallback();
+  }, []);
+
+  // Auto-refresh subscription status
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (user) {
+        checkSubscription();
+      }
+    }, 60000); // Check every minute
+    
+    return () => clearInterval(interval);
   }, [user]);
 
   // Check subscription from Stripe
@@ -100,6 +175,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         isSubscribed: data?.subscribed || false,
         subscriptionTier: data?.subscription_tier || 'free',
         subscriptionStatus: data?.subscription_status,
+        planType: data?.plan_type,
         trialEnd: data?.trial_end ? new Date(data?.trial_end) : null,
         subscriptionEnd: data?.subscription_end ? new Date(data?.subscription_end) : null,
         canceledAt: data?.canceled_at ? new Date(data?.canceled_at) : null,
@@ -111,6 +187,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         subscribed: data?.subscribed,
         tier: data?.subscription_tier,
         status: data?.subscription_status,
+        planType: data?.plan_type,
         canceledAt: data?.canceled_at ? new Date(data?.canceled_at) : 'not canceled'
       });
     } catch (error) {
@@ -124,10 +201,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   // Create a Stripe checkout session
-  const createCheckoutSession = async (): Promise<string | null> => {
+  const createCheckoutSession = async (planId: string): Promise<string | null> => {
     try {
       setSubscription(prev => ({ ...prev, error: null }));
-      const { data, error } = await supabase.functions.invoke('create-checkout');
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: {
+          planId: planId,
+          currency: selectedCurrency
+        },
+      });
 
       if (error) {
         console.error('Error creating checkout session:', error);
@@ -196,6 +278,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const value = {
     subscription,
+    selectedCurrency,
+    setSelectedCurrency,
     checkSubscription,
     createCheckoutSession,
     openCustomerPortal,
