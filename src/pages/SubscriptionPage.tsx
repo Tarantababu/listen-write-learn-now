@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -228,7 +227,7 @@ const SubscriptionPage: React.FC = () => {
           
           <div className="mt-8 text-center text-sm text-muted-foreground">
             <p>All plans include a 7-day free trial. You won't be charged until the trial ends.</p>
-            <p className="mt-2">Questions about our plans? <a href="mailto:support@lwlnow.com" className="text-primary underline">Contact support</a></p>
+            <p className="mt-2">Questions about our plans? <a href="mailto:support@lwlnow.com" className="text-primary underline">Contact support@lwlnow.com</a></p>
           </div>
         </TabsContent>
         
@@ -637,7 +636,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
   const trialDays = 'trialDays' in plan ? plan.trialDays : undefined;
   
   return (
-    <Card className={`border-2 ${featured 
+    <Card className={`border-2 flex flex-col ${featured 
       ? 'border-primary shadow-lg relative overflow-hidden' 
       : isActive 
         ? 'border-green-400/50 shadow-md' 
@@ -666,7 +665,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
         <CardDescription>{plan.tagline}</CardDescription>
       </CardHeader>
       
-      <CardContent>
+      <CardContent className="flex-grow">
         <div className="space-y-4">
           <div>
             <div className="flex items-baseline">
@@ -702,7 +701,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
         </div>
       </CardContent>
       
-      <CardFooter className="flex justify-center">
+      <CardFooter className="mt-auto">
         <Button 
           className={`w-full h-12 ${featured 
             ? 'bg-gradient-to-r from-primary to-accent hover:opacity-90' 
