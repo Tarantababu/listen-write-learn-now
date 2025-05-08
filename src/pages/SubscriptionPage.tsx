@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,7 +14,8 @@ import {
   SUBSCRIPTION_PLANS, 
   AVAILABLE_CURRENCIES,
   formatPrice,
-  convertPrice
+  convertPrice,
+  PlanType
 } from '@/lib/stripe';
 import {
   Select,
@@ -584,7 +584,7 @@ const SubscriptionPage: React.FC = () => {
 
 // Plan Card Component
 interface PlanCardProps {
-  plan: typeof SUBSCRIPTION_PLANS.MONTHLY;
+  plan: PlanType;
   currency: string;
   currentPlan: string | null;
   onSubscribe: () => void;
@@ -602,6 +602,9 @@ const PlanCard: React.FC<PlanCardProps> = ({
 }) => {
   const isActive = currentPlan === plan.id;
   const convertedPrice = convertPrice(plan.price, currency);
+  const isOneTime = 'oneTime' in plan && plan.oneTime;
+  const billing = 'billing' in plan ? plan.billing : undefined;
+  const trialDays = 'trialDays' in plan ? plan.trialDays : undefined;
   
   return (
     <Card className={`border-2 ${featured 
@@ -641,7 +644,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
                 {formatPrice(convertedPrice, currency)}
               </span>
               <span className="text-muted-foreground ml-2">
-                {plan.oneTime ? 'one-time' : `/${plan.billing}`}
+                {isOneTime ? 'one-time' : `/${billing}`}
               </span>
             </div>
             
@@ -651,9 +654,9 @@ const PlanCard: React.FC<PlanCardProps> = ({
               </p>
             )}
             
-            {(!plan.oneTime && plan.trialDays) && (
+            {(!isOneTime && trialDays) && (
               <p className="text-sm text-muted-foreground mt-1">
-                Includes {plan.trialDays}-day free trial
+                Includes {trialDays}-day free trial
               </p>
             )}
           </div>
@@ -685,7 +688,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
           ) : isActive ? (
             'Current Plan'
           ) : (
-            plan.oneTime ? 'Buy Lifetime Access' : 'Subscribe'
+            isOneTime ? 'Buy Lifetime Access' : 'Subscribe'
           )}
         </Button>
       </CardFooter>

@@ -2,7 +2,35 @@
 // Stripe publishable key configuration
 export const STRIPE_PUBLISHABLE_KEY = 'pk_test_51RKPA54FwSGFv1ZusBcDRfY0vPrfO78PyVO4sA3qCnsInzM06FKy77aVspFV35ZUa2nOXgxTMV67Riaol31nfZUw00Pr8pFzWd';
 
-export const SUBSCRIPTION_PLANS = {
+// Define a common interface for all plans
+interface BasePlanType {
+  id: string;
+  name: string;
+  price: number;
+  savePercent: number;
+  features: string[];
+  emoji: string;
+  tagline: string;
+}
+
+// Interface for recurring subscription plans
+interface SubscriptionPlanType extends BasePlanType {
+  trialDays: number;
+  billing: string;
+  oneTime?: never; // Explicitly prevent oneTime property
+}
+
+// Interface for one-time payment plans
+interface OneTimePlanType extends BasePlanType {
+  oneTime: boolean;
+  trialDays?: never; // Explicitly prevent trialDays property
+  billing?: never; // Explicitly prevent billing property
+}
+
+// Union type to accommodate both plan types
+export type PlanType = SubscriptionPlanType | OneTimePlanType;
+
+export const SUBSCRIPTION_PLANS: Record<string, PlanType> = {
   MONTHLY: {
     id: 'monthly',
     name: 'Monthly',
