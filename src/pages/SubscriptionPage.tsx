@@ -7,8 +7,6 @@ import { Loader2, Check, X, CreditCard, Shield, CalendarClock, Award, AlertTrian
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
 import { trackButtonClick } from '@/utils/visitorTracking';
-import { LocalizedPricing } from '@/components/subscription/LocalizedPricing';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const SubscriptionPage: React.FC = () => {
   const { subscription, checkSubscription, createCheckoutSession, openCustomerPortal } = useSubscription();
@@ -161,235 +159,230 @@ const SubscriptionPage: React.FC = () => {
       </div>
 
       <div className="space-y-8">
-        <Tabs defaultValue={subscription.isSubscribed ? "current" : "plans"} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="current">Current Plan</TabsTrigger>
-            <TabsTrigger value="plans">Available Plans</TabsTrigger>
-          </TabsList>
+        {/* Current plan info */}
+        <Card className="border-2 shadow-lg overflow-hidden relative">
+          {subscription.isSubscribed && !isSubscriptionCanceled && (
+            <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-4 py-1 rounded-bl-md">
+              <span className="flex items-center text-xs font-semibold">
+                <Shield className="mr-1 h-3 w-3" /> ACTIVE
+              </span>
+            </div>
+          )}
           
-          <TabsContent value="current">
-            {/* Current plan info */}
-            <Card className="border-2 shadow-lg overflow-hidden relative">
-              {subscription.isSubscribed && !isSubscriptionCanceled && (
-                <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-4 py-1 rounded-bl-md">
-                  <span className="flex items-center text-xs font-semibold">
-                    <Shield className="mr-1 h-3 w-3" /> ACTIVE
-                  </span>
+          {isSubscriptionCanceled && hasRemainingAccess && (
+            <div className="absolute top-0 right-0 bg-amber-500 text-white px-4 py-1 rounded-bl-md">
+              <span className="flex items-center text-xs font-semibold">
+                <Ban className="mr-1 h-3 w-3" /> CANCELED
+              </span>
+            </div>
+          )}
+          
+          <CardHeader>
+            <CardTitle>
+              {subscription.isSubscribed 
+                ? 'Premium Plan' 
+                : 'Free Plan'}
+            </CardTitle>
+            <CardDescription>
+              {isSubscriptionActive 
+                ? subscription.subscriptionStatus === 'trialing' 
+                  ? 'You are currently on a free trial' 
+                  : 'You have access to all premium features'
+                : isSubscriptionCanceled && hasRemainingAccess
+                  ? 'Your subscription was canceled but access remains until the end of the billing period'
+                  : 'Limited access to features'}
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent>
+            {subscription.isSubscribed ? (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-medium">$4.99 / month</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {subscription.subscriptionStatus === 'trialing'
+                      ? 'Your card will be charged after the trial ends'
+                      : isSubscriptionCanceled
+                        ? 'Your subscription has been canceled'
+                        : 'Monthly subscription'}
+                  </p>
                 </div>
-              )}
-              
-              {isSubscriptionCanceled && hasRemainingAccess && (
-                <div className="absolute top-0 right-0 bg-amber-500 text-white px-4 py-1 rounded-bl-md">
-                  <span className="flex items-center text-xs font-semibold">
-                    <Ban className="mr-1 h-3 w-3" /> CANCELED
-                  </span>
-                </div>
-              )}
-              
-              <CardHeader>
-                <CardTitle>
-                  {subscription.isSubscribed 
-                    ? 'Premium Plan' 
-                    : 'Free Plan'}
-                </CardTitle>
-                <CardDescription>
-                  {isSubscriptionActive 
-                    ? subscription.subscriptionStatus === 'trialing' 
-                      ? 'You are currently on a free trial' 
-                      : 'You have access to all premium features'
-                    : isSubscriptionCanceled && hasRemainingAccess
-                      ? 'Your subscription was canceled but access remains until the end of the billing period'
-                      : 'Limited access to features'}
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent>
-                {subscription.isSubscribed ? (
-                  <div className="space-y-4">
+                
+                {subscription.subscriptionStatus === 'trialing' && subscription.trialEnd && (
+                  <div className="flex items-start space-x-2 p-3 bg-muted/50 rounded-md">
+                    <CalendarClock className="h-5 w-5 text-primary mt-0.5" />
                     <div>
-                      <h3 className="font-medium">$4.99 / month</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {subscription.subscriptionStatus === 'trialing'
-                          ? 'Your card will be charged after the trial ends'
-                          : isSubscriptionCanceled
-                            ? 'Your subscription has been canceled'
-                            : 'Monthly subscription'}
+                      <p className="font-medium">Free Trial Period</p>
+                      <p className="text-sm">
+                        Your free trial ends {formatDistanceToNow(subscription.trialEnd, { addSuffix: true })}
+                        <br />
+                        <span className="text-xs text-muted-foreground">
+                          {format(subscription.trialEnd, 'PPP')}
+                        </span>
                       </p>
-                    </div>
-                    
-                    {subscription.subscriptionStatus === 'trialing' && subscription.trialEnd && (
-                      <div className="flex items-start space-x-2 p-3 bg-muted/50 rounded-md">
-                        <CalendarClock className="h-5 w-5 text-primary mt-0.5" />
-                        <div>
-                          <p className="font-medium">Free Trial Period</p>
-                          <p className="text-sm">
-                            Your free trial ends {formatDistanceToNow(subscription.trialEnd, { addSuffix: true })}
-                            <br />
-                            <span className="text-xs text-muted-foreground">
-                              {format(subscription.trialEnd, 'PPP')}
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {isSubscriptionCanceled && subscription.canceledAt && (
-                      <div className="flex items-start space-x-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-md border border-amber-200 dark:border-amber-800">
-                        <Ban className="h-5 w-5 text-amber-500 dark:text-amber-400 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-amber-700 dark:text-amber-400">Subscription Canceled</p>
-                          <p className="text-sm dark:text-amber-300/80">
-                            Canceled on {format(subscription.canceledAt, 'PPP')}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {subscription.subscriptionEnd && (
-                      <div className="flex items-start space-x-2 p-3 bg-muted/50 rounded-md">
-                        <CalendarClock className="h-5 w-5 text-primary mt-0.5" />
-                        <div>
-                          <p className="font-medium">
-                            {isSubscriptionCanceled 
-                              ? 'Access ends on' 
-                              : 'Next billing date'}
-                          </p>
-                          <p className="text-sm">
-                            {format(subscription.subscriptionEnd, 'PPP')}
-                            {isSubscriptionCanceled && (
-                              <span className="block text-xs text-muted-foreground mt-1">
-                                You will have premium access until this date
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="space-y-2 pt-2">
-                      <h4 className="font-medium flex items-center">
-                        <Award className="mr-2 h-4 w-4 text-primary" />
-                        Premium Features
-                      </h4>
-                      <ul className="space-y-1">
-                        <li className="flex items-center">
-                          <Check className="h-4 w-4 text-green-500 mr-2" />
-                          <span>Unlimited Exercises</span>
-                        </li>
-                        <li className="flex items-center">
-                          <Check className="h-4 w-4 text-green-500 mr-2" />
-                          <span>Progress Tracking</span>
-                        </li>
-                        <li className="flex items-center">
-                          <Check className="h-4 w-4 text-green-500 mr-2" />
-                          <span>AI created Text-to-Speech</span>
-                        </li>
-                        <li className="flex items-center">
-                          <Check className="h-4 w-4 text-green-500 mr-2" />
-                          <span>AI powered vocabulary</span>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="font-medium">Free</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Limited access to features
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-2 pt-2">
-                      <h4 className="font-medium">Features</h4>
-                      <ul className="space-y-1">
-                        <li className="flex items-center">
-                          <Check className="h-4 w-4 text-green-500 mr-2" />
-                          <span>3 exercises</span>
-                        </li>
-                        <li className="flex items-center">
-                          <Check className="h-4 w-4 text-green-500 mr-2" />
-                          <span>5 vocabulary</span>
-                        </li>
-                        <li className="flex items-center">
-                          <Check className="h-4 w-4 text-green-500 mr-2" />
-                          <span>Progress Tracking</span>
-                        </li>
-                        <li className="flex items-center">
-                          <X className="h-4 w-4 text-red-500 mr-2" />
-                          <span className="text-muted-foreground">AI created Text-to-Speech</span>
-                        </li>
-                        <li className="flex items-center">
-                          <X className="h-4 w-4 text-red-500 mr-2" />
-                          <span className="text-muted-foreground">AI powered vocabulary</span>
-                        </li>
-                      </ul>
                     </div>
                   </div>
                 )}
-              </CardContent>
-              
-              <CardFooter className="flex flex-col space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
-                {subscription.isSubscribed ? (
-                  <Button 
-                    onClick={handleManageSubscription} 
-                    variant="outline" 
-                    className="w-full"
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>{isSubscriptionCanceled ? 'Reactivate Subscription' : 'Manage Subscription'}</>
-                    )}
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      document.querySelector('[data-value="plans"]')?.click();
-                    }}
-                    className="w-full"
-                  >
-                    View Subscription Options
-                  </Button>
+                
+                {isSubscriptionCanceled && subscription.canceledAt && (
+                  <div className="flex items-start space-x-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-md border border-amber-200 dark:border-amber-800">
+                    <Ban className="h-5 w-5 text-amber-500 dark:text-amber-400 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-amber-700 dark:text-amber-400">Subscription Canceled</p>
+                      <p className="text-sm dark:text-amber-300/80">
+                        Canceled on {format(subscription.canceledAt, 'PPP')}
+                      </p>
+                    </div>
+                  </div>
                 )}
-                <Button
-                  onClick={checkSubscription}
-                  variant="ghost"
-                  className="w-full"
-                  disabled={subscription.isLoading}
-                >
-                  {subscription.isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Refreshing...
-                    </>
-                  ) : (
-                    <>Refresh Status</>
-                  )}
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
+                
+                {subscription.subscriptionEnd && (
+                  <div className="flex items-start space-x-2 p-3 bg-muted/50 rounded-md">
+                    <CalendarClock className="h-5 w-5 text-primary mt-0.5" />
+                    <div>
+                      <p className="font-medium">
+                        {isSubscriptionCanceled 
+                          ? 'Access ends on' 
+                          : 'Next billing date'}
+                      </p>
+                      <p className="text-sm">
+                        {format(subscription.subscriptionEnd, 'PPP')}
+                        {isSubscriptionCanceled && (
+                          <span className="block text-xs text-muted-foreground mt-1">
+                            You will have premium access until this date
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="space-y-2 pt-2">
+                  <h4 className="font-medium flex items-center">
+                    <Award className="mr-2 h-4 w-4 text-primary" />
+                    Premium Features
+                  </h4>
+                  <ul className="space-y-1">
+                    <li className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-2" />
+                      <span>Unlimited Exercises</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-2" />
+                      <span>Progress Tracking</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-2" />
+                      <span>AI created Text-to-Speech</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-2" />
+                      <span>AI powered vocabulary</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-medium">Free</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Limited access to features
+                  </p>
+                </div>
+                
+                <div className="space-y-2 pt-2">
+                  <h4 className="font-medium">Features</h4>
+                  <ul className="space-y-1">
+                    <li className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-2" />
+                      <span>3 exercises</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-2" />
+                      <span>5 vocabulary</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-2" />
+                      <span>Progress Tracking</span>
+                    </li>
+                    <li className="flex items-center">
+                      <X className="h-4 w-4 text-red-500 mr-2" />
+                      <span className="text-muted-foreground">AI created Text-to-Speech</span>
+                    </li>
+                    <li className="flex items-center">
+                      <X className="h-4 w-4 text-red-500 mr-2" />
+                      <span className="text-muted-foreground">AI powered vocabulary</span>
+                    </li>
+                  </ul>
+                </div>
+                
+                <div className="flex items-start space-x-2 p-3 bg-primary/10 rounded-md">
+                  <Shield className="h-5 w-5 text-primary mt-0.5" />
+                  <div>
+                    <p className="font-medium">Premium Plan - $4.99/mo</p>
+                    <p className="text-sm">
+                      Unlock all features with a 7-day free trial
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
           
-          <TabsContent value="plans">
-            {/* Available plans with localized pricing */}
-            <Card className="border-2 shadow-lg overflow-hidden relative">
-              <CardHeader>
-                <CardTitle>Available Plans</CardTitle>
-                <CardDescription>
-                  Choose a subscription plan that fits your needs
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <LocalizedPricing />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          <CardFooter className="flex flex-col space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
+            {subscription.isSubscribed ? (
+              <Button 
+                onClick={handleManageSubscription} 
+                variant="outline" 
+                className="w-full"
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>{isSubscriptionCanceled ? 'Reactivate Subscription' : 'Manage Subscription'}</>
+                )}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => {
+                  trackButtonClick('subscribe');
+                  handleSubscribe();
+                }}
+                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>Subscribe - 7-day free trial</>
+                )}
+              </Button>
+            )}
+            <Button
+              onClick={checkSubscription}
+              variant="ghost"
+              className="w-full"
+              disabled={subscription.isLoading}
+            >
+              {subscription.isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                <>Refresh Status</>
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
         
         {/* Subscription info */}
         <Card>
@@ -406,11 +399,11 @@ const SubscriptionPage: React.FC = () => {
                   <p className="text-sm text-muted-foreground">Status</p>
                   <p className="font-medium">
                     {isSubscriptionActive ? (
-                      <span className="text-green-600 dark:text-green-500">Active</span>
+                      <span className="text-green-600">Active</span>
                     ) : isSubscriptionCanceled && hasRemainingAccess ? (
-                      <span className="text-amber-600 dark:text-amber-500">Canceled - Access Until {format(subscription.subscriptionEnd!, 'MMM d')}</span>
+                      <span className="text-amber-600">Canceled - Access Until {format(subscription.subscriptionEnd!, 'MMM d')}</span>
                     ) : (
-                      <span className="text-yellow-600 dark:text-yellow-500">Free</span>
+                      <span className="text-yellow-600">Free</span>
                     )}
                   </p>
                 </div>

@@ -11,7 +11,7 @@ import { VocabularyProvider } from './contexts/VocabularyContext';
 import { DirectoryProvider } from './contexts/DirectoryContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import { HelmetProvider } from 'react-helmet-async';
-import { ThemeProvider } from './contexts/ThemeProvider';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 import Layout from "@/components/Layout";
 import Index from "@/pages/Index";
@@ -25,7 +25,6 @@ import TutorialPage from "@/pages/TutorialPage";
 import NotFound from "@/pages/NotFound";
 import LoginPage from "@/pages/LoginPage";
 import SignUpPage from "@/pages/SignUpPage";
-import AuthCallbackPage from "@/pages/AuthCallbackPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -55,7 +54,6 @@ const AuthenticatedApp: React.FC = () => {
                             <Route path="/" element={<Index />} />
                             <Route path="/login" element={<LoginPage />} />
                             <Route path="/signup" element={<SignUpPage />} />
-                            <Route path="/auth-callback" element={<AuthCallbackPage />} />
                             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                             <Route path="/reset-password" element={<ResetPasswordPage />} />
                             <Route path="/privacy-policy" element={<PrivacyPolicy />} />

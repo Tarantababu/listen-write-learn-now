@@ -8,8 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Headphones, Home } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
-import { Separator } from '@/components/ui/separator';
 
 const LoginPage: React.FC = () => {
   const { signIn, user } = useAuth();
@@ -61,74 +59,59 @@ const LoginPage: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <GoogleAuthButton />
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-muted" />
+          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email"
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="border-input focus:border-primary"
+              />
+            </div>
+            <div className="space-y-1 sm:space-y-2">
+              <div className="flex justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link 
+                  to="/forgot-password"
+                  className="text-xs text-primary hover:underline"
+                >
+                  Forgot Password?
+                </Link>
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  Or continue with email
-                </span>
-              </div>
+              <Input 
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="border-input focus:border-primary"
+              />
             </div>
             
-            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-              <div className="space-y-1 sm:space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="border-input focus:border-primary"
-                />
-              </div>
-              <div className="space-y-1 sm:space-y-2">
-                <div className="flex justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link 
-                    to="/forgot-password"
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Forgot Password?
-                  </Link>
-                </div>
-                <Input 
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="border-input focus:border-primary"
-                />
-              </div>
-              
-              {error && (
-                <div className="text-xs sm:text-sm text-destructive">{error}</div>
-              )}
+            {error && (
+              <div className="text-xs sm:text-sm text-destructive">{error}</div>
+            )}
 
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  'Sign In'
-                )}
-              </Button>
-            </form>
-          </div>
+            <Button 
+              type="submit" 
+              className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign In'
+              )}
+            </Button>
+          </form>
         </CardContent>
         <CardFooter className="flex justify-center pt-0 pb-6">
           <p className="text-xs sm:text-sm text-muted-foreground">

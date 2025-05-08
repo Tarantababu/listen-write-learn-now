@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CheckCircle2, Home, Headphones } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 
 const SignUpPage: React.FC = () => {
   const { signUp, user } = useAuth();
@@ -90,75 +89,60 @@ const SignUpPage: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
-              <GoogleAuthButton isSignUp />
-              
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-muted" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">
-                    Or continue with email
-                  </span>
-                </div>
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+              <div className="space-y-1 sm:space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input 
+                  id="email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1 sm:space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input 
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1 sm:space-y-2">
+                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Input 
+                  id="confirm-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
               </div>
               
-              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input 
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
-                  <Input 
-                    id="confirm-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                {error && (
-                  <div className="text-xs sm:text-sm text-destructive">{error}</div>
-                )}
+              {error && (
+                <div className="text-xs sm:text-sm text-destructive">{error}</div>
+              )}
 
-                <Button 
-                  type="submit" 
-                  className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating Account...
-                    </>
-                  ) : (
-                    'Sign Up'
-                  )}
-                </Button>
-              </form>
-            </div>
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  'Sign Up'
+                )}
+              </Button>
+            </form>
           )}
         </CardContent>
         <CardFooter className="flex justify-center pt-0 pb-6">
