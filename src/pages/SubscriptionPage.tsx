@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -227,7 +228,7 @@ const SubscriptionPage: React.FC = () => {
           
           <div className="mt-8 text-center text-sm text-muted-foreground">
             <p>All plans include a 7-day free trial. You won't be charged until the trial ends.</p>
-            <p className="mt-2">Questions about our plans? <a href="mailto:support@example.com" className="text-primary underline">Contact support</a></p>
+            <p className="mt-2">Questions about our plans? <a href="mailto:support@lwlnow.com" className="text-primary underline">Contact support</a></p>
           </div>
         </TabsContent>
         
@@ -369,23 +370,39 @@ const SubscriptionPage: React.FC = () => {
                     <ul className="space-y-1">
                       <li className="flex items-center">
                         <Check className="h-4 w-4 text-green-500 mr-2" />
-                        <span>Unlimited Exercises</span>
+                        <span>Access to all available languages</span>
                       </li>
                       <li className="flex items-center">
                         <Check className="h-4 w-4 text-green-500 mr-2" />
-                        <span>Unlimited Vocabulary Lists</span>
+                        <span>Unlimited exercises</span>
                       </li>
                       <li className="flex items-center">
                         <Check className="h-4 w-4 text-green-500 mr-2" />
-                        <span>Progress Tracking</span>
+                        <span>Unlimited vocabulary lists</span>
                       </li>
                       <li className="flex items-center">
                         <Check className="h-4 w-4 text-green-500 mr-2" />
-                        <span>AI created Text-to-Speech</span>
+                        <span>Edit exercises anytime</span>
                       </li>
                       <li className="flex items-center">
                         <Check className="h-4 w-4 text-green-500 mr-2" />
-                        <span>AI powered vocabulary</span>
+                        <span>Advanced Audio generation for all exercises</span>
+                      </li>
+                      <li className="flex items-center">
+                        <Check className="h-4 w-4 text-green-500 mr-2" />
+                        <span>AI-powered vocabulary card creation</span>
+                      </li>
+                      <li className="flex items-center">
+                        <Check className="h-4 w-4 text-green-500 mr-2" />
+                        <span>Exporting (Audio and Flashcards)</span>
+                      </li>
+                      <li className="flex items-center">
+                        <Check className="h-4 w-4 text-green-500 mr-2" />
+                        <span>Ready-to-use exercises (frequently updated)</span>
+                      </li>
+                      <li className="flex items-center">
+                        <Check className="h-4 w-4 text-green-500 mr-2" />
+                        <span>Unlimited Reading Analysis for each exercise</span>
                       </li>
                     </ul>
                   </div>
@@ -416,11 +433,19 @@ const SubscriptionPage: React.FC = () => {
                       </li>
                       <li className="flex items-center">
                         <X className="h-4 w-4 text-red-500 mr-2" />
-                        <span className="text-muted-foreground">AI created Text-to-Speech</span>
+                        <span className="text-muted-foreground">Advanced Audio generation</span>
                       </li>
                       <li className="flex items-center">
                         <X className="h-4 w-4 text-red-500 mr-2" />
-                        <span className="text-muted-foreground">AI powered vocabulary</span>
+                        <span className="text-muted-foreground">AI-powered vocabulary</span>
+                      </li>
+                      <li className="flex items-center">
+                        <X className="h-4 w-4 text-red-500 mr-2" />
+                        <span className="text-muted-foreground">Unlimited exercises</span>
+                      </li>
+                      <li className="flex items-center">
+                        <X className="h-4 w-4 text-red-500 mr-2" />
+                        <span className="text-muted-foreground">Reading Analysis</span>
                       </li>
                     </ul>
                   </div>
@@ -575,6 +600,11 @@ const SubscriptionPage: React.FC = () => {
                 </p>
               </div>
             </CardContent>
+            <CardFooter>
+              <p className="text-sm text-muted-foreground">
+                Have more questions? Email us at <a href="mailto:support@lwlnow.com" className="text-primary underline">support@lwlnow.com</a>
+              </p>
+            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>
@@ -672,9 +702,9 @@ const PlanCard: React.FC<PlanCardProps> = ({
         </div>
       </CardContent>
       
-      <CardFooter>
+      <CardFooter className="flex justify-center">
         <Button 
-          className={`w-full ${featured 
+          className={`w-full h-12 ${featured 
             ? 'bg-gradient-to-r from-primary to-accent hover:opacity-90' 
             : ''}`}
           disabled={isProcessing || isActive}

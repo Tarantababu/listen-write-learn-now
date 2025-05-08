@@ -39,12 +39,13 @@ export const SUBSCRIPTION_PLANS: Record<string, PlanType> = {
     billing: 'monthly',
     savePercent: 0,
     features: [
+      'Access to all available languages',
       'Unlimited exercises',
       'Unlimited vocabulary lists',
       'Edit exercises anytime',
-      'Text-to-speech for all exercises',
-      'Advanced analytics',
-      'AI-powered vocabulary suggestions'
+      'Advanced Audio generation for all exercises',
+      'AI-powered vocabulary card creation',
+      'Exporting (Audio and Flashcards)'
     ],
     emoji: '🔓',
     tagline: 'Full access, cancel anytime'
@@ -58,7 +59,7 @@ export const SUBSCRIPTION_PLANS: Record<string, PlanType> = {
     savePercent: 13,
     features: [
       'Everything in Monthly',
-      'Priority support',
+      'Ready-to-use exercises (frequently updated)',
       'Save 13% compared to monthly'
     ],
     emoji: '💰',
@@ -73,7 +74,7 @@ export const SUBSCRIPTION_PLANS: Record<string, PlanType> = {
     savePercent: 25,
     features: [
       'Everything in Quarterly',
-      'Early access to new features',
+      'Unlimited Reading Analysis for each exercise',
       'Save 25% compared to monthly'
     ],
     emoji: '🎯',
