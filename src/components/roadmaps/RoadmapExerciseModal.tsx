@@ -63,7 +63,8 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
       // Convert to Exercise format
       if (data) {
         const mappedExercise = mapToExercise(data);
-        setExercise(mappedExercise);
+        // Need to explicitly cast the mappedExercise to Exercise to fix the type error
+        setExercise(mappedExercise as Exercise);
       }
     } catch (error) {
       console.error("Failed to load exercise", error);

@@ -328,23 +328,27 @@ export async function updateUserProgress(userId: string, nodeId: string, complet
     }
 
     if (completed) {
-      // If completed, update user's current node to the next one
-      const { data: nextNode, error: rpcError } = await supabase
-        .rpc('get_next_roadmap_node', {
-          roadmap_id_param: node.roadmap_id,
-          current_position_param: node.position
-        });
+      // If completed, find the next node manually instead of using RPC
+      const { data: nextNodeData, error: nextNodeError } = await supabase
+        .from('roadmap_nodes')
+        .select('id')
+        .eq('roadmap_id', node.roadmap_id)
+        .gt('position', node.position)
+        .order('position', { ascending: true })
+        .limit(1)
+        .single();
 
-      if (rpcError) {
-        console.error('Error getting next node:', rpcError);
+      if (nextNodeError && nextNodeError.code !== 'PGRST116') {
+        // PGRST116 is the "no rows returned" error, which is acceptable here
+        console.error('Error getting next node:', nextNodeError);
       }
 
-      if (nextNode) {
+      if (nextNodeData) {
         // Update user's current node
         await supabase
           .from('user_roadmaps')
           .update({
-            current_node_id: nextNode,
+            current_node_id: nextNodeData.id,
             updated_at: now
           })
           .eq('user_id', userId)
