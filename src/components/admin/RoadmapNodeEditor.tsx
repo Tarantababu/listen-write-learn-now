@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -23,7 +22,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { ArrowLeft, Plus, Edit, Trash2, Link, AlertCircle, CheckCircle2, Lightning } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Link, AlertCircle, CheckCircle2, Activity } from 'lucide-react';
 import { 
   fetchRoadmap, 
   fetchRoadmapNodes, 
@@ -306,7 +305,7 @@ const RoadmapNodeEditor: React.FC = () => {
                       <TableCell>
                         {node.is_bonus ? (
                           <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
-                            <Lightning className="h-3 w-3 mr-1" /> Bonus
+                            <Activity className="h-3 w-3 mr-1" /> Bonus
                           </div>
                         ) : (
                           <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">

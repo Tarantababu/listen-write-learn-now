@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,7 +16,7 @@ import {
   Lock, 
   CheckCircle, 
   CircleDashed, 
-  Lightning, 
+  Activity, 
   BookOpen,
   ArrowRight,
   HelpCircle
@@ -152,7 +151,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ userRoadmap, onNodeClick }) =
                   variant="outline" 
                   className="absolute -top-2 -right-2 bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900 dark:text-yellow-300 dark:border-yellow-700"
                 >
-                  <Lightning className="h-3 w-3 mr-1" />
+                  <Activity className="h-3 w-3 mr-1" />
                   Bonus
                 </Badge>
               )}
@@ -278,7 +277,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ userRoadmap, onNodeClick }) =
               {bonusNodes.length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium mb-3 text-muted-foreground flex items-center">
-                    <Lightning className="h-4 w-4 mr-1 text-yellow-600 dark:text-yellow-500" />
+                    <Activity className="h-4 w-4 mr-1 text-yellow-600 dark:text-yellow-500" />
                     Bonus Exercises
                   </h4>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-8 gap-3">

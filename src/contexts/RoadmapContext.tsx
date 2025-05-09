@@ -46,6 +46,11 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [loadingUserRoadmaps, setLoadingUserRoadmaps] = useState(true);
   const [selectedRoadmapId, setSelectedRoadmapId] = useState<string | null>(null);
 
+  // Get the roadmap for the current selected language
+  const currentLanguageRoadmap = userRoadmaps.find(
+    ur => ur.language === settings.selectedLanguage
+  ) || null;
+
   // Load all available roadmaps
   useEffect(() => {
     const loadRoadmaps = async () => {

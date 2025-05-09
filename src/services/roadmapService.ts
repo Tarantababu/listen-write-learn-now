@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -8,8 +7,8 @@ export interface Roadmap {
   name: string;
   level: string;
   description: string | null;
-  created_at: Date;
-  updated_at: Date;
+  created_at: string;  // Changed from Date to string to match Supabase response
+  updated_at: string;  // Changed from Date to string to match Supabase response
   created_by: string | null;
 }
 
@@ -21,8 +20,8 @@ export interface RoadmapNode {
   description: string | null;
   default_exercise_id: string | null;
   is_bonus: boolean;
-  created_at: Date;
-  updated_at: Date;
+  created_at: string;  // Changed from Date to string
+  updated_at: string;  // Changed from Date to string
 }
 
 export interface RoadmapProgress {
@@ -31,9 +30,9 @@ export interface RoadmapProgress {
   roadmap_id: string;
   node_id: string;
   completed: boolean;
-  completed_at: Date | null;
-  created_at: Date;
-  updated_at: Date;
+  completed_at: string | null;  // Changed from Date | null to string | null
+  created_at: string;  // Changed from Date to string
+  updated_at: string;  // Changed from Date to string
 }
 
 export interface UserRoadmap {
@@ -42,8 +41,8 @@ export interface UserRoadmap {
   roadmap_id: string;
   language: string;
   current_node_id: string | null;
-  created_at: Date;
-  updated_at: Date;
+  created_at: string;  // Changed from Date to string
+  updated_at: string;  // Changed from Date to string
   roadmap?: Roadmap;
   current_node?: RoadmapNode;
 }
@@ -330,7 +329,7 @@ export async function updateUserProgress(userId: string, nodeId: string, complet
     if (completed) {
       // If completed, update user's current node to the next one
       const { data: nextNode } = await supabase
-        .rpc('get_next_roadmap_node', {
+        .callRpc('get_next_roadmap_node', {
           roadmap_id_param: node.roadmap_id,
           current_position_param: node.position
         });

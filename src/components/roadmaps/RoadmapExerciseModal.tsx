@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Dialog,
@@ -17,7 +16,7 @@ import { Exercise } from '@/types';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { toast } from 'sonner';
 import { Loader2, Copy, BookOpen } from 'lucide-react';
-import { PracticeModal } from '@/components/exercises/PracticeModal';
+import PracticeModal from '@/components/exercises/PracticeModal';
 
 interface RoadmapExerciseModalProps {
   isOpen: boolean;
