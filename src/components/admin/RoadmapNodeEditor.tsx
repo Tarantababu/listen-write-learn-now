@@ -67,7 +67,7 @@ const RoadmapNodeEditor: React.FC = () => {
   const [loadingNodes, setLoadingNodes] = useState(true);
   const [loadingExercises, setLoadingExercises] = useState(true);
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}'); // Assuming user is stored in local storage
+  /* const user = JSON.parse(localStorage.getItem('user') || '{}'); // Assuming user is stored in local storage
 
   const isAdmin = user?.email === 'yigitaydin@gmail.com'; // This should match the admin check in SQL
 
@@ -88,7 +88,7 @@ const RoadmapNodeEditor: React.FC = () => {
         </div>
       </div>
     );
-  }
+  }*/
 
   useEffect(() => {
     if (!roadmapId) return;
