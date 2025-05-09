@@ -143,11 +143,6 @@ export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Get the roadmap for the current selected language
-  const currentLanguageRoadmap = userRoadmaps.find(
-    ur => ur.language === settings.selectedLanguage
-  ) || null;
-
   const refreshUserRoadmaps = async () => {
     await loadUserRoadmaps();
   };

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Dialog,
@@ -60,8 +61,10 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
       
       setDefaultExercise(data);
       // Convert to Exercise format
-      const mappedExercise = mapToExercise(data);
-      setExercise(mappedExercise);
+      if (data) {
+        const mappedExercise = mapToExercise(data);
+        setExercise(mappedExercise);
+      }
     } catch (error) {
       console.error("Failed to load exercise", error);
       toast.error("Could not load exercise details");
@@ -75,7 +78,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
     
     try {
       // Use the existing copyDefaultExerciseToUser logic in ExerciseContext
-      const newExercise = await addExercise({
+      await addExercise({
         title: defaultExercise.title,
         text: defaultExercise.text,
         language: defaultExercise.language,
@@ -87,7 +90,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
       
       toast.success("Exercise copied to your exercises");
       
-      // Close the modal and open practice modal
+      // Close the modal
       onOpenChange(false);
     } catch (error) {
       console.error("Failed to copy exercise", error);

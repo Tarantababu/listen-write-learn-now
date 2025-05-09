@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -328,11 +329,15 @@ export async function updateUserProgress(userId: string, nodeId: string, complet
 
     if (completed) {
       // If completed, update user's current node to the next one
-      const { data: nextNode } = await supabase
-        .callRpc('get_next_roadmap_node', {
+      const { data: nextNode, error: rpcError } = await supabase
+        .rpc('get_next_roadmap_node', {
           roadmap_id_param: node.roadmap_id,
           current_position_param: node.position
         });
+
+      if (rpcError) {
+        console.error('Error getting next node:', rpcError);
+      }
 
       if (nextNode) {
         // Update user's current node
@@ -374,14 +379,52 @@ export async function fetchUserProgress(userId: string, roadmapId: string) {
 
 export async function isNodeUnlocked(userId: string, nodeId: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase
-      .rpc('is_node_unlocked', {
-        user_id_param: userId,
-        node_id_param: nodeId
-      });
+    // Since we can't directly use the custom function, we'll implement the logic here
+    // Get the node to find its position and roadmap
+    const { data: node, error: nodeError } = await supabase
+      .from('roadmap_nodes')
+      .select('*')
+      .eq('id', nodeId)
+      .single();
 
-    if (error) throw error;
-    return !!data;
+    if (nodeError) throw nodeError;
+
+    // Bonus nodes are always unlocked
+    if (node.is_bonus) return true;
+
+    // First node is always unlocked
+    if (node.position === 1) return true;
+
+    // Get all nodes with lower positions
+    const { data: previousNodes, error: prevError } = await supabase
+      .from('roadmap_nodes')
+      .select('id')
+      .eq('roadmap_id', node.roadmap_id)
+      .lt('position', node.position)
+      .order('position');
+
+    if (prevError) throw prevError;
+
+    // Check if the immediately preceding node is completed
+    if (previousNodes && previousNodes.length > 0) {
+      const prevNodeId = previousNodes[previousNodes.length - 1].id;
+
+      // Check if that node is completed
+      const { data: progress, error: progError } = await supabase
+        .from('roadmap_progress')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('node_id', prevNodeId)
+        .eq('completed', true)
+        .maybeSingle();
+
+      if (progError) throw progError;
+
+      // If the previous node is completed, this node is unlocked
+      return !!progress;
+    }
+
+    return false;
   } catch (error) {
     console.error('Error checking node unlock status:', error);
     return false;
