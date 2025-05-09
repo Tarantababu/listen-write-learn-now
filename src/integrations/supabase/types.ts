@@ -294,6 +294,135 @@ export type Database = {
           },
         ]
       }
+      roadmap_nodes: {
+        Row: {
+          created_at: string
+          default_exercise_id: string | null
+          description: string | null
+          id: string
+          is_bonus: boolean
+          position: number
+          roadmap_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_exercise_id?: string | null
+          description?: string | null
+          id?: string
+          is_bonus?: boolean
+          position: number
+          roadmap_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_exercise_id?: string | null
+          description?: string | null
+          id?: string
+          is_bonus?: boolean
+          position?: number
+          roadmap_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roadmap_nodes_default_exercise_id_fkey"
+            columns: ["default_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "default_exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roadmap_nodes_roadmap_id_fkey"
+            columns: ["roadmap_id"]
+            isOneToOne: false
+            referencedRelation: "roadmaps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roadmap_progress: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          node_id: string
+          roadmap_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          node_id: string
+          roadmap_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          node_id?: string
+          roadmap_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roadmap_progress_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "roadmap_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roadmap_progress_roadmap_id_fkey"
+            columns: ["roadmap_id"]
+            isOneToOne: false
+            referencedRelation: "roadmaps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roadmaps: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          level: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          level: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          level?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subscribers: {
         Row: {
           created_at: string
@@ -370,6 +499,51 @@ export type Database = {
             columns: ["message_id"]
             isOneToOne: false
             referencedRelation: "admin_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roadmaps: {
+        Row: {
+          created_at: string
+          current_node_id: string | null
+          id: string
+          language: string
+          roadmap_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_node_id?: string | null
+          id?: string
+          language: string
+          roadmap_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_node_id?: string | null
+          id?: string
+          language?: string
+          roadmap_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roadmaps_current_node_id_fkey"
+            columns: ["current_node_id"]
+            isOneToOne: false
+            referencedRelation: "roadmap_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roadmaps_roadmap_id_fkey"
+            columns: ["roadmap_id"]
+            isOneToOne: false
+            referencedRelation: "roadmaps"
             referencedColumns: ["id"]
           },
         ]

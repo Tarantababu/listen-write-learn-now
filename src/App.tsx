@@ -10,6 +10,7 @@ import { UserSettingsProvider } from './contexts/UserSettingsContext';
 import { VocabularyProvider } from './contexts/VocabularyContext';
 import { DirectoryProvider } from './contexts/DirectoryContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
+import { RoadmapProvider } from './contexts/RoadmapContext';
 import { HelmetProvider } from 'react-helmet-async';
 import { ThemeProvider } from './contexts/ThemeContext';
 
@@ -21,6 +22,7 @@ import VocabularyPage from "@/pages/VocabularyPage";
 import SettingsPage from "@/pages/SettingsPage";
 import SubscriptionPage from "@/pages/SubscriptionPage";
 import AdminPage from "@/pages/AdminPage";
+import RoadmapPage from "@/pages/RoadmapPage";
 import TutorialPage from "@/pages/TutorialPage";
 import NotFound from "@/pages/NotFound";
 import LoginPage from "@/pages/LoginPage";
@@ -45,38 +47,41 @@ const AuthenticatedApp: React.FC = () => {
                 <ExerciseProvider>
                   <DirectoryProvider>
                     <VocabularyProvider>
-                      <TooltipProvider>
-                        <Toaster />
-                        <Sonner position="bottom-right" />
-                        <div className="min-h-screen flex flex-col">
-                          <Routes>
-                            {/* Public Routes */}
-                            <Route path="/" element={<Index />} />
-                            <Route path="/login" element={<LoginPage />} />
-                            <Route path="/signup" element={<SignUpPage />} />
-                            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                            <Route path="/reset-password" element={<ResetPasswordPage />} />
-                            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                            <Route path="/terms-of-service" element={<TermsOfService />} />
-                            <Route path="/cookie-policy" element={<CookiePolicy />} />
-                            
-                            {/* Protected Routes */}
-                            <Route element={<ProtectedRoute />}>
-                              <Route path="/dashboard" element={<Layout />}>
-                                <Route index element={<HomePage />} />
-                                <Route path="exercises" element={<ExercisesPage />} />
-                                <Route path="vocabulary" element={<VocabularyPage />} />
-                                <Route path="settings" element={<SettingsPage />} />
-                                <Route path="subscription" element={<SubscriptionPage />} />
-                                <Route path="admin" element={<AdminPage />} />
-                                <Route path="tutorial" element={<TutorialPage />} />
+                      <RoadmapProvider>
+                        <TooltipProvider>
+                          <Toaster />
+                          <Sonner position="bottom-right" />
+                          <div className="min-h-screen flex flex-col">
+                            <Routes>
+                              {/* Public Routes */}
+                              <Route path="/" element={<Index />} />
+                              <Route path="/login" element={<LoginPage />} />
+                              <Route path="/signup" element={<SignUpPage />} />
+                              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                              <Route path="/reset-password" element={<ResetPasswordPage />} />
+                              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                              <Route path="/terms-of-service" element={<TermsOfService />} />
+                              <Route path="/cookie-policy" element={<CookiePolicy />} />
+                              
+                              {/* Protected Routes */}
+                              <Route element={<ProtectedRoute />}>
+                                <Route path="/dashboard" element={<Layout />}>
+                                  <Route index element={<HomePage />} />
+                                  <Route path="exercises" element={<ExercisesPage />} />
+                                  <Route path="vocabulary" element={<VocabularyPage />} />
+                                  <Route path="roadmap" element={<RoadmapPage />} />
+                                  <Route path="settings" element={<SettingsPage />} />
+                                  <Route path="subscription" element={<SubscriptionPage />} />
+                                  <Route path="admin/*" element={<AdminPage />} />
+                                  <Route path="tutorial" element={<TutorialPage />} />
+                                </Route>
                               </Route>
-                            </Route>
-                            
-                            <Route path="*" element={<NotFound />} />
-                          </Routes>
-                        </div>
-                      </TooltipProvider>
+                              
+                              <Route path="*" element={<NotFound />} />
+                            </Routes>
+                          </div>
+                        </TooltipProvider>
+                      </RoadmapProvider>
                     </VocabularyProvider>
                   </DirectoryProvider>
                 </ExerciseProvider>
