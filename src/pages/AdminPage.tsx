@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Navigate, useNavigate, Routes, Route } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,8 +20,9 @@ const AdminPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('default-exercises');
   
-  // Check if user is an admin (match with the email in RLS policy)
-  const isAdmin = user?.email === 'yigitaydin@gmail.com';
+  // Check if user is an admin - this should align with the is_admin function in SQL
+  // For now, we'll use the same admin check as in our SQL function
+  const isAdmin = user?.email === 'yigitaydin@gmail.com' || user?.email?.endsWith('@admin.com');
   
   // If user is not logged in or not an admin, redirect to home
   if (!user || !isAdmin) {

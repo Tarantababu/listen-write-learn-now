@@ -67,6 +67,29 @@ const RoadmapNodeEditor: React.FC = () => {
   const [loadingNodes, setLoadingNodes] = useState(true);
   const [loadingExercises, setLoadingExercises] = useState(true);
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}'); // Assuming user is stored in local storage
+
+  const isAdmin = user?.email === 'yigitaydin@gmail.com'; // This should match the admin check in SQL
+
+  if (!isAdmin) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Alert variant="destructive">
+          <AlertTitle>Access Denied</AlertTitle>
+          <AlertDescription>
+            You do not have admin permission to manage roadmaps.
+          </AlertDescription>
+        </Alert>
+        <div className="mt-4">
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   useEffect(() => {
     if (!roadmapId) return;
     loadRoadmap();

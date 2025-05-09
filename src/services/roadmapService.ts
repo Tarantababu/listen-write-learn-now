@@ -84,24 +84,43 @@ export async function fetchRoadmap(id: string) {
 
 export async function createRoadmap(roadmap: Omit<Roadmap, 'id' | 'created_at' | 'updated_at'>) {
   try {
+    // Ensure auth headers are sent
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) {
+      toast.error('You must be logged in to create roadmaps');
+      throw new Error('Authentication required');
+    }
+
     const { data, error } = await supabase
       .from('roadmaps')
       .insert([roadmap])
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '42501') {
+        toast.error('You do not have permission to create roadmaps. Only admins can create roadmaps.');
+      } else {
+        toast.error(`Failed to create roadmap: ${error.message}`);
+      }
+      throw error;
+    }
     toast.success('Roadmap created successfully');
     return data as Roadmap;
   } catch (error) {
     console.error('Error creating roadmap:', error);
-    toast.error('Failed to create roadmap');
     throw error;
   }
 }
 
 export async function updateRoadmap(id: string, updates: Partial<Omit<Roadmap, 'id' | 'created_at'>>) {
   try {
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) {
+      toast.error('You must be logged in to update roadmaps');
+      throw new Error('Authentication required');
+    }
+    
     const { data, error } = await supabase
       .from('roadmaps')
       .update({
@@ -112,28 +131,46 @@ export async function updateRoadmap(id: string, updates: Partial<Omit<Roadmap, '
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '42501') {
+        toast.error('You do not have permission to update roadmaps. Only admins can update roadmaps.');
+      } else {
+        toast.error(`Failed to update roadmap: ${error.message}`);
+      }
+      throw error;
+    }
     toast.success('Roadmap updated successfully');
     return data as Roadmap;
   } catch (error) {
     console.error('Error updating roadmap:', error);
-    toast.error('Failed to update roadmap');
     throw error;
   }
 }
 
 export async function deleteRoadmap(id: string) {
   try {
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) {
+      toast.error('You must be logged in to delete roadmaps');
+      throw new Error('Authentication required');
+    }
+    
     const { error } = await supabase
       .from('roadmaps')
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '42501') {
+        toast.error('You do not have permission to delete roadmaps. Only admins can delete roadmaps.');
+      } else {
+        toast.error(`Failed to delete roadmap: ${error.message}`);
+      }
+      throw error;
+    }
     toast.success('Roadmap deleted successfully');
   } catch (error) {
     console.error('Error deleting roadmap:', error);
-    toast.error('Failed to delete roadmap');
     throw error;
   }
 }
@@ -158,24 +195,42 @@ export async function fetchRoadmapNodes(roadmapId: string) {
 
 export async function createRoadmapNode(node: Omit<RoadmapNode, 'id' | 'created_at' | 'updated_at'>) {
   try {
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) {
+      toast.error('You must be logged in to create roadmap nodes');
+      throw new Error('Authentication required');
+    }
+    
     const { data, error } = await supabase
       .from('roadmap_nodes')
       .insert([node])
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '42501') {
+        toast.error('You do not have permission to create roadmap nodes. Only admins can create roadmap nodes.');
+      } else {
+        toast.error(`Failed to create roadmap node: ${error.message}`);
+      }
+      throw error;
+    }
     toast.success('Roadmap node created successfully');
     return data as RoadmapNode;
   } catch (error) {
     console.error('Error creating roadmap node:', error);
-    toast.error('Failed to create roadmap node');
     throw error;
   }
 }
 
 export async function updateRoadmapNode(id: string, updates: Partial<Omit<RoadmapNode, 'id' | 'created_at'>>) {
   try {
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) {
+      toast.error('You must be logged in to update roadmap nodes');
+      throw new Error('Authentication required');
+    }
+    
     const { data, error } = await supabase
       .from('roadmap_nodes')
       .update({
@@ -186,28 +241,46 @@ export async function updateRoadmapNode(id: string, updates: Partial<Omit<Roadma
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '42501') {
+        toast.error('You do not have permission to update roadmap nodes. Only admins can update roadmap nodes.');
+      } else {
+        toast.error(`Failed to update roadmap node: ${error.message}`);
+      }
+      throw error;
+    }
     toast.success('Roadmap node updated successfully');
     return data as RoadmapNode;
   } catch (error) {
     console.error('Error updating roadmap node:', error);
-    toast.error('Failed to update roadmap node');
     throw error;
   }
 }
 
 export async function deleteRoadmapNode(id: string) {
   try {
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) {
+      toast.error('You must be logged in to delete roadmap nodes');
+      throw new Error('Authentication required');
+    }
+    
     const { error } = await supabase
       .from('roadmap_nodes')
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '42501') {
+        toast.error('You do not have permission to delete roadmap nodes. Only admins can delete roadmap nodes.');
+      } else {
+        toast.error(`Failed to delete roadmap node: ${error.message}`);
+      }
+      throw error;
+    }
     toast.success('Roadmap node deleted successfully');
   } catch (error) {
     console.error('Error deleting roadmap node:', error);
-    toast.error('Failed to delete roadmap node');
     throw error;
   }
 }
