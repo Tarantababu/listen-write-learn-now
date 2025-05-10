@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -173,6 +174,7 @@ const Header: React.FC = () => {
               {/* Add UserMessages component here */}
               <UserMessages />
               
+              {/* Admin quick access button */}
               {isAdmin && (
                 <TooltipProvider>
                   <Tooltip>
@@ -195,7 +197,17 @@ const Header: React.FC = () => {
                 </TooltipProvider>
               )}
               
+              {/* User dropdown menu */}
               <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="rounded-full"
+                  >
+                    <UserAvatar />
+                  </Button>
+                </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className={cn(
                   "z-50 min-w-[12rem] bg-background border border-border overflow-hidden rounded-md shadow-md",
                   "animate-in fade-in-80"

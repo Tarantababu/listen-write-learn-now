@@ -60,7 +60,7 @@ const AuthenticatedApp: React.FC = () => {
                             <Route path="/terms-of-service" element={<TermsOfService />} />
                             <Route path="/cookie-policy" element={<CookiePolicy />} />
                             
-                            {/* Protected Routes */}
+                            {/* Protected Routes - Regular User Access */}
                             <Route element={<ProtectedRoute />}>
                               <Route path="/dashboard" element={<Layout />}>
                                 <Route index element={<HomePage />} />
@@ -68,8 +68,14 @@ const AuthenticatedApp: React.FC = () => {
                                 <Route path="vocabulary" element={<VocabularyPage />} />
                                 <Route path="settings" element={<SettingsPage />} />
                                 <Route path="subscription" element={<SubscriptionPage />} />
-                                <Route path="admin" element={<AdminPage />} />
                                 <Route path="tutorial" element={<TutorialPage />} />
+                              </Route>
+                            </Route>
+                            
+                            {/* Protected Routes - Admin Only */}
+                            <Route element={<ProtectedRoute requireAdmin={true} />}>
+                              <Route path="/dashboard" element={<Layout />}>
+                                <Route path="admin" element={<AdminPage />} />
                               </Route>
                             </Route>
                             
