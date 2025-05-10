@@ -19,6 +19,12 @@ import {
 } from '@/components/ui/table';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
+// Define the user data structure
+interface UserData {
+  id: string;
+  email?: string | null;
+}
+
 interface UserWithRole {
   id: string;
   email: string;
@@ -62,8 +68,8 @@ export function UserRoleManagement() {
       // Get all admin user IDs
       const adminIds = roleData.map(item => item.user_id);
       
-      // Fetch user details
-      const { data: adminData, error: adminError } = await supabase.auth.admin.listUsers();
+      // Fetch user details - now properly typed
+      const { data: userData, error: adminError } = await supabase.auth.admin.listUsers();
       
       if (adminError) {
         console.error('Failed to fetch users:', adminError);
@@ -72,7 +78,7 @@ export function UserRoleManagement() {
       }
       
       // Filter only admin users and map to our format
-      const adminUsers = adminData.users
+      const adminUsers = userData.users
         .filter(user => adminIds.includes(user.id))
         .map(user => ({
           id: user.id,
@@ -97,7 +103,7 @@ export function UserRoleManagement() {
       setSearchLoading(true);
       setSearchedUser(null);
       
-      // Search for user by email
+      // Search for user by email - now properly typed
       const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
       
       if (userError) throw userError;
