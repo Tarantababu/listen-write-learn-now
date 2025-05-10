@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAdmin } from '@/hooks/use-admin';
 import { VisitorStats } from '@/components/admin/VisitorStats';
 import { AdminStats } from '@/components/admin/AdminStats';
 import { FeedbackList } from '@/components/admin/FeedbackList';
+import { UserRoleManagement } from '@/components/admin/UserRoleManagement';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import DefaultExerciseForm from '@/components/admin/DefaultExerciseForm';
 import DefaultExercisesList from '@/components/admin/DefaultExercisesList';
@@ -15,15 +16,24 @@ import AdminMessagesForm from '@/components/admin/AdminMessagesForm';
 import AdminMessagesList from '@/components/admin/AdminMessagesList';
 
 const AdminPage: React.FC = () => {
-  const { user } = useAuth();
+  const { isAdmin, loading } = useAdmin();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('default-exercises');
   
-  // Check if user is an admin (match with the email in RLS policy)
-  const isAdmin = user?.email === 'yigitaydin@gmail.com';
+  // Show loading state while checking admin status
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex justify-center items-center h-[80vh]">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+          <p>Verifying admin access...</p>
+        </div>
+      </div>
+    );
+  }
   
-  // If user is not logged in or not an admin, redirect to home
-  if (!user || !isAdmin) {
+  // If user is not an admin, redirect to home
+  if (!isAdmin) {
     return <Navigate to="/" replace />;
   }
 
@@ -57,6 +67,7 @@ const AdminPage: React.FC = () => {
           <TabsTrigger value="messages">User Messages</TabsTrigger>
           <TabsTrigger value="statistics">Statistics</TabsTrigger>
           <TabsTrigger value="feedback">Feedback</TabsTrigger>
+          <TabsTrigger value="users">User Roles</TabsTrigger>
         </TabsList>
         
         <TabsContent value="default-exercises" className="space-y-8">
@@ -103,6 +114,13 @@ const AdminPage: React.FC = () => {
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4">User Feedback</h2>
             <FeedbackList />
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="users">
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">User Role Management</h2>
+            <UserRoleManagement />
           </div>
         </TabsContent>
       </Tabs>

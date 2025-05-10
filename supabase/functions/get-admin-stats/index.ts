@@ -31,7 +31,7 @@ export const handler = async (req: Request): Promise<Response> => {
       });
     }
     
-    // Verify the user is authenticated and is an admin
+    // Verify the user is authenticated
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     
@@ -43,10 +43,16 @@ export const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check if the user is an admin
-    const adminEmail = Deno.env.get('ADMIN_EMAIL');
-    if (user.email !== adminEmail) {
-      console.log(`[GET-ADMIN-STATS] User ${user.email} is not admin (${adminEmail})`);
+    // Check if the user is an admin using the user_roles table
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .single();
+    
+    if (roleError || !roleData) {
+      console.log(`[GET-ADMIN-STATS] User ${user.email} is not an admin`);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

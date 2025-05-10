@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useAdmin } from '@/hooks/use-admin';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -36,14 +37,12 @@ import ThemeToggle from './ThemeToggle';
 
 const Header: React.FC = () => {
   const { user, signOut } = useAuth();
+  const { isAdmin } = useAdmin();
   const { subscription } = useSubscription();
   const { settings, selectLanguage } = useUserSettingsContext();
   const location = useLocation();
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-
-  // Check if user is an admin (match with the email in RLS policy)
-  const isAdmin = user?.email === 'yigitaydin@gmail.com';
 
   const isActive = (path: string) => {
     return location.pathname === path 
@@ -197,11 +196,6 @@ const Header: React.FC = () => {
               )}
               
               <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full p-0 h-8 w-8">
-                    {isMobile ? <Menu className="h-5 w-5" /> : <UserAvatar size="sm" />}
-                  </Button>
-                </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className={cn(
                   "z-50 min-w-[12rem] bg-background border border-border overflow-hidden rounded-md shadow-md",
                   "animate-in fade-in-80"

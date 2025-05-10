@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -116,4 +115,39 @@ export async function updateProfile(updates: {
   }
 
   toast.success('Profile updated successfully');
+}
+
+export async function checkIsAdmin() {
+  try {
+    const { data, error } = await supabase.rpc('is_admin');
+    
+    if (error) {
+      console.error('Error checking admin status:', error);
+      return false;
+    }
+    
+    return !!data;
+  } catch (error) {
+    console.error('Unexpected error checking admin status:', error);
+    return false;
+  }
+}
+
+export async function getUserRoles(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId);
+    
+    if (error) {
+      console.error('Error fetching user roles:', error);
+      return [];
+    }
+    
+    return data?.map(r => r.role) || [];
+  } catch (error) {
+    console.error('Unexpected error fetching user roles:', error);
+    return [];
+  }
 }

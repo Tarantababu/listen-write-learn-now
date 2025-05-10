@@ -1,13 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import StatsCard from '@/components/StatsCard';
 import { Users, CreditCard, MousePointerClick } from 'lucide-react';
+import { useAdmin } from '@/hooks/use-admin';
 
 export function AdminStats() {
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({
@@ -22,8 +23,8 @@ export function AdminStats() {
         setLoading(true);
         setError(null);
 
-        if (!user) {
-          setError('Authentication required');
+        if (!user || !isAdmin) {
+          setError('Admin access required');
           return;
         }
 
@@ -49,7 +50,7 @@ export function AdminStats() {
     }
 
     fetchAdminStats();
-  }, [user]);
+  }, [user, isAdmin]);
 
   if (loading) {
     return (
