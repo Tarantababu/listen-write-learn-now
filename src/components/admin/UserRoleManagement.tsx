@@ -19,10 +19,14 @@ import {
 } from '@/components/ui/table';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
-// Define the user data structure
-interface UserData {
-  id: string;
-  email?: string | null;
+// Define the user data structure from Supabase admin API
+interface AdminUserData {
+  users: {
+    id: string;
+    email?: string | null;
+    [key: string]: any; // Allow for other properties that might exist
+  }[];
+  [key: string]: any; // Allow for other properties in the response
 }
 
 interface UserWithRole {
@@ -68,8 +72,11 @@ export function UserRoleManagement() {
       // Get all admin user IDs
       const adminIds = roleData.map(item => item.user_id);
       
-      // Fetch user details - now properly typed
-      const { data: userData, error: adminError } = await supabase.auth.admin.listUsers();
+      // Fetch user details - properly typed with AdminUserData
+      const { data: userData, error: adminError } = await supabase.auth.admin.listUsers() as { 
+        data: AdminUserData; 
+        error: any; 
+      };
       
       if (adminError) {
         console.error('Failed to fetch users:', adminError);
@@ -103,8 +110,11 @@ export function UserRoleManagement() {
       setSearchLoading(true);
       setSearchedUser(null);
       
-      // Search for user by email - now properly typed
-      const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
+      // Search for user by email - properly typed with AdminUserData
+      const { data: userData, error: userError } = await supabase.auth.admin.listUsers() as { 
+        data: AdminUserData; 
+        error: any; 
+      };
       
       if (userError) throw userError;
       
