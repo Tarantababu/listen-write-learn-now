@@ -39,6 +39,7 @@ const RoadmapSelection: React.FC = () => {
   };
 
   const levelDescriptions: Record<LanguageLevel, string> = {
+    'A0': 'Absolute Beginner - Can recognize some basic words and phrases',
     'A1': 'Beginner - Can understand and use familiar everyday expressions',
     'A2': 'Elementary - Can communicate in simple and routine tasks',
     'B1': 'Intermediate - Can deal with most situations likely to arise',
@@ -72,7 +73,7 @@ const RoadmapSelection: React.FC = () => {
               <SelectValue placeholder="Select a level" />
             </SelectTrigger>
             <SelectContent>
-              {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((level) => (
+              {['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((level) => (
                 <SelectItem key={level} value={level}>
                   <div className="flex items-center space-x-2">
                     <LevelBadge level={level as LanguageLevel} />
