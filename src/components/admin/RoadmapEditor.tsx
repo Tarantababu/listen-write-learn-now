@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -61,7 +62,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 // Form schemas
 const roadmapFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']),
+  level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']) as z.ZodType<LanguageLevel>,
   description: z.string().optional()
 });
 
@@ -216,7 +217,7 @@ export const RoadmapEditor: React.FC = () => {
     } else {
       roadmapForm.reset({
         name: '',
-        level: 'A1',
+        level: 'A1' as LanguageLevel,
         description: ''
       });
     }
@@ -301,7 +302,7 @@ export const RoadmapEditor: React.FC = () => {
         const newRoadmap: Roadmap = {
           id: data.id,
           name: data.name,
-          level: data.level,
+          level: data.level as LanguageLevel,
           description: data.description,
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at),
