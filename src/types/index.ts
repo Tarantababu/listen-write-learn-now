@@ -54,6 +54,52 @@ export interface UserSettings {
   selectedLanguage: Language;
 }
 
+// Add the new Roadmap types
+export type LanguageLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+
+export interface Roadmap {
+  id: string;
+  name: string;
+  level: LanguageLevel;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+}
+
+export interface RoadmapNode {
+  id: string;
+  roadmapId: string;
+  defaultExerciseId?: string;
+  title: string;
+  description?: string;
+  position: number;
+  isBonus: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UserRoadmap {
+  id: string;
+  userId: string;
+  roadmapId: string;
+  language: Language;
+  currentNodeId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RoadmapProgress {
+  id: string;
+  userId: string;
+  roadmapId: string;
+  nodeId: string;
+  completed: boolean;
+  completedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Add Json type for compatibility with Supabase
 export type Json =
   | string

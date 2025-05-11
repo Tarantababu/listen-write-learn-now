@@ -25,7 +25,8 @@ import {
   LayoutDashboard,
   Book,
   Shield,
-  HelpCircle
+  HelpCircle,
+  Map
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getLanguageFlag } from '@/utils/languageUtils';
@@ -88,13 +89,25 @@ const Header: React.FC = () => {
             <nav className="flex items-center gap-1">
               <Button 
                 asChild 
-                variant={isActive('/dashboard') && !isActive('/dashboard/exercises') && !isActive('/dashboard/vocabulary') ? "default" : "ghost"}
+                variant={isActive('/dashboard') && !isActive('/dashboard/exercises') && !isActive('/dashboard/vocabulary') && !isActive('/dashboard/roadmap') ? "default" : "ghost"}
                 size="sm"
                 className="transition-all"
               >
                 <Link to="/dashboard">
                   <LayoutDashboard className="h-4 w-4 sm:mr-1" />
                   <span className="hidden sm:inline">Dashboard</span>
+                </Link>
+              </Button>
+              
+              <Button 
+                asChild 
+                variant={isActive('/dashboard/roadmap') ? "default" : "ghost"}
+                size="sm"
+                className="transition-all"
+              >
+                <Link to="/dashboard/roadmap">
+                  <Map className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Roadmap</span>
                 </Link>
               </Button>
               
@@ -217,6 +230,11 @@ const Header: React.FC = () => {
                       <DropdownMenuItem asChild>
                         <Link to="/dashboard" className="flex items-center w-full">
                           <Home className="h-4 w-4 mr-2" /> Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard/roadmap" className="flex items-center w-full">
+                          <Map className="h-4 w-4 mr-2" /> Roadmap
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
