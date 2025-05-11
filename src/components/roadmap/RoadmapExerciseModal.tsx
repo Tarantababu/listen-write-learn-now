@@ -57,11 +57,11 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
     setPracticing(true);
   };
 
-  const handlePracticeComplete = (result: { accuracy: number }) => {
-    setAccuracy(result.accuracy);
+  const handlePracticeComplete = (accuracyValue: number) => {
+    setAccuracy(accuracyValue);
     setPracticing(false);
     
-    if (result.accuracy >= 95) {
+    if (accuracyValue >= 95) {
       setCompleted(true);
     }
   };
