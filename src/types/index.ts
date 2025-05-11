@@ -1,4 +1,3 @@
-
 export type Language = 
   | 'english' 
   | 'german' 
@@ -55,7 +54,7 @@ export interface UserSettings {
 }
 
 // Add the new Roadmap types
-export type LanguageLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+export type LanguageLevel = 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 
 export interface Roadmap {
   id: string;
