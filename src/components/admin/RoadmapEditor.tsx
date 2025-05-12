@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -222,7 +221,7 @@ export const RoadmapEditor: React.FC = () => {
           description: node.description,
           position: node.position,
           isBonus: node.is_bonus,
-          language: node.language as Language,
+          language: node.language as Language | undefined,
           createdAt: new Date(node.created_at),
           updatedAt: new Date(node.updated_at)
         }));
@@ -992,7 +991,7 @@ export const RoadmapEditor: React.FC = () => {
                     <FormLabel>Language</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      value={field.value}
+                      value={field.value || undefined}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -1007,7 +1006,7 @@ export const RoadmapEditor: React.FC = () => {
                             </SelectItem>
                           ))
                         ) : (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="no-languages" disabled>
                             No languages available. Add languages to the roadmap first.
                           </SelectItem>
                         )}
