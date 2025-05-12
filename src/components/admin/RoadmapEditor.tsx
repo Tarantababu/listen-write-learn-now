@@ -41,8 +41,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Save, Trash2, Star, Pencil, Check } from 'lucide-react';
-import { LanguageLevel, Roadmap, RoadmapNode } from '@/types';
+import { Loader2, Plus, Save, Trash2, Star, Pencil, Check, X } from 'lucide-react';
+import { LanguageLevel, Language, Roadmap, RoadmapNode, RoadmapLanguage } from '@/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -58,12 +58,14 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 // Form schemas
 const roadmapFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']) as z.ZodType<LanguageLevel>,
-  description: z.string().optional()
+  level: z.enum(['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']) as z.ZodType<LanguageLevel>,
+  description: z.string().optional(),
+  languages: z.array(z.string()).min(1, "At least one language is required")
 });
 
 const nodeFormSchema = z.object({
@@ -71,7 +73,8 @@ const nodeFormSchema = z.object({
   position: z.number().int().min(0),
   defaultExerciseId: z.string().optional(),
   description: z.string().optional(),
-  isBonus: z.boolean().default(false)
+  isBonus: z.boolean().default(false),
+  language: z.string().optional()
 });
 
 type RoadmapFormValues = z.infer<typeof roadmapFormSchema>;
@@ -90,13 +93,17 @@ export const RoadmapEditor: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ type: 'roadmap' | 'node', id: string } | null>(null);
   const [nodeDialogOpen, setNodeDialogOpen] = useState(false);
+  const [roadmapLanguages, setRoadmapLanguages] = useState<RoadmapLanguage[]>([]);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [availableLanguages, setAvailableLanguages] = useState<{value: string, label: string}[]>([]);
 
   const roadmapForm = useForm<RoadmapFormValues>({
     resolver: zodResolver(roadmapFormSchema),
     defaultValues: {
       name: '',
       level: 'A1',
-      description: ''
+      description: '',
+      languages: []
     }
   });
 
@@ -106,9 +113,34 @@ export const RoadmapEditor: React.FC = () => {
       title: '',
       position: 0,
       description: '',
-      isBonus: false
+      isBonus: false,
+      language: undefined
     }
   });
+
+  // Setup available languages
+  useEffect(() => {
+    // All supported languages
+    const languages: {value: string, label: string}[] = [
+      { value: 'english', label: 'English' },
+      { value: 'german', label: 'German' },
+      { value: 'spanish', label: 'Spanish' },
+      { value: 'french', label: 'French' },
+      { value: 'portuguese', label: 'Portuguese' },
+      { value: 'italian', label: 'Italian' },
+      { value: 'turkish', label: 'Turkish' },
+      { value: 'swedish', label: 'Swedish' },
+      { value: 'dutch', label: 'Dutch' },
+      { value: 'norwegian', label: 'Norwegian' },
+      { value: 'russian', label: 'Russian' },
+      { value: 'polish', label: 'Polish' },
+      { value: 'chinese', label: 'Chinese' },
+      { value: 'japanese', label: 'Japanese' },
+      { value: 'korean', label: 'Korean' },
+      { value: 'arabic', label: 'Arabic' }
+    ];
+    setAvailableLanguages(languages);
+  }, []);
 
   // Fetch roadmaps
   useEffect(() => {
@@ -190,6 +222,7 @@ export const RoadmapEditor: React.FC = () => {
           description: node.description,
           position: node.position,
           isBonus: node.is_bonus,
+          language: node.language as Language,
           createdAt: new Date(node.created_at),
           updatedAt: new Date(node.updated_at)
         }));
@@ -204,6 +237,32 @@ export const RoadmapEditor: React.FC = () => {
     };
 
     fetchNodes();
+
+    // Also fetch roadmap languages
+    const fetchRoadmapLanguages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('roadmap_languages')
+          .select('*')
+          .eq('roadmap_id', selectedRoadmap.id);
+
+        if (error) throw error;
+
+        const formattedLanguages: RoadmapLanguage[] = data.map(lang => ({
+          id: lang.id,
+          roadmapId: lang.roadmap_id,
+          language: lang.language as Language,
+          createdAt: new Date(lang.created_at)
+        }));
+
+        setRoadmapLanguages(formattedLanguages);
+        setSelectedLanguages(formattedLanguages.map(l => l.language));
+      } catch (err: any) {
+        console.error('Error fetching roadmap languages:', err);
+      }
+    };
+
+    fetchRoadmapLanguages();
   }, [selectedRoadmap]);
 
   // Set form values when a roadmap is selected for editing
@@ -212,16 +271,18 @@ export const RoadmapEditor: React.FC = () => {
       roadmapForm.reset({
         name: selectedRoadmap.name,
         level: selectedRoadmap.level,
-        description: selectedRoadmap.description || ''
+        description: selectedRoadmap.description || '',
+        languages: selectedLanguages
       });
     } else {
       roadmapForm.reset({
         name: '',
         level: 'A1' as LanguageLevel,
-        description: ''
+        description: '',
+        languages: []
       });
     }
-  }, [selectedRoadmap, roadmapForm]);
+  }, [selectedRoadmap, roadmapForm, selectedLanguages]);
 
   // Set form values when a node is selected for editing
   useEffect(() => {
@@ -231,14 +292,16 @@ export const RoadmapEditor: React.FC = () => {
         position: selectedNode.position,
         defaultExerciseId: selectedNode.defaultExerciseId,
         description: selectedNode.description || '',
-        isBonus: selectedNode.isBonus
+        isBonus: selectedNode.isBonus,
+        language: selectedNode.language
       });
     } else {
       nodeForm.reset({
         title: '',
         position: nodes.length,
         description: '',
-        isBonus: false
+        isBonus: false,
+        language: undefined
       });
     }
   }, [selectedNode, nodeForm, nodes.length]);
@@ -249,7 +312,7 @@ export const RoadmapEditor: React.FC = () => {
     try {
       if (selectedRoadmap) {
         // Update existing roadmap
-        const { error } = await supabase
+        const { error: roadmapError } = await supabase
           .from('roadmaps')
           .update({
             name: values.name,
@@ -259,7 +322,27 @@ export const RoadmapEditor: React.FC = () => {
           })
           .eq('id', selectedRoadmap.id);
 
-        if (error) throw error;
+        if (roadmapError) throw roadmapError;
+
+        // Delete existing language associations
+        const { error: deleteError } = await supabase
+          .from('roadmap_languages')
+          .delete()
+          .eq('roadmap_id', selectedRoadmap.id);
+
+        if (deleteError) throw deleteError;
+
+        // Create new language associations
+        const languageEntries = values.languages.map(lang => ({
+          roadmap_id: selectedRoadmap.id,
+          language: lang
+        }));
+
+        const { error: langError } = await supabase
+          .from('roadmap_languages')
+          .insert(languageEntries);
+
+        if (langError) throw langError;
 
         // Update local state
         const updatedRoadmaps = roadmaps.map(roadmap => 
@@ -269,7 +352,8 @@ export const RoadmapEditor: React.FC = () => {
                 name: values.name, 
                 level: values.level, 
                 description: values.description,
-                updatedAt: new Date()
+                updatedAt: new Date(),
+                languages: values.languages as Language[]
               } 
             : roadmap
         );
@@ -279,12 +363,14 @@ export const RoadmapEditor: React.FC = () => {
           name: values.name,
           level: values.level,
           description: values.description,
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          languages: values.languages as Language[]
         });
+        setSelectedLanguages(values.languages);
         toast.success('Roadmap updated successfully');
       } else {
         // Create new roadmap
-        const { data, error } = await supabase
+        const { data: roadmapData, error: roadmapError } = await supabase
           .from('roadmaps')
           .insert([
             {
@@ -296,20 +382,34 @@ export const RoadmapEditor: React.FC = () => {
           .select()
           .single();
 
-        if (error) throw error;
+        if (roadmapError) throw roadmapError;
+
+        // Create language associations
+        const languageEntries = values.languages.map(lang => ({
+          roadmap_id: roadmapData.id,
+          language: lang
+        }));
+
+        const { error: langError } = await supabase
+          .from('roadmap_languages')
+          .insert(languageEntries);
+
+        if (langError) throw langError;
 
         // Add to local state
         const newRoadmap: Roadmap = {
-          id: data.id,
-          name: data.name,
-          level: data.level as LanguageLevel,
-          description: data.description,
-          createdAt: new Date(data.created_at),
-          updatedAt: new Date(data.updated_at),
-          createdBy: data.created_by
+          id: roadmapData.id,
+          name: roadmapData.name,
+          level: roadmapData.level as LanguageLevel,
+          description: roadmapData.description,
+          createdAt: new Date(roadmapData.created_at),
+          updatedAt: new Date(roadmapData.updated_at),
+          createdBy: roadmapData.created_by,
+          languages: values.languages as Language[]
         };
         setRoadmaps([...roadmaps, newRoadmap]);
         setSelectedRoadmap(newRoadmap);
+        setSelectedLanguages(values.languages);
         toast.success('Roadmap created successfully');
       }
     } catch (err: any) {
@@ -339,6 +439,7 @@ export const RoadmapEditor: React.FC = () => {
             default_exercise_id: values.defaultExerciseId || null,
             description: values.description,
             is_bonus: values.isBonus,
+            language: values.language,
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedNode.id);
@@ -355,6 +456,7 @@ export const RoadmapEditor: React.FC = () => {
                 defaultExerciseId: values.defaultExerciseId,
                 description: values.description,
                 isBonus: values.isBonus,
+                language: values.language as Language,
                 updatedAt: new Date()
               } 
             : node
@@ -374,7 +476,8 @@ export const RoadmapEditor: React.FC = () => {
               position: values.position,
               default_exercise_id: values.defaultExerciseId || null,
               description: values.description,
-              is_bonus: values.isBonus
+              is_bonus: values.isBonus,
+              language: values.language
             }
           ])
           .select()
@@ -391,6 +494,7 @@ export const RoadmapEditor: React.FC = () => {
           description: data.description,
           position: data.position,
           isBonus: data.is_bonus,
+          language: data.language,
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at)
         };
@@ -457,9 +561,22 @@ export const RoadmapEditor: React.FC = () => {
       title: '',
       position: nodes.length,
       description: '',
-      isBonus: false
+      isBonus: false,
+      language: undefined
     });
     setNodeDialogOpen(true);
+  };
+
+  // Get language name from language code
+  const getLanguageName = (code: string): string => {
+    const language = availableLanguages.find(l => l.value === code);
+    return language ? language.label : code;
+  };
+
+  // Get filtered exercises by language
+  const getFilteredExercisesByLanguage = (language: string | undefined) => {
+    if (!language) return defaultExercises;
+    return defaultExercises.filter(ex => ex.language === language);
   };
 
   return (
@@ -525,7 +642,8 @@ export const RoadmapEditor: React.FC = () => {
                     roadmapForm.reset({
                       name: '',
                       level: 'A1',
-                      description: ''
+                      description: '',
+                      languages: []
                     });
                   }}
                   className="w-full"
@@ -586,6 +704,7 @@ export const RoadmapEditor: React.FC = () => {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
+                              <SelectItem value="A0">A0 - Absolute Beginner</SelectItem>
                               <SelectItem value="A1">A1 - Beginner</SelectItem>
                               <SelectItem value="A2">A2 - Elementary</SelectItem>
                               <SelectItem value="B1">B1 - Intermediate</SelectItem>
@@ -594,6 +713,28 @@ export const RoadmapEditor: React.FC = () => {
                               <SelectItem value="C2">C2 - Proficiency</SelectItem>
                             </SelectContent>
                           </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={roadmapForm.control}
+                      name="languages"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Supported Languages</FormLabel>
+                          <FormControl>
+                            <MultiSelect
+                              options={availableLanguages}
+                              placeholder="Select languages..."
+                              selected={field.value}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Select all languages that this roadmap supports
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -676,6 +817,7 @@ export const RoadmapEditor: React.FC = () => {
                       <TableHead className="w-12">Pos</TableHead>
                       <TableHead>Title</TableHead>
                       <TableHead className="w-32">Type</TableHead>
+                      <TableHead className="w-32">Language</TableHead>
                       <TableHead>Exercise</TableHead>
                       <TableHead className="text-right w-24">Actions</TableHead>
                     </TableRow>
@@ -683,13 +825,13 @@ export const RoadmapEditor: React.FC = () => {
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center h-24">
+                        <TableCell colSpan={6} className="text-center h-24">
                           <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
                         </TableCell>
                       </TableRow>
                     ) : nodes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                        <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
                           No nodes found
                         </TableCell>
                       </TableRow>
@@ -712,6 +854,15 @@ export const RoadmapEditor: React.FC = () => {
                               </div>
                             </TableCell>
                             <TableCell>{node.isBonus ? 'Bonus' : 'Required'}</TableCell>
+                            <TableCell>
+                              {node.language ? (
+                                <Badge variant="outline" className="bg-blue-500/10 border-blue-500/30">
+                                  {getLanguageName(node.language)}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">None</span>
+                              )}
+                            </TableCell>
                             <TableCell>
                               {exercise ? (
                                 <span className="text-xs font-mono bg-muted px-2 py-1 rounded">
@@ -835,6 +986,43 @@ export const RoadmapEditor: React.FC = () => {
               
               <FormField
                 control={nodeForm.control}
+                name="language"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Language</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a language" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {selectedLanguages.length > 0 ? (
+                          selectedLanguages.map(lang => (
+                            <SelectItem key={lang} value={lang}>
+                              {getLanguageName(lang)}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="" disabled>
+                            No languages available. Add languages to the roadmap first.
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      The node will only be available for users learning this language
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={nodeForm.control}
                 name="description"
                 render={({ field }) => (
                   <FormItem>
@@ -854,35 +1042,45 @@ export const RoadmapEditor: React.FC = () => {
               <FormField
                 control={nodeForm.control}
                 name="defaultExerciseId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Linked Exercise</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an exercise" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {defaultExercises.length > 0 ? (
-                          defaultExercises.map(exercise => (
-                            <SelectItem key={exercise.id} value={exercise.id}>
-                              {exercise.title}
+                render={({ field }) => {
+                  const filteredExercises = getFilteredExercisesByLanguage(nodeForm.watch('language'));
+                  return (
+                    <FormItem>
+                      <FormLabel>Linked Exercise</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select an exercise" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {filteredExercises.length > 0 ? (
+                            filteredExercises.map(exercise => (
+                              <SelectItem key={exercise.id} value={exercise.id}>
+                                {exercise.title} ({exercise.language})
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="" disabled>
+                              {nodeForm.watch('language') 
+                                ? `No exercises available for ${getLanguageName(nodeForm.watch('language'))}`
+                                : 'Select a language first'}
                             </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="none" disabled>
-                            No exercises available
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        {nodeForm.watch('language') 
+                          ? `Only showing exercises in ${getLanguageName(nodeForm.watch('language'))}`
+                          : 'Select a language first to see relevant exercises'}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
               
               <DialogFooter>

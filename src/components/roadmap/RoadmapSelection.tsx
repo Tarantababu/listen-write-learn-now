@@ -48,6 +48,22 @@ const RoadmapSelection: React.FC = () => {
     'C2': 'Mastery - Can understand with ease virtually everything heard or read'
   };
 
+  // Check if the selected level has a roadmap available in the user's language
+  const isLevelAvailable = (level: LanguageLevel): boolean => {
+    return roadmaps.some(roadmap => 
+      roadmap.level === level && 
+      roadmap.languages?.includes(settings.selectedLanguage)
+    );
+  };
+
+  // Get available levels
+  const getAvailableLevels = (): LanguageLevel[] => {
+    const levels: LanguageLevel[] = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+    return levels.filter(level => isLevelAvailable(level));
+  };
+
+  const availableLevels = getAvailableLevels();
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-4">
@@ -55,6 +71,29 @@ const RoadmapSelection: React.FC = () => {
         <p>Loading roadmaps...</p>
       </div>
     );
+  }
+
+  if (availableLevels.length === 0) {
+    return (
+      <Card className="w-full max-w-md mx-auto shadow-md">
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold">No Roadmaps Available</CardTitle>
+          <CardDescription>
+            There are no roadmaps available for {settings.selectedLanguage} at the moment.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">
+            Please try selecting a different language in your settings or check back later.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Set default selected level to the first available one
+  if (!availableLevels.includes(selectedLevel) && availableLevels.length > 0) {
+    setSelectedLevel(availableLevels[0]);
   }
 
   return (
@@ -73,7 +112,7 @@ const RoadmapSelection: React.FC = () => {
               <SelectValue placeholder="Select a level" />
             </SelectTrigger>
             <SelectContent>
-              {['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((level) => (
+              {availableLevels.map((level) => (
                 <SelectItem key={level} value={level}>
                   <div className="flex items-center space-x-2">
                     <LevelBadge level={level as LanguageLevel} />
@@ -97,7 +136,7 @@ const RoadmapSelection: React.FC = () => {
         <div className="bg-primary/5 p-4 rounded-md border border-primary/20">
           <h4 className="font-medium text-sm mb-1">What will you learn?</h4>
           <p className="text-sm text-muted-foreground">
-            The {selectedLevel} roadmap includes {roadmaps.find(r => r.level === selectedLevel)?.name || 'exercises'} 
+            The {selectedLevel} roadmap includes {roadmaps.find(r => r.level === selectedLevel && r.languages?.includes(settings.selectedLanguage))?.name || 'exercises'} 
             designed to improve your {settings.selectedLanguage} skills through focused listening and writing practice.
           </p>
         </div>

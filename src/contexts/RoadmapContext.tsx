@@ -1,8 +1,9 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { useUserSettingsContext } from './UserSettingsContext';
-import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language, Exercise } from '@/types';
+import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language, Exercise, RoadmapLanguage } from '@/types';
 import { toast } from 'sonner';
 
 interface RoadmapContextType {
@@ -50,15 +51,31 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
   const [availableNodes, setAvailableNodes] = useState<string[]>([]);
   const [userRoadmap, setUserRoadmap] = useState<UserRoadmap | null>(null);
 
-  // Fetch all roadmaps
+  // Fetch all roadmaps that support the selected language
   useEffect(() => {
-    if (!user) return;
+    if (!user || !settings.selectedLanguage) return;
 
     const fetchRoadmaps = async () => {
       try {
+        // First get all roadmap_languages entries for the selected language
+        const { data: langData, error: langError } = await supabase
+          .from('roadmap_languages')
+          .select('roadmap_id')
+          .eq('language', settings.selectedLanguage);
+
+        if (langError) throw langError;
+
+        if (!langData || langData.length === 0) {
+          setRoadmaps([]);
+          return;
+        }
+
+        // Get the roadmaps that support this language
+        const roadmapIds = langData.map(item => item.roadmap_id);
         const { data, error } = await supabase
           .from('roadmaps')
           .select('*')
+          .in('id', roadmapIds)
           .order('level', { ascending: true });
 
         if (error) throw error;
@@ -73,6 +90,18 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
           createdBy: roadmap.created_by
         }));
 
+        // For each roadmap, fetch its languages
+        for (const roadmap of formattedRoadmaps) {
+          const { data: roadmapLangs, error: roadmapLangsError } = await supabase
+            .from('roadmap_languages')
+            .select('language')
+            .eq('roadmap_id', roadmap.id);
+
+          if (!roadmapLangsError && roadmapLangs) {
+            roadmap.languages = roadmapLangs.map(lang => lang.language as Language);
+          }
+        }
+
         setRoadmaps(formattedRoadmaps);
       } catch (err: any) {
         console.error('Error fetching roadmaps:', err);
@@ -81,7 +110,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     };
 
     fetchRoadmaps();
-  }, [user]);
+  }, [user, settings.selectedLanguage]);
 
   // Fetch user's current roadmap for the selected language
   useEffect(() => {
@@ -143,13 +172,14 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     fetchUserRoadmap();
   }, [user, settings.selectedLanguage]);
 
-  // Fetch nodes for a roadmap
+  // Fetch nodes for a roadmap filtered by the selected language
   const fetchNodesForRoadmap = async (roadmapId: string) => {
     try {
       const { data, error } = await supabase
         .from('roadmap_nodes')
         .select('*')
         .eq('roadmap_id', roadmapId)
+        .eq('language', settings.selectedLanguage)
         .order('position', { ascending: true });
 
       if (error) throw error;
@@ -162,6 +192,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         description: node.description,
         position: node.position,
         isBonus: node.is_bonus,
+        language: node.language as Language,
         createdAt: new Date(node.created_at),
         updatedAt: new Date(node.updated_at)
       }));
@@ -228,17 +259,35 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     if (!user) return;
 
     try {
-      // Find roadmap for selected level
-      const roadmap = roadmaps.find(r => r.level === languageLevel);
-      if (!roadmap) {
-        throw new Error(`No roadmap found for level ${languageLevel}`);
+      // Find roadmaps for selected level and language
+      const { data: langData, error: langError } = await supabase
+        .from('roadmap_languages')
+        .select('roadmap_id')
+        .eq('language', language);
+
+      if (langError) throw langError;
+
+      if (!langData || langData.length === 0) {
+        throw new Error(`No roadmaps available for ${language}`);
       }
 
-      // Get first node
+      // Get the roadmap with the matching level
+      const { data: roadmapData, error: roadmapError } = await supabase
+        .from('roadmaps')
+        .select('*')
+        .in('id', langData.map(item => item.roadmap_id))
+        .eq('level', languageLevel)
+        .limit(1)
+        .single();
+
+      if (roadmapError) throw roadmapError;
+
+      // Get first node for this language
       const { data: nodeData, error: nodeError } = await supabase
         .from('roadmap_nodes')
         .select('*')
-        .eq('roadmap_id', roadmap.id)
+        .eq('roadmap_id', roadmapData.id)
+        .eq('language', language)
         .order('position', { ascending: true })
         .limit(1)
         .single();
@@ -251,7 +300,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         .insert([
           {
             user_id: user.id,
-            roadmap_id: roadmap.id,
+            roadmap_id: roadmapData.id,
             language,
             current_node_id: nodeData.id
           }
@@ -267,13 +316,23 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         .insert([
           {
             user_id: user.id,
-            roadmap_id: roadmap.id,
+            roadmap_id: roadmapData.id,
             node_id: nodeData.id,
             completed: false
           }
         ]);
 
       // Update state
+      const roadmap: Roadmap = {
+        id: roadmapData.id,
+        name: roadmapData.name,
+        level: roadmapData.level as LanguageLevel,
+        description: roadmapData.description,
+        createdAt: new Date(roadmapData.created_at),
+        updatedAt: new Date(roadmapData.updated_at),
+        createdBy: roadmapData.created_by
+      };
+
       const userRoadmapObj: UserRoadmap = {
         id: data.id,
         userId: data.user_id,
@@ -313,11 +372,12 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         throw new Error(`Roadmap with ID ${roadmapId} not found`);
       }
 
-      // Get first node
+      // Get first node for this language
       const { data: nodeData, error: nodeError } = await supabase
         .from('roadmap_nodes')
         .select('*')
         .eq('roadmap_id', roadmapId)
+        .eq('language', settings.selectedLanguage)
         .order('position', { ascending: true })
         .limit(1)
         .single();
@@ -457,12 +517,35 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
           completed_at: new Date().toISOString()
         });
 
-      // Find the next node
-      const nextNode = nodes
-        .filter(n => n.position > (nodes.find(node => node.id === nodeId)?.position || 0))
-        .sort((a, b) => a.position - b.position)[0];
+      // Find the next node for the same language
+      const { data: nextNodeData, error: nextNodeError } = await supabase
+        .from('roadmap_nodes')
+        .select('*')
+        .eq('roadmap_id', currentRoadmap.id)
+        .eq('language', settings.selectedLanguage)
+        .gt('position', (nodes.find(node => node.id === nodeId)?.position || 0))
+        .order('position', { ascending: true })
+        .limit(1)
+        .single();
 
-      if (nextNode) {
+      if (nextNodeError && nextNodeError.code !== 'PGRST116') { // PGRST116 is code for no rows returned
+        throw nextNodeError;
+      }
+
+      if (nextNodeData) {
+        const nextNode: RoadmapNode = {
+          id: nextNodeData.id,
+          roadmapId: nextNodeData.roadmap_id,
+          defaultExerciseId: nextNodeData.default_exercise_id,
+          title: nextNodeData.title,
+          description: nextNodeData.description,
+          position: nextNodeData.position,
+          isBonus: nextNodeData.is_bonus,
+          language: nextNodeData.language,
+          createdAt: new Date(nextNodeData.created_at),
+          updatedAt: new Date(nextNodeData.updated_at)
+        };
+
         // Update current node
         await supabase
           .from('user_roadmaps')

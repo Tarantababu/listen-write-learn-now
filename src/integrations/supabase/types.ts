@@ -294,6 +294,35 @@ export type Database = {
           },
         ]
       }
+      roadmap_languages: {
+        Row: {
+          created_at: string
+          id: string
+          language: string
+          roadmap_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          language: string
+          roadmap_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          language?: string
+          roadmap_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roadmap_languages_roadmap_id_fkey"
+            columns: ["roadmap_id"]
+            isOneToOne: false
+            referencedRelation: "roadmaps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roadmap_nodes: {
         Row: {
           created_at: string
@@ -301,6 +330,7 @@ export type Database = {
           description: string | null
           id: string
           is_bonus: boolean
+          language: string | null
           position: number
           roadmap_id: string
           title: string
@@ -312,6 +342,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_bonus?: boolean
+          language?: string | null
           position: number
           roadmap_id: string
           title: string
@@ -323,6 +354,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_bonus?: boolean
+          language?: string | null
           position?: number
           roadmap_id?: string
           title?: string

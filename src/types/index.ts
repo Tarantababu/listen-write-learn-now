@@ -1,3 +1,4 @@
+
 export type Language = 
   | 'english' 
   | 'german' 
@@ -64,6 +65,7 @@ export interface Roadmap {
   createdAt: Date;
   updatedAt: Date;
   createdBy?: string;
+  languages?: Language[]; // Added languages array
 }
 
 export interface RoadmapNode {
@@ -74,8 +76,16 @@ export interface RoadmapNode {
   description?: string;
   position: number;
   isBonus: boolean;
+  language?: Language; // Added language field
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface RoadmapLanguage {
+  id: string;
+  roadmapId: string;
+  language: Language;
+  createdAt: Date;
 }
 
 export interface UserRoadmap {
