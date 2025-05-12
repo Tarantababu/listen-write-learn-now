@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { SUBSCRIPTION_PLANS, AVAILABLE_CURRENCIES, DEFAULT_CURRENCY } from '@/lib/stripe';
+import { useAdmin } from '@/hooks/use-admin';
 
 interface SubscriptionState {
   isLoading: boolean;
@@ -48,6 +49,7 @@ interface PortalErrorResponse {
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, session } = useAuth();
+  const { isAdmin } = useAdmin();
   const [subscription, setSubscription] = useState<SubscriptionState>({
     isLoading: true,
     isSubscribed: false,
@@ -110,7 +112,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         error: null
       }));
     }
-  }, [user]);
+  }, [user, isAdmin]); // Added isAdmin dependency
 
   // Check for URL query params
   useEffect(() => {
@@ -155,6 +157,25 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     try {
       setSubscription(prev => ({ ...prev, isLoading: true, error: null }));
+
+      // If user is admin, set them as premium without checking Stripe
+      if (isAdmin) {
+        setSubscription({
+          isLoading: false,
+          isSubscribed: true,
+          subscriptionTier: 'premium',
+          subscriptionStatus: 'active',
+          planType: 'admin',
+          trialEnd: null,
+          subscriptionEnd: null,
+          canceledAt: null,
+          lastChecked: new Date(),
+          error: null
+        });
+        
+        console.log('Admin user detected, setting premium subscription');
+        return;
+      }
 
       const { data, error } = await supabase.functions.invoke('check-subscription');
 
@@ -277,7 +298,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const value = {
-    subscription,
+    subscription: isAdmin 
+      ? {
+          ...subscription,
+          isSubscribed: true,
+          subscriptionTier: 'premium',
+          subscriptionStatus: 'active',
+          planType: 'admin'
+        } 
+      : subscription,
     selectedCurrency,
     setSelectedCurrency,
     checkSubscription,

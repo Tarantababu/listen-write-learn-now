@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -12,11 +13,13 @@ import { Button } from '@/components/ui/button';
 import { Map, ChevronRight, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import LevelBadge from '@/components/LevelBadge';
+import { useAdmin } from '@/hooks/use-admin';
 
 const HomePage = () => {
   const location = useLocation();
   const { subscription } = useSubscription();
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const { currentRoadmap, currentNodeId, nodes, loading, completedNodes, roadmaps } = useRoadmap();
   
   useEffect(() => {
@@ -56,9 +59,12 @@ const HomePage = () => {
   const roadmapLevel = roadmapDetails?.level;
   const roadmapName = roadmapDetails?.name;
 
+  // If user is admin, don't show subscription banner
+  const shouldShowSubscriptionBanner = !subscription.isSubscribed && !isAdmin;
+
   return (
     <div className="container mx-auto px-4 py-8">
-      {!subscription.isSubscribed && <SubscriptionBanner />}
+      {shouldShowSubscriptionBanner && <SubscriptionBanner />}
       
       <div className="flex flex-col gap-6">
         {/* Language Level Section - Now in a full-width row */}

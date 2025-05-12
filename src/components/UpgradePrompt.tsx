@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { formatPrice } from '@/lib/stripe';
+import { useAdmin } from '@/hooks/use-admin';
 
 interface UpgradePromptProps {
   title?: string;
@@ -20,6 +21,12 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({
 }) => {
   const navigate = useNavigate();
   const { selectedCurrency } = useSubscription();
+  const { isAdmin } = useAdmin();
+  
+  // Don't show upgrade prompt for admin users
+  if (isAdmin) {
+    return null;
+  }
   
   const defaultMessage = `Unlock unlimited exercises, vocabulary lists, and more features starting at ${formatPrice(4.99, selectedCurrency)}/month with a 7-day free trial.`;
 
