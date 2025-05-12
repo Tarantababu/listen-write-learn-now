@@ -14,10 +14,18 @@ interface RoadmapContextType {
   progress: RoadmapProgress[];
   loading: boolean;
   nodeLoading: boolean;
+  // Property names used in other components
+  currentRoadmap: UserRoadmap | null; 
+  nodes: RoadmapNode[];
+  currentNodeId: string | undefined;
+  completedNodes: string[];
+  availableNodes: string[];
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
   loadUserRoadmap: () => Promise<void>;
   completeNode: (nodeId: string) => Promise<void>;
   resetProgress: () => Promise<void>;
+  getNodeExercise: (nodeId: string) => Promise<any>;
+  markNodeAsCompleted: (nodeId: string) => Promise<void>;
 }
 
 const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
@@ -68,7 +76,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         const formattedRoadmaps: Roadmap[] = roadmapData.map(roadmap => ({
           id: roadmap.id,
           name: roadmap.name,
-          level: roadmap.level,
+          level: roadmap.level as LanguageLevel, // Explicit cast to LanguageLevel
           description: roadmap.description,
           createdAt: new Date(roadmap.created_at),
           updatedAt: new Date(roadmap.updated_at),
@@ -256,6 +264,34 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  // Get node exercise
+  const getNodeExercise = async (nodeId: string) => {
+    const node = roadmapNodes.find(n => n.id === nodeId);
+    if (!node || !node.defaultExerciseId) {
+      return null;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('default_exercises')
+        .select('*')
+        .eq('id', node.defaultExerciseId)
+        .single();
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Error fetching node exercise:", error);
+      toast.error("Failed to load exercise");
+      return null;
+    }
+  };
+
+  // Mark node as completed
+  const markNodeAsCompleted = async (nodeId: string) => {
+    return completeNode(nodeId);
+  };
+
   // Complete a node
   const completeNode = async (nodeId: string) => {
     if (!user || !selectedRoadmap) return;
@@ -367,6 +403,21 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  // Calculate completed nodes ids
+  const completedNodes = progress.filter(p => p.completed).map(p => p.nodeId);
+  
+  // Calculate available nodes
+  const availableNodes = roadmapNodes
+    .filter((node, index, array) => {
+      // First node is always available
+      if (index === 0) return true;
+      
+      // Previous node is completed, this one is available
+      const prevNode = array[index - 1];
+      return prevNode && completedNodes.includes(prevNode.id);
+    })
+    .map(node => node.id);
+
   return (
     <RoadmapContext.Provider value={{
       roadmaps,
@@ -376,10 +427,18 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       progress,
       loading,
       nodeLoading,
+      // Alias properties to match what other components are using
+      currentRoadmap: selectedRoadmap,
+      nodes: roadmapNodes,
+      currentNodeId: selectedRoadmap?.currentNodeId,
+      completedNodes,
+      availableNodes,
       initializeUserRoadmap,
       loadUserRoadmap,
       completeNode,
-      resetProgress
+      resetProgress,
+      getNodeExercise,
+      markNodeAsCompleted
     }}>
       {children}
     </RoadmapContext.Provider>

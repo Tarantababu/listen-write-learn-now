@@ -438,7 +438,7 @@ export const RoadmapEditor: React.FC = () => {
             default_exercise_id: values.defaultExerciseId || null,
             description: values.description,
             is_bonus: values.isBonus,
-            language: values.language,
+            language: values.language as Language | null, // Cast to Language type or null
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedNode.id);
@@ -455,7 +455,7 @@ export const RoadmapEditor: React.FC = () => {
                 defaultExerciseId: values.defaultExerciseId,
                 description: values.description,
                 isBonus: values.isBonus,
-                language: values.language as Language,
+                language: values.language as Language | undefined, // Cast to Language type
                 updatedAt: new Date()
               } 
             : node
@@ -476,7 +476,7 @@ export const RoadmapEditor: React.FC = () => {
               default_exercise_id: values.defaultExerciseId || null,
               description: values.description,
               is_bonus: values.isBonus,
-              language: values.language
+              language: values.language as Language | null // Cast to Language type or null
             }
           ])
           .select()
@@ -493,7 +493,7 @@ export const RoadmapEditor: React.FC = () => {
           description: data.description,
           position: data.position,
           isBonus: data.is_bonus,
-          language: data.language,
+          language: data.language as Language | undefined, // Cast to Language type
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at)
         };
