@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -61,94 +60,102 @@ const HomePage = () => {
     <div className="container mx-auto px-4 py-8">
       {!subscription.isSubscribed && <SubscriptionBanner />}
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Main statistics section */}
-        <div className="md:col-span-2">
+      <div className="flex flex-col gap-6">
+        {/* Language Level Section - Now in a full-width row */}
+        <div className="w-full">
           <ExerciseProvider>
             <UserStatistics />
           </ExerciseProvider>
         </div>
+        
+        {/* Content Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="md:col-span-2">
+            {/* Additional content can go here */}
+          </div>
 
-        {/* Roadmap progress section */}
-        <div className="md:col-span-1">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center justify-between">
-                <div className="flex items-center">
-                  <Map className="h-4 w-4 mr-2" />
-                  Learning Roadmap
-                </div>
-                {roadmapLevel && (
-                  <LevelBadge level={roadmapLevel} />
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex flex-col items-center justify-center p-4">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                  <p>Loading roadmap...</p>
-                </div>
-              ) : currentRoadmap ? (
-                <>
-                  <div className="mb-4">
-                    <h3 className="text-sm font-medium mb-1">{roadmapName || "Learning Path"}</h3>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-xs text-muted-foreground">Progress</span>
-                      <span className="text-xs font-medium">{progressPercentage}%</span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary rounded-full" 
-                        style={{ width: `${progressPercentage}%` }}
-                      ></div>
-                    </div>
+          {/* Roadmap progress section */}
+          <div className="md:col-span-1">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Map className="h-4 w-4 mr-2" />
+                    Learning Roadmap
                   </div>
-
-                  {currentNode && (
-                    <div className="mb-4 p-3 bg-secondary/20 rounded-md border border-secondary/30">
-                      <h4 className="text-sm font-medium">Current Exercise:</h4>
-                      <p className="text-sm mt-1">{currentNode.title}</p>
-                    </div>
+                  {roadmapLevel && (
+                    <LevelBadge level={roadmapLevel} />
                   )}
-
-                  {nextNodes.length > 0 && (
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center p-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+                    <p>Loading roadmap...</p>
+                  </div>
+                ) : currentRoadmap ? (
+                  <>
                     <div className="mb-4">
-                      <h4 className="text-xs uppercase text-muted-foreground mb-2">Coming up next:</h4>
-                      <ul className="space-y-2">
-                        {nextNodes.map((node) => (
-                          <li 
-                            key={node.id} 
-                            className="text-xs flex items-center justify-between p-2 bg-muted/50 rounded-md"
-                          >
-                            <span>{node.title}</span>
-                            {node.isBonus && (
-                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 border-amber-500/40 text-amber-700">Bonus</Badge>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
+                      <h3 className="text-sm font-medium mb-1">{roadmapName || "Learning Path"}</h3>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-xs text-muted-foreground">Progress</span>
+                        <span className="text-xs font-medium">{progressPercentage}%</span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary rounded-full" 
+                          style={{ width: `${progressPercentage}%` }}
+                        ></div>
+                      </div>
                     </div>
-                  )}
 
-                  <Button asChild className="w-full mt-2">
-                    <Link to="/dashboard/roadmap">
-                      Continue Learning <ChevronRight className="h-4 w-4 ml-1" />
-                    </Link>
-                  </Button>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center text-center p-4">
-                  <p className="text-sm mb-3">You haven't started a learning roadmap yet.</p>
-                  <Button asChild>
-                    <Link to="/dashboard/roadmap">
-                      Start Learning Path
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    {currentNode && (
+                      <div className="mb-4 p-3 bg-secondary/20 rounded-md border border-secondary/30">
+                        <h4 className="text-sm font-medium">Current Exercise:</h4>
+                        <p className="text-sm mt-1">{currentNode.title}</p>
+                      </div>
+                    )}
+
+                    {nextNodes.length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="text-xs uppercase text-muted-foreground mb-2">Coming up next:</h4>
+                        <ul className="space-y-2">
+                          {nextNodes.map((node) => (
+                            <li 
+                              key={node.id} 
+                              className="text-xs flex items-center justify-between p-2 bg-muted/50 rounded-md"
+                            >
+                              <span>{node.title}</span>
+                              {node.isBonus && (
+                                <Badge variant="outline" className="text-[10px] bg-amber-500/10 border-amber-500/40 text-amber-700">Bonus</Badge>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <Button asChild className="w-full mt-2">
+                      <Link to="/dashboard/roadmap">
+                        Continue Learning <ChevronRight className="h-4 w-4 ml-1" />
+                      </Link>
+                    </Button>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center p-4">
+                    <p className="text-sm mb-3">You haven't started a learning roadmap yet.</p>
+                    <Button asChild>
+                      <Link to="/dashboard/roadmap">
+                        Start Learning Path
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
