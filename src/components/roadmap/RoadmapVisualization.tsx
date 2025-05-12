@@ -91,7 +91,8 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     currentNodeId, 
     completedNodes, 
     availableNodes,
-    loading 
+    loading,
+    roadmaps 
   } = useRoadmap();
 
   if (loading) {
@@ -110,6 +111,11 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
       </div>
     );
   }
+
+  // Find the roadmap details using the roadmapId from currentRoadmap
+  const roadmapDetails = roadmaps.find(r => r.id === currentRoadmap.roadmapId);
+  const roadmapName = roadmapDetails?.name || "Learning Path";
+  const roadmapLevel = roadmapDetails?.level;
 
   const getNodeStatus = (node: RoadmapNode): 'completed' | 'current' | 'locked' | 'available' => {
     if (completedNodes.includes(node.id)) return 'completed';
@@ -130,9 +136,9 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold">{currentRoadmap.name}</h2>
+          <h2 className="text-xl font-bold">{roadmapName}</h2>
           <div className="flex items-center mt-1">
-            <LevelBadge level={currentRoadmap.level} className="mr-2" />
+            {roadmapLevel && <LevelBadge level={roadmapLevel} className="mr-2" />}
             <span className="text-sm text-muted-foreground">
               {completedNodes.length} of {nodes.length} completed
             </span>

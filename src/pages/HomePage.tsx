@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -17,7 +18,7 @@ const HomePage = () => {
   const location = useLocation();
   const { subscription } = useSubscription();
   const { user } = useAuth();
-  const { currentRoadmap, currentNodeId, nodes, loading, completedNodes } = useRoadmap();
+  const { currentRoadmap, currentNodeId, nodes, loading, completedNodes, roadmaps } = useRoadmap();
   
   useEffect(() => {
     // Show access denied message if redirected from admin page
@@ -51,6 +52,11 @@ const HomePage = () => {
     ? nodes.slice(currentIndex + 1, currentIndex + 3)
     : [];
 
+  // Find the roadmap details using the roadmapId from currentRoadmap
+  const roadmapDetails = currentRoadmap ? roadmaps.find(r => r.id === currentRoadmap.roadmapId) : null;
+  const roadmapLevel = roadmapDetails?.level;
+  const roadmapName = roadmapDetails?.name;
+
   return (
     <div className="container mx-auto px-4 py-8">
       {!subscription.isSubscribed && <SubscriptionBanner />}
@@ -72,8 +78,8 @@ const HomePage = () => {
                   <Map className="h-4 w-4 mr-2" />
                   Learning Roadmap
                 </div>
-                {currentRoadmap && (
-                  <LevelBadge level={currentRoadmap.level} />
+                {roadmapLevel && (
+                  <LevelBadge level={roadmapLevel} />
                 )}
               </CardTitle>
             </CardHeader>
@@ -86,7 +92,7 @@ const HomePage = () => {
               ) : currentRoadmap ? (
                 <>
                   <div className="mb-4">
-                    <h3 className="text-sm font-medium mb-1">{currentRoadmap.name}</h3>
+                    <h3 className="text-sm font-medium mb-1">{roadmapName || "Learning Path"}</h3>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-xs text-muted-foreground">Progress</span>
                       <span className="text-xs font-medium">{progressPercentage}%</span>

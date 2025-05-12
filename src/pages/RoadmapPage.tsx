@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const RoadmapPage: React.FC = () => {
-  const { currentRoadmap, loading } = useRoadmap();
+  const { currentRoadmap, loading, roadmaps } = useRoadmap();
   const { settings } = useUserSettingsContext();
   const [selectedNode, setSelectedNode] = useState<RoadmapNode | null>(null);
   const [exerciseModalOpen, setExerciseModalOpen] = useState(false);
@@ -31,12 +31,15 @@ const RoadmapPage: React.FC = () => {
     });
   };
 
+  // Get the selected language with proper capitalization
+  const selectedLanguageCapitalized = settings.selectedLanguage.charAt(0).toUpperCase() + settings.selectedLanguage.slice(1);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">
-            Your {settings.selectedLanguage.charAt(0).toUpperCase() + settings.selectedLanguage.slice(1)} Learning Path
+            Your {selectedLanguageCapitalized} Learning Path
           </h1>
           
           <div className="flex space-x-2">
