@@ -32,7 +32,10 @@ serve(async (req) => {
   }
 
   try {
-    const { text, language } = await req.json();
+    const requestBody = await req.json();
+    // Accept either "text" or "word" parameter for backward compatibility
+    const text = requestBody.text || requestBody.word;
+    const { language } = requestBody;
 
     if (!text || !language) {
       return new Response(
@@ -58,51 +61,29 @@ serve(async (req) => {
     }
 
     const prompt = `
-You are a language learning assistant helping users understand a text in ${language}. 
-Split the provided text into sentences and provide a detailed analysis for each.
+You are a language learning assistant helping users understand a word or phrase in ${language}. 
+Provide a detailed analysis for the word or phrase:
 
-For each sentence:
-1. Analyze key words (include their definition)
-2. For at least 2-3 key words, provide "English cousins" - similar words in English (if applicable)
-3. Share brief etymological insights where interesting
-4. Explain basic grammar patterns and sentence structure
-5. Note any idiomatic expressions
+1. Provide a clear definition
+2. Create a helpful example sentence using the word in context
+3. If applicable, share "English cousins" - similar words in English 
+4. Include brief etymological insights where interesting
+5. Explain basic grammar patterns related to the word
 
-After analyzing each sentence, provide:
-1. Summary of 2-3 common patterns or structures seen across the text
-2. A brief overall summary of what the text is about
-
-Format the response as a JSON object with the structure shown in the example below.
-Do not include any text outside of the JSON, no markdown formatting, no code blocks, just pure JSON.
-
-Example format:
+Format the response as a JSON object with the following structure:
 {
-  "sentences": [
-    {
-      "text": "Original sentence in target language",
-      "analysis": {
-        "words": [
-          {
-            "word": "word1",
-            "definition": "meaning",
-            "etymologyInsight": "brief origin",
-            "englishCousin": "similar English word"
-          }
-        ],
-        "grammarInsights": ["insight 1", "insight 2"],
-        "structure": "description of sentence structure"
-      }
-    }
-  ],
-  "commonPatterns": ["pattern 1", "pattern 2"],
-  "summary": "Brief content summary"
+  "definition": "simple definition of the word or phrase",
+  "exampleSentence": "a natural example sentence using the word",
+  "englishCousin": "similar word in English (if applicable)",
+  "etymologyInsight": "brief origin information (if interesting)",
+  "grammarNote": "brief grammar pattern note (if applicable)"
 }
 
-Here's the text to analyze:
+Here's the word or phrase to analyze:
 ${text}
 `;
 
-    console.log(`Generating reading analysis for text in ${language} (length: ${text.length})`);
+    console.log(`Generating vocabulary info for "${text}" in ${language}`);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -115,7 +96,7 @@ ${text}
         messages: [
           {
             role: 'system',
-            content: 'You are a language learning assistant providing detailed analysis of texts.',
+            content: 'You are a language learning assistant providing detailed analysis of vocabulary.',
           },
           {
             role: 'user',
@@ -130,13 +111,13 @@ ${text}
       const errorData = await response.json();
       console.error('OpenAI API Error:', errorData);
       return new Response(
-        JSON.stringify({ error: 'Error generating reading analysis', details: errorData }),
+        JSON.stringify({ error: 'Error generating vocabulary information', details: errorData }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: response.status }
       );
     }
 
     const data = await response.json();
-    let analysisContent: VocabularyResponse;
+    let vocabularyInfo;
     
     try {
       // Get the content from ChatGPT response
@@ -152,12 +133,12 @@ ${text}
       }
       
       // Try to parse the JSON
-      analysisContent = JSON.parse(jsonText);
+      vocabularyInfo = JSON.parse(jsonText);
     } catch (parseError) {
       console.error('Error parsing OpenAI response:', parseError);
       return new Response(
         JSON.stringify({ 
-          error: 'Error parsing reading analysis', 
+          error: 'Error parsing vocabulary information', 
           rawResponse: data.choices[0].message.content 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
@@ -165,10 +146,7 @@ ${text}
     }
 
     return new Response(
-      JSON.stringify({ 
-        analysis: analysisContent,
-        usage: data.usage
-      }),
+      JSON.stringify(vocabularyInfo),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

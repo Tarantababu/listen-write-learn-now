@@ -42,9 +42,9 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
     try {
       toast.info('Generating vocabulary information...');
       
-      // Call the function to generate definition and example
+      // FIX: Changed parameter from "word" to "text" to match the expected API parameters
       const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
-        body: { word, language }
+        body: { text: word, language }
       });
 
       if (error) throw error;
