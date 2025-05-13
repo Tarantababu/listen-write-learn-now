@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 
@@ -742,4 +743,30 @@ function generateExampleSentence(word: string, language: string): string {
     'spanish': [
       'Uso "__WORD__" cuando hablo con mis amigos.',
       'La profesora explica "__WORD__" en la clase.',
-      'Me gusta estudiar la palabra "__WORD
+      'Me gusta estudiar la palabra "__WORD__".',
+      'Practicamos "__WORD__" en la lección de hoy.',
+      'Juan usa "__WORD__" en su conversación diaria.'
+    ],
+    'french': [
+      'J\'utilise "__WORD__" quand je parle avec mes amis.',
+      'Le professeur explique "__WORD__" dans la classe.',
+      'J\'aime étudier le mot "__WORD__".',
+      'Nous pratiquons "__WORD__" dans la leçon d\'aujourd\'hui.',
+      'Marie utilise "__WORD__" dans sa conversation quotidienne.'
+    ],
+    'german': [
+      'Ich benutze "__WORD__" wenn ich mit meinen Freunden spreche.',
+      'Der Lehrer erklärt "__WORD__" im Unterricht.',
+      'Ich lerne gerne das Wort "__WORD__".',
+      'Wir üben "__WORD__" in der heutigen Lektion.',
+      'Thomas verwendet "__WORD__" in seinem täglichen Gespräch.'
+    ]
+  };
+
+  // Select a template for the given language
+  const langTemplates = templates[language.toLowerCase()] || templates['english'];
+  const template = langTemplates[Math.floor(Math.random() * langTemplates.length)];
+  
+  // Replace placeholder with the actual word
+  return template.replace('__WORD__', word);
+}
