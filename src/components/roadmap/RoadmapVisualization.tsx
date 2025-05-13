@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '@/types';
@@ -105,16 +104,31 @@ interface RoadmapVisualizationProps {
 }
 
 const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelect }) => {
-  const { 
-    currentRoadmap, 
-    nodes, 
-    currentNodeId, 
-    completedNodes, 
-    availableNodes,
-    nodeProgress,
-    loading,
-    roadmaps 
-  } = useRoadmap();
+  const roadmapContext = useRoadmap();
+  
+  // Extract properties from context with fallbacks for compatibility
+  const currentRoadmap = roadmapContext.currentRoadmap || null;
+  const nodes = Array.isArray(roadmapContext.currentRoadmap) 
+    ? roadmapContext.currentRoadmap 
+    : [];
+  const currentNodeId = 'currentNodeId' in roadmapContext 
+    ? roadmapContext.currentNodeId 
+    : undefined;
+  const completedNodes = 'completedNodes' in roadmapContext 
+    ? roadmapContext.completedNodes 
+    : [];
+  const availableNodes = 'availableNodes' in roadmapContext 
+    ? roadmapContext.availableNodes 
+    : [];
+  const nodeProgress = 'nodeProgress' in roadmapContext 
+    ? roadmapContext.nodeProgress 
+    : [];
+  const loading = 'loading' in roadmapContext || 'isLoading' in roadmapContext 
+    ? (roadmapContext.loading || roadmapContext.isLoading) 
+    : false;
+  const roadmaps = 'roadmaps' in roadmapContext 
+    ? roadmapContext.roadmaps 
+    : [];
 
   console.log("Legacy RoadmapVisualization rendered with:", {
     hasCurrentRoadmap: !!currentRoadmap,
@@ -123,7 +137,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   });
 
   // First try to use the new implementation if data is available
-  if (currentRoadmap && nodes && Array.isArray(nodes) && nodes.length > 0 && 
+  if (currentRoadmap && Array.isArray(nodes) && nodes.length > 0 && 
       nodes[0] && typeof nodes[0].status === 'string') {
     console.log("Using new RoadmapVisualization implementation");
     return <NewRoadmapVisualization onNodeSelect={onNodeSelect} />;
@@ -150,7 +164,11 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   console.log("Using legacy roadmap visualization with nodes:", nodes);
 
   // Find the roadmap details using the roadmapId from currentRoadmap
-  const roadmapDetails = roadmaps.find(r => r.id === currentRoadmap.roadmapId);
+  // Handle different data structures between old and new implementations
+  const currentRoadmapObject = Array.isArray(currentRoadmap) ? null : currentRoadmap;
+  const roadmapId = currentRoadmapObject?.roadmapId;
+  
+  const roadmapDetails = roadmapId ? roadmaps.find(r => r.id === roadmapId) : null;
   const roadmapName = roadmapDetails?.name || "Learning Path";
   const roadmapLevel = roadmapDetails?.level;
 

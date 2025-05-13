@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
@@ -19,18 +18,37 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 
 const RoadmapPage: React.FC = () => {
-  const { 
-    currentRoadmap, 
-    isLoading, 
-    hasError,
-    roadmaps, 
-    userRoadmaps,
-    loadUserRoadmaps,
-    selectRoadmap,
-    completedNodes,
-    nodes,
-    currentNodeId
-  } = useRoadmap();
+  const roadmapContext = useRoadmap();
+  
+  // Extract properties with fallbacks
+  const currentRoadmap = roadmapContext.currentRoadmap || null;
+  const isLoading = 'isLoading' in roadmapContext || 'loading' in roadmapContext
+    ? (roadmapContext.isLoading || roadmapContext.loading)
+    : false;
+  const hasError = 'hasError' in roadmapContext
+    ? roadmapContext.hasError
+    : false;
+  const roadmaps = 'roadmaps' in roadmapContext
+    ? roadmapContext.roadmaps
+    : [];
+  const userRoadmaps = 'userRoadmaps' in roadmapContext
+    ? roadmapContext.userRoadmaps
+    : [];
+  const loadUserRoadmaps = 'loadUserRoadmaps' in roadmapContext
+    ? roadmapContext.loadUserRoadmaps
+    : async () => [];
+  const selectRoadmap = 'selectRoadmap' in roadmapContext
+    ? roadmapContext.selectRoadmap
+    : async () => [];
+  const completedNodes = 'completedNodes' in roadmapContext
+    ? roadmapContext.completedNodes
+    : [];
+  const nodes = 'nodes' in roadmapContext
+    ? roadmapContext.nodes
+    : [];
+  const currentNodeId = 'currentNodeId' in roadmapContext
+    ? roadmapContext.currentNodeId
+    : undefined;
   
   const { settings } = useUserSettingsContext();
   const { user } = useAuth();
@@ -232,6 +250,26 @@ const RoadmapPage: React.FC = () => {
     );
   }
 
+  const currentRoadmapId = Array.isArray(currentRoadmap) 
+    ? null 
+    : currentRoadmap?.id;
+
+  const getCurrentRoadmapInfo = () => {
+    if (!currentRoadmap) return null;
+    
+    if (Array.isArray(currentRoadmap)) {
+      return null;
+    }
+    
+    return {
+      id: currentRoadmap.id,
+      roadmapId: currentRoadmap.roadmapId,
+      language: currentRoadmap.language
+    };
+  };
+  
+  const currentRoadmapInfo = getCurrentRoadmapInfo();
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col space-y-6">
@@ -373,7 +411,7 @@ const RoadmapPage: React.FC = () => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">
-                    {roadmaps.find(r => r.id === currentRoadmap.roadmapId)?.name || "Learning Path"} - {getCapitalizedLanguage(currentRoadmap.language)}
+                    {roadmaps.find(r => r.id === currentRoadmapId)?.name || "Learning Path"} - {getCapitalizedLanguage(currentRoadmapInfo?.language || "Language")}
                   </CardTitle>
                   <div className="flex space-x-2">
                     <Button
@@ -397,7 +435,7 @@ const RoadmapPage: React.FC = () => {
                   </div>
                 </div>
                 <CardDescription>
-                  Follow this path to improve your {currentRoadmap.language} skills step by step
+                  Follow this path to improve your {currentRoadmapInfo?.language || "Language"} skills step by step
                 </CardDescription>
               </CardHeader>
               <CardContent className="pb-8 pt-2">

@@ -11,6 +11,7 @@ interface RoadmapNode {
   position: number;
   isBonus: boolean;
   language: string;
+  roadmapId?: string; // Add this field to match the data structure
 }
 
 export interface RoadmapContextType {
@@ -62,7 +63,18 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({
         return;
       }
 
-      setCurrentRoadmap(data);
+      // Transform the data to match RoadmapNode type
+      const transformedData = data.map(node => ({
+        id: node.id,
+        title: node.title,
+        description: node.description || '',
+        position: node.position,
+        isBonus: node.is_bonus,
+        language: node.language,
+        roadmapId: node.roadmap_id,
+      }));
+
+      setCurrentRoadmap(transformedData);
     } catch (error) {
       console.error("Unexpected error fetching roadmap:", error);
     }
@@ -197,7 +209,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({
             completed: true,
             completed_at: new Date().toISOString(),
           },
-          { onConflict: ['user_id', 'node_id'] }
+          { onConflict: 'user_id,node_id' }
         );
 
       if (progressError) throw progressError;

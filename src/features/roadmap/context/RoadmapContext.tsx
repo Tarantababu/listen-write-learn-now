@@ -57,6 +57,15 @@ export const RoadmapContext = createContext<RoadmapContextType>({
   markNodeAsCompleted: async () => {},
 });
 
+// Export a hook to use the roadmap context
+export const useRoadmap = () => {
+  const context = useContext(RoadmapContext);
+  if (!context) {
+    throw new Error('useRoadmap must be used within a RoadmapProvider');
+  }
+  return context;
+};
+
 // Create the provider component
 interface RoadmapProviderProps {
   children: ReactNode;

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useRoadmap } from '@/contexts/RoadmapContext';
+import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';

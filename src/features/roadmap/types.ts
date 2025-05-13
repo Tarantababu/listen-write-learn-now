@@ -16,7 +16,7 @@ export interface RoadmapItem {
   currentNodeId?: string;
   progress?: number;
   language?: Language; 
-  roadmapId?: string; // Add this for user roadmaps that reference parent roadmap
+  roadmapId?: string; // For user roadmaps that reference parent roadmap
 }
 
 export interface RoadmapNode {
@@ -33,17 +33,18 @@ export interface RoadmapNode {
   
   // UI state properties
   status?: 'locked' | 'available' | 'completed' | 'current';
-  progressCount?: number; // Add this for tracking node progress count
+  progressCount?: number; // For tracking node progress count
 }
 
 // API response for node exercise content
 export interface ExerciseContent {
-  id: string;
+  id?: string;
   title: string;
   text: string;
   audioUrl?: string;
   language: Language;
   tags?: string[];
+  readingAnalysisId?: string | null; // Add this field for reading analysis integration
 }
 
 // Result of node completion
