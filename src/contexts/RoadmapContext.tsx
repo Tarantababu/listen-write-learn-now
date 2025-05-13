@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from './AuthContext';
 import { useUserSettingsContext } from './UserSettingsContext';
-import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language } from '@/types';
+import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language, RoadmapNodeProgress } from '@/types';
 
 interface RoadmapContextType {
   roadmaps: Roadmap[];
@@ -13,6 +13,7 @@ interface RoadmapContextType {
   currentNode: RoadmapNode | null;
   roadmapNodes: RoadmapNode[];
   progress: RoadmapProgress[];
+  nodeProgress: RoadmapNodeProgress[]; // New property to store detailed node progress
   loading: boolean;
   nodeLoading: boolean;
   // Property names used in other components
@@ -28,6 +29,7 @@ interface RoadmapContextType {
   resetProgress: () => Promise<void>;
   getNodeExercise: (nodeId: string) => Promise<any>;
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
+  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>; // New method for incrementing completion count
   selectRoadmap: (roadmapId: string) => Promise<void>; // New method to switch between roadmaps
 }
 
@@ -42,6 +44,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [roadmapNodes, setRoadmapNodes] = useState<RoadmapNode[]>([]);
   const [currentNode, setCurrentNode] = useState<RoadmapNode | null>(null);
   const [progress, setProgress] = useState<RoadmapProgress[]>([]);
+  const [nodeProgress, setNodeProgress] = useState<RoadmapNodeProgress[]>([]); // For detailed node progress
   const [loading, setLoading] = useState<boolean>(true);
   const [nodeLoading, setNodeLoading] = useState<boolean>(false);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(settings.selectedLanguage);
@@ -209,6 +212,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         setRoadmapNodes([]);
         setCurrentNode(null);
         setProgress([]);
+        setNodeProgress([]); // Clear node progress
         setLoading(false);
         return;
       }
@@ -280,6 +284,31 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       }));
 
       setProgress(formattedProgress);
+
+      // Load detailed node progress
+      const { data: nodeProgressData, error: nodeProgressError } = await supabase
+        .from('roadmap_nodes_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('roadmap_id', userRoadmap.roadmapId)
+        .eq('language', userRoadmap.language);
+
+      if (nodeProgressError) throw nodeProgressError;
+
+      const formattedNodeProgress: RoadmapNodeProgress[] = (nodeProgressData || []).map(item => ({
+        id: item.id,
+        userId: item.user_id,
+        roadmapId: item.roadmap_id,
+        nodeId: item.node_id,
+        language: item.language as Language,
+        completionCount: item.completion_count,
+        isCompleted: item.is_completed,
+        lastPracticedAt: item.last_practiced_at ? new Date(item.last_practiced_at) : undefined,
+        createdAt: new Date(item.created_at),
+        updatedAt: new Date(item.updated_at),
+      }));
+
+      setNodeProgress(formattedNodeProgress);
     } catch (error) {
       console.error("Error loading user roadmap:", error);
       toast({
@@ -423,6 +452,70 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  // Increment node completion count when dictation is completed with good accuracy
+  const incrementNodeCompletion = async (nodeId: string, accuracy: number) => {
+    if (!user || !selectedRoadmap) return;
+
+    // Only increment if accuracy is good (95% or better)
+    if (accuracy < 95) return;
+
+    setNodeLoading(true);
+    try {
+      console.log(`Incrementing completion count for node ${nodeId} with accuracy ${accuracy}%`);
+
+      // Call the database function to increment node completion count
+      const { error } = await supabase
+        .rpc('increment_node_completion', {
+          node_id_param: nodeId,
+          user_id_param: user.id,
+          language_param: selectedRoadmap.language,
+          roadmap_id_param: selectedRoadmap.roadmapId
+        });
+
+      if (error) {
+        console.error("Error incrementing node completion:", error);
+        throw error;
+      }
+
+      // Reload roadmap data to get updated progress
+      await loadUserRoadmap(selectedRoadmap.id);
+      
+      // Get updated node progress to check if it's now complete
+      const { data: progressData } = await supabase
+        .from('roadmap_nodes_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('node_id', nodeId)
+        .eq('language', selectedRoadmap.language)
+        .single();
+
+      if (progressData && progressData.is_completed) {
+        toast({
+          title: "Node completed!",
+          description: `You've completed this lesson! Completion count: ${progressData.completion_count}/3`
+        });
+        
+        // If this is now completed, check if we need to move to the next node
+        await completeNode(nodeId);
+      } else if (progressData) {
+        toast({
+          title: "Progress saved!",
+          description: `Practice progress saved. Completion count: ${progressData.completion_count}/3`
+        });
+      }
+      
+    } catch (error) {
+      console.error("Error updating node progress:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to save progress",
+        description: "Failed to save your practice progress"
+      });
+    } finally {
+      setNodeLoading(false);
+    }
+  };
+
   // Mark node as completed
   const markNodeAsCompleted = async (nodeId: string) => {
     return completeNode(nodeId);
@@ -541,6 +634,16 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (progressError) throw progressError;
 
+      // Delete detailed node progress records
+      const { error: nodeProgressError } = await supabase
+        .from('roadmap_nodes_progress')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('roadmap_id', selectedRoadmap.roadmapId)
+        .eq('language', selectedRoadmap.language);
+
+      if (nodeProgressError) throw nodeProgressError;
+
       // Find first node
       const firstNode = roadmapNodes.length > 0 ? roadmapNodes[0] : null;
       
@@ -595,6 +698,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentNode,
       roadmapNodes,
       progress,
+      nodeProgress,
       loading,
       nodeLoading,
       // Alias properties to match what other components are using
@@ -610,6 +714,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       resetProgress,
       getNodeExercise,
       markNodeAsCompleted,
+      incrementNodeCompletion,
       selectRoadmap
     }}>
       {children}

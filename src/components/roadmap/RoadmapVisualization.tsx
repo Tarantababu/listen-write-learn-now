@@ -18,10 +18,11 @@ import { Loader2 } from 'lucide-react';
 interface RoadmapNodeProps {
   node: RoadmapNode;
   status: 'completed' | 'current' | 'locked' | 'available';
+  progress?: number; // Add progress (completion count)
   onNodeClick: (node: RoadmapNode) => void;
 }
 
-const RoadmapNodeComponent: React.FC<RoadmapNodeProps> = ({ node, status, onNodeClick }) => {
+const RoadmapNodeComponent: React.FC<RoadmapNodeProps> = ({ node, status, progress = 0, onNodeClick }) => {
   const getNodeColor = () => {
     switch (status) {
       case 'completed': return 'bg-primary text-primary-foreground border-primary';
@@ -38,24 +39,35 @@ const RoadmapNodeComponent: React.FC<RoadmapNodeProps> = ({ node, status, onNode
     return null;
   };
 
+  // Display progress badge if there is progress but not completed
+  const showProgressBadge = progress > 0 && status !== 'completed';
+
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            onClick={() => onNodeClick(node)}
-            disabled={status === 'locked'}
-            variant="outline"
-            className={cn(
-              "h-16 w-16 rounded-full border-2 flex flex-col items-center justify-center p-0 transition-all",
-              getNodeColor(),
-              status === 'current' && "ring-2 ring-offset-2 ring-primary",
-              node.isBonus && "border-amber-500"
+          <div className="relative">
+            <Button
+              onClick={() => onNodeClick(node)}
+              disabled={status === 'locked'}
+              variant="outline"
+              className={cn(
+                "h-16 w-16 rounded-full border-2 flex flex-col items-center justify-center p-0 transition-all",
+                getNodeColor(),
+                status === 'current' && "ring-2 ring-offset-2 ring-primary",
+                node.isBonus && "border-amber-500"
+              )}
+            >
+              {getNodeIcon()}
+              <span className="text-xs font-bold mt-1">{node.position + 1}</span>
+            </Button>
+            
+            {showProgressBadge && (
+              <div className="absolute -bottom-2 -right-2 bg-amber-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold">
+                {progress}
+              </div>
             )}
-          >
-            {getNodeIcon()}
-            <span className="text-xs font-bold mt-1">{node.position + 1}</span>
-          </Button>
+          </div>
         </TooltipTrigger>
         <TooltipContent>
           <div className="space-y-1 p-1">
@@ -71,7 +83,14 @@ const RoadmapNodeComponent: React.FC<RoadmapNodeProps> = ({ node, status, onNode
               <p className="text-xs text-muted-foreground">{node.description}</p>
             )}
             <div className="text-xs flex items-center gap-1">
-              <span>{status === 'locked' ? 'Locked' : status === 'completed' ? 'Completed' : status === 'current' ? 'Current' : 'Available'}</span>
+              <span>
+                {status === 'locked' ? 'Locked' : 
+                 status === 'completed' ? 'Completed' : 
+                 status === 'current' ? 'Current' : 'Available'}
+              </span>
+              {progress > 0 && status !== 'completed' && (
+                <span className="ml-1">- Progress: {progress}/3</span>
+              )}
             </div>
           </div>
         </TooltipContent>
@@ -91,6 +110,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     currentNodeId, 
     completedNodes, 
     availableNodes,
+    nodeProgress,
     loading,
     roadmaps 
   } = useRoadmap();
@@ -119,9 +139,20 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
 
   const getNodeStatus = (node: RoadmapNode): 'completed' | 'current' | 'locked' | 'available' => {
     if (completedNodes.includes(node.id)) return 'completed';
+    
+    // Check if node is completed in the detailed progress
+    const nodeProgressInfo = nodeProgress.find(np => np.nodeId === node.id);
+    if (nodeProgressInfo?.isCompleted) return 'completed';
+    
     if (node.id === currentNodeId) return 'current';
     if (availableNodes.includes(node.id)) return 'available';
     return 'locked';
+  };
+
+  // Get node completion count from progress data
+  const getNodeProgress = (nodeId: string): number => {
+    const progressInfo = nodeProgress.find(np => np.nodeId === nodeId);
+    return progressInfo?.completionCount || 0;
   };
 
   const sortedNodes = [...nodes].sort((a, b) => a.position - b.position);
@@ -163,6 +194,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
                 key={node.id}
                 node={node}
                 status={getNodeStatus(node)}
+                progress={getNodeProgress(node.id)}
                 onNodeClick={() => onNodeSelect(node)}
               />
             ))}

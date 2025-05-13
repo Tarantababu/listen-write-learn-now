@@ -7,7 +7,7 @@ import { RoadmapNode } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 import DictationPractice from '@/components/DictationPractice';
 
 interface RoadmapExerciseModalProps {
@@ -17,11 +17,18 @@ interface RoadmapExerciseModalProps {
 }
 
 const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpen, onOpenChange }) => {
-  const { markNodeAsCompleted, getNodeExercise, nodeLoading, completedNodes } = useRoadmap();
+  const { 
+    markNodeAsCompleted, 
+    getNodeExercise, 
+    nodeLoading, 
+    completedNodes, 
+    incrementNodeCompletion,
+    nodeProgress 
+  } = useRoadmap();
+  
   const [exercise, setExercise] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [isPracticing, setIsPracticing] = useState<boolean>(false);
-  const [completionCount, setCompletionCount] = useState<number>(0);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
 
   // Sync our internal state with the parent's state
@@ -37,7 +44,6 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
       // Reset states when modal is completely closed
       setExercise(null);
       setIsPracticing(false);
-      setCompletionCount(0);
     }
   }, [node, modalOpen]);
 
@@ -63,24 +69,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   };
 
   const handleBackFromPractice = () => {
-    saveProgress();
     setIsPracticing(false);
-  };
-
-  // Function to save progress to database
-  const saveProgress = () => {
-    if (!node || completionCount === 0) return;
-    
-    console.log("Saving progress for node:", node.id, "with completion count:", completionCount);
-    
-    // Save the current progress
-    markNodeAsCompleted(node.id)
-      .then(() => {
-        console.log("Progress saved successfully");
-      })
-      .catch(error => {
-        console.error("Error saving progress:", error);
-      });
   };
 
   const handleMarkCompleted = async () => {
@@ -106,23 +95,15 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   const handlePracticeComplete = (accuracy: number) => {
     if (!node) return;
 
-    // Increment completion count if accuracy is high enough
+    // Save the practice result and increment completion count if accuracy is high enough
+    incrementNodeCompletion(node.id, accuracy);
+    
+    // Show feedback based on accuracy
     if (accuracy >= 95) {
-      const newCount = completionCount + 1;
-      setCompletionCount(newCount);
-      
       toast({
         title: "Great job!",
-        description: `You scored ${Math.round(accuracy)}%. ${newCount >= 3 ? "Exercise completed!" : `${3 - newCount} more successful attempts needed to complete.`}`,
+        description: `You scored ${Math.round(accuracy)}%. Your progress has been saved.`,
       });
-      
-      // Mark as completed after 3 successful attempts
-      if (newCount >= 3) {
-        markNodeAsCompleted(node.id).then(() => {
-          // Don't automatically close the modal
-          // Let the user close it when ready
-        });
-      }
     } else {
       toast({
         title: "Keep practicing!",
@@ -136,11 +117,6 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     // Always update our internal state
     setModalOpen(open);
     
-    // If closing the modal while practicing, save progress first
-    if (!open && isPracticing) {
-      saveProgress();
-    }
-    
     // Notify parent component of state change
     // Use setTimeout to ensure state updates finish first
     setTimeout(() => {
@@ -148,7 +124,13 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     }, 10);
   };
 
-  const isNodeCompleted = node ? completedNodes.includes(node.id) : false;
+  // Get the completion count for this node (if it exists)
+  const nodeCompletionInfo = node ? 
+    nodeProgress.find(np => np.nodeId === node.id) : 
+    null;
+  
+  const completionCount = nodeCompletionInfo?.completionCount || 0;
+  const isNodeCompleted = node ? completedNodes.includes(node.id) || nodeCompletionInfo?.isCompleted : false;
 
   if (!node) {
     return null;
@@ -199,6 +181,13 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
                 </Badge>
                 {node.isBonus && (
                   <Badge variant="secondary">Bonus</Badge>
+                )}
+              </div>
+              <div className="text-sm">
+                {completionCount > 0 && (
+                  <span className="text-muted-foreground">
+                    Progress: {completionCount}/3
+                  </span>
                 )}
               </div>
             </div>

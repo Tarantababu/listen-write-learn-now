@@ -109,6 +109,20 @@ export interface RoadmapProgress {
   updatedAt: Date;
 }
 
+// Add new RoadmapNodeProgress type
+export interface RoadmapNodeProgress {
+  id: string;
+  userId: string;
+  roadmapId: string;
+  nodeId: string;
+  language: Language;
+  completionCount: number;
+  isCompleted: boolean;
+  lastPracticedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Add Json type for compatibility with Supabase
 export type Json =
   | string

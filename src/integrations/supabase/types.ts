@@ -377,6 +377,60 @@ export type Database = {
           },
         ]
       }
+      roadmap_nodes_progress: {
+        Row: {
+          completion_count: number
+          created_at: string
+          id: string
+          is_completed: boolean
+          language: string
+          last_practiced_at: string | null
+          node_id: string
+          roadmap_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completion_count?: number
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          language: string
+          last_practiced_at?: string | null
+          node_id: string
+          roadmap_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completion_count?: number
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          language?: string
+          last_practiced_at?: string | null
+          node_id?: string
+          roadmap_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roadmap_nodes_progress_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "roadmap_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roadmap_nodes_progress_roadmap_id_fkey"
+            columns: ["roadmap_id"]
+            isOneToOne: false
+            referencedRelation: "roadmaps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roadmap_progress: {
         Row: {
           completed: boolean
@@ -710,6 +764,15 @@ export type Database = {
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
+      }
+      increment_node_completion: {
+        Args: {
+          node_id_param: string
+          user_id_param: string
+          language_param: string
+          roadmap_id_param: string
+        }
+        Returns: undefined
       }
       is_admin: {
         Args: Record<PropertyKey, never>
