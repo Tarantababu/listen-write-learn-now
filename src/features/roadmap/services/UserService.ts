@@ -1,0 +1,200 @@
+
+import { Language, LanguageLevel } from '@/types';
+import { BaseService } from './BaseService';
+import { 
+  UserServiceInterface,
+  ServiceResult,
+  UserPreferences,
+  UserLearningStats,
+  LanguageStats
+} from '../types/service-types';
+
+export class UserService extends BaseService implements UserServiceInterface {
+  /**
+   * Get user preferences
+   */
+  public async getUserPreferences(): ServiceResult<UserPreferences> {
+    try {
+      const auth = await this.ensureAuthenticated();
+      if (!auth) {
+        return this.error('User must be authenticated to get preferences');
+      }
+      
+      // Get user profile
+      const { data: profile, error: profileError } = await this.supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', auth.userId)
+        .single();
+        
+      if (profileError) throw profileError;
+      
+      // Return formatted preferences
+      return this.success({
+        selectedLanguage: profile.selected_language as Language,
+        learningLanguages: profile.learning_languages as Language[],
+        level: 'A1', // Default to A1 if not specified
+        dailyGoal: 5, // Default daily goal
+        notificationsEnabled: true // Default to true
+      });
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+  
+  /**
+   * Update user preferences
+   */
+  public async updateUserPreferences(preferences: Partial<UserPreferences>): ServiceResult<UserPreferences> {
+    try {
+      const auth = await this.ensureAuthenticated();
+      if (!auth) {
+        return this.error('User must be authenticated to update preferences');
+      }
+      
+      // Prepare update data
+      const updateData: any = {};
+      
+      if (preferences.selectedLanguage) {
+        updateData.selected_language = preferences.selectedLanguage;
+      }
+      
+      if (preferences.learningLanguages) {
+        updateData.learning_languages = preferences.learningLanguages;
+      }
+      
+      // Update profile
+      const { error: updateError } = await this.supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', auth.userId);
+        
+      if (updateError) throw updateError;
+      
+      // Get updated profile
+      const { data: updatedProfile, error: profileError } = await this.supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', auth.userId)
+        .single();
+        
+      if (profileError) throw profileError;
+      
+      // Return updated preferences
+      return this.success({
+        selectedLanguage: updatedProfile.selected_language as Language,
+        learningLanguages: updatedProfile.learning_languages as Language[],
+        level: preferences.level || 'A1',
+        dailyGoal: preferences.dailyGoal || 5,
+        notificationsEnabled: preferences.notificationsEnabled || true
+      });
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+  
+  /**
+   * Get user learning statistics
+   */
+  public async getUserLearningStats(language?: Language): ServiceResult<UserLearningStats> {
+    try {
+      const auth = await this.ensureAuthenticated();
+      if (!auth) {
+        return this.error('User must be authenticated to get learning stats');
+      }
+      
+      // Get roadmap progress for all user roadmaps or filtered by language
+      const progressQuery = this.supabase
+        .from('roadmap_nodes_progress')
+        .select('language, is_completed, completion_count')
+        .eq('user_id', auth.userId);
+        
+      if (language) {
+        progressQuery.eq('language', language);
+      }
+      
+      const { data: progressData, error: progressError } = await progressQuery;
+      
+      if (progressError) throw progressError;
+      
+      // Get exercise completions
+      const { data: exerciseData, error: exerciseError } = await this.supabase
+        .from('completions')
+        .select('accuracy, completed, exercise_id')
+        .eq('user_id', auth.userId);
+        
+      if (exerciseError) throw exerciseError;
+      
+      // Calculate statistics
+      const totalNodes = progressData?.length || 0;
+      const completedNodes = progressData?.filter(p => p.is_completed)?.length || 0;
+      const totalExercises = exerciseData?.length || 0;
+      const completedExercises = exerciseData?.filter(e => e.completed)?.length || 0;
+      
+      // Calculate average accuracy
+      let totalAccuracy = 0;
+      let accuracyCount = 0;
+      
+      exerciseData?.forEach(exercise => {
+        if (exercise.accuracy) {
+          totalAccuracy += exercise.accuracy;
+          accuracyCount++;
+        }
+      });
+      
+      const averageAccuracy = accuracyCount > 0 ? totalAccuracy / accuracyCount : 0;
+      
+      // Group progress by language
+      const languageStats: Record<Language, LanguageStats> = {};
+      
+      progressData?.forEach(progress => {
+        const lang = progress.language as Language;
+        
+        if (!languageStats[lang]) {
+          languageStats[lang] = {
+            exercisesCompleted: 0,
+            nodesCompleted: 0,
+            roadmapsCompleted: 0,
+            averageAccuracy: 0,
+            level: 'A1' // Default
+          };
+        }
+        
+        if (progress.is_completed) {
+          languageStats[lang].nodesCompleted++;
+        }
+      });
+      
+      // Add exercise stats to language stats
+      // In a real implementation, we would join exercises with their language
+      // For now, we'll just use the default selected language
+      const { data: profile } = await this.supabase
+        .from('profiles')
+        .select('selected_language')
+        .eq('id', auth.userId)
+        .single();
+        
+      const selectedLanguage = profile?.selected_language as Language;
+      
+      if (languageStats[selectedLanguage]) {
+        languageStats[selectedLanguage].exercisesCompleted = completedExercises;
+        languageStats[selectedLanguage].averageAccuracy = averageAccuracy;
+      }
+      
+      return this.success({
+        totalExercisesCompleted: completedExercises,
+        totalNodesCompleted: completedNodes,
+        totalRoadmapsCompleted: 0, // TODO: calculate from completed roadmaps
+        averageAccuracy,
+        streakDays: 0, // TODO: implement streak calculation
+        lastActiveDate: new Date(),
+        languageStats
+      });
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+}
+
+// Create and export singleton instance
+export const userService = new UserService();
