@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -160,7 +161,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     }
   };
 
-  // Only reset the state when the modal opens, not when it closes
+  // Only reset the state when the modal opens, not during interactions
   useEffect(() => {
     if (isOpen) {
       // Refresh exercise data when modal opens
@@ -208,6 +209,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
       <DialogContent className="max-w-4xl p-0 overflow-hidden max-h-[90vh]">
         <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
         
+        {/* Conditionally render based on practice stage */}
         {practiceStage === PracticeStage.PROMPT && <div className="px-6 py-8 space-y-6">
             <DialogHeader className="mb-4">
               <h2 className="text-2xl font-bold mb-2">{updatedExercise.title}</h2>

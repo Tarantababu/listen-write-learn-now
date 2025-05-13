@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Exercise } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Play, Pause, SkipBack, SkipForward, BookOpen } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import VocabularyHighlighter from '@/components/VocabularyHighlighter';
 import { 
@@ -105,11 +104,23 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     onComplete(result.accuracy);
 
     if (result.accuracy >= 95) {
-      toast.success(`Great job! ${result.accuracy}% accuracy!`);
+      toast({
+        title: "Great job!",
+        description: `${result.accuracy}% accuracy!`,
+        variant: "success"
+      });
     } else if (result.accuracy >= 70) {
-      toast.info(`Good effort! ${result.accuracy}% accuracy. Keep practicing!`);
+      toast({
+        title: "Good effort!",
+        description: `${result.accuracy}% accuracy. Keep practicing!`,
+        variant: "info"
+      });
     } else {
-      toast.error(`You scored ${result.accuracy}%. Try listening again carefully.`);
+      toast({
+        title: "Keep practicing",
+        description: `You scored ${result.accuracy}%. Try listening again carefully.`,
+        variant: "destructive"
+      });
     }
   };
 
