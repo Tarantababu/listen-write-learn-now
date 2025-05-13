@@ -20,8 +20,8 @@ type ToasterToast = {
 }
 
 // Define a type for the custom Toast options
-type ToastOptions = Partial<
-  Pick<ToasterToast, "action" | "description" | "duration" | "variant">
+export type Toast = Partial<
+  Pick<ToasterToast, "action" | "title" | "description" | "duration" | "variant">
 >
 
 type State = {
@@ -128,9 +128,7 @@ function dispatch(action: Action) {
   })
 }
 
-type Toast = Omit<ToasterToast, "id">
-
-function toast({ ...props }: Toast) {
+function toast(props: Toast) {
   const id = genId()
 
   const update = (props: ToasterToast) =>
