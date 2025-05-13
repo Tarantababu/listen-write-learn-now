@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -20,14 +19,13 @@ interface PracticeModalProps {
   exercise: Exercise | null;
   onComplete: (accuracy: number) => void;
 }
+
 enum PracticeStage {
-  PROMPT,
-  // Ask user if they want Reading Analysis
-  READING,
-  // Reading Analysis mode
-  DICTATION // Dictation Practice mode
-  ,
+  PROMPT,    // Ask user if they want Reading Analysis
+  READING,   // Reading Analysis mode
+  DICTATION, // Dictation Practice mode
 }
+
 const PracticeModal: React.FC<PracticeModalProps> = ({
   isOpen,
   onOpenChange,
@@ -41,16 +39,20 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true);
   const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false);
+  
   const {
     settings
   } = useUserSettingsContext();
+  
   const {
     exercises,
     hasReadingAnalysis
   } = useExerciseContext();
+  
   const {
     user
   } = useAuth();
+  
   const {
     subscription
   } = useSubscription();
@@ -97,8 +99,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
             console.log('Existing analysis ID:', analysisData.id);
           }
           
-          // Skip prompt if user has already done reading analysis
-          // We still show the prompt to give users the option to view the analysis again
+          // If user has done reading analysis before, show the prompt to give option to view it again
+          // We used to skip to dictation here but now we're keeping the prompt with options
           setPracticeStage(PracticeStage.PROMPT);
         } else {
           console.log('No existing analysis found');
@@ -155,27 +157,20 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     }
   };
 
-  // Only reset the results display when modal is closed, not when it opens
+  // Only reset the state when the modal opens, not when it closes
   useEffect(() => {
-    if (!isOpen) {
-      // Reset the state when modal is fully closed
-      setShowResults(false);
-      setPracticeStage(PracticeStage.PROMPT);
-    } else if (exercise) {
+    if (isOpen) {
       // Refresh exercise data when modal opens
-      const latestExerciseData = exercises.find(ex => ex.id === exercise.id);
+      const latestExerciseData = exercises.find(ex => ex?.id === exercise?.id);
       setUpdatedExercise(latestExerciseData || exercise);
+      // If there's an existing analysis, we don't reset to prompt but we do need to reset showResults
+      setShowResults(false);
     }
   }, [isOpen, exercise, exercises]);
 
   // Safe handling of modal open state change
   const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      // Allow animation to complete before fully closing
-      onOpenChange(open);
-    } else {
-      onOpenChange(open);
-    }
+    onOpenChange(open);
   };
   
   const handleStartDictation = () => {
@@ -191,6 +186,11 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     if (practiceStage === PracticeStage.DICTATION) {
       setPracticeStage(PracticeStage.READING);
     }
+  };
+
+  const handleTryAgain = () => {
+    setShowResults(false);
+    // Important: Don't reset to prompt stage here - stay in dictation mode
   };
 
   // If the exercise doesn't match the selected language, don't render
@@ -265,10 +265,22 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
               </div>}
           </div>}
         
-        {practiceStage === PracticeStage.READING && <ReadingAnalysis exercise={updatedExercise} onComplete={handleStartDictation} existingAnalysisId={analysisId || undefined} />}
+        {practiceStage === PracticeStage.READING && <ReadingAnalysis 
+          exercise={updatedExercise} 
+          onComplete={handleStartDictation} 
+          existingAnalysisId={analysisId || undefined} 
+        />}
         
-        {practiceStage === PracticeStage.DICTATION && <DictationPractice exercise={updatedExercise} onComplete={handleComplete} showResults={showResults} onTryAgain={() => setShowResults(false)} hasReadingAnalysis={hasExistingAnalysis} onViewReadingAnalysis={hasExistingAnalysis ? handleViewReadingAnalysis : undefined} />}
+        {practiceStage === PracticeStage.DICTATION && <DictationPractice 
+          exercise={updatedExercise} 
+          onComplete={handleComplete} 
+          showResults={showResults} 
+          onTryAgain={handleTryAgain} 
+          hasReadingAnalysis={hasExistingAnalysis} 
+          onViewReadingAnalysis={hasExistingAnalysis ? handleViewReadingAnalysis : undefined} 
+        />}
       </DialogContent>
     </Dialog>;
 };
+
 export default PracticeModal;

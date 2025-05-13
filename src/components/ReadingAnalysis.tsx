@@ -93,7 +93,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         // Generate a new analysis
         console.log('Generating new analysis for exercise:', exercise.id);
         
-        // Call the edge function to generate analysis using OpenAI
+        // Using the new dedicated reading analysis function
         const response = await supabase.functions.invoke('generate-reading-analysis', {
           body: {
             text: exercise.text,

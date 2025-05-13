@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Exercise } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -196,10 +197,10 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
 
   const handleTryAgain = () => {
     setUserInput('');
-    setInternalShowResults(false);
     if (onTryAgain) {
       onTryAgain();
     }
+    setInternalShowResults(false);
     
     // Focus on textarea after resetting
     setTimeout(() => {
