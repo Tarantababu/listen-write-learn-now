@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useRoadmap } from '@/contexts/RoadmapContext';
 import RoadmapVisualization from '@/components/roadmap/RoadmapVisualization';
@@ -177,7 +176,7 @@ const RoadmapPage: React.FC = () => {
                                 )}
                               </div>
                               <CardDescription className="flex items-center gap-2">
-                                {roadmapLevel && <LevelBadge level={roadmapLevel} />}
+                                {roadmapLevel && <LevelBadge level={roadmapLevel as LanguageLevel} />}
                                 <span>Started on {roadmap.createdAt.toLocaleDateString()}</span>
                               </CardDescription>
                             </CardHeader>

@@ -113,7 +113,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       toast({
         title: "Good effort!",
         description: `${result.accuracy}% accuracy. Keep practicing!`,
-        variant: "info"
+        variant: "default"
       });
     } else {
       toast({

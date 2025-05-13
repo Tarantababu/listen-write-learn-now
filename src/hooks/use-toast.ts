@@ -21,7 +21,7 @@ interface ToastOptions {
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
-  variant?: "default" | "destructive" | "success" | "warning"
+  variant?: "default" | "destructive" | "success" | "warning" | "info"
   duration?: number
 }
 
@@ -142,16 +142,19 @@ export function toast(props: ToastOptions = {}) {
 
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
+  // Ensure the toast object conforms to ToasterToast type
+  const toastToAdd: ToasterToast = {
+    ...props,
+    id,
+    open: true,
+    onOpenChange: (open) => {
+      if (!open) dismiss()
+    },
+  }
+
   dispatch({
     type: "ADD_TOAST",
-    toast: {
-      ...props,
-      id,
-      open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss()
-      },
-    },
+    toast: toastToAdd,
   })
 
   return {
@@ -196,5 +199,5 @@ toast.warning = (title: string, options: Omit<ToastOptions, "variant" | "title">
 };
 
 toast.info = (title: string, options: Omit<ToastOptions, "variant" | "title"> = {}) => {
-  return toast({ ...options, title, variant: "default" });
+  return toast({ ...options, title, variant: "info" });
 };
