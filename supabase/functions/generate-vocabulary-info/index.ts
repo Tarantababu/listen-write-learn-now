@@ -721,7 +721,7 @@ function generateEnglishSummary(text: string, language: string): string {
   // Generate a more detailed English summary based on the text content
   // For English texts, provide a simpler explanation
   if (language === 'english') {
-    return "This text uses straightforward language to communicate ideas clearly. It employs common grammatical structures and vocabulary appropriate for intermediate language learners. The sentence patterns demonstrate standard English usage with subject-verb-object order, providing a good model for language practice.";
+    return `This text explains everyday activities in simple English. It describes ${guessContentFromLanguage(text, 'english')}.`;
   }
   
   const wordCount = text.split(/\s+/).length;

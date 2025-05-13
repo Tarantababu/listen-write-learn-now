@@ -1,8 +1,8 @@
-import * as React from "react"
 
-import type {
-  ToastActionElement,
-  ToastProps,
+import * as React from "react"
+import { 
+  ToastActionElement, 
+  ToastProps 
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 5
@@ -55,7 +55,23 @@ interface State {
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
-const reducer = (state: State, action: Action): State => {
+const addToRemoveQueue = (toastId: string) => {
+  if (toastTimeouts.has(toastId)) {
+    return
+  }
+
+  const timeout = setTimeout(() => {
+    toastTimeouts.delete(toastId)
+    dispatch({
+      type: actionTypes.REMOVE_TOAST,
+      toastId: toastId,
+    })
+  }, TOAST_REMOVE_DELAY)
+
+  toastTimeouts.set(toastId, timeout)
+}
+
+export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case actionTypes.ADD_TOAST:
       return {
@@ -77,12 +93,10 @@ const reducer = (state: State, action: Action): State => {
       // ! Side effects ! - This could be extracted into a dismissToast() action,
       // but I'll keep it here for simplicity
       if (toastId) {
-        clearTimeout(toastTimeouts.get(toastId))
-        toastTimeouts.delete(toastId)
+        addToRemoveQueue(toastId)
       } else {
         state.toasts.forEach((toast) => {
-          clearTimeout(toastTimeouts.get(toast.id))
-          toastTimeouts.delete(toast.id)
+          addToRemoveQueue(toast.id)
         })
       }
 
@@ -133,7 +147,6 @@ function toast({ ...props }: Toast) {
       type: actionTypes.UPDATE_TOAST,
       toast: { ...props, id },
     })
-
   const dismiss = () => dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id })
 
   dispatch({
@@ -176,3 +189,4 @@ function useToast() {
 }
 
 export { useToast, toast }
+
