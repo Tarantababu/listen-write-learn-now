@@ -16,19 +16,20 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { useRoadmap } from '@/contexts/RoadmapContext';
+import { useRoadmap } from '@/hooks/use-roadmap';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { LanguageLevel } from '@/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import LevelBadge from '@/components/LevelBadge';
 import LevelInfoTooltip from '@/components/LevelInfoTooltip';
 import { toast } from '@/components/ui/use-toast';
 
 const RoadmapSelection: React.FC = () => {
-  const { initializeUserRoadmap, roadmaps, loading, userRoadmaps } = useRoadmap();
+  const { initializeUserRoadmap, roadmaps, loading, userRoadmaps, loadUserRoadmaps } = useRoadmap();
   const { settings } = useUserSettingsContext();
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>('A1');
   const [initializing, setInitializing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Filter roadmaps to only show those for the currently selected language
   const availableRoadmapsForLanguage = roadmaps.filter(roadmap => 
@@ -61,6 +62,26 @@ const RoadmapSelection: React.FC = () => {
       });
     } finally {
       setInitializing(false);
+    }
+  };
+
+  const handleRefreshRoadmaps = async () => {
+    setRefreshing(true);
+    try {
+      await loadUserRoadmaps();
+      toast({
+        title: "Roadmaps Refreshed",
+        description: "Available roadmaps have been refreshed.",
+      });
+    } catch (error) {
+      console.error('Error refreshing roadmaps:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to refresh roadmaps",
+        description: "There was an error refreshing roadmaps. Please try again.",
+      });
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -113,98 +134,102 @@ const RoadmapSelection: React.FC = () => {
     );
   }
 
-  if (availableLevels.length === 0) {
-    return (
-      <Card className="w-full max-w-md mx-auto shadow-md">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold">No Roadmaps Available</CardTitle>
-          <CardDescription>
-            There are no roadmaps available for {settings.selectedLanguage} at the moment.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            Please try selecting a different language in your settings or check back later.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card className="w-full max-w-md mx-auto shadow-md">
-      <CardHeader>
-        <CardTitle className="text-xl font-semibold">Choose Your Starting Level</CardTitle>
-        <CardDescription>
-          {existingLevels.length > 0 
-            ? `Add another ${settings.selectedLanguage} roadmap at a different level`
-            : `Select the language level that best matches your current proficiency in ${settings.selectedLanguage}`
-          }
-        </CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-xl font-semibold">Choose Your Starting Level</CardTitle>
+          <CardDescription>
+            {existingLevels.length > 0 
+              ? `Add another ${settings.selectedLanguage} roadmap at a different level`
+              : `Select the language level that best matches your current proficiency in ${settings.selectedLanguage}`
+            }
+          </CardDescription>
+        </div>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={handleRefreshRoadmaps}
+          disabled={refreshing}
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+        </Button>
       </CardHeader>
       <CardContent className="space-y-4">
-        {existingLevels.length > 0 && (
+        {availableLevels.length === 0 ? (
           <div className="bg-primary/5 p-4 rounded-md border border-primary/20 mb-4">
-            <h4 className="font-medium text-sm mb-1">Your Current Roadmaps</h4>
-            <div className="flex flex-wrap gap-2">
-              {existingLevels.map(level => (
-                <LevelBadge key={level} level={level} />
-              ))}
-            </div>
+            <h4 className="font-medium text-sm mb-1">No Roadmaps Available</h4>
+            <p className="text-sm text-muted-foreground">
+              There are no roadmaps available for {settings.selectedLanguage} at the moment.
+              Try refreshing or check back later.
+            </p>
           </div>
+        ) : (
+          <>
+            {existingLevels.length > 0 && (
+              <div className="bg-primary/5 p-4 rounded-md border border-primary/20 mb-4">
+                <h4 className="font-medium text-sm mb-1">Your Current Roadmaps</h4>
+                <div className="flex flex-wrap gap-2">
+                  {existingLevels.map(level => (
+                    <LevelBadge key={level} level={level} />
+                  ))}
+                </div>
+              </div>
+            )}
+        
+            <div className="flex items-center space-x-2 mb-6">
+              <span className="text-sm font-medium">Language Level:</span>
+              <Select 
+                value={selectedLevel} 
+                onValueChange={(value) => setSelectedLevel(value as LanguageLevel)}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select a level" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableLevels.map((level) => {
+                    const isAlreadySelected = isLevelAlreadySelected(level);
+                    return (
+                      <SelectItem 
+                        key={level} 
+                        value={level}
+                        disabled={isAlreadySelected}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <LevelBadge level={level as LanguageLevel} />
+                          <span>{level}</span>
+                          {isAlreadySelected && <span className="text-xs text-muted-foreground ml-2">(Already selected)</span>}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <LevelInfoTooltip />
+            </div>
+
+            <div className="p-4 bg-muted/50 rounded-md">
+              <h3 className="font-medium mb-2 flex items-center">
+                <LevelBadge level={selectedLevel} className="mr-2" /> 
+                {selectedLevel} Level
+              </h3>
+              <p className="text-sm text-muted-foreground">{levelDescriptions[selectedLevel]}</p>
+            </div>
+
+            <div className="bg-primary/5 p-4 rounded-md border border-primary/20">
+              <h4 className="font-medium text-sm mb-1">What will you learn?</h4>
+              <p className="text-sm text-muted-foreground">
+                The {selectedLevel} roadmap includes {availableRoadmapsForLanguage.find(r => r.level === selectedLevel)?.name || 'exercises'} 
+                designed to improve your {settings.selectedLanguage} skills through focused listening and writing practice.
+              </p>
+            </div>
+          </>
         )}
-      
-        <div className="flex items-center space-x-2 mb-6">
-          <span className="text-sm font-medium">Language Level:</span>
-          <Select 
-            value={selectedLevel} 
-            onValueChange={(value) => setSelectedLevel(value as LanguageLevel)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select a level" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableLevels.map((level) => {
-                const isAlreadySelected = isLevelAlreadySelected(level);
-                return (
-                  <SelectItem 
-                    key={level} 
-                    value={level}
-                    disabled={isAlreadySelected}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <LevelBadge level={level as LanguageLevel} />
-                      <span>{level}</span>
-                      {isAlreadySelected && <span className="text-xs text-muted-foreground ml-2">(Already selected)</span>}
-                    </div>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-          <LevelInfoTooltip />
-        </div>
-
-        <div className="p-4 bg-muted/50 rounded-md">
-          <h3 className="font-medium mb-2 flex items-center">
-            <LevelBadge level={selectedLevel} className="mr-2" /> 
-            {selectedLevel} Level
-          </h3>
-          <p className="text-sm text-muted-foreground">{levelDescriptions[selectedLevel]}</p>
-        </div>
-
-        <div className="bg-primary/5 p-4 rounded-md border border-primary/20">
-          <h4 className="font-medium text-sm mb-1">What will you learn?</h4>
-          <p className="text-sm text-muted-foreground">
-            The {selectedLevel} roadmap includes {availableRoadmapsForLanguage.find(r => r.level === selectedLevel)?.name || 'exercises'} 
-            designed to improve your {settings.selectedLanguage} skills through focused listening and writing practice.
-          </p>
-        </div>
       </CardContent>
       <CardFooter>
         <Button 
           onClick={handleInitializeRoadmap} 
-          disabled={initializing || !selectedLevel || isLevelAlreadySelected(selectedLevel)}
+          disabled={initializing || !selectedLevel || isLevelAlreadySelected(selectedLevel) || availableLevels.length === 0}
           className="w-full"
         >
           {initializing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}

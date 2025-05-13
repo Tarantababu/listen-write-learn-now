@@ -158,6 +158,11 @@ const RoadmapPage: React.FC = () => {
     return lang.charAt(0).toUpperCase() + lang.slice(1);
   };
 
+  // Check if there are any available roadmaps in the system
+  const hasAvailableRoadmaps = roadmaps.some(roadmap => 
+    roadmap.languages?.includes(settings.selectedLanguage)
+  );
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -225,6 +230,24 @@ const RoadmapPage: React.FC = () => {
                 )}
               </Button>
             </div>
+          </motion.div>
+        )}
+
+        {!hasAvailableRoadmaps && (
+          <motion.div 
+            className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-2 dark:bg-amber-900/20 dark:border-amber-800"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex items-center">
+              <p className="text-amber-800 dark:text-amber-400 font-medium">
+                No roadmaps available for {getCapitalizedLanguage(settings.selectedLanguage)}
+              </p>
+            </div>
+            <p className="text-sm text-amber-700 dark:text-amber-500 mt-1">
+              There are no learning paths available for {getCapitalizedLanguage(settings.selectedLanguage)} yet. 
+              Please check back later or select a different language in your settings.
+            </p>
           </motion.div>
         )}
 
