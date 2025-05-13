@@ -144,7 +144,7 @@ function dispatch(action: Action) {
 type ToastOptions = Omit<ToasterToastProps, "id">
 
 function toast(options: ToastOptions) {
-  const id = options.id ?? generateId()
+  const id = generateId()
 
   const update = (props: ToasterToastProps) =>
     dispatch({
