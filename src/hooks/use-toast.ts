@@ -1,20 +1,30 @@
+
 import * as React from "react"
 import { 
   type ToastActionElement, 
   type ToastProps 
 } from "@/components/ui/toast"
-import {
-  type ToasterToast,
-  ToastVariants
-} from "@/components/ui/toaster"
 
 const TOAST_LIMIT = 5
 const TOAST_REMOVE_DELAY = 1000
 
+// Define toast variants as a union type since it's not exported from toast.tsx
+export type ToastVariants = "default" | "destructive" | "success" | "info" | "warning"
+
+// Define ToasterToast type here instead of importing it
+export interface ToasterToast extends Omit<ToastProps, "variant"> {
+  id: string
+  title?: React.ReactNode
+  description?: React.ReactNode
+  action?: ToastActionElement
+  variant?: ToastVariants
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  duration?: number
+}
+
 // Define a type for the custom Toast options
-export type Toast = Partial<
-  Pick<ToasterToast, "action" | "title" | "description" | "duration" | "variant" | "open" | "onOpenChange">
->
+export type Toast = Partial<ToasterToast>
 
 type State = {
   toasts: ToasterToast[]
@@ -106,8 +116,6 @@ function dispatch(action: any) {
     listener(memoryState)
   })
 }
-
-type Toast = Partial<Omit<ToasterToast, "id">>
 
 function toast(props: Toast) {
   const id = genId()
