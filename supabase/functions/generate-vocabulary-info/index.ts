@@ -51,6 +51,25 @@ serve(async (req) => {
 
     console.log(`Generating vocabulary info for "${text.substring(0, 20)}..." in ${language}`)
 
+    // If this is a single word or short phrase (likely from the vocabulary highlighter)
+    if (text.split(/\s+/).length <= 5) {
+      // Return the vocabulary item format expected by VocabularyHighlighter
+      const vocabularyData = {
+        definition: `Definition of "${text}" in ${language}`,
+        exampleSentence: `Example sentence using "${text}" in ${language}`,
+        // The audio will be generated separately by the text-to-speech function
+      };
+      
+      return new Response(
+        JSON.stringify(vocabularyData),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
+    
+    // For longer text (likely for Reading Analysis), generate a full analysis
     // Split the text into sentences (simple split by periods for demo)
     const rawSentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0)
     

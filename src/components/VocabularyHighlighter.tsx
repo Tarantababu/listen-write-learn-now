@@ -42,14 +42,27 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
     try {
       toast.info('Generating vocabulary information...');
       
-      // FIX: Changed parameter from "word" to "text" to match the expected API parameters
       const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
         body: { text: word, language }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error invoking generate-vocabulary-info function:', error);
+        throw error;
+      }
       
-      if (!data || !data.definition || !data.exampleSentence) {
+      console.log('Response from vocabulary info function:', data);
+      
+      if (!data) {
+        throw new Error('No data received from generate-vocabulary-info function');
+      }
+      
+      // Extract the definition and example sentence from the response
+      const definition = data.definition;
+      const exampleSentence = data.exampleSentence;
+      
+      if (!definition || !exampleSentence) {
+        console.error('Invalid response format:', data);
         throw new Error('Invalid response from generate-vocabulary-info function');
       }
 
@@ -57,11 +70,11 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
       toast.info('Generating audio for example sentence...');
       setIsGeneratingAudio(true);
       
-      const audioUrl = await generateExampleAudio(data.exampleSentence, language);
+      const audioUrl = await generateExampleAudio(exampleSentence, language);
       
       return {
-        definition: data.definition,
-        exampleSentence: data.exampleSentence,
+        definition,
+        exampleSentence,
         audioUrl
       };
     } catch (error) {
