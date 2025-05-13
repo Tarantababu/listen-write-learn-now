@@ -29,23 +29,17 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   const [exercise, setExercise] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [isPracticing, setIsPracticing] = useState<boolean>(false);
-  const [modalOpen, setModalOpen] = useState<boolean>(false);
-
-  // Sync our internal state with the parent's state
-  useEffect(() => {
-    setModalOpen(isOpen);
-  }, [isOpen]);
-
+  
   // Load exercise when modal is opened with a node
   useEffect(() => {
-    if (node && modalOpen) {
+    if (node && isOpen) {
       loadExercise(node.id);
-    } else if (!modalOpen) {
+    } else if (!isOpen) {
       // Reset states when modal is completely closed
       setExercise(null);
       setIsPracticing(false);
     }
-  }, [node, modalOpen]);
+  }, [node, isOpen]);
 
   const loadExercise = async (nodeId: string) => {
     try {
@@ -81,7 +75,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
         title: "Progress saved!",
         description: "You've completed this exercise",
       });
-      handleModalClose(false); // Close the modal after marking as completed
+      onOpenChange(false); // Close the modal after marking as completed
     } catch (error) {
       console.error("Error marking node as completed:", error);
       toast({
@@ -112,18 +106,6 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     }
   };
 
-  // Handle modal close
-  const handleModalClose = (open: boolean) => {
-    // Always update our internal state
-    setModalOpen(open);
-    
-    // Notify parent component of state change
-    // Use setTimeout to ensure state updates finish first
-    setTimeout(() => {
-      onOpenChange(open);
-    }, 10);
-  };
-
   // Get the completion count for this node (if it exists)
   const nodeCompletionInfo = node ? 
     nodeProgress.find(np => np.nodeId === node.id) : 
@@ -137,11 +119,11 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   }
 
   return (
-    <Dialog open={modalOpen} onOpenChange={handleModalClose}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{node.title}</DialogTitle>
-          <DialogDescription>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-xl max-w-[95vw] p-0 overflow-hidden">
+        <DialogHeader className="p-6">
+          <DialogTitle className="text-xl">{node.title}</DialogTitle>
+          <DialogDescription className="text-base mt-2">
             {node.description}
           </DialogDescription>
         </DialogHeader>
@@ -173,14 +155,16 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
             </div>
           )
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6 p-6 pt-0">
             <div className="flex items-center justify-between">
               <div className="space-x-2 flex items-center">
-                <Badge variant={isNodeCompleted ? "secondary" : "outline"}>
+                <Badge variant={isNodeCompleted ? "success" : "outline"} className={isNodeCompleted ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" : ""}>
                   {isNodeCompleted ? "Completed" : "Not Completed"}
                 </Badge>
                 {node.isBonus && (
-                  <Badge variant="secondary">Bonus</Badge>
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100">
+                    Bonus
+                  </Badge>
                 )}
               </div>
               <div className="text-sm">
@@ -193,12 +177,15 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
             </div>
             
             {exercise ? (
-              <Card>
+              <Card className="border-2 border-muted/50 hover:border-primary/20 transition-colors">
                 <CardContent className="pt-6">
                   <h3 className="text-lg font-medium mb-2">{exercise.title || "Exercise"}</h3>
                   <p className="text-sm text-muted-foreground mb-4">{exercise.description || "Practice this exercise to improve your skills."}</p>
                   <div className="flex justify-end">
-                    <Button onClick={handleStartPractice}>
+                    <Button 
+                      onClick={handleStartPractice}
+                      className="bg-primary hover:bg-primary/90 transition-colors"
+                    >
                       Start Practice
                     </Button>
                   </div>
@@ -219,10 +206,10 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
               </div>
             )}
             
-            <Separator />
+            <Separator className="my-4" />
             
             <div className="flex justify-end">
-              <Button variant="outline" onClick={() => handleModalClose(false)}>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Close
               </Button>
             </div>
