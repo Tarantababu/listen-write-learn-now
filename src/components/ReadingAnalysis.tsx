@@ -21,8 +21,7 @@ interface AnalysisSentence {
     words: {
       word: string;
       definition: string;
-      etymologyInsight?: string;
-      englishCousin?: string;
+      exampleSentence: string; // Changed from etymologyInsight
     }[];
     grammarInsights: string[];
     structure: string;
@@ -33,6 +32,7 @@ interface AnalysisContent {
   sentences: AnalysisSentence[];
   commonPatterns: string[];
   summary: string;
+  englishTranslation?: string; // New field for English translation
 }
 
 const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
@@ -347,14 +347,9 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                         <span className="font-bold text-primary">{word.word}</span>
                         <span className="text-muted-foreground">{word.definition}</span>
                       </div>
-                      {word.englishCousin && (
+                      {word.exampleSentence && (
                         <p className="text-sm mt-1">
-                          <span className="font-semibold">English cousin:</span> {word.englishCousin}
-                        </p>
-                      )}
-                      {word.etymologyInsight && (
-                        <p className="text-sm mt-1">
-                          <span className="font-semibold">Etymology:</span> {word.etymologyInsight}
+                          <span className="font-semibold">Example:</span> {word.exampleSentence}
                         </p>
                       )}
                     </div>
@@ -426,6 +421,13 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
               <h3 className="text-lg font-semibold mb-2">Text Summary</h3>
               <p>{analysis.summary}</p>
             </div>
+            
+            {analysis.englishTranslation && (
+              <div className="bg-muted/30 p-4 rounded-lg dark:bg-muted/10">
+                <h3 className="text-lg font-semibold mb-2">English Translation</h3>
+                <p>{analysis.englishTranslation}</p>
+              </div>
+            )}
             
             <div className="bg-muted/10 p-4 rounded-lg border dark:border-muted/30 dark:bg-muted/5">
               <h3 className="text-lg font-semibold mb-2">Full Text</h3>
