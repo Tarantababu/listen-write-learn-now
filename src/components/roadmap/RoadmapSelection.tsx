@@ -22,12 +22,18 @@ import { LanguageLevel } from '@/types';
 import { Loader2 } from 'lucide-react';
 import LevelBadge from '@/components/LevelBadge';
 import LevelInfoTooltip from '@/components/LevelInfoTooltip';
+import { toast } from '@/components/ui/use-toast';
 
 const RoadmapSelection: React.FC = () => {
   const { initializeUserRoadmap, roadmaps, loading, userRoadmaps } = useRoadmap();
   const { settings } = useUserSettingsContext();
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>('A1');
   const [initializing, setInitializing] = useState(false);
+
+  // Filter roadmaps to only show those for the currently selected language
+  const availableRoadmapsForLanguage = roadmaps.filter(roadmap => 
+    roadmap.languages?.includes(settings.selectedLanguage)
+  );
 
   // Get existing roadmap levels for the current language
   const existingLevels = userRoadmaps
@@ -42,6 +48,17 @@ const RoadmapSelection: React.FC = () => {
     setInitializing(true);
     try {
       await initializeUserRoadmap(selectedLevel, settings.selectedLanguage);
+      toast({
+        title: "Roadmap Initialized",
+        description: `Your ${selectedLevel} level roadmap for ${settings.selectedLanguage} has been created.`,
+      });
+    } catch (error) {
+      console.error('Error initializing roadmap:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to initialize roadmap",
+        description: "There was an error creating your roadmap. Please try again.",
+      });
     } finally {
       setInitializing(false);
     }
@@ -59,10 +76,7 @@ const RoadmapSelection: React.FC = () => {
 
   // Check if the selected level has a roadmap available in the user's language
   const isLevelAvailable = (level: LanguageLevel): boolean => {
-    return roadmaps.some(roadmap => 
-      roadmap.level === level && 
-      roadmap.languages?.includes(settings.selectedLanguage)
-    );
+    return availableRoadmapsForLanguage.some(roadmap => roadmap.level === level);
   };
 
   // Check if the user already has a roadmap for this level and language
@@ -182,7 +196,7 @@ const RoadmapSelection: React.FC = () => {
         <div className="bg-primary/5 p-4 rounded-md border border-primary/20">
           <h4 className="font-medium text-sm mb-1">What will you learn?</h4>
           <p className="text-sm text-muted-foreground">
-            The {selectedLevel} roadmap includes {roadmaps.find(r => r.level === selectedLevel && r.languages?.includes(settings.selectedLanguage))?.name || 'exercises'} 
+            The {selectedLevel} roadmap includes {availableRoadmapsForLanguage.find(r => r.level === selectedLevel)?.name || 'exercises'} 
             designed to improve your {settings.selectedLanguage} skills through focused listening and writing practice.
           </p>
         </div>
