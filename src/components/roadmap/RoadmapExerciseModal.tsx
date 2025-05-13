@@ -228,6 +228,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
         // If this is a roadmap exercise and the accuracy is ≥ 95%,
         // update the exercise's completion count in the exercises table
         if (accuracyValue >= 95 && node?.defaultExerciseId) {
+          // First check if an exercise already exists for this user and default exercise
           const { data: existingExercise, error: exerciseError } = await supabase
             .from('exercises')
             .select('id, completion_count, is_completed')
@@ -235,22 +236,55 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
             .eq('user_id', user.id)
             .maybeSingle();
             
-          if (!exerciseError && existingExercise) {
-            // Update existing exercise
-            const newCount = Math.min(3, (existingExercise.completion_count || 0) + 1);
-            const isComplete = newCount >= 3;
-            
-            await supabase
-              .from('exercises')
-              .update({
-                completion_count: newCount,
-                is_completed: isComplete
-              })
-              .eq('id', existingExercise.id);
+          if (!exerciseError) {
+            if (existingExercise) {
+              // Update existing exercise
+              const newCount = Math.min(3, (existingExercise.completion_count || 0) + 1);
+              const isComplete = newCount >= 3;
+              
+              await supabase
+                .from('exercises')
+                .update({
+                  completion_count: newCount,
+                  is_completed: isComplete
+                })
+                .eq('id', existingExercise.id);
+            } else if (exercise) {
+              // Create a new exercise entry if one doesn't exist
+              await supabase
+                .from('exercises')
+                .insert({
+                  user_id: user.id,
+                  default_exercise_id: node.defaultExerciseId,
+                  title: exercise.title,
+                  text: exercise.text,
+                  language: exercise.language,
+                  tags: exercise.tags,
+                  audio_url: exercise.audioUrl,
+                  completion_count: accuracyValue >= 95 ? 1 : 0,
+                  is_completed: false
+                });
+            }
           }
+        }
+        
+        // Mark node as completed if user has completed it 3 times successfully
+        if (accuracyValue >= 95 && completionCount >= 2) {
+          // Only call markNodeAsCompleted if this is the 3rd successful completion
+          await markNodeAsCompleted(node!.id);
+          
+          // Close the modal after marking as completed
+          setTimeout(() => {
+            onOpenChange(false);
+          }, 1500);
         }
       } catch (error) {
         console.error('Error saving completion record:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save your progress",
+          variant: "destructive"
+        });
       }
     }
   };
