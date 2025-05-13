@@ -94,10 +94,8 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
       // Mark as completed after 3 successful attempts
       if (newCount >= 3) {
         markNodeAsCompleted(node.id).then(() => {
-          // Close the modal after completing node
-          setTimeout(() => {
-            onOpenChange(false);
-          }, 1500);
+          // Don't automatically close the modal
+          // Let the user close it when ready
         });
       }
     } else {
@@ -108,6 +106,20 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     }
   };
 
+  // Auto-save progress when modal is closed during practice session
+  const handleModalClose = (open: boolean) => {
+    // If modal is being closed
+    if (!open && isPracticing && completionCount > 0 && node) {
+      // Save the current progress silently in the background
+      markNodeAsCompleted(node.id).catch(error => {
+        console.error("Error saving progress:", error);
+      });
+    }
+    
+    // Always call the parent's onOpenChange
+    onOpenChange(open);
+  };
+
   const isNodeCompleted = node ? completedNodes.includes(node.id) : false;
 
   if (!node) {
@@ -115,7 +127,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleModalClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{node.title}</DialogTitle>
@@ -132,7 +144,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
                 title: exercise.title || node.title,
                 text: exercise.text || "",
                 language: node.language || 'english',
-                audioUrl: exercise.audio_url, // Corrected property name
+                audioUrl: exercise.audio_url,
                 tags: [],
                 directoryId: null,
                 createdAt: new Date(),
