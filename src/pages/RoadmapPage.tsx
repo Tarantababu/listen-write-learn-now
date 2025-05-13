@@ -1,24 +1,24 @@
 
 import React, { useState, useEffect } from 'react';
-import { useRoadmap } from '@/contexts/RoadmapContext';
-import RoadmapVisualization from '@/components/roadmap/RoadmapVisualization';
-import RoadmapSelection from '@/components/roadmap/RoadmapSelection';
-import RoadmapExerciseModal from '@/components/roadmap/RoadmapExerciseModal';
-import { RoadmapNode, UserRoadmap, LanguageLevel } from '@/types';
+import { useRoadmap } from '@/features/roadmap/context/RoadmapContext';
+import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
+import RoadmapSelection from '@/features/roadmap/components/RoadmapSelection';
+import RoadmapExerciseModal from '@/features/roadmap/components/RoadmapExerciseModal';
+import RoadmapItemCard from '@/features/roadmap/components/RoadmapItemCard';
+import { RoadmapNode } from '@/features/roadmap/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { ArrowRightIcon, ArrowLeftIcon, CheckCircle } from 'lucide-react';
+import { ArrowRightIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import LevelBadge from '@/components/LevelBadge';
 import { Loader2 } from 'lucide-react';
 
 const RoadmapPage: React.FC = () => {
   const { 
     currentRoadmap, 
-    loading, 
+    isLoading, 
     roadmaps, 
     userRoadmaps, 
     selectRoadmap,
@@ -35,14 +35,14 @@ const RoadmapPage: React.FC = () => {
 
   // Set active tab based on whether we have user roadmaps or not
   useEffect(() => {
-    if (!loading) {
+    if (!isLoading) {
       if (userRoadmaps.length === 0) {
         setActiveTab("new");
       } else {
         setActiveTab("active");
       }
     }
-  }, [loading, userRoadmaps]);
+  }, [isLoading, userRoadmaps]);
 
   // When a user clicks on "Continue Learning," open the exercise modal with current node
   useEffect(() => {
@@ -66,13 +66,15 @@ const RoadmapPage: React.FC = () => {
     });
   };
 
-  const handleRoadmapSelect = async (roadmapId: string) => {
-    await selectRoadmap(roadmapId);
+  const handleRoadmapSelect = (roadmapId: string) => {
+    selectRoadmap(roadmapId);
   };
 
-  const handleContinueLearning = async (roadmapId: string) => {
+  const handleContinueLearning = (roadmapId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
     // First select the roadmap
-    await selectRoadmap(roadmapId);
+    selectRoadmap(roadmapId);
     
     // Find the current node in this roadmap
     const selectedRoadmap = userRoadmaps.find(r => r.id === roadmapId);
@@ -90,31 +92,7 @@ const RoadmapPage: React.FC = () => {
     return lang.charAt(0).toUpperCase() + lang.slice(1);
   };
 
-  // Calculate progress percentage for a roadmap
-  const calculateProgress = (roadmapId: string): number => {
-    const roadmapNodes = nodes.filter(node => node.roadmapId === roadmapId);
-    if (roadmapNodes.length === 0) return 0;
-    
-    const completedRoadmapNodes = roadmapNodes.filter(
-      node => completedNodes.includes(node.id)
-    );
-    
-    return Math.round((completedRoadmapNodes.length / roadmapNodes.length) * 100);
-  };
-
-  // Get roadmap name from its ID
-  const getRoadmapName = (roadmapId: string): string => {
-    const roadmap = roadmaps.find(r => r.id === roadmapId);
-    return roadmap ? roadmap.name : 'Learning Path';
-  };
-  
-  // Get roadmap level from its ID
-  const getRoadmapLevel = (roadmapId: string): LanguageLevel | undefined => {
-    const roadmap = roadmaps.find(r => r.id === roadmapId);
-    return roadmap?.level as LanguageLevel | undefined;
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center items-center h-64">
@@ -172,59 +150,15 @@ const RoadmapPage: React.FC = () => {
                 <h2 className="text-xl font-semibold">{getCapitalizedLanguage(settings.selectedLanguage)}</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {userRoadmaps.map(roadmap => {
-                    const isActive = currentRoadmap?.id === roadmap.id;
-                    const progress = calculateProgress(roadmap.roadmapId);
-                    const roadmapName = getRoadmapName(roadmap.roadmapId);
-                    const roadmapLevel = getRoadmapLevel(roadmap.roadmapId);
-                    
-                    return (
-                      <Card 
-                        key={roadmap.id} 
-                        className={`cursor-pointer transition-all ${isActive ? 'border-primary shadow-md' : 'hover:border-primary/50'}`}
-                        onClick={() => handleRoadmapSelect(roadmap.id)}
-                      >
-                        <CardHeader className="pb-2">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-lg">{roadmapName}</CardTitle>
-                            {isActive && (
-                              <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
-                                Current
-                              </span>
-                            )}
-                          </div>
-                          <CardDescription className="flex items-center gap-2">
-                            {roadmapLevel && <LevelBadge level={roadmapLevel} />}
-                            <span>Started on {new Date(roadmap.createdAt).toLocaleDateString()}</span>
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center space-x-2">
-                            <div className="bg-muted h-2 flex-1 rounded-full overflow-hidden">
-                              <div 
-                                className="bg-primary h-full" 
-                                style={{ width: `${progress}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-sm font-medium">{progress}%</span>
-                          </div>
-                          
-                          <div className="mt-3 flex justify-end">
-                            <Button
-                              variant={isActive ? "default" : "outline"} 
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleContinueLearning(roadmap.id);
-                              }}
-                            >
-                              {isActive ? 'Continue Learning' : 'View Roadmap'}
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                  {userRoadmaps.map(roadmap => (
+                    <RoadmapItemCard
+                      key={roadmap.id}
+                      roadmap={roadmap}
+                      isActive={currentRoadmap?.id === roadmap.id}
+                      onCardClick={handleRoadmapSelect}
+                      onContinueClick={handleContinueLearning}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -242,7 +176,7 @@ const RoadmapPage: React.FC = () => {
             <Card className="border rounded-lg">
               <CardHeader>
                 <CardTitle className="text-lg">
-                  {getRoadmapName(currentRoadmap.roadmapId)} - {getCapitalizedLanguage(currentRoadmap.language)}
+                  {roadmaps.find(r => r.id === currentRoadmap.roadmapId)?.name || "Learning Path"} - {getCapitalizedLanguage(currentRoadmap.language)}
                 </CardTitle>
                 <CardDescription>
                   Follow this path to improve your {currentRoadmap.language} skills step by step

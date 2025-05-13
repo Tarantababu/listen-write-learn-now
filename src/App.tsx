@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,7 +9,7 @@ import { UserSettingsProvider } from './contexts/UserSettingsContext';
 import { VocabularyProvider } from './contexts/VocabularyContext';
 import { DirectoryProvider } from './contexts/DirectoryContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
-import { RoadmapProvider } from './contexts/RoadmapContext';
+import { RoadmapProvider } from './features/roadmap/context/RoadmapContext';
 import { HelmetProvider } from 'react-helmet-async';
 import { ThemeProvider } from './contexts/ThemeContext';
 
@@ -100,10 +99,24 @@ const AuthenticatedApp: React.FC = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthenticatedApp />
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <AuthProvider>
+            <SubscriptionProvider>
+              <UserSettingsProvider>
+                <RoadmapProvider>
+                  <AuthenticatedApp />
+                </RoadmapProvider>
+              </UserSettingsProvider>
+            </SubscriptionProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </div>
+  );
+}
 
 export default App;

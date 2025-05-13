@@ -1,29 +1,26 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import UserStatistics from '@/components/UserStatistics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import SubscriptionBanner from '@/components/SubscriptionBanner';
 import { ExerciseProvider } from '@/contexts/ExerciseContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRoadmap } from '@/contexts/RoadmapContext';
+import { useRoadmap } from '@/features/roadmap/context/RoadmapContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Map, ChevronRight, Loader2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import LevelBadge from '@/components/LevelBadge';
 import { useAdmin } from '@/hooks/use-admin';
 
 const HomePage = () => {
   const location = useLocation();
   const { subscription } = useSubscription();
-  const { user } = useAuth();
   const { isAdmin } = useAdmin();
-  const { currentRoadmap, currentNodeId, nodes, loading, completedNodes, roadmaps } = useRoadmap();
+  const { currentRoadmap, currentNodeId, nodes, isLoading, completedNodes, roadmaps } = useRoadmap();
   
-  useEffect(() => {
-    // Show access denied message if redirected from admin page
+  // React to redirect messages (e.g., access denied)
+  React.useEffect(() => {
     const state = location.state as { accessDenied?: boolean; message?: string };
     if (state?.accessDenied) {
       toast({
@@ -32,7 +29,6 @@ const HomePage = () => {
         description: state.message || "You don't have the required permissions"
       });
       
-      // Clear the state so the message doesn't show again on refresh
       window.history.replaceState({}, document.title);
     }
   }, [location]);
@@ -56,12 +52,15 @@ const HomePage = () => {
     ? nodes.slice(currentIndex + 1, currentIndex + 3)
     : [];
 
-  // Find the roadmap details using the roadmapId from currentRoadmap
-  const roadmapDetails = currentRoadmap ? roadmaps.find(r => r.id === currentRoadmap.roadmapId) : null;
+  // Find the roadmap details
+  const roadmapDetails = currentRoadmap 
+    ? roadmaps.find(r => r.id === currentRoadmap.roadmapId) 
+    : null;
+    
   const roadmapLevel = roadmapDetails?.level;
   const roadmapName = roadmapDetails?.name;
 
-  // If user is admin, don't show subscription banner
+  // Don't show subscription banner for admins
   const shouldShowSubscriptionBanner = !subscription.isSubscribed && !isAdmin;
 
   return (
@@ -69,16 +68,15 @@ const HomePage = () => {
       {shouldShowSubscriptionBanner && <SubscriptionBanner />}
       
       <div className="flex flex-col gap-6">
-        {/* Language Level Section - Now in a full-width row */}
+        {/* User Statistics */}
         <div className="w-full">
           <ExerciseProvider>
             <UserStatistics />
           </ExerciseProvider>
         </div>
         
-        {/* Content Grid - Modified to full width for Learning Roadmap */}
+        {/* Learning Roadmap Card */}
         <div className="w-full">
-          {/* Learning Roadmap section */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center justify-between">
@@ -92,7 +90,7 @@ const HomePage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {loading ? (
+              {isLoading ? (
                 <div className="flex flex-col items-center justify-center p-4">
                   <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
                   <p>Loading roadmap...</p>
@@ -131,7 +129,9 @@ const HomePage = () => {
                           >
                             <span>{node.title}</span>
                             {node.isBonus && (
-                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 border-amber-500/40 text-amber-700">Bonus</Badge>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 border-amber-500/40 text-amber-700">
+                                Bonus
+                              </span>
                             )}
                           </li>
                         ))}
