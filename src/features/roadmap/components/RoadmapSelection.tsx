@@ -29,24 +29,28 @@ const RoadmapSelection: React.FC = () => {
   const roadmapContext = useRoadmap();
   
   // Extract properties from context with fallbacks for compatibility
-  const initializeUserRoadmap = 'initializeUserRoadmap' in roadmapContext 
-    ? roadmapContext.initializeUserRoadmap 
-    : (roadmapContext.initializeRoadmap || (async () => ''));
+  const initializeUserRoadmap = roadmapContext.initializeUserRoadmap || 
+    roadmapContext.initializeRoadmap || 
+    (async () => '');
   
-  const roadmaps = 'roadmaps' in roadmapContext 
-    ? roadmapContext.roadmaps 
-    : [];
+  const roadmaps = roadmapContext.roadmaps || [];
   
-  const isLoading = 'isLoading' in roadmapContext || 'loading' in roadmapContext
-    ? (roadmapContext.isLoading || roadmapContext.loading)
-    : false;
+  const isLoading = roadmapContext.isLoading || roadmapContext.loading || false;
   
-  const userRoadmaps = 'userRoadmaps' in roadmapContext
-    ? roadmapContext.userRoadmaps
-    : [];
+  const userRoadmaps = roadmapContext.userRoadmaps || [];
   
   const { settings } = useUserSettingsContext();
   
+  // State
+  const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>('A1');
+  const [initializing, setInitializing] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  
+  // Filter roadmaps to only show those for the currently selected language
+  const availableRoadmapsForLanguage = roadmaps.filter(roadmap => 
+    roadmap.languages?.includes(settings.selectedLanguage)
+  );
+
   console.log('RoadmapSelection (new) - Available roadmaps:', { 
     language: settings.selectedLanguage,
     roadmaps: roadmaps,

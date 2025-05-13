@@ -510,12 +510,3 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     </RoadmapContext.Provider>
   );
 };
-
-// Custom hook to use the roadmap context
-export const useRoadmap = () => {
-  const context = useContext(RoadmapContext);
-  if (context === undefined) {
-    throw new Error('useRoadmap must be used within a RoadmapProvider');
-  }
-  return context;
-};

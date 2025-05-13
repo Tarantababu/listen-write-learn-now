@@ -2,11 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useRoadmap } from '@/hooks/use-roadmap';
+import { useRoadmap } from '@/hooks/use-roadmap'; // Updated import
 import { RoadmapNode } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast'; // Updated import
 import DictationPractice from '@/components/DictationPractice';
 import { Search, Headphones } from 'lucide-react';
 
@@ -209,7 +209,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
               title: exercise.title || node.title,
               text: exercise.text || "",
               language: node.language || 'english',
-              audioUrl: exercise.audio_url,
+              audioUrl: exercise.audioUrl,
               tags: [],
               directoryId: null,
               createdAt: new Date(),

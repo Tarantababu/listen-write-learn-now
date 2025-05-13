@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -28,25 +29,17 @@ const RoadmapSelection: React.FC = () => {
   const roadmapContext = useRoadmap();
   
   // Extract properties from context with fallbacks for compatibility
-  const initializeUserRoadmap = 'initializeUserRoadmap' in roadmapContext 
-    ? roadmapContext.initializeUserRoadmap 
-    : (roadmapContext.initializeRoadmap || (async () => ''));
+  const initializeUserRoadmap = roadmapContext.initializeUserRoadmap || 
+    roadmapContext.initializeRoadmap || 
+    (async () => '');
   
-  const roadmaps = 'roadmaps' in roadmapContext 
-    ? roadmapContext.roadmaps 
-    : [];
+  const roadmaps = roadmapContext.roadmaps || [];
   
-  const isLoading = 'isLoading' in roadmapContext || 'loading' in roadmapContext
-    ? (roadmapContext.isLoading || roadmapContext.loading)
-    : false;
+  const isLoading = roadmapContext.isLoading || roadmapContext.loading || false;
   
-  const userRoadmaps = 'userRoadmaps' in roadmapContext
-    ? roadmapContext.userRoadmaps
-    : [];
+  const userRoadmaps = roadmapContext.userRoadmaps || [];
   
-  const loadUserRoadmaps = 'loadUserRoadmaps' in roadmapContext
-    ? roadmapContext.loadUserRoadmaps
-    : async () => [];
+  const loadUserRoadmaps = roadmapContext.loadUserRoadmaps || (async () => []);
   
   const { settings } = useUserSettingsContext();
   

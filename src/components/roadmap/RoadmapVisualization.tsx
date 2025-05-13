@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '@/types';
@@ -108,43 +109,37 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   
   // Extract properties from context with fallbacks for compatibility
   const currentRoadmap = roadmapContext.currentRoadmap || null;
+  
+  // Try to get nodes from different possible structures
   const nodes = Array.isArray(roadmapContext.currentRoadmap) 
     ? roadmapContext.currentRoadmap 
-    : [];
-  const currentNodeId = 'currentNodeId' in roadmapContext 
-    ? roadmapContext.currentNodeId 
-    : undefined;
-  const completedNodes = 'completedNodes' in roadmapContext 
-    ? roadmapContext.completedNodes 
-    : [];
-  const availableNodes = 'availableNodes' in roadmapContext 
-    ? roadmapContext.availableNodes 
-    : [];
-  const nodeProgress = 'nodeProgress' in roadmapContext 
-    ? roadmapContext.nodeProgress 
-    : [];
-  const loading = 'loading' in roadmapContext || 'isLoading' in roadmapContext 
-    ? (roadmapContext.loading || roadmapContext.isLoading) 
-    : false;
-  const roadmaps = 'roadmaps' in roadmapContext 
-    ? roadmapContext.roadmaps 
-    : [];
+    : (roadmapContext.nodes || []);
+  
+  const currentNodeId = roadmapContext.currentNodeId;
+  const completedNodes = roadmapContext.completedNodes || [];
+  const availableNodes = roadmapContext.availableNodes || [];
+  const nodeProgress = roadmapContext.nodeProgress || [];
+  
+  // Handle loading state from either context implementation
+  const isLoading = roadmapContext.loading || roadmapContext.isLoading || false;
+  
+  const roadmaps = roadmapContext.roadmaps || [];
 
   console.log("Legacy RoadmapVisualization rendered with:", {
     hasCurrentRoadmap: !!currentRoadmap,
     nodesCount: nodes?.length || 0,
-    loading
+    loading: isLoading
   });
 
   // First try to use the new implementation if data is available
   if (currentRoadmap && Array.isArray(nodes) && nodes.length > 0 && 
-      nodes[0] && typeof nodes[0].status === 'string') {
+      nodes[0] && typeof nodes[0] === 'object' && nodes[0].status) {
     console.log("Using new RoadmapVisualization implementation");
     return <NewRoadmapVisualization onNodeSelect={onNodeSelect} />;
   }
 
   // Fall back to the legacy implementation
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
@@ -173,6 +168,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   const roadmapLevel = roadmapDetails?.level;
 
   const getNodeStatus = (node: RoadmapNode): 'completed' | 'current' | 'locked' | 'available' => {
+    if (node.status) return node.status as 'completed' | 'current' | 'locked' | 'available';
     if (completedNodes.includes(node.id)) return 'completed';
     
     // Check if node is completed in the detailed progress

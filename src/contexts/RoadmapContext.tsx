@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session } from '@supabase/supabase-js';
@@ -64,12 +65,12 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({
       }
 
       // Transform the data to match RoadmapNode type
-      const transformedData = data.map(node => ({
+      const transformedData: RoadmapNode[] = data.map(node => ({
         id: node.id,
         title: node.title,
         description: node.description || '',
         position: node.position,
-        isBonus: node.is_bonus,
+        isBonus: node.is_bonus || false,
         language: node.language,
         roadmapId: node.roadmap_id,
       }));
@@ -201,16 +202,13 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({
 
       const { error: progressError } = await supabase
         .from('roadmap_progress')
-        .upsert(
-          {
-            user_id: user.id,
-            roadmap_id: roadmapData.roadmap_id,
-            node_id: nodeId,
-            completed: true,
-            completed_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id,node_id' }
-        );
+        .upsert({
+          user_id: user.id,
+          roadmap_id: roadmapData.roadmap_id,
+          node_id: nodeId,
+          completed: true,
+          completed_at: new Date().toISOString(),
+        });
 
       if (progressError) throw progressError;
 
