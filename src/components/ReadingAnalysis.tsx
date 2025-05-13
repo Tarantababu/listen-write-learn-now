@@ -52,23 +52,30 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
       try {
         // If we have an existing analysis ID, fetch it from the database
         if (existingAnalysisId) {
-          const { data, error } = await supabase
-            .from('reading_analyses')
-            .select('content')
-            .eq('id', existingAnalysisId)
-            .single();
+          try {
+            const { data, error } = await supabase
+              .from('reading_analyses')
+              .select('content')
+              .eq('id', existingAnalysisId)
+              .single();
+              
+            if (error) {
+              console.error('Error fetching analysis:', error);
+              // If we can't fetch the existing analysis, we'll generate a new one
+              throw error;
+            }
             
-          if (error) {
-            throw error;
+            // Type assertion to ensure the content is treated as AnalysisContent
+            setAnalysis(data.content as unknown as AnalysisContent);
+            setIsLoading(false);
+            return;
+          } catch (err) {
+            console.error('Failed to fetch existing analysis, will generate new one:', err);
+            // Continue to generate a new analysis
           }
-          
-          // Type assertion to ensure the content is treated as AnalysisContent
-          setAnalysis(data.content as unknown as AnalysisContent);
-          setIsLoading(false);
-          return;
         }
         
-        // Otherwise generate a new analysis
+        // Generate a new analysis
         const response = await supabase.functions.invoke('generate-vocabulary-info', {
           body: {
             text: exercise.text,
@@ -76,52 +83,63 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
           }
         });
         
-        if (response.error) {
-          throw new Error(response.error.message || 'Error generating analysis');
+        if (response.error || !response.data) {
+          console.error('Error from edge function:', response.error);
+          throw new Error(response.error?.message || 'Error generating analysis');
         }
         
+        // Validate response data
         const analysisContent = response.data.analysis as AnalysisContent;
+        
+        if (!analysisContent || !analysisContent.sentences || !analysisContent.commonPatterns || !analysisContent.summary) {
+          throw new Error('Invalid analysis data received');
+        }
+        
         setAnalysis(analysisContent);
         
         // Save the analysis to the database
         if (user) {
-          // When saving to database, explicitly cast the analysisContent to unknown then Json
-          // to satisfy TypeScript's type checking for the Supabase client
-          const { error: saveError } = await supabase
-            .from('reading_analyses')
-            .insert({
-              user_id: user.id,
-              exercise_id: exercise.id,
-              content: analysisContent as unknown as Json
-            });
-            
-          if (saveError) {
-            console.error('Error saving analysis:', saveError);
-            // Continue even if saving fails
-          } else {
-            // Increment the reading_analyses_count for free users using a direct update
-            // Instead of using RPC which has type issues, use a direct increment
-            const { data: profileData, error: fetchError } = await supabase
-              .from('profiles')
-              .select('reading_analyses_count')
-              .eq('id', user.id)
-              .single();
+          try {
+            // When saving to database, explicitly cast the analysisContent to unknown then Json
+            // to satisfy TypeScript's type checking for the Supabase client
+            const { error: saveError } = await supabase
+              .from('reading_analyses')
+              .insert({
+                user_id: user.id,
+                exercise_id: exercise.id,
+                content: analysisContent as unknown as Json
+              });
               
-            if (fetchError) {
-              console.error('Error fetching profile:', fetchError);
+            if (saveError) {
+              console.error('Error saving analysis:', saveError);
+              // Continue even if saving fails
             } else {
-              const currentCount = profileData.reading_analyses_count || 0;
-              const newCount = currentCount + 1;
-              
-              const { error: updateError } = await supabase
+              // Increment the reading_analyses_count for free users using a direct update
+              const { data: profileData, error: fetchError } = await supabase
                 .from('profiles')
-                .update({ reading_analyses_count: newCount })
-                .eq('id', user.id);
+                .select('reading_analyses_count')
+                .eq('id', user.id)
+                .single();
                 
-              if (updateError) {
-                console.error('Error updating analysis count:', updateError);
+              if (fetchError) {
+                console.error('Error fetching profile:', fetchError);
+              } else {
+                const currentCount = profileData.reading_analyses_count || 0;
+                const newCount = currentCount + 1;
+                
+                const { error: updateError } = await supabase
+                  .from('profiles')
+                  .update({ reading_analyses_count: newCount })
+                  .eq('id', user.id);
+                  
+                if (updateError) {
+                  console.error('Error updating analysis count:', updateError);
+                }
               }
             }
+          } catch (error) {
+            console.error('Error saving analysis to database:', error);
+            // Continue even if saving fails - user can still see the analysis
           }
         }
       } catch (error) {

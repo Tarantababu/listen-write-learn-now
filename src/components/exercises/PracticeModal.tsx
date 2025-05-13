@@ -72,14 +72,20 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         const {
           data: analysisData,
           error: analysisError
-        } = await supabase.from('reading_analyses').select('id').eq('exercise_id', exercise.id).eq('user_id', user.id).single();
-        if (analysisError && analysisError.code !== 'PGRST116') {
+        } = await supabase.from('reading_analyses')
+          .select('id')
+          .eq('exercise_id', exercise.id)
+          .eq('user_id', user.id);
+          
+        if (analysisError) {
           console.error('Error checking for analysis:', analysisError);
           return;
         }
-        if (analysisData) {
+        
+        // Check if we got any results
+        if (analysisData && analysisData.length > 0) {
           setHasExistingAnalysis(true);
-          setAnalysisId(analysisData.id);
+          setAnalysisId(analysisData[0].id);
           // Skip prompt if user has already done reading analysis
           setPracticeStage(PracticeStage.DICTATION);
         } else {
@@ -91,14 +97,15 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
             const {
               data: profileData,
               error: profileError
-            } = await supabase.from('profiles').select('reading_analyses_count').eq('id', user.id).single();
+            } = await supabase.from('profiles').select('reading_analyses_count').eq('id', user.id).maybeSingle();
+            
             if (profileError) {
               console.error('Error checking profile:', profileError);
               return;
             }
 
             // Free users are limited to 5 analyses
-            if (profileData.reading_analyses_count >= 5) {
+            if (profileData && profileData.reading_analyses_count >= 5) {
               setAnalysisAllowed(false);
               toast.error('Free users are limited to 5 reading analyses. Upgrade to premium for unlimited analyses.');
               // Skip to dictation since they can't generate a reading analysis
