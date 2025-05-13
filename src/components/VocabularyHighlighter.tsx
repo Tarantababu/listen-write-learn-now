@@ -270,7 +270,7 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
           ) : generatedInfo ? (
             <div className="space-y-4">
               <div>
-                <h4 className="text-sm font-medium mb-1">Definition:</h4>
+                <h4 className="text-sm font-medium mb-1">Definition (English):</h4>
                 <p className="text-sm">{generatedInfo.definition}</p>
               </div>
               
