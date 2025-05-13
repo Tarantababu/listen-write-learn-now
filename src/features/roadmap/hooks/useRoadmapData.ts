@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '../api/roadmapService';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
 import { Language, LanguageLevel } from '@/types';
@@ -11,10 +11,19 @@ export function useRoadmapData() {
   const [userRoadmaps, setUserRoadmaps] = useState<RoadmapItem[]>([]);
   const [selectedRoadmap, setSelectedRoadmap] = useState<RoadmapItem | null>(null);
   const [nodes, setNodes] = useState<RoadmapNode[]>([]);
+  const loadingRef = useRef<{[key: string]: boolean}>({});
   
   // Load all roadmaps available for a language
   const loadRoadmaps = useCallback(async (language: Language) => {
+    // Prevent duplicate fetches for the same language
+    const cacheKey = `roadmaps_${language}`;
+    if (loadingRef.current[cacheKey]) {
+      return;
+    }
+    
+    loadingRef.current[cacheKey] = true;
     setIsLoading(true);
+    
     try {
       const roadmapsData = await roadmapService.getRoadmapsForLanguage(language);
       setRoadmaps(roadmapsData);
@@ -27,12 +36,21 @@ export function useRoadmapData() {
       });
     } finally {
       setIsLoading(false);
+      loadingRef.current[cacheKey] = false;
     }
   }, []);
   
   // Load user's roadmaps for a language
   const loadUserRoadmaps = useCallback(async (language: Language) => {
+    // Prevent duplicate fetches for the same language
+    const cacheKey = `user_roadmaps_${language}`;
+    if (loadingRef.current[cacheKey]) {
+      return [];
+    }
+    
+    loadingRef.current[cacheKey] = true;
     setIsLoading(true);
+    
     try {
       const userRoadmapsData = await roadmapService.getUserRoadmaps(language);
       setUserRoadmaps(userRoadmapsData);
@@ -47,6 +65,7 @@ export function useRoadmapData() {
       return [];
     } finally {
       setIsLoading(false);
+      loadingRef.current[cacheKey] = false;
     }
   }, []);
   
@@ -81,7 +100,15 @@ export function useRoadmapData() {
   
   // Select and load a specific roadmap
   const selectRoadmap = useCallback(async (roadmapId: string) => {
+    // Prevent duplicate selects for the same roadmap
+    const cacheKey = `select_roadmap_${roadmapId}`;
+    if (loadingRef.current[cacheKey]) {
+      return [];
+    }
+    
+    loadingRef.current[cacheKey] = true;
     setIsLoading(true);
+    
     try {
       // Find the roadmap in the list of user roadmaps
       const roadmap = userRoadmaps.find(r => r.id === roadmapId);
@@ -106,6 +133,7 @@ export function useRoadmapData() {
       throw error;
     } finally {
       setIsLoading(false);
+      loadingRef.current[cacheKey] = false;
     }
   }, [userRoadmaps]);
   

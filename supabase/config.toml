@@ -1,8 +1,33 @@
 
 project_id = "language-learning-app-with-dictation"
 
+[api]
+# Add rate limiting to prevent excessive requests
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[api.rate_limits]
+points = 50
+duration_seconds = 10
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+port = 54323
+
+# Enable authentication for Edge Functions
 [functions.generate-reading-analysis]
 verify_jwt = true
 
 [functions.generate-vocabulary-info]  
 verify_jwt = true
+
+# Add timeouts and error handling for functions
+[functions]
+function_timeout_seconds = 10
+function_memory_mb = 128

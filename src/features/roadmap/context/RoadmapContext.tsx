@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, ReactNode, useState } from 'react';
+import React, { createContext, useContext, useEffect, ReactNode, useState, useRef } from 'react';
 import { useRoadmapData } from '../hooks/useRoadmapData';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,10 +55,13 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const [nodeLoading, setNodeLoading] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(settings.selectedLanguage);
+  const initializedRef = useRef<boolean>(false);
 
   // Load roadmaps when language changes
   useEffect(() => {
-    if (user && settings.selectedLanguage !== selectedLanguage) {
+    if (!user || !initializedRef.current) return;
+    
+    if (settings.selectedLanguage !== selectedLanguage) {
       setSelectedLanguage(settings.selectedLanguage);
       
       const initialize = async () => {
@@ -71,25 +74,27 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
       };
       
-      initialize();
+      initialize().catch(error => console.error("Failed to initialize roadmaps after language change:", error));
     }
   }, [user, settings.selectedLanguage, selectedLanguage, loadRoadmaps, loadUserRoadmaps, selectRoadmap]);
 
   // Initial load when the component mounts
   useEffect(() => {
-    if (user) {
-      const initialize = async () => {
-        await loadRoadmaps(settings.selectedLanguage);
-        const userRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
-        
-        // If user has roadmaps for this language, select the first one
-        if (userRoadmaps.length > 0) {
-          await selectRoadmap(userRoadmaps[0].id);
-        }
-      };
+    if (!user || initializedRef.current) return;
+    
+    initializedRef.current = true;
+    
+    const initialize = async () => {
+      await loadRoadmaps(settings.selectedLanguage);
+      const userRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
       
-      initialize();
-    }
+      // If user has roadmaps for this language, select the first one
+      if (userRoadmaps.length > 0) {
+        await selectRoadmap(userRoadmaps[0].id);
+      }
+    };
+    
+    initialize().catch(error => console.error("Failed to initialize roadmaps:", error));
   }, [user, settings.selectedLanguage, loadRoadmaps, loadUserRoadmaps, selectRoadmap]);
 
   // Wrapper for initializeRoadmap to set loading state
