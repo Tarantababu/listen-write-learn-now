@@ -15,7 +15,8 @@ export interface RoadmapItem {
   // User-specific properties when this is a user roadmap
   currentNodeId?: string;
   progress?: number;
-  language?: Language;
+  language?: Language; 
+  roadmapId?: string; // Add this for user roadmaps that reference parent roadmap
 }
 
 export interface RoadmapNode {
@@ -32,6 +33,7 @@ export interface RoadmapNode {
   
   // UI state properties
   status?: 'locked' | 'available' | 'completed' | 'current';
+  progressCount?: number; // Add this for tracking node progress count
 }
 
 // API response for node exercise content

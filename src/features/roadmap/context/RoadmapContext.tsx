@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 interface RoadmapContextType {
   // State
   isLoading: boolean;
+  nodeLoading: boolean; // Add this property
   roadmaps: RoadmapItem[];
   userRoadmaps: RoadmapItem[];
   currentRoadmap: RoadmapItem | null;
@@ -23,15 +24,18 @@ interface RoadmapContextType {
   loadRoadmaps: (language: Language) => Promise<void>;
   loadUserRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
   initializeRoadmap: (level: LanguageLevel, language: Language) => Promise<string>;
+  initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<string>; // Alias for backward compatibility
   selectRoadmap: (roadmapId: string) => Promise<RoadmapNode[]>;
   getNodeExercise: (nodeId: string) => Promise<ExerciseContent | null>;
   recordNodeCompletion: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>;
+  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>; // Alias for backward compatibility
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
 }
 
 // Create the context with default values
 export const RoadmapContext = createContext<RoadmapContextType>({
   isLoading: false,
+  nodeLoading: false, // Add this property
   roadmaps: [],
   userRoadmaps: [],
   currentRoadmap: null,
@@ -43,9 +47,11 @@ export const RoadmapContext = createContext<RoadmapContextType>({
   loadRoadmaps: async () => {},
   loadUserRoadmaps: async () => [],
   initializeRoadmap: async () => '',
+  initializeUserRoadmap: async () => '', // Add this method
   selectRoadmap: async () => [],
   getNodeExercise: async () => null,
   recordNodeCompletion: async () => ({ isCompleted: false, completionCount: 0 }),
+  incrementNodeCompletion: async () => ({ isCompleted: false, completionCount: 0 }), // Add this method
   markNodeAsCompleted: async () => {},
 });
 
@@ -57,6 +63,7 @@ interface RoadmapProviderProps {
 export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) => {
   // State
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [nodeLoading, setNodeLoading] = useState<boolean>(false); // Add nodeLoading state
   const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
   const [userRoadmaps, setUserRoadmaps] = useState<RoadmapItem[]>([]);
   const [currentRoadmap, setCurrentRoadmap] = useState<RoadmapItem | null>(null);
@@ -140,6 +147,9 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       setIsLoading(false);
     }
   }, [loadUserRoadmaps]);
+  
+  // Create an alias for initializeRoadmap for backward compatibility
+  const initializeUserRoadmap = initializeRoadmap;
 
   // Select a roadmap and load its nodes
   const selectRoadmap = useCallback(async (roadmapId: string): Promise<RoadmapNode[]> => {
@@ -188,6 +198,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
 
   // Record completion of a node with accuracy score
   const recordNodeCompletion = useCallback(async (nodeId: string, accuracy: number): Promise<NodeCompletionResult> => {
+    setNodeLoading(true);
     try {
       const result = await roadmapService.recordNodeCompletion(nodeId, accuracy);
       
@@ -205,11 +216,17 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         description: "There was an error saving your progress."
       });
       throw error;
+    } finally {
+      setNodeLoading(false);
     }
   }, [currentRoadmap, selectRoadmap]);
+  
+  // Create an alias for recordNodeCompletion for backward compatibility
+  const incrementNodeCompletion = recordNodeCompletion;
 
   // Mark a node as completed manually
   const markNodeAsCompleted = useCallback(async (nodeId: string): Promise<void> => {
+    setNodeLoading(true);
     try {
       await roadmapService.markNodeCompleted(nodeId);
       
@@ -225,6 +242,8 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         description: "There was an error marking the lesson as completed."
       });
       throw error;
+    } finally {
+      setNodeLoading(false);
     }
   }, [currentRoadmap, selectRoadmap]);
 
@@ -237,6 +256,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
   // Context provider value
   const value: RoadmapContextType = {
     isLoading,
+    nodeLoading, // Add nodeLoading to the context value
     roadmaps,
     userRoadmaps,
     currentRoadmap,
@@ -248,9 +268,11 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     loadRoadmaps,
     loadUserRoadmaps,
     initializeRoadmap,
+    initializeUserRoadmap, // Add the alias
     selectRoadmap,
     getNodeExercise,
     recordNodeCompletion,
+    incrementNodeCompletion, // Add the alias
     markNodeAsCompleted,
   };
 
