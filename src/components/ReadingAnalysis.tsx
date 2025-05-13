@@ -354,9 +354,9 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                 <div className="space-y-3 mt-2">
                   {currentSentence.analysis.words.map((word, i) => (
                     <div key={i} className="bg-background p-3 rounded-lg border dark:border-muted/20 dark:bg-muted/5">
-                      <div className="flex justify-between">
+                      <div className="flex justify-between items-start">
                         <span className="font-bold text-primary">{word.word}</span>
-                        <span className="text-muted-foreground">{word.definition}</span>
+                        <span className="text-muted-foreground text-right">{word.definition}</span>
                       </div>
                       {word.exampleSentence && (
                         <p className="text-sm mt-1">
