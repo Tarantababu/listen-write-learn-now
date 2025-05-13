@@ -36,7 +36,7 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
     }
   };
 
-  // Function to generate vocabulary item info using OpenAI
+  // Function to generate vocabulary item info
   const generateVocabularyInfo = async (word: string, language: Language) => {
     setIsGeneratingInfo(true);
     try {
