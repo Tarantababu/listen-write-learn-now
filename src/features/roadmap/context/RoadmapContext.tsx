@@ -88,10 +88,10 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     setIsLoading(true);
     try {
       const result = await roadmapService.getRoadmapsByLanguage(language);
-      if (result.success) {
+      if (result.status === 'success' && result.data) {
         setRoadmaps(result.data);
       } else {
-        console.error('Error loading roadmaps:', result.message);
+        console.error('Error loading roadmaps:', result.error);
         toast({
           variant: "destructive",
           title: "Failed to load roadmaps",
@@ -115,7 +115,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     setIsLoading(true);
     try {
       const result = await roadmapService.getUserRoadmaps(language);
-      if (result.success) {
+      if (result.status === 'success' && result.data) {
         const userRoadmapsData = result.data;
         setUserRoadmaps(userRoadmapsData);
         
@@ -126,7 +126,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         
         return userRoadmapsData;
       } else {
-        console.error('Error loading user roadmaps:', result.message);
+        console.error('Error loading user roadmaps:', result.error);
         toast({
           variant: "destructive",
           title: "Failed to load your roadmaps",
@@ -152,20 +152,20 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     setIsLoading(true);
     try {
       const result = await roadmapService.initializeRoadmap(level, language);
-      if (result.success) {
+      if (result.status === 'success' && result.data) {
         // Reload user roadmaps to include the new one
         await loadUserRoadmaps(language);
         
         // Return the ID of the newly created roadmap
         return result.data;
       } else {
-        console.error('Error initializing roadmap:', result.message);
+        console.error('Error initializing roadmap:', result.error);
         toast({
           variant: "destructive",
           title: "Failed to create roadmap",
           description: "There was an error creating your roadmap."
         });
-        throw new Error(result.message);
+        throw new Error(result.error || 'Unknown error initializing roadmap');
       }
     } catch (error) {
       console.error('Error initializing roadmap:', error);
@@ -212,7 +212,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       
       // Load the nodes for this roadmap
       const result = await roadmapService.getRoadmapNodes(roadmapId);
-      if (result.success) {
+      if (result.status === 'success' && result.data) {
         const nodesData = result.data;
         setNodes(nodesData);
         
@@ -226,13 +226,13 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         
         return nodesData;
       } else {
-        console.error('Error loading nodes:', result.message);
+        console.error('Error loading nodes:', result.error);
         toast({
           variant: "destructive",
           title: "Failed to load roadmap details",
           description: "There was an error loading the roadmap nodes."
         });
-        throw new Error(result.message);
+        throw new Error(result.error || 'Unknown error loading nodes');
       }
     } catch (error) {
       console.error('Error selecting roadmap:', error);
