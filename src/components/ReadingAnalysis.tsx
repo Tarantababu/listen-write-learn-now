@@ -15,14 +15,16 @@ interface ReadingAnalysisProps {
   existingAnalysisId?: string;
 }
 
+interface AnalysisWord {
+  word: string;
+  definition: string;
+  exampleSentence: string; // Changed from etymologyInsight
+}
+
 interface AnalysisSentence {
   text: string;
   analysis: {
-    words: {
-      word: string;
-      definition: string;
-      exampleSentence: string; // Changed from etymologyInsight
-    }[];
+    words: AnalysisWord[];
     grammarInsights: string[];
     structure: string;
   };
@@ -32,7 +34,7 @@ interface AnalysisContent {
   sentences: AnalysisSentence[];
   commonPatterns: string[];
   summary: string;
-  englishTranslation?: string; // New field for English translation
+  englishTranslation: string; // Added field for English translation
 }
 
 const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
