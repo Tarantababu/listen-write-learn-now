@@ -27,7 +27,7 @@ const LevelInfoTooltip: React.FC<{ userLevel?: string }> = ({ userLevel = "A0" }
           <h4 className="font-medium mb-3 text-sm text-purple-700 dark:text-purple-300">Language Proficiency Levels</h4>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead className="bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30">
+              <thead className="bg-gradient-to-r from-purple-100/80 to-blue-100/80 dark:from-purple-900/30 dark:to-blue-900/30">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium text-purple-700 dark:text-purple-300">Level</th>
                   <th className="px-3 py-2 text-left font-medium text-blue-700 dark:text-blue-300">Words</th>
@@ -50,11 +50,10 @@ const LevelInfoTooltip: React.FC<{ userLevel?: string }> = ({ userLevel = "A0" }
                         <tr 
                           className={`
                             border-t hover:bg-muted/50 
-                            ${levelColors[index % levelColors.length]} 
-                            dark:bg-opacity-10 dark:hover:bg-opacity-20
+                            ${levelColorsDark[index % levelColorsDark.length]} 
+                            transition-all duration-300
                             ${isCurrentLevel ? 'ring-1 ring-inset ring-primary/30' : ''}
                             ${isFutureLevel ? futureLevelStyles : ''}
-                            transition-all duration-300
                           `}
                         >
                           <td className="px-3 py-2 font-medium">{level.level}</td>
@@ -69,19 +68,12 @@ const LevelInfoTooltip: React.FC<{ userLevel?: string }> = ({ userLevel = "A0" }
                       <HoverCardContent className="p-3 text-xs w-72 bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
                         <div className="space-y-2">
                           <h5 className="font-semibold text-sm flex items-center gap-1.5">
-                            <span className={`inline-block w-2 h-2 rounded-full ${
-                              level.level === 'A0' ? 'bg-slate-400' : 
-                              level.level === 'A1' ? 'bg-green-400' : 
-                              level.level === 'A2' ? 'bg-blue-400' : 
-                              level.level === 'B1' ? 'bg-indigo-400' : 
-                              level.level === 'B2' ? 'bg-purple-400' : 
-                              level.level === 'C1' ? 'bg-amber-400' : 'bg-rose-400'
-                            }`}></span>
+                            <span className={`inline-block w-2 h-2 rounded-full ${getLevelColorClass(level.level)}`}></span>
                             Level {level.level}
                             {isCurrentLevel && <span className="text-xs font-normal text-primary ml-1">(current)</span>}
                           </h5>
                           <p className="text-muted-foreground leading-relaxed">{level.description}</p>
-                          <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded text-slate-700 dark:text-slate-300">
+                          <div className="bg-slate-50 dark:bg-slate-900/70 p-2 rounded text-slate-700 dark:text-slate-300">
                             <span className="font-medium">Target vocabulary:</span> {level.maxWords 
                               ? `${level.minWords.toLocaleString()}-${level.maxWords.toLocaleString()} words`
                               : `${level.minWords.toLocaleString()}+ words`}
@@ -104,16 +96,26 @@ const LevelInfoTooltip: React.FC<{ userLevel?: string }> = ({ userLevel = "A0" }
   );
 };
 
-// Enhanced color palette for more visual engagement
-const levelColors = [
-  'bg-gradient-to-r from-slate-100 to-slate-50 border-slate-200 hover:bg-slate-100',
-  'bg-gradient-to-r from-green-100 to-green-50 border-green-200 hover:bg-green-100',
-  'bg-gradient-to-r from-blue-100 to-blue-50 border-blue-200 hover:bg-blue-100',
-  'bg-gradient-to-r from-indigo-100 to-indigo-50 border-indigo-200 hover:bg-indigo-100',
-  'bg-gradient-to-r from-purple-100 to-purple-50 border-purple-200 hover:bg-purple-100',
-  'bg-gradient-to-r from-amber-100 to-amber-50 border-amber-200 hover:bg-amber-100',
-  'bg-gradient-to-r from-rose-100 to-rose-50 border-rose-200 hover:bg-rose-100',
+// Enhanced color palette with dark mode support
+const levelColorsDark = [
+  'bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-900/60 dark:to-slate-900/40 border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50',
+  'bg-gradient-to-r from-green-100 to-green-50 dark:from-green-900/40 dark:to-green-900/20 border-green-200 dark:border-green-800/40 hover:bg-green-100 dark:hover:bg-green-800/30',
+  'bg-gradient-to-r from-blue-100 to-blue-50 dark:from-blue-900/40 dark:to-blue-900/20 border-blue-200 dark:border-blue-800/40 hover:bg-blue-100 dark:hover:bg-blue-800/30',
+  'bg-gradient-to-r from-indigo-100 to-indigo-50 dark:from-indigo-900/40 dark:to-indigo-900/20 border-indigo-200 dark:border-indigo-800/40 hover:bg-indigo-100 dark:hover:bg-indigo-800/30',
+  'bg-gradient-to-r from-purple-100 to-purple-50 dark:from-purple-900/40 dark:to-purple-900/20 border-purple-200 dark:border-purple-800/40 hover:bg-purple-100 dark:hover:bg-purple-800/30',
+  'bg-gradient-to-r from-amber-100 to-amber-50 dark:from-amber-900/40 dark:to-amber-900/20 border-amber-200 dark:border-amber-800/40 hover:bg-amber-100 dark:hover:bg-amber-800/30',
+  'bg-gradient-to-r from-rose-100 to-rose-50 dark:from-rose-900/40 dark:to-rose-900/20 border-rose-200 dark:border-rose-800/40 hover:bg-rose-100 dark:hover:bg-rose-800/30',
 ];
+
+// Helper function to get the appropriate color class for the level dot
+const getLevelColorClass = (level: string): string => {
+  return level === 'A0' ? 'bg-slate-400 dark:bg-slate-400' : 
+         level === 'A1' ? 'bg-green-400 dark:bg-green-500' : 
+         level === 'A2' ? 'bg-blue-400 dark:bg-blue-500' : 
+         level === 'B1' ? 'bg-indigo-400 dark:bg-indigo-500' : 
+         level === 'B2' ? 'bg-purple-400 dark:bg-purple-500' : 
+         level === 'C1' ? 'bg-amber-400 dark:bg-amber-500' : 'bg-rose-400 dark:bg-rose-500';
+};
 
 // Future level styles - more transparent/faded
 const futureLevelStyles = "opacity-50 dark:opacity-40 saturate-50";
