@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -40,7 +41,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Save, Trash2, Star, Pencil, Check, X } from 'lucide-react';
+import { Loader2, Plus, Save, Trash2, Star, Pencil, Check, X, AlertCircle } from 'lucide-react';
 import { LanguageLevel, Language, Roadmap, RoadmapNode, RoadmapLanguage } from '@/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -58,6 +59,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Form schemas
 const roadmapFormSchema = z.object({
@@ -70,10 +72,10 @@ const roadmapFormSchema = z.object({
 const nodeFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   position: z.number().int().min(0),
-  defaultExerciseId: z.string().optional(),
+  language: z.string({ required_error: "Language is required" }),
+  defaultExerciseId: z.string({ required_error: "Exercise is required" }),
   description: z.string().optional(),
-  isBonus: z.boolean().default(false),
-  language: z.string().optional()
+  isBonus: z.boolean().default(false)
 });
 
 type RoadmapFormValues = z.infer<typeof roadmapFormSchema>;
@@ -95,6 +97,7 @@ export const RoadmapEditor: React.FC = () => {
   const [roadmapLanguages, setRoadmapLanguages] = useState<RoadmapLanguage[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [availableLanguages, setAvailableLanguages] = useState<{value: string, label: string}[]>([]);
+  const [filteredExercises, setFilteredExercises] = useState<any[]>([]);
 
   const roadmapForm = useForm<RoadmapFormValues>({
     resolver: zodResolver(roadmapFormSchema),
@@ -113,7 +116,8 @@ export const RoadmapEditor: React.FC = () => {
       position: 0,
       description: '',
       isBonus: false,
-      language: undefined
+      language: undefined,
+      defaultExerciseId: undefined
     }
   });
 
@@ -294,16 +298,47 @@ export const RoadmapEditor: React.FC = () => {
         isBonus: selectedNode.isBonus,
         language: selectedNode.language
       });
+      
+      // Update filtered exercises based on the selected language
+      if (selectedNode.language) {
+        updateFilteredExercises(selectedNode.language);
+      }
     } else {
       nodeForm.reset({
         title: '',
         position: nodes.length,
         description: '',
         isBonus: false,
-        language: undefined
+        language: undefined,
+        defaultExerciseId: undefined
       });
+      setFilteredExercises([]);
     }
   }, [selectedNode, nodeForm, nodes.length]);
+
+  // Watch language changes to filter exercises
+  const selectedLanguage = nodeForm.watch('language');
+  
+  useEffect(() => {
+    if (selectedLanguage) {
+      updateFilteredExercises(selectedLanguage);
+    }
+  }, [selectedLanguage, defaultExercises]);
+
+  // Function to update filtered exercises based on selected language
+  const updateFilteredExercises = (language: string) => {
+    const exercises = defaultExercises.filter(ex => ex.language === language);
+    setFilteredExercises(exercises);
+    
+    // Clear exercise selection if changing language and current selection isn't available
+    const currentExerciseId = nodeForm.getValues('defaultExerciseId');
+    if (currentExerciseId) {
+      const exerciseExists = exercises.some(ex => ex.id === currentExerciseId);
+      if (!exerciseExists) {
+        nodeForm.setValue('defaultExerciseId', undefined);
+      }
+    }
+  };
 
   // Create or update roadmap
   const handleSaveRoadmap = async (values: RoadmapFormValues) => {
@@ -428,6 +463,18 @@ export const RoadmapEditor: React.FC = () => {
 
     setSavingNode(true);
     try {
+      // Validate that the language is associated with the roadmap
+      if (!selectedLanguages.includes(values.language)) {
+        toast.error(`The language "${values.language}" is not associated with this roadmap`);
+        return;
+      }
+      
+      // Validate that there's an exercise for this language
+      if (!filteredExercises.some(ex => ex.id === values.defaultExerciseId)) {
+        toast.error(`Please select a valid exercise for the "${values.language}" language`);
+        return;
+      }
+
       if (selectedNode) {
         // Update existing node
         const { error } = await supabase
@@ -435,10 +482,10 @@ export const RoadmapEditor: React.FC = () => {
           .update({
             title: values.title,
             position: values.position,
-            default_exercise_id: values.defaultExerciseId || null,
+            default_exercise_id: values.defaultExerciseId, // Now required
             description: values.description,
             is_bonus: values.isBonus,
-            language: values.language as Language | null, // Cast to Language type or null
+            language: values.language, // Now required
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedNode.id);
@@ -455,7 +502,7 @@ export const RoadmapEditor: React.FC = () => {
                 defaultExerciseId: values.defaultExerciseId,
                 description: values.description,
                 isBonus: values.isBonus,
-                language: values.language as Language | undefined, // Cast to Language type
+                language: values.language as Language,
                 updatedAt: new Date()
               } 
             : node
@@ -473,10 +520,10 @@ export const RoadmapEditor: React.FC = () => {
               roadmap_id: selectedRoadmap.id,
               title: values.title,
               position: values.position,
-              default_exercise_id: values.defaultExerciseId || null,
+              default_exercise_id: values.defaultExerciseId, // Now required
               description: values.description,
               is_bonus: values.isBonus,
-              language: values.language as Language | null // Cast to Language type or null
+              language: values.language // Now required
             }
           ])
           .select()
@@ -493,7 +540,7 @@ export const RoadmapEditor: React.FC = () => {
           description: data.description,
           position: data.position,
           isBonus: data.is_bonus,
-          language: data.language as Language | undefined, // Cast to Language type
+          language: data.language as Language,
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at)
         };
@@ -561,8 +608,10 @@ export const RoadmapEditor: React.FC = () => {
       position: nodes.length,
       description: '',
       isBonus: false,
-      language: undefined
+      language: undefined,
+      defaultExerciseId: undefined
     });
+    setFilteredExercises([]);
     setNodeDialogOpen(true);
   };
 
@@ -570,12 +619,6 @@ export const RoadmapEditor: React.FC = () => {
   const getLanguageName = (code: string): string => {
     const language = availableLanguages.find(l => l.value === code);
     return language ? language.label : code;
-  };
-
-  // Get filtered exercises by language
-  const getFilteredExercisesByLanguage = (language: string | undefined) => {
-    if (!language) return defaultExercises;
-    return defaultExercises.filter(ex => ex.language === language);
   };
 
   return (
@@ -868,7 +911,10 @@ export const RoadmapEditor: React.FC = () => {
                                   {exercise.title}
                                 </span>
                               ) : (
-                                <span className="text-muted-foreground text-xs">No exercise linked</span>
+                                <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30">
+                                  <AlertCircle className="h-3 w-3 mr-1" />
+                                  Missing exercise
+                                </Badge>
                               )}
                             </TableCell>
                             <TableCell className="text-right">
@@ -983,15 +1029,26 @@ export const RoadmapEditor: React.FC = () => {
                 />
               </div>
               
+              <Alert className="bg-blue-50 mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  You must select a language first, then choose an exercise for that language.
+                </AlertDescription>
+              </Alert>
+              
               <FormField
                 control={nodeForm.control}
                 name="language"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Language</FormLabel>
+                    <FormLabel>Language <span className="text-destructive">*</span></FormLabel>
                     <Select
-                      onValueChange={field.onChange}
-                      value={field.value || undefined}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Reset exercise selection when language changes
+                        nodeForm.setValue('defaultExerciseId', undefined);
+                      }}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -1041,52 +1098,63 @@ export const RoadmapEditor: React.FC = () => {
               <FormField
                 control={nodeForm.control}
                 name="defaultExerciseId"
-                render={({ field }) => {
-                  const filteredExercises = getFilteredExercisesByLanguage(nodeForm.watch('language'));
-                  return (
-                    <FormItem>
-                      <FormLabel>Linked Exercise</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select an exercise" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {filteredExercises.length > 0 ? (
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Linked Exercise <span className="text-destructive">*</span></FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={!selectedLanguage}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={
+                            selectedLanguage 
+                              ? "Select an exercise" 
+                              : "Select a language first"
+                          } />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {selectedLanguage ? (
+                          filteredExercises.length > 0 ? (
                             filteredExercises.map(exercise => (
                               <SelectItem key={exercise.id} value={exercise.id}>
-                                {exercise.title} ({exercise.language})
+                                {exercise.title}
                               </SelectItem>
                             ))
                           ) : (
-                            <SelectItem value="" disabled>
-                              {nodeForm.watch('language') 
-                                ? `No exercises available for ${getLanguageName(nodeForm.watch('language'))}`
-                                : 'Select a language first'}
+                            <SelectItem value="no-exercises" disabled>
+                              No exercises available for {getLanguageName(selectedLanguage)}
                             </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        {nodeForm.watch('language') 
-                          ? `Only showing exercises in ${getLanguageName(nodeForm.watch('language'))}`
-                          : 'Select a language first to see relevant exercises'}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
+                          )
+                        ) : (
+                          <SelectItem value="select-language" disabled>
+                            Please select a language first
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      {selectedLanguage 
+                        ? (filteredExercises.length > 0
+                            ? `Available exercises for ${getLanguageName(selectedLanguage)}: ${filteredExercises.length}`
+                            : `No exercises found for ${getLanguageName(selectedLanguage)}. Please create exercises first.`)
+                        : 'You must select a language before choosing an exercise'}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
               
-              <DialogFooter>
+              <DialogFooter className="gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setNodeDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={savingNode}>
+                <Button 
+                  type="submit" 
+                  disabled={savingNode || !nodeForm.formState.isValid}
+                >
                   {savingNode && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   {selectedNode ? 'Update Node' : 'Create Node'}
                 </Button>
