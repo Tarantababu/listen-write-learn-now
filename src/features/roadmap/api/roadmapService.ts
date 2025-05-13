@@ -4,537 +4,404 @@ import { Language, LanguageLevel } from '@/types';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
 
 /**
- * Service to handle all roadmap-related API calls to Supabase
+ * Service for interacting with roadmap-related API endpoints
  */
 export const roadmapService = {
   /**
-   * Get all available roadmaps for a specific language
+   * Get all roadmaps available for a specific language
    */
   async getRoadmapsForLanguage(language: Language): Promise<RoadmapItem[]> {
-    // Use the database function to get roadmaps filtered by language
-    const { data, error } = await supabase
-      .rpc('get_roadmaps_by_language', {
-        requested_language: language
-      });
-
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_roadmaps_by_language', { requested_language: language });
+      
+      if (error) throw error;
+      
+      // Transform the data to match our frontend types
+      return data.map(item => ({
+        id: item.id,
+        name: item.name,
+        level: item.level as LanguageLevel,
+        description: item.description || undefined,
+        createdAt: new Date(item.created_at),
+        updatedAt: new Date(item.updated_at),
+        createdBy: item.created_by || undefined,
+      }));
+    } catch (error) {
       console.error('Error fetching roadmaps:', error);
       throw error;
     }
-
-    // Get all roadmap languages to populate the language field
-    const { data: languagesData, error: languagesError } = await supabase
-      .from('roadmap_languages')
-      .select('*');
-
-    if (languagesError) {
-      console.error('Error fetching roadmap languages:', languagesError);
-      throw languagesError;
-    }
-
-    // Group languages by roadmap
-    const languagesByRoadmap: Record<string, Language[]> = {};
-    languagesData.forEach(lang => {
-      if (!languagesByRoadmap[lang.roadmap_id]) {
-        languagesByRoadmap[lang.roadmap_id] = [];
-      }
-      languagesByRoadmap[lang.roadmap_id].push(lang.language as Language);
-    });
-
-    // Get user roadmaps to check if the user has already started any of these roadmaps
-    const { data: userRoadmapsData } = await supabase
-      .from('user_roadmaps')
-      .select('*')
-      .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '')
-      .eq('language', language);
-
-    // Format the roadmaps with progress information
-    return data.map(roadmap => {
-      // Check if user has this roadmap
-      const userRoadmap = userRoadmapsData?.find(ur => ur.roadmap_id === roadmap.id);
-      const progress = 0; // We'll calculate this later based on node completion
-
-      return {
-        id: roadmap.id,
-        roadmapId: roadmap.id, // Add the roadmapId property here
-        name: roadmap.name,
-        level: roadmap.level as LanguageLevel,
-        description: roadmap.description,
-        language: language,
-        progress: progress,
-        currentNodeId: userRoadmap?.current_node_id,
-        createdAt: new Date(roadmap.created_at)
-      };
-    });
   },
-
+  
   /**
-   * Get all user roadmaps for a specific language
+   * Get user's roadmaps for a specific language
    */
   async getUserRoadmaps(language: Language): Promise<RoadmapItem[]> {
-    const userId = (await supabase.auth.getUser()).data.user?.id;
-    if (!userId) throw new Error('User not authenticated');
-
-    // Get user roadmaps for the specified language
-    const { data: userRoadmaps, error } = await supabase
-      .rpc('get_user_roadmaps_by_language', {
-        user_id_param: userId,
-        requested_language: language
+    try {
+      // Get the user's roadmaps from the database
+      const { data: userRoadmapsData, error: userRoadmapsError } = await supabase
+        .rpc('get_user_roadmaps_by_language', { 
+          user_id_param: (await supabase.auth.getUser()).data.user?.id, 
+          requested_language: language 
+        });
+        
+      if (userRoadmapsError) throw userRoadmapsError;
+      
+      if (!userRoadmapsData.length) return [];
+      
+      // Get the base roadmap information for each user roadmap
+      const roadmapIds = userRoadmapsData.map(ur => ur.roadmap_id);
+      
+      const { data: roadmapsData, error: roadmapsError } = await supabase
+        .from('roadmaps')
+        .select('*')
+        .in('id', roadmapIds);
+      
+      if (roadmapsError) throw roadmapsError;
+      
+      // Merge the user roadmap data with the base roadmap data
+      return userRoadmapsData.map(userRoadmap => {
+        const baseRoadmap = roadmapsData.find(r => r.id === userRoadmap.roadmap_id);
+        
+        return {
+          id: userRoadmap.id,
+          roadmapId: userRoadmap.roadmap_id,
+          name: baseRoadmap?.name || 'Untitled Roadmap',
+          level: (baseRoadmap?.level as LanguageLevel) || 'A1',
+          description: baseRoadmap?.description,
+          language: userRoadmap.language as Language,
+          currentNodeId: userRoadmap.current_node_id || undefined,
+          createdAt: new Date(userRoadmap.created_at),
+          updatedAt: new Date(userRoadmap.updated_at),
+          createdBy: baseRoadmap?.created_by,
+        };
       });
-
-    if (error) {
+    } catch (error) {
       console.error('Error fetching user roadmaps:', error);
       throw error;
     }
-
-    if (!userRoadmaps || userRoadmaps.length === 0) {
-      return [];
-    }
-
-    // Get roadmap details
-    const roadmapIds = userRoadmaps.map(ur => ur.roadmap_id);
-    const { data: roadmapsData, error: roadmapsError } = await supabase
-      .from('roadmaps')
-      .select('*')
-      .in('id', roadmapIds);
-
-    if (roadmapsError) {
-      console.error('Error fetching roadmaps:', roadmapsError);
-      throw roadmapsError;
-    }
-
-    // Get progress information for calculating completion percentages
-    const { data: progressData, error: progressError } = await supabase
-      .from('roadmap_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .in('roadmap_id', roadmapIds);
-
-    if (progressError) {
-      console.error('Error fetching progress:', progressError);
-      throw progressError;
-    }
-
-    // Get all nodes to calculate progress percentages
-    const { data: nodesData, error: nodesError } = await supabase
-      .from('roadmap_nodes')
-      .select('*')
-      .in('roadmap_id', roadmapIds)
-      .eq('language', language);
-
-    if (nodesError) {
-      console.error('Error fetching nodes:', nodesError);
-      throw nodesError;
-    }
-
-    return userRoadmaps.map(userRoadmap => {
-      const roadmap = roadmapsData?.find(r => r.id === userRoadmap.roadmap_id);
-      if (!roadmap) return null;
-
-      // Calculate progress percentage
-      const roadmapNodes = nodesData?.filter(node => node.roadmap_id === userRoadmap.roadmap_id) || [];
-      const completedNodes = progressData?.filter(
-        p => p.roadmap_id === userRoadmap.roadmap_id && p.completed
-      ) || [];
-      
-      const progress = roadmapNodes.length > 0
-        ? Math.round((completedNodes.length / roadmapNodes.length) * 100)
-        : 0;
-
-      return {
-        id: userRoadmap.id,
-        roadmapId: userRoadmap.roadmap_id, // Add the roadmapId property here
-        name: roadmap.name,
-        level: roadmap.level as LanguageLevel,
-        description: roadmap.description,
-        language: userRoadmap.language as Language,
-        progress: progress,
-        currentNodeId: userRoadmap.current_node_id,
-        createdAt: new Date(userRoadmap.created_at)
-      };
-    }).filter(Boolean) as RoadmapItem[];
   },
-
+  
   /**
-   * Initialize a new roadmap for the user
+   * Initialize a new roadmap for the user based on a template
    */
   async initializeRoadmap(level: LanguageLevel, language: Language): Promise<string> {
-    const userId = (await supabase.auth.getUser()).data.user?.id;
-    if (!userId) throw new Error('User not authenticated');
-
-    // Find matching roadmap for the level and language
-    const { data: roadmapsData, error: roadmapsError } = await supabase
-      .rpc('get_roadmaps_by_language', {
-        requested_language: language
-      });
-
-    if (roadmapsError) {
-      console.error('Error fetching roadmaps:', roadmapsError);
-      throw roadmapsError;
-    }
-
-    const matchingRoadmap = roadmapsData.find(r => r.level === level);
-    if (!matchingRoadmap) {
-      throw new Error(`No roadmap found for ${level} level in ${language}.`);
-    }
-
-    // Check if the user already has this roadmap
-    const { data: existingRoadmap, error: existingError } = await supabase
-      .from('user_roadmaps')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('roadmap_id', matchingRoadmap.id)
-      .eq('language', language)
-      .maybeSingle();
-
-    if (existingError) {
-      console.error('Error checking existing roadmap:', existingError);
-      throw existingError;
-    }
-
-    if (existingRoadmap) {
-      return existingRoadmap.id; // Return existing roadmap ID
-    }
-
-    // Create user roadmap
-    const { data: userRoadmap, error: roadmapError } = await supabase
-      .from('user_roadmaps')
-      .insert({
-        user_id: userId,
-        roadmap_id: matchingRoadmap.id,
-        language: language
-      })
-      .select()
-      .single();
-
-    if (roadmapError) {
-      console.error('Error creating roadmap:', roadmapError);
-      throw roadmapError;
-    }
-
-    // Get first node
-    const { data: firstNodeData, error: nodeError } = await supabase
-      .from('roadmap_nodes')
-      .select('*')
-      .eq('roadmap_id', matchingRoadmap.id)
-      .eq('language', language)
-      .order('position')
-      .limit(1)
-      .maybeSingle();
-
-    if (nodeError && nodeError.code !== 'PGRST116') {
-      console.error('Error fetching first node:', nodeError);
-      throw nodeError;
-    }
-
-    if (firstNodeData) {
-      // Update user roadmap with first node
-      const { error: updateError } = await supabase
-        .from('user_roadmaps')
-        .update({ current_node_id: firstNodeData.id })
-        .eq('id', userRoadmap.id);
-
-      if (updateError) {
-        console.error('Error updating roadmap with first node:', updateError);
-        throw updateError;
+    try {
+      // Find a suitable roadmap template
+      const { data: roadmaps, error: roadmapsError } = await supabase
+        .from('roadmaps')
+        .select('id')
+        .eq('level', level)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (roadmapsError || !roadmaps.length) {
+        throw new Error(`No roadmap template available for level ${level}`);
       }
+      
+      const roadmapId = roadmaps[0].id;
+      
+      // Create a new user roadmap
+      const { data: userRoadmap, error: userRoadmapError } = await supabase
+        .from('user_roadmaps')
+        .insert({
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          roadmap_id: roadmapId,
+          language,
+        })
+        .select()
+        .single();
+      
+      if (userRoadmapError) throw userRoadmapError;
+      
+      // Set the first node as the current node
+      const { data: nodes, error: nodesError } = await supabase
+        .from('roadmap_nodes')
+        .select('id')
+        .eq('roadmap_id', roadmapId)
+        .order('position', { ascending: true })
+        .limit(1);
+      
+      if (!nodesError && nodes.length > 0) {
+        const firstNodeId = nodes[0].id;
+        
+        await supabase
+          .from('user_roadmaps')
+          .update({ current_node_id: firstNodeId })
+          .eq('id', userRoadmap.id);
+      }
+      
+      return userRoadmap.id;
+    } catch (error) {
+      console.error('Error initializing roadmap:', error);
+      throw error;
     }
-
-    return userRoadmap.id;
   },
-
+  
   /**
-   * Get all nodes for a specific user roadmap
+   * Get all nodes for a roadmap with their status
    */
-  async getRoadmapNodes(userRoadmapId: string): Promise<RoadmapNode[]> {
-    const userId = (await supabase.auth.getUser()).data.user?.id;
-    if (!userId) throw new Error('User not authenticated');
-
-    // Get the user roadmap
-    const { data: userRoadmap, error: userRoadmapError } = await supabase
-      .from('user_roadmaps')
-      .select('*')
-      .eq('id', userRoadmapId)
-      .single();
-
-    if (userRoadmapError) {
-      console.error('Error fetching user roadmap:', userRoadmapError);
-      throw userRoadmapError;
-    }
-
-    // Get all nodes for this roadmap
-    const { data: nodesData, error: nodesError } = await supabase
-      .from('roadmap_nodes')
-      .select('*')
-      .eq('roadmap_id', userRoadmap.roadmap_id)
-      .eq('language', userRoadmap.language)
-      .order('position');
-
-    if (nodesError) {
-      console.error('Error fetching nodes:', nodesError);
-      throw nodesError;
-    }
-
-    // Get node completion info
-    const { data: progressData, error: progressError } = await supabase
-      .from('roadmap_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('roadmap_id', userRoadmap.roadmap_id);
-
-    if (progressError) {
-      console.error('Error fetching progress:', progressError);
-      throw progressError;
-    }
-
-    // Get detailed node progress
-    const { data: nodeProgressData, error: nodeProgressError } = await supabase
-      .from('roadmap_nodes_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('roadmap_id', userRoadmap.roadmap_id)
-      .eq('language', userRoadmap.language);
-
-    if (nodeProgressError) {
-      console.error('Error fetching node progress:', nodeProgressError);
-      throw nodeProgressError;
-    }
-
-    // Calculate completed nodes
-    const completedNodeIds = progressData?.filter(p => p.completed).map(p => p.node_id) || [];
-
-    // Format the nodes with status information
-    return nodesData.map((node, index, array) => {
-      const isCompleted = completedNodeIds.includes(node.id);
-      const isCurrent = node.id === userRoadmap.current_node_id;
+  async getRoadmapNodes(roadmapId: string): Promise<RoadmapNode[]> {
+    try {
+      // Get the user roadmap to determine the current node
+      const { data: userRoadmap, error: userRoadmapError } = await supabase
+        .from('user_roadmaps')
+        .select('roadmap_id, current_node_id, language')
+        .eq('id', roadmapId)
+        .maybeSingle();
       
-      // Node is available if it's the first node or the previous node is completed
-      const isAvailable = index === 0 || 
-        (array[index - 1] && completedNodeIds.includes(array[index - 1].id));
+      if (userRoadmapError) throw userRoadmapError;
       
-      const status = isCompleted ? 'completed' 
-        : isCurrent ? 'current' 
-        : isAvailable ? 'available' 
-        : 'locked';
-
-      // Get node progress count
-      const nodeProgress = nodeProgressData?.find(np => np.node_id === node.id);
-      const progressCount = nodeProgress?.completion_count || 0;
-
-      return {
-        id: node.id,
-        roadmapId: node.roadmap_id,
-        title: node.title,
-        description: node.description || '',
-        position: node.position,
-        isBonus: node.is_bonus,
-        language: node.language as Language,
-        status,
-        progressCount,
-        isCompleted: isCompleted || (nodeProgress?.is_completed || false),
-        defaultExerciseId: node.default_exercise_id
-      };
-    });
+      if (!userRoadmap) {
+        throw new Error('User roadmap not found');
+      }
+      
+      // Get all nodes for this roadmap
+      const { data: nodes, error: nodesError } = await supabase
+        .from('roadmap_nodes')
+        .select('*')
+        .eq('roadmap_id', userRoadmap.roadmap_id)
+        .order('position', { ascending: true });
+      
+      if (nodesError) throw nodesError;
+      
+      // Get completed nodes for this user
+      const { data: completedNodes, error: completedNodesError } = await supabase
+        .from('roadmap_progress')
+        .select('node_id')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('roadmap_id', userRoadmap.roadmap_id)
+        .eq('completed', true);
+      
+      if (completedNodesError) throw completedNodesError;
+      
+      const completedNodeIds = new Set(completedNodes.map(n => n.node_id));
+      const currentNodeId = userRoadmap.current_node_id;
+      
+      // Transform nodes and add status
+      return nodes.map(node => {
+        // Determine node status
+        let status: 'locked' | 'available' | 'completed' | 'current' = 'locked';
+        
+        if (completedNodeIds.has(node.id)) {
+          status = 'completed';
+        } else if (node.id === currentNodeId) {
+          status = 'current';
+        } else if (node.position === 0 || nodes.some(n => 
+          completedNodeIds.has(n.id) && n.position === node.position - 1
+        )) {
+          status = 'available';
+        }
+        
+        return {
+          id: node.id,
+          roadmapId: node.roadmap_id,
+          title: node.title,
+          description: node.description,
+          position: node.position,
+          isBonus: node.is_bonus,
+          defaultExerciseId: node.default_exercise_id,
+          language: node.language as Language | undefined,
+          createdAt: new Date(node.created_at),
+          updatedAt: new Date(node.updated_at),
+          status,
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching roadmap nodes:', error);
+      throw error;
+    }
   },
-
+  
   /**
    * Get exercise content for a roadmap node
    */
   async getNodeExerciseContent(nodeId: string): Promise<ExerciseContent | null> {
-    // Get the node to find its default exercise ID
-    const { data: node, error: nodeError } = await supabase
-      .from('roadmap_nodes')
-      .select('*')
-      .eq('id', nodeId)
-      .single();
-
-    if (nodeError) {
-      console.error('Error fetching node:', nodeError);
-      throw nodeError;
-    }
-
-    if (!node.default_exercise_id) {
-      return null;
-    }
-
-    // Get the default exercise content
-    const { data: exercise, error: exerciseError } = await supabase
-      .from('default_exercises')
-      .select('*')
-      .eq('id', node.default_exercise_id)
-      .single();
-
-    if (exerciseError) {
-      console.error('Error fetching exercise:', exerciseError);
-      throw exerciseError;
-    }
-
-    return {
-      id: exercise.id,
-      title: exercise.title,
-      text: exercise.text,
-      audioUrl: exercise.audio_url,
-      language: exercise.language as Language
-    };
-  },
-
-  /**
-   * Record completion of a node with accuracy
-   */
-  async recordNodeCompletion(nodeId: string, accuracy: number): Promise<NodeCompletionResult> {
-    const userId = (await supabase.auth.getUser()).data.user?.id;
-    if (!userId) throw new Error('User not authenticated');
-
-    // Get the node info
-    const { data: node, error: nodeError } = await supabase
-      .from('roadmap_nodes')
-      .select('roadmap_id, language')
-      .eq('id', nodeId)
-      .single();
-
-    if (nodeError) {
-      console.error('Error fetching node:', nodeError);
-      throw nodeError;
-    }
-
-    // Call the database function to increment node completion
-    const { error } = await supabase.rpc('increment_node_completion', {
-      node_id_param: nodeId,
-      user_id_param: userId,
-      language_param: node.language,
-      roadmap_id_param: node.roadmap_id
-    });
-
-    if (error) {
-      console.error('Error incrementing node completion:', error);
+    try {
+      // Get the node details including default_exercise_id
+      const { data: node, error: nodeError } = await supabase
+        .from('roadmap_nodes')
+        .select('default_exercise_id, language')
+        .eq('id', nodeId)
+        .single();
+      
+      if (nodeError) throw nodeError;
+      
+      if (!node.default_exercise_id) {
+        return null;
+      }
+      
+      // Get the default exercise content
+      const { data: exercise, error: exerciseError } = await supabase
+        .from('default_exercises')
+        .select('*')
+        .eq('id', node.default_exercise_id)
+        .single();
+      
+      if (exerciseError) throw exerciseError;
+      
+      return {
+        id: exercise.id,
+        title: exercise.title,
+        text: exercise.text,
+        audioUrl: exercise.audio_url,
+        language: exercise.language as Language,
+        tags: exercise.tags,
+      };
+    } catch (error) {
+      console.error('Error fetching node exercise:', error);
       throw error;
     }
-
-    // Get the updated node progress
-    const { data: nodeProgress, error: progressError } = await supabase
-      .from('roadmap_nodes_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('node_id', nodeId)
-      .eq('language', node.language)
-      .single();
-
-    if (progressError) {
-      console.error('Error fetching node progress:', progressError);
-      throw progressError;
-    }
-
-    return {
-      isCompleted: nodeProgress.is_completed,
-      completionCount: nodeProgress.completion_count,
-      accuracy
-    };
   },
-
+  
   /**
-   * Mark a node as completed and update the user's current node
+   * Record completion of a node with accuracy score
+   */
+  async recordNodeCompletion(nodeId: string, accuracy: number): Promise<NodeCompletionResult> {
+    try {
+      // Get the node details to know which roadmap it belongs to
+      const { data: node, error: nodeError } = await supabase
+        .from('roadmap_nodes')
+        .select('roadmap_id, position, is_bonus')
+        .eq('id', nodeId)
+        .single();
+      
+      if (nodeError) throw nodeError;
+      
+      // Get the user roadmap
+      const { data: userRoadmaps, error: userRoadmapsError } = await supabase
+        .from('user_roadmaps')
+        .select('id, language, current_node_id')
+        .eq('roadmap_id', node.roadmap_id)
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+      
+      if (userRoadmapsError) throw userRoadmapsError;
+      
+      if (!userRoadmaps.length) {
+        throw new Error('User roadmap not found');
+      }
+      
+      const userRoadmap = userRoadmaps[0];
+      
+      // Increment node completion counter using the database function
+      await supabase.rpc('increment_node_completion', {
+        node_id_param: nodeId,
+        user_id_param: (await supabase.auth.getUser()).data.user?.id,
+        language_param: userRoadmap.language,
+        roadmap_id_param: node.roadmap_id
+      });
+      
+      // Get the updated node progress
+      const { data: nodeProgress, error: nodeProgressError } = await supabase
+        .from('roadmap_nodes_progress')
+        .select('completion_count, is_completed')
+        .eq('node_id', nodeId)
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+      
+      if (nodeProgressError) throw nodeProgressError;
+      
+      // Find the next node
+      const { data: nextNodes, error: nextNodesError } = await supabase
+        .from('roadmap_nodes')
+        .select('id')
+        .eq('roadmap_id', node.roadmap_id)
+        .eq('position', node.position + 1)
+        .order('position', { ascending: true })
+        .limit(1);
+      
+      if (nextNodesError) throw nextNodesError;
+      
+      const nextNodeId = nextNodes.length > 0 ? nextNodes[0].id : undefined;
+      
+      // If this node is completed, update the current node to the next one
+      if (nodeProgress.is_completed && nextNodeId) {
+        await supabase
+          .from('user_roadmaps')
+          .update({ current_node_id: nextNodeId })
+          .eq('id', userRoadmap.id);
+      }
+      
+      return {
+        isCompleted: nodeProgress.is_completed,
+        completionCount: nodeProgress.completion_count,
+        nextNodeId: nextNodeId,
+      };
+    } catch (error) {
+      console.error('Error recording node completion:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Mark a node as completed (manual method)
    */
   async markNodeCompleted(nodeId: string): Promise<void> {
-    const userId = (await supabase.auth.getUser()).data.user?.id;
-    if (!userId) throw new Error('User not authenticated');
-
-    // Get the node info
-    const { data: node, error: nodeError } = await supabase
-      .from('roadmap_nodes')
-      .select('roadmap_id')
-      .eq('id', nodeId)
-      .single();
-
-    if (nodeError) {
-      console.error('Error fetching node:', nodeError);
-      throw nodeError;
-    }
-
-    // Get the user roadmap
-    const { data: userRoadmap, error: roadmapError } = await supabase
-      .from('user_roadmaps')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('roadmap_id', node.roadmap_id)
-      .single();
-
-    if (roadmapError) {
-      console.error('Error fetching user roadmap:', roadmapError);
-      throw roadmapError;
-    }
-
-    // First, ensure there's a progress record and mark it as completed
-    const { error: progressError } = await supabase
-      .from('roadmap_progress')
-      .upsert(
-        {
-          user_id: userId,
-          roadmap_id: node.roadmap_id,
-          node_id: nodeId,
-          completed: true,
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        { onConflict: 'user_id, roadmap_id, node_id' }
-      );
-
-    if (progressError) {
-      console.error('Error updating progress:', progressError);
-      throw progressError;
-    }
-
-    // Find next node
-    const { data: nodes, error: nodesError } = await supabase
-      .from('roadmap_nodes')
-      .select('id, position')
-      .eq('roadmap_id', node.roadmap_id)
-      .order('position');
-
-    if (nodesError) {
-      console.error('Error fetching nodes:', nodesError);
-      throw nodesError;
-    }
-
-    // Find the current node and get the next one
-    const currentNodeIndex = nodes.findIndex(n => n.id === nodeId);
-    const nextNode = nodes[currentNodeIndex + 1];
-
-    // Update user roadmap with next node
-    if (nextNode) {
-      const { error: updateError } = await supabase
+    try {
+      // Get the node details to know which roadmap it belongs to
+      const { data: node, error: nodeError } = await supabase
+        .from('roadmap_nodes')
+        .select('roadmap_id')
+        .eq('id', nodeId)
+        .single();
+      
+      if (nodeError) throw nodeError;
+      
+      // Get the user roadmap
+      const { data: userRoadmaps, error: userRoadmapsError } = await supabase
         .from('user_roadmaps')
-        .update({
-          current_node_id: nextNode.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userRoadmap.id);
-
-      if (updateError) {
-        console.error('Error updating user roadmap:', updateError);
-        throw updateError;
+        .select('id, language')
+        .eq('roadmap_id', node.roadmap_id)
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+      
+      if (userRoadmapsError) throw userRoadmapsError;
+      
+      if (!userRoadmaps.length) {
+        throw new Error('User roadmap not found');
       }
-    }
-
-    // Also mark the node as completed in the detailed progress table
-    const { error: nodeProgressError } = await supabase
-      .from('roadmap_nodes_progress')
-      .upsert(
-        {
-          user_id: userId,
-          roadmap_id: node.roadmap_id,
-          node_id: nodeId,
-          language: (await supabase.from('roadmap_nodes').select('language').eq('id', nodeId).single()).data!.language,
-          is_completed: true,
-          completion_count: 3, // Mark as fully completed
-          updated_at: new Date().toISOString(),
-          last_practiced_at: new Date().toISOString()
-        },
-        { onConflict: 'user_id, node_id, language' }
-      );
-
-    if (nodeProgressError) {
-      console.error('Error updating node progress:', nodeProgressError);
-      throw nodeProgressError;
+      
+      const userRoadmap = userRoadmaps[0];
+      
+      // Directly mark the node as completed in both tables
+      await supabase.from('roadmap_nodes_progress').upsert({
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        roadmap_id: node.roadmap_id,
+        node_id: nodeId,
+        language: userRoadmap.language,
+        completion_count: 3,
+        is_completed: true,
+        last_practiced_at: new Date().toISOString()
+      });
+      
+      await supabase.from('roadmap_progress').upsert({
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        roadmap_id: node.roadmap_id,
+        node_id: nodeId,
+        completed: true,
+        completed_at: new Date().toISOString()
+      });
+      
+      // Find the next node
+      const { data: nextNodes, error: nextNodesError } = await supabase
+        .from('roadmap_nodes')
+        .select('id, position')
+        .eq('roadmap_id', node.roadmap_id)
+        .gt('position', node.position)
+        .order('position', { ascending: true })
+        .limit(1);
+      
+      if (nextNodesError) throw nextNodesError;
+      
+      // Update the current node to the next one if available
+      if (nextNodes.length > 0) {
+        await supabase
+          .from('user_roadmaps')
+          .update({ current_node_id: nextNodes[0].id })
+          .eq('id', userRoadmap.id);
+      }
+    } catch (error) {
+      console.error('Error marking node completed:', error);
+      throw error;
     }
   }
 };
