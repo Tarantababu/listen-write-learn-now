@@ -23,7 +23,8 @@ const RoadmapPage: React.FC = () => {
     userRoadmaps, 
     selectRoadmap,
     completedNodes,
-    nodes 
+    nodes,
+    currentNodeId
   } = useRoadmap();
   
   const { settings } = useUserSettingsContext();
@@ -43,6 +44,16 @@ const RoadmapPage: React.FC = () => {
     }
   }, [loading, userRoadmaps]);
 
+  // When a user clicks on "Continue Learning," open the exercise modal with current node
+  useEffect(() => {
+    if (currentRoadmap && currentNodeId && nodes.length > 0) {
+      const currentNode = nodes.find(node => node.id === currentNodeId);
+      if (currentNode && selectedNode?.id === currentNode.id && !exerciseModalOpen) {
+        setExerciseModalOpen(true);
+      }
+    }
+  }, [currentRoadmap, currentNodeId, nodes, selectedNode, exerciseModalOpen]);
+
   const handleNodeSelect = (node: RoadmapNode) => {
     setSelectedNode(node);
     setExerciseModalOpen(true);
@@ -57,6 +68,21 @@ const RoadmapPage: React.FC = () => {
 
   const handleRoadmapSelect = async (roadmapId: string) => {
     await selectRoadmap(roadmapId);
+  };
+
+  const handleContinueLearning = async (roadmapId: string) => {
+    // First select the roadmap
+    await selectRoadmap(roadmapId);
+    
+    // Find the current node in this roadmap
+    const selectedRoadmap = userRoadmaps.find(r => r.id === roadmapId);
+    if (selectedRoadmap && selectedRoadmap.currentNodeId) {
+      const currentNode = nodes.find(node => node.id === selectedRoadmap.currentNodeId);
+      if (currentNode) {
+        setSelectedNode(currentNode);
+        setExerciseModalOpen(true);
+      }
+    }
   };
 
   // Group user roadmaps by language
@@ -92,9 +118,9 @@ const RoadmapPage: React.FC = () => {
   };
   
   // Get roadmap level from its ID
-  const getRoadmapLevel = (roadmapId: string): string | undefined => {
+  const getRoadmapLevel = (roadmapId: string): LanguageLevel | undefined => {
     const roadmap = roadmaps.find(r => r.id === roadmapId);
-    return roadmap?.level;
+    return roadmap?.level as LanguageLevel | undefined;
   };
 
   if (loading) {
@@ -177,8 +203,8 @@ const RoadmapPage: React.FC = () => {
                                 )}
                               </div>
                               <CardDescription className="flex items-center gap-2">
-                                {roadmapLevel && <LevelBadge level={roadmapLevel as LanguageLevel} />}
-                                <span>Started on {roadmap.createdAt.toLocaleDateString()}</span>
+                                {roadmapLevel && <LevelBadge level={roadmapLevel} />}
+                                <span>Started on {new Date(roadmap.createdAt).toLocaleDateString()}</span>
                               </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -198,7 +224,7 @@ const RoadmapPage: React.FC = () => {
                                   size="sm"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleRoadmapSelect(roadmap.id);
+                                    handleContinueLearning(roadmap.id);
                                   }}
                                 >
                                   {isActive ? 'Continue Learning' : 'View Roadmap'}

@@ -88,12 +88,20 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
               const count = Math.min(successfulCompletions.length, 3);
               setCompletionCount(count);
               setProgressValue((count / 3) * 100);
+              
+              // If user has already completed this exercise 3 times, mark it as completed
+              if (count >= 3) {
+                setCompleted(true);
+              } else {
+                setCompleted(false);
+              }
             }
           }
           
           setExercise(exerciseData);
-          setCompleted(false);
+          setPracticing(false);
           setAccuracy(0);
+          setShowResults(false);
         } finally {
           setLoading(false);
         }
@@ -207,6 +215,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
     // Record completion in database
     if (user && exercise) {
       try {
+        // Add new completion record
         await supabase
           .from('completions')
           .insert({
@@ -215,6 +224,31 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
             accuracy: accuracyValue,
             completed: accuracyValue >= 95
           });
+          
+        // If this is a roadmap exercise and the accuracy is ≥ 95%,
+        // update the exercise's completion count in the exercises table
+        if (accuracyValue >= 95 && node?.defaultExerciseId) {
+          const { data: existingExercise, error: exerciseError } = await supabase
+            .from('exercises')
+            .select('id, completion_count, is_completed')
+            .eq('default_exercise_id', node.defaultExerciseId)
+            .eq('user_id', user.id)
+            .maybeSingle();
+            
+          if (!exerciseError && existingExercise) {
+            // Update existing exercise
+            const newCount = Math.min(3, (existingExercise.completion_count || 0) + 1);
+            const isComplete = newCount >= 3;
+            
+            await supabase
+              .from('exercises')
+              .update({
+                completion_count: newCount,
+                is_completed: isComplete
+              })
+              .eq('id', existingExercise.id);
+          }
+        }
       } catch (error) {
         console.error('Error saving completion record:', error);
       }

@@ -1,9 +1,8 @@
 
 import * as React from "react"
-
-import type {
-  ToastActionElement,
-  ToastProps,
+import {
+  type ToastActionElement,
+  type ToastProps,
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 3
@@ -21,35 +20,58 @@ type ToasterToast = {
 }
 
 // Define a type for the custom Toast options
-interface ToastOptions {
-  title?: React.ReactNode
-  description?: React.ReactNode
-  action?: ToastActionElement
-  variant?: "default" | "destructive" | "success" | "warning" | "info"
-  duration?: number
-}
+type ToastOptions = Partial<
+  Pick<ToasterToast, "action" | "description" | "duration" | "variant">
+>
 
-// Define action types for the reducer
-type Action =
-  | { type: "ADD_TOAST"; toast: ToasterToast }
-  | { type: "UPDATE_TOAST"; toast: Partial<ToasterToast> & { id: string } }
-  | { type: "DISMISS_TOAST"; toastId?: string }
-  | { type: "REMOVE_TOAST"; toastId?: string }
-
-// Define state type
-interface State {
+type State = {
   toasts: ToasterToast[]
 }
 
-const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
-
-// Define initial state
-const initialState: State = {
-  toasts: [],
+export const toastVariants = {
+  default: "border bg-background text-foreground",
+  destructive: "destructive border-destructive bg-destructive text-destructive-foreground",
+  success: "border-success bg-success text-success-foreground",
+  warning: "border-warning bg-warning text-warning-foreground",
+  info: "border-info bg-info text-info-foreground",
 }
 
-// Create the reducer
-function reducer(state: State, action: Action): State {
+const actionTypes = {
+  ADD_TOAST: "ADD_TOAST",
+  UPDATE_TOAST: "UPDATE_TOAST",
+  DISMISS_TOAST: "DISMISS_TOAST",
+  REMOVE_TOAST: "REMOVE_TOAST",
+} as const
+
+let count = 0
+
+function genId() {
+  count = (count + 1) % Number.MAX_SAFE_INTEGER
+  return count.toString()
+}
+
+type ActionType = typeof actionTypes
+
+type Action =
+  | {
+      type: ActionType["ADD_TOAST"]
+      toast: ToasterToast
+    }
+  | {
+      type: ActionType["UPDATE_TOAST"]
+      toast: Partial<ToasterToast>
+      toastId: string
+    }
+  | {
+      type: ActionType["DISMISS_TOAST"]
+      toastId: string
+    }
+  | {
+      type: ActionType["REMOVE_TOAST"]
+      toastId: string
+    }
+
+function toastReducer(state: State, action: Action): State {
   switch (action.type) {
     case "ADD_TOAST":
       return {
@@ -61,26 +83,17 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t
+          t.id === action.toastId ? { ...t, ...action.toast } : t
         ),
       }
 
     case "DISMISS_TOAST": {
       const { toastId } = action
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action
-      if (toastId) {
-        addToRemoveQueue(toastId)
-      } else {
-        state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id)
-        })
-      }
-
       return {
         ...state,
         toasts: state.toasts.map((t) =>
-          t.id === toastId || toastId === undefined
+          t.id === toastId
             ? {
                 ...t,
                 open: false,
@@ -101,47 +114,30 @@ function reducer(state: State, action: Action): State {
         ...state,
         toasts: state.toasts.filter((t) => t.id !== action.toastId),
       }
-
-    default:
-      return state
   }
 }
 
 const listeners: Array<(state: State) => void> = []
 
-let memoryState: State = initialState
+let memoryState: State = { toasts: [] }
 
 function dispatch(action: Action) {
-  memoryState = reducer(memoryState, action)
+  memoryState = toastReducer(memoryState, action)
   listeners.forEach((listener) => {
     listener(memoryState)
   })
 }
 
-function addToRemoveQueue(toastId: string) {
-  if (toastTimeouts.has(toastId)) {
-    return
-  }
+type Toast = Omit<ToasterToast, "id">
 
-  const timeout = setTimeout(() => {
-    toastTimeouts.delete(toastId)
-    dispatch({
-      type: "REMOVE_TOAST",
-      toastId,
-    })
-  }, TOAST_REMOVE_DELAY)
+function toast({ ...props }: Toast) {
+  const id = genId()
 
-  toastTimeouts.set(toastId, timeout)
-}
-
-export function toast(props: ToastOptions = {}) {
-  // Generate a random id if not provided in props
-  const id = String(Math.random())
-
-  const update = (props: Partial<ToasterToast>) =>
+  const update = (props: ToasterToast) =>
     dispatch({
       type: "UPDATE_TOAST",
-      toast: { ...props, id },
+      toast: props,
+      toastId: id,
     })
 
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
@@ -161,17 +157,16 @@ export function toast(props: ToastOptions = {}) {
   })
 
   return {
-    id,
+    id: id,
     dismiss,
     update,
   }
 }
 
-export function useToast() {
+function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 
   React.useEffect(() => {
-    // Register a listener to update the state when the reducer state changes
     listeners.push(setState)
     return () => {
       const index = listeners.indexOf(setState)
@@ -184,23 +179,8 @@ export function useToast() {
   return {
     ...state,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId: toastId! }),
   }
 }
 
-// Create additional toast helper functions with predefined variants
-toast.success = (title: string, options: Omit<ToastOptions, "variant" | "title"> = {}) => {
-  return toast({ ...options, title, variant: "success" });
-};
-
-toast.error = (title: string, options: Omit<ToastOptions, "variant" | "title"> = {}) => {
-  return toast({ ...options, title, variant: "destructive" });
-};
-
-toast.warning = (title: string, options: Omit<ToastOptions, "variant" | "title"> = {}) => {
-  return toast({ ...options, title, variant: "warning" });
-};
-
-toast.info = (title: string, options: Omit<ToastOptions, "variant" | "title"> = {}) => {
-  return toast({ ...options, title, variant: "info" });
-};
+export { useToast, toast }
