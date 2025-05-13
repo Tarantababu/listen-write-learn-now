@@ -78,6 +78,7 @@ export function useRoadmap() {
     }
   }, [settings.selectedLanguage, context, isInitialized]);
   
+  // Debug logs for tracking which implementation is being used
   useEffect(() => {
     if (usingOldImplementation) {
       console.log("Using legacy roadmap implementation");

@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useRoadmap } from '../context/RoadmapContext';
 import { RoadmapNode } from '../types';
@@ -26,7 +25,6 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
     isLoading,
     roadmaps,
     currentNodeId,
-    loadUserRoadmap,
     selectRoadmap
   } = useRoadmap();
   
@@ -40,7 +38,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
     if (currentRoadmap && (!nodes || nodes.length === 0)) {
       console.log("No nodes found for current roadmap, attempting to reload");
       // Attempt to reload the current roadmap if no nodes are found
-      loadUserRoadmap?.(currentRoadmap.id).catch(err => {
+      selectRoadmap?.(currentRoadmap.id).catch(err => {
         console.error("Failed to reload roadmap:", err);
         toast({
           variant: "destructive",
@@ -49,7 +47,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
         });
       });
     }
-  }, [currentRoadmap, nodes, currentNodeId, loadUserRoadmap]);
+  }, [currentRoadmap, nodes, currentNodeId, selectRoadmap]);
 
   if (isLoading) {
     return (
