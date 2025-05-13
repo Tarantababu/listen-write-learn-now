@@ -144,24 +144,45 @@ export class UserService extends BaseService implements UserServiceInterface {
       
       const averageAccuracy = accuracyCount > 0 ? totalAccuracy / accuracyCount : 0;
       
-      // Group progress by language
-      const languageStats: Record<Language, LanguageStats> = {};
+      // Initialize the language stats with default values for all languages
+      const defaultLanguageStats: LanguageStats = {
+        exercisesCompleted: 0,
+        nodesCompleted: 0,
+        roadmapsCompleted: 0,
+        averageAccuracy: 0,
+        level: 'A1'
+      };
       
+      // Create a record with all language keys initialized to default values
+      const supportedLanguages: Language[] = [
+        'english', 'german', 'spanish', 'french', 'portuguese', 
+        'italian', 'turkish', 'swedish', 'dutch', 'norwegian', 
+        'russian', 'polish', 'chinese', 'japanese', 'korean', 'arabic'
+      ];
+      
+      const languageStats: Record<Language, LanguageStats> = {} as Record<Language, LanguageStats>;
+      
+      // Initialize all languages with default stats
+      supportedLanguages.forEach(lang => {
+        languageStats[lang] = { ...defaultLanguageStats };
+      });
+      
+      // Update stats for languages that have progress data
       progressData?.forEach(progress => {
         const lang = progress.language as Language;
         
-        if (!languageStats[lang]) {
-          languageStats[lang] = {
-            exercisesCompleted: 0,
-            nodesCompleted: 0,
-            roadmapsCompleted: 0,
-            averageAccuracy: 0,
-            level: 'A1' // Default
-          };
-        }
-        
-        if (progress.is_completed) {
-          languageStats[lang].nodesCompleted++;
+        if (lang in languageStats) {
+          if (progress.is_completed) {
+            languageStats[lang].nodesCompleted++;
+          }
+          
+          // You might want to update the level based on completed nodes
+          // This is a simple example - you might have more complex logic
+          if (languageStats[lang].nodesCompleted > 10) {
+            languageStats[lang].level = 'A2';
+          } else if (languageStats[lang].nodesCompleted > 20) {
+            languageStats[lang].level = 'B1';
+          }
         }
       });
       
@@ -176,7 +197,7 @@ export class UserService extends BaseService implements UserServiceInterface {
         
       const selectedLanguage = profile?.selected_language as Language;
       
-      if (languageStats[selectedLanguage]) {
+      if (selectedLanguage && selectedLanguage in languageStats) {
         languageStats[selectedLanguage].exercisesCompleted = completedExercises;
         languageStats[selectedLanguage].averageAccuracy = averageAccuracy;
       }
