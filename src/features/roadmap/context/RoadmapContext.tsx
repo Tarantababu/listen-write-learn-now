@@ -123,43 +123,6 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     }
   }, [settings.selectedLanguage]);
 
-  // Add validation effect when component mounts
-  useEffect(() => {
-    const validateData = async () => {
-      if (!settings.selectedLanguage) return;
-      
-      // Try to restore from local storage first
-      const restored = restoreStateFromLocalStorage();
-      
-      // If nothing was restored or what was restored is empty, load from API
-      if (!restored || userRoadmaps.length === 0) {
-        await loadUserRoadmaps(settings.selectedLanguage);
-      }
-      
-      // Validate that if we have a currentRoadmap, it's actually in userRoadmaps
-      if (currentRoadmap && !userRoadmaps.some(r => r.id === currentRoadmap.id)) {
-        console.warn('Current roadmap is not in user roadmaps list, resetting...');
-        setCurrentRoadmap(null);
-        
-        // If we have user roadmaps, select the first one
-        if (userRoadmaps.length > 0) {
-          try {
-            await selectRoadmap(userRoadmaps[0].id);
-          } catch (error) {
-            console.error('Error selecting first roadmap during validation:', error);
-          }
-        }
-      }
-    };
-    
-    validateData();
-  }, [settings.selectedLanguage]);
-  
-  // Add effect to save state when it changes
-  useEffect(() => {
-    saveStateToLocalStorage();
-  }, [userRoadmaps, currentRoadmap, saveStateToLocalStorage]);
-  
   // Load roadmaps on language change
   useEffect(() => {
     if (settings.selectedLanguage) {
@@ -194,85 +157,6 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       setIsLoading(false);
     }
   }, []);
-
-  // Load user's roadmaps for the selected language with improved state synchronization
-  const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
-    setIsLoading(true);
-    try {
-      const result = await roadmapService.getUserRoadmaps(language);
-      if (result.status === 'success' && result.data) {
-        const userRoadmapsData = result.data;
-        
-        // Update state immediately so other functions have access to the latest data
-        setUserRoadmaps(userRoadmapsData);
-        console.log('User roadmaps loaded:', userRoadmapsData);
-        
-        // If we have user roadmaps and none is currently selected, select the first one
-        if (userRoadmapsData.length > 0 && !currentRoadmap) {
-          // Don't await here to prevent blocking, but handle errors
-          selectRoadmap(userRoadmapsData[0].id).catch(err => {
-            console.error('Error auto-selecting first roadmap:', err);
-          });
-        }
-        
-        return userRoadmapsData;
-      } else {
-        console.error('Error loading user roadmaps:', result.error);
-        toast({
-          variant: "destructive",
-          title: "Failed to load your roadmaps",
-          description: "There was an error loading your roadmaps."
-        });
-        return [];
-      }
-    } catch (error) {
-      console.error('Error loading user roadmaps:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to load your roadmaps",
-        description: "There was an error loading your roadmaps."
-      });
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentRoadmap, selectRoadmap]);
-
-  // Initialize a new roadmap for the user based on level
-  const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language): Promise<string> => {
-    setIsLoading(true);
-    try {
-      const result = await roadmapService.initializeRoadmap(level, language);
-      if (result.status === 'success' && result.data) {
-        // Reload user roadmaps to include the new one
-        await loadUserRoadmaps(language);
-        
-        // Return the ID of the newly created roadmap
-        return result.data;
-      } else {
-        console.error('Error initializing roadmap:', result.error);
-        toast({
-          variant: "destructive",
-          title: "Failed to create roadmap",
-          description: "There was an error creating your roadmap."
-        });
-        throw new Error(result.error || 'Unknown error initializing roadmap');
-      }
-    } catch (error) {
-      console.error('Error initializing roadmap:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to create roadmap",
-        description: "There was an error creating your roadmap."
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [loadUserRoadmaps]);
-  
-  // Create an alias for initializeRoadmap for backward compatibility
-  const initializeUserRoadmap = initializeRoadmap;
 
   // Select a roadmap and load its nodes with enhanced error handling and retry logic
   const selectRoadmap = useCallback(async (roadmapId: string): Promise<RoadmapNode[]> => {
@@ -362,6 +246,122 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       setIsLoading(false);
     }
   }, [userRoadmaps, settings.selectedLanguage, loadUserRoadmaps]);
+
+  // Load user's roadmaps for the selected language with improved state synchronization
+  const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
+    setIsLoading(true);
+    try {
+      const result = await roadmapService.getUserRoadmaps(language);
+      if (result.status === 'success' && result.data) {
+        const userRoadmapsData = result.data;
+        
+        // Update state immediately so other functions have access to the latest data
+        setUserRoadmaps(userRoadmapsData);
+        console.log('User roadmaps loaded:', userRoadmapsData);
+        
+        // If we have user roadmaps and none is currently selected, select the first one
+        if (userRoadmapsData.length > 0 && !currentRoadmap) {
+          // Don't await here to prevent blocking, but handle errors
+          selectRoadmap(userRoadmapsData[0].id).catch(err => {
+            console.error('Error auto-selecting first roadmap:', err);
+          });
+        }
+        
+        return userRoadmapsData;
+      } else {
+        console.error('Error loading user roadmaps:', result.error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load your roadmaps",
+          description: "There was an error loading your roadmaps."
+        });
+        return [];
+      }
+    } catch (error) {
+      console.error('Error loading user roadmaps:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to load your roadmaps",
+        description: "There was an error loading your roadmaps."
+      });
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentRoadmap, selectRoadmap]);
+
+  // Add validation effect when component mounts
+  useEffect(() => {
+    const validateData = async () => {
+      if (!settings.selectedLanguage) return;
+      
+      // Try to restore from local storage first
+      const restored = restoreStateFromLocalStorage();
+      
+      // If nothing was restored or what was restored is empty, load from API
+      if (!restored || userRoadmaps.length === 0) {
+        await loadUserRoadmaps(settings.selectedLanguage);
+      }
+      
+      // Validate that if we have a currentRoadmap, it's actually in userRoadmaps
+      if (currentRoadmap && !userRoadmaps.some(r => r.id === currentRoadmap.id)) {
+        console.warn('Current roadmap is not in user roadmaps list, resetting...');
+        setCurrentRoadmap(null);
+        
+        // If we have user roadmaps, select the first one
+        if (userRoadmaps.length > 0) {
+          try {
+            await selectRoadmap(userRoadmaps[0].id);
+          } catch (error) {
+            console.error('Error selecting first roadmap during validation:', error);
+          }
+        }
+      }
+    };
+    
+    validateData();
+  }, [settings.selectedLanguage, restoreStateFromLocalStorage, userRoadmaps, currentRoadmap, loadUserRoadmaps, selectRoadmap]);
+  
+  // Add effect to save state when it changes
+  useEffect(() => {
+    saveStateToLocalStorage();
+  }, [userRoadmaps, currentRoadmap, saveStateToLocalStorage]);
+
+  // Initialize a new roadmap for the user based on level
+  const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language): Promise<string> => {
+    setIsLoading(true);
+    try {
+      const result = await roadmapService.initializeRoadmap(level, language);
+      if (result.status === 'success' && result.data) {
+        // Reload user roadmaps to include the new one
+        await loadUserRoadmaps(language);
+        
+        // Return the ID of the newly created roadmap
+        return result.data;
+      } else {
+        console.error('Error initializing roadmap:', result.error);
+        toast({
+          variant: "destructive",
+          title: "Failed to create roadmap",
+          description: "There was an error creating your roadmap."
+        });
+        throw new Error(result.error || 'Unknown error initializing roadmap');
+      }
+    } catch (error) {
+      console.error('Error initializing roadmap:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to create roadmap",
+        description: "There was an error creating your roadmap."
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadUserRoadmaps]);
+  
+  // Create an alias for initializeRoadmap for backward compatibility
+  const initializeUserRoadmap = initializeRoadmap;
 
   // Get exercise content for a roadmap node
   const getNodeExercise = useCallback(async (nodeId: string): Promise<ExerciseContent | null> => {
