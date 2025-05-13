@@ -132,7 +132,12 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
                 title: exercise.title || node.title,
                 text: exercise.text || "",
                 language: node.language || 'english',
-                audio: exercise.audio_url,
+                audioUrl: exercise.audio_url, // Corrected property name
+                tags: [],
+                directoryId: null,
+                createdAt: new Date(),
+                completionCount: 0,
+                isCompleted: false
               }}
               onBack={handleBackFromPractice}
               onComplete={handlePracticeComplete}
@@ -146,7 +151,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-x-2 flex items-center">
-                <Badge variant={isNodeCompleted ? "success" : "outline"}>
+                <Badge variant={isNodeCompleted ? "secondary" : "outline"}>
                   {isNodeCompleted ? "Completed" : "Not Completed"}
                 </Badge>
                 {node.isBonus && (

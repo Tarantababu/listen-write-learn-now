@@ -1,18 +1,18 @@
 
 import * as React from "react"
 import { 
-  type ToastActionElement, 
+  type ToastActionElement,
   type ToastProps 
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 5
 const TOAST_REMOVE_DELAY = 1000
 
-// Define toast variants as a union type since it's not exported from toast.tsx
+// Define toast variants as a union type
 export type ToastVariants = "default" | "destructive" | "success" | "info" | "warning"
 
-// Define ToasterToast type here instead of importing it
-export interface ToasterToast extends Omit<ToastProps, "variant"> {
+// Define ToasterToast type directly without extending problematic types
+export interface ToasterToast {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
@@ -24,7 +24,7 @@ export interface ToasterToast extends Omit<ToastProps, "variant"> {
 }
 
 // Define a type for the custom Toast options
-export type Toast = Partial<ToasterToast>
+export type Toast = Partial<Omit<ToasterToast, "id">>
 
 type State = {
   toasts: ToasterToast[]
