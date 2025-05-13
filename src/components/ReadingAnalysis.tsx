@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -93,7 +92,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         // Generate a new analysis
         console.log('Generating new analysis for exercise:', exercise.id);
         
-        // Using the new dedicated reading analysis function
+        // Using the dedicated reading analysis function
         const response = await supabase.functions.invoke('generate-reading-analysis', {
           body: {
             text: exercise.text,
@@ -354,9 +353,9 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                 <div className="space-y-3 mt-2">
                   {currentSentence.analysis.words.map((word, i) => (
                     <div key={i} className="bg-background p-3 rounded-lg border dark:border-muted/20 dark:bg-muted/5">
-                      <div className="flex justify-between items-start">
+                      <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-1">
                         <span className="font-bold text-primary">{word.word}</span>
-                        <span className="text-muted-foreground text-right">{word.definition}</span>
+                        <span className="text-foreground md:text-right">{word.definition}</span>
                       </div>
                       {word.exampleSentence && (
                         <p className="text-sm mt-1">
