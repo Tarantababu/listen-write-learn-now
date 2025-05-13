@@ -6,14 +6,21 @@ import { useRoadmap } from '@/contexts/RoadmapContext';
 import { RoadmapNode } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/use-toast';
 import DictationPractice from '@/components/DictationPractice';
+import { Search, Headphones } from 'lucide-react';
 
 interface RoadmapExerciseModalProps {
   node: RoadmapNode | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+// Practice stage enum
+enum PracticeStage {
+  PROMPT,    // Ask user if they want Reading Analysis
+  READING,   // Reading Analysis mode
+  DICTATION, // Dictation Practice mode
 }
 
 const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpen, onOpenChange }) => {
@@ -28,16 +35,17 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   
   const [exercise, setExercise] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [isPracticing, setIsPracticing] = useState<boolean>(false);
+  const [practiceStage, setPracticeStage] = useState<PracticeStage>(PracticeStage.PROMPT);
   
   // Load exercise when modal is opened with a node
   useEffect(() => {
     if (node && isOpen) {
       loadExercise(node.id);
+      // Always start at prompt stage when modal opens
+      setPracticeStage(PracticeStage.PROMPT);
     } else if (!isOpen) {
       // Reset states when modal is completely closed
       setExercise(null);
-      setIsPracticing(false);
     }
   }, [node, isOpen]);
 
@@ -58,32 +66,12 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     }
   };
 
-  const handleStartPractice = () => {
-    setIsPracticing(true);
+  const handleStartReadingAnalysis = () => {
+    setPracticeStage(PracticeStage.READING);
   };
 
-  const handleBackFromPractice = () => {
-    setIsPracticing(false);
-  };
-
-  const handleMarkCompleted = async () => {
-    if (!node) return;
-    
-    try {
-      await markNodeAsCompleted(node.id);
-      toast({
-        title: "Progress saved!",
-        description: "You've completed this exercise",
-      });
-      onOpenChange(false); // Close the modal after marking as completed
-    } catch (error) {
-      console.error("Error marking node as completed:", error);
-      toast({
-        title: "Failed to save progress",
-        description: "Please try again later",
-        variant: "destructive",
-      });
-    }
+  const handleStartDictation = () => {
+    setPracticeStage(PracticeStage.DICTATION);
   };
 
   const handlePracticeComplete = (accuracy: number) => {
@@ -106,6 +94,30 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     }
   };
 
+  const handleTryAgain = () => {
+    setPracticeStage(PracticeStage.PROMPT);
+  };
+
+  const handleMarkCompleted = async () => {
+    if (!node) return;
+    
+    try {
+      await markNodeAsCompleted(node.id);
+      toast({
+        title: "Progress saved!",
+        description: "You've completed this exercise",
+      });
+      onOpenChange(false); // Close the modal after marking as completed
+    } catch (error) {
+      console.error("Error marking node as completed:", error);
+      toast({
+        title: "Failed to save progress",
+        description: "Please try again later",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Get the completion count for this node (if it exists)
   const nodeCompletionInfo = node ? 
     nodeProgress.find(np => np.nodeId === node.id) : 
@@ -120,7 +132,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl max-w-[95vw] p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-2xl max-w-[95vw] p-0 overflow-hidden">
         <DialogHeader className="p-6">
           <DialogTitle className="text-xl">{node.title}</DialogTitle>
           <DialogDescription className="text-base mt-2">
@@ -128,94 +140,99 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
           </DialogDescription>
         </DialogHeader>
         
-        {isPracticing ? (
-          exercise ? (
-            <DictationPractice
-              exercise={{
-                id: `roadmap-${node.id}`,
-                title: exercise.title || node.title,
-                text: exercise.text || "",
-                language: node.language || 'english',
-                audioUrl: exercise.audio_url,
-                tags: [],
-                directoryId: null,
-                createdAt: new Date(),
-                completionCount: 0,
-                isCompleted: false
-              }}
-              onTryAgain={handleBackFromPractice}
-              onComplete={handlePracticeComplete}
-            />
-          ) : (
-            <div className="text-center py-6">
-              <p>No exercise content available.</p>
-              <Button onClick={() => setIsPracticing(false)} className="mt-4">
-                Go Back
-              </Button>
-            </div>
-          )
-        ) : (
-          <div className="space-y-6 p-6 pt-0">
-            <div className="flex items-center justify-between">
-              <div className="space-x-2 flex items-center">
-                <Badge 
-                  variant={isNodeCompleted ? "secondary" : "outline"} 
-                  className={isNodeCompleted ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" : ""}
-                >
-                  {isNodeCompleted ? "Completed" : "Not Completed"}
-                </Badge>
-                {node.isBonus && (
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100">
-                    Bonus
-                  </Badge>
-                )}
-              </div>
-              <div className="text-sm">
-                {completionCount > 0 && (
-                  <span className="text-muted-foreground">
-                    Progress: {completionCount}/3
-                  </span>
-                )}
-              </div>
+        {practiceStage === PracticeStage.PROMPT && (
+          <div className="px-6 pt-0 pb-6 space-y-6">
+            <div className="mb-6">
+              <p className="text-lg font-medium mb-2">Boost Your Understanding Before You Start</p>
+              <p className="text-muted-foreground">Dive into a Reading Analysis to see how words and grammar work — or skip straight to dictation.</p>
             </div>
             
-            {exercise ? (
-              <Card className="border-2 border-muted/50 hover:border-primary/20 transition-colors">
-                <CardContent className="pt-6">
-                  <h3 className="text-lg font-medium mb-2">{exercise.title || "Exercise"}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{exercise.description || "Practice this exercise to improve your skills."}</p>
-                  <div className="flex justify-end">
-                    <Button 
-                      onClick={handleStartPractice}
-                      className="bg-primary hover:bg-primary/90 transition-colors"
-                    >
-                      Start Practice
-                    </Button>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              <Card className="border-muted overflow-hidden hover:bg-muted/5 transition-colors dark:hover:bg-muted/10">
+                <CardContent className="p-0">
+                  <Button onClick={handleStartReadingAnalysis} variant="ghost" className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent">
+                    <div className="flex flex-col items-center text-center space-y-3">
+                      <div className="flex items-center justify-center bg-primary/10 w-12 h-12 rounded-full">
+                        <Search className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="font-semibold text-lg">
+                        🔍 Start with Reading Analysis
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Explore vocabulary and grammar with AI explanations
+                      </p>
+                    </div>
+                  </Button>
                 </CardContent>
               </Card>
-            ) : loading ? (
-              <div className="text-center py-6">
-                <p>Loading exercise...</p>
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <p>No exercise available for this lesson.</p>
-                {!isNodeCompleted && (
-                  <Button onClick={handleMarkCompleted} className="mt-4">
-                    Mark as Completed
+              
+              <Card className="overflow-hidden border border-muted hover:bg-muted/5 transition-all dark:hover:bg-muted/10">
+                <CardContent className="p-0">
+                  <Button onClick={handleStartDictation} variant="ghost" className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent">
+                    <div className="flex flex-col items-center text-center space-y-3">
+                      <div className="flex items-center justify-center bg-muted/40 w-12 h-12 rounded-full">
+                        <Headphones className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <div className="font-semibold text-lg">🎧 Start Dictation Now</div>
+                      <p className="text-sm text-muted-foreground">
+                        Practice listening and transcription skills with audio
+                      </p>
+                    </div>
                   </Button>
-                )}
+                </CardContent>
+              </Card>
+            </div>
+            
+            {!exercise && !loading && (
+              <div className="mt-6 flex justify-center">
+                <Button onClick={handleMarkCompleted} variant="outline">
+                  Mark as Completed
+                </Button>
               </div>
             )}
-            
-            <Separator className="my-4" />
-            
-            <div className="flex justify-end">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Close
-              </Button>
-            </div>
+          </div>
+        )}
+        
+        {practiceStage === PracticeStage.READING && (
+          <div className="text-center py-6">
+            <p>Reading Analysis functionality is not implemented yet.</p>
+            <Button onClick={handleStartDictation} className="mt-4">
+              Proceed to Dictation
+            </Button>
+          </div>
+        )}
+        
+        {practiceStage === PracticeStage.DICTATION && exercise && (
+          <DictationPractice
+            exercise={{
+              id: `roadmap-${node.id}`,
+              title: exercise.title || node.title,
+              text: exercise.text || "",
+              language: node.language || 'english',
+              audioUrl: exercise.audio_url,
+              tags: [],
+              directoryId: null,
+              createdAt: new Date(),
+              completionCount: 0,
+              isCompleted: false
+            }}
+            onTryAgain={handleTryAgain}
+            onComplete={handlePracticeComplete}
+          />
+        )}
+        
+        {practiceStage === PracticeStage.DICTATION && !exercise && (
+          <div className="text-center py-6">
+            {loading ? (
+              <p>Loading exercise...</p>
+            ) : (
+              <>
+                <p>No exercise content available.</p>
+                <Button onClick={handleTryAgain} className="mt-4">
+                  Go Back
+                </Button>
+              </>
+            )}
           </div>
         )}
       </DialogContent>
