@@ -1,4 +1,3 @@
-
 import * as React from "react"
 
 import type {
@@ -155,8 +154,10 @@ function useToaster() {
   }
 }
 
+// Fix: Updated the function to correctly handle props without accessing id property directly from props
 function toast(props: Omit<ToasterToast, "id">) {
-  const id = props.id ?? String(Math.random())
+  // Generate a random id if not provided in props
+  const id = String(Math.random())
 
   const update = (props: Partial<ToasterToast>) =>
     dispatch({
