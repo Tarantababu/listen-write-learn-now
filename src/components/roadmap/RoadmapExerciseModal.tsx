@@ -139,7 +139,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
                 completionCount: 0,
                 isCompleted: false
               }}
-              onBack={handleBackFromPractice}
+              onTryAgain={handleBackFromPractice}
               onComplete={handlePracticeComplete}
             />
           ) : (
