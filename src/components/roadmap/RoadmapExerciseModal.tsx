@@ -158,7 +158,10 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
           <div className="space-y-6 p-6 pt-0">
             <div className="flex items-center justify-between">
               <div className="space-x-2 flex items-center">
-                <Badge variant={isNodeCompleted ? "success" : "outline"} className={isNodeCompleted ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" : ""}>
+                <Badge 
+                  variant={isNodeCompleted ? "secondary" : "outline"} 
+                  className={isNodeCompleted ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" : ""}
+                >
                   {isNodeCompleted ? "Completed" : "Not Completed"}
                 </Badge>
                 {node.isBonus && (
