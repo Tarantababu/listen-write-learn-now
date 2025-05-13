@@ -3,12 +3,14 @@ import { useRoadmap as useOldRoadmap } from "@/contexts/RoadmapContext";
 import { useRoadmap as useNewRoadmap } from "@/features/roadmap/context/RoadmapContext";
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "@/components/ui/use-toast";
+import { useUserSettingsContext } from "@/contexts/UserSettingsContext";
 
 /**
  * This hook serves as a compatibility layer between the old and new roadmap contexts.
  * It will attempt to use the new context first, and if that fails, it will use the old one.
  */
 export function useRoadmap() {
+  const { settings } = useUserSettingsContext();
   // Initialize state to track which implementation to use
   const [usingOldImplementation, setUsingOldImplementation] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -40,7 +42,8 @@ export function useRoadmap() {
         try {
           console.log("Initializing roadmap context...");
           if (context.loadUserRoadmaps) {
-            await context.loadUserRoadmaps();
+            // Make sure to pass the selected language when loading roadmaps
+            await context.loadUserRoadmaps(settings.selectedLanguage);
           }
           setIsInitialized(true);
         } catch (error) {
@@ -55,7 +58,25 @@ export function useRoadmap() {
       
       initialize();
     }
-  }, [context, isInitialized]);
+  }, [context, isInitialized, settings.selectedLanguage]);
+  
+  // Re-initialize when language changes
+  useEffect(() => {
+    if (isInitialized && context) {
+      const refreshRoadmaps = async () => {
+        try {
+          console.log("Language changed, refreshing roadmaps...");
+          if (context.loadUserRoadmaps) {
+            await context.loadUserRoadmaps(settings.selectedLanguage);
+          }
+        } catch (error) {
+          console.error("Failed to refresh roadmaps after language change:", error);
+        }
+      };
+      
+      refreshRoadmaps();
+    }
+  }, [settings.selectedLanguage, context, isInitialized]);
   
   useEffect(() => {
     if (usingOldImplementation) {
@@ -64,6 +85,18 @@ export function useRoadmap() {
       console.log("Using new roadmap implementation");
     }
   }, [usingOldImplementation]);
+  
+  // Add debug logging for roadmaps data
+  useEffect(() => {
+    if (context) {
+      console.log("Current roadmap data:", {
+        roadmaps: context.roadmaps || [],
+        userRoadmaps: context.userRoadmaps || [],
+        currentRoadmap: context.currentRoadmap,
+        nodes: context.nodes || [],
+      });
+    }
+  }, [context?.roadmaps, context?.userRoadmaps, context?.currentRoadmap, context?.nodes]);
   
   return context;
 }

@@ -15,6 +15,8 @@ const RoadmapPath: React.FC<RoadmapPathProps> = ({ nodes, onNodeSelect }) => {
   // Sort nodes by position
   const sortedNodes = [...nodes].sort((a, b) => a.position - b.position);
   
+  console.log("RoadmapPath rendering with nodes:", sortedNodes);
+  
   // Group nodes by "rows" of 5 for display
   const nodeRows: RoadmapNode[][] = [];
   for (let i = 0; i < sortedNodes.length; i += 5) {
@@ -27,6 +29,18 @@ const RoadmapPath: React.FC<RoadmapPathProps> = ({ nodes, onNodeSelect }) => {
   
   // Calculate progress percentage
   const progressPercent = nodes.length > 0 ? (completedCount / nodes.length) * 100 : 0;
+
+  // Handle empty nodes case
+  if (nodes.length === 0) {
+    return (
+      <div className="p-8 text-center rounded-lg border border-dashed border-muted-foreground/50">
+        <h3 className="font-medium text-muted-foreground">No roadmap nodes found</h3>
+        <p className="text-sm text-muted-foreground mt-2">
+          This roadmap doesn't have any nodes yet. Please check back later or select a different roadmap.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-10">

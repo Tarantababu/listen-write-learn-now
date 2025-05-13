@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/tooltip';
 import LevelBadge from '@/components/LevelBadge';
 import { Loader2 } from 'lucide-react';
+import NewRoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
 
 interface RoadmapNodeProps {
   node: RoadmapNode;
@@ -115,6 +116,20 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     roadmaps 
   } = useRoadmap();
 
+  console.log("Legacy RoadmapVisualization rendered with:", {
+    hasCurrentRoadmap: !!currentRoadmap,
+    nodesCount: nodes?.length || 0,
+    loading
+  });
+
+  // First try to use the new implementation if data is available
+  if (currentRoadmap && nodes && Array.isArray(nodes) && nodes.length > 0 && 
+      nodes[0] && typeof nodes[0].status === 'string') {
+    console.log("Using new RoadmapVisualization implementation");
+    return <NewRoadmapVisualization onNodeSelect={onNodeSelect} />;
+  }
+
+  // Fall back to the legacy implementation
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-4">
@@ -131,6 +146,8 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
       </div>
     );
   }
+  
+  console.log("Using legacy roadmap visualization with nodes:", nodes);
 
   // Find the roadmap details using the roadmapId from currentRoadmap
   const roadmapDetails = roadmaps.find(r => r.id === currentRoadmap.roadmapId);
