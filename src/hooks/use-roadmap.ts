@@ -1,8 +1,7 @@
-
 import { useRoadmap as useOldRoadmap } from "@/contexts/RoadmapContext";
 import { useRoadmap as useNewRoadmap } from "@/features/roadmap/context/RoadmapContext";
 import { useEffect, useState, useCallback } from "react";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { useUserSettingsContext } from "@/contexts/UserSettingsContext";
 
 /**
