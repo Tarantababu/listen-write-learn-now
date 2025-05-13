@@ -1,11 +1,12 @@
 
-import { useState, useEffect, useCallback } from "react"
-import type { ToastActionElement, ToastProps } from "@/components/ui/toast"
+import { useState, useEffect } from "react"
+import type { ToastActionElement } from "@/components/ui/toast"
+import type { ToastProps as UIToastProps } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 10
 const TOAST_REMOVE_DELAY = 1000000
 
-type ToasterToast = ToastProps & {
+type ToasterToastProps = UIToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
@@ -30,11 +31,11 @@ type ActionType = typeof actionTypes
 type Action =
   | {
       type: ActionType["ADD_TOAST"]
-      toast: Omit<ToasterToast, "id">
+      toast: Omit<ToasterToastProps, "id">
     }
   | {
       type: ActionType["UPDATE_TOAST"]
-      toast: Partial<ToasterToast> & { id: string }
+      toast: Partial<ToasterToastProps> & { id: string }
     }
   | {
       type: ActionType["DISMISS_TOAST"]
@@ -46,7 +47,7 @@ type Action =
     }
 
 interface State {
-  toasts: ToasterToast[]
+  toasts: ToasterToastProps[]
 }
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
@@ -140,13 +141,12 @@ function dispatch(action: Action) {
   })
 }
 
-// Define the properties we want to extract from ToasterToast for the toast function
-type ToastProps = Omit<ToasterToast, "id"> 
+type ToastOptions = Omit<ToasterToastProps, "id">
 
-function toast({ ...props }: ToastProps) {
-  const id = props.id ?? generateId()
+function toast(options: ToastOptions) {
+  const id = options.id ?? generateId()
 
-  const update = (props: ToastProps & { id: string }) =>
+  const update = (props: ToasterToastProps) =>
     dispatch({
       type: "UPDATE_TOAST",
       toast: { ...props },
@@ -156,7 +156,7 @@ function toast({ ...props }: ToastProps) {
   dispatch({
     type: "ADD_TOAST",
     toast: {
-      ...props,
+      ...options,
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss()
