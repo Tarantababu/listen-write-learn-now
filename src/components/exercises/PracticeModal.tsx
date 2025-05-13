@@ -168,17 +168,16 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
       const latestExerciseData = exercises.find(ex => ex?.id === exercise?.id);
       setUpdatedExercise(latestExerciseData || exercise);
       // We don't reset practiceStage or showResults here to preserve state during the session
+    } else {
+      // Reset showResults when modal is fully closed to prepare for next opening
+      setShowResults(false);
     }
   }, [isOpen, exercise, exercises]);
 
   // Safe handling of modal open state change
   const handleOpenChange = (open: boolean) => {
-    // Only reset states when the modal is closed completely
-    if (!open) {
-      // We'll reset these states when the modal is closed, not during interactions
-      setShowResults(false);
-      // Don't reset practiceStage here, it will be set correctly when modal reopens
-    }
+    // If closing, we just pass it through without resetting states
+    // This ensures dictation results remain visible until the modal fully closes
     onOpenChange(open);
   };
   
