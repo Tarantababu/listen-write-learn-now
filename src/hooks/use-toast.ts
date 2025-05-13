@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -13,10 +14,6 @@ export type ToasterToast = ToastProps & {
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
-}
-
-type ToasterType = {
-  toasts: ToasterToast[]
 }
 
 const actionTypes = {
@@ -123,8 +120,7 @@ export const reducer = (state: State, action: Action): State => {
   }
 }
 
-const listeners = new Set<React.Dispatch<Action>>()
-
+const listeners: ((action: Action) => void)[] = []
 let memoryState: State = { toasts: [] }
 
 function dispatch(action: Action) {
@@ -138,9 +134,17 @@ function useToaster() {
   const [state, setState] = React.useState<State>(memoryState)
 
   React.useEffect(() => {
-    listeners.add(setState)
+    // Create a handler that applies the action to the local state
+    const handleAction = (action: Action) => {
+      setState((prevState) => reducer(prevState, action))
+    }
+    
+    listeners.push(handleAction)
     return () => {
-      listeners.delete(setState)
+      const index = listeners.indexOf(handleAction)
+      if (index !== -1) {
+        listeners.splice(index, 1)
+      }
     }
   }, [])
 
@@ -151,12 +155,10 @@ function useToaster() {
   }
 }
 
-function toast({
-  ...props
-}: Omit<ToasterToast, "id">) {
-  const id = props.id || String(Math.random())
+function toast(props: Omit<ToasterToast, "id">) {
+  const id = props.id ?? String(Math.random())
 
-  const update = (props: ToasterToast) =>
+  const update = (props: Partial<ToasterToast>) =>
     dispatch({
       type: "UPDATE_TOAST",
       toast: { ...props, id },
@@ -192,7 +194,7 @@ toast.error = (title: string, description?: string) => {
 };
 
 toast.warning = (title: string, description?: string) => {
-  return toast({ title, description, variant: "info" });
+  return toast({ title, description, variant: "warning" });
 };
 
 toast.info = (title: string, description?: string) => {
