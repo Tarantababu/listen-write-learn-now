@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
 import { corsHeaders } from '../_shared/cors.ts'
@@ -113,89 +114,92 @@ serve(async (req) => {
   }
 })
 
-// Generate English definition for vocabulary words
+// Generate English definition for vocabulary words - updated to provide natural translations
 function generateEnglishDefinition(word: string, language: string): string {
-  // Enhanced definitions dictionary with more detailed English explanations
+  // Enhanced definitions dictionary with more natural English translations
   const definitions: Record<string, Record<string, string>> = {
     'english': {
-      'simple': 'Easy to understand or use; not complicated or elaborate.',
-      'powerful': 'Having great power, force, potency, or effect; physically strong.',
-      'read': 'To look at and comprehend the meaning of written or printed words or symbols.',
-      'book': 'A set of written, printed, or blank pages fastened along one side and encased between protective covers.',
-      'walk': 'To move at a regular pace by lifting and setting down each foot in turn.',
-      'default': 'A common word in English language.'
+      'simple': 'Easy to understand or use; not complicated.',
+      'powerful': 'Having great power, force, or effect; physically strong.',
+      'read': 'To look at and comprehend written words or symbols.',
+      'book': 'A set of written or printed pages bound together.',
+      'walk': 'To move on foot at a regular pace.',
+      'default': 'A common English word.'
     },
     'spanish': {
-      'hablar': 'To speak or talk; to communicate through words.',
-      'leer': 'To read; to interpret written or printed matter.',
-      'libro': 'Book; a written or printed work consisting of pages.',
-      'caminar': 'To walk; to move on foot at a regular pace.',
-      'día': 'Day; a period of 24 hours, especially from midnight to midnight.',
-      'sol': 'Sun; the star around which the earth orbits.',
-      'agua': 'Water; the clear liquid that forms rain, rivers, and oceans.',
-      'casa': 'House; a building for human habitation.',
-      'tiempo': 'Time; the indefinite continued progress of existence.',
-      'hoy': 'Today; on the current day.',
-      'es': 'Is; third person singular present form of "to be".',
-      'un': 'A/an; indefinite article.',
-      'nuevo': 'New; not existing before, recently made or discovered.',
-      'el': 'The; definite article for masculine nouns.',
-      'brilla': 'Shines; to emit light or to be bright.',
-      'en': 'In; expressing a position within space or time.',
-      'cielo': 'Sky; the region of the atmosphere visible from the earth.',
-      'me': 'Myself/me; reflexive or direct object pronoun.',
-      'levanto': 'I get up; to rise from a sitting or lying position.',
-      'temprano': 'Early; happening before the usual or expected time.',
-      'tomo': 'I take/drink; to consume a liquid or to grasp.',
-      'una': 'A/an; indefinite article for feminine nouns.',
-      'taza': 'Cup; a small container used for drinking.',
-      'de': 'Of/from; indicating origin, ownership or composition.',
-      'café': 'Coffee; a dark, bitter beverage prepared from roasted coffee beans.',
-      'luego': 'Then/later; at a time subsequent to another.',
-      'salgo': 'I go out; to exit or leave a place.',
-      'caminar': 'To walk; to move on foot.',
-      'invita': 'Invites; to request the presence or participation of someone.',
-      'a': 'To; preposition indicating direction or purpose.',
-      'la': 'The; definite article for feminine nouns.',
-      'mujer': 'Woman; an adult female human being.',
-      'invita a la mujer': 'Invites the woman; to ask a female person to attend or participate in something.',
-      'salió': 'He/she left; to exit a place.',
-      'y': 'And; a conjunction used to connect words or groups of words.',
-      'no': 'No/not; used to express negation, denial, or refusal.',
-      'volvió': 'He/she returned; to come back to a place.',
-      'salió y no volvió': 'He/she left and did not return; indicates someone departed and failed to come back.',
-      'por': 'For/by/through; a preposition with multiple meanings including reason, duration, or exchange.',
-      'qué': 'What/why; interrogative pronoun or adverb used in questions.',
-      'por qué': 'Why; used to ask for the reason or purpose of something.',
-      'porque': 'Because; conjunction used to introduce a reason or explanation.',
-      'morales': 'Morals; principles of right and wrong behavior (or as a surname).',
-      'decidió': 'Decided; made a choice or came to a conclusion.'
+      'hablar': 'To speak, to talk',
+      'leer': 'To read',
+      'libro': 'Book',
+      'caminar': 'To walk',
+      'día': 'Day',
+      'sol': 'Sun',
+      'agua': 'Water',
+      'casa': 'House',
+      'tiempo': 'Time, weather',
+      'hoy': 'Today',
+      'es': 'Is',
+      'un': 'A, an',
+      'nuevo': 'New',
+      'el': 'The',
+      'brilla': 'Shines',
+      'en': 'In',
+      'cielo': 'Sky',
+      'me': 'Myself, me',
+      'levanto': 'I get up',
+      'temprano': 'Early',
+      'tomo': 'I take, I drink',
+      'una': 'A, an',
+      'taza': 'Cup',
+      'de': 'Of, from',
+      'café': 'Coffee',
+      'luego': 'Then, later',
+      'salgo': 'I go out',
+      'caminar': 'To walk',
+      'invita': 'Invites',
+      'a': 'To',
+      'la': 'The',
+      'mujer': 'Woman',
+      'invita a la mujer': 'Invites the woman',
+      'salió': 'Left, went out',
+      'y': 'And',
+      'no': 'No, not',
+      'volvió': 'Returned',
+      'salió y no volvió': 'Left and did not return',
+      'por': 'For, by, through',
+      'qué': 'What, why',
+      'por qué': 'Why',
+      'porque': 'Because',
+      'morales': 'Morals (or a surname)',
+      'decidió': 'Decided',
+      'tiene': 'Has',
+      'enemigos': 'Enemies',
+      'tiene enemigos': 'Has enemies'
     },
     'french': {
-      'parler': 'To speak; to express thoughts through spoken language.',
-      'lire': 'To read; to look at and comprehend written words.',
-      'livre': 'Book; a written or printed work consisting of pages.',
-      'marcher': 'To walk; to move on foot.',
-      'jour': 'Day; a period of 24 hours.',
-      'soleil': 'Sun; the star at the center of our solar system.',
-      'eau': 'Water; the clear liquid that forms rain, rivers, and oceans.',
-      'maison': 'House; a building for human habitation.',
-      'temps': 'Time; the indefinite continued progress of existence.',
-      'aujourd\'hui': 'Today; on the current day.',
-      'default': 'A word in French language.'
+      'parler': 'To speak',
+      'lire': 'To read',
+      'livre': 'Book',
+      'marcher': 'To walk',
+      'jour': 'Day',
+      'soleil': 'Sun',
+      'eau': 'Water',
+      'maison': 'House',
+      'temps': 'Time, weather',
+      'aujourd\'hui': 'Today',
+      'default': 'A French word'
     },
     'german': {
-      'sprechen': 'To speak; to express thoughts verbally.',
-      'lesen': 'To read; to interpret written text.',
-      'buch': 'Book; a written or printed work.',
-      'gehen': 'To go or to walk; to move on foot.',
-      'tag': 'Day; a period of 24 hours.',
-      'sonne': 'Sun; the star at the center of our solar system.',
-      'wasser': 'Water; the clear liquid essential for life.',
-      'haus': 'House; a building for human habitation.',
-      'zeit': 'Time; the measured progression of existence.',
-      'heute': 'Today; on the current day.',
-      'default': 'A word in German language.'
+      'sprechen': 'To speak',
+      'lesen': 'To read',
+      'buch': 'Book',
+      'gehen': 'To go, to walk',
+      'tag': 'Day',
+      'sonne': 'Sun',
+      'wasser': 'Water',
+      'haus': 'House',
+      'zeit': 'Time',
+      'heute': 'Today',
+      'default': 'A German word'
     }
   };
   
@@ -207,111 +211,118 @@ function generateEnglishDefinition(word: string, language: string): string {
     return languageDict[cleanWord];
   }
   
-  // If no exact match, try to generate a more meaningful definition based on language
+  // If no exact match, try to generate a natural translation based on language
   switch(language) {
     case 'spanish':
-      return `"${word}" means "${getTranslation(cleanWord, language)}" in English.`;
+      return getTranslation(cleanWord, language);
     case 'french':
-      return `"${word}" means "${getTranslation(cleanWord, language)}" in English.`;
+      return getTranslation(cleanWord, language);
     case 'german':
-      return `"${word}" means "${getTranslation(cleanWord, language)}" in English.`;
+      return getTranslation(cleanWord, language);
     case 'english':
-      return `"${word}" - ${getSimplifiedDefinition(cleanWord)}`;
+      return getSimplifiedDefinition(cleanWord);
     default:
-      return `"${word}" - a word in ${language}.`;
+      return `A word in ${language}`;
   }
 }
 
 // Helper function to generate simplified English definitions for English words
 function getSimplifiedDefinition(word: string): string {
   const commonWords: Record<string, string> = {
-    'hello': 'a greeting used when meeting someone',
-    'goodbye': 'a farewell expression used when leaving',
-    'happy': 'feeling or showing pleasure or contentment',
-    'sad': 'feeling or showing sorrow; unhappy',
-    'big': 'of considerable size or extent',
-    'small': 'of a size that is less than normal or usual',
-    'fast': 'moving or capable of moving at high speed',
-    'slow': 'moving or operating at a low speed',
+    'hello': 'A greeting used when meeting someone',
+    'goodbye': 'A farewell expression used when leaving',
+    'happy': 'Feeling or showing pleasure or contentment',
+    'sad': 'Feeling or showing sorrow; unhappy',
+    'big': 'Of considerable size or extent',
+    'small': 'Of a size that is less than normal or usual',
+    'fast': 'Moving or capable of moving at high speed',
+    'slow': 'Moving or operating at a low speed',
     // Add more as needed
   };
   
-  return commonWords[word] || 'a word in English language with a meaning that varies based on context';
+  return commonWords[word] || 'A word with meaning that varies based on context';
 }
 
-// Helper function to simulate translation
+// Helper function to provide natural translations
 function getTranslation(word: string, language: string): string {
   // Simple translations for demo purposes
   const translations: Record<string, Record<string, string>> = {
     'spanish': {
-      'hablar': 'to speak',
-      'leer': 'to read',
-      'libro': 'book',
-      'caminar': 'to walk',
-      'día': 'day',
-      'sol': 'sun',
-      'agua': 'water',
-      'casa': 'house',
-      'tiempo': 'time/weather',
-      'hoy': 'today',
-      'es': 'is',
-      'un': 'a/an',
-      'nuevo': 'new',
-      'el': 'the',
-      'brilla': 'shines',
-      'en': 'in',
-      'cielo': 'sky',
-      'me': 'myself/me',
+      'hablar': 'To speak',
+      'leer': 'To read',
+      'libro': 'Book',
+      'caminar': 'To walk',
+      'día': 'Day',
+      'sol': 'Sun',
+      'agua': 'Water',
+      'casa': 'House',
+      'tiempo': 'Time, weather',
+      'hoy': 'Today',
+      'es': 'Is',
+      'un': 'A, an',
+      'nuevo': 'New',
+      'el': 'The',
+      'brilla': 'Shines',
+      'en': 'In',
+      'cielo': 'Sky',
+      'me': 'Myself, me',
       'levanto': 'I get up',
-      'temprano': 'early',
-      'tomo': 'I take/drink',
-      'una': 'a/an',
-      'taza': 'cup',
-      'de': 'of/from',
-      'café': 'coffee',
-      'luego': 'then/later',
+      'temprano': 'Early',
+      'tomo': 'I take, I drink',
+      'una': 'A, an',
+      'taza': 'Cup',
+      'de': 'Of, from',
+      'café': 'Coffee',
+      'luego': 'Then, later',
       'salgo': 'I go out',
-      'y': 'and',
-      'no': 'no/not',
-      'a': 'to',
-      'la': 'the',
-      'mujer': 'woman',
-      'invita': 'invites',
-      'salió': 'left/went out',
-      'volvió': 'returned',
-      'invita a la mujer': 'invites the woman',
-      'salió y no volvió': 'left and did not return',
-      'por': 'for/by/through',
-      'qué': 'what/why',
-      'por qué': 'why',
-      'porque': 'because',
-      'morales': 'morals (or a surname)',
-      'decidió': 'decided',
-      'morales decidió': 'Morales decided'
+      'y': 'And',
+      'no': 'No, not',
+      'a': 'To',
+      'la': 'The',
+      'mujer': 'Woman',
+      'invita': 'Invites',
+      'salió': 'Left, went out',
+      'volvió': 'Returned',
+      'invita a la mujer': 'Invites the woman',
+      'salió y no volvió': 'Left and did not return',
+      'por': 'For, by, through',
+      'qué': 'What, why',
+      'por qué': 'Why',
+      'porque': 'Because',
+      'morales': 'Morals (or a surname)',
+      'decidió': 'Decided',
+      'tiene': 'Has',
+      'enemigos': 'Enemies',
+      'tiene enemigos': 'Has enemies',
+      'el lunes': 'On Monday',
+      'cuándo': 'When',
+      'vio': 'Saw',
+      'hermano': 'Brother',
+      'a su hermano': 'His/her brother'
     },
     'french': {
-      'parler': 'to speak',
-      'lire': 'to read',
-      'livre': 'book',
-      'marcher': 'to walk',
-      'jour': 'day',
-      'soleil': 'sun',
-      'eau': 'water',
-      'maison': 'house',
-      'temps': 'time/weather',
-      'aujourd\'hui': 'today'
+      'parler': 'To speak',
+      'lire': 'To read',
+      'livre': 'Book',
+      'marcher': 'To walk',
+      'jour': 'Day',
+      'soleil': 'Sun',
+      'eau': 'Water',
+      'maison': 'House',
+      'temps': 'Time, weather',
+      'aujourd\'hui': 'Today'
     },
     'german': {
-      'sprechen': 'to speak',
-      'lesen': 'to read',
-      'buch': 'book',
-      'gehen': 'to go/walk',
-      'tag': 'day',
-      'sonne': 'sun',
-      'wasser': 'water',
-      'haus': 'house',
-      'zeit': 'time',
-      'heute': 'today'
+      'sprechen': 'To speak',
+      'lesen': 'To read',
+      'buch': 'Book',
+      'gehen': 'To go, to walk',
+      'tag': 'Day',
+      'sonne': 'Sun',
+      'wasser': 'Water',
+      'haus': 'House',
+      'zeit': 'Time',
+      'heute': 'Today'
     }
   };
   
@@ -328,23 +339,20 @@ function getTranslation(word: string, language: string): string {
     return langDict[furtherCleanedWord];
   }
   
-  // For Spanish phrases, try some common combinations that might not be in the dictionary
-  if (language === 'spanish') {
-    // Try to provide translations for common Spanish phrases by breaking them down
-    const words = word.split(/\s+/);
-    if (words.length > 1) {
-      const translations = words.map(w => {
-        const cleaned = w.replace(/[.,;:!?()\[\]{}""]/g, '').trim();
-        return langDict[cleaned] || cleaned;
-      });
-      
-      // Join the translations to form a meaningful phrase
-      return translations.join(' ');
-    }
+  // For phrases, try to break them down and translate parts
+  const words = word.split(/\s+/);
+  if (words.length > 1) {
+    const translatedParts = words.map(w => {
+      const cleaned = w.replace(/[.,;:!?()\[\]{}""]/g, '').trim();
+      return langDict[cleaned] || cleaned;
+    });
+    
+    // Join the translations to form a meaningful phrase
+    return translatedParts.join(' ');
   }
   
-  // If all else fails, provide a generic translation note
-  return word; // Just return the original word instead of saying "translation not available"
+  // If all else fails, return the original word
+  return word;
 }
 
 function generateExampleSentence(word: string, language: string): string {
