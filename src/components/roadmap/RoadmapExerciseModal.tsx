@@ -55,7 +55,24 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   };
 
   const handleBackFromPractice = () => {
+    saveProgress();
     setIsPracticing(false);
+  };
+
+  // Function to save progress to database
+  const saveProgress = () => {
+    if (!node || completionCount === 0) return;
+    
+    console.log("Saving progress for node:", node.id, "with completion count:", completionCount);
+    
+    // Save the current progress
+    markNodeAsCompleted(node.id)
+      .then(() => {
+        console.log("Progress saved successfully");
+      })
+      .catch(error => {
+        console.error("Error saving progress:", error);
+      });
   };
 
   const handleMarkCompleted = async () => {
@@ -106,14 +123,11 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     }
   };
 
-  // Auto-save progress when modal is closed during practice session
+  // Handle modal close
   const handleModalClose = (open: boolean) => {
-    // If modal is being closed
-    if (!open && isPracticing && completionCount > 0 && node) {
-      // Save the current progress silently in the background
-      markNodeAsCompleted(node.id).catch(error => {
-        console.error("Error saving progress:", error);
-      });
+    // If modal is being closed while practicing, save progress first
+    if (!open && isPracticing) {
+      saveProgress();
     }
     
     // Always call the parent's onOpenChange
@@ -157,6 +171,9 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
           ) : (
             <div className="text-center py-6">
               <p>No exercise content available.</p>
+              <Button onClick={() => setIsPracticing(false)} className="mt-4">
+                Go Back
+              </Button>
             </div>
           )
         ) : (

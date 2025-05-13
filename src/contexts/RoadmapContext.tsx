@@ -383,16 +383,20 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     setNodeLoading(true);
     try {
+      console.log("Attempting to complete node:", nodeId, "for roadmap:", selectedRoadmap.id);
+      
       // Check if already completed
       const existingProgress = progress.find(p => p.nodeId === nodeId);
       
       if (existingProgress && existingProgress.completed) {
         // Already completed, nothing to do
+        console.log("Node already completed, no update needed");
         return;
       }
 
       if (existingProgress) {
         // Update existing progress
+        console.log("Updating existing progress record:", existingProgress.id);
         const { error } = await supabase
           .from('roadmap_progress')
           .update({ 
@@ -402,10 +406,15 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
           })
           .eq('id', existingProgress.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error updating progress:", error);
+          throw error;
+        }
+        console.log("Progress updated successfully");
       } else {
         // Create new progress record
-        const { error } = await supabase
+        console.log("Creating new progress record for node:", nodeId);
+        const { data, error } = await supabase
           .from('roadmap_progress')
           .insert({
             user_id: user.id,
@@ -413,9 +422,14 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
             node_id: nodeId,
             completed: true,
             completed_at: new Date().toISOString()
-          });
+          })
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error creating progress:", error);
+          throw error;
+        }
+        console.log("Progress created successfully:", data);
       }
 
       // Find next node
@@ -424,6 +438,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       // Update current node if there is a next node
       if (nextNode) {
+        console.log("Moving to next node:", nextNode.id);
         const { error } = await supabase
           .from('user_roadmaps')
           .update({ 
@@ -432,7 +447,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
           })
           .eq('id', selectedRoadmap.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error updating current node:", error);
+          throw error;
+        }
+        console.log("User roadmap updated with new current node");
       }
 
       // Reload roadmap data
