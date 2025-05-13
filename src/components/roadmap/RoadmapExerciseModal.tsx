@@ -22,19 +22,24 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   const [loading, setLoading] = useState<boolean>(false);
   const [isPracticing, setIsPracticing] = useState<boolean>(false);
   const [completionCount, setCompletionCount] = useState<number>(0);
-  const [forceClose, setForceClose] = useState<boolean>(false);
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
 
+  // Sync our internal state with the parent's state
   useEffect(() => {
-    if (node && isOpen && !forceClose) {
+    setModalOpen(isOpen);
+  }, [isOpen]);
+
+  // Load exercise when modal is opened with a node
+  useEffect(() => {
+    if (node && modalOpen) {
       loadExercise(node.id);
-    } else if (!isOpen) {
+    } else if (!modalOpen) {
       // Reset states when modal is completely closed
       setExercise(null);
       setIsPracticing(false);
       setCompletionCount(0);
-      setForceClose(false);
     }
-  }, [node, isOpen, forceClose]);
+  }, [node, modalOpen]);
 
   const loadExercise = async (nodeId: string) => {
     try {
@@ -87,7 +92,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
         title: "Progress saved!",
         description: "You've completed this exercise",
       });
-      onOpenChange(false); // Close the modal after marking as completed
+      handleModalClose(false); // Close the modal after marking as completed
     } catch (error) {
       console.error("Error marking node as completed:", error);
       toast({
@@ -128,19 +133,19 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
 
   // Handle modal close
   const handleModalClose = (open: boolean) => {
-    // If modal is being closed while practicing, save progress first
-    if (!open) {
-      if (isPracticing) {
-        saveProgress();
-      }
-      setForceClose(true); // Force close to prevent reopening
-      // Use a small timeout to ensure the modal closing animation completes
-      setTimeout(() => {
-        onOpenChange(open);
-      }, 0);
-    } else {
-      onOpenChange(open);
+    // Always update our internal state
+    setModalOpen(open);
+    
+    // If closing the modal while practicing, save progress first
+    if (!open && isPracticing) {
+      saveProgress();
     }
+    
+    // Notify parent component of state change
+    // Use setTimeout to ensure state updates finish first
+    setTimeout(() => {
+      onOpenChange(open);
+    }, 10);
   };
 
   const isNodeCompleted = node ? completedNodes.includes(node.id) : false;
@@ -150,7 +155,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleModalClose}>
+    <Dialog open={modalOpen} onOpenChange={handleModalClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{node.title}</DialogTitle>
@@ -228,7 +233,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
             <Separator />
             
             <div className="flex justify-end">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <Button variant="outline" onClick={() => handleModalClose(false)}>
                 Close
               </Button>
             </div>
