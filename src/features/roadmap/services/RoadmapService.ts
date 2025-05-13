@@ -1,3 +1,4 @@
+
 import { Language, LanguageLevel } from '@/types';
 import { RoadmapItem, RoadmapNode, ExerciseContent } from '../types';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,7 +22,10 @@ class RoadmapService {
         level: roadmap.level as LanguageLevel, // Cast string to LanguageLevel
         language: language,
         languages: roadmap.roadmap_languages?.map((rl: any) => rl.language) || [language],
-        description: roadmap.description || ''
+        description: roadmap.description || '',
+        createdBy: roadmap.created_by || undefined,
+        createdAt: roadmap.created_at ? new Date(roadmap.created_at) : undefined,
+        updatedAt: roadmap.updated_at ? new Date(roadmap.updated_at) : undefined
       }));
       
       return { 
@@ -66,11 +70,13 @@ class RoadmapService {
         id: item.id,
         roadmapId: item.roadmap_id,
         name: item.roadmaps?.name || 'Learning Path',
-        level: item.roadmaps?.level || 'A1',
+        level: item.roadmaps?.level as LanguageLevel, // Cast string to LanguageLevel
         language: item.language as Language, // Cast string to Language type
         currentNodeId: item.current_node_id,
         userId: userData.user.id,
-        description: item.roadmaps?.description || ''
+        description: item.roadmaps?.description || '',
+        createdAt: item.created_at ? new Date(item.created_at) : undefined,
+        updatedAt: item.updated_at ? new Date(item.updated_at) : undefined
       }));
       
       return { 
@@ -99,7 +105,7 @@ class RoadmapService {
       // First get the user roadmap to find the roadmap_id
       const { data: userRoadmap, error: userRoadmapError } = await supabase
         .from('user_roadmaps')
-        .select('roadmap_id, current_node_id')
+        .select('roadmap_id, current_node_id, language')
         .eq('id', roadmapId)
         .single();
 
@@ -150,7 +156,10 @@ class RoadmapService {
           language: node.language || 'english',
           roadmapId: node.roadmap_id,
           status,
-          progressCount: nodeProgress?.completion_count || 0
+          progressCount: nodeProgress?.completion_count || 0,
+          defaultExerciseId: node.default_exercise_id,
+          createdAt: node.created_at ? new Date(node.created_at) : undefined,
+          updatedAt: node.updated_at ? new Date(node.updated_at) : undefined
         };
       });
 
@@ -269,9 +278,10 @@ class RoadmapService {
             id: exerciseData.id,
             title: exerciseData.title,
             text: exerciseData.text,
-            language: exerciseData.language,
+            language: exerciseData.language as Language,
             audioUrl: exerciseData.audio_url,
             readingAnalysisId: analysisData?.id || null,
+            tags: exerciseData.tags || []
           };
         }
       }
@@ -314,6 +324,18 @@ class RoadmapService {
 
       if (progressError) throw progressError;
 
+      // Get user roadmap info for this node's roadmap
+      const { data: userRoadmapData, error: userRoadmapError } = await supabase
+        .from('user_roadmaps')
+        .select('language')
+        .eq('user_id', userData.user.id)
+        .eq('roadmap_id', nodeData.roadmap_id)
+        .maybeSingle();
+
+      if (userRoadmapError) throw userRoadmapError;
+      
+      const userLanguage = userRoadmapData?.language || 'english';
+
       let completionCount = 1;
       let isCompleted = false;
       let nextNodeId: string | undefined = undefined;
@@ -354,7 +376,7 @@ class RoadmapService {
             completion_count: 1,
             is_completed: false,
             last_practiced_at: new Date().toISOString(),
-            language: userRoadmap.language // Add the language field
+            language: userLanguage as Language
           });
 
         if (insertError) throw insertError;
@@ -414,6 +436,18 @@ class RoadmapService {
         .single();
 
       if (nodeError) throw nodeError;
+      
+      // Get user roadmap info for this node's roadmap
+      const { data: userRoadmapData, error: userRoadmapError } = await supabase
+        .from('user_roadmaps')
+        .select('language')
+        .eq('user_id', userData.user.id)
+        .eq('roadmap_id', nodeData.roadmap_id)
+        .maybeSingle();
+
+      if (userRoadmapError) throw userRoadmapError;
+      
+      const userLanguage = userRoadmapData?.language || 'english';
 
       // Update or create progress record
       const { data: existingProgress, error: progressError } = await supabase
@@ -446,7 +480,7 @@ class RoadmapService {
             completion_count: 3,
             is_completed: true,
             last_practiced_at: new Date().toISOString(),
-            language: userRoadmap.language // Add the language field
+            language: userLanguage as Language
           });
       }
 

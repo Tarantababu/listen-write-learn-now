@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
@@ -6,7 +5,7 @@ import UserStatistics from '@/components/UserStatistics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import SubscriptionBanner from '@/components/SubscriptionBanner';
 import { ExerciseProvider } from '@/contexts/ExerciseContext';
-import { useRoadmap } from '@/features/roadmap/context/RoadmapContext';
+import { useRoadmap } from '@/hooks/use-roadmap';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Map, ChevronRight, Loader2 } from 'lucide-react';

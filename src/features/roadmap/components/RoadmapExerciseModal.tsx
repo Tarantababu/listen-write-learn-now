@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useRoadmap, Language } from '../hooks/use-hook-imports';
+import { useRoadmap } from '../hooks/use-hook-imports';
 import { RoadmapNode, ExerciseContent } from '../types';
 import DictationPractice from '@/components/DictationPractice';
 import { toast } from '@/components/ui/use-toast';

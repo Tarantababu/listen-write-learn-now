@@ -2,6 +2,8 @@
 import { useContext } from 'react';
 import { RoadmapContext as OldRoadmapContext } from '@/contexts/RoadmapContext';
 import { RoadmapContext as NewRoadmapContext } from '@/features/roadmap/context/RoadmapContext';
+import { Language } from '@/types';
+import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '@/features/roadmap/types';
 
 /**
  * Type definition that combines both old and new context types

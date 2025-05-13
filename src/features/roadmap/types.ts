@@ -13,6 +13,7 @@ export interface RoadmapItem {
   description?: string;
   createdAt?: Date;
   updatedAt?: Date;
+  createdBy?: string;
 }
 
 export interface RoadmapNode {
