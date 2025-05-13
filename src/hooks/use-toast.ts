@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -167,14 +168,16 @@ function toast({ ...props }: Toast) {
 }
 
 function useToast() {
-  const [state, setState] = React.useState<State>({
+  // Fix 1: Use React.useReducer instead of useState to properly handle Action
+  const [state, dispatch] = React.useReducer(reducer, {
     toasts: [],
   })
 
   React.useEffect(() => {
-    listeners.add(setState)
+    // Fix 2: Properly type the listener function to accept Action
+    listeners.add(dispatch)
     return () => {
-      listeners.delete(setState)
+      listeners.delete(dispatch)
     }
   }, [])
 
@@ -185,7 +188,8 @@ function useToast() {
   }
 }
 
-const listeners = new Set<(action: Action) => void>()
+// Fix 3: Correctly type the listeners set
+const listeners = new Set<React.Dispatch<Action>>()
 
 toast.dismiss = (toastId?: string) => {
   dispatch({ type: "DISMISS_TOAST", toastId })
@@ -200,8 +204,9 @@ toast.error = (title: string, description?: string) => {
   return toast({ title, description, variant: "destructive" });
 };
 
+// Fix 4: Change "warning" to "info" since that's what we have in our variant types
 toast.warning = (title: string, description?: string) => {
-  return toast({ title, description, variant: "warning" });
+  return toast({ title, description, variant: "info" });
 };
 
 toast.info = (title: string, description?: string) => {
