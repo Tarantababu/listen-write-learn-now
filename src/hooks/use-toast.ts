@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react"
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast"
 
@@ -139,15 +140,16 @@ function dispatch(action: Action) {
   })
 }
 
-type Toast = Omit<ToasterToast, "id">
+// Define the properties we want to extract from ToasterToast for the toast function
+type ToastProps = Omit<ToasterToast, "id"> 
 
-function toast({ ...props }: Toast) {
-  const id = props.id || generateId()
+function toast({ ...props }: ToastProps) {
+  const id = props.id ?? generateId()
 
-  const update = (props: ToasterToast) =>
+  const update = (props: ToastProps & { id: string }) =>
     dispatch({
       type: "UPDATE_TOAST",
-      toast: { ...props, id },
+      toast: { ...props },
     })
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
@@ -155,7 +157,6 @@ function toast({ ...props }: Toast) {
     type: "ADD_TOAST",
     toast: {
       ...props,
-      id,
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss()
