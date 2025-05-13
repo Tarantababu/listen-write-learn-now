@@ -3,7 +3,7 @@ import React from 'react';
 import { RoadmapNode } from '../types';
 import RoadmapNodeCard from './RoadmapNodeCard';
 import { cn } from '@/lib/utils';
-import { Lock } from 'lucide-react'; // Correct import from lucide-react
+import { Lock } from 'lucide-react';
 
 interface RoadmapPathProps {
   nodes: RoadmapNode[];
