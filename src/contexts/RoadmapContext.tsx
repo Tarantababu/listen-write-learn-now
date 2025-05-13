@@ -1,7 +1,7 @@
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { useAuth } from './AuthContext';
 import { useUserSettingsContext } from './UserSettingsContext';
 import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language } from '@/types';
@@ -44,66 +44,82 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [progress, setProgress] = useState<RoadmapProgress[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [nodeLoading, setNodeLoading] = useState<boolean>(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>(settings.selectedLanguage);
 
-  // Fetch all roadmaps
-  useEffect(() => {
-    const fetchRoadmaps = async () => {
-      if (!user) return;
+  // Memoized function to fetch roadmaps
+  const fetchRoadmaps = useCallback(async () => {
+    if (!user) return;
 
-      setLoading(true);
-      try {
-        // Use our custom function to get roadmaps filtered by the current language
-        const { data: roadmapData, error: roadmapError } = await supabase
-          .rpc('get_roadmaps_by_language', {
-            requested_language: settings.selectedLanguage
-          });
-
-        if (roadmapError) throw roadmapError;
-
-        // Get all roadmap languages
-        const { data: languagesData, error: languagesError } = await supabase
-          .from('roadmap_languages')
-          .select('*');
-
-        if (languagesError) throw languagesError;
-
-        // Group languages by roadmap
-        const languagesByRoadmap: Record<string, Language[]> = {};
-        languagesData.forEach(lang => {
-          if (!languagesByRoadmap[lang.roadmap_id]) {
-            languagesByRoadmap[lang.roadmap_id] = [];
-          }
-          languagesByRoadmap[lang.roadmap_id].push(lang.language as Language);
+    setLoading(true);
+    try {
+      // Use our custom function to get roadmaps filtered by the current language
+      const { data: roadmapData, error: roadmapError } = await supabase
+        .rpc('get_roadmaps_by_language', {
+          requested_language: settings.selectedLanguage
         });
 
-        // Combine roadmaps with their languages
-        const formattedRoadmaps: Roadmap[] = roadmapData.map(roadmap => ({
-          id: roadmap.id,
-          name: roadmap.name,
-          level: roadmap.level as LanguageLevel, // Explicit cast to LanguageLevel
-          description: roadmap.description,
-          createdAt: new Date(roadmap.created_at),
-          updatedAt: new Date(roadmap.updated_at),
-          languages: languagesByRoadmap[roadmap.id] || []
-        }));
+      if (roadmapError) throw roadmapError;
 
-        setRoadmaps(formattedRoadmaps);
-        
-        // Load all user roadmaps after fetching available roadmaps
-        await loadUserRoadmaps();
-      } catch (error) {
-        console.error("Error fetching roadmaps:", error);
-        toast.error("Failed to load learning roadmaps");
-      } finally {
-        setLoading(false);
-      }
-    };
+      // Get all roadmap languages
+      const { data: languagesData, error: languagesError } = await supabase
+        .from('roadmap_languages')
+        .select('*');
 
-    fetchRoadmaps();
-  }, [user, settings.selectedLanguage]); // Added selectedLanguage as dependency
+      if (languagesError) throw languagesError;
+
+      // Group languages by roadmap
+      const languagesByRoadmap: Record<string, Language[]> = {};
+      languagesData.forEach(lang => {
+        if (!languagesByRoadmap[lang.roadmap_id]) {
+          languagesByRoadmap[lang.roadmap_id] = [];
+        }
+        languagesByRoadmap[lang.roadmap_id].push(lang.language as Language);
+      });
+
+      // Combine roadmaps with their languages
+      const formattedRoadmaps: Roadmap[] = roadmapData.map(roadmap => ({
+        id: roadmap.id,
+        name: roadmap.name,
+        level: roadmap.level as LanguageLevel, // Explicit cast to LanguageLevel
+        description: roadmap.description,
+        createdAt: new Date(roadmap.created_at),
+        updatedAt: new Date(roadmap.updated_at),
+        languages: languagesByRoadmap[roadmap.id] || []
+      }));
+
+      setRoadmaps(formattedRoadmaps);
+      
+      // Load all user roadmaps after fetching available roadmaps
+      await loadUserRoadmaps();
+    } catch (error) {
+      console.error("Error fetching roadmaps:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to load learning roadmaps",
+        description: "There was an error loading your roadmaps."
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [user, settings.selectedLanguage]);
+
+  // Effect to fetch roadmaps only when language changes
+  useEffect(() => {
+    if (settings.selectedLanguage !== selectedLanguage) {
+      setSelectedLanguage(settings.selectedLanguage);
+      fetchRoadmaps();
+    }
+  }, [settings.selectedLanguage, selectedLanguage, fetchRoadmaps]);
+
+  // Initial fetch
+  useEffect(() => {
+    if (user) {
+      fetchRoadmaps();
+    }
+  }, [user]);
 
   // Load all user roadmaps
-  const loadUserRoadmaps = async () => {
+  const loadUserRoadmaps = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -141,9 +157,13 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     } catch (error) {
       console.error("Error loading user roadmaps:", error);
-      toast.error("Failed to load your learning paths");
+      toast({
+        variant: "destructive",
+        title: "Failed to load your learning paths",
+        description: "There was an error loading your learning paths."
+      });
     }
-  };
+  }, [user, settings.selectedLanguage, selectedRoadmap]);
 
   // Select a specific roadmap
   const selectRoadmap = async (roadmapId: string) => {
@@ -151,7 +171,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (roadmap) {
       await loadUserRoadmap(roadmap.id);
     } else {
-      toast.error("Roadmap not found");
+      toast({
+        variant: "destructive",
+        title: "Roadmap not found",
+        description: "The selected roadmap could not be found."
+      });
     }
   };
 
@@ -258,7 +282,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       setProgress(formattedProgress);
     } catch (error) {
       console.error("Error loading user roadmap:", error);
-      toast.error("Failed to load your learning path");
+      toast({
+        variant: "destructive",
+        title: "Failed to load your learning path",
+        description: "There was an error loading your roadmap details."
+      });
     } finally {
       setLoading(false);
     }
@@ -267,7 +295,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Initialize user roadmap
   const initializeUserRoadmap = async (level: LanguageLevel, language: Language) => {
     if (!user) {
-      toast.error("You must be logged in to start a learning path");
+      toast({
+        variant: "destructive",
+        title: "Authentication required",
+        description: "You must be logged in to start a learning path."
+      });
       return;
     }
 
@@ -277,7 +309,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     );
 
     if (!matchingRoadmap) {
-      toast.error(`No roadmap found for ${level} level in ${language}`);
+      toast({
+        variant: "destructive",
+        title: "Roadmap not available",
+        description: `No roadmap found for ${level} level in ${language}.`
+      });
       return;
     }
 
@@ -287,7 +323,10 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     );
 
     if (existingRoadmap) {
-      toast.info(`You already have the ${matchingRoadmap.name} roadmap in ${language}`);
+      toast({
+        title: "Roadmap already exists",
+        description: `You already have the ${matchingRoadmap.name} roadmap in ${language}.`
+      });
       await selectRoadmap(existingRoadmap.id);
       return;
     }
@@ -321,7 +360,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
           throw nodeError;
         }
         // No nodes for this roadmap and language
-        toast.warning("This roadmap doesn't have any content yet. Please check back later.");
+        toast({
+          variant: "warning",
+          title: "Roadmap content missing",
+          description: "This roadmap doesn't have any content yet. Please check back later."
+        });
         await loadUserRoadmaps(); // Reload with empty nodes
         return;
       }
@@ -334,13 +377,22 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (updateError) throw updateError;
 
-      toast.success("Your learning journey has begun!");
+      toast({
+        title: "Learning journey started!",
+        description: "Your learning journey has begun!"
+      });
+      
+      // Refresh the user roadmap data
       await loadUserRoadmaps();
       await loadUserRoadmap(userRoadmap.id);
 
     } catch (error) {
       console.error("Error initializing roadmap:", error);
-      toast.error("Failed to start learning journey");
+      toast({
+        variant: "destructive",
+        title: "Initialization failed",
+        description: "Failed to start learning journey. Please try again later."
+      });
     }
   };
 
@@ -362,7 +414,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       return data;
     } catch (error) {
       console.error("Error fetching node exercise:", error);
-      toast.error("Failed to load exercise");
+      toast({
+        variant: "destructive", 
+        title: "Failed to load exercise",
+        description: "Could not load the exercise content. Please try again."
+      });
       return null;
     }
   };
@@ -452,13 +508,20 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Reload roadmap data
       await loadUserRoadmap(selectedRoadmap.id);
       
-      toast.success(nextNode 
-        ? "Well done! Moving to the next lesson." 
-        : "Congratulations! You've completed all lessons in this path.");
+      toast({
+        title: nextNode ? "Lesson completed!" : "Path completed!",
+        description: nextNode 
+          ? "Well done! Moving to the next lesson." 
+          : "Congratulations! You've completed all lessons in this path."
+      });
       
     } catch (error) {
       console.error("Error completing node:", error);
-      toast.error("Failed to mark lesson as complete");
+      toast({
+        variant: "destructive",
+        title: "Failed to mark as complete",
+        description: "Failed to mark lesson as complete"
+      });
     } finally {
       setNodeLoading(false);
     }
@@ -494,11 +557,18 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       // Reload roadmap data
       await loadUserRoadmap(selectedRoadmap.id);
-      toast.success("Progress reset successfully");
+      toast({
+        title: "Progress reset",
+        description: "Progress reset successfully"
+      });
       
     } catch (error) {
       console.error("Error resetting progress:", error);
-      toast.error("Failed to reset progress");
+      toast({
+        variant: "destructive",
+        title: "Reset failed",
+        description: "Failed to reset progress"
+      });
     }
   };
 
