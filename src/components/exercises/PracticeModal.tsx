@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -99,9 +100,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
             console.log('Existing analysis ID:', analysisData.id);
           }
           
-          // If user has done reading analysis before, show the prompt to give option to view it again
-          // We used to skip to dictation here but now we're keeping the prompt with options
-          setPracticeStage(PracticeStage.PROMPT);
+          // If user has done reading analysis before, skip to dictation directly
+          setPracticeStage(PracticeStage.DICTATION);
         } else {
           console.log('No existing analysis found');
           setHasExistingAnalysis(false);
@@ -206,9 +206,6 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
               <DialogDescription className="text-base">
                 <p className="text-lg font-medium mb-2">Boost Your Understanding Before You Start</p>
                 <p>Dive into a Reading Analysis to see how words and grammar work — or skip straight to dictation.</p>
-                {hasExistingAnalysis && <div className="mt-2 text-sm font-medium text-primary">
-                    You have already completed a reading analysis for this exercise.
-                  </div>}
                 {loadingAnalysisCheck && <div className="mt-2 text-sm font-medium">
                     Checking for existing analysis...
                   </div>}
@@ -216,7 +213,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
             </DialogHeader>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              <Card className={`overflow-hidden ${hasExistingAnalysis ? 'border-primary/30 bg-primary/5 dark:bg-primary/10' : 'border-muted'} transition-colors`}>
+              <Card className="border-muted overflow-hidden hover:bg-muted/5 transition-colors dark:hover:bg-muted/10">
                 <CardContent className="p-0">
                   <Button onClick={handleStartReadingAnalysis} variant="ghost" disabled={!analysisAllowed || loadingAnalysisCheck} className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent">
                     <div className="flex flex-col items-center text-center space-y-3">
@@ -224,12 +221,10 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
                         <Search className="h-6 w-6 text-primary" />
                       </div>
                       <div className="font-semibold text-lg">
-                        {hasExistingAnalysis ? 'View Reading Analysis' : '🔍 Start with Reading Analysis'}
+                        🔍 Start with Reading Analysis
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {hasExistingAnalysis 
-                          ? 'Review words, grammar, and sentence structure again'
-                          : 'Explore vocabulary and grammar with AI explanations'}
+                        Explore vocabulary and grammar with AI explanations
                       </p>
                     </div>
                   </Button>
