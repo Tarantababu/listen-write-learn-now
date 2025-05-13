@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
 import { corsHeaders } from '../_shared/cors.ts'
@@ -126,68 +127,184 @@ function generateEnglishDefinition(word: string, language: string): string {
       'default': 'A common word in English language.'
     },
     'spanish': {
-      'hablar': 'To speak or talk; to communicate through words (English definition).',
-      'leer': 'To read; to interpret written or printed matter (English definition).',
-      'libro': 'Book; a written or printed work consisting of pages (English definition).',
-      'caminar': 'To walk; to move on foot at a regular pace (English definition).',
-      'día': 'Day; a period of 24 hours, especially from midnight to midnight (English definition).',
-      'sol': 'Sun; the star around which the earth orbits (English definition).',
-      'agua': 'Water; the clear liquid that forms rain, rivers, and oceans (English definition).',
-      'casa': 'House; a building for human habitation (English definition).',
-      'tiempo': 'Time; the indefinite continued progress of existence (English definition).',
-      'hoy': 'Today; on the current day (English definition).',
-      'es': 'Is; third person singular present form of "to be" (English definition).',
-      'un': 'A/an; indefinite article (English definition).',
-      'nuevo': 'New; not existing before, recently made or discovered (English definition).',
-      'el': 'The; definite article for masculine nouns (English definition).',
-      'brilla': 'Shines; to emit light or to be bright (English definition).',
-      'en': 'In; expressing a position within space or time (English definition).',
-      'cielo': 'Sky; the region of the atmosphere visible from the earth (English definition).',
-      'me': 'Myself/me; reflexive or direct object pronoun (English definition).',
-      'levanto': 'I get up; to rise from a sitting or lying position (English definition).',
-      'temprano': 'Early; happening before the usual or expected time (English definition).',
-      'tomo': 'I take/drink; to consume a liquid or to grasp (English definition).',
-      'una': 'A/an; indefinite article for feminine nouns (English definition).',
-      'taza': 'Cup; a small container used for drinking (English definition).',
-      'de': 'Of/from; indicating origin, ownership or composition (English definition).',
-      'café': 'Coffee; a dark, bitter beverage prepared from roasted coffee beans (English definition).',
-      'luego': 'Then/later; at a time subsequent to another (English definition).',
-      'salgo': 'I go out; to exit or leave a place (English definition).',
-      'caminar': 'To walk; to move on foot (English definition).',
-      'default': 'A word in Spanish language (English definition).'
+      'hablar': 'To speak or talk; to communicate through words.',
+      'leer': 'To read; to interpret written or printed matter.',
+      'libro': 'Book; a written or printed work consisting of pages.',
+      'caminar': 'To walk; to move on foot at a regular pace.',
+      'día': 'Day; a period of 24 hours, especially from midnight to midnight.',
+      'sol': 'Sun; the star around which the earth orbits.',
+      'agua': 'Water; the clear liquid that forms rain, rivers, and oceans.',
+      'casa': 'House; a building for human habitation.',
+      'tiempo': 'Time; the indefinite continued progress of existence.',
+      'hoy': 'Today; on the current day.',
+      'es': 'Is; third person singular present form of "to be".',
+      'un': 'A/an; indefinite article.',
+      'nuevo': 'New; not existing before, recently made or discovered.',
+      'el': 'The; definite article for masculine nouns.',
+      'brilla': 'Shines; to emit light or to be bright.',
+      'en': 'In; expressing a position within space or time.',
+      'cielo': 'Sky; the region of the atmosphere visible from the earth.',
+      'me': 'Myself/me; reflexive or direct object pronoun.',
+      'levanto': 'I get up; to rise from a sitting or lying position.',
+      'temprano': 'Early; happening before the usual or expected time.',
+      'tomo': 'I take/drink; to consume a liquid or to grasp.',
+      'una': 'A/an; indefinite article for feminine nouns.',
+      'taza': 'Cup; a small container used for drinking.',
+      'de': 'Of/from; indicating origin, ownership or composition.',
+      'café': 'Coffee; a dark, bitter beverage prepared from roasted coffee beans.',
+      'luego': 'Then/later; at a time subsequent to another.',
+      'salgo': 'I go out; to exit or leave a place.',
+      'caminar': 'To walk; to move on foot.',
+      'invita': 'Invites; to request the presence or participation of someone.',
+      'a': 'To; preposition indicating direction or purpose.',
+      'la': 'The; definite article for feminine nouns.',
+      'mujer': 'Woman; an adult female human being.',
+      'invita a la mujer': 'Invites the woman; to ask a female person to attend or participate in something.',
+      'salió': 'He/she left; to exit a place.',
+      'y': 'And; a conjunction used to connect words or groups of words.',
+      'no': 'No/not; used to express negation, denial, or refusal.',
+      'volvió': 'He/she returned; to come back to a place.',
+      'salió y no volvió': 'He/she left and did not return; indicates someone departed and failed to come back.'
     },
     'french': {
-      'parler': 'To speak; to express thoughts through spoken language (English definition).',
-      'lire': 'To read; to look at and comprehend written words (English definition).',
-      'livre': 'Book; a written or printed work consisting of pages (English definition).',
-      'marcher': 'To walk; to move on foot (English definition).',
-      'jour': 'Day; a period of 24 hours (English definition).',
-      'soleil': 'Sun; the star at the center of our solar system (English definition).',
-      'eau': 'Water; the clear liquid that forms rain, rivers, and oceans (English definition).',
-      'maison': 'House; a building for human habitation (English definition).',
-      'temps': 'Time; the indefinite continued progress of existence (English definition).',
-      'aujourd\'hui': 'Today; on the current day (English definition).',
-      'default': 'A word in French language (English definition).'
+      'parler': 'To speak; to express thoughts through spoken language.',
+      'lire': 'To read; to look at and comprehend written words.',
+      'livre': 'Book; a written or printed work consisting of pages.',
+      'marcher': 'To walk; to move on foot.',
+      'jour': 'Day; a period of 24 hours.',
+      'soleil': 'Sun; the star at the center of our solar system.',
+      'eau': 'Water; the clear liquid that forms rain, rivers, and oceans.',
+      'maison': 'House; a building for human habitation.',
+      'temps': 'Time; the indefinite continued progress of existence.',
+      'aujourd\'hui': 'Today; on the current day.',
+      'default': 'A word in French language.'
     },
     'german': {
-      'sprechen': 'To speak; to express thoughts verbally (English definition).',
-      'lesen': 'To read; to interpret written text (English definition).',
-      'buch': 'Book; a written or printed work (English definition).',
-      'gehen': 'To go or to walk; to move on foot (English definition).',
-      'tag': 'Day; a period of 24 hours (English definition).',
-      'sonne': 'Sun; the star at the center of our solar system (English definition).',
-      'wasser': 'Water; the clear liquid essential for life (English definition).',
-      'haus': 'House; a building for human habitation (English definition).',
-      'zeit': 'Time; the measured progression of existence (English definition).',
-      'heute': 'Today; on the current day (English definition).',
-      'default': 'A word in German language (English definition).'
+      'sprechen': 'To speak; to express thoughts verbally.',
+      'lesen': 'To read; to interpret written text.',
+      'buch': 'Book; a written or printed work.',
+      'gehen': 'To go or to walk; to move on foot.',
+      'tag': 'Day; a period of 24 hours.',
+      'sonne': 'Sun; the star at the center of our solar system.',
+      'wasser': 'Water; the clear liquid essential for life.',
+      'haus': 'House; a building for human habitation.',
+      'zeit': 'Time; the measured progression of existence.',
+      'heute': 'Today; on the current day.',
+      'default': 'A word in German language.'
     }
   };
   
   const cleanWord = word.toLowerCase().trim();
   const languageDict = definitions[language] || definitions['english'];
   
-  return languageDict[cleanWord] || `${cleanWord} - a ${language} word (English definition)`;
+  // First try to find an exact match
+  if (languageDict[cleanWord]) {
+    return languageDict[cleanWord];
+  }
+  
+  // If no exact match, try to generate a more meaningful definition based on language
+  switch(language) {
+    case 'spanish':
+      return `"${word}" means "${getTranslation(cleanWord, language)}" in English.`;
+    case 'french':
+      return `"${word}" means "${getTranslation(cleanWord, language)}" in English.`;
+    case 'german':
+      return `"${word}" means "${getTranslation(cleanWord, language)}" in English.`;
+    case 'english':
+      return `"${word}" - ${getSimplifiedDefinition(cleanWord)}`;
+    default:
+      return `"${word}" - a word in ${language}.`;
+  }
+}
+
+// Helper function to generate simplified English definitions for English words
+function getSimplifiedDefinition(word: string): string {
+  const commonWords: Record<string, string> = {
+    'hello': 'a greeting used when meeting someone',
+    'goodbye': 'a farewell expression used when leaving',
+    'happy': 'feeling or showing pleasure or contentment',
+    'sad': 'feeling or showing sorrow; unhappy',
+    'big': 'of considerable size or extent',
+    'small': 'of a size that is less than normal or usual',
+    'fast': 'moving or capable of moving at high speed',
+    'slow': 'moving or operating at a low speed',
+    // Add more as needed
+  };
+  
+  return commonWords[word] || 'a word in English language with a meaning that varies based on context';
+}
+
+// Helper function to simulate translation
+function getTranslation(word: string, language: string): string {
+  // Simple translations for demo purposes
+  const translations: Record<string, Record<string, string>> = {
+    'spanish': {
+      'hablar': 'to speak',
+      'leer': 'to read',
+      'libro': 'book',
+      'caminar': 'to walk',
+      'día': 'day',
+      'sol': 'sun',
+      'agua': 'water',
+      'casa': 'house',
+      'tiempo': 'time/weather',
+      'hoy': 'today',
+      'es': 'is',
+      'un': 'a/an',
+      'nuevo': 'new',
+      'el': 'the',
+      'brilla': 'shines',
+      'en': 'in',
+      'cielo': 'sky',
+      'me': 'myself/me',
+      'levanto': 'I get up',
+      'temprano': 'early',
+      'tomo': 'I take/drink',
+      'una': 'a/an',
+      'taza': 'cup',
+      'de': 'of/from',
+      'café': 'coffee',
+      'luego': 'then/later',
+      'salgo': 'I go out',
+      'y': 'and',
+      'no': 'no/not',
+      'a': 'to',
+      'la': 'the',
+      'mujer': 'woman',
+      'invita': 'invites',
+      'salió': 'left/went out',
+      'volvió': 'returned',
+      'invita a la mujer': 'invites the woman',
+      'salió y no volvió': 'left and did not return'
+    },
+    'french': {
+      'parler': 'to speak',
+      'lire': 'to read',
+      'livre': 'book',
+      'marcher': 'to walk',
+      'jour': 'day',
+      'soleil': 'sun',
+      'eau': 'water',
+      'maison': 'house',
+      'temps': 'time/weather',
+      'aujourd\'hui': 'today'
+    },
+    'german': {
+      'sprechen': 'to speak',
+      'lesen': 'to read',
+      'buch': 'book',
+      'gehen': 'to go/walk',
+      'tag': 'day',
+      'sonne': 'sun',
+      'wasser': 'water',
+      'haus': 'house',
+      'zeit': 'time',
+      'heute': 'today'
+    }
+  };
+  
+  const langDict = translations[language] || {};
+  return langDict[word] || `[translation not available for "${word}"]`;
 }
 
 function generateExampleSentence(word: string, language: string): string {
