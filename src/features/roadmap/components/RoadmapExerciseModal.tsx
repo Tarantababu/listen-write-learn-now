@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -347,7 +346,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
                   id: `roadmap-${node.id}`,
                   title: exercise?.title || node.title,
                   text: exercise?.text || "",
-                  language: node.language || 'english',
+                  language: (exercise?.language as Language) || "english",
                   audioUrl: exercise?.audioUrl,
                   tags: [],
                   directoryId: null,
@@ -366,7 +365,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
                   id: `roadmap-${node.id}`,
                   title: exercise.title || node.title,
                   text: exercise.text || "",
-                  language: node.language || 'english',
+                  language: (exercise.language as Language) || "english",
                   audioUrl: exercise.audioUrl,
                   tags: [],
                   directoryId: null,

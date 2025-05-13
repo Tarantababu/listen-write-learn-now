@@ -1,5 +1,4 @@
-
-import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
+import React, { createContext, useState, useCallback, useEffect } from 'react';
 import { roadmapService } from '../services/RoadmapService';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
 import { Language, LanguageLevel } from '@/types';
@@ -7,7 +6,7 @@ import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { toast } from '@/components/ui/use-toast';
 
 // Define the context type
-interface RoadmapContextType {
+export interface RoadmapContextType {
   // State
   isLoading: boolean;
   nodeLoading: boolean;
@@ -31,6 +30,7 @@ interface RoadmapContextType {
   recordNodeCompletion: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>;
   incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>; // Alias for backward compatibility
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
+  hasError?: boolean; // Added to fix RoadmapPage error
 }
 
 // Create the context with default values
@@ -57,18 +57,12 @@ export const RoadmapContext = createContext<RoadmapContextType>({
   markNodeAsCompleted: async () => {},
 });
 
-// Export a hook to use the roadmap context
-export const useRoadmap = () => {
-  const context = useContext(RoadmapContext);
-  if (!context) {
-    throw new Error('useRoadmap must be used within a RoadmapProvider');
-  }
-  return context;
-};
+// Don't export useRoadmap from here to avoid duplicate definitions
+// Use the unified hook from src/hooks/use-roadmap.tsx instead
 
 // Create the provider component
 interface RoadmapProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) => {
