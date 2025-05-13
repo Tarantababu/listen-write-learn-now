@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/hooks/use-admin';
 import { Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface ProtectedRouteProps {
   children?: React.ReactNode;
@@ -14,6 +15,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin 
   const { user, loading } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
   const location = useLocation();
+
+  // Notify user when they're redirected due to authentication
+  useEffect(() => {
+    if (!loading && !user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to access this page",
+        variant: "default"
+      });
+    }
+  }, [loading, user]);
 
   // Show loading state while checking authentication and admin status
   if (loading || (requireAdmin && adminLoading)) {

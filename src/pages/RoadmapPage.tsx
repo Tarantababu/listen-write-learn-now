@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
@@ -15,11 +16,13 @@ import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/contexts/AuthContext';
 
 const RoadmapPage: React.FC = () => {
   const { 
     currentRoadmap, 
     isLoading, 
+    hasError,
     roadmaps, 
     userRoadmaps,
     loadUserRoadmaps,
@@ -30,6 +33,7 @@ const RoadmapPage: React.FC = () => {
   } = useRoadmap();
   
   const { settings } = useUserSettingsContext();
+  const { user } = useAuth();
   const [selectedNode, setSelectedNode] = useState<RoadmapNode | null>(null);
   const [exerciseModalOpen, setExerciseModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("active");
@@ -83,18 +87,23 @@ const RoadmapPage: React.FC = () => {
       setSelectionError('Failed to load the selected roadmap. Please try again.');
       
       // After error, try to re-fetch user roadmaps
-      const loadedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
-      if (loadedRoadmaps.length > 0) {
-        // Try selecting the first available roadmap instead
-        try {
-          await selectRoadmap(loadedRoadmaps[0].id);
-          toast({
-            title: "Selected fallback roadmap",
-            description: "We encountered an issue with the selected roadmap and loaded another one instead."
-          });
-        } catch (secondError) {
-          console.error('Error selecting fallback roadmap:', secondError);
+      try {
+        const loadedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
+        
+        if (loadedRoadmaps && loadedRoadmaps.length > 0) {
+          // Try selecting the first available roadmap instead
+          try {
+            await selectRoadmap(loadedRoadmaps[0].id);
+            toast({
+              title: "Selected fallback roadmap",
+              description: "We encountered an issue with the selected roadmap and loaded another one instead."
+            });
+          } catch (secondError) {
+            console.error('Error selecting fallback roadmap:', secondError);
+          }
         }
+      } catch (loadError) {
+        console.error('Error loading fallback roadmaps:', loadError);
       }
     }
   };
@@ -103,8 +112,16 @@ const RoadmapPage: React.FC = () => {
     setIsRetrying(true);
     try {
       setSelectionError(null);
+      
+      // Check if user is authenticated
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+      
       // Reload roadmaps first
       await loadUserRoadmaps(settings.selectedLanguage);
+      console.log("Reloaded roadmaps:", { userRoadmaps });
       
       // If we have a current roadmap, try to reload it
       if (currentRoadmap) {
@@ -163,6 +180,45 @@ const RoadmapPage: React.FC = () => {
     roadmap.languages?.includes(settings.selectedLanguage)
   );
 
+  // Detailed debug info
+  useEffect(() => {
+    console.log("RoadmapPage state:", {
+      isLoading,
+      hasError,
+      userAuthenticated: !!user,
+      roadmaps: roadmaps.length,
+      userRoadmaps: userRoadmaps.length,
+      hasCurrentRoadmap: !!currentRoadmap,
+      nodes: nodes.length,
+      activeTab,
+      hasAvailableRoadmaps,
+      language: settings.selectedLanguage
+    });
+  }, [
+    isLoading, 
+    hasError, 
+    user, 
+    roadmaps.length, 
+    userRoadmaps.length, 
+    currentRoadmap, 
+    nodes.length, 
+    activeTab,
+    settings.selectedLanguage
+  ]);
+
+  if (!user) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64 flex-col space-y-4">
+          <p className="text-muted-foreground">Please log in to access your learning paths</p>
+          <Button onClick={() => navigate('/login')}>
+            Go to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -204,14 +260,16 @@ const RoadmapPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {selectionError && (
+        {(selectionError || hasError) && (
           <motion.div 
             className="bg-destructive/15 border border-destructive rounded-md p-4 mb-2"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
             <div className="flex justify-between items-center">
-              <p className="text-destructive font-medium">{selectionError}</p>
+              <p className="text-destructive font-medium">
+                {selectionError || "Failed to load your roadmaps. Please try again."}
+              </p>
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -233,7 +291,7 @@ const RoadmapPage: React.FC = () => {
           </motion.div>
         )}
 
-        {!hasAvailableRoadmaps && (
+        {!hasAvailableRoadmaps && !isLoading && (
           <motion.div 
             className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-2 dark:bg-amber-900/20 dark:border-amber-800"
             initial={{ opacity: 0, y: -10 }}
