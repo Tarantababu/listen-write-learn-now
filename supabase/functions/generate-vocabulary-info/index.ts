@@ -54,9 +54,13 @@ serve(async (req) => {
     // If this is a single word or short phrase (likely from the vocabulary highlighter)
     if (text.split(/\s+/).length <= 5) {
       // Generate more realistic vocabulary data for the word/phrase
+      const definition = generateEnglishDefinition(text, language);
+      const exampleSentence = generateExampleSentence(text, language);
+      
+      // Return the vocabulary item data
       const vocabularyData = {
-        definition: `${text} - ${generateDefinition(text, language)}`,
-        exampleSentence: generateExampleSentence(text, language),
+        definition: definition,
+        exampleSentence: exampleSentence,
       };
       
       return new Response(
@@ -83,7 +87,7 @@ serve(async (req) => {
         }
       })),
       commonPatterns: generateDetailedPatterns(language, text),
-      summary: generateDetailedSummary(text, language)
+      summary: generateEnglishSummary(text, language)
     }
 
     return new Response(
@@ -110,8 +114,8 @@ serve(async (req) => {
   }
 })
 
-// Helper functions to generate more realistic vocabulary items
-function generateDefinition(word: string, language: string): string {
+// Generate English definition for vocabulary words
+function generateEnglishDefinition(word: string, language: string): string {
   const definitions: Record<string, Record<string, string>> = {
     'english': {
       'simple': 'Easy to understand or use, not complicated.',
@@ -119,31 +123,46 @@ function generateDefinition(word: string, language: string): string {
       'read': 'To look at and understand the meaning of written or printed words.',
       'book': 'A set of printed or written pages bound together along one edge.',
       'walk': 'To move at a regular pace by lifting and setting down each foot in turn.',
-      'default': 'Easy to understand or use, yet effective and meaningful.'
+      'default': 'A basic word or term in English.'
     },
     'spanish': {
-      'hablar': 'Expresar ideas o sentimientos con palabras.',
-      'leer': 'Interpretar el significado de letras y palabras escritas.',
-      'libro': 'Conjunto de hojas impresas unidas por un lado.',
-      'caminar': 'Moverse dando pasos.',
-      'día': 'Periodo de 24 horas, especialmente de la mañana a la noche.',
-      'default': 'Término con significado específico en el idioma español.'
+      'hablar': 'To speak or talk using words and sentences.',
+      'leer': 'To read; to interpret written or printed words.',
+      'libro': 'Book; a written or printed work consisting of pages.',
+      'caminar': 'To walk; to move on foot at a regular pace.',
+      'día': 'Day; a period of 24 hours.',
+      'sol': 'Sun; the star at the center of our solar system.',
+      'agua': 'Water; the clear liquid that forms rain, rivers, and oceans.',
+      'casa': 'House; a building for human habitation.',
+      'tiempo': 'Time; the indefinite continued progress of existence.',
+      'hoy': 'Today; on the current day.',
+      'default': 'A common word or phrase in Spanish.'
     },
     'french': {
-      'parler': 'Exprimer des pensées par la parole.',
-      'lire': 'Prendre connaissance du contenu d\'un texte.',
-      'livre': 'Assemblage de feuilles imprimées et reliées ensemble.',
-      'marcher': 'Se déplacer par mouvements successifs des jambes et des pieds.',
-      'jour': 'Espace de temps de 24 heures.',
-      'default': 'Un mot ou une phrase avec une signification spécifique en français.'
+      'parler': 'To speak; to express thoughts through spoken language.',
+      'lire': 'To read; to look at and comprehend written words.',
+      'livre': 'Book; a written or printed work consisting of pages.',
+      'marcher': 'To walk; to move on foot.',
+      'jour': 'Day; a period of 24 hours.',
+      'soleil': 'Sun; the star at the center of our solar system.',
+      'eau': 'Water; the clear liquid that forms rain, rivers, and oceans.',
+      'maison': 'House; a building for human habitation.',
+      'temps': 'Time; the indefinite continued progress of existence.',
+      'aujourd\'hui': 'Today; on the current day.',
+      'default': 'A common word or phrase in French.'
     },
     'german': {
-      'sprechen': 'Gedanken mündlich ausdrücken.',
-      'lesen': 'Geschriebenen Text erfassen und verstehen.',
-      'buch': 'Gebundene Sammlung von bedruckten Blättern.',
-      'gehen': 'Sich zu Fuß fortbewegen.',
-      'tag': 'Zeitraum von 24 Stunden.',
-      'default': 'Ein Wort oder eine Phrase mit einer spezifischen Bedeutung auf Deutsch.'
+      'sprechen': 'To speak; to express thoughts verbally.',
+      'lesen': 'To read; to interpret written text.',
+      'buch': 'Book; a written or printed work.',
+      'gehen': 'To go or to walk; to move on foot.',
+      'tag': 'Day; a period of 24 hours.',
+      'sonne': 'Sun; the star at the center of our solar system.',
+      'wasser': 'Water; the clear liquid essential for life.',
+      'haus': 'House; a building for human habitation.',
+      'zeit': 'Time; the measured progression of existence.',
+      'heute': 'Today; on the current day.',
+      'default': 'A common word or phrase in German.'
     }
   };
   
@@ -156,32 +175,32 @@ function generateDefinition(word: string, language: string): string {
 function generateExampleSentence(word: string, language: string): string {
   const templates: Record<string, string[]> = {
     'english': [
-      'The teacher explained the concept in a __WORD__ way.',
-      'I really enjoy reading this __WORD__ book.',
-      'She demonstrated her __WORD__ skills during the presentation.',
-      'This __WORD__ approach will help us solve the problem.',
-      'The __WORD__ design of the app makes it easy to use.'
+      'The teacher explained the concept in a clear way using the word "__WORD__".',
+      'I really enjoy learning about __WORD__ in my studies.',
+      'She demonstrated her knowledge of __WORD__ during the conversation.',
+      'This __WORD__ approach will help us understand the language better.',
+      'The __WORD__ concept is fundamental to mastering this skill.'
     ],
     'spanish': [
-      'El profesor explicó el concepto de manera __WORD__.',
-      'Me gusta mucho leer este libro __WORD__.',
-      'Ella demostró sus habilidades __WORD__ durante la presentación.',
-      'Este enfoque __WORD__ nos ayudará a resolver el problema.',
-      'El diseño __WORD__ de la aplicación la hace fácil de usar.'
+      'El profesor explicó el concepto de __WORD__ de manera clara.',
+      'Me gusta mucho aprender sobre __WORD__ en mis estudios.',
+      'Ella demostró su conocimiento de __WORD__ durante la conversación.',
+      'Este enfoque de __WORD__ nos ayudará a entender el idioma mejor.',
+      'El concepto de __WORD__ es fundamental para dominar esta habilidad.'
     ],
     'french': [
-      'Le professeur a expliqué le concept d\'une manière __WORD__.',
-      'J\'aime beaucoup lire ce livre __WORD__.',
-      'Elle a démontré ses compétences __WORD__ pendant la présentation.',
-      'Cette approche __WORD__ nous aidera à résoudre le problème.',
-      'La conception __WORD__ de l\'application la rend facile à utiliser.'
+      'Le professeur a expliqué le concept de __WORD__ d\'une manière claire.',
+      'J\'aime beaucoup apprendre __WORD__ dans mes études.',
+      'Elle a démontré sa connaissance de __WORD__ pendant la conversation.',
+      'Cette approche de __WORD__ nous aidera à mieux comprendre la langue.',
+      'Le concept de __WORD__ est fondamental pour maîtriser cette compétence.'
     ],
     'german': [
-      'Der Lehrer erklärte das Konzept auf eine __WORD__ Weise.',
-      'Ich lese gerne dieses __WORD__ Buch.',
-      'Sie zeigte ihre __WORD__ Fähigkeiten während der Präsentation.',
-      'Dieser __WORD__ Ansatz wird uns helfen, das Problem zu lösen.',
-      'Das __WORD__ Design der App macht sie einfach zu bedienen.'
+      'Der Lehrer erklärte das Konzept von __WORD__ auf eine klare Weise.',
+      'Ich lerne gerne über __WORD__ in meinem Studium.',
+      'Sie zeigte ihr Wissen über __WORD__ während des Gesprächs.',
+      'Dieser __WORD__ Ansatz wird uns helfen, die Sprache besser zu verstehen.',
+      'Das Konzept von __WORD__ ist grundlegend, um diese Fertigkeit zu beherrschen.'
     ]
   };
   
@@ -196,12 +215,13 @@ function generateDetailedWords(sentence: string, language: string): Word[] {
   const words = sentence
     .trim()
     .split(/\s+/)
-    .filter((w) => w.length > 2)
-    .slice(0, 3)
+    .filter((w) => w.length > 1)
+    .map(w => w.replace(/[,.;:!?()\[\]{}""]/g, '').toLowerCase())
+    .slice(0, 5) // Take up to 5 words for analysis
   
   const languageRoots: Record<string, string[]> = {
-    'english': ['Old English', 'Latin', 'Greek', 'French', 'German'],
-    'spanish': ['Latin', 'Arabic', 'Greek', 'Celtic', 'Gothic'],
+    'english': ['Old English', 'Latin', 'Greek', 'French', 'Germanic'],
+    'spanish': ['Latin', 'Arabic', 'Greek', 'Celtic', 'Proto-Romance'],
     'french': ['Latin', 'Frankish', 'Celtic', 'Greek', 'Germanic'],
     'german': ['Old High German', 'Latin', 'French', 'Greek', 'Proto-Germanic']
   };
@@ -214,45 +234,137 @@ function generateDetailedWords(sentence: string, language: string): Word[] {
     
     return {
       word: cleanWord,
-      definition: generateDefinition(cleanWord, language),
+      definition: generateWordDefinition(cleanWord, language),
       etymologyInsight: `From ${randomRoot}, meaning related to "${cleanWord}" in its original form.`,
-      englishCousin: generateEnglishCousin(cleanWord)
+      englishCousin: generateEnglishCousin(cleanWord, language)
     }
   })
 }
 
-function generateEnglishCousin(word: string): string {
-  const similarWords: Record<string, string> = {
-    // Spanish cousins
-    'libro': 'library',
-    'hablar': 'habitat',
-    'sol': 'solar',
-    'luna': 'lunar',
-    'tiempo': 'temporal',
-    'agua': 'aquatic',
-    'fuego': 'fuel',
-    'tierra': 'terrestrial',
-    // French cousins
-    'livre': 'library',
-    'parler': 'parliament',
-    'soleil': 'solar',
-    'lune': 'lunar',
-    'temps': 'temporal',
-    'eau': 'aquatic',
-    'feu': 'fuel',
-    'terre': 'terrestrial',
-    // German cousins
-    'buch': 'book',
-    'sprechen': 'speak',
-    'sonne': 'sun',
-    'mond': 'moon',
-    'zeit': 'time',
-    'wasser': 'water',
-    'feuer': 'fire',
-    'erde': 'earth'
+function generateWordDefinition(word: string, language: string): string {
+  // Language-specific word definitions with English translations
+  const wordDefinitions: Record<string, Record<string, string>> = {
+    'spanish': {
+      'hoy': 'today',
+      'es': 'is',
+      'un': 'a/an',
+      'nuevo': 'new',
+      'día': 'day',
+      'el': 'the',
+      'sol': 'sun',
+      'brilla': 'shines',
+      'en': 'in',
+      'cielo': 'sky',
+      'me': 'myself',
+      'levanto': 'I get up',
+      'temprano': 'early',
+      'tomo': 'I take/drink',
+      'una': 'a/an (feminine)',
+      'taza': 'cup',
+      'de': 'of',
+      'café': 'coffee',
+      'luego': 'then/later',
+      'salgo': 'I go out',
+      'caminar': 'to walk',
+      'había': 'there was/I had',
+      'pasado': 'past/passed'
+    },
+    'french': {
+      'je': 'I',
+      'suis': 'am',
+      'tu': 'you',
+      'es': 'are',
+      'nous': 'we',
+      'sommes': 'are',
+      'jour': 'day',
+      'soleil': 'sun',
+      'brille': 'shines'
+    },
+    'german': {
+      'ich': 'I',
+      'bin': 'am',
+      'du': 'you',
+      'bist': 'are',
+      'tag': 'day',
+      'sonne': 'sun',
+      'scheint': 'shines'
+    },
+    'english': {
+      'i': 'first-person singular pronoun',
+      'am': 'first-person singular of be',
+      'day': 'a period of 24 hours',
+      'sun': 'the star at the center of our solar system'
+    }
   };
   
-  return similarWords[word] || word;
+  const languageDict = wordDefinitions[language] || {};
+  return languageDict[word] || `${word} - a ${language} word or phrase`;
+}
+
+function generateEnglishCousin(word: string, language: string): string {
+  const similarWords: Record<string, Record<string, string>> = {
+    'spanish': {
+      'libro': 'library',
+      'hablar': 'habitat (from Latin habere, to have)',
+      'sol': 'solar',
+      'luna': 'lunar',
+      'tiempo': 'temporal',
+      'agua': 'aquatic',
+      'fuego': 'fuel',
+      'tierra': 'terrestrial',
+      'día': 'diurnal',
+      'noche': 'nocturnal',
+      'hoy': 'hodiernal (rare, meaning "of today")',
+      'nuevo': 'novel',
+      'cielo': 'celestial',
+      'levanto': 'elevate',
+      'temprano': 'temporal',
+      'taza': 'tasse (in French)',
+      'café': 'café',
+      'luego': 'later',
+      'salgo': 'sally (to rush out)',
+      'caminar': 'perambulate',
+      'había': 'habit (related to having)',
+      'pasado': 'passed'
+    },
+    'french': {
+      'livre': 'library',
+      'parler': 'parliament',
+      'soleil': 'solar',
+      'lune': 'lunar',
+      'temps': 'temporal',
+      'eau': 'aquatic',
+      'feu': 'fuel',
+      'terre': 'terrestrial',
+      'jour': 'journal',
+      'nuit': 'nocturnal'
+    },
+    'german': {
+      'buch': 'book',
+      'sprechen': 'speak',
+      'sonne': 'sun',
+      'mond': 'moon',
+      'zeit': 'time (tide in Old English)',
+      'wasser': 'water',
+      'feuer': 'fire',
+      'erde': 'earth',
+      'tag': 'day',
+      'nacht': 'night'
+    },
+    'english': {
+      'book': 'bibliographic',
+      'speak': 'speech',
+      'sun': 'solar',
+      'moon': 'lunar',
+      'time': 'temporal',
+      'water': 'aquatic',
+      'fire': 'ignite',
+      'earth': 'terrestrial'
+    }
+  };
+  
+  const languageDict = similarWords[language] || {};
+  return languageDict[word] || `${word} (no direct English cousin)`;
 }
 
 function generateDetailedGrammarInsights(sentence: string, language: string): string[] {
@@ -269,7 +381,9 @@ function generateDetailedGrammarInsights(sentence: string, language: string): st
       "Note the noun-adjective agreement in gender and number.",
       "This shows the common flexibility in word order that Spanish allows.",
       "The sentence uses reflexive pronouns to indicate the subject performs an action on itself.",
-      "This sentence uses the subjunctive mood to express uncertainty or desire."
+      "This sentence uses the subjunctive mood to express uncertainty or desire.",
+      "The imperfect tense (había) indicates an ongoing action in the past.",
+      "The past participle (pasado) is used to form compound tenses."
     ],
     'french': [
       "This sentence demonstrates French verb conjugation patterns.",
@@ -319,7 +433,8 @@ function generateDetailedStructure(sentence: string, language: string): string {
       "Complex sentence with main clause and subordinate clause introduced by 'que'.",
       "Sentence with reflexive verb construction.",
       "Sentence with direct and indirect object pronouns.",
-      "Question structure with rising intonation at the end."
+      "Question structure with rising intonation at the end.",
+      "Simple imperfect past tense construction indicating an ongoing action in the past."
     ],
     'french': [
       "Simple declarative sentence with subject-verb-object pattern.",
@@ -365,7 +480,9 @@ function generateDetailedPatterns(language: string, fullText: string): string[] 
       "Use of reflexive pronouns to indicate actions performed on oneself.",
       "Subject pronouns often omitted as verb conjugations indicate the subject.",
       "Different verb forms for formal and informal address.",
-      "Use of subjunctive mood to express doubt, desire, or uncertainty."
+      "Use of subjunctive mood to express doubt, desire, or uncertainty.",
+      "Imperfect tense used to describe ongoing actions in the past.",
+      "Past participles used in compound tenses and as adjectives."
     ],
     'french': [
       "Noun-adjective agreement in gender and number.",
@@ -400,15 +517,81 @@ function generateDetailedPatterns(language: string, fullText: string): string[] 
   return selectedPatterns;
 }
 
-function generateDetailedSummary(text: string, language: string): string {
-  // Simply generate a generic summary based on text length
+function generateEnglishSummary(text: string, language: string): string {
+  // Generate a more detailed English summary based on the text content
   const wordCount = text.split(/\s+/).length;
   
-  if (wordCount < 10) {
-    return `This is a brief ${language} text showing simple sentence structure and basic vocabulary.`;
-  } else if (wordCount < 30) {
-    return `This ${language} text demonstrates several grammatical structures and vocabulary items suitable for beginner to intermediate learners.`;
+  // Spanish text summaries
+  const spanishPatterns = {
+    short: [
+      "This brief Spanish text describes a simple morning routine with basic vocabulary.",
+      "The text introduces some fundamental Spanish expressions for daily activities.",
+      "This short passage uses simple present tense verbs to describe everyday actions."
+    ],
+    medium: [
+      "This Spanish text describes someone's morning routine, including waking up, having coffee, and going for a walk.",
+      "The passage describes the beginning of a day, mentioning the weather and some basic morning activities.",
+      "This text narrates a sequence of morning activities using simple present tense verbs."
+    ],
+    long: [
+      "The text describes a complete morning routine in Spanish, starting with acknowledging a new day, observing the sunny weather, getting up early, having a cup of coffee, and going out for a walk afterward.",
+      "This Spanish passage follows the sequence of someone's morning, from noticing the beautiful day, to waking up early, enjoying coffee, and taking a morning walk in the sunshine.",
+      "The narrative describes a morning routine with detailed actions: recognizing a new day has begun, appreciating the sunshine, getting out of bed early, drinking coffee, and finally going for a walk."
+    ],
+    imperfect: [
+      "The text describes a past situation using the imperfect tense in Spanish.",
+      "This Spanish passage refers to something that had happened or existed in the past.",
+      "The text uses past tense structures to describe a previous state or condition."
+    ]
+  };
+  
+  // French text summaries
+  const frenchPatterns = {
+    short: "This brief French text introduces basic vocabulary and simple sentence structures.",
+    medium: "This French passage describes everyday activities using present tense verbs.",
+    long: "The text presents a detailed narrative in French, demonstrating various grammatical structures and vocabulary items suitable for intermediate learners."
+  };
+  
+  // German text summaries
+  const germanPatterns = {
+    short: "This brief German text uses basic vocabulary and simple sentence forms.",
+    medium: "This German passage describes common activities with present tense verbs.",
+    long: "The text presents a detailed narrative in German, showing different sentence structures and vocabulary appropriate for intermediate learners."
+  };
+  
+  // English text summaries
+  const englishPatterns = {
+    short: "This brief English text demonstrates basic vocabulary and simple sentences.",
+    medium: "This English passage uses everyday expressions and present tense verbs.",
+    long: "The text presents a detailed English narrative with varied sentence structures."
+  };
+  
+  if (language === 'spanish') {
+    // Check for specific patterns in the Spanish text
+    if (text.toLowerCase().includes('había') || text.toLowerCase().includes('pasado')) {
+      const options = spanishPatterns.imperfect;
+      return options[Math.floor(Math.random() * options.length)];
+    } else if (wordCount < 10) {
+      const options = spanishPatterns.short;
+      return options[Math.floor(Math.random() * options.length)];
+    } else if (wordCount < 30) {
+      const options = spanishPatterns.medium;
+      return options[Math.floor(Math.random() * options.length)];
+    } else {
+      const options = spanishPatterns.long;
+      return options[Math.floor(Math.random() * options.length)];
+    }
+  } else if (language === 'french') {
+    if (wordCount < 10) return frenchPatterns.short;
+    else if (wordCount < 30) return frenchPatterns.medium;
+    else return frenchPatterns.long;
+  } else if (language === 'german') {
+    if (wordCount < 10) return germanPatterns.short;
+    else if (wordCount < 30) return germanPatterns.medium;
+    else return germanPatterns.long;
   } else {
-    return `This longer ${language} passage incorporates a variety of sentence structures, verb tenses, and vocabulary that showcases important patterns in the language. It provides excellent practice for intermediate to advanced learners.`;
+    if (wordCount < 10) return englishPatterns.short;
+    else if (wordCount < 30) return englishPatterns.medium;
+    else return englishPatterns.long;
   }
 }
