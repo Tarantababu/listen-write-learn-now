@@ -1,3 +1,4 @@
+
 import { Language, LanguageLevel } from '@/types';
 import { BaseService } from './BaseService';
 import { 
@@ -110,6 +111,7 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
         };
       });
       
+      console.log('User roadmaps loaded:', formattedRoadmaps);
       return this.success(formattedRoadmaps);
     } catch (error) {
       return this.handleError(error);
@@ -121,6 +123,7 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
    */
   public async getRoadmapNodes(userRoadmapId: string): ServiceResult<RoadmapNode[]> {
     try {
+      console.log('Getting nodes for user roadmap:', userRoadmapId);
       const auth = await this.ensureAuthenticated();
       if (!auth) {
         return this.error('User must be authenticated to access roadmap nodes');
@@ -131,9 +134,16 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
         .from('user_roadmaps')
         .select('*')
         .eq('id', userRoadmapId)
-        .single();
+        .maybeSingle();
         
       if (userRoadmapError) throw userRoadmapError;
+      
+      if (!userRoadmap) {
+        console.error('User roadmap not found with id:', userRoadmapId);
+        return this.error(`User roadmap not found with id: ${userRoadmapId}`);
+      }
+      
+      console.log('Found user roadmap:', userRoadmap);
       
       // Get all nodes for this roadmap
       const { data: nodes, error: nodesError } = await this.supabase
@@ -144,6 +154,8 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
         .order('position', { ascending: true });
         
       if (nodesError) throw nodesError;
+      
+      console.log(`Found ${nodes?.length || 0} nodes for roadmap`);
       
       // Get progress for this user and roadmap
       const { data: progress, error: progressError } = await this.supabase

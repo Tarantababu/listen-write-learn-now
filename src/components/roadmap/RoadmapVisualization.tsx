@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useRoadmap } from '@/contexts/RoadmapContext';
+import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '@/types';
 import { Check, Lock, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
