@@ -59,39 +59,10 @@ serve(async (req) => {
 
     // Split the text into sentences
     const rawSentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0)
-
-    // Get English translation if the text is not in English
-    let englishTranslation = null
-    if (language.toLowerCase() !== 'english') {
-      englishTranslation = await getOpenAITranslation(text, language, openAIApiKey)
-    }
-
-    // Process each sentence with OpenAI
-    const sentencesPromises = rawSentences.map(async (sentenceText) => {
-      const sentenceAnalysis = await analyzeSentence(sentenceText, language, openAIApiKey)
-      return {
-        text: sentenceText.trim(),
-        analysis: sentenceAnalysis
-      }
-    })
-
-    // Execute all promises in parallel
-    const sentences = await Promise.all(sentencesPromises)
-
-    // Get common patterns for the entire text
-    const commonPatterns = await getCommonPatterns(text, language, openAIApiKey)
-
-    // Get summary of the text
-    const summary = await getTextSummary(text, language, openAIApiKey)
-
-    // Assemble the complete analysis content
-    const analysis: AnalysisContent = {
-      sentences,
-      commonPatterns,
-      summary,
-      englishTranslation
-    }
-
+    
+    // Process analysis using OpenAI
+    const analysis = await generateFullAnalysis(text, rawSentences, language, openAIApiKey)
+    
     return new Response(
       JSON.stringify({ analysis }),
       {
@@ -114,117 +85,60 @@ serve(async (req) => {
   }
 })
 
-async function analyzeSentence(
-  sentence: string, 
-  language: string, 
+async function generateFullAnalysis(
+  fullText: string, 
+  sentences: string[], 
+  language: string,
   apiKey: string
-): Promise<{ words: AnalysisWord[], grammarInsights: string[], structure: string }> {
-  const prompt = `
-Analyze this ${language} sentence: "${sentence}"
-
-Provide a detailed analysis in the following JSON format:
-{
-  "words": [
-    {
-      "word": "word1",
-      "definition": "English meaning and translation",
-      "exampleSentence": "An example sentence using this word"
-    },
-    ...
-  ],
-  "grammarInsights": [
-    "Grammar insight 1",
-    "Grammar insight 2",
-    ...
-  ],
-  "structure": "Explanation of the sentence structure"
-}
-
-Notes:
-- For "words", select the 3-5 most important words in the sentence 
-- For each word, provide its meaning in English (clear translation)
-- For "grammarInsights", provide 2-3 insights about grammar used in the sentence
-- For "structure", explain the sentence structure in one concise paragraph
-- Format must be valid JSON
-`
-
-  const result = await callOpenAI(prompt, apiKey)
+): Promise<AnalysisContent> {
+  // First, get translation and summary using OpenAI
+  const generalAnalysis = await getGeneralAnalysis(fullText, language, apiKey)
   
-  try {
-    return JSON.parse(result)
-  } catch (e) {
-    console.error('Failed to parse sentence analysis:', e)
-    console.log('Raw response:', result)
-    return {
-      words: [{ 
-        word: sentence.split(' ')[0], 
-        definition: "Analysis failed to parse", 
-        exampleSentence: sentence 
-      }],
-      grammarInsights: ["Unable to analyze grammar"],
-      structure: "Unable to analyze structure"
-    }
+  // Then process each sentence
+  const sentenceAnalysisPromises = sentences.map(sentence => 
+    analyzeSentence(sentence, language, apiKey)
+  )
+  
+  // Process analysis for common patterns
+  const commonPatternsPromise = getCommonPatterns(fullText, language, apiKey)
+  
+  // Wait for all promises to resolve
+  const [sentenceAnalysisResults, commonPatterns] = await Promise.all([
+    Promise.all(sentenceAnalysisPromises),
+    commonPatternsPromise
+  ])
+  
+  // Combine all results into the final analysis content
+  return {
+    sentences: sentences.map((sentence, i) => ({
+      text: sentence,
+      analysis: sentenceAnalysisResults[i]
+    })),
+    commonPatterns,
+    summary: generalAnalysis.summary,
+    englishTranslation: generalAnalysis.translation
   }
 }
 
-async function getCommonPatterns(
-  text: string, 
-  language: string, 
-  apiKey: string
-): Promise<string[]> {
-  const prompt = `
-Analyze this ${language} text and identify 3-4 common language patterns. Return only an array of strings in valid JSON format, like this:
-["Pattern 1 description", "Pattern 2 description", ...]
-
-Text: "${text.substring(0, 500)}${text.length > 500 ? '...' : ''}"
-`
-
-  const result = await callOpenAI(prompt, apiKey)
-  
-  try {
-    return JSON.parse(result)
-  } catch (e) {
-    console.error('Failed to parse common patterns:', e)
-    return ["Unable to identify language patterns"]
-  }
-}
-
-async function getTextSummary(
-  text: string, 
-  language: string, 
-  apiKey: string
-): Promise<string> {
-  const prompt = `
-Write a concise summary in English of this ${language} text (about 2-3 sentences):
-
-"${text.substring(0, 500)}${text.length > 500 ? '...' : ''}"
-
-Return only the summary text, no quotes or formatting.
-`
-
-  return await callOpenAI(prompt, apiKey)
-}
-
-async function getOpenAITranslation(
+async function getGeneralAnalysis(
   text: string,
   language: string,
   apiKey: string
-): Promise<string> {
+): Promise<{summary: string, translation: string}> {
   const prompt = `
-Translate this ${language} text to natural English:
+Analyze this ${language} text and provide:
+1. A concise summary (2-3 sentences) in English about the content
+2. A clear translation into English (if the text is not in English)
 
-"${text}"
-
-Return only the translation, no additional comments or formatting.
-`
-
-  return await callOpenAI(prompt, apiKey)
+Return the response as a valid JSON object with these fields:
+{
+  "summary": "The concise summary of the text in English",
+  "translation": "The full translation of the text in English"
 }
 
-async function callOpenAI(
-  prompt: string,
-  apiKey: string
-): Promise<string> {
+Text for analysis: "${text}"
+`
+
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -235,7 +149,7 @@ async function callOpenAI(
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are a language analysis assistant that provides structured analysis of text. Always respond in the exact format requested.' },
+          { role: 'system', content: 'You are a language analysis assistant that provides accurate translations and summaries. Always respond with valid JSON.' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.2
@@ -249,9 +163,160 @@ async function callOpenAI(
     }
 
     const data = await response.json()
-    return data.choices[0].message.content.trim()
+    const content = data.choices[0].message.content.trim()
+    
+    try {
+      // Parse the JSON response
+      return JSON.parse(content)
+    } catch (e) {
+      console.error('Failed to parse OpenAI response as JSON:', e)
+      console.log('Raw response:', content)
+      
+      // Return a generic analysis if parsing fails
+      return {
+        summary: "Summary could not be generated.",
+        translation: "Translation could not be generated."
+      }
+    }
   } catch (error) {
-    console.error('Error calling OpenAI:', error)
+    console.error('Error generating general analysis:', error)
+    throw error
+  }
+}
+
+async function analyzeSentence(
+  sentence: string, 
+  language: string, 
+  apiKey: string
+): Promise<{words: AnalysisWord[], grammarInsights: string[], structure: string}> {
+  const prompt = `
+Analyze this ${language} sentence: "${sentence}"
+
+Provide detailed analysis in this JSON format:
+{
+  "words": [
+    {
+      "word": "important word from the sentence",
+      "definition": "clear English definition or translation with no quotes",
+      "exampleSentence": "example in ${language} using this word"
+    },
+    // 3-5 most important words from the sentence
+  ],
+  "grammarInsights": [
+    "grammar insight 1",
+    "grammar insight 2",
+    "grammar insight 3"
+  ],
+  "structure": "explanation of the sentence structure in one paragraph"
+}
+
+Notes:
+- For "words", focus on 3-5 most important words that would help a language learner
+- Ensure each word has a clear English definition/translation
+- Provide 2-3 grammar insights specific to this sentence
+- Return valid JSON only
+`
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a language analysis assistant that provides structured sentence analysis. Always respond with valid JSON.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.2
+      })
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('OpenAI API error:', errorData)
+      throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText}`)
+    }
+
+    const data = await response.json()
+    const content = data.choices[0].message.content.trim()
+    
+    try {
+      // Parse the JSON response
+      return JSON.parse(content)
+    } catch (e) {
+      console.error('Failed to parse sentence analysis response as JSON:', e)
+      console.log('Raw response:', content)
+      
+      // Return a generic analysis if parsing fails
+      return {
+        words: [{ 
+          word: sentence.split(' ')[0], 
+          definition: "Definition unavailable", 
+          exampleSentence: sentence 
+        }],
+        grammarInsights: ["Grammar analysis unavailable"],
+        structure: "Sentence structure analysis unavailable"
+      }
+    }
+  } catch (error) {
+    console.error('Error analyzing sentence:', error)
+    throw error
+  }
+}
+
+async function getCommonPatterns(
+  text: string, 
+  language: string, 
+  apiKey: string
+): Promise<string[]> {
+  const prompt = `
+Analyze this ${language} text and identify 3-4 common language patterns that would be useful for a beginner learner.
+Return only a JSON array of strings with each pattern description.
+
+Text: "${text.substring(0, 500)}${text.length > 500 ? '...' : ''}"
+`
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a language analysis assistant that identifies common language patterns. Return only a JSON array of strings.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.2
+      })
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('OpenAI API error:', errorData)
+      throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText}`)
+    }
+
+    const data = await response.json()
+    const content = data.choices[0].message.content.trim()
+    
+    try {
+      // Parse the JSON response
+      return JSON.parse(content)
+    } catch (e) {
+      console.error('Failed to parse common patterns response as JSON:', e)
+      console.log('Raw response:', content)
+      
+      // Return generic patterns if parsing fails
+      return ["Common patterns could not be identified."]
+    }
+  } catch (error) {
+    console.error('Error generating common patterns:', error)
     throw error
   }
 }

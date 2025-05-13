@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -92,7 +93,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         // Generate a new analysis
         console.log('Generating new analysis for exercise:', exercise.id);
         
-        // Using the dedicated reading analysis function
+        // Call the edge function to generate analysis using OpenAI
         const response = await supabase.functions.invoke('generate-reading-analysis', {
           body: {
             text: exercise.text,
