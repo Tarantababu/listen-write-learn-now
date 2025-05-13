@@ -8,6 +8,7 @@ import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Lang
 
 interface RoadmapContextType {
   roadmaps: Roadmap[];
+  userRoadmaps: UserRoadmap[]; // New property to store all user's roadmaps
   selectedRoadmap: UserRoadmap | null;
   currentNode: RoadmapNode | null;
   roadmapNodes: RoadmapNode[];
@@ -21,11 +22,13 @@ interface RoadmapContextType {
   completedNodes: string[];
   availableNodes: string[];
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
-  loadUserRoadmap: () => Promise<void>;
+  loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
+  loadUserRoadmaps: () => Promise<void>; // New method to load all user roadmaps
   completeNode: (nodeId: string) => Promise<void>;
   resetProgress: () => Promise<void>;
   getNodeExercise: (nodeId: string) => Promise<any>;
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
+  selectRoadmap: (roadmapId: string) => Promise<void>; // New method to switch between roadmaps
 }
 
 const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
@@ -34,6 +37,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   const { user } = useAuth();
   const { settings } = useUserSettingsContext();
   const [roadmaps, setRoadmaps] = useState<Roadmap[]>([]);
+  const [userRoadmaps, setUserRoadmaps] = useState<UserRoadmap[]>([]); // Store all user roadmaps
   const [selectedRoadmap, setSelectedRoadmap] = useState<UserRoadmap | null>(null);
   const [roadmapNodes, setRoadmapNodes] = useState<RoadmapNode[]>([]);
   const [currentNode, setCurrentNode] = useState<RoadmapNode | null>(null);
@@ -84,6 +88,9 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         }));
 
         setRoadmaps(formattedRoadmaps);
+        
+        // Load all user roadmaps after fetching available roadmaps
+        await loadUserRoadmaps();
       } catch (error) {
         console.error("Error fetching roadmaps:", error);
         toast.error("Failed to load learning roadmaps");
@@ -95,19 +102,85 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     fetchRoadmaps();
   }, [user]);
 
+  // Load all user roadmaps
+  const loadUserRoadmaps = async () => {
+    if (!user) return;
+
+    try {
+      // Get all user's roadmaps
+      const { data: userRoadmapData, error: userRoadmapError } = await supabase
+        .from('user_roadmaps')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (userRoadmapError) throw userRoadmapError;
+
+      if (!userRoadmapData || userRoadmapData.length === 0) {
+        setUserRoadmaps([]);
+        setSelectedRoadmap(null);
+        return;
+      }
+
+      // Format user roadmaps
+      const formattedUserRoadmaps: UserRoadmap[] = userRoadmapData.map(roadmap => ({
+        id: roadmap.id,
+        userId: roadmap.user_id,
+        roadmapId: roadmap.roadmap_id,
+        language: roadmap.language as Language,
+        currentNodeId: roadmap.current_node_id,
+        createdAt: new Date(roadmap.created_at),
+        updatedAt: new Date(roadmap.updated_at),
+      }));
+
+      setUserRoadmaps(formattedUserRoadmaps);
+      
+      // If no roadmap is selected but user has roadmaps, select the first one
+      if (!selectedRoadmap && formattedUserRoadmaps.length > 0) {
+        // Prioritize selecting a roadmap in the current selected language if available
+        const languageRoadmap = formattedUserRoadmaps.find(
+          rm => rm.language === settings.selectedLanguage
+        );
+        
+        const roadmapToSelect = languageRoadmap || formattedUserRoadmaps[0];
+        await loadUserRoadmap(roadmapToSelect.id);
+      }
+    } catch (error) {
+      console.error("Error loading user roadmaps:", error);
+      toast.error("Failed to load your learning paths");
+    }
+  };
+
+  // Select a specific roadmap
+  const selectRoadmap = async (roadmapId: string) => {
+    const roadmap = userRoadmaps.find(r => r.id === roadmapId);
+    if (roadmap) {
+      await loadUserRoadmap(roadmap.id);
+    } else {
+      toast.error("Roadmap not found");
+    }
+  };
+
   // Load user's selected roadmap
-  const loadUserRoadmap = async () => {
-    if (!user || !settings.selectedLanguage) return;
+  const loadUserRoadmap = async (userRoadmapId?: string) => {
+    if (!user) return;
 
     setLoading(true);
     try {
       // Get user's roadmap
-      const { data: userRoadmapData, error: userRoadmapError } = await supabase
+      let query = supabase
         .from('user_roadmaps')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('language', settings.selectedLanguage)
-        .single();
+        .select('*');
+        
+      if (userRoadmapId) {
+        query = query.eq('id', userRoadmapId);
+      } else {
+        // If no specific roadmap ID is provided, try to get one for the current language
+        query = query
+          .eq('user_id', user.id)
+          .eq('language', settings.selectedLanguage);
+      }
+      
+      const { data: userRoadmapData, error: userRoadmapError } = await query.single();
 
       if (userRoadmapError) {
         if (userRoadmapError.code !== 'PGRST116') { // Record not found
@@ -139,7 +212,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         .from('roadmap_nodes')
         .select('*')
         .eq('roadmap_id', userRoadmap.roadmapId)
-        .eq('language', settings.selectedLanguage)
+        .eq('language', userRoadmap.language)
         .order('position');
 
       if (nodesError) throw nodesError;
@@ -213,6 +286,17 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       return;
     }
 
+    // Check if the user already has this roadmap
+    const existingRoadmap = userRoadmaps.find(
+      r => r.roadmapId === matchingRoadmap.id && r.language === language
+    );
+
+    if (existingRoadmap) {
+      toast.info(`You already have the ${matchingRoadmap.name} roadmap in ${language}`);
+      await selectRoadmap(existingRoadmap.id);
+      return;
+    }
+
     try {
       // Create user roadmap
       const { data: userRoadmap, error: roadmapError } = await supabase
@@ -243,7 +327,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
         // No nodes for this roadmap and language
         toast.warning("This roadmap doesn't have any content yet. Please check back later.");
-        await loadUserRoadmap(); // Reload with empty nodes
+        await loadUserRoadmaps(); // Reload with empty nodes
         return;
       }
 
@@ -256,7 +340,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (updateError) throw updateError;
 
       toast.success("Your learning journey has begun!");
-      await loadUserRoadmap();
+      await loadUserRoadmaps();
+      await loadUserRoadmap(userRoadmap.id);
 
     } catch (error) {
       console.error("Error initializing roadmap:", error);
@@ -351,7 +436,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
 
       // Reload roadmap data
-      await loadUserRoadmap();
+      await loadUserRoadmap(selectedRoadmap.id);
       
       toast.success(nextNode 
         ? "Well done! Moving to the next lesson." 
@@ -394,7 +479,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (roadmapError) throw roadmapError;
 
       // Reload roadmap data
-      await loadUserRoadmap();
+      await loadUserRoadmap(selectedRoadmap.id);
       toast.success("Progress reset successfully");
       
     } catch (error) {
@@ -421,6 +506,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   return (
     <RoadmapContext.Provider value={{
       roadmaps,
+      userRoadmaps,
       selectedRoadmap,
       currentNode,
       roadmapNodes,
@@ -435,10 +521,12 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       availableNodes,
       initializeUserRoadmap,
       loadUserRoadmap,
+      loadUserRoadmaps,
       completeNode,
       resetProgress,
       getNodeExercise,
-      markNodeAsCompleted
+      markNodeAsCompleted,
+      selectRoadmap
     }}>
       {children}
     </RoadmapContext.Provider>

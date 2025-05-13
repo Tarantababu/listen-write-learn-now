@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Card,
@@ -24,10 +24,19 @@ import LevelBadge from '@/components/LevelBadge';
 import LevelInfoTooltip from '@/components/LevelInfoTooltip';
 
 const RoadmapSelection: React.FC = () => {
-  const { initializeUserRoadmap, roadmaps, loading } = useRoadmap();
+  const { initializeUserRoadmap, roadmaps, loading, userRoadmaps } = useRoadmap();
   const { settings } = useUserSettingsContext();
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>('A1');
   const [initializing, setInitializing] = useState(false);
+
+  // Get existing roadmap levels for the current language
+  const existingLevels = userRoadmaps
+    .filter(r => r.language === settings.selectedLanguage)
+    .map(r => {
+      const roadmap = roadmaps.find(rm => rm.id === r.roadmapId);
+      return roadmap?.level;
+    })
+    .filter(Boolean) as LanguageLevel[];
 
   const handleInitializeRoadmap = async () => {
     setInitializing(true);
@@ -56,6 +65,11 @@ const RoadmapSelection: React.FC = () => {
     );
   };
 
+  // Check if the user already has a roadmap for this level and language
+  const isLevelAlreadySelected = (level: LanguageLevel): boolean => {
+    return existingLevels.includes(level);
+  };
+
   // Get available levels
   const getAvailableLevels = (): LanguageLevel[] => {
     const levels: LanguageLevel[] = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
@@ -63,6 +77,18 @@ const RoadmapSelection: React.FC = () => {
   };
 
   const availableLevels = getAvailableLevels();
+
+  // Set default selected level to first available that isn't already selected
+  useEffect(() => {
+    if (availableLevels.length > 0) {
+      const unselectedLevel = availableLevels.find(level => !isLevelAlreadySelected(level));
+      if (unselectedLevel) {
+        setSelectedLevel(unselectedLevel);
+      } else {
+        setSelectedLevel(availableLevels[0]);
+      }
+    }
+  }, [availableLevels.join(','), existingLevels.join(',')]);
 
   if (loading) {
     return (
@@ -91,35 +117,55 @@ const RoadmapSelection: React.FC = () => {
     );
   }
 
-  // Set default selected level to the first available one
-  if (!availableLevels.includes(selectedLevel) && availableLevels.length > 0) {
-    setSelectedLevel(availableLevels[0]);
-  }
-
   return (
     <Card className="w-full max-w-md mx-auto shadow-md">
       <CardHeader>
         <CardTitle className="text-xl font-semibold">Choose Your Starting Level</CardTitle>
         <CardDescription>
-          Select the language level that best matches your current proficiency in {settings.selectedLanguage}.
+          {existingLevels.length > 0 
+            ? `Add another ${settings.selectedLanguage} roadmap at a different level`
+            : `Select the language level that best matches your current proficiency in ${settings.selectedLanguage}`
+          }
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {existingLevels.length > 0 && (
+          <div className="bg-primary/5 p-4 rounded-md border border-primary/20 mb-4">
+            <h4 className="font-medium text-sm mb-1">Your Current Roadmaps</h4>
+            <div className="flex flex-wrap gap-2">
+              {existingLevels.map(level => (
+                <LevelBadge key={level} level={level} />
+              ))}
+            </div>
+          </div>
+        )}
+      
         <div className="flex items-center space-x-2 mb-6">
           <span className="text-sm font-medium">Language Level:</span>
-          <Select value={selectedLevel} onValueChange={(value) => setSelectedLevel(value as LanguageLevel)}>
+          <Select 
+            value={selectedLevel} 
+            onValueChange={(value) => setSelectedLevel(value as LanguageLevel)}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select a level" />
             </SelectTrigger>
             <SelectContent>
-              {availableLevels.map((level) => (
-                <SelectItem key={level} value={level}>
-                  <div className="flex items-center space-x-2">
-                    <LevelBadge level={level as LanguageLevel} />
-                    <span>{level}</span>
-                  </div>
-                </SelectItem>
-              ))}
+              {availableLevels.map((level) => {
+                const isAlreadySelected = isLevelAlreadySelected(level);
+                return (
+                  <SelectItem 
+                    key={level} 
+                    value={level}
+                    disabled={isAlreadySelected}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <LevelBadge level={level as LanguageLevel} />
+                      <span>{level}</span>
+                      {isAlreadySelected && <span className="text-xs text-muted-foreground ml-2">(Already selected)</span>}
+                    </div>
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
           <LevelInfoTooltip />
@@ -144,11 +190,11 @@ const RoadmapSelection: React.FC = () => {
       <CardFooter>
         <Button 
           onClick={handleInitializeRoadmap} 
-          disabled={initializing || !selectedLevel}
+          disabled={initializing || !selectedLevel || isLevelAlreadySelected(selectedLevel)}
           className="w-full"
         >
           {initializing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          Start Learning Journey
+          {existingLevels.length > 0 ? 'Add This Roadmap' : 'Start Learning Journey'}
         </Button>
       </CardFooter>
     </Card>
