@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Exercise } from '@/types';
@@ -40,6 +40,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true);
   const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false);
+  const hasInitializedRef = useRef<boolean>(false);
   
   const {
     settings
@@ -70,9 +71,11 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   }, [exercise, exercises]);
 
   // Check if the user has an existing reading analysis for this exercise
+  // ONLY do this check when the modal opens initially, not on every render
   useEffect(() => {
     const checkExistingAnalysis = async () => {
-      if (!exercise || !user) return;
+      if (!exercise || !user || !isOpen) return;
+      
       try {
         setLoadingAnalysisCheck(true);
         console.log('Checking for existing analysis for exercise:', exercise.id, 'user:', user.id);
@@ -139,8 +142,16 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         setLoadingAnalysisCheck(false);
       }
     };
-    if (isOpen) {
+    
+    // Only check when modal opens AND we haven't initialized yet
+    if (isOpen && !hasInitializedRef.current) {
       checkExistingAnalysis();
+      hasInitializedRef.current = true;
+    }
+    
+    // Reset the initialization ref when modal closes
+    if (!isOpen) {
+      hasInitializedRef.current = false;
     }
   }, [exercise, user, isOpen, subscription.isSubscribed, hasReadingAnalysis]);
   
