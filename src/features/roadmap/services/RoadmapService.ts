@@ -1,4 +1,3 @@
-
 import { Language, LanguageLevel } from '@/types';
 import { BaseService } from './BaseService';
 import { 
@@ -21,12 +20,16 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
         
       if (error) throw error;
       
+      console.log('Roadmaps data from DB:', data);
+      
       // Get all roadmap languages to associate with the roadmaps
       const { data: languagesData, error: languagesError } = await this.supabase
         .from('roadmap_languages')
         .select('roadmap_id, language');
         
       if (languagesError) throw languagesError;
+      
+      console.log('Languages data from DB:', languagesData);
       
       // Group languages by roadmap ID
       const languagesByRoadmap: Record<string, Language[]> = {};
@@ -48,6 +51,7 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
         createdBy: item.created_by,
       }));
       
+      console.log('Formatted roadmaps:', formattedRoadmaps);
       return this.success(formattedRoadmaps);
     } catch (error) {
       return this.handleError(error);
@@ -259,10 +263,15 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
    */
   public async initializeRoadmap(level: LanguageLevel, language: Language): ServiceResult<string> {
     try {
+      console.log(`Initializing roadmap for level ${level} and language ${language}`);
+      
       const auth = await this.ensureAuthenticated();
       if (!auth) {
+        console.error('Authentication required for initializing roadmap');
         return this.error('User must be authenticated to initialize a roadmap');
       }
+      
+      console.log(`User authenticated with ID: ${auth.userId}`);
       
       // Find a roadmap that matches the level and supports the language
       const { data: roadmapsData, error: roadmapsError } = await this.supabase
@@ -274,14 +283,21 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
         .eq('level', level)
         .eq('roadmap_languages.language', language);
         
-      if (roadmapsError) throw roadmapsError;
+      if (roadmapsError) {
+        console.error('Error fetching roadmaps:', roadmapsError);
+        throw roadmapsError;
+      }
+      
+      console.log('Matching roadmaps found:', roadmapsData);
       
       if (!roadmapsData || roadmapsData.length === 0) {
+        console.error(`No roadmap found for level ${level} and language ${language}`);
         return this.error(`No roadmap found for level ${level} and language ${language}`);
       }
       
       // Take the first matching roadmap
       const roadmapId = roadmapsData[0].id;
+      console.log(`Selected roadmap ID: ${roadmapId}`);
       
       // Check if the user already has this roadmap
       const { data: existingRoadmap, error: existingError } = await this.supabase
@@ -292,12 +308,18 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
         .eq('language', language)
         .maybeSingle();
         
-      if (existingError) throw existingError;
+      if (existingError) {
+        console.error('Error checking existing roadmap:', existingError);
+        throw existingError;
+      }
       
       // If the user already has this roadmap, return its ID
       if (existingRoadmap) {
+        console.log(`User already has roadmap with ID: ${existingRoadmap.id}`);
         return this.success(existingRoadmap.id);
       }
+      
+      console.log('Creating new user roadmap');
       
       // Create a new user roadmap
       const { data: userRoadmap, error: userRoadmapError } = await this.supabase
@@ -310,7 +332,12 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
         .select()
         .single();
         
-      if (userRoadmapError) throw userRoadmapError;
+      if (userRoadmapError) {
+        console.error('Error creating user roadmap:', userRoadmapError);
+        throw userRoadmapError;
+      }
+      
+      console.log('User roadmap created:', userRoadmap);
       
       // Find first node of the roadmap to set as current
       const { data: firstNode, error: firstNodeError } = await this.supabase
@@ -324,21 +351,30 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
         
       if (firstNodeError && firstNodeError.code !== 'PGRST116') {
         // If it's not a "not found" error, throw it
+        console.error('Error finding first node:', firstNodeError);
         throw firstNodeError;
       }
       
+      console.log('First node found:', firstNode);
+      
       // Update user roadmap with first node if one exists
       if (firstNode) {
+        console.log(`Updating user roadmap with first node ID: ${firstNode.id}`);
         const { error: updateError } = await this.supabase
           .from('user_roadmaps')
           .update({ current_node_id: firstNode.id })
           .eq('id', userRoadmap.id);
           
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Error updating user roadmap with first node:', updateError);
+          throw updateError;
+        }
       }
       
+      console.log(`Roadmap initialization complete for user roadmap ID: ${userRoadmap.id}`);
       return this.success(userRoadmap.id);
     } catch (error) {
+      console.error('Error in initializeRoadmap:', error);
       return this.handleError(error);
     }
   }

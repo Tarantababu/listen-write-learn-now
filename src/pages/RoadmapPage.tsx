@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { ArrowRightIcon, LayoutDashboard, BookOpen, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';

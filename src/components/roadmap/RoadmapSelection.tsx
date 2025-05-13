@@ -22,7 +22,7 @@ import { LanguageLevel } from '@/types';
 import { Loader2, RefreshCw } from 'lucide-react';
 import LevelBadge from '@/components/LevelBadge';
 import LevelInfoTooltip from '@/components/LevelInfoTooltip';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 const RoadmapSelection: React.FC = () => {
   const { initializeUserRoadmap, roadmaps, loading, userRoadmaps, loadUserRoadmaps } = useRoadmap();
@@ -35,6 +35,9 @@ const RoadmapSelection: React.FC = () => {
   const availableRoadmapsForLanguage = roadmaps.filter(roadmap => 
     roadmap.languages?.includes(settings.selectedLanguage)
   );
+  
+  // Log available roadmaps for debugging
+  console.log('Available roadmaps for language:', settings.selectedLanguage, availableRoadmapsForLanguage);
 
   // Get existing roadmap levels for the current language
   const existingLevels = userRoadmaps
@@ -44,11 +47,18 @@ const RoadmapSelection: React.FC = () => {
       return roadmap?.level;
     })
     .filter(Boolean) as LanguageLevel[];
+    
+  console.log('Existing roadmap levels:', existingLevels);
 
   const handleInitializeRoadmap = async () => {
     setInitializing(true);
     try {
+      console.log(`Starting roadmap initialization for level ${selectedLevel} and language ${settings.selectedLanguage}`);
+      
       await initializeUserRoadmap(selectedLevel, settings.selectedLanguage);
+      
+      console.log('Roadmap initialization complete');
+      
       toast({
         title: "Roadmap Initialized",
         description: `Your ${selectedLevel} level roadmap for ${settings.selectedLanguage} has been created.`,
@@ -68,7 +78,9 @@ const RoadmapSelection: React.FC = () => {
   const handleRefreshRoadmaps = async () => {
     setRefreshing(true);
     try {
+      console.log('Refreshing roadmaps...');
       await loadUserRoadmaps();
+      console.log('Roadmaps refreshed successfully');
       toast({
         title: "Roadmaps Refreshed",
         description: "Available roadmaps have been refreshed.",
@@ -112,6 +124,7 @@ const RoadmapSelection: React.FC = () => {
   };
 
   const availableLevels = getAvailableLevels();
+  console.log('Available levels:', availableLevels);
 
   // Set default selected level to first available that isn't already selected
   useEffect(() => {
