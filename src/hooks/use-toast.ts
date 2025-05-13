@@ -9,11 +9,15 @@ import type {
 const TOAST_LIMIT = 3
 const TOAST_REMOVE_DELAY = 1000000
 
-type ToasterToast = ToastProps & {
+type ToasterToast = {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  variant?: "default" | "destructive" | "success" | "warning" | "info"
+  duration?: number
 }
 
 // Define a type for the custom Toast options
@@ -142,7 +146,6 @@ export function toast(props: ToastOptions = {}) {
 
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
-  // Ensure the toast object conforms to ToasterToast type
   const toastToAdd: ToasterToast = {
     ...props,
     id,

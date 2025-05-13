@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useRoadmap } from '@/contexts/RoadmapContext';
 import RoadmapVisualization from '@/components/roadmap/RoadmapVisualization';
 import RoadmapSelection from '@/components/roadmap/RoadmapSelection';
 import RoadmapExerciseModal from '@/components/roadmap/RoadmapExerciseModal';
-import { RoadmapNode, UserRoadmap } from '@/types';
+import { RoadmapNode, UserRoadmap, LanguageLevel } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
