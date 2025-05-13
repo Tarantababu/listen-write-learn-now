@@ -45,7 +45,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     settings
   } = useUserSettingsContext();
   const {
-    exercises
+    exercises,
+    hasReadingAnalysis
   } = useExerciseContext();
   const {
     user
@@ -73,29 +74,32 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         setLoadingAnalysisCheck(true);
         console.log('Checking for existing analysis for exercise:', exercise.id, 'user:', user.id);
         
-        // Check if user has an existing reading analysis
-        const {
-          data: analysisData,
-          error: analysisError
-        } = await supabase.from('reading_analyses')
-          .select('id')
-          .eq('exercise_id', exercise.id)
-          .eq('user_id', user.id);
-          
-        if (analysisError) {
-          console.error('Error checking for analysis:', analysisError);
-          return;
-        }
+        // Use the hasReadingAnalysis function from the ExerciseContext
+        const hasAnalysis = await hasReadingAnalysis(exercise.id);
+        console.log('Analysis check result:', hasAnalysis);
         
-        console.log('Analysis check result:', analysisData);
-        
-        // Check if we got any results
-        if (analysisData && analysisData.length > 0) {
-          console.log('Existing analysis found with ID:', analysisData[0].id);
+        if (hasAnalysis) {
+          console.log('Existing analysis found');
           setHasExistingAnalysis(true);
-          setAnalysisId(analysisData[0].id);
+          
+          // Get the analysis ID
+          const {
+            data: analysisData,
+            error: analysisError
+          } = await supabase.from('reading_analyses')
+            .select('id')
+            .eq('exercise_id', exercise.id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+            
+          if (!analysisError && analysisData) {
+            setAnalysisId(analysisData.id);
+            console.log('Existing analysis ID:', analysisData.id);
+          }
+          
           // Skip prompt if user has already done reading analysis
-          setPracticeStage(PracticeStage.DICTATION);
+          // We still show the prompt to give users the option to view the analysis again
+          setPracticeStage(PracticeStage.PROMPT);
         } else {
           console.log('No existing analysis found');
           setHasExistingAnalysis(false);
@@ -117,15 +121,11 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
             if (profileData && profileData.reading_analyses_count >= 5) {
               setAnalysisAllowed(false);
               toast.error('Free users are limited to 5 reading analyses. Upgrade to premium for unlimited analyses.');
-              // Skip to dictation since they can't generate a reading analysis
-              setPracticeStage(PracticeStage.DICTATION);
-            } else {
-              setPracticeStage(PracticeStage.PROMPT);
+              // We still show the prompt, but the reading analysis option will be disabled
             }
-          } else {
-            // Premium users always start with the prompt
-            setPracticeStage(PracticeStage.PROMPT);
           }
+          
+          setPracticeStage(PracticeStage.PROMPT);
         }
       } catch (error) {
         console.error('Error in analysis check:', error);
@@ -136,7 +136,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     if (isOpen) {
       checkExistingAnalysis();
     }
-  }, [exercise, user, isOpen, subscription.isSubscribed]);
+  }, [exercise, user, isOpen, subscription.isSubscribed, hasReadingAnalysis]);
   
   const handleComplete = (accuracy: number) => {
     // Update progress and show results
@@ -226,7 +226,11 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
                       <div className="font-semibold text-lg">
                         {hasExistingAnalysis ? 'View Reading Analysis' : '🔍 Start with Reading Analysis'}
                       </div>
-                      
+                      <p className="text-sm text-muted-foreground">
+                        {hasExistingAnalysis 
+                          ? 'Review words, grammar, and sentence structure again'
+                          : 'Explore vocabulary and grammar with AI explanations'}
+                      </p>
                     </div>
                   </Button>
                 </CardContent>
@@ -240,7 +244,9 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
                         <Headphones className="h-6 w-6 text-muted-foreground" />
                       </div>
                       <div className="font-semibold text-lg">🎧 Start Dictation Now</div>
-                      
+                      <p className="text-sm text-muted-foreground">
+                        Practice listening and transcription skills with audio
+                      </p>
                     </div>
                   </Button>
                 </CardContent>
