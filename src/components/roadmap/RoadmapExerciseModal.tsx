@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { RoadmapNode, Exercise } from '@/types';
 import { 
@@ -13,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useRoadmap } from '@/contexts/RoadmapContext';
 import DictationPractice from '@/components/DictationPractice';
 import ReadingAnalysis from '@/components/ReadingAnalysis';
-import { Loader2, Star, CheckCircle, Search, Headphones } from 'lucide-react';
+import { Loader2, Star, CheckCircle, Search, Headphones, AlertTriangle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
