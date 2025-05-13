@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useRoadmap } from '../context/RoadmapContext';
+import { useRoadmap } from '../hooks/use-hook-imports';
 import { RoadmapNode } from '../types';
 import { Loader2 } from 'lucide-react';
 import RoadmapPath from './RoadmapPath';

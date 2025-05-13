@@ -10,7 +10,9 @@ export interface RoadmapItem {
   roadmapId?: string;
   userId?: string;
   currentNodeId?: string;
-  description?: string; // Add description property to fix errors
+  description?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface RoadmapNode {
@@ -23,17 +25,19 @@ export interface RoadmapNode {
   status?: 'completed' | 'current' | 'locked' | 'available';
   progressCount?: number;
   roadmapId?: string;
-  createdAt?: Date; // Add these properties to match the other RoadmapNode type
+  createdAt?: Date;
   updatedAt?: Date;
+  defaultExerciseId?: string;
 }
 
 export interface ExerciseContent {
+  id?: string;
   title: string;
   text: string;
   language: Language;
   audioUrl?: string;
   readingAnalysisId?: string | null;
-  id?: string; // Add id property to fix errors
+  tags?: string[];
 }
 
 export interface NodeCompletionResult {

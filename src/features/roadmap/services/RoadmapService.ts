@@ -18,7 +18,7 @@ class RoadmapService {
       const roadmaps: RoadmapItem[] = data.map(roadmap => ({
         id: roadmap.id,
         name: roadmap.name,
-        level: roadmap.level,
+        level: roadmap.level as LanguageLevel, // Cast string to LanguageLevel
         language: language,
         languages: roadmap.roadmap_languages?.map((rl: any) => rl.language) || [language],
         description: roadmap.description || ''
@@ -67,7 +67,7 @@ class RoadmapService {
         roadmapId: item.roadmap_id,
         name: item.roadmaps?.name || 'Learning Path',
         level: item.roadmaps?.level || 'A1',
-        language: item.language,
+        language: item.language as Language, // Cast string to Language type
         currentNodeId: item.current_node_id,
         userId: userData.user.id,
         description: item.roadmaps?.description || ''
@@ -354,6 +354,7 @@ class RoadmapService {
             completion_count: 1,
             is_completed: false,
             last_practiced_at: new Date().toISOString(),
+            language: userRoadmap.language // Add the language field
           });
 
         if (insertError) throw insertError;
@@ -445,6 +446,7 @@ class RoadmapService {
             completion_count: 3,
             is_completed: true,
             last_practiced_at: new Date().toISOString(),
+            language: userRoadmap.language // Add the language field
           });
       }
 

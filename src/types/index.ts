@@ -77,10 +77,12 @@ export interface RoadmapNode {
   language: string;
   roadmapId?: string;
   createdAt: Date;
-  completionCount?: number;
-  isCompleted?: boolean;
+  updatedAt: Date;
+  defaultExerciseId?: string; // Add defaultExerciseId
   status?: 'completed' | 'current' | 'locked' | 'available'; // Add this property
   progressCount?: number; // Add this property
+  completionCount?: number;
+  isCompleted?: boolean;
 }
 
 export interface RoadmapLanguage {

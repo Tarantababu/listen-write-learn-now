@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast'; // Updated import
 import DictationPractice from '@/components/DictationPractice';
 import { Search, Headphones } from 'lucide-react';
+import { Language } from '@/types'; // Import Language type
 
 interface RoadmapExerciseModalProps {
   node: RoadmapNode | null;
@@ -52,7 +53,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   const loadExercise = async (nodeId: string) => {
     try {
       setLoading(true);
-      const exerciseData = await getNodeExercise(nodeId);
+      const exerciseData = await getNodeExercise?.(nodeId);
       setExercise(exerciseData);
     } catch (error) {
       console.error("Error loading exercise:", error);
@@ -78,7 +79,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     if (!node) return;
 
     // Save the practice result and increment completion count if accuracy is high enough
-    incrementNodeCompletion(node.id, accuracy);
+    incrementNodeCompletion?.(node.id, accuracy);
     
     // Show feedback based on accuracy
     if (accuracy >= 95) {
@@ -102,7 +103,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     if (!node) return;
     
     try {
-      await markNodeAsCompleted(node.id);
+      await markNodeAsCompleted?.(node.id);
       toast({
         title: "Progress saved!",
         description: "You've completed this exercise",
@@ -120,11 +121,11 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
 
   // Get the completion count for this node (if it exists)
   const nodeCompletionInfo = node ? 
-    nodeProgress.find(np => np.nodeId === node.id) : 
+    nodeProgress?.find(np => np.nodeId === node.id) : 
     null;
   
   const completionCount = nodeCompletionInfo?.completionCount || 0;
-  const isNodeCompleted = node ? completedNodes.includes(node.id) || nodeCompletionInfo?.isCompleted : false;
+  const isNodeCompleted = node ? completedNodes?.includes(node.id) || nodeCompletionInfo?.isCompleted : false;
 
   if (!node) {
     return null;
@@ -208,7 +209,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
               id: `roadmap-${node.id}`,
               title: exercise.title || node.title,
               text: exercise.text || "",
-              language: node.language || 'english',
+              language: (node.language || 'english') as Language,
               audioUrl: exercise.audioUrl,
               tags: [],
               directoryId: null,
