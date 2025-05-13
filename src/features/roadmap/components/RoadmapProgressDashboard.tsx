@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useRoadmap } from '../hooks/use-hook-imports';
 import type { RoadmapItem, RoadmapNode } from '../types';
@@ -10,6 +11,7 @@ const RoadmapProgressDashboard: React.FC = () => {
   // Safely access properties with type checking
   const nodes = roadmapContext?.nodes || [];
   const roadmaps = roadmapContext?.roadmaps || [];
+  const completedNodes = roadmapContext?.completedNodes || [];
   
   // Make sure to check that currentRoadmap is not an array before accessing properties
   const currentRoadmap = roadmapContext?.currentRoadmap;
@@ -18,8 +20,6 @@ const RoadmapProgressDashboard: React.FC = () => {
   if (currentRoadmap && !Array.isArray(currentRoadmap)) {
     roadmapId = currentRoadmap.roadmapId;
   }
-  
-  const completedNodes = roadmapContext?.completedNodes || [];
 
   // Calculate overall progress
   const overallProgress = nodes.length > 0 ? (completedNodes.length / nodes.length) * 100 : 0;

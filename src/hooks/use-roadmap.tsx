@@ -1,15 +1,15 @@
 
 import { useContext } from 'react';
-import { RoadmapContext as OldRoadmapContext } from '@/contexts/RoadmapContext';
-import { RoadmapContext as NewRoadmapContext } from '@/features/roadmap/context/RoadmapContext';
-import { Language } from '@/types';
+import { RoadmapContext, RoadmapContextType } from '@/contexts/RoadmapContext';
+import { RoadmapContext as NewRoadmapContext, RoadmapContextType as NewRoadmapContextType } from '@/features/roadmap/context/RoadmapContext';
+import { Language, LanguageLevel } from '@/types';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '@/features/roadmap/types';
 
 /**
  * Type definition that combines both old and new context types
  * This ensures that all required properties are available regardless of which context is used
  */
-export type UnifiedRoadmapContextType = {
+export interface UnifiedRoadmapContextType {
   // Common state properties
   isLoading?: boolean;
   loading?: boolean;
@@ -17,26 +17,40 @@ export type UnifiedRoadmapContextType = {
   hasError?: boolean;
   
   // Data properties
-  roadmaps?: any[];
-  userRoadmaps?: any[];
-  currentRoadmap?: any;
-  nodes?: any[];
+  roadmaps?: RoadmapItem[];
+  userRoadmaps?: RoadmapItem[];
+  currentRoadmap?: RoadmapItem | RoadmapNode[] | null;
+  nodes?: RoadmapNode[];
   completedNodes?: string[];
   availableNodes?: string[];
   currentNodeId?: string;
-  currentNode?: any;
+  currentNode?: RoadmapNode | null;
   nodeProgress?: any[];
   
   // Methods common to both contexts
-  initializeRoadmap?: (level: any, language: any) => Promise<string>;
-  initializeUserRoadmap?: (level: any, language: any) => Promise<string>;
-  loadRoadmaps?: (language: any) => Promise<void>;
-  loadUserRoadmaps?: (language: any) => Promise<any[]>;
-  selectRoadmap?: (roadmapId: string) => Promise<any[]>;
-  getNodeExercise?: (nodeId: string) => Promise<any>;
-  recordNodeCompletion?: (nodeId: string, accuracy: number) => Promise<any>;
-  incrementNodeCompletion?: (nodeId: string, accuracy: number) => Promise<any>;
+  initializeRoadmap?: (level: LanguageLevel, language: Language) => Promise<string>;
+  initializeUserRoadmap?: (level: LanguageLevel, language: Language) => Promise<string>;
+  loadRoadmaps?: (language: Language) => Promise<void>;
+  loadUserRoadmaps?: (language: Language) => Promise<RoadmapItem[]>;
+  selectRoadmap?: (roadmapId: string) => Promise<RoadmapNode[]>;
+  getNodeExercise?: (nodeId: string) => Promise<ExerciseContent | null>;
+  recordNodeCompletion?: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>;
+  incrementNodeCompletion?: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>;
   markNodeAsCompleted?: (nodeId: string) => Promise<void>;
+}
+
+// Check if we should use the new context implementation
+const useNewImplementation = () => {
+  try {
+    const context = useContext(NewRoadmapContext);
+    // If the new context is available and initialized, use it
+    if (context && context.roadmaps) {
+      return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
 };
 
 /**
@@ -44,22 +58,19 @@ export type UnifiedRoadmapContextType = {
  * It first tries to use the new implementation, and falls back to the old one.
  * Returns a unified context type that works with both implementations.
  */
-export function useRoadmap(): UnifiedRoadmapContextType {
-  // Try using the new context first
+export const useRoadmap = (): UnifiedRoadmapContextType => {
+  const oldContext = useContext(RoadmapContext);
   const newContext = useContext(NewRoadmapContext);
   
-  // Fall back to old context if needed
-  const oldContext = useContext(OldRoadmapContext);
+  // Use the new implementation if it's available
+  if (useNewImplementation()) {
+    return newContext as UnifiedRoadmapContextType;
+  }
   
-  // We prefer to use the new context, but fall back to the old one 
-  const context = newContext || oldContext;
-  
-  if (!context) {
+  // Fall back to the old implementation
+  if (!oldContext) {
     throw new Error('useRoadmap must be used within a RoadmapProvider');
   }
   
-  return context as UnifiedRoadmapContextType;
-}
-
-// Re-export from components/ui/use-toast.ts for easier imports
-export { toast } from '@/components/ui/use-toast';
+  return oldContext as unknown as UnifiedRoadmapContextType;
+};

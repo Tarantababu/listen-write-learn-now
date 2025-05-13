@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useRoadmap } from '../hooks/use-hook-imports';
 import { RoadmapNode, RoadmapItem } from '../types';
@@ -26,6 +27,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
   const roadmaps = roadmapContext?.roadmaps || [];
   const currentNodeId = roadmapContext?.currentNodeId;
   const selectRoadmap = roadmapContext?.selectRoadmap;
+  const completedNodes = roadmapContext?.completedNodes || [];
   
   // Make sure to check that currentRoadmap is not an array before accessing properties
   const currentRoadmap = roadmapContext?.currentRoadmap;
