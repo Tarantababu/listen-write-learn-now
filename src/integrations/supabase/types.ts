@@ -683,6 +683,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_roadmaps_by_language: {
+        Args: { requested_language: string }
+        Returns: {
+          id: string
+          name: string
+          level: string
+          description: string
+          created_at: string
+          updated_at: string
+          created_by: string
+        }[]
+      }
+      get_user_roadmaps_by_language: {
+        Args: { user_id_param: string; requested_language: string }
+        Returns: {
+          id: string
+          user_id: string
+          roadmap_id: string
+          language: string
+          current_node_id: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean

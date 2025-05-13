@@ -85,15 +85,6 @@ const RoadmapPage: React.FC = () => {
     }
   };
 
-  // Group user roadmaps by language
-  const roadmapsByLanguage = userRoadmaps.reduce<Record<string, UserRoadmap[]>>((acc, roadmap) => {
-    if (!acc[roadmap.language]) {
-      acc[roadmap.language] = [];
-    }
-    acc[roadmap.language].push(roadmap);
-    return acc;
-  }, {});
-
   // Get the selected language with proper capitalization
   const getCapitalizedLanguage = (lang: string) => {
     return lang.charAt(0).toUpperCase() + lang.slice(1);
@@ -142,6 +133,9 @@ const RoadmapPage: React.FC = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">
             Your Learning Paths
+            <span className="ml-2 text-base font-normal text-muted-foreground">
+              ({getCapitalizedLanguage(settings.selectedLanguage)})
+            </span>
           </h1>
           
           <div className="flex space-x-2">
@@ -170,74 +164,69 @@ const RoadmapPage: React.FC = () => {
             {userRoadmaps.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
-                  You don't have any roadmaps yet. Start a new one to begin your learning journey.
+                  You don't have any roadmaps for {getCapitalizedLanguage(settings.selectedLanguage)} yet. Start a new one to begin your learning journey.
                 </p>
               </div>
             ) : (
-              <>
-                {/* Display roadmaps grouped by language */}
-                {Object.entries(roadmapsByLanguage).map(([language, roadmaps]) => (
-                  <div key={language} className="space-y-4">
-                    <h2 className="text-xl font-semibold">{getCapitalizedLanguage(language)}</h2>
+              <div className="space-y-4">
+                <h2 className="text-xl font-semibold">{getCapitalizedLanguage(settings.selectedLanguage)}</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {userRoadmaps.map(roadmap => {
+                    const isActive = currentRoadmap?.id === roadmap.id;
+                    const progress = calculateProgress(roadmap.roadmapId);
+                    const roadmapName = getRoadmapName(roadmap.roadmapId);
+                    const roadmapLevel = getRoadmapLevel(roadmap.roadmapId);
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {roadmaps.map(roadmap => {
-                        const isActive = currentRoadmap?.id === roadmap.id;
-                        const progress = calculateProgress(roadmap.roadmapId);
-                        const roadmapName = getRoadmapName(roadmap.roadmapId);
-                        const roadmapLevel = getRoadmapLevel(roadmap.roadmapId);
-                        
-                        return (
-                          <Card 
-                            key={roadmap.id} 
-                            className={`cursor-pointer transition-all ${isActive ? 'border-primary shadow-md' : 'hover:border-primary/50'}`}
-                            onClick={() => handleRoadmapSelect(roadmap.id)}
-                          >
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center justify-between">
-                                <CardTitle className="text-lg">{roadmapName}</CardTitle>
-                                {isActive && (
-                                  <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
-                                    Current
-                                  </span>
-                                )}
-                              </div>
-                              <CardDescription className="flex items-center gap-2">
-                                {roadmapLevel && <LevelBadge level={roadmapLevel} />}
-                                <span>Started on {new Date(roadmap.createdAt).toLocaleDateString()}</span>
-                              </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="flex items-center space-x-2">
-                                <div className="bg-muted h-2 flex-1 rounded-full overflow-hidden">
-                                  <div 
-                                    className="bg-primary h-full" 
-                                    style={{ width: `${progress}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-sm font-medium">{progress}%</span>
-                              </div>
-                              
-                              <div className="mt-3 flex justify-end">
-                                <Button
-                                  variant={isActive ? "default" : "outline"} 
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleContinueLearning(roadmap.id);
-                                  }}
-                                >
-                                  {isActive ? 'Continue Learning' : 'View Roadmap'}
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </>
+                    return (
+                      <Card 
+                        key={roadmap.id} 
+                        className={`cursor-pointer transition-all ${isActive ? 'border-primary shadow-md' : 'hover:border-primary/50'}`}
+                        onClick={() => handleRoadmapSelect(roadmap.id)}
+                      >
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg">{roadmapName}</CardTitle>
+                            {isActive && (
+                              <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">
+                                Current
+                              </span>
+                            )}
+                          </div>
+                          <CardDescription className="flex items-center gap-2">
+                            {roadmapLevel && <LevelBadge level={roadmapLevel} />}
+                            <span>Started on {new Date(roadmap.createdAt).toLocaleDateString()}</span>
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex items-center space-x-2">
+                            <div className="bg-muted h-2 flex-1 rounded-full overflow-hidden">
+                              <div 
+                                className="bg-primary h-full" 
+                                style={{ width: `${progress}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm font-medium">{progress}%</span>
+                          </div>
+                          
+                          <div className="mt-3 flex justify-end">
+                            <Button
+                              variant={isActive ? "default" : "outline"} 
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleContinueLearning(roadmap.id);
+                              }}
+                            >
+                              {isActive ? 'Continue Learning' : 'View Roadmap'}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </TabsContent>
           

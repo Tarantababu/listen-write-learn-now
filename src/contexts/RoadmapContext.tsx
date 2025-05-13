@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -52,11 +51,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       setLoading(true);
       try {
-        // First get all roadmaps
+        // Use our custom function to get roadmaps filtered by the current language
         const { data: roadmapData, error: roadmapError } = await supabase
-          .from('roadmaps')
-          .select('*')
-          .order('level');
+          .rpc('get_roadmaps_by_language', {
+            requested_language: settings.selectedLanguage
+          });
 
         if (roadmapError) throw roadmapError;
 
@@ -100,18 +99,19 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
 
     fetchRoadmaps();
-  }, [user]);
+  }, [user, settings.selectedLanguage]); // Added selectedLanguage as dependency
 
   // Load all user roadmaps
   const loadUserRoadmaps = async () => {
     if (!user) return;
 
     try {
-      // Get all user's roadmaps
+      // Use our custom function to get user roadmaps filtered by the current language
       const { data: userRoadmapData, error: userRoadmapError } = await supabase
-        .from('user_roadmaps')
-        .select('*')
-        .eq('user_id', user.id);
+        .rpc('get_user_roadmaps_by_language', {
+          user_id_param: user.id,
+          requested_language: settings.selectedLanguage
+        });
 
       if (userRoadmapError) throw userRoadmapError;
 
@@ -136,13 +136,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       
       // If no roadmap is selected but user has roadmaps, select the first one
       if (!selectedRoadmap && formattedUserRoadmaps.length > 0) {
-        // Prioritize selecting a roadmap in the current selected language if available
-        const languageRoadmap = formattedUserRoadmaps.find(
-          rm => rm.language === settings.selectedLanguage
-        );
-        
-        const roadmapToSelect = languageRoadmap || formattedUserRoadmaps[0];
-        await loadUserRoadmap(roadmapToSelect.id);
+        await loadUserRoadmap(formattedUserRoadmaps[0].id);
       }
     } catch (error) {
       console.error("Error loading user roadmaps:", error);
