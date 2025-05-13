@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Exercise, Json } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 interface ReadingAnalysisProps {
@@ -18,7 +18,7 @@ interface ReadingAnalysisProps {
 interface AnalysisWord {
   word: string;
   definition: string;
-  exampleSentence: string; // Changed from etymologyInsight
+  exampleSentence: string;
 }
 
 interface AnalysisSentence {
@@ -34,7 +34,7 @@ interface AnalysisContent {
   sentences: AnalysisSentence[];
   commonPatterns: string[];
   summary: string;
-  englishTranslation: string; // Added field for English translation
+  englishTranslation: string;
 }
 
 const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
@@ -93,7 +93,8 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         // Generate a new analysis
         console.log('Generating new analysis for exercise:', exercise.id);
         
-        const response = await supabase.functions.invoke('generate-vocabulary-info', {
+        // Using the new dedicated reading analysis function
+        const response = await supabase.functions.invoke('generate-reading-analysis', {
           body: {
             text: exercise.text,
             language: exercise.language
@@ -175,7 +176,11 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
       } catch (error) {
         console.error('Error in reading analysis:', error);
         setError(error.message || 'Failed to generate reading analysis');
-        toast.error('Failed to generate reading analysis. Please try again.');
+        toast({
+          title: "Error",
+          description: "Failed to generate reading analysis. Please try again.",
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
@@ -253,7 +258,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
       // Re-run the useEffect
       const fetchOrGenerateAnalysis = async () => {
         try {
-          const response = await supabase.functions.invoke('generate-vocabulary-info', {
+          const response = await supabase.functions.invoke('generate-reading-analysis', {
             body: {
               text: exercise.text,
               language: exercise.language
@@ -275,7 +280,11 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         } catch (error) {
           console.error('Error in reading analysis retry:', error);
           setError(error.message || 'Failed to generate reading analysis');
-          toast.error('Failed to generate reading analysis. Please try again.');
+          toast({
+            title: "Error",
+            description: "Failed to generate reading analysis. Please try again.",
+            variant: "destructive"
+          });
           setIsLoading(false);
         }
       };

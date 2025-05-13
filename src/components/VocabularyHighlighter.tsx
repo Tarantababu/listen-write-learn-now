@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { Book, Loader2, Volume2 } from 'lucide-react';
 
 interface VocabularyHighlighterProps {
@@ -40,8 +40,12 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
   const generateVocabularyInfo = async (word: string, language: Language) => {
     setIsGeneratingInfo(true);
     try {
-      toast.info('Generating vocabulary information...');
+      toast({
+        title: "Generating Info",
+        description: "Generating vocabulary information..."
+      });
       
+      // Using the dedicated vocabulary generation function
       const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
         body: { text: word, language }
       });
@@ -67,7 +71,10 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
       }
 
       // After successfully getting definition and example, generate audio
-      toast.info('Generating audio for example sentence...');
+      toast({
+        title: "Generating Audio",
+        description: "Generating audio for example sentence..."
+      });
       setIsGeneratingAudio(true);
       
       const audioUrl = await generateExampleAudio(exampleSentence, language);
@@ -79,7 +86,11 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
       };
     } catch (error) {
       console.error('Error generating vocabulary info:', error);
-      toast.error('Failed to generate vocabulary information');
+      toast({
+        title: "Error",
+        description: "Failed to generate vocabulary information",
+        variant: "destructive"
+      });
       return null;
     } finally {
       setIsGeneratingInfo(false);
@@ -121,11 +132,18 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
         .from('audio')
         .getPublicUrl(fileName);
 
-      toast.success('Audio generated successfully');
+      toast({
+        title: "Success",
+        description: "Audio generated successfully"
+      });
       return publicUrl;
     } catch (error) {
       console.error('Error generating audio:', error);
-      toast.error('Failed to generate audio for example sentence');
+      toast({
+        title: "Error",
+        description: "Failed to generate audio for example sentence",
+        variant: "destructive"
+      });
       return undefined;
     } finally {
       setIsGeneratingAudio(false);
@@ -161,7 +179,11 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
       } else {
         audioElement.play().catch(error => {
           console.error('Error playing audio:', error);
-          toast.error('Failed to play audio');
+          toast({
+            title: "Error",
+            description: "Failed to play audio",
+            variant: "destructive"
+          });
         });
       }
     }
@@ -181,7 +203,10 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
         language: exercise.language
       });
       
-      toast.success('Word added to your vocabulary!');
+      toast({
+        title: "Success",
+        description: "Word added to your vocabulary!"
+      });
       
       // Clean up
       setIsDialogOpen(false);
@@ -190,7 +215,11 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
       setAudioElement(null);
     } catch (error) {
       console.error('Error saving vocabulary item:', error);
-      toast.error('Failed to add word to vocabulary');
+      toast({
+        title: "Error",
+        description: "Failed to add word to vocabulary",
+        variant: "destructive"
+      });
     } finally {
       setIsSaving(false);
     }
