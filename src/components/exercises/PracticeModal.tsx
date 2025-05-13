@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { AlertTriangle, BookOpen, Search, Headphones } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -122,7 +121,11 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
             // Free users are limited to 5 analyses
             if (profileData && profileData.reading_analyses_count >= 5) {
               setAnalysisAllowed(false);
-              toast.error('Free users are limited to 5 reading analyses. Upgrade to premium for unlimited analyses.');
+              toast({
+                title: "Free user limit reached",
+                description: "Free users are limited to 5 reading analyses. Upgrade to premium for unlimited analyses.",
+                variant: "destructive"
+              });
               // We still show the prompt, but the reading analysis option will be disabled
             }
           }
@@ -163,13 +166,18 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
       // Refresh exercise data when modal opens
       const latestExerciseData = exercises.find(ex => ex?.id === exercise?.id);
       setUpdatedExercise(latestExerciseData || exercise);
-      // If there's an existing analysis, we don't reset to prompt but we do need to reset showResults
-      setShowResults(false);
+      // We don't reset practiceStage or showResults here to preserve state during the session
     }
   }, [isOpen, exercise, exercises]);
 
   // Safe handling of modal open state change
   const handleOpenChange = (open: boolean) => {
+    // Only reset states when the modal is closed completely
+    if (!open) {
+      // We'll reset these states when the modal is closed, not during interactions
+      setShowResults(false);
+      // Don't reset practiceStage here, it will be set correctly when modal reopens
+    }
     onOpenChange(open);
   };
   
