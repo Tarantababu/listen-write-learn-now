@@ -75,6 +75,7 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
       
       // If no user roadmaps, return empty array
       if (!data || data.length === 0) {
+        console.log('No user roadmaps found for language:', language);
         return this.success([]);
       }
       
@@ -136,11 +137,14 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
         .eq('id', userRoadmapId)
         .maybeSingle();
         
-      if (userRoadmapError) throw userRoadmapError;
+      if (userRoadmapError) {
+        console.error(`Database error when fetching user roadmap: ${userRoadmapError.message}`);
+        throw userRoadmapError;
+      }
       
       if (!userRoadmap) {
-        console.error('User roadmap not found with id:', userRoadmapId);
-        return this.error(`User roadmap not found with id: ${userRoadmapId}`);
+        console.error(`User roadmap not found in database with ID: ${userRoadmapId}`);
+        return this.error(`User roadmap not found in database with ID: ${userRoadmapId}`);
       }
       
       console.log('Found user roadmap:', userRoadmap);
@@ -245,6 +249,7 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
       
       return this.success(formattedNodes);
     } catch (error) {
+      console.error(`Error in getRoadmapNodes for roadmap ID ${userRoadmapId}:`, error);
       return this.handleError(error);
     }
   }

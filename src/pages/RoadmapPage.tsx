@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
@@ -10,7 +9,7 @@ import { RoadmapNode } from '@/features/roadmap/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { ArrowRightIcon, LayoutDashboard, BookOpen } from 'lucide-react';
+import { ArrowRightIcon, LayoutDashboard, BookOpen, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,7 +21,8 @@ const RoadmapPage: React.FC = () => {
     currentRoadmap, 
     isLoading, 
     roadmaps, 
-    userRoadmaps, 
+    userRoadmaps,
+    loadUserRoadmaps,
     selectRoadmap,
     completedNodes,
     nodes,
@@ -34,6 +34,8 @@ const RoadmapPage: React.FC = () => {
   const [exerciseModalOpen, setExerciseModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("active");
   const [viewMode, setViewMode] = useState<'map' | 'dashboard'>('map');
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
   const navigate = useNavigate();
 
   // Set active tab based on whether we have user roadmaps or not
@@ -70,25 +72,84 @@ const RoadmapPage: React.FC = () => {
     });
   };
 
-  const handleRoadmapSelect = (roadmapId: string) => {
-    selectRoadmap(roadmapId);
-    setViewMode('map'); // Switch to map view when selecting a roadmap
+  const handleRoadmapSelect = async (roadmapId: string) => {
+    try {
+      setSelectionError(null);
+      setIsRetrying(false);
+      await selectRoadmap(roadmapId);
+      setViewMode('map'); // Switch to map view when selecting a roadmap
+    } catch (error) {
+      console.error('Error selecting roadmap:', error);
+      setSelectionError('Failed to load the selected roadmap. Please try again.');
+      
+      // After error, try to re-fetch user roadmaps
+      const loadedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
+      if (loadedRoadmaps.length > 0) {
+        // Try selecting the first available roadmap instead
+        try {
+          await selectRoadmap(loadedRoadmaps[0].id);
+          toast({
+            title: "Selected fallback roadmap",
+            description: "We encountered an issue with the selected roadmap and loaded another one instead."
+          });
+        } catch (secondError) {
+          console.error('Error selecting fallback roadmap:', secondError);
+        }
+      }
+    }
   };
 
-  const handleContinueLearning = (roadmapId: string, e: React.MouseEvent) => {
+  const handleRetry = async () => {
+    setIsRetrying(true);
+    try {
+      setSelectionError(null);
+      // Reload roadmaps first
+      await loadUserRoadmaps(settings.selectedLanguage);
+      
+      // If we have a current roadmap, try to reload it
+      if (currentRoadmap) {
+        await selectRoadmap(currentRoadmap.id);
+        toast({
+          title: "Roadmap loaded",
+          description: "Successfully reloaded your roadmap."
+        });
+      } else if (userRoadmaps.length > 0) {
+        // Otherwise, select the first available roadmap
+        await selectRoadmap(userRoadmaps[0].id);
+        toast({
+          title: "Roadmap loaded",
+          description: "Successfully loaded a roadmap."
+        });
+      }
+    } catch (error) {
+      console.error('Error retrying roadmap load:', error);
+      setSelectionError('Still having trouble loading the roadmap. Please try refreshing the page.');
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  const handleContinueLearning = async (roadmapId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // First select the roadmap
-    selectRoadmap(roadmapId);
-    
-    // Find the current node in this roadmap
-    const selectedRoadmap = userRoadmaps.find(r => r.id === roadmapId);
-    if (selectedRoadmap && selectedRoadmap.currentNodeId) {
-      const currentNode = nodes.find(node => node.id === selectedRoadmap.currentNodeId);
-      if (currentNode) {
-        setSelectedNode(currentNode);
-        setExerciseModalOpen(true);
+    try {
+      setSelectionError(null);
+      
+      // First select the roadmap
+      await selectRoadmap(roadmapId);
+      
+      // Find the current node in this roadmap
+      const selectedRoadmap = userRoadmaps.find(r => r.id === roadmapId);
+      if (selectedRoadmap && selectedRoadmap.currentNodeId) {
+        const currentNode = nodes.find(node => node.id === selectedRoadmap.currentNodeId);
+        if (currentNode) {
+          setSelectedNode(currentNode);
+          setExerciseModalOpen(true);
+        }
       }
+    } catch (error) {
+      console.error('Error continuing learning:', error);
+      setSelectionError('Failed to load the selected roadmap. Please try again.');
     }
   };
 
@@ -137,6 +198,35 @@ const RoadmapPage: React.FC = () => {
             </Button>
           </div>
         </motion.div>
+
+        {selectionError && (
+          <motion.div 
+            className="bg-destructive/15 border border-destructive rounded-md p-4 mb-2"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex justify-between items-center">
+              <p className="text-destructive font-medium">{selectionError}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRetry}
+                disabled={isRetrying}
+                className="ml-2 min-w-[100px]"
+              >
+                {isRetrying ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Retrying...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-1" /> Retry
+                  </>
+                )}
+              </Button>
+            </div>
+          </motion.div>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-4">

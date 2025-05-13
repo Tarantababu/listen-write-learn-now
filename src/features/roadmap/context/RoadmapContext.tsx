@@ -75,6 +75,91 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
   // Get user's selected language
   const { settings } = useUserSettingsContext();
   
+  // Constants for local storage
+  const LOCAL_STORAGE_KEY = 'roadmap_state';
+  
+  // Add functions to save and restore state from localStorage
+  const saveStateToLocalStorage = useCallback(() => {
+    if (userRoadmaps.length > 0) {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
+        userRoadmaps,
+        currentRoadmapId: currentRoadmap?.id,
+        lastUpdated: new Date().toISOString(),
+        language: settings.selectedLanguage
+      }));
+    }
+  }, [userRoadmaps, currentRoadmap, settings.selectedLanguage]);
+  
+  // Add function to restore state from local storage when needed
+  const restoreStateFromLocalStorage = useCallback(() => {
+    try {
+      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        
+        // Only use cached data if it's for the current language and not too old (1 hour max)
+        const lastUpdated = new Date(data.lastUpdated);
+        const isRecent = (new Date().getTime() - lastUpdated.getTime()) < (60 * 60 * 1000);
+        const isCorrectLanguage = data.language === settings.selectedLanguage;
+        
+        if (isRecent && isCorrectLanguage && data.userRoadmaps && data.userRoadmaps.length > 0) {
+          setUserRoadmaps(data.userRoadmaps);
+          
+          // If we had a current roadmap, try to restore it
+          if (data.currentRoadmapId) {
+            const savedRoadmap = data.userRoadmaps.find((r: RoadmapItem) => r.id === data.currentRoadmapId);
+            if (savedRoadmap) {
+              setCurrentRoadmap(savedRoadmap);
+            }
+          }
+          
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('Error restoring state from local storage:', error);
+      return false;
+    }
+  }, [settings.selectedLanguage]);
+
+  // Add validation effect when component mounts
+  useEffect(() => {
+    const validateData = async () => {
+      if (!settings.selectedLanguage) return;
+      
+      // Try to restore from local storage first
+      const restored = restoreStateFromLocalStorage();
+      
+      // If nothing was restored or what was restored is empty, load from API
+      if (!restored || userRoadmaps.length === 0) {
+        await loadUserRoadmaps(settings.selectedLanguage);
+      }
+      
+      // Validate that if we have a currentRoadmap, it's actually in userRoadmaps
+      if (currentRoadmap && !userRoadmaps.some(r => r.id === currentRoadmap.id)) {
+        console.warn('Current roadmap is not in user roadmaps list, resetting...');
+        setCurrentRoadmap(null);
+        
+        // If we have user roadmaps, select the first one
+        if (userRoadmaps.length > 0) {
+          try {
+            await selectRoadmap(userRoadmaps[0].id);
+          } catch (error) {
+            console.error('Error selecting first roadmap during validation:', error);
+          }
+        }
+      }
+    };
+    
+    validateData();
+  }, [settings.selectedLanguage]);
+  
+  // Add effect to save state when it changes
+  useEffect(() => {
+    saveStateToLocalStorage();
+  }, [userRoadmaps, currentRoadmap, saveStateToLocalStorage]);
+  
   // Load roadmaps on language change
   useEffect(() => {
     if (settings.selectedLanguage) {
@@ -110,18 +195,24 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     }
   }, []);
 
-  // Load user's roadmaps for the selected language
+  // Load user's roadmaps for the selected language with improved state synchronization
   const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
     setIsLoading(true);
     try {
       const result = await roadmapService.getUserRoadmaps(language);
       if (result.status === 'success' && result.data) {
         const userRoadmapsData = result.data;
+        
+        // Update state immediately so other functions have access to the latest data
         setUserRoadmaps(userRoadmapsData);
+        console.log('User roadmaps loaded:', userRoadmapsData);
         
         // If we have user roadmaps and none is currently selected, select the first one
         if (userRoadmapsData.length > 0 && !currentRoadmap) {
-          await selectRoadmap(userRoadmapsData[0].id);
+          // Don't await here to prevent blocking, but handle errors
+          selectRoadmap(userRoadmapsData[0].id).catch(err => {
+            console.error('Error auto-selecting first roadmap:', err);
+          });
         }
         
         return userRoadmapsData;
@@ -145,7 +236,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  }, [currentRoadmap]);
+  }, [currentRoadmap, selectRoadmap]);
 
   // Initialize a new roadmap for the user based on level
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language): Promise<string> => {
@@ -183,59 +274,84 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
   // Create an alias for initializeRoadmap for backward compatibility
   const initializeUserRoadmap = initializeRoadmap;
 
-  // Select a roadmap and load its nodes
+  // Select a roadmap and load its nodes with enhanced error handling and retry logic
   const selectRoadmap = useCallback(async (roadmapId: string): Promise<RoadmapNode[]> => {
     setIsLoading(true);
-    try {
-      console.log('Selecting roadmap with ID:', roadmapId);
-      console.log('Available user roadmaps:', userRoadmaps);
-      
-      // Find the roadmap in user roadmaps
-      const roadmap = userRoadmaps.find(r => r.id === roadmapId);
-      if (!roadmap) {
-        console.error('Roadmap not found with ID:', roadmapId);
-        console.error('Available roadmap IDs:', userRoadmaps.map(r => r.id));
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+    
+    const attemptSelection = async (): Promise<RoadmapNode[]> => {
+      try {
+        console.log('Selecting roadmap with ID:', roadmapId);
+        console.log('Available user roadmaps:', userRoadmaps);
         
-        // If the roadmap is not found, try to refresh the user roadmaps first
-        await loadUserRoadmaps(settings.selectedLanguage);
+        // Find the roadmap in user roadmaps
+        let roadmap = userRoadmaps.find(r => r.id === roadmapId);
         
-        // Try again after refreshing
-        const updatedRoadmap = userRoadmaps.find(r => r.id === roadmapId);
-        if (!updatedRoadmap) {
+        // If not found, try refreshing userRoadmaps first before failing
+        if (!roadmap && retryCount < MAX_RETRIES) {
+          console.log(`Roadmap ${roadmapId} not found. Attempting to refresh user roadmaps (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+          retryCount++;
+          
+          // Reload user roadmaps with the current language
+          const refreshedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
+          
+          // Check again after refresh
+          roadmap = refreshedRoadmaps.find(r => r.id === roadmapId);
+          
+          if (!roadmap) {
+            if (retryCount < MAX_RETRIES) {
+              // Wait a brief moment before retrying
+              await new Promise(resolve => setTimeout(resolve, 500));
+              return attemptSelection();
+            } else {
+              console.error('Roadmap not found with ID after multiple attempts:', roadmapId);
+              console.error('Available roadmap IDs:', refreshedRoadmaps.map(r => r.id));
+              throw new Error(`Roadmap not found after ${MAX_RETRIES} attempts`);
+            }
+          }
+        } else if (!roadmap) {
+          console.error('Roadmap not found with ID:', roadmapId);
+          console.error('Available roadmap IDs:', userRoadmaps.map(r => r.id));
           throw new Error('Roadmap not found');
         }
         
-        setCurrentRoadmap(updatedRoadmap);
-      } else {
+        // Set the current roadmap
         setCurrentRoadmap(roadmap);
-      }
-      
-      // Load the nodes for this roadmap
-      const result = await roadmapService.getRoadmapNodes(roadmapId);
-      if (result.status === 'success' && result.data) {
-        const nodesData = result.data;
-        setNodes(nodesData);
         
-        // Extract node progress information
-        const progressData = nodesData.map(node => ({
-          nodeId: node.id,
-          completionCount: node.progressCount || 0,
-          isCompleted: node.status === 'completed'
-        }));
-        setNodeProgress(progressData);
-        
-        return nodesData;
-      } else {
-        console.error('Error loading nodes:', result.error);
-        toast({
-          variant: "destructive",
-          title: "Failed to load roadmap details",
-          description: "There was an error loading the roadmap nodes."
-        });
-        throw new Error(result.error || 'Unknown error loading nodes');
+        // Load the nodes for this roadmap
+        const result = await roadmapService.getRoadmapNodes(roadmapId);
+        if (result.status === 'success' && result.data) {
+          const nodesData = result.data;
+          setNodes(nodesData);
+          
+          // Extract node progress information
+          const progressData = nodesData.map(node => ({
+            nodeId: node.id,
+            completionCount: node.progressCount || 0,
+            isCompleted: node.status === 'completed'
+          }));
+          setNodeProgress(progressData);
+          
+          return nodesData;
+        } else {
+          console.error('Error loading nodes:', result.error);
+          toast({
+            variant: "destructive",
+            title: "Failed to load roadmap details",
+            description: "There was an error loading the roadmap nodes."
+          });
+          throw new Error(result.error || 'Unknown error loading nodes');
+        }
+      } catch (error) {
+        console.error('Error selecting roadmap:', error);
+        throw error;
       }
+    };
+    
+    try {
+      return await attemptSelection();
     } catch (error) {
-      console.error('Error selecting roadmap:', error);
       toast({
         variant: "destructive",
         title: "Failed to load roadmap",
