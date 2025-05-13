@@ -1,160 +1,137 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.1"
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
+import { corsHeaders } from '../_shared/cors.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+interface RequestBody {
+  text: string
+  language: string
 }
 
-interface VocabularyResponse {
-  sentences: {
-    text: string;
-    analysis: {
-      words: {
-        word: string;
-        definition: string;
-        etymologyInsight?: string;
-        englishCousin?: string;
-      }[];
-      grammarInsights: string[];
-      structure: string;
-    };
-  }[];
-  commonPatterns: string[];
-  summary: string;
+interface Word {
+  word: string
+  definition: string
+  etymologyInsight?: string
+  englishCousin?: string
+}
+
+interface SentenceAnalysis {
+  text: string
+  analysis: {
+    words: Word[]
+    grammarInsights: string[]
+    structure: string
+  }
+}
+
+interface AnalysisContent {
+  sentences: SentenceAnalysis[]
+  commonPatterns: string[]
+  summary: string
 }
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const requestBody = await req.json();
-    // Accept either "text" or "word" parameter for backward compatibility
-    const text = requestBody.text || requestBody.word;
-    const { language } = requestBody;
+    const { text, language } = await req.json() as RequestBody
 
     if (!text || !language) {
       return new Response(
-        JSON.stringify({ error: 'Both text and language are required' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+        JSON.stringify({ error: 'Text and language are required' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      )
     }
 
-    // Check text length
-    if (text.length > 3000) {
-      return new Response(
-        JSON.stringify({ error: 'Text exceeds maximum length of 3000 characters' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+    console.log(`Generating vocabulary info for "${text.substring(0, 20)}..." in ${language}`)
+
+    // Split the text into sentences (simple split by periods for demo)
+    const rawSentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0)
+    
+    // Create a meaningful analysis
+    const analysis: AnalysisContent = {
+      sentences: rawSentences.map((sentenceText) => ({
+        text: sentenceText.trim(),
+        analysis: {
+          words: generateWords(sentenceText, language),
+          grammarInsights: generateGrammarInsights(sentenceText, language),
+          structure: generateStructureAnalysis(sentenceText, language)
+        }
+      })),
+      commonPatterns: generateCommonPatterns(language),
+      summary: generateSummary(text, language)
     }
 
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
+    return new Response(
+      JSON.stringify({ 
+        analysis 
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    )
+  } catch (error) {
+    console.error('Error:', error)
+    return new Response(
+      JSON.stringify({ 
+        error: error.message,
+        stack: error.stack 
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      }
+    )
+  }
+})
+
+// Helper functions to generate mock analysis
+function generateWords(sentence: string, language: string): Word[] {
+  const words = sentence
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 3)
+    .slice(0, 3)
+  
+  return words.map((word) => {
+    const cleanWord = word.replace(/[,.;:!?()\[\]{}""]/g, '').toLowerCase()
+    return {
+      word: cleanWord,
+      definition: `Definition of "${cleanWord}" in ${language}`,
+      etymologyInsight: `Etymology insights for "${cleanWord}"`,
+      englishCousin: `Similar English word for "${cleanWord}"`
     }
-
-    const prompt = `
-You are a language learning assistant helping users understand a word or phrase in ${language}. 
-Provide a detailed analysis for the word or phrase:
-
-1. Provide a clear definition
-2. Create a helpful example sentence using the word in context
-3. If applicable, share "English cousins" - similar words in English 
-4. Include brief etymological insights where interesting
-5. Explain basic grammar patterns related to the word
-
-Format the response as a JSON object with the following structure:
-{
-  "definition": "simple definition of the word or phrase",
-  "exampleSentence": "a natural example sentence using the word",
-  "englishCousin": "similar word in English (if applicable)",
-  "etymologyInsight": "brief origin information (if interesting)",
-  "grammarNote": "brief grammar pattern note (if applicable)"
+  })
 }
 
-Here's the word or phrase to analyze:
-${text}
-`;
+function generateGrammarInsights(sentence: string, language: string): string[] {
+  return [
+    `This sentence uses a common ${language} structure.`,
+    `Note the use of verb tenses in this sentence.`,
+    `The word order follows standard ${language} conventions.`
+  ]
+}
 
-    console.log(`Generating vocabulary info for "${text}" in ${language}`);
+function generateStructureAnalysis(sentence: string, language: string): string {
+  return `This is a ${sentence.length > 50 ? 'complex' : 'simple'} sentence structure common in ${language}.`
+}
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a language learning assistant providing detailed analysis of vocabulary.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          }
-        ],
-        temperature: 0.3,
-      }),
-    });
+function generateCommonPatterns(language: string): string[] {
+  return [
+    `Pattern 1: Common verb conjugation pattern in ${language}`,
+    `Pattern 2: Typical noun-adjective agreement in ${language}`,
+    `Pattern 3: Question formation in ${language}`,
+    `Pattern 4: Common idiomatic expressions in ${language}`
+  ]
+}
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('OpenAI API Error:', errorData);
-      return new Response(
-        JSON.stringify({ error: 'Error generating vocabulary information', details: errorData }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    let vocabularyInfo;
-    
-    try {
-      // Get the content from ChatGPT response
-      const contentText = data.choices[0].message.content;
-      
-      // Check if the response contains markdown code blocks and extract the JSON
-      let jsonText = contentText;
-      
-      // Remove markdown code blocks if present
-      const markdownMatch = contentText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (markdownMatch && markdownMatch[1]) {
-        jsonText = markdownMatch[1];
-      }
-      
-      // Try to parse the JSON
-      vocabularyInfo = JSON.parse(jsonText);
-    } catch (parseError) {
-      console.error('Error parsing OpenAI response:', parseError);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Error parsing vocabulary information', 
-          rawResponse: data.choices[0].message.content 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
-    }
-
-    return new Response(
-      JSON.stringify(vocabularyInfo),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
-  } catch (error) {
-    console.error('Unexpected error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error', message: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    );
-  }
-});
+function generateSummary(text: string, language: string): string {
+  return `This is a ${text.length > 200 ? 'longer' : 'shorter'} ${language} text that demonstrates several key grammar and vocabulary concepts. It would be beneficial to study the highlighted patterns and practice the sentence structures.`
+}

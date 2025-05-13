@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   const [hasExistingAnalysis, setHasExistingAnalysis] = useState<boolean>(false);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true);
+  const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false);
   const {
     settings
   } = useUserSettingsContext();
@@ -68,6 +70,9 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     const checkExistingAnalysis = async () => {
       if (!exercise || !user) return;
       try {
+        setLoadingAnalysisCheck(true);
+        console.log('Checking for existing analysis for exercise:', exercise.id, 'user:', user.id);
+        
         // Check if user has an existing reading analysis
         const {
           data: analysisData,
@@ -82,13 +87,17 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
           return;
         }
         
+        console.log('Analysis check result:', analysisData);
+        
         // Check if we got any results
         if (analysisData && analysisData.length > 0) {
+          console.log('Existing analysis found with ID:', analysisData[0].id);
           setHasExistingAnalysis(true);
           setAnalysisId(analysisData[0].id);
           // Skip prompt if user has already done reading analysis
           setPracticeStage(PracticeStage.DICTATION);
         } else {
+          console.log('No existing analysis found');
           setHasExistingAnalysis(false);
           setAnalysisId(null);
 
@@ -120,12 +129,15 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         }
       } catch (error) {
         console.error('Error in analysis check:', error);
+      } finally {
+        setLoadingAnalysisCheck(false);
       }
     };
     if (isOpen) {
       checkExistingAnalysis();
     }
   }, [exercise, user, isOpen, subscription.isSubscribed]);
+  
   const handleComplete = (accuracy: number) => {
     // Update progress and show results
     onComplete(accuracy);
@@ -165,12 +177,15 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
       onOpenChange(open);
     }
   };
+  
   const handleStartDictation = () => {
     setPracticeStage(PracticeStage.DICTATION);
   };
+  
   const handleStartReadingAnalysis = () => {
     setPracticeStage(PracticeStage.READING);
   };
+  
   const handleViewReadingAnalysis = () => {
     // If we're already in dictation mode, we need to switch to reading analysis
     if (practiceStage === PracticeStage.DICTATION) {
@@ -180,6 +195,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
 
   // If the exercise doesn't match the selected language, don't render
   if (!updatedExercise || updatedExercise.language !== settings.selectedLanguage) return null;
+  
   return <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl p-0 overflow-hidden max-h-[90vh]">
         <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
@@ -193,13 +209,16 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
                 {hasExistingAnalysis && <div className="mt-2 text-sm font-medium text-primary">
                     You have already completed a reading analysis for this exercise.
                   </div>}
+                {loadingAnalysisCheck && <div className="mt-2 text-sm font-medium">
+                    Checking for existing analysis...
+                  </div>}
               </DialogDescription>
             </DialogHeader>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               <Card className={`overflow-hidden ${hasExistingAnalysis ? 'border-primary/30 bg-primary/5 dark:bg-primary/10' : 'border-muted'} transition-colors`}>
                 <CardContent className="p-0">
-                  <Button onClick={handleStartReadingAnalysis} variant="ghost" disabled={!analysisAllowed} className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent">
+                  <Button onClick={handleStartReadingAnalysis} variant="ghost" disabled={!analysisAllowed || loadingAnalysisCheck} className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent">
                     <div className="flex flex-col items-center text-center space-y-3">
                       <div className="flex items-center justify-center bg-primary/10 w-12 h-12 rounded-full">
                         <Search className="h-6 w-6 text-primary" />
