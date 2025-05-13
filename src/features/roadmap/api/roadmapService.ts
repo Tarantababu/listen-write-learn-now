@@ -56,6 +56,7 @@ export const roadmapService = {
 
       return {
         id: roadmap.id,
+        roadmapId: roadmap.id, // Add the roadmapId property here
         name: roadmap.name,
         level: roadmap.level as LanguageLevel,
         description: roadmap.description,
@@ -142,6 +143,7 @@ export const roadmapService = {
 
       return {
         id: userRoadmap.id,
+        roadmapId: userRoadmap.roadmap_id, // Add the roadmapId property here
         name: roadmap.name,
         level: roadmap.level as LanguageLevel,
         description: roadmap.description,
