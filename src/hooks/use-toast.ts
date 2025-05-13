@@ -1,4 +1,3 @@
-
 import * as React from "react"
 
 import type {
@@ -7,13 +6,17 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 5
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 1000
 
-type ToasterToast = ToastProps & {
+export type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+}
+
+type ToasterType = {
+  toasts: ToasterToast[]
 }
 
 const actionTypes = {
@@ -22,13 +25,6 @@ const actionTypes = {
   DISMISS_TOAST: "DISMISS_TOAST",
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const
-
-let count = 0
-
-function genId() {
-  count = (count + 1) % Number.MAX_VALUE
-  return count.toString()
-}
 
 type ActionType = typeof actionTypes
 
@@ -39,24 +35,40 @@ type Action =
     }
   | {
       type: ActionType["UPDATE_TOAST"]
-      toast: Partial<ToasterToast>
+      toast: Partial<ToasterToast> & Pick<ToasterToast, "id">
     }
   | {
       type: ActionType["DISMISS_TOAST"]
-      toastId?: ToasterToast["id"]
+      toastId?: string
     }
   | {
       type: ActionType["REMOVE_TOAST"]
-      toastId?: ToasterToast["id"]
+      toastId?: string
     }
 
-interface State {
+type State = {
   toasts: ToasterToast[]
 }
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
-const reducer = (state: State, action: Action): State => {
+const addToRemoveQueue = (toastId: string) => {
+  if (toastTimeouts.has(toastId)) {
+    return
+  }
+
+  const timeout = setTimeout(() => {
+    toastTimeouts.delete(toastId)
+    dispatch({
+      type: "REMOVE_TOAST",
+      toastId,
+    })
+  }, TOAST_REMOVE_DELAY)
+
+  toastTimeouts.set(toastId, timeout)
+}
+
+export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST":
       return {
@@ -111,35 +123,38 @@ const reducer = (state: State, action: Action): State => {
   }
 }
 
-function addToRemoveQueue(toastId: string) {
-  if (toastTimeouts.has(toastId)) {
-    return
-  }
+const listeners = new Set<React.Dispatch<Action>>()
 
-  const timeout = setTimeout(() => {
-    toastTimeouts.delete(toastId)
-    dispatch({
-      type: "REMOVE_TOAST",
-      toastId: toastId,
-    })
-  }, TOAST_REMOVE_DELAY)
-
-  toastTimeouts.set(toastId, timeout)
-}
-
-type Toast = Omit<ToasterToast, "id">
+let memoryState: State = { toasts: [] }
 
 function dispatch(action: Action) {
-  if (listeners.size === 0) {
-    return
-  }
+  memoryState = reducer(memoryState, action)
   listeners.forEach((listener) => {
     listener(action)
   })
 }
 
-function toast({ ...props }: Toast) {
-  const id = genId()
+function useToaster() {
+  const [state, setState] = React.useState<State>(memoryState)
+
+  React.useEffect(() => {
+    listeners.add(setState)
+    return () => {
+      listeners.delete(setState)
+    }
+  }, [])
+
+  return {
+    ...state,
+    toast,
+    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+  }
+}
+
+function toast({
+  ...props
+}: Omit<ToasterToast, "id">) {
+  const id = props.id || String(Math.random())
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -161,41 +176,13 @@ function toast({ ...props }: Toast) {
   })
 
   return {
-    id: id,
+    id,
     dismiss,
     update,
   }
 }
 
-function useToast() {
-  // Fix 1: Use React.useReducer instead of useState to properly handle Action
-  const [state, dispatch] = React.useReducer(reducer, {
-    toasts: [],
-  })
-
-  React.useEffect(() => {
-    // Fix 2: Properly type the listener function to accept Action
-    listeners.add(dispatch)
-    return () => {
-      listeners.delete(dispatch)
-    }
-  }, [])
-
-  return {
-    ...state,
-    toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
-  }
-}
-
-// Fix 3: Correctly type the listeners set
-const listeners = new Set<React.Dispatch<Action>>()
-
-toast.dismiss = (toastId?: string) => {
-  dispatch({ type: "DISMISS_TOAST", toastId })
-}
-
-// Add variants
+// Additional helper functions for toast variants
 toast.success = (title: string, description?: string) => {
   return toast({ title, description, variant: "success" });
 };
@@ -204,7 +191,6 @@ toast.error = (title: string, description?: string) => {
   return toast({ title, description, variant: "destructive" });
 };
 
-// Fix 4: Change "warning" to "info" since that's what we have in our variant types
 toast.warning = (title: string, description?: string) => {
   return toast({ title, description, variant: "info" });
 };
@@ -213,4 +199,4 @@ toast.info = (title: string, description?: string) => {
   return toast({ title, description, variant: "info" });
 };
 
-export { useToast, toast };
+export { useToaster as useToast, toast }

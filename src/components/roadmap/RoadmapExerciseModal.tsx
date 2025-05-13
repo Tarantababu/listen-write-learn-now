@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { RoadmapNode, Exercise } from '@/types';
 import { 
@@ -15,7 +16,7 @@ import ReadingAnalysis from '@/components/ReadingAnalysis';
 import { Loader2, Star, CheckCircle, Search, Headphones, AlertTriangle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,6 +42,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
   const { getNodeExercise, markNodeAsCompleted } = useRoadmap();
   const { user } = useAuth();
   const { subscription } = useSubscription();
+  const { toast } = useToast();
   
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [loading, setLoading] = useState(false);
@@ -166,7 +168,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
     if (!isOpen) {
       hasInitializedRef.current = false;
     }
-  }, [exercise, user, isOpen, subscription.isSubscribed]);
+  }, [exercise, user, isOpen, subscription.isSubscribed, toast]);
 
   const handleStartPractice = () => {
     setPracticing(true);
@@ -237,6 +239,16 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
         variant: "destructive"
       });
     }
+  };
+
+  // Helper function to map exercise data to include completionCount for DictationPractice component
+  const mapExerciseWithCompletionCount = (exerciseData: Exercise | null): Exercise | null => {
+    if (!exerciseData) return null;
+    
+    return {
+      ...exerciseData,
+      completionCount
+    };
   };
 
   return (
@@ -356,7 +368,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
               ) : practiceStage === PracticeStage.DICTATION ? (
                 exercise && (
                   <DictationPractice 
-                    exercise={exercise} 
+                    exercise={mapExerciseWithCompletionCount(exercise)!} 
                     onComplete={handlePracticeComplete} 
                     showResults={showResults}
                     onTryAgain={handleTryAgain}
