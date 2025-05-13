@@ -3,6 +3,7 @@ import { Language, LanguageLevel } from '@/types';
 
 export interface RoadmapItem {
   id: string;
+  roadmapId: string; // Added roadmapId property
   name: string;
   level: LanguageLevel;
   description?: string;
