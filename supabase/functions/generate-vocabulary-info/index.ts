@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
 import { corsHeaders } from '../_shared/cors.ts'
@@ -164,7 +163,13 @@ function generateEnglishDefinition(word: string, language: string): string {
       'y': 'And; a conjunction used to connect words or groups of words.',
       'no': 'No/not; used to express negation, denial, or refusal.',
       'volvió': 'He/she returned; to come back to a place.',
-      'salió y no volvió': 'He/she left and did not return; indicates someone departed and failed to come back.'
+      'salió y no volvió': 'He/she left and did not return; indicates someone departed and failed to come back.',
+      'por': 'For/by/through; a preposition with multiple meanings including reason, duration, or exchange.',
+      'qué': 'What/why; interrogative pronoun or adverb used in questions.',
+      'por qué': 'Why; used to ask for the reason or purpose of something.',
+      'porque': 'Because; conjunction used to introduce a reason or explanation.',
+      'morales': 'Morals; principles of right and wrong behavior (or as a surname).',
+      'decidió': 'Decided; made a choice or came to a conclusion.'
     },
     'french': {
       'parler': 'To speak; to express thoughts through spoken language.',
@@ -275,7 +280,14 @@ function getTranslation(word: string, language: string): string {
       'salió': 'left/went out',
       'volvió': 'returned',
       'invita a la mujer': 'invites the woman',
-      'salió y no volvió': 'left and did not return'
+      'salió y no volvió': 'left and did not return',
+      'por': 'for/by/through',
+      'qué': 'what/why',
+      'por qué': 'why',
+      'porque': 'because',
+      'morales': 'morals (or a surname)',
+      'decidió': 'decided',
+      'morales decidió': 'Morales decided'
     },
     'french': {
       'parler': 'to speak',
@@ -304,7 +316,35 @@ function getTranslation(word: string, language: string): string {
   };
   
   const langDict = translations[language] || {};
-  return langDict[word] || `[translation not available for "${word}"]`;
+  
+  // First try an exact match
+  if (langDict[word]) {
+    return langDict[word];
+  }
+  
+  // If no exact match, try cleaning up the word further and checking again
+  const furtherCleanedWord = word.replace(/[.,;:!?()\[\]{}""]/g, '').trim();
+  if (langDict[furtherCleanedWord]) {
+    return langDict[furtherCleanedWord];
+  }
+  
+  // For Spanish phrases, try some common combinations that might not be in the dictionary
+  if (language === 'spanish') {
+    // Try to provide translations for common Spanish phrases by breaking them down
+    const words = word.split(/\s+/);
+    if (words.length > 1) {
+      const translations = words.map(w => {
+        const cleaned = w.replace(/[.,;:!?()\[\]{}""]/g, '').trim();
+        return langDict[cleaned] || cleaned;
+      });
+      
+      // Join the translations to form a meaningful phrase
+      return translations.join(' ');
+    }
+  }
+  
+  // If all else fails, provide a generic translation note
+  return word; // Just return the original word instead of saying "translation not available"
 }
 
 function generateExampleSentence(word: string, language: string): string {
@@ -402,7 +442,13 @@ function generateWordDefinition(word: string, language: string): string {
       'salgo': 'I go out; to leave a place (English definition)',
       'caminar': 'to walk; to move on foot (English definition)',
       'había': 'there was/had; imperfect form of "haber" (English definition)',
-      'pasado': 'past/passed; gone by in time (English definition)'
+      'pasado': 'past/passed; gone by in time (English definition)',
+      'por': 'for/by/through; preposition with multiple meanings (English definition)',
+      'qué': 'what/why; interrogative pronoun or adverb (English definition)',
+      'por qué': 'why; used to ask for a reason (English definition)',
+      'porque': 'because; conjunction introducing a reason (English definition)',
+      'morales': 'morals; principles of right and wrong (or a surname) (English definition)',
+      'decidió': 'decided; made a choice or determination (English definition)'
     },
     'french': {
       'je': 'I; first-person singular subject pronoun (English definition)',
@@ -460,7 +506,10 @@ function generateEnglishCousin(word: string, language: string): string {
       'salgo': 'sally (to rush out)',
       'caminar': 'perambulate',
       'había': 'habit (related to having)',
-      'pasado': 'passed'
+      'pasado': 'passed',
+      'por': 'per (as in per hour)',
+      'qué': 'query (related to questioning)',
+      'porque': 'purpose (related to reason)'
     },
     'french': {
       'livre': 'library',
