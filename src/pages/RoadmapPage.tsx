@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
-import RoadmapSelection from '@/components/roadmap/RoadmapSelection';
+import RoadmapSelection from '@/features/roadmap/components/RoadmapSelection';
 import RoadmapExerciseModal from '@/features/roadmap/components/RoadmapExerciseModal';
 import RoadmapItemCard from '@/features/roadmap/components/RoadmapItemCard';
 import RoadmapProgressDashboard from '@/features/roadmap/components/RoadmapProgressDashboard';

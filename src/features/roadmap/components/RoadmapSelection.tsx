@@ -22,7 +22,7 @@ import { LanguageLevel } from '@/types';
 import { Loader2, HelpCircle } from 'lucide-react';
 import LevelBadge from '@/components/LevelBadge';
 import LevelInfoTooltip from '@/components/LevelInfoTooltip';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 
 const RoadmapSelection: React.FC = () => {
@@ -36,6 +36,12 @@ const RoadmapSelection: React.FC = () => {
   const availableRoadmapsForLanguage = roadmaps.filter(roadmap => 
     roadmap.languages?.includes(settings.selectedLanguage)
   );
+  
+  console.log('RoadmapSelection (new) - Available roadmaps:', { 
+    language: settings.selectedLanguage,
+    roadmaps: roadmaps,
+    availableForLanguage: availableRoadmapsForLanguage,
+  });
 
   // Get existing roadmap levels for the current language
   const existingLevels = userRoadmaps
@@ -45,11 +51,18 @@ const RoadmapSelection: React.FC = () => {
       return roadmap?.level;
     })
     .filter(Boolean) as LanguageLevel[];
+    
+  console.log('RoadmapSelection (new) - Existing levels:', existingLevels);
 
   const handleInitializeRoadmap = async () => {
     setInitializing(true);
     try {
+      console.log(`Starting roadmap initialization for level ${selectedLevel} and language ${settings.selectedLanguage}`);
+      
       await initializeUserRoadmap(selectedLevel, settings.selectedLanguage);
+      
+      console.log('Roadmap initialization complete');
+      
       toast({
         title: "Roadmap Initialized",
         description: `Your ${selectedLevel} level roadmap for ${settings.selectedLanguage} has been created.`,
@@ -94,6 +107,7 @@ const RoadmapSelection: React.FC = () => {
   };
 
   const availableLevels = getAvailableLevels();
+  console.log('RoadmapSelection (new) - Available levels:', availableLevels);
 
   // Set default selected level to first available that isn't already selected
   useEffect(() => {
@@ -106,6 +120,15 @@ const RoadmapSelection: React.FC = () => {
       }
     }
   }, [availableLevels.join(','), existingLevels.join(',')]);
+
+  // Add debug for button disabled state
+  const buttonDisabled = initializing || !selectedLevel || isLevelAlreadySelected(selectedLevel);
+  console.log('RoadmapSelection (new) - Button disabled state:', {
+    initializing,
+    selectedLevel,
+    isAlreadySelected: selectedLevel ? isLevelAlreadySelected(selectedLevel) : false,
+    buttonDisabled
+  });
 
   if (isLoading) {
     return (
