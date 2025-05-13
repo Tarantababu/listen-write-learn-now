@@ -8,9 +8,10 @@ import DictationPractice from '@/components/DictationPractice';
 import { toast } from '@/components/ui/use-toast';
 import LearningOptionsMenu from './LearningOptionsMenu';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Loader2, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
+import ReadingAnalysis from '@/components/ReadingAnalysis';
 
 interface RoadmapExerciseModalProps {
   node: RoadmapNode | null;
@@ -36,6 +37,8 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
     markNodeAsCompleted,
     incrementNodeCompletion,
     nodeLoading,
+    nodeProgress,
+    completedNodes,
   } = useRoadmap();
 
   const [exercise, setExercise] = useState<ExerciseContent | null>(null);
@@ -46,6 +49,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
     isCompleted: boolean;
     nextNodeId?: string;
   } | null>(null);
+  const [existingAnalysisId, setExistingAnalysisId] = useState<string | null>(null);
 
   // Load exercise when modal is opened with a node
   useEffect(() => {
@@ -65,6 +69,13 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
       setLoading(true);
       const exerciseData = await getNodeExercise(nodeId);
       setExercise(exerciseData);
+      
+      // Check if there's an existing reading analysis for this exercise
+      if (exerciseData && exerciseData.readingAnalysisId) {
+        setExistingAnalysisId(exerciseData.readingAnalysisId);
+      } else {
+        setExistingAnalysisId(null);
+      }
     } catch (error) {
       console.error("Error loading exercise:", error);
       toast({
@@ -77,11 +88,26 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
     }
   };
 
+  // Get the node progress info for the current node
+  const getNodeProgressInfo = () => {
+    if (!node) return null;
+    return nodeProgress.find(np => np.nodeId === node.id);
+  };
+
+  const nodeProgressInfo = getNodeProgressInfo();
+  const completionCount = nodeProgressInfo?.completionCount || 0;
+  const isNodeCompleted = node ? completedNodes.includes(node.id) || nodeProgressInfo?.isCompleted : false;
+
   const handleStartReadingAnalysis = () => {
     setPracticeStage(PracticeStage.READING);
   };
 
   const handleStartDictation = () => {
+    setPracticeStage(PracticeStage.DICTATION);
+  };
+
+  const handleReadingAnalysisComplete = () => {
+    // Transition to dictation practice after reading analysis is completed
     setPracticeStage(PracticeStage.DICTATION);
   };
 
@@ -177,7 +203,9 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
           
           <p className="text-muted-foreground">
             {isPassing 
-              ? 'Great job! Your progress has been saved.' 
+              ? `Great job! ${completionCount + 1 >= 3 
+                   ? "You've completed this exercise!" 
+                   : `${3 - completionCount - 1} more successful ${3 - completionCount - 1 > 1 ? 'attempts' : 'attempt'} until completion.`}`
               : 'You need 95% or higher accuracy for the exercise to count toward completion.'}
           </p>
         </div>
@@ -199,6 +227,28 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
               <span>100%</span>
             </div>
           </div>
+        </div>
+        
+        {/* Progress tracking card */}
+        <div className="bg-muted/20 p-4 rounded-md border border-muted dark:border-muted/30 text-center">
+          <h4 className="font-medium mb-2">Exercise Progress</h4>
+          <div className="flex justify-center items-center gap-1 mb-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div 
+                key={i} 
+                className={`w-4 h-4 rounded-full ${
+                  i < (isPassing ? completionCount + 1 : completionCount)
+                    ? "bg-green-500" 
+                    : "bg-gray-200 dark:bg-gray-700"
+                }`}
+              />
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {isPassing
+              ? `${completionCount + 1}/3 successful completions${completionCount + 1 >= 3 ? " - Mastered!" : ""}`
+              : `${completionCount}/3 successful completions`}
+          </p>
         </div>
         
         {exerciseResult.isCompleted && (
@@ -233,6 +283,8 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
     return null;
   }
 
+  const hasReadingAnalysis = !!existingAnalysisId;
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-w-[95vw] p-0 overflow-hidden">
@@ -256,6 +308,28 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
               <DialogDescription className="text-base mt-2">
                 {node.description}
               </DialogDescription>
+              
+              {/* Progress indicator for node */}
+              {completionCount > 0 && (
+                <div className="flex items-center gap-3 mt-4">
+                  <span className="text-sm text-muted-foreground">Progress:</span>
+                  <div className="flex gap-1">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div 
+                        key={i} 
+                        className={`w-2 h-2 rounded-full ${
+                          i < completionCount 
+                            ? "bg-green-500" 
+                            : "bg-gray-200 dark:bg-gray-700"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {completionCount}/3 completions
+                  </span>
+                </div>
+              )}
             </DialogHeader>
             
             {practiceStage === PracticeStage.LEARNING_OPTIONS && (
@@ -263,21 +337,27 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
                 onStartReadingAnalysis={handleStartReadingAnalysis}
                 onStartDictation={handleStartDictation}
                 exerciseTitle={exercise?.title}
+                hasReadingAnalysis={hasReadingAnalysis}
               />
             )}
             
             {practiceStage === PracticeStage.READING && (
-              <div className="text-center py-6 px-6">
-                <div className="bg-muted/40 rounded-lg p-6">
-                  <p className="mb-4">Reading Analysis functionality is coming soon.</p>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    This feature will provide detailed vocabulary and grammar explanations to help you understand the text.
-                  </p>
-                  <Button onClick={handleStartDictation} className="mt-4">
-                    Proceed to Dictation
-                  </Button>
-                </div>
-              </div>
+              <ReadingAnalysis 
+                exercise={{
+                  id: `roadmap-${node.id}`,
+                  title: exercise?.title || node.title,
+                  text: exercise?.text || "",
+                  language: node.language || 'english',
+                  audioUrl: exercise?.audioUrl,
+                  tags: [],
+                  directoryId: null,
+                  createdAt: new Date(),
+                  completionCount: 0,
+                  isCompleted: false
+                }}
+                onComplete={handleReadingAnalysisComplete}
+                existingAnalysisId={existingAnalysisId || undefined}
+              />
             )}
             
             {practiceStage === PracticeStage.DICTATION && exercise && (
@@ -291,11 +371,13 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
                   tags: [],
                   directoryId: null,
                   createdAt: new Date(),
-                  completionCount: 0,
-                  isCompleted: false
+                  completionCount: completionCount, // Pass the current completion count
+                  isCompleted: isNodeCompleted
                 }}
                 onTryAgain={handleTryAgain}
                 onComplete={handlePracticeComplete}
+                hasReadingAnalysis={hasReadingAnalysis}
+                onViewReadingAnalysis={handleStartReadingAnalysis}
               />
             )}
             
