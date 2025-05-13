@@ -14,8 +14,17 @@ const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>('light');
-  const location = useLocation();
-  const isLandingPage = location.pathname === '/';
+  let isLandingPage = false;
+  
+  // Try to use location if we're in a router context
+  try {
+    const location = useLocation();
+    isLandingPage = location.pathname === '/';
+  } catch (error) {
+    // If useLocation fails, we're not in a router context
+    // This is fine for the initial render in main.tsx
+    isLandingPage = false;
+  }
 
   // Load theme from localStorage on initial mount
   useEffect(() => {
