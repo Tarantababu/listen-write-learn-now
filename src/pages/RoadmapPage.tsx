@@ -5,15 +5,17 @@ import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualiza
 import RoadmapSelection from '@/features/roadmap/components/RoadmapSelection';
 import RoadmapExerciseModal from '@/features/roadmap/components/RoadmapExerciseModal';
 import RoadmapItemCard from '@/features/roadmap/components/RoadmapItemCard';
+import RoadmapProgressDashboard from '@/features/roadmap/components/RoadmapProgressDashboard';
 import { RoadmapNode } from '@/features/roadmap/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { ArrowRightIcon } from 'lucide-react';
+import { ArrowRightIcon, LayoutDashboard, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const RoadmapPage: React.FC = () => {
   const { 
@@ -31,6 +33,7 @@ const RoadmapPage: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<RoadmapNode | null>(null);
   const [exerciseModalOpen, setExerciseModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("active");
+  const [viewMode, setViewMode] = useState<'map' | 'dashboard'>('map');
   const navigate = useNavigate();
 
   // Set active tab based on whether we have user roadmaps or not
@@ -61,13 +64,15 @@ const RoadmapPage: React.FC = () => {
 
   const handleExploreExercises = () => {
     navigate('/dashboard/exercises');
-    toast.info('You can find more exercises here', { 
-      description: 'Browse and practice additional exercises outside the roadmap'
+    toast({
+      title: "Exercises",
+      description: "You can find more exercises to practice here",
     });
   };
 
   const handleRoadmapSelect = (roadmapId: string) => {
     selectRoadmap(roadmapId);
+    setViewMode('map'); // Switch to map view when selecting a roadmap
   };
 
   const handleContinueLearning = (roadmapId: string, e: React.MouseEvent) => {
@@ -98,7 +103,7 @@ const RoadmapPage: React.FC = () => {
         <div className="flex justify-center items-center h-64">
           <div className="flex flex-col items-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-            <p className="text-muted-foreground">Loading roadmaps...</p>
+            <p className="text-muted-foreground">Loading your learning paths...</p>
           </div>
         </div>
       </div>
@@ -108,7 +113,12 @@ const RoadmapPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col space-y-6">
-        <div className="flex justify-between items-center">
+        <motion.div 
+          className="flex justify-between items-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
           <h1 className="text-2xl font-bold">
             Your Learning Paths
             <span className="ml-2 text-base font-normal text-muted-foreground">
@@ -126,7 +136,7 @@ const RoadmapPage: React.FC = () => {
               <ArrowRightIcon className="h-4 w-4 mr-1" /> Explore More Exercises
             </Button>
           </div>
-        </div>
+        </motion.div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-4">
@@ -146,21 +156,32 @@ const RoadmapPage: React.FC = () => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <motion.div 
+                className="space-y-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
                 <h2 className="text-xl font-semibold">{getCapitalizedLanguage(settings.selectedLanguage)}</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {userRoadmaps.map(roadmap => (
-                    <RoadmapItemCard
+                    <motion.div
                       key={roadmap.id}
-                      roadmap={roadmap}
-                      isActive={currentRoadmap?.id === roadmap.id}
-                      onCardClick={handleRoadmapSelect}
-                      onContinueClick={handleContinueLearning}
-                    />
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <RoadmapItemCard
+                        roadmap={roadmap}
+                        isActive={currentRoadmap?.id === roadmap.id}
+                        onCardClick={handleRoadmapSelect}
+                        onContinueClick={handleContinueLearning}
+                      />
+                    </motion.div>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             )}
           </TabsContent>
           
@@ -172,18 +193,48 @@ const RoadmapPage: React.FC = () => {
         </Tabs>
 
         {currentRoadmap && activeTab === 'active' && (
-          <>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
             <Card className="border rounded-lg">
               <CardHeader>
-                <CardTitle className="text-lg">
-                  {roadmaps.find(r => r.id === currentRoadmap.roadmapId)?.name || "Learning Path"} - {getCapitalizedLanguage(currentRoadmap.language)}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">
+                    {roadmaps.find(r => r.id === currentRoadmap.roadmapId)?.name || "Learning Path"} - {getCapitalizedLanguage(currentRoadmap.language)}
+                  </CardTitle>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setViewMode('map')}
+                      className={viewMode === 'map' ? 'bg-muted' : ''}
+                    >
+                      <BookOpen className="h-4 w-4 mr-2" /> 
+                      Map View
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setViewMode('dashboard')}
+                      className={viewMode === 'dashboard' ? 'bg-muted' : ''}
+                    >
+                      <LayoutDashboard className="h-4 w-4 mr-2" /> 
+                      Dashboard
+                    </Button>
+                  </div>
+                </div>
                 <CardDescription>
                   Follow this path to improve your {currentRoadmap.language} skills step by step
                 </CardDescription>
               </CardHeader>
               <CardContent className="pb-8 pt-2">
-                <RoadmapVisualization onNodeSelect={handleNodeSelect} />
+                {viewMode === 'map' ? (
+                  <RoadmapVisualization onNodeSelect={handleNodeSelect} />
+                ) : (
+                  <RoadmapProgressDashboard />
+                )}
               </CardContent>
             </Card>
             
@@ -203,7 +254,7 @@ const RoadmapPage: React.FC = () => {
               isOpen={exerciseModalOpen}
               onOpenChange={setExerciseModalOpen}
             />
-          </>
+          </motion.div>
         )}
       </div>
     </div>

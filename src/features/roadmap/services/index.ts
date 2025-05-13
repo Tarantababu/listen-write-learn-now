@@ -4,3 +4,4 @@ export * from './ProgressService';
 export * from './ExerciseService';
 export * from './UserService';
 export * from './BaseService';
+export * from './OfflineStorageService';
