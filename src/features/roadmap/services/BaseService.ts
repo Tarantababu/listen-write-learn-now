@@ -1,57 +1,42 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { ServiceResponse } from '../types/service-types';
 
-export class BaseService {
+export abstract class BaseService {
   protected supabase = supabase;
-  
-  /**
-   * Ensures the user is authenticated and returns user info
-   * @returns Object with userId and email if authenticated, null otherwise
-   */
-  protected async ensureAuthenticated() {
-    try {
-      const { data: { user } } = await this.supabase.auth.getUser();
-      if (!user) {
-        return null;
-      }
-      return {
-        userId: user.id,
-        email: user.email
-      };
-    } catch (error) {
-      console.error('Error checking authentication:', error);
+
+  protected async ensureAuthenticated(): Promise<{ userId: string } | null> {
+    const { data: sessionData } = await this.supabase.auth.getSession();
+    const session = sessionData.session;
+
+    if (!session) {
+      console.warn('User is not authenticated');
       return null;
     }
+
+    return { userId: session.user.id };
   }
-  
-  /**
-   * Create a standardized success response
-   */
-  protected success<T>(data: T): { data: T, error: null, status: 'success' } {
+
+  protected success<T>(data: T): ServiceResponse<T> {
     return {
       data,
       error: null,
       status: 'success'
     };
   }
-  
-  /**
-   * Create a standardized error response
-   */
-  protected error<T>(message: string): { data: null, error: string, status: 'error' } {
+
+  protected error<T>(message: string): ServiceResponse<T> {
+    console.error(`Service error: ${message}`);
     return {
       data: null,
       error: message,
       status: 'error'
     };
   }
-  
-  /**
-   * Handle errors consistently
-   */
-  protected handleError(error: any) {
+
+  protected handleError<T>(error: any): ServiceResponse<T> {
+    const errorMessage = error?.message || 'An unknown error occurred';
     console.error('Service error:', error);
-    const errorMessage = error?.message || 'An unexpected error occurred';
     return this.error(errorMessage);
   }
 }
