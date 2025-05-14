@@ -8,6 +8,7 @@ import { RoadmapNode } from '@/features/roadmap/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
+import { Language } from '@/types'; // Import the Language type
 
 const RoadmapPage: React.FC = () => {
   const [userRoadmaps, setUserRoadmaps] = useState<any[]>([]);
@@ -41,7 +42,8 @@ const RoadmapPage: React.FC = () => {
           return;
         }
         
-        const roadmaps = await roadmapService.getUserRoadmaps(userSettingsData.selected_language);
+        // Cast the selected_language string to the Language type
+        const roadmaps = await roadmapService.getUserRoadmaps(userSettingsData.selected_language as Language);
         setUserRoadmaps(roadmaps);
         
         // If user has no roadmaps, switch to new tab

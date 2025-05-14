@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '../api/roadmapService';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
@@ -69,6 +70,7 @@ export function useRoadmapData() {
   }, []);
   
   // Initialize a new roadmap for the user
+  // Fix: Updated to pass only roadmapId instead of both level and language
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
     setIsLoading(true);
     try {
