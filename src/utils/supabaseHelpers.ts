@@ -3,6 +3,19 @@
  * Type assertion helpers for Supabase queries
  */
 
+// Type alias for database ID
+type DbId = string;
+
+// For inserting data with proper typing
+export function asInsertObject<T>(obj: any): T {
+  return obj as unknown as T;
+}
+
+// For updating data with proper typing
+export function asUpdateObject<T>(obj: any): T {
+  return obj as unknown as T;
+}
+
 // For UUID parameters
 export function asUUID(id: string): any {
   return id;

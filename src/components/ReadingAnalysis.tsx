@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { asUUID, asString } from '@/utils/supabaseHelpers';
+import { asUUID, asInsertObject, asUpdateObject } from '@/utils/supabaseHelpers';
 
 interface ReadingAnalysisProps {
   exercise: Exercise;
@@ -60,7 +61,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             const { data, error } = await supabase
               .from('reading_analyses')
               .select('content')
-              .eq('id', asUUID(existingAnalysisId))
+              .eq('id', existingAnalysisId)
               .maybeSingle();
               
             if (error) {
@@ -122,13 +123,16 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
           try {
             const jsonContent = analysisContent as unknown as Json;
             
+            // Fix: Use proper type casting for the insert operation
+            const insertData = asInsertObject({
+              user_id: user.id,
+              exercise_id: exercise.id,
+              content: jsonContent
+            });
+            
             const { error: saveError, data: savedData } = await supabase
               .from('reading_analyses')
-              .insert({
-                user_id: asUUID(user.id),
-                exercise_id: asUUID(exercise.id),
-                content: jsonContent
-              })
+              .insert(insertData)
               .select('id')
               .single();
               
@@ -141,7 +145,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                 const { data: profileData, error: fetchError } = await supabase
                   .from('profiles')
                   .select('reading_analyses_count')
-                  .eq('id', asUUID(user.id))
+                  .eq('id', user.id)
                   .maybeSingle();
                   
                 if (fetchError) {
@@ -150,10 +154,15 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                   const currentCount = profileData.reading_analyses_count || 0;
                   const newCount = currentCount + 1;
                   
+                  // Fix: Use proper type casting for the update operation
+                  const updateData = asUpdateObject({
+                    reading_analyses_count: newCount
+                  });
+                  
                   const { error: updateError } = await supabase
                     .from('profiles')
-                    .update({ reading_analyses_count: newCount })
-                    .eq('id', asUUID(user.id));
+                    .update(updateData)
+                    .eq('id', user.id);
                     
                   if (updateError) {
                     console.error('Error updating analysis count:', updateError);

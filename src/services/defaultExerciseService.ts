@@ -3,6 +3,7 @@ import { Language, Exercise } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { mapExerciseFromDb } from './exerciseService';
+import { asUUID, asInsertObject, asUpdateObject } from '@/utils/supabaseHelpers';
 
 /**
  * Ensures that the audio storage bucket exists
@@ -45,16 +46,19 @@ export const createDefaultExercise = async (
   // First ensure the audio bucket exists
   await ensureAudioBucket();
 
+  // Fix: Use proper type casting for the insert operation
+  const insertData = asInsertObject({
+    title: exercise.title,
+    text: exercise.text,
+    language: exercise.language,
+    tags: exercise.tags || [],
+    audio_url: exercise.audioUrl,
+    created_by: userId
+  });
+  
   const { data, error } = await supabase
     .from('default_exercises')
-    .insert({
-      title: exercise.title,
-      text: exercise.text,
-      language: exercise.language,
-      tags: exercise.tags || [],
-      audio_url: exercise.audioUrl,
-      created_by: userId
-    })
+    .insert(insertData)
     .select('*')
     .single();
 
@@ -85,10 +89,13 @@ export const updateDefaultExercise = async (
   if (updates.tags !== undefined) updateData.tags = updates.tags;
   if (updates.audioUrl !== undefined) updateData.audio_url = updates.audioUrl;
   updateData.updated_at = new Date();
+  
+  // Fix: Use proper type casting for the update operation
+  const typedUpdateData = asUpdateObject(updateData);
 
   const { error } = await supabase
     .from('default_exercises')
-    .update(updateData)
+    .update(typedUpdateData)
     .eq('id', id);
 
   if (error) throw error;

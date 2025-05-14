@@ -19,7 +19,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { asUUID, asBoolean } from '@/utils/supabaseHelpers';
 
 interface AdminMessage {
   id: string;
@@ -50,30 +49,34 @@ export function AdminMessagesList({ onRefresh }: { onRefresh?: () => void }) {
       // Get user count and read count for each message
       const messagesWithStats = await Promise.all((data || []).map(async (message) => {
         // Only attempt to get stats if we have a message ID
-        if ('id' in message) {
+        if (message && typeof message === 'object' && 'id' in message) {
+          const messageId = message.id as string;
+          
           // Get total user count
           const { count: userCount, error: userCountError } = await supabase
             .from('user_messages')
             .select('*', { count: 'exact', head: true })
-            .eq('message_id', asUUID(message.id));
+            .eq('message_id', messageId);
           
           // Get read count
           const { count: readCount, error: readCountError } = await supabase
             .from('user_messages')
             .select('*', { count: 'exact', head: true })
-            .eq('message_id', asUUID(message.id))
-            .eq('is_read', asBoolean(true));
+            .eq('message_id', messageId)
+            .eq('is_read', true);
           
           return {
-            ...message,
+            ...message as any,
             user_count: userCount || 0,
             read_count: readCount || 0
-          };
+          } as AdminMessage;
         }
-        return message as AdminMessage;
+        
+        // If the message object doesn't have an ID, cast it to unknown then to AdminMessage
+        return message as unknown as AdminMessage;
       }));
       
-      return messagesWithStats;
+      return messagesWithStats as AdminMessage[];
     }
   });
 
@@ -82,7 +85,7 @@ export function AdminMessagesList({ onRefresh }: { onRefresh?: () => void }) {
       const { error } = await supabase
         .from('admin_messages')
         .update({ is_active: !message.is_active } as any)
-        .eq('id', message.id as unknown as DbId);
+        .eq('id', message.id);
       
       if (error) throw error;
       
@@ -117,7 +120,7 @@ export function AdminMessagesList({ onRefresh }: { onRefresh?: () => void }) {
       const { error } = await supabase
         .from('admin_messages')
         .delete()
-        .eq('id', selectedMessage.id as unknown as DbId);
+        .eq('id', selectedMessage.id);
       
       if (error) throw error;
       

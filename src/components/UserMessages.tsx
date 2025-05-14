@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { asUUID, asBoolean } from '@/utils/supabaseHelpers';
+import { asUUID, asBoolean, asUpdateObject } from '@/utils/supabaseHelpers';
 
 interface UserMessage {
   id: string;
@@ -49,7 +49,7 @@ export function UserMessages() {
             created_at
           )
         `)
-        .eq('user_id', asUUID(user.id))
+        .eq('user_id', user.id)
         .order('is_read', { ascending: true })
         .order('created_at', { foreignTable: 'message', ascending: false });
         
@@ -65,13 +65,16 @@ export function UserMessages() {
 
   const markAsRead = useMutation({
     mutationFn: async (messageId: string) => {
+      // Fix: Use proper type casting for the update operation
+      const updateData = asUpdateObject({
+        is_read: true, 
+        updated_at: new Date().toISOString() 
+      });
+      
       const { error } = await supabase
         .from('user_messages')
-        .update({ 
-          is_read: true, 
-          updated_at: new Date().toISOString() 
-        })
-        .eq('id', asUUID(messageId));
+        .update(updateData)
+        .eq('id', messageId);
         
       if (error) throw error;
     },
@@ -85,14 +88,17 @@ export function UserMessages() {
 
   const archiveMessage = useMutation({
     mutationFn: async (messageId: string) => {
+      // Fix: Use proper type casting for the update operation
+      const updateData = asUpdateObject({
+        is_archived: true, 
+        is_read: true, 
+        updated_at: new Date().toISOString() 
+      });
+      
       const { error } = await supabase
         .from('user_messages')
-        .update({ 
-          is_archived: true, 
-          is_read: true, 
-          updated_at: new Date().toISOString() 
-        })
-        .eq('id', asUUID(messageId));
+        .update(updateData)
+        .eq('id', messageId);
         
       if (error) throw error;
     },
@@ -109,14 +115,17 @@ export function UserMessages() {
     if (!user || unreadMessages.length === 0) return;
     
     try {
+      // Fix: Use proper type casting for the update operation
+      const updateData = asUpdateObject({
+        is_read: true, 
+        updated_at: new Date().toISOString() 
+      });
+      
       const { error } = await supabase
         .from('user_messages')
-        .update({ 
-          is_read: true, 
-          updated_at: new Date().toISOString() 
-        })
-        .eq('user_id', asUUID(user.id))
-        .eq('is_read', asBoolean(false));
+        .update(updateData)
+        .eq('user_id', user.id)
+        .eq('is_read', false);
         
       if (error) throw error;
       

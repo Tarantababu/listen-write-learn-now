@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCcw } from 'lucide-react';
@@ -20,7 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { deleteAssociatedCompletions } from '@/services/exerciseService';
 import { useLocalExercises } from '@/hooks/useLocalExercises';
-import { asUUID, asString, asBoolean } from '@/utils/supabaseHelpers';
+import { asUUID, asString, asUpdateObject } from '@/utils/supabaseHelpers';
 
 interface ResetLanguageProgressProps {
   className?: string;
@@ -59,22 +58,25 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
         const { data: languageExercises, error: fetchError } = await supabase
           .from('exercises')
           .select('id')
-          .eq('user_id', asUUID(user.id))
-          .eq('language', asString(currentLanguage));
+          .eq('user_id', user.id)
+          .eq('language', currentLanguage);
           
         if (fetchError) throw fetchError;
         
         if (languageExercises && languageExercises.length > 0) {
           const exerciseIds = languageExercises.map(ex => 'id' in ex ? ex.id : '');
           
+          // Fix: Use proper type casting for the update operation
+          const updateData = asUpdateObject({
+            completion_count: 0, 
+            is_completed: false
+          });
+          
           const { error: exerciseError } = await supabase
             .from('exercises')
-            .update({ 
-              completion_count: 0, 
-              is_completed: false 
-            })
-            .eq('user_id', asUUID(user.id))
-            .eq('language', asString(currentLanguage));
+            .update(updateData)
+            .eq('user_id', user.id)
+            .eq('language', currentLanguage);
             
           if (exerciseError) throw exerciseError;
           

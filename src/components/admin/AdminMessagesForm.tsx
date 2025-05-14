@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { asUUID } from '@/utils/supabaseHelpers';
+import { asInsertObject } from '@/utils/supabaseHelpers';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -38,14 +37,17 @@ export function AdminMessagesForm({ onMessageAdded }: { onMessageAdded?: () => v
     
     setIsSubmitting(true);
     try {
+      // Fix: Use proper type casting for the insert operation
+      const insertData = asInsertObject({
+        title: values.title,
+        content: values.content,
+        created_by: user.id
+      });
+      
       // Create a new message
       const { data, error } = await supabase
         .from('admin_messages')
-        .insert({
-          title: values.title,
-          content: values.content,
-          created_by: asUUID(user.id)
-        })
+        .insert(insertData)
         .select('id')
         .single();
       
