@@ -37,7 +37,7 @@ export function UserMessages() {
       if (!user) return [];
       
       // Cast user.id to satisfy TypeScript
-      const userId = user.id as any;
+      const userId = user.id as unknown as DbId;
       const { data, error } = await supabase
         .from('user_messages')
         .select(`
@@ -56,7 +56,8 @@ export function UserMessages() {
         .order('created_at', { foreignTable: 'message', ascending: false });
         
       if (error) throw error;
-      return data as UserMessage[];
+      // Convert the Supabase response to the expected UserMessage format
+      return (data as unknown as UserMessage[]) || [];
     },
     enabled: !!user
   });
@@ -69,8 +70,11 @@ export function UserMessages() {
     mutationFn: async (messageId: string) => {
       const { error } = await supabase
         .from('user_messages')
-        .update({ is_read: true, updated_at: new Date().toISOString() })
-        .eq('id', messageId as any);
+        .update({ 
+          is_read: true, 
+          updated_at: new Date().toISOString() 
+        } as any)
+        .eq('id', messageId as unknown as DbId);
         
       if (error) throw error;
     },
@@ -90,8 +94,8 @@ export function UserMessages() {
           is_archived: true, 
           is_read: true, 
           updated_at: new Date().toISOString() 
-        })
-        .eq('id', messageId as any);
+        } as any)
+        .eq('id', messageId as unknown as DbId);
         
       if (error) throw error;
     },
@@ -108,10 +112,13 @@ export function UserMessages() {
     if (!user || unreadMessages.length === 0) return;
     
     try {
-      const userId = user.id as any;
+      const userId = user.id as unknown as DbId;
       const { error } = await supabase
         .from('user_messages')
-        .update({ is_read: true, updated_at: new Date().toISOString() })
+        .update({ 
+          is_read: true, 
+          updated_at: new Date().toISOString() 
+        } as any)
         .eq('user_id', userId)
         .eq('is_read', false);
         

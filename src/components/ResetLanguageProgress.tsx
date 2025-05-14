@@ -62,8 +62,8 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
         const { data: languageExercises, error: fetchError } = await supabase
           .from('exercises')
           .select('id')
-          .eq('user_id', userId as any)
-          .eq('language', currentLanguage as any);
+          .eq('user_id', userId as unknown as DbId)
+          .eq('language', currentLanguage as unknown as string);
           
         if (fetchError) throw fetchError;
         
@@ -77,8 +77,8 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
               completion_count: 0, 
               is_completed: false 
             } as any)
-            .eq('user_id', userId as any)
-            .eq('language', currentLanguage as any);
+            .eq('user_id', userId as unknown as DbId)
+            .eq('language', currentLanguage as unknown as string);
             
           if (exerciseError) throw exerciseError;
           

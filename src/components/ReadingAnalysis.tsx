@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -57,11 +56,11 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         // If we have an existing analysis ID, fetch it from the database
         if (existingAnalysisId) {
           try {
-            // Cast the existingAnalysisId to UUID type for Supabase
+            // Cast the existingAnalysisId to proper type for Supabase
             const { data, error } = await supabase
               .from('reading_analyses')
               .select('content')
-              .eq('id', existingAnalysisId as unknown as string)
+              .eq('id', existingAnalysisId as unknown as DbId)
               .maybeSingle();
               
             if (error) {
@@ -131,14 +130,14 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             // Explicitly cast types when saving to database to satisfy TypeScript
             const jsonContent = analysisContent as unknown as Json;
             
-            // When saving to database, explicitly type the insert data
+            // When saving to database, properly type cast the insert data
             const { error: saveError, data: savedData } = await supabase
               .from('reading_analyses')
               .insert({
-                user_id: user.id,
-                exercise_id: exercise.id,
+                user_id: user.id as unknown as DbId,
+                exercise_id: exercise.id as unknown as DbId,
                 content: jsonContent
-              })
+              } as any)
               .select('id')
               .single();
               
@@ -153,20 +152,21 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                 const { data: profileData, error: fetchError } = await supabase
                   .from('profiles')
                   .select('reading_analyses_count')
-                  .eq('id', user.id as unknown as string)
+                  .eq('id', user.id as unknown as DbId)
                   .maybeSingle();
                   
                 if (fetchError) {
                   console.error('Error fetching profile:', fetchError);
                 } else if (profileData) {
-                  const currentCount = profileData.reading_analyses_count || 0;
+                  // Check if data exists and has reading_analyses_count
+                  const currentCount = profileData?.reading_analyses_count || 0;
                   const newCount = currentCount + 1;
                   
                   // Properly type the update data
                   const { error: updateError } = await supabase
                     .from('profiles')
                     .update({ reading_analyses_count: newCount } as any)
-                    .eq('id', user.id as unknown as string);
+                    .eq('id', user.id as unknown as DbId);
                     
                   if (updateError) {
                     console.error('Error updating analysis count:', updateError);
