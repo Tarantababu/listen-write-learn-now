@@ -132,7 +132,42 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     }
   }, [settings.selectedLanguage]);
 
-  // Select a roadmap - moved up before it's referenced by other functions
+  // IMPORTANT: Define all functions in order of dependency
+  // 1. First define loadRoadmaps which doesn't depend on other functions
+  const loadRoadmaps = useCallback(async (language: Language) => {
+    if (isLoading || fetchError) return;
+    
+    setIsLoading(true);
+    try {
+      console.log('Loading roadmaps for language:', language);
+      const result = await roadmapService.getRoadmapsByLanguage(language);
+      if (result.status === 'success' && result.data) {
+        setRoadmaps(result.data);
+        console.log('Roadmaps loaded:', result.data.length);
+      } else {
+        console.error('Error loading roadmaps:', result.error);
+        setFetchError(true);
+        toast({
+          variant: "destructive",
+          title: "Failed to load roadmaps",
+          description: "There was an error loading available roadmaps."
+        });
+      }
+    } catch (error) {
+      console.error('Error loading roadmaps:', error);
+      setFetchError(true);
+      toast({
+        variant: "destructive",
+        title: "Failed to load roadmaps",
+        description: "There was an error loading available roadmaps."
+      });
+    } finally {
+      setIsLoading(false);
+      setDataFetched(true);
+    }
+  }, [fetchError]);
+
+  // 2. Define selectRoadmap before it's referenced by loadUserRoadmaps
   const selectRoadmap = useCallback(async (roadmapId: string): Promise<RoadmapNode[]> => {
     if (isLoading || fetchError) return [];
     
@@ -223,43 +258,9 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  }, [userRoadmaps, settings.selectedLanguage, loadUserRoadmaps, fetchError]);
+  }, [userRoadmaps, settings.selectedLanguage, fetchError]);
 
-  // Load roadmaps
-  const loadRoadmaps = useCallback(async (language: Language) => {
-    if (isLoading || fetchError) return;
-    
-    setIsLoading(true);
-    try {
-      console.log('Loading roadmaps for language:', language);
-      const result = await roadmapService.getRoadmapsByLanguage(language);
-      if (result.status === 'success' && result.data) {
-        setRoadmaps(result.data);
-        console.log('Roadmaps loaded:', result.data.length);
-      } else {
-        console.error('Error loading roadmaps:', result.error);
-        setFetchError(true);
-        toast({
-          variant: "destructive",
-          title: "Failed to load roadmaps",
-          description: "There was an error loading available roadmaps."
-        });
-      }
-    } catch (error) {
-      console.error('Error loading roadmaps:', error);
-      setFetchError(true);
-      toast({
-        variant: "destructive",
-        title: "Failed to load roadmaps",
-        description: "There was an error loading available roadmaps."
-      });
-    } finally {
-      setIsLoading(false);
-      setDataFetched(true);
-    }
-  }, [fetchError]);
-
-  // Load user roadmaps
+  // 3. Now define loadUserRoadmaps which uses selectRoadmap 
   const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
     if (isLoading || fetchError) return [];
     
@@ -306,9 +307,9 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       setIsLoading(false);
       setDataFetched(true);
     }
-  }, [currentRoadmap, selectRoadmap, fetchError]);
+  }, [currentRoadmap, selectRoadmap, fetchError, isLoading]);
 
-  // Initialize a new roadmap
+  // 4. Define initializeRoadmap which uses loadUserRoadmaps
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language): Promise<string> => {
     if (isLoading || fetchError) return '';
     
@@ -350,7 +351,9 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  }, [loadUserRoadmaps, fetchError]);
+  }, [loadUserRoadmaps, fetchError, isLoading]);
+
+  // 5. Other independent functions
 
   // Get exercise content for a node
   const getNodeExercise = useCallback(async (nodeId: string): Promise<ExerciseContent | null> => {
