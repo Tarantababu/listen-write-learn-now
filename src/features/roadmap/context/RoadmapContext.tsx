@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { roadmapService } from '../services/RoadmapService';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
@@ -502,7 +501,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
   );
 };
 
-// Custom hook to use the roadmap context
+// Export the custom hook to use the roadmap context
 export const useRoadmap = () => {
   const context = useContext(RoadmapContext);
   if (context === undefined) {
