@@ -6,6 +6,7 @@ import { Language, LanguageLevel } from '@/types';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { toast } from '@/components/ui/use-toast';
 import { exerciseService } from '../services/ExerciseService';
+import { supabase } from '@/integrations/supabase/client';
 
 // Define the context type
 interface RoadmapContextType {
@@ -78,8 +79,6 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
   
   // Constants for local storage
   const LOCAL_STORAGE_KEY = 'roadmap_state';
-  
-  // Define all functions first to avoid reference issues
   
   // Save state to local storage
   const saveStateToLocalStorage = useCallback(() => {
@@ -372,11 +371,17 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         throw new Error('No current roadmap selected');
       }
       
-      // Call the supabase function directly since the service method may not exist
-      const { data, error } = await exerciseService.supabase
+      // Get current user from Supabase auth
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('No authenticated user found');
+      }
+      
+      // Call the Supabase RPC function directly
+      const { data, error } = await supabase
         .rpc('increment_node_completion', {
           node_id_param: nodeId, 
-          user_id_param: (await exerciseService.getCurrentUser()).userId,
+          user_id_param: user.id,
           language_param: currentRoadmap.language,
           roadmap_id_param: currentRoadmap.roadmapId
         });
@@ -387,10 +392,10 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       }
       
       // Fetch the updated node progress
-      const { data: progressData, error: progressError } = await exerciseService.supabase
+      const { data: progressData, error: progressError } = await supabase
         .from('roadmap_nodes_progress')
         .select('*')
-        .eq('user_id', (await exerciseService.getCurrentUser()).userId)
+        .eq('user_id', user.id)
         .eq('node_id', nodeId)
         .single();
       
@@ -432,14 +437,17 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         throw new Error('No current roadmap selected');
       }
       
-      // Use supabase directly since the service method doesn't exist
-      const auth = await exerciseService.getCurrentUser();
+      // Get current user from Supabase auth
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('No authenticated user found');
+      }
       
       // Check if already completed
-      const { data: existingProgress, error: queryError } = await exerciseService.supabase
+      const { data: existingProgress, error: queryError } = await supabase
         .from('roadmap_progress')
         .select('id, completed')
-        .eq('user_id', auth.userId)
+        .eq('user_id', user.id)
         .eq('roadmap_id', currentRoadmap.roadmapId)
         .eq('node_id', nodeId)
         .single();
@@ -456,7 +464,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       // Insert or update progress record
       if (existingProgress) {
         // Update existing record
-        await exerciseService.supabase
+        await supabase
           .from('roadmap_progress')
           .update({
             completed: true,
@@ -465,10 +473,10 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
           .eq('id', existingProgress.id);
       } else {
         // Create new record
-        await exerciseService.supabase
+        await supabase
           .from('roadmap_progress')
           .insert({
-            user_id: auth.userId,
+            user_id: user.id,
             roadmap_id: currentRoadmap.roadmapId,
             node_id: nodeId,
             completed: true,
@@ -477,10 +485,10 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       }
       
       // Update node progress record if it exists
-      await exerciseService.supabase
+      await supabase
         .from('roadmap_nodes_progress')
         .upsert({
-          user_id: auth.userId,
+          user_id: user.id,
           roadmap_id: currentRoadmap.roadmapId,
           node_id: nodeId,
           language: currentRoadmap.language,
