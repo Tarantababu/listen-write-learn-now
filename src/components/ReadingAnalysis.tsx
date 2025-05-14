@@ -57,10 +57,11 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         // If we have an existing analysis ID, fetch it from the database
         if (existingAnalysisId) {
           try {
+            // Cast the existingAnalysisId to UUID type for Supabase
             const { data, error } = await supabase
               .from('reading_analyses')
               .select('content')
-              .eq('id', existingAnalysisId)
+              .eq('id', existingAnalysisId as unknown as string)
               .maybeSingle();
               
             if (error) {
@@ -127,14 +128,16 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         // Save the analysis to the database
         if (user) {
           try {
-            // When saving to database, explicitly cast the analysisContent to unknown then Json
-            // to satisfy TypeScript's type checking for the Supabase client
+            // Explicitly cast types when saving to database to satisfy TypeScript
+            const jsonContent = analysisContent as unknown as Json;
+            
+            // When saving to database, explicitly type the insert data
             const { error: saveError, data: savedData } = await supabase
               .from('reading_analyses')
               .insert({
                 user_id: user.id,
                 exercise_id: exercise.id,
-                content: analysisContent as unknown as Json
+                content: jsonContent
               })
               .select('id')
               .single();
@@ -142,30 +145,35 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             if (saveError) {
               console.error('Error saving analysis:', saveError);
               // Continue even if saving fails
-            } else {
+            } else if (savedData) {
               console.log('Analysis saved with ID:', savedData.id);
               
               // Increment the reading_analyses_count for free users using a direct update
-              const { data: profileData, error: fetchError } = await supabase
-                .from('profiles')
-                .select('reading_analyses_count')
-                .eq('id', user.id)
-                .maybeSingle();
-                
-              if (fetchError) {
-                console.error('Error fetching profile:', fetchError);
-              } else if (profileData) {
-                const currentCount = profileData.reading_analyses_count || 0;
-                const newCount = currentCount + 1;
-                
-                const { error: updateError } = await supabase
+              try {
+                const { data: profileData, error: fetchError } = await supabase
                   .from('profiles')
-                  .update({ reading_analyses_count: newCount })
-                  .eq('id', user.id);
+                  .select('reading_analyses_count')
+                  .eq('id', user.id as unknown as string)
+                  .maybeSingle();
                   
-                if (updateError) {
-                  console.error('Error updating analysis count:', updateError);
+                if (fetchError) {
+                  console.error('Error fetching profile:', fetchError);
+                } else if (profileData) {
+                  const currentCount = profileData.reading_analyses_count || 0;
+                  const newCount = currentCount + 1;
+                  
+                  // Properly type the update data
+                  const { error: updateError } = await supabase
+                    .from('profiles')
+                    .update({ reading_analyses_count: newCount } as any)
+                    .eq('id', user.id as unknown as string);
+                    
+                  if (updateError) {
+                    console.error('Error updating analysis count:', updateError);
+                  }
                 }
+              } catch (error) {
+                console.error('Error updating profile counts:', error);
               }
             }
           } catch (error) {
@@ -173,7 +181,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             // Continue even if saving fails - user can still see the analysis
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error in reading analysis:', error);
         setError(error.message || 'Failed to generate reading analysis');
         toast({

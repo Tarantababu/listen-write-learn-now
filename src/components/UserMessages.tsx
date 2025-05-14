@@ -36,6 +36,8 @@ export function UserMessages() {
     queryFn: async () => {
       if (!user) return [];
       
+      // Cast user.id to satisfy TypeScript
+      const userId = user.id as any;
       const { data, error } = await supabase
         .from('user_messages')
         .select(`
@@ -49,7 +51,7 @@ export function UserMessages() {
             created_at
           )
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('is_read', { ascending: true })
         .order('created_at', { foreignTable: 'message', ascending: false });
         
@@ -68,14 +70,14 @@ export function UserMessages() {
       const { error } = await supabase
         .from('user_messages')
         .update({ is_read: true, updated_at: new Date().toISOString() })
-        .eq('id', messageId);
+        .eq('id', messageId as any);
         
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-messages'] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(`Failed to mark message as read: ${error.message}`);
     }
   });
@@ -89,7 +91,7 @@ export function UserMessages() {
           is_read: true, 
           updated_at: new Date().toISOString() 
         })
-        .eq('id', messageId);
+        .eq('id', messageId as any);
         
       if (error) throw error;
     },
@@ -97,7 +99,7 @@ export function UserMessages() {
       queryClient.invalidateQueries({ queryKey: ['user-messages'] });
       toast.success('Message archived');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(`Failed to archive message: ${error.message}`);
     }
   });
@@ -106,10 +108,11 @@ export function UserMessages() {
     if (!user || unreadMessages.length === 0) return;
     
     try {
+      const userId = user.id as any;
       const { error } = await supabase
         .from('user_messages')
         .update({ is_read: true, updated_at: new Date().toISOString() })
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('is_read', false);
         
       if (error) throw error;

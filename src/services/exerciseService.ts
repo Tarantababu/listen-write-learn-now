@@ -1,3 +1,4 @@
+
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -16,8 +17,8 @@ export const fetchExercises = async (userId: string | undefined) => {
   const { data, error } = await supabase
     .from('exercises')
     .select('*')
-    .eq('user_id', userId)
-    .eq('archived', false) // Only fetch non-archived exercises
+    .eq('user_id', userId as any)
+    .eq('archived', false as any) // Only fetch non-archived exercises
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -38,11 +39,11 @@ export const createExercise = async (
   const { data, error } = await supabase
     .from('exercises')
     .insert({
-      user_id: userId,
+      user_id: userId as any,
       title: exercise.title,
       text: exercise.text,
-      language: exercise.language,
-      tags: exercise.tags,
+      language: exercise.language as any,
+      tags: exercise.tags as any,
       audio_url: exercise.audioUrl,
       directory_id: exercise.directoryId,
       archived: false // New exercises are not archived
@@ -75,8 +76,8 @@ export const updateExercise = async (userId: string, id: string, updates: Partia
   const { error } = await supabase
     .from('exercises')
     .update(updateData)
-    .eq('id', id)
-    .eq('user_id', userId);
+    .eq('id', id as any)
+    .eq('user_id', userId as any);
 
   if (error) throw error;
 };
@@ -89,8 +90,8 @@ export const deleteAssociatedVocabulary = async (userId: string, exerciseId: str
   const { error } = await supabase
     .from('vocabulary')
     .delete()
-    .eq('exercise_id', exerciseId)
-    .eq('user_id', userId);
+    .eq('exercise_id', exerciseId as any)
+    .eq('user_id', userId as any);
 
   if (error) {
     console.error('Error deleting associated vocabulary:', error);
@@ -109,8 +110,8 @@ export const deleteAssociatedCompletions = async (userId: string, exerciseId: st
     const { error, count } = await supabase
       .from('completions')
       .delete({ count: 'exact' })
-      .eq('exercise_id', exerciseId)
-      .eq('user_id', userId);
+      .eq('exercise_id', exerciseId as any)
+      .eq('user_id', userId as any);
 
     if (error) {
       console.error('Error deleting associated completions:', error);
@@ -132,8 +133,8 @@ export const archiveExercise = async (userId: string, id: string) => {
   const { error } = await supabase
     .from('exercises')
     .update({ archived: true })
-    .eq('id', id)
-    .eq('user_id', userId);
+    .eq('id', id as any)
+    .eq('user_id', userId as any);
 
   if (error) throw error;
 };
@@ -147,8 +148,8 @@ export const deleteExercise = async (userId: string, id: string) => {
   const { error } = await supabase
     .from('exercises')
     .delete()
-    .eq('id', id)
-    .eq('user_id', userId);
+    .eq('id', id as any)
+    .eq('user_id', userId as any);
 
   if (error) throw error;
 };
@@ -160,8 +161,8 @@ export const recordCompletion = async (userId: string, exerciseId: string, accur
   const { error: completionError } = await supabase
     .from('completions')
     .insert({
-      user_id: userId,
-      exercise_id: exerciseId,
+      user_id: userId as any,
+      exercise_id: exerciseId as any,
       accuracy: accuracy,
       completed: isCompleted
     });
