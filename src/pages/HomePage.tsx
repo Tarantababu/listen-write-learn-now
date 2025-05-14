@@ -1,164 +1,127 @@
-import React from 'react';
-import { useLocation, Link } from 'react-router-dom';
-import { toast } from '@/components/ui/use-toast';
-import UserStatistics from '@/components/UserStatistics';
-import { useSubscription } from '@/contexts/SubscriptionContext';
-import SubscriptionBanner from '@/components/SubscriptionBanner';
-import { ExerciseProvider } from '@/contexts/ExerciseContext';
+
+import React, { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import Layout from '@/components/Layout';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useRoadmap } from '@/hooks/use-roadmap';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Map, ChevronRight, Loader2 } from 'lucide-react';
-import LevelBadge from '@/components/LevelBadge';
-import { useAdmin } from '@/hooks/use-admin';
+import { RoadmapItem } from '@/features/roadmap/types';
+import { Loader2, MapIcon } from 'lucide-react';
+import ExerciseGrid from '@/components/exercises/ExerciseGrid';
+import RoadmapSelection from '@/components/roadmap/RoadmapSelection';
+import RoadmapVisualization from '@/components/roadmap/RoadmapVisualization';
+import RoadmapExerciseModal from '@/components/roadmap/RoadmapExerciseModal';
+import { useState } from 'react';
+import { RoadmapNode } from '@/types';
 
-const HomePage = () => {
-  const location = useLocation();
-  const { subscription } = useSubscription();
-  const { isAdmin } = useAdmin();
-  const { currentRoadmap, currentNodeId, nodes, isLoading, completedNodes, roadmaps } = useRoadmap();
-  
-  // React to redirect messages (e.g., access denied)
-  React.useEffect(() => {
-    const state = location.state as { accessDenied?: boolean; message?: string };
-    if (state?.accessDenied) {
-      toast({
-        variant: "destructive",
-        title: "Access denied",
-        description: state.message || "You don't have the required permissions"
+const HomePage: React.FC = () => {
+  const { currentNodeId, nodes, isLoading, roadmaps } = useRoadmap();
+  const userSettings = useUserSettingsContext();
+  const navigate = useNavigate();
+  const [selectedNode, setSelectedNode] = useState<RoadmapNode | null>(null);
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
+
+  // Get current roadmap from the context
+  const { currentRoadmap, userRoadmaps, loadUserRoadmaps } = useRoadmap();
+
+  // Load user roadmaps on component mount
+  useEffect(() => {
+    if (loadUserRoadmaps) {
+      loadUserRoadmaps(userSettings.settings.selectedLanguage).catch(error => {
+        console.error('Error loading user roadmaps:', error);
       });
-      
-      window.history.replaceState({}, document.title);
     }
-  }, [location]);
+  }, [userSettings.settings.selectedLanguage, loadUserRoadmaps]);
 
-  // Calculate roadmap progress percentage
-  const progressPercentage = nodes.length > 0 
-    ? Math.round((completedNodes.length / nodes.length) * 100)
-    : 0;
+  // Handle node selection
+  const handleNodeSelect = (node: RoadmapNode) => {
+    setSelectedNode(node);
+    setModalOpen(true);
+  };
 
-  // Get current node information
-  const currentNode = currentNodeId 
-    ? nodes.find(node => node.id === currentNodeId)
-    : null;
-
-  // Get next few nodes
-  const currentIndex = currentNode 
-    ? nodes.findIndex(node => node.id === currentNode.id)
-    : -1;
+  // Check if user has any roadmaps
+  const hasRoadmaps = userRoadmaps && userRoadmaps.length > 0;
   
-  const nextNodes = currentIndex !== -1
-    ? nodes.slice(currentIndex + 1, currentIndex + 3)
-    : [];
-
-  // Find the roadmap details
-  const roadmapDetails = currentRoadmap 
-    ? roadmaps.find(r => r.id === currentRoadmap.roadmapId) 
-    : null;
-    
-  const roadmapLevel = roadmapDetails?.level;
-  const roadmapName = roadmapDetails?.name;
-
-  // Don't show subscription banner for admins
-  const shouldShowSubscriptionBanner = !subscription.isSubscribed && !isAdmin;
+  // For type safety, ensure currentRoadmap is an RoadmapItem and not an array
+  const isSingleRoadmap = currentRoadmap && !Array.isArray(currentRoadmap);
+  const roadmapId = isSingleRoadmap ? (currentRoadmap as RoadmapItem).roadmapId : undefined;
+  
+  // Use a strong type assertion for roadmap
+  const roadmap = isSingleRoadmap ? currentRoadmap as RoadmapItem : null;
+  
+  // Get matching roadmap details
+  const roadmapDetails = roadmapId ? roadmaps?.find(r => r.id === roadmapId) : null;
+  
+  // Check for active roadmap
+  const hasActiveRoadmap = roadmap && roadmapDetails;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {shouldShowSubscriptionBanner && <SubscriptionBanner />}
-      
-      <div className="flex flex-col gap-6">
-        {/* User Statistics */}
-        <div className="w-full">
-          <ExerciseProvider>
-            <UserStatistics />
-          </ExerciseProvider>
-        </div>
-        
-        {/* Learning Roadmap Card */}
-        <div className="w-full">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center justify-between">
-                <div className="flex items-center">
-                  <Map className="h-4 w-4 mr-2" />
-                  Learning Roadmap
-                </div>
-                {roadmapLevel && (
-                  <LevelBadge level={roadmapLevel} />
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center p-4">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                  <p>Loading roadmap...</p>
-                </div>
-              ) : currentRoadmap ? (
-                <>
-                  <div className="mb-4">
-                    <h3 className="text-sm font-medium mb-1">{roadmapName || "Learning Path"}</h3>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-xs text-muted-foreground">Progress</span>
-                      <span className="text-xs font-medium">{progressPercentage}%</span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary rounded-full" 
-                        style={{ width: `${progressPercentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
+    <Layout>
+      <div className="container px-4 py-6 mx-auto max-w-7xl">
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground mt-2">
+          Track your learning progress and continue where you left off
+        </p>
 
-                  {currentNode && (
-                    <div className="mb-4 p-3 bg-secondary/20 rounded-md border border-secondary/30">
-                      <h4 className="text-sm font-medium">Current Exercise:</h4>
-                      <p className="text-sm mt-1">{currentNode.title}</p>
-                    </div>
-                  )}
-
-                  {nextNodes.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-xs uppercase text-muted-foreground mb-2">Coming up next:</h4>
-                      <ul className="space-y-2">
-                        {nextNodes.map((node) => (
-                          <li 
-                            key={node.id} 
-                            className="text-xs flex items-center justify-between p-2 bg-muted/50 rounded-md"
-                          >
-                            <span>{node.title}</span>
-                            {node.isBonus && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 border-amber-500/40 text-amber-700">
-                                Bonus
-                              </span>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  <Button asChild className="w-full mt-2">
-                    <Link to="/dashboard/roadmap">
-                      Continue Learning <ChevronRight className="h-4 w-4 ml-1" />
-                    </Link>
-                  </Button>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center text-center p-4">
-                  <p className="text-sm mb-3">You haven't started a learning roadmap yet.</p>
-                  <Button asChild>
-                    <Link to="/dashboard/roadmap">
-                      Start Learning Path
-                    </Link>
-                  </Button>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 mt-8">
+          <div className="md:col-span-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Your Learning Path</h2>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate('/roadmap')}
+              >
+                <MapIcon className="h-4 w-4 mr-2" />
+                All Roadmaps
+              </Button>
+            </div>
+            
+            {isLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : hasActiveRoadmap ? (
+              <div className="bg-background rounded-lg border shadow-sm">
+                <RoadmapVisualization onNodeSelect={handleNodeSelect} />
+              </div>
+            ) : (
+              <div className="bg-background rounded-lg border shadow-sm overflow-hidden">
+                <div className="p-8">
+                  <h3 className="text-lg font-semibold mb-2">Start Your Learning Journey</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Choose a learning path tailored to your language level to start practicing with guided exercises.
+                  </p>
+                  <RoadmapSelection />
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            )}
+          </div>
+
+          <div className="md:col-span-4">
+            <div className="sticky top-8">
+              <h2 className="text-2xl font-bold mb-6">Quick Practice</h2>
+              <div className="space-y-8">
+                <ExerciseGrid limit={3} showHeader={false} />
+                <div className="text-center">
+                  <Link to="/exercises">
+                    <Button variant="outline">
+                      View All Exercises
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+      
+      <RoadmapExerciseModal 
+        node={selectedNode}
+        isOpen={modalOpen}
+        onOpenChange={setModalOpen}
+      />
+    </Layout>
   );
 };
 

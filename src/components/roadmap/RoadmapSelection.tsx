@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -35,7 +34,7 @@ const RoadmapSelection: React.FC = () => {
   
   const roadmaps = roadmapContext.roadmaps || [];
   
-  const isLoading = roadmapContext.isLoading || roadmapContext.loading || false;
+  const isLoading = roadmapContext.isLoading || false;
   
   const userRoadmaps = roadmapContext.userRoadmaps || [];
   

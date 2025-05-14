@@ -113,7 +113,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   const completedNodes = roadmapContext?.completedNodes || [];
   const availableNodes = roadmapContext?.availableNodes || [];
   const nodeProgress = roadmapContext?.nodeProgress || [];
-  const isLoading = roadmapContext?.isLoading || roadmapContext?.loading || false;
+  const isLoading = roadmapContext?.isLoading || false;
   const roadmaps = roadmapContext?.roadmaps || [];
 
   console.log("Legacy RoadmapVisualization rendered with:", {

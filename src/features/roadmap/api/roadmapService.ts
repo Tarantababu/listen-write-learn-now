@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
 import { Language, LanguageLevel } from '@/types';
@@ -36,6 +37,7 @@ class RoadmapService {
         name: item.name,
         level: item.level as LanguageLevel,
         description: item.description,
+        language: language, // Set the requested language as the primary language
         languages: languagesByRoadmap[item.id] || [],
         createdAt: new Date(item.created_at),
         updatedAt: new Date(item.updated_at),
@@ -52,9 +54,11 @@ class RoadmapService {
    */
   async getUserRoadmaps(language: Language): Promise<RoadmapItem[]> {
     try {
+      const user = (await supabase.auth.getUser()).data.user;
+      
       const { data, error } = await supabase
         .rpc('get_user_roadmaps_by_language', {
-          user_id_param: (await supabase.auth.getUser()).data.user?.id,
+          user_id_param: user?.id,
           requested_language: language
         });
         
@@ -108,6 +112,8 @@ class RoadmapService {
    */
   async initializeRoadmap(level: LanguageLevel, language: Language): Promise<string> {
     try {
+      const user = (await supabase.auth.getUser()).data.user;
+
       // Find a roadmap that matches the level and supports the language
       const { data: roadmapsData, error: roadmapsError } = await supabase
         .from('roadmaps')
@@ -131,7 +137,7 @@ class RoadmapService {
       const { data: userRoadmap, error: userRoadmapError } = await supabase
         .from('user_roadmaps')
         .insert({
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: user?.id,
           roadmap_id: roadmapId,
           language: language
         })
@@ -145,7 +151,7 @@ class RoadmapService {
         .from('roadmap_nodes')
         .select('id')
         .eq('roadmap_id', roadmapId)
-        .eq('language', language)
+        .eq('language', language as string)
         .order('position', { ascending: true })
         .limit(1)
         .single();
@@ -180,6 +186,8 @@ class RoadmapService {
    */
   async getRoadmapNodes(userRoadmapId: string): Promise<RoadmapNode[]> {
     try {
+      const user = (await supabase.auth.getUser()).data.user;
+
       // First get the user roadmap
       const { data: userRoadmap, error: userRoadmapError } = await supabase
         .from('user_roadmaps')
@@ -203,7 +211,7 @@ class RoadmapService {
       const { data: progress, error: progressError } = await supabase
         .from('roadmap_progress')
         .select('*')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('user_id', user?.id)
         .eq('roadmap_id', userRoadmap.roadmap_id);
         
       if (progressError) throw progressError;
@@ -212,7 +220,7 @@ class RoadmapService {
       const { data: nodeProgress, error: nodeProgressError } = await supabase
         .from('roadmap_nodes_progress')
         .select('*')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('user_id', user?.id)
         .eq('roadmap_id', userRoadmap.roadmap_id)
         .eq('language', userRoadmap.language);
         
@@ -278,7 +286,7 @@ class RoadmapService {
           position: node.position,
           isBonus: node.is_bonus,
           defaultExerciseId: node.default_exercise_id,
-          language: node.language as Language | undefined,
+          language: node.language as Language,
           createdAt: new Date(node.created_at),
           updatedAt: new Date(node.updated_at),
           status,
@@ -339,6 +347,8 @@ class RoadmapService {
    */
   async recordNodeCompletion(nodeId: string, accuracy: number): Promise<NodeCompletionResult> {
     try {
+      const user = (await supabase.auth.getUser()).data.user;
+
       // Get the node to get the roadmap ID
       const { data: node, error: nodeError } = await supabase
         .from('roadmap_nodes')
@@ -353,7 +363,7 @@ class RoadmapService {
         .from('user_roadmaps')
         .select('*')
         .eq('roadmap_id', node.roadmap_id)
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('user_id', user?.id)
         .single();
         
       if (userRoadmapError) throw userRoadmapError;
@@ -364,7 +374,7 @@ class RoadmapService {
         const { data, error } = await supabase
           .rpc('increment_node_completion', {
             node_id_param: nodeId,
-            user_id_param: (await supabase.auth.getUser()).data.user?.id,
+            user_id_param: user?.id,
             language_param: userRoadmap.language,
             roadmap_id_param: node.roadmap_id
           });
@@ -376,7 +386,7 @@ class RoadmapService {
           .from('roadmap_nodes_progress')
           .select('completion_count, is_completed')
           .eq('node_id', nodeId)
-          .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+          .eq('user_id', user?.id)
           .single();
           
         if (nodeProgressError) throw nodeProgressError;
@@ -438,6 +448,8 @@ class RoadmapService {
    */
   async markNodeCompleted(nodeId: string): Promise<void> {
     try {
+      const user = (await supabase.auth.getUser()).data.user;
+
       // Get the node to get the roadmap ID
       const { data: node, error: nodeError } = await supabase
         .from('roadmap_nodes')
@@ -452,7 +464,7 @@ class RoadmapService {
         .from('user_roadmaps')
         .select('*')
         .eq('roadmap_id', node.roadmap_id)
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('user_id', user?.id)
         .single();
         
       if (userRoadmapError) throw userRoadmapError;
@@ -461,7 +473,7 @@ class RoadmapService {
       const { error: progressError } = await supabase
         .from('roadmap_progress')
         .upsert({
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: user?.id,
           roadmap_id: node.roadmap_id,
           node_id: nodeId,
           completed: true,
@@ -475,10 +487,10 @@ class RoadmapService {
       const { error: nodeProgressError } = await supabase
         .from('roadmap_nodes_progress')
         .upsert({
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: user?.id,
           roadmap_id: node.roadmap_id,
           node_id: nodeId,
-          language: userRoadmap.language,
+          language: userRoadmap.language as Language,
           completion_count: 3, // Set to max
           is_completed: true,
           last_practiced_at: new Date().toISOString(),
