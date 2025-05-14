@@ -41,9 +41,7 @@ export function useNodeAccess() {
   const loadAccessibleNodes = useCallback(async (roadmapId: string, language: Language) => {
     setIsLoading(true);
     try {
-      // Fixing parameter count here - we need to check the NodeAccessService implementation
-      // and adjust accordingly
-      const { data: nodeIds, error } = await nodeAccessService.getAccessibleNodes(roadmapId);
+      const { data: nodeIds, error } = await nodeAccessService.getAccessibleNodes(roadmapId, language);
       
       if (error) {
         console.error('Error loading accessible nodes:', error);

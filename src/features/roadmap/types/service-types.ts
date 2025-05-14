@@ -1,6 +1,6 @@
 
 import { Language, LanguageLevel } from '@/types';
-import { RoadmapItem, RoadmapNode, ExerciseContent } from '../types';
+import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
 
 // Base response type for all service methods
 export interface ServiceResponse<T> {
@@ -18,7 +18,6 @@ export interface RoadmapServiceInterface {
   getUserRoadmaps(language: Language): ServiceResult<RoadmapItem[]>;
   getRoadmapNodes(userRoadmapId: string): ServiceResult<RoadmapNode[]>;
   initializeRoadmap(level: LanguageLevel, language: Language): ServiceResult<string>;
-  getNodeExerciseContent(nodeId: string): Promise<ExerciseContent | null>;
 }
 
 // ProgressService types
@@ -28,13 +27,6 @@ export interface ProgressServiceInterface {
   markNodeAsCompleted(nodeId: string): ServiceResult<void>;
   resetProgress(roadmapId: string): ServiceResult<void>;
   getNodeProgress(nodeId: string): ServiceResult<NodeProgressDetails>;
-}
-
-// Export the type using the correct syntax for isolated modules
-export interface NodeCompletionResult {
-  isCompleted: boolean;
-  completionCount: number;
-  nextNodeId?: string;
 }
 
 // ExerciseService types

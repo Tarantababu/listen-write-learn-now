@@ -129,7 +129,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     return <NewRoadmapVisualization onNodeSelect={onNodeSelect} />;
   }
 
-  // Show loading indicator
+  // Fall back to the legacy implementation
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-4">
@@ -139,7 +139,6 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     );
   }
 
-  // Handle no roadmap case
   if (!currentRoadmap) {
     return (
       <div className="text-center p-4">
@@ -148,29 +147,14 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     );
   }
   
-  // Handle empty nodes case
-  if (!nodes || nodes.length === 0) {
-    return (
-      <div className="text-center p-4">
-        <p className="text-muted-foreground">No nodes available in this roadmap</p>
-      </div>
-    );
-  }
-
   console.log("Using legacy roadmap visualization with nodes:", nodes);
 
   // Find the roadmap details using the roadmapId from currentRoadmap
-  const roadmapDetails = roadmaps?.find(r => r.id === currentRoadmap.roadmapId);
+  const roadmapDetails = roadmaps.find(r => r.id === currentRoadmap.roadmapId);
   const roadmapName = roadmapDetails?.name || "Learning Path";
   const roadmapLevel = roadmapDetails?.level;
 
   const getNodeStatus = (node: RoadmapNode): 'completed' | 'current' | 'locked' | 'available' => {
-    // Ensure node is valid
-    if (!node || !node.id) {
-      console.warn('Invalid node found:', node);
-      return 'locked';
-    }
-    
     if (completedNodes.includes(node.id)) return 'completed';
     
     // Check if node is completed in the detailed progress
@@ -188,18 +172,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     return progressInfo?.completionCount || 0;
   };
 
-  // Safety check for nodes with valid position property
-  const validNodes = nodes.filter(node => typeof node.position === 'number');
-  
-  if (validNodes.length === 0) {
-    return (
-      <div className="text-center p-4">
-        <p className="text-muted-foreground">Invalid roadmap data</p>
-      </div>
-    );
-  }
-  
-  const sortedNodes = [...validNodes].sort((a, b) => a.position - b.position);
+  const sortedNodes = [...nodes].sort((a, b) => a.position - b.position);
   
   // Group nodes by "rows" of 5 for display
   const nodeRows: RoadmapNode[][] = [];

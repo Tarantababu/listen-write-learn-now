@@ -1,65 +1,68 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders, handleCorsOptions, applyCorsHeaders } from "../_shared/cors.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.6';
 
-type VisitorPayload = {
-  visitorId: string;
-  page: string;
-  referer?: string | null;
-  userAgent?: string;
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  const corsResponse = handleCorsOptions(req);
-  if (corsResponse) return corsResponse;
-  
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   try {
-    const { visitorId, page, referer, userAgent } = await req.json() as VisitorPayload;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    // Create a Supabase client with the project details
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-    
-    // Insert the visitor tracking data
-    const { data, error } = await supabaseAdmin
-      .from('visitor_tracking')
-      .insert([
-        { 
-          visitor_id: visitorId,
-          page,
-          referer,
-          user_agent: userAgent,
-          timestamp: new Date().toISOString()
-        }
-      ]);
-    
-    if (error) {
-      console.error('Error inserting visitor data:', error);
-      
-      // Return error response with CORS headers
-      return applyCorsHeaders(new Response(
-        JSON.stringify({ success: false, error: error.message }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      ));
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Required environment variables are missing');
     }
     
-    // Return success response with CORS headers
-    return applyCorsHeaders(new Response(
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const body = await req.json();
+    const { visitorId, page, referer, userAgent } = body;
+    
+    // Get IP address from request headers
+    const forwardedFor = req.headers.get('x-forwarded-for');
+    const ipAddress = forwardedFor ? forwardedFor.split(',')[0] : 'unknown';
+    
+    if (!visitorId || !page) {
+      return new Response(
+        JSON.stringify({ error: 'Visitor ID and page are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Use the track_visitor RPC function with the secure search_path
+    const { data, error } = await supabaseClient.rpc('track_visitor', {
+      visitor_id: visitorId,
+      page,
+      referer: referer || null,
+      user_agent: userAgent || null,
+      ip_address: ipAddress
+    });
+    
+    if (error) {
+      console.error("Error tracking visitor:", error);
+      throw error;
+    }
+    
+    console.log("Visitor tracked successfully:", visitorId);
+    
+    return new Response(
       JSON.stringify({ success: true }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    ));
-    
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
-    console.error('Error processing request:', error);
+    console.error("Error tracking visitor:", error);
     
-    // Return error response with CORS headers
-    return applyCorsHeaders(new Response(
-      JSON.stringify({ success: false, error: 'Failed to process request' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    ));
+    return new Response(
+      JSON.stringify({ error: 'Failed to track visitor' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 });

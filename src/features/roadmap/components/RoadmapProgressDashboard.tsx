@@ -1,322 +1,188 @@
 
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { useRoadmap } from '@/hooks/use-roadmap';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { useRoadmap } from '../context/RoadmapContext';
+import { Check, Calendar, Award, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { 
-  Award, 
-  BadgeCheck, 
-  Bookmark, 
-  CheckCircle2,
-  Clock, 
-  Flag, 
-  LocateFixed, 
-  Lock, 
-  RefreshCw, 
-  Sparkles 
-} from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import RoadmapProgressBar from './RoadmapProgressBar';
+import { format } from 'date-fns';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import LevelBadge from '@/components/LevelBadge';
 
-const RoadmapProgressDashboard: React.FC = () => {
-  const { 
-    currentRoadmap, 
-    nodes, 
-    completedNodes, 
-    currentNodeId,
-    nodeProgress,
-    isLoading,
-    resetProgress
-  } = useRoadmap();
-  
-  const [isResetting, setIsResetting] = React.useState(false);
-  
-  // Group nodes by completion status
-  const completedNodeIds = new Set(completedNodes);
+interface RoadmapProgressDashboardProps {
+  className?: string;
+}
+
+const RoadmapProgressDashboard: React.FC<RoadmapProgressDashboardProps> = ({ className }) => {
+  const { currentRoadmap, nodes, completedNodes, roadmaps } = useRoadmap();
+  const [activeTab, setActiveTab] = useState('summary');
+  const [timeframe, setTimeframe] = useState('all');
+
   const completedCount = completedNodes.length;
   const totalCount = nodes.length;
-  
-  // Filter out bonus nodes for regular progress calculation
-  const regularNodes = nodes.filter(node => !node.isBonus);
-  const completedRegularNodes = regularNodes.filter(node => completedNodeIds.has(node.id));
-  const regularProgressPercentage = regularNodes.length > 0 
-    ? Math.round((completedRegularNodes.length / regularNodes.length) * 100) 
-    : 0;
-  
-  // Separate nodes by type
-  const bonusNodes = nodes.filter(node => node.isBonus);
-  const completedBonusNodes = bonusNodes.filter(node => completedNodeIds.has(node.id));
-  
-  // Find current node for highlighting
-  const currentNode = nodes.find(node => node.id === currentNodeId);
-  
-  // Node progress tracking
-  const nodeProgressMap = new Map();
-  nodeProgress.forEach(progress => {
-    nodeProgressMap.set(progress.nodeId, progress);
-  });
-  
-  // Handler for resetting progress
-  const handleResetProgress = async () => {
-    if (!currentRoadmap) return;
-    
-    try {
-      setIsResetting(true);
-      await resetProgress(currentRoadmap.id);
-      toast({
-        title: "Progress reset",
-        description: "Your progress has been reset successfully."
-      });
-    } catch (error) {
-      console.error("Error resetting progress:", error);
-      toast({
-        variant: "destructive",
-        title: "Failed to reset progress",
-        description: "There was an error resetting your progress. Please try again."
-      });
-    } finally {
-      setIsResetting(false);
-    }
+  const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+  // Find the roadmap details using the roadmapId from currentRoadmap
+  const roadmapDetails = currentRoadmap?.roadmapId ? 
+    roadmaps.find(r => r.id === currentRoadmap.roadmapId) : null;
+
+  // Mock data for the dashboard
+  const streak = 5; // Mock streak - days in a row with activity
+  const lastPracticed = new Date(); // Today
+  const totalTime = 720; // Mock total time in minutes
+
+  // Format minutes into hours and minutes
+  const formatTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
   };
-  
-  const cardItemAnimation = {
-    initial: { opacity: 0, scale: 0.95 },
-    animate: { opacity: 1, scale: 1 },
-    transition: { duration: 0.2 }
-  };
-  
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-12 items-center">
-        <div className="animate-spin text-primary">
-          <RefreshCw className="h-8 w-8" />
-        </div>
-      </div>
-    );
-  }
-  
+
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <RoadmapProgressBar className="max-w-md mx-auto" />
+    <div className={className}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex justify-between items-center mb-4">
+          <TabsList>
+            <TabsTrigger value="summary">Summary</TabsTrigger>
+            <TabsTrigger value="progress">Progress</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+          </TabsList>
+          
+          <Select value={timeframe} onValueChange={setTimeframe}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Time Period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="week">This Week</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="all">All Time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         
-        <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
-          <Card>
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-base flex items-center">
-                <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
-                Completed
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <p className="text-3xl font-bold">{completedCount}</p>
-              <p className="text-sm text-muted-foreground">out of {totalCount} lessons</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-base flex items-center">
-                <Award className="h-4 w-4 mr-2 text-amber-500" />
-                Bonus Items
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <p className="text-3xl font-bold">{completedBonusNodes.length}</p>
-              <p className="text-sm text-muted-foreground">out of {bonusNodes.length} completed</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-base flex items-center">
-                <Sparkles className="h-4 w-4 mr-2 text-purple-500" />
-                Current Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <p className="text-3xl font-bold">{regularProgressPercentage}%</p>
-              <p className="text-sm text-muted-foreground">of main path completed</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-      
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Current Lesson</h3>
-        {currentNode ? (
-          <motion.div
-            {...cardItemAnimation}
-          >
-            <Card className="border-primary/20">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="bg-primary/10 p-2 rounded-full">
-                    <LocateFixed className="h-5 w-5 text-primary" />
+        <TabsContent value="summary" className="mt-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center">
+                    <div className="bg-primary/10 p-1.5 rounded-md mr-2">
+                      <Check className="h-4 w-4 text-primary" />
+                    </div>
+                    Lesson Completion
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium">{Math.round(progressPercent)}%</span>
+                    </div>
+                    <Progress value={progressPercent} />
+                    
+                    <div className="flex justify-between text-sm mt-2">
+                      <span className="text-muted-foreground">Lessons completed</span>
+                      <span className="font-medium">{completedCount} / {totalCount}</span>
+                    </div>
+                    
+                    {roadmapDetails && (
+                      <div className="flex justify-between items-center text-sm border-t pt-3 mt-3">
+                        <span className="text-muted-foreground">Current level</span>
+                        <LevelBadge level={roadmapDetails.level} />
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-1 flex-1">
-                    <h4 className="font-medium">{currentNode.title}</h4>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {currentNode.description || "Continue your learning journey with this lesson"}
-                    </p>
-                    <div className="flex items-center text-xs text-muted-foreground mt-2">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {nodeProgressMap.get(currentNode.id)?.lastPracticedAt ? (
-                        <span>Last practiced: {new Date(nodeProgressMap.get(currentNode.id).lastPracticedAt).toLocaleDateString()}</span>
-                      ) : (
-                        <span>Not started yet</span>
-                      )}
+                </CardContent>
+              </Card>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center">
+                    <div className="bg-purple-100 dark:bg-purple-900/20 p-1.5 rounded-md mr-2">
+                      <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    Learning Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Current streak</span>
+                        <div className="flex items-end gap-1">
+                          <span className="text-2xl font-bold">{streak}</span>
+                          <span className="text-xs text-muted-foreground mb-1">days</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-center bg-amber-100 dark:bg-amber-900/20 h-10 w-10 rounded-full">
+                        <Award className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Last practiced</span>
+                        <span className="font-medium">{format(lastPracticed, 'MMM d, yyyy')}</span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total learning time</span>
+                        <span className="font-medium">{formatTime(totalTime)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ) : (
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="progress" className="mt-2">
           <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-muted-foreground">No current lesson set</p>
+            <CardHeader>
+              <CardTitle>Learning Progress</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px] flex items-center justify-center">
+              <p className="text-muted-foreground text-center">
+                Detailed progress analytics coming soon.<br/>
+                Track your accuracy trends and learning patterns over time.
+              </p>
             </CardContent>
           </Card>
-        )}
-      </div>
-      
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Lesson Status</h3>
+        </TabsContent>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <h4 className="text-sm font-medium mb-3 flex items-center">
-              <CheckCircle2 className="h-4 w-4 mr-1.5 text-green-500" />
-              Completed ({completedNodes.length})
-            </h4>
-            <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
-              {completedNodes.length > 0 ? (
-                nodes
-                  .filter(node => completedNodeIds.has(node.id))
-                  .map((node, index) => (
-                    <motion.div
-                      key={node.id}
-                      {...cardItemAnimation}
-                      transition={{ 
-                        ...cardItemAnimation.transition, 
-                        delay: index * 0.05 
-                      }}
-                    >
-                      <Card className="border-green-200 dark:border-green-900">
-                        <CardContent className="p-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <BadgeCheck className={cn(
-                              "h-4 w-4",
-                              node.isBonus ? "text-amber-500" : "text-green-500"
-                            )} />
-                            <span className="text-sm truncate max-w-[180px]">
-                              {node.title}
-                            </span>
-                          </div>
-                          {node.isBonus && (
-                            <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-xs px-2 py-0.5 rounded-full">Bonus</span>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))
-              ) : (
-                <Card>
-                  <CardContent className="p-3 text-center">
-                    <p className="text-sm text-muted-foreground">No lessons completed yet</p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </div>
-          
-          <div>
-            <h4 className="text-sm font-medium mb-3 flex items-center">
-              <Lock className="h-4 w-4 mr-1.5 text-muted-foreground" />
-              Locked ({nodes.length - completedNodes.length - (currentNode ? 1 : 0)})
-            </h4>
-            <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
-              {nodes
-                .filter(node => !completedNodeIds.has(node.id) && node.id !== currentNodeId)
-                .slice(0, 5) // Limit to 5 upcoming nodes
-                .map((node, index) => (
-                  <motion.div
-                    key={node.id}
-                    {...cardItemAnimation}
-                    transition={{ 
-                      ...cardItemAnimation.transition, 
-                      delay: index * 0.05 
-                    }}
-                  >
-                    <Card className="border-muted/50 bg-muted/30">
-                      <CardContent className="p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {node.status === 'available' ? (
-                            <Bookmark className="h-4 w-4 text-blue-500" />
-                          ) : (
-                            <Lock className="h-4 w-4 text-muted-foreground" />
-                          )}
-                          <span className="text-sm truncate max-w-[180px] text-muted-foreground">
-                            {node.title}
-                          </span>
-                        </div>
-                        {node.isBonus && (
-                          <span className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full">Bonus</span>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              {nodes.filter(node => !completedNodeIds.has(node.id) && node.id !== currentNodeId).length > 5 && (
-                <Card>
-                  <CardContent className="p-3 text-center">
-                    <p className="text-xs text-muted-foreground">
-                      + {nodes.filter(node => !completedNodeIds.has(node.id) && node.id !== currentNodeId).length - 5} more lessons
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-              {nodes.filter(node => !completedNodeIds.has(node.id) && node.id !== currentNodeId).length === 0 && (
-                <Card>
-                  <CardContent className="p-3 text-center">
-                    <p className="text-sm text-muted-foreground">All lessons either completed or in progress</p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="pt-4 border-t">
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/50 hover:bg-destructive/10"
-          onClick={handleResetProgress}
-          disabled={isResetting || completedCount === 0}
-        >
-          {isResetting ? (
-            <>
-              <RefreshCw className="h-3.5 w-3.5 mr-2 animate-spin" /> 
-              Resetting...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-3.5 w-3.5 mr-2" /> 
-              Reset Progress
-            </>
-          )}
-        </Button>
-      </div>
+        <TabsContent value="history" className="mt-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Practice History</CardTitle>
+            </CardHeader>
+            <CardContent className="h-[300px] flex items-center justify-center">
+              <p className="text-muted-foreground text-center">
+                Practice history and calendar view coming soon.<br/>
+                Track your daily learning consistency and achievements.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

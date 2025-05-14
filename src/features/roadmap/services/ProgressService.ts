@@ -4,9 +4,9 @@ import {
   ProgressServiceInterface,
   ServiceResult,
   RoadmapProgressDetails,
-  NodeProgressDetails,
-  NodeCompletionResult
+  NodeProgressDetails
 } from '../types/service-types';
+import { NodeCompletionResult } from '../types';
 
 export class ProgressService extends BaseService implements ProgressServiceInterface {
   /**
@@ -26,27 +26,16 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         .eq('id', roadmapId)
         .single();
         
-      if (userRoadmapError) {
-        console.error('Error fetching user roadmap:', userRoadmapError);
-        throw userRoadmapError;
-      }
-      
-      if (!userRoadmap) {
-        return this.error(`No roadmap found with ID: ${roadmapId}`);
-      }
+      if (userRoadmapError) throw userRoadmapError;
       
       // Get all nodes for this roadmap to calculate total
       const { data: nodes, error: nodesError } = await this.supabase
         .from('roadmap_nodes')
-        .select('id, is_bonus')
+        .select('id')
         .eq('roadmap_id', userRoadmap.roadmap_id)
-        .eq('language', userRoadmap.language)
-        .order('position', { ascending: true });
+        .eq('language', userRoadmap.language);
         
-      if (nodesError) {
-        console.error('Error fetching roadmap nodes:', nodesError);
-        throw nodesError;
-      }
+      if (nodesError) throw nodesError;
       
       // Get all completed nodes for this user and roadmap
       const { data: completedProgress, error: progressError } = await this.supabase
@@ -56,10 +45,7 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         .eq('roadmap_id', userRoadmap.roadmap_id)
         .eq('completed', true);
         
-      if (progressError) {
-        console.error('Error fetching roadmap progress:', progressError);
-        throw progressError;
-      }
+      if (progressError) throw progressError;
       
       // Get detailed node progress
       const { data: nodeProgress, error: nodeProgressError } = await this.supabase
@@ -69,70 +55,54 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         .eq('roadmap_id', userRoadmap.roadmap_id)
         .eq('language', userRoadmap.language);
         
-      if (nodeProgressError) {
-        console.error('Error fetching node progress:', nodeProgressError);
-        throw nodeProgressError;
-      }
+      if (nodeProgressError) throw nodeProgressError;
       
       // Convert node progress to a map
       const nodeProgressMap: Record<string, NodeProgressDetails> = {};
       
-      (nodeProgress || []).forEach(progress => {
+      nodeProgress?.forEach(progress => {
         nodeProgressMap[progress.node_id] = {
           nodeId: progress.node_id,
-          completionCount: progress.completion_count || 0,
-          isCompleted: progress.is_completed || false,
+          completionCount: progress.completion_count,
+          isCompleted: progress.is_completed,
           lastPracticedAt: progress.last_practiced_at ? new Date(progress.last_practiced_at) : undefined
         };
       });
       
-      // Calculate total and completed non-bonus nodes for accurate percentage
-      const regularNodes = nodes.filter(n => !n.is_bonus);
-      const totalNodes = regularNodes.length;
-      
-      const completedNodeIds = (completedProgress || []).map(p => p.node_id);
-      const completedRegularNodes = regularNodes.filter(n => completedNodeIds.includes(n.id)).length;
+      // Calculate total and completed nodes
+      const totalNodes = nodes.length;
+      const completedNodes = completedProgress?.length || 0;
       
       // Calculate which nodes are available (first node or nodes after completed nodes)
       let availableCount = 0;
       const nodeIds = nodes.map(node => node.id);
       
       nodeIds.forEach((nodeId, index) => {
-        const currentNode = nodes[index];
-        
-        // First node is always available
         if (index === 0) {
+          // First node is always available
           availableCount++;
         } else if (index > 0) {
-          // Regular nodes: check if previous node is completed
+          // Check if previous node is completed
           const prevNodeId = nodeIds[index - 1];
-          const isCompleted = completedNodeIds.includes(prevNodeId);
+          const isCompleted = completedProgress?.some(p => p.node_id === prevNodeId);
           
-          if (isCompleted || currentNode.is_bonus) {
+          if (isCompleted) {
             availableCount++;
           }
         }
       });
       
-      // Calculate progress percentage based only on non-bonus nodes
-      const progressPercentage = totalNodes > 0 ? (completedRegularNodes / totalNodes) * 100 : 0;
+      // Calculate progress percentage
+      const progressPercentage = totalNodes > 0 ? (completedNodes / totalNodes) * 100 : 0;
       
       const result: RoadmapProgressDetails = {
         totalNodes,
-        completedNodes: completedNodeIds.length,
+        completedNodes,
         availableNodes: availableCount,
         currentNodeId: userRoadmap.current_node_id,
-        progressPercentage: Math.round(progressPercentage * 10) / 10, // Round to 1 decimal place
+        progressPercentage,
         nodeProgress: nodeProgressMap
       };
-      
-      console.log('Progress calculated successfully:', {
-        roadmapId,
-        totalRegularNodes: totalNodes,
-        completedRegularNodes,
-        totalCompletedNodes: completedNodeIds.length,
-        progressPercentage: result.progressPercentage
-      });
       
       return this.success(result);
     } catch (error) {
@@ -150,19 +120,14 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         return this.error('User must be authenticated to record node completion');
       }
       
-      console.log(`Recording node completion: nodeId=${nodeId}, accuracy=${accuracy}%`);
-      
       // Get the node to get the roadmap ID
       const { data: node, error: nodeError } = await this.supabase
         .from('roadmap_nodes')
-        .select('roadmap_id, position, is_bonus')
+        .select('roadmap_id, position')
         .eq('id', nodeId)
         .single();
         
-      if (nodeError) {
-        console.error('Error fetching node:', nodeError);
-        throw nodeError;
-      }
+      if (nodeError) throw nodeError;
       
       // Get the user roadmap
       const { data: userRoadmap, error: userRoadmapError } = await this.supabase
@@ -172,15 +137,10 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         .eq('user_id', auth.userId)
         .single();
         
-      if (userRoadmapError) {
-        console.error('Error fetching user roadmap:', userRoadmapError);
-        throw userRoadmapError;
-      }
+      if (userRoadmapError) throw userRoadmapError;
       
       // Only increment if accuracy is high enough (95% or better)
       if (accuracy >= 95) {
-        console.log('Accuracy is sufficient for node completion increment');
-        
         // Call the function to increment node completion
         const { error } = await this.supabase
           .rpc('increment_node_completion', {
@@ -190,10 +150,7 @@ export class ProgressService extends BaseService implements ProgressServiceInter
             roadmap_id_param: node.roadmap_id
           });
           
-        if (error) {
-          console.error('Error incrementing node completion:', error);
-          throw error;
-        }
+        if (error) throw error;
         
         // Get updated node progress
         const { data: nodeProgress, error: nodeProgressError } = await this.supabase
@@ -203,79 +160,34 @@ export class ProgressService extends BaseService implements ProgressServiceInter
           .eq('user_id', auth.userId)
           .single();
           
-        if (nodeProgressError) {
-          console.error('Error fetching updated node progress:', nodeProgressError);
-          throw nodeProgressError;
-        }
+        if (nodeProgressError) throw nodeProgressError;
         
         // Check if node is now completed
         if (nodeProgress.is_completed) {
-          console.log('Node is now completed, finding next node');
-          
-          // Find next available node (skipping bonus nodes if they've already been completed)
-          const { data: nextNodes, error: nextNodesError } = await this.supabase
+          // Find next node in sequence
+          const { data: nextNode, error: nextNodeError } = await this.supabase
             .from('roadmap_nodes')
-            .select('id, is_bonus, position')
+            .select('id')
             .eq('roadmap_id', node.roadmap_id)
             .eq('language', userRoadmap.language)
-            .gt('position', node.position)
-            .order('position', { ascending: true });
+            .eq('position', node.position + 1)
+            .maybeSingle();
             
-          if (nextNodesError) {
-            console.error('Error finding next nodes:', nextNodesError);
-            throw nextNodesError;
-          }
-          
-          let nextNodeId: string | undefined = undefined;
-          
-          // Find the next regular node or an uncompleted bonus node
-          if (nextNodes && nextNodes.length > 0) {
-            // First check for regular (non-bonus) nodes
-            const nextRegularNode = nextNodes.find(n => !n.is_bonus);
-            
-            if (nextRegularNode) {
-              nextNodeId = nextRegularNode.id;
-            } else {
-              // If no regular nodes, check for any bonus nodes
-              // For bonus nodes, we need to check if they're already completed
-              for (const bonusNode of nextNodes) {
-                if (bonusNode.is_bonus) {
-                  const { data: bonusProgress } = await this.supabase
-                    .from('roadmap_progress')
-                    .select('*')
-                    .eq('user_id', auth.userId)
-                    .eq('node_id', bonusNode.id)
-                    .eq('completed', true)
-                    .maybeSingle();
-                    
-                  if (!bonusProgress) {
-                    // Found an uncompleted bonus node
-                    nextNodeId = bonusNode.id;
-                    break;
-                  }
-                }
-              }
-            }
-          }
+          let nextNodeId = undefined;
           
           // Update current node if a next node was found
-          if (nextNodeId) {
-            console.log(`Updating current node to: ${nextNodeId}`);
+          if (!nextNodeError && nextNode) {
+            nextNodeId = nextNode.id;
             
             const { error: updateError } = await this.supabase
               .from('user_roadmaps')
               .update({ 
-                current_node_id: nextNodeId,
+                current_node_id: nextNode.id,
                 updated_at: new Date().toISOString()
               })
               .eq('id', userRoadmap.id);
               
-            if (updateError) {
-              console.error('Error updating current node:', updateError);
-              throw updateError;
-            }
-          } else {
-            console.log('No next node found, user has completed all nodes');
+            if (updateError) throw updateError;
           }
           
           return this.success({
@@ -292,7 +204,6 @@ export class ProgressService extends BaseService implements ProgressServiceInter
       } 
       
       // If accuracy is too low, don't increment
-      console.log('Accuracy too low, no progress recorded');
       return this.success({
         isCompleted: false,
         completionCount: 0
@@ -312,19 +223,14 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         return this.error('User must be authenticated to mark node as completed');
       }
       
-      console.log(`Manually marking node as completed: ${nodeId}`);
-      
       // Get the node to get the roadmap ID
       const { data: node, error: nodeError } = await this.supabase
         .from('roadmap_nodes')
-        .select('roadmap_id, position, is_bonus')
+        .select('roadmap_id, position')
         .eq('id', nodeId)
         .single();
         
-      if (nodeError) {
-        console.error('Error fetching node:', nodeError);
-        throw nodeError;
-      }
+      if (nodeError) throw nodeError;
       
       // Get the user roadmap
       const { data: userRoadmap, error: userRoadmapError } = await this.supabase
@@ -334,12 +240,7 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         .eq('user_id', auth.userId)
         .single();
         
-      if (userRoadmapError) {
-        console.error('Error fetching user roadmap:', userRoadmapError);
-        throw userRoadmapError;
-      }
-      
-      const timestamp = new Date().toISOString();
+      if (userRoadmapError) throw userRoadmapError;
       
       // Mark node as completed in roadmap_progress
       const { error: progressError } = await this.supabase
@@ -349,14 +250,11 @@ export class ProgressService extends BaseService implements ProgressServiceInter
           roadmap_id: node.roadmap_id,
           node_id: nodeId,
           completed: true,
-          completed_at: timestamp,
-          updated_at: timestamp
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
         
-      if (progressError) {
-        console.error('Error updating roadmap progress:', progressError);
-        throw progressError;
-      }
+      if (progressError) throw progressError;
       
       // Also mark as completed in roadmap_nodes_progress
       const { error: nodeProgressError } = await this.supabase
@@ -368,79 +266,32 @@ export class ProgressService extends BaseService implements ProgressServiceInter
           language: userRoadmap.language,
           completion_count: 3, // Set to max
           is_completed: true,
-          last_practiced_at: timestamp,
-          updated_at: timestamp
+          last_practiced_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
         
-      if (nodeProgressError) {
-        console.error('Error updating node progress:', nodeProgressError);
-        throw nodeProgressError;
-      }
+      if (nodeProgressError) throw nodeProgressError;
       
-      // Find next available node (skipping bonus nodes if they've already been completed)
-      const { data: nextNodes, error: nextNodesError } = await this.supabase
+      // Find next node in sequence
+      const { data: nextNode, error: nextNodeError } = await this.supabase
         .from('roadmap_nodes')
-        .select('id, is_bonus, position')
+        .select('id')
         .eq('roadmap_id', node.roadmap_id)
         .eq('language', userRoadmap.language)
-        .gt('position', node.position)
-        .order('position', { ascending: true });
+        .eq('position', node.position + 1)
+        .maybeSingle();
         
-      if (nextNodesError) {
-        console.error('Error finding next nodes:', nextNodesError);
-        throw nextNodesError;
-      }
-      
-      let nextNodeId: string | undefined = undefined;
-      
-      // Find the next regular node or an uncompleted bonus node
-      if (nextNodes && nextNodes.length > 0) {
-        // First check for regular (non-bonus) nodes
-        const nextRegularNode = nextNodes.find(n => !n.is_bonus);
-        
-        if (nextRegularNode) {
-          nextNodeId = nextRegularNode.id;
-        } else {
-          // If no regular nodes, check for any bonus nodes
-          // For bonus nodes, we need to check if they're already completed
-          for (const bonusNode of nextNodes) {
-            if (bonusNode.is_bonus) {
-              const { data: bonusProgress } = await this.supabase
-                .from('roadmap_progress')
-                .select('*')
-                .eq('user_id', auth.userId)
-                .eq('node_id', bonusNode.id)
-                .eq('completed', true)
-                .maybeSingle();
-                
-              if (!bonusProgress) {
-                // Found an uncompleted bonus node
-                nextNodeId = bonusNode.id;
-                break;
-              }
-            }
-          }
-        }
-      }
-      
       // Update current node if a next node was found
-      if (nextNodeId) {
-        console.log(`Updating current node to: ${nextNodeId}`);
-        
+      if (!nextNodeError && nextNode) {
         const { error: updateError } = await this.supabase
           .from('user_roadmaps')
           .update({ 
-            current_node_id: nextNodeId,
-            updated_at: timestamp
+            current_node_id: nextNode.id,
+            updated_at: new Date().toISOString()
           })
           .eq('id', userRoadmap.id);
           
-        if (updateError) {
-          console.error('Error updating current node:', updateError);
-          throw updateError;
-        }
-      } else {
-        console.log('No next node found, user has completed all nodes');
+        if (updateError) throw updateError;
       }
       
       return this.success(undefined);
@@ -459,8 +310,6 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         return this.error('User must be authenticated to reset progress');
       }
       
-      console.log(`Resetting progress for roadmap: ${roadmapId}`);
-      
       // Get the user roadmap to get parent roadmap ID
       const { data: userRoadmap, error: userRoadmapError } = await this.supabase
         .from('user_roadmaps')
@@ -468,10 +317,7 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         .eq('id', roadmapId)
         .single();
         
-      if (userRoadmapError) {
-        console.error('Error fetching user roadmap:', userRoadmapError);
-        throw userRoadmapError;
-      }
+      if (userRoadmapError) throw userRoadmapError;
       
       // Delete progress records
       const { error: progressError } = await this.supabase
@@ -480,10 +326,7 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         .eq('user_id', auth.userId)
         .eq('roadmap_id', userRoadmap.roadmap_id);
         
-      if (progressError) {
-        console.error('Error deleting roadmap progress:', progressError);
-        throw progressError;
-      }
+      if (progressError) throw progressError;
       
       // Delete detailed node progress records
       const { error: nodeProgressError } = await this.supabase
@@ -493,10 +336,7 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         .eq('roadmap_id', userRoadmap.roadmap_id)
         .eq('language', userRoadmap.language);
         
-      if (nodeProgressError) {
-        console.error('Error deleting node progress:', nodeProgressError);
-        throw nodeProgressError;
-      }
+      if (nodeProgressError) throw nodeProgressError;
       
       // Find first node to reset current node
       const { data: firstNode, error: firstNodeError } = await this.supabase
@@ -508,11 +348,6 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         .limit(1)
         .maybeSingle();
         
-      if (firstNodeError) {
-        console.error('Error finding first node:', firstNodeError);
-        throw firstNodeError;
-      }
-      
       // Update user roadmap to point to first node
       const { error: roadmapError } = await this.supabase
         .from('user_roadmaps')
@@ -522,10 +357,7 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         })
         .eq('id', roadmapId);
         
-      if (roadmapError) {
-        console.error('Error updating user roadmap:', roadmapError);
-        throw roadmapError;
-      }
+      if (roadmapError) throw roadmapError;
       
       return this.success(undefined);
     } catch (error) {
@@ -550,10 +382,7 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         .eq('id', nodeId)
         .single();
         
-      if (nodeError) {
-        console.error('Error fetching node:', nodeError);
-        throw nodeError;
-      }
+      if (nodeError) throw nodeError;
       
       // Get node progress
       const { data: progress, error: progressError } = await this.supabase
@@ -565,7 +394,6 @@ export class ProgressService extends BaseService implements ProgressServiceInter
         .maybeSingle();
         
       if (progressError && progressError.code !== 'PGRST116') {
-        console.error('Error fetching node progress:', progressError);
         throw progressError;
       }
       
@@ -581,8 +409,8 @@ export class ProgressService extends BaseService implements ProgressServiceInter
       // Return formatted progress
       return this.success({
         nodeId: progress.node_id,
-        completionCount: progress.completion_count || 0,
-        isCompleted: progress.is_completed || false,
+        completionCount: progress.completion_count,
+        isCompleted: progress.is_completed,
         lastPracticedAt: progress.last_practiced_at ? new Date(progress.last_practiced_at) : undefined
       });
     } catch (error) {

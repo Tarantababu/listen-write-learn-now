@@ -1,75 +1,55 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { ServiceResponse } from '../types/service-types';
+import { supabase } from '@/integrations/supabase/client';
 
-/**
- * Base service class with common utilities
- */
 export class BaseService {
-  /**
-   * The Supabase client instance
-   */
   protected supabase = supabase;
   
   /**
-   * Get current user information
-   */
-  protected getUser() {
-    // In a real implementation, fetch from auth system
-    // For now, mock a user
-    return {
-      id: 'user-1',
-      email: 'user@example.com',
-    };
-  }
-
-  /**
-   * Ensure the user is authenticated
-   * @returns The user object if authenticated, null otherwise
+   * Ensures the user is authenticated and returns user info
+   * @returns Object with userId and email if authenticated, null otherwise
    */
   protected async ensureAuthenticated() {
-    const user = this.getUser();
-    if (!user) {
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) {
+        return null;
+      }
+      return {
+        userId: user.id,
+        email: user.email
+      };
+    } catch (error) {
+      console.error('Error checking authentication:', error);
       return null;
     }
-    return {
-      userId: user.id,
-      email: user.email
-    };
   }
-
+  
   /**
-   * Create a success response
-   * @param data The data to include in the response
-   * @returns A success response object
+   * Create a standardized success response
    */
-  protected success<T>(data: T | null): ServiceResponse<T> {
+  protected success<T>(data: T): { data: T, error: null, status: 'success' } {
     return {
-      status: 'success',
       data,
-      error: null
+      error: null,
+      status: 'success'
     };
   }
-
+  
   /**
-   * Create an error response
-   * @param errorMessage The error message
-   * @returns An error response object
+   * Create a standardized error response
    */
-  protected error<T>(errorMessage: string): ServiceResponse<T> {
+  protected error<T>(message: string): { data: null, error: string, status: 'error' } {
     return {
-      status: 'error',
       data: null,
-      error: errorMessage
+      error: message,
+      status: 'error'
     };
   }
-
+  
   /**
-   * Handle an error and return an appropriate response
-   * @param error The error object
-   * @returns An error response object
+   * Handle errors consistently
    */
-  protected handleError<T>(error: any): ServiceResponse<T> {
+  protected handleError(error: any) {
     console.error('Service error:', error);
     const errorMessage = error?.message || 'An unexpected error occurred';
     return this.error(errorMessage);
