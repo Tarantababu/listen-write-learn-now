@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { asUUID } from '@/utils/supabaseHelpers';
+import { asUUID, asUpdateObject } from '@/utils/supabaseHelpers';
 
 interface Feedback {
   id: string;
@@ -39,9 +39,13 @@ export function FeedbackList() {
   // Handle marking feedback as read
   const markAsRead = async (id: string) => {
     try {
+      const updateData = asUpdateObject<'feedback'>({
+        read: true
+      });
+      
       const { error } = await supabase
         .from('feedback')
-        .update({ read: true })
+        .update(updateData)
         .eq('id', asUUID(id));
       
       if (error) throw error;

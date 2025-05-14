@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { asInsertObject } from '@/utils/supabaseHelpers';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -37,14 +38,15 @@ export function AdminMessagesForm({ onMessageAdded }: { onMessageAdded?: () => v
     
     setIsSubmitting(true);
     try {
-      // Direct insert without type helpers
+      const insertData = asInsertObject<'admin_messages'>({
+        title: values.title,
+        content: values.content,
+        created_by: user.id
+      });
+      
       const { data, error } = await supabase
         .from('admin_messages')
-        .insert({
-          title: values.title,
-          content: values.content,
-          created_by: user.id
-        })
+        .insert(insertData)
         .select('id')
         .single();
       
