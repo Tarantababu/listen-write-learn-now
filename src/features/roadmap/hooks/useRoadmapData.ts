@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '../api/roadmapService';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
@@ -72,8 +73,16 @@ export function useRoadmapData() {
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
     setIsLoading(true);
     try {
-      // Fix: Using initializeRoadmap with the correct parameters
-      const roadmapId = await roadmapService.initializeRoadmap(level, language);
+      // First find a suitable roadmap for the given level and language
+      const availableRoadmaps = await roadmapService.getRoadmapsForLanguage(language);
+      const matchingRoadmap = availableRoadmaps.find(r => r.level === level);
+      
+      if (!matchingRoadmap) {
+        throw new Error(`No roadmap found for ${language} at ${level} level`);
+      }
+      
+      // Now initialize this roadmap for the user
+      const roadmapId = await roadmapService.initializeRoadmap(matchingRoadmap.id);
       
       // Reload user roadmaps to include the new one
       const updatedRoadmaps = await loadUserRoadmaps(language);
