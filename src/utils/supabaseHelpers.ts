@@ -1,4 +1,5 @@
 
+
 import type { Database } from '@/integrations/supabase/types';
 
 // Type alias for database ID
