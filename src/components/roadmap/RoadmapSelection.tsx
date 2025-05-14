@@ -35,7 +35,7 @@ const RoadmapSelection: React.FC = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Define all possible language levels 
+  // Define all possible language levels explicitly - this ensures levels are shown even when DB has no roadmaps
   const allLanguageLevels: LanguageLevel[] = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
   // Filter roadmaps to only show those for the currently selected language
@@ -55,8 +55,9 @@ const RoadmapSelection: React.FC = () => {
   };
 
   // Check if the selected level has a roadmap available in the user's language
+  // Always return true to allow all levels to be selected even when no roadmaps exist in DB
   const isLevelAvailable = (level: LanguageLevel): boolean => {
-    return availableRoadmapsForLanguage.some(roadmap => roadmap.level === level) || allLanguageLevels.includes(level);
+    return true; // Allow all levels to be selected regardless of DB state
   };
 
   // Check if the user already has a roadmap for this level and language
@@ -64,7 +65,7 @@ const RoadmapSelection: React.FC = () => {
     return existingLevels.includes(level);
   };
 
-  // Initial data loading
+  // Initial data loading - with throttling to prevent excessive calls
   useEffect(() => {
     if (!dataLoaded && !isLoading) {
       const fetchData = async () => {
@@ -93,14 +94,8 @@ const RoadmapSelection: React.FC = () => {
     
     setExistingLevels(userLevels);
 
-    // When no roadmaps are available in the database yet, show all standard levels
-    let levelsToShow: LanguageLevel[];
-    if (availableRoadmapsForLanguage.length === 0) {
-      levelsToShow = allLanguageLevels;
-    } else {
-      // Otherwise, show levels that have roadmaps for the current language
-      levelsToShow = allLanguageLevels.filter(level => isLevelAvailable(level));
-    }
+    // ALWAYS show all standard levels regardless of what's in the database
+    let levelsToShow: LanguageLevel[] = allLanguageLevels;
     
     setAvailableLevels(levelsToShow);
     
@@ -113,6 +108,7 @@ const RoadmapSelection: React.FC = () => {
     }
   }, [roadmaps, userRoadmaps, settings.selectedLanguage, retryCount, dataLoaded]);
 
+  // Handle initialization with error catching and clearer messaging
   const handleInitializeRoadmap = async () => {
     if (!selectedLevel) return;
     
@@ -140,7 +136,11 @@ const RoadmapSelection: React.FC = () => {
     }
   };
 
+  // Handle refresh with proper error handling and loading states
   const handleRefreshRoadmaps = async () => {
+    // Prevent multiple rapid refreshes
+    if (refreshing) return;
+    
     setRefreshing(true);
     try {
       setDataLoaded(false);
@@ -159,7 +159,10 @@ const RoadmapSelection: React.FC = () => {
         description: "There was an error refreshing roadmaps. Please try again.",
       });
     } finally {
-      setRefreshing(false);
+      // Delay turning off refreshing state to prevent rapid repeated clicks
+      setTimeout(() => {
+        setRefreshing(false);
+      }, 1000);
     }
   };
 
@@ -174,6 +177,7 @@ const RoadmapSelection: React.FC = () => {
     : 'Start Learning Journey';
 
   if (isLoading && !dataLoaded) {
+    // Keep loading state UI
     return (
       <Card className="w-full max-w-md mx-auto shadow-md">
         <CardHeader>
@@ -223,7 +227,7 @@ const RoadmapSelection: React.FC = () => {
                 <h4 className="font-medium text-amber-800 dark:text-amber-400 text-sm">No Roadmaps Available</h4>
                 <p className="text-sm text-amber-700 dark:text-amber-500 mt-1">
                   There are no roadmaps available for {settings.selectedLanguage} at the moment.
-                  Try refreshing or check back later.
+                  Please select a level to create a new roadmap.
                 </p>
               </div>
             </div>
@@ -301,8 +305,7 @@ const RoadmapSelection: React.FC = () => {
           disabled={
             initializing || 
             !selectedLevel || 
-            isLevelAlreadySelected(selectedLevel as LanguageLevel) || 
-            availableLevels.length === 0
+            isLevelAlreadySelected(selectedLevel as LanguageLevel)
           }
           className="w-full"
         >

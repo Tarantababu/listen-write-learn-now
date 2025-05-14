@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
@@ -30,19 +30,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const authInitialized = useRef(false);
+  const profileInitialized = useRef<{[key: string]: boolean}>({});
 
   useEffect(() => {
+    // Only run auth initialization once
+    if (authInitialized.current) return;
+    authInitialized.current = true;
+    
+    console.log("Setting up auth state listener");
+    
     // First set up auth state listener to avoid missing auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log("Auth state changed:", event);
         setSession(session);
         setUser(session?.user ?? null);
         
         if (event === 'SIGNED_IN') {
-          // Initialize user profile on sign in
-          setTimeout(() => {
-            initializeUserProfile(session!.user.id);
-          }, 0);
+          // Initialize user profile on sign in, but only if we haven't already done so
+          if (session?.user && !profileInitialized.current[session.user.id]) {
+            setTimeout(() => {
+              initializeUserProfile(session.user.id);
+              profileInitialized.current[session.user.id] = true;
+            }, 0);
+          }
           
           // Redirect to dashboard on sign in
           navigate('/dashboard');
@@ -55,15 +67,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Then check for existing session
+    // Then check for existing session - but only once
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("Initial session check:", session ? "Session found" : "No session");
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
       
-      if (session?.user) {
+      if (session?.user && !profileInitialized.current[session.user.id]) {
         setTimeout(() => {
           initializeUserProfile(session.user.id);
+          profileInitialized.current[session.user.id] = true;
         }, 0);
       }
     });
@@ -73,9 +87,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [navigate]);
 
-  // Initialize user profile if it doesn't exist
+  // Initialize user profile if it doesn't exist - modified to prevent duplicate calls
   const initializeUserProfile = async (userId: string) => {
     try {
+      console.log("Initializing user profile for:", userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -95,6 +111,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         
         if (error) throw error;
+        console.log("Created new user profile");
+      } else {
+        console.log("User profile already exists");
       }
     } catch (error) {
       console.error('Error initializing user profile:', error);

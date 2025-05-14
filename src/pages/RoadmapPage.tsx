@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
 import RoadmapSelection from '@/features/roadmap/components/RoadmapSelection';
@@ -42,26 +42,39 @@ const RoadmapPage: React.FC = () => {
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  const [loadAttempted, setLoadAttempted] = useState(false); // New state to track if loading was attempted
+  const [loadAttempted, setLoadAttempted] = useState(false);
+  const dataLoadedTimestamp = useRef<number | null>(null);
   const navigate = useNavigate();
 
-  // One-time initialization with protection against infinite loops
+  // One-time initialization with protection against infinite loops, with debounce
   useEffect(() => {
-    // Only run once when component mounts and not initialized yet
-    if (!initialized && user && !isLoading && !loadAttempted) {
-      const initializeData = async () => {
-        try {
-          console.log("Initial data loading for language:", settings.selectedLanguage);
-          setLoadAttempted(true); // Mark as attempted before the actual load
-          await loadUserRoadmaps(settings.selectedLanguage);
-          setInitialized(true);
-        } catch (error) {
-          console.error("Error during initial data loading:", error);
-        }
-      };
-      
-      initializeData();
+    // Skip if already initialized or loading or no user
+    if (initialized || isLoading || !user || loadAttempted) {
+      return;
     }
+
+    // Skip if we already attempted a load in the last 10 seconds
+    const now = Date.now();
+    if (dataLoadedTimestamp.current && now - dataLoadedTimestamp.current < 10000) {
+      console.log("Skipping load attempt - too soon since last attempt");
+      return;
+    }
+    
+    // Mark as attempted and update timestamp
+    dataLoadedTimestamp.current = now;
+    
+    const initializeData = async () => {
+      try {
+        console.log("Initial data loading for language:", settings.selectedLanguage);
+        setLoadAttempted(true); // Mark as attempted before the actual load
+        await loadUserRoadmaps(settings.selectedLanguage);
+        setInitialized(true);
+      } catch (error) {
+        console.error("Error during initial data loading:", error);
+      }
+    };
+    
+    initializeData();
   }, [user, settings.selectedLanguage, initialized, isLoading, loadAttempted, loadUserRoadmaps]);
 
   // Set active tab based on whether we have user roadmaps or not
@@ -132,10 +145,14 @@ const RoadmapPage: React.FC = () => {
   };
 
   const handleRetry = async () => {
+    // Prevent multiple rapid retries
+    if (isRetrying) return;
+    
     setIsRetrying(true);
     try {
       setSelectionError(null);
       setLoadAttempted(false); // Reset load attempted flag to try again
+      dataLoadedTimestamp.current = null; // Reset timestamp to allow immediate retry
       
       // Check if user is authenticated
       if (!user) {
