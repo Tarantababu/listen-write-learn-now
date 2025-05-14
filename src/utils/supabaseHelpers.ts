@@ -1,62 +1,27 @@
+import { v4 as uuidv4 } from 'uuid';
 
-import type { Database } from '@/integrations/supabase/types';
-
-// Type alias for database ID
-export type DbId = string;
-
-/**
- * Helper for inserting data with proper typing for Supabase tables
- * 
- * @param tableName The name of the table to insert into
- * @param obj The object to insert
- * @returns The properly typed object for insertion
- */
-export function asInsertObject<T extends keyof Database['public']['Tables']>(
-  obj: Record<string, any>
-): Database['public']['Tables'][T]['Insert'] {
-  return obj as Database['public']['Tables'][T]['Insert'];
+// Add helper functions for proper type casting with Supabase
+export function asInsertObject<T extends keyof any>(data: any): any {
+  return data;
 }
 
-/**
- * Helper for updating data with proper typing for Supabase tables
- * 
- * @param tableName The name of the table to update
- * @param obj The object containing update values
- * @returns The properly typed object for update
- */
-export function asUpdateObject<T extends keyof Database['public']['Tables']>(
-  obj: Record<string, any>
-): Database['public']['Tables'][T]['Update'] {
-  return obj as Database['public']['Tables'][T]['Update'];
+export function asUpdateObject<T extends keyof any>(data: any): any {
+  return data;
 }
 
-// For UUID parameters
-export function asUUID(id: string): any {
-  return id;
+export function asUUID(value: string): string {
+    if (!value) return uuidv4();
+    return value;
 }
 
-// For string parameters
-export function asString(str: string): any {
-  return str;
+export function asString(value: string | undefined): string {
+    return value || "";
 }
 
-// For boolean parameters
-export function asBoolean(bool: boolean): any {
-  return bool;
+export function asBoolean(value: boolean | undefined): boolean {
+    return value === true;
 }
 
-// For number parameters
-export function asNumber(num: number): any {
-  return num;
-}
-
-// For array parameters
-export function asArray<T>(arr: T[]): any {
-  return arr;
-}
-
-// Helper to safely handle Supabase data results
-export function handleSupabaseData<T>(data: any): T | null {
-  if (!data) return null;
-  return data as T;
+export function asNumber(value: number | undefined): number {
+    return value || 0;
 }

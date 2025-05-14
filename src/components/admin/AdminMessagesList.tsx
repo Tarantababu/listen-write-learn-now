@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -236,3 +237,6 @@ export function AdminMessagesList({ onRefresh }: { onRefresh?: () => void }) {
     </div>
   );
 }
+
+// Add default export
+export default AdminMessagesList;
