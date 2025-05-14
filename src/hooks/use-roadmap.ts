@@ -1,6 +1,7 @@
 
 import { useContext, useCallback } from 'react';
 import { RoadmapContext } from '@/features/roadmap/context/RoadmapContext';
+import { Language } from '@/types';
 
 /**
  * Custom hook to access the roadmap context with additional loading control
@@ -14,7 +15,7 @@ export const useRoadmap = () => {
   
   // Add a memoized wrapper around loadUserRoadmaps to prevent excessive calls
   const loadUserRoadmaps = useCallback(
-    async (language: string) => {
+    async (language: Language) => {
       // Only attempt to load if there's actually a context and the loading state isn't active
       if (context && !context.isLoading) {
         return context.loadUserRoadmaps(language);
