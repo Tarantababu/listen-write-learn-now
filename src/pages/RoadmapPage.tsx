@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
@@ -43,15 +42,17 @@ const RoadmapPage: React.FC = () => {
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [loadAttempted, setLoadAttempted] = useState(false); // New state to track if loading was attempted
   const navigate = useNavigate();
 
-  // One-time initialization
+  // One-time initialization with protection against infinite loops
   useEffect(() => {
-    // Only run once when component mounts
-    if (!initialized && user && !isLoading) {
+    // Only run once when component mounts and not initialized yet
+    if (!initialized && user && !isLoading && !loadAttempted) {
       const initializeData = async () => {
         try {
           console.log("Initial data loading for language:", settings.selectedLanguage);
+          setLoadAttempted(true); // Mark as attempted before the actual load
           await loadUserRoadmaps(settings.selectedLanguage);
           setInitialized(true);
         } catch (error) {
@@ -61,18 +62,19 @@ const RoadmapPage: React.FC = () => {
       
       initializeData();
     }
-  }, [user, settings.selectedLanguage, initialized, isLoading]);
+  }, [user, settings.selectedLanguage, initialized, isLoading, loadAttempted, loadUserRoadmaps]);
 
   // Set active tab based on whether we have user roadmaps or not
+  // Now only runs when loading is complete and we have attempted to load
   useEffect(() => {
-    if (!isLoading && initialized) {
+    if (!isLoading && loadAttempted) {
       if (userRoadmaps.length === 0) {
         setActiveTab("new");
       } else {
         setActiveTab("active");
       }
     }
-  }, [isLoading, userRoadmaps, initialized]);
+  }, [isLoading, userRoadmaps.length, loadAttempted]);
 
   // When a user clicks on "Continue Learning," open the exercise modal with current node
   useEffect(() => {
@@ -133,6 +135,7 @@ const RoadmapPage: React.FC = () => {
     setIsRetrying(true);
     try {
       setSelectionError(null);
+      setLoadAttempted(false); // Reset load attempted flag to try again
       
       // Check if user is authenticated
       if (!user) {
@@ -159,6 +162,8 @@ const RoadmapPage: React.FC = () => {
           description: "Successfully loaded a roadmap."
         });
       }
+      
+      setInitialized(true);
     } catch (error) {
       console.error('Error retrying roadmap load:', error);
       setSelectionError('Still having trouble loading the roadmap. Please try refreshing the page.');
@@ -201,9 +206,9 @@ const RoadmapPage: React.FC = () => {
     roadmap.languages?.includes(settings.selectedLanguage)
   );
 
-  // Detailed debug info
+  // Detailed debug info - limited to avoid console spamming
   useEffect(() => {
-    if (initialized) {
+    if (initialized && !isLoading) {
       console.log("RoadmapPage state:", {
         isLoading,
         hasError,
@@ -215,7 +220,8 @@ const RoadmapPage: React.FC = () => {
         activeTab,
         hasAvailableRoadmaps,
         language: settings.selectedLanguage,
-        initialized
+        initialized,
+        loadAttempted
       });
     }
   }, [
@@ -228,7 +234,9 @@ const RoadmapPage: React.FC = () => {
     nodes.length, 
     activeTab,
     settings.selectedLanguage,
-    initialized
+    initialized,
+    hasAvailableRoadmaps,
+    loadAttempted
   ]);
 
   if (!user) {

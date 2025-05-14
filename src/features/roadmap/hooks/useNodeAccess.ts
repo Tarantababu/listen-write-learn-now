@@ -3,39 +3,58 @@ import { useState, useEffect } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { nodeAccessService } from '../services/NodeAccessService';
 
+/**
+ * Hook to determine node access for the roadmap visualization
+ */
 export function useNodeAccess() {
-  const { nodes, currentNodeId, completedNodes } = useRoadmap();
-  const [accessibleNodeIds, setAccessibleNodeIds] = useState<string[]>([]);
+  const { currentRoadmap, nodes, completedNodes } = useRoadmap();
+  const [accessibleNodes, setAccessibleNodes] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Only calculate accessible nodes when we have nodes loaded
-    if (nodes.length > 0) {
-      const accessible = nodeAccessService.getAccessibleNodes(nodes);
-      setAccessibleNodeIds(accessible);
-    }
-  }, [nodes, completedNodes, currentNodeId]);
+    const loadAccessibleNodes = async () => {
+      if (!currentRoadmap) {
+        setAccessibleNodes([]);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        // Use the NodeAccessService to get accessible nodes
+        const response = await nodeAccessService.getAccessibleNodes(currentRoadmap.id);
+        if (response.status === 'success' && response.data) {
+          setAccessibleNodes(response.data);
+        } else {
+          console.error('Error loading accessible nodes:', response.error);
+          // Fallback: first node is always accessible
+          const firstNode = nodes[0]?.id;
+          setAccessibleNodes(firstNode ? [firstNode] : []);
+        }
+      } catch (error) {
+        console.error('Error in useNodeAccess:', error);
+        // Fallback: first node is always accessible
+        const firstNode = nodes[0]?.id;
+        setAccessibleNodes(firstNode ? [firstNode] : []);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAccessibleNodes();
+  }, [currentRoadmap, nodes, completedNodes]);
 
   const isNodeAccessible = (nodeId: string): boolean => {
-    return accessibleNodeIds.includes(nodeId) || completedNodes.includes(nodeId);
-  };
-
-  const isNodeLocked = (nodeId: string): boolean => {
-    return !isNodeAccessible(nodeId);
+    return accessibleNodes.includes(nodeId);
   };
 
   const isNodeCompleted = (nodeId: string): boolean => {
     return completedNodes.includes(nodeId);
   };
 
-  const isCurrentNode = (nodeId: string): boolean => {
-    return nodeId === currentNodeId;
-  };
-
   return {
-    accessibleNodeIds,
+    accessibleNodes,
     isNodeAccessible,
-    isNodeLocked,
     isNodeCompleted,
-    isCurrentNode
+    loading
   };
 }
