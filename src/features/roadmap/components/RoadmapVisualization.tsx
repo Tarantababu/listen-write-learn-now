@@ -2,7 +2,7 @@
 import React from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '@/types';
-import { Check, Lock, Star } from 'lucide-react';
+import { Check, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface RoadmapVisualizationProps {
@@ -12,12 +12,13 @@ interface RoadmapVisualizationProps {
 const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelect }) => {
   const { 
     currentRoadmap, 
-    nodes, 
-    completedNodes, 
+    nodes = [], 
+    completedNodes = [], 
     isLoading, 
-    roadmaps,
+    roadmaps = [],
     currentNodeId,
-    selectRoadmap
+    availableNodes = [],
+    nodeProgress = []
   } = useRoadmap();
   
   const getNodeStatus = (node: RoadmapNode): 'completed' | 'available' | 'locked' => {
@@ -26,6 +27,10 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     }
 
     if (node.id === currentNodeId) {
+      return 'available';
+    }
+
+    if (availableNodes.includes(node.id)) {
       return 'available';
     }
 
@@ -39,6 +44,9 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   if (!currentRoadmap) {
     return <div>No roadmap selected.</div>;
   }
+  
+  // Find the roadmap details from the roadmaps array
+  const roadmapDetails = roadmaps.find(r => r.id === currentRoadmap.roadmapId);
 
   const handleNodeClick = (node: RoadmapNode) => {
     onNodeSelect(node);
@@ -46,7 +54,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
 
   return (
     <div>
-      <h2>{currentRoadmap.name}</h2>
+      <h2>{roadmapDetails?.name || "Learning Path"}</h2>
       <p>Current Node ID: {currentNodeId}</p>
       <div>
         {nodes.map((node) => (

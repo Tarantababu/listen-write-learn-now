@@ -1,3 +1,4 @@
+
 export type Language = 
   | 'english' 
   | 'german' 
@@ -95,6 +96,11 @@ export interface UserRoadmap {
   currentNodeId?: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface RoadmapItem extends UserRoadmap {
+  name: string;
+  level: LanguageLevel;
 }
 
 export interface RoadmapProgress {

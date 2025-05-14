@@ -5,7 +5,7 @@ import RoadmapSelection from '@/features/roadmap/components/RoadmapSelection';
 import RoadmapExerciseModal from '@/features/roadmap/components/RoadmapExerciseModal';
 import RoadmapItemCard from '@/features/roadmap/components/RoadmapItemCard';
 import RoadmapProgressDashboard from '@/features/roadmap/components/RoadmapProgressDashboard';
-import { RoadmapNode } from '@/features/roadmap/types';
+import { RoadmapNode } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -22,11 +22,11 @@ const RoadmapPage: React.FC = () => {
     currentRoadmap, 
     isLoading, 
     roadmaps, 
-    userRoadmaps,
+    userRoadmaps = [],
     loadUserRoadmaps,
     selectRoadmap,
-    completedNodes,
-    nodes,
+    completedNodes = [],
+    nodes = [],
     currentNodeId
   } = useRoadmap();
   
@@ -89,12 +89,12 @@ const RoadmapPage: React.FC = () => {
       
       // After error, try to re-fetch user roadmaps
       try {
-        const loadedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
+        await loadUserRoadmaps(settings.selectedLanguage);
         
-        if (loadedRoadmaps && loadedRoadmaps.length > 0) {
+        if (userRoadmaps && userRoadmaps.length > 0) {
           // Try selecting the first available roadmap instead
           try {
-            await selectRoadmap(loadedRoadmaps[0].id);
+            await selectRoadmap(userRoadmaps[0].id);
             toast({
               title: "Selected fallback roadmap",
               description: "We encountered an issue with the selected roadmap and loaded another one instead."
@@ -131,7 +131,7 @@ const RoadmapPage: React.FC = () => {
           title: "Roadmap loaded",
           description: "Successfully reloaded your roadmap."
         });
-      } else if (userRoadmaps.length > 0) {
+      } else if (userRoadmaps && userRoadmaps.length > 0) {
         // Otherwise, select the first available roadmap
         await selectRoadmap(userRoadmaps[0].id);
         toast({
@@ -177,9 +177,9 @@ const RoadmapPage: React.FC = () => {
   };
 
   // Check if there are any available roadmaps in the system
-  const hasAvailableRoadmaps = roadmaps.some(roadmap => 
+  const hasAvailableRoadmaps = roadmaps?.some(roadmap => 
     roadmap.languages?.includes(settings.selectedLanguage)
-  );
+  ) || false;
 
   // Detailed debug info
   useEffect(() => {
@@ -187,10 +187,10 @@ const RoadmapPage: React.FC = () => {
       isLoading,
       hasError,
       userAuthenticated: !!user,
-      roadmaps: roadmaps.length,
-      userRoadmaps: userRoadmaps.length,
+      roadmaps: roadmaps?.length || 0,
+      userRoadmaps: userRoadmaps?.length || 0,
       hasCurrentRoadmap: !!currentRoadmap,
-      nodes: nodes.length,
+      nodes: nodes?.length || 0,
       activeTab,
       hasAvailableRoadmaps,
       language: settings.selectedLanguage
@@ -199,12 +199,13 @@ const RoadmapPage: React.FC = () => {
     isLoading, 
     hasError, 
     user, 
-    roadmaps.length, 
-    userRoadmaps.length, 
+    roadmaps, 
+    userRoadmaps, 
     currentRoadmap, 
-    nodes.length, 
+    nodes, 
     activeTab,
-    settings.selectedLanguage
+    settings.selectedLanguage,
+    hasAvailableRoadmaps
   ]);
 
   if (!user) {
@@ -312,7 +313,7 @@ const RoadmapPage: React.FC = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-4">
-            <TabsTrigger value="active" disabled={userRoadmaps.length === 0}>
+            <TabsTrigger value="active" disabled={!userRoadmaps || userRoadmaps.length === 0}>
               My Roadmaps
             </TabsTrigger>
             <TabsTrigger value="new">
@@ -321,7 +322,7 @@ const RoadmapPage: React.FC = () => {
           </TabsList>
           
           <TabsContent value="active" className="space-y-6">
-            {userRoadmaps.length === 0 ? (
+            {!userRoadmaps || userRoadmaps.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
                   You don't have any roadmaps for {getCapitalizedLanguage(settings.selectedLanguage)} yet. Start a new one to begin your learning journey.
@@ -337,21 +338,29 @@ const RoadmapPage: React.FC = () => {
                 <h2 className="text-xl font-semibold">{getCapitalizedLanguage(settings.selectedLanguage)}</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {userRoadmaps.map(roadmap => (
-                    <motion.div
-                      key={roadmap.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <RoadmapItemCard
-                        roadmap={roadmap}
-                        isActive={currentRoadmap?.id === roadmap.id}
-                        onCardClick={handleRoadmapSelect}
-                        onContinueClick={handleContinueLearning}
-                      />
-                    </motion.div>
-                  ))}
+                  {userRoadmaps.map(roadmap => {
+                    // Find the matching roadmap details
+                    const roadmapDetails = roadmaps?.find(r => r.id === roadmap.roadmapId);
+                    return (
+                      <motion.div
+                        key={roadmap.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <RoadmapItemCard
+                          roadmap={{
+                            ...roadmap,
+                            name: roadmapDetails?.name || "Learning Path",
+                            level: roadmapDetails?.level || "A1"
+                          }}
+                          isActive={currentRoadmap?.id === roadmap.id}
+                          onCardClick={handleRoadmapSelect}
+                          onContinueClick={handleContinueLearning}
+                        />
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </motion.div>
             )}
@@ -374,7 +383,7 @@ const RoadmapPage: React.FC = () => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">
-                    {roadmaps.find(r => r.id === currentRoadmap.roadmapId)?.name || "Learning Path"} - {getCapitalizedLanguage(currentRoadmap.language)}
+                    {roadmaps?.find(r => r.id === currentRoadmap.roadmapId)?.name || "Learning Path"} - {getCapitalizedLanguage(currentRoadmap.language)}
                   </CardTitle>
                   <div className="flex space-x-2">
                     <Button

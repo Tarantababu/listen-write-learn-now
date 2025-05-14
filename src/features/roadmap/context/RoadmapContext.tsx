@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language, RoadmapNodeProgress, RoadmapContextType } from '@/types';
 
-const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
+export const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
 
 export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -96,15 +96,15 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [user]);
 
   // Load all user roadmaps
-  const loadUserRoadmaps = useCallback(async () => {
-    if (!user) return;
+  const loadUserRoadmaps = useCallback(async (language?: Language): Promise<UserRoadmap[] | undefined> => {
+    if (!user) return [];
 
     try {
       // Use our custom function to get user roadmaps filtered by the current language
       const { data: userRoadmapData, error: userRoadmapError } = await supabase
         .rpc('get_user_roadmaps_by_language', {
           user_id_param: user.id,
-          requested_language: settings.selectedLanguage
+          requested_language: language || settings.selectedLanguage
         });
 
       if (userRoadmapError) throw userRoadmapError;
@@ -112,7 +112,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (!userRoadmapData || userRoadmapData.length === 0) {
         setUserRoadmaps([]);
         setSelectedRoadmap(null);
-        return;
+        return [];
       }
 
       // Format user roadmaps
@@ -132,6 +132,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (!selectedRoadmap && formattedUserRoadmaps.length > 0) {
         await loadUserRoadmap(formattedUserRoadmaps[0].id);
       }
+      
+      return formattedUserRoadmaps;
     } catch (error) {
       console.error("Error loading user roadmaps:", error);
       toast({
@@ -139,6 +141,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         title: "Failed to load your learning paths",
         description: "There was an error loading your learning paths."
       });
+      return [];
     }
   }, [user, settings.selectedLanguage, selectedRoadmap]);
 
@@ -705,4 +708,5 @@ export const useRoadmap = () => {
   return context;
 };
 
+// Export RoadmapContext explicitly
 export { RoadmapContext };

@@ -12,13 +12,13 @@ interface RoadmapVisualizationProps {
 const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelect }) => {
   const { 
     currentRoadmap, 
-    nodes, 
-    completedNodes, 
+    nodes = [], 
+    completedNodes = [], 
     isLoading, 
-    roadmaps,
+    roadmaps = [],
     currentNodeId,
-    availableNodes,
-    nodeProgress
+    availableNodes = [],
+    nodeProgress = []
   } = useRoadmap();
   
   const getNodeStatus = (node: RoadmapNode): 'completed' | 'available' | 'locked' => {
@@ -41,13 +41,16 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     return <div>No roadmap selected.</div>;
   }
 
+  // Find the roadmap details from the roadmaps array
+  const roadmapDetails = roadmaps.find(r => r.id === currentRoadmap.roadmapId);
+
   const handleNodeClick = (node: RoadmapNode) => {
     onNodeSelect(node);
   };
 
   return (
     <div>
-      <h2>{currentRoadmap.name}</h2>
+      <h2>{roadmapDetails?.name || "Learning Path"}</h2>
       <p>Current Node ID: {currentNodeId}</p>
       <div>
         {nodes.map((node) => (
