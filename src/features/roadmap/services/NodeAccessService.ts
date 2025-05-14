@@ -16,7 +16,8 @@ class NodeAccessService extends BaseService {
       if (!user) {
         return {
           status: 'error',
-          error: 'User not authenticated'
+          error: 'User not authenticated',
+          data: null
         };
       }
       
@@ -31,7 +32,8 @@ class NodeAccessService extends BaseService {
       if (!nodes || nodes.length === 0) {
         return {
           status: 'success',
-          data: [] // No nodes in this roadmap
+          data: [],
+          error: null
         };
       }
       
@@ -62,11 +64,24 @@ class NodeAccessService extends BaseService {
       
       return {
         status: 'success',
-        data: accessibleNodes
+        data: accessibleNodes,
+        error: null
       };
     } catch (error) {
-      return this.handleServiceError('getAccessibleNodes', error);
+      return this.handleError('getAccessibleNodes', error);
     }
+  }
+  
+  /**
+   * Handle service errors consistently
+   */
+  protected handleError(methodName: string, error: any): ServiceResponse<string[]> {
+    console.error(`NodeAccessService.${methodName} error:`, error);
+    return {
+      status: 'error',
+      error: error?.message || 'An unexpected error occurred',
+      data: null
+    };
   }
 }
 

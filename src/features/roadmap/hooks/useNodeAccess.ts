@@ -7,7 +7,7 @@ import { nodeAccessService } from '../services/NodeAccessService';
  * Hook to determine node access for the roadmap visualization
  */
 export function useNodeAccess() {
-  const { currentRoadmap, nodes, completedNodes } = useRoadmap();
+  const { currentRoadmap, nodes, completedNodes, currentNodeId } = useRoadmap();
   const [accessibleNodes, setAccessibleNodes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -51,10 +51,15 @@ export function useNodeAccess() {
     return completedNodes.includes(nodeId);
   };
 
+  const isCurrentNode = (nodeId: string): boolean => {
+    return nodeId === currentNodeId;
+  };
+
   return {
     accessibleNodes,
     isNodeAccessible,
     isNodeCompleted,
+    isCurrentNode,
     loading
   };
 }
