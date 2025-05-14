@@ -1,35 +1,54 @@
 
 import React from 'react';
-import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ExerciseContentProps {
-  exercise: any;
-  showActions?: boolean;
+  exercise: {
+    title: string;
+    text: string;
+    audio_url?: string;
+  };
+  onComplete?: () => void;
+  isLoading?: boolean;
+  isCompleted?: boolean;
 }
 
-const ExerciseContent: React.FC<ExerciseContentProps> = ({ 
+const ExerciseContent: React.FC<ExerciseContentProps> = ({
   exercise,
-  showActions = true
+  onComplete,
+  isLoading = false,
+  isCompleted = false
 }) => {
   return (
-    <Card className="p-6">
-      <h2 className="text-xl font-semibold mb-4">{exercise?.title || 'Exercise Content'}</h2>
-      
-      {exercise?.text ? (
-        <div className="prose prose-sm dark:prose-invert max-w-none">
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>{exercise.title}</CardTitle>
+        <CardDescription>Complete this exercise to progress</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="prose dark:prose-invert max-w-none">
           <p>{exercise.text}</p>
         </div>
-      ) : (
-        <div className="text-center text-muted-foreground">
-          <p>No content available for this exercise.</p>
-        </div>
-      )}
-      
-      {showActions && (
-        <div className="flex justify-end mt-6 space-x-4">
-          <p className="text-muted-foreground">Exercise actions would appear here</p>
-        </div>
-      )}
+        
+        {exercise.audio_url && (
+          <div className="mt-4">
+            <audio controls className="w-full">
+              <source src={exercise.audio_url} type="audio/mpeg" />
+              Your browser does not support the audio element.
+            </audio>
+          </div>
+        )}
+      </CardContent>
+      <CardFooter className="flex justify-end">
+        <Button 
+          onClick={onComplete} 
+          disabled={isLoading || isCompleted}
+          variant={isCompleted ? "outline" : "default"}
+        >
+          {isCompleted ? "Completed" : "Mark as Complete"}
+        </Button>
+      </CardFooter>
     </Card>
   );
 };

@@ -1,88 +1,102 @@
 
 import { BaseService } from './BaseService';
 import { ServiceResult } from '../types/service-types';
-import { RoadmapNode } from '../types';
-import { Language } from '@/types';
 
-/**
- * Service for controlling node access and enforcing linear progression
- */
 export class NodeAccessService extends BaseService {
   /**
-   * Check if a node is accessible for the current user
-   * This performs server-side validation to ensure proper linear progression
+   * Check if a user has access to a specific node
    */
   public async canAccessNode(nodeId: string): ServiceResult<boolean> {
     try {
       const auth = await this.ensureAuthenticated();
       if (!auth) {
-        return this.error('User must be authenticated to access roadmap nodes');
+        return this.success(false);
       }
       
-      // Get the node to get its position and roadmap ID
-      const { data: node, error: nodeError } = await this.supabase
+      console.log(`Checking access for node: ${nodeId}`);
+      
+      // First get the node details to get the roadmap ID and position
+      const { data: nodeData, error: nodeError } = await this.supabase
         .from('roadmap_nodes')
-        .select('id, roadmap_id, position, language')
+        .select('roadmap_id, position, language')
         .eq('id', nodeId)
         .single();
         
-      if (nodeError) throw nodeError;
+      if (nodeError) {
+        console.error(`Error fetching node data: ${nodeError.message}`);
+        return this.error(`Error fetching node data: ${nodeError.message}`);
+      }
       
-      // Get the user roadmap
-      const { data: userRoadmap, error: userRoadmapError } = await this.supabase
+      // Get the user roadmap for this roadmap
+      const { data: userRoadmap, error: roadmapError } = await this.supabase
         .from('user_roadmaps')
-        .select('*')
+        .select('id, current_node_id')
         .eq('user_id', auth.userId)
-        .eq('roadmap_id', node.roadmap_id)
-        .eq('language', node.language)
-        .single();
+        .eq('roadmap_id', nodeData.roadmap_id)
+        .eq('language', nodeData.language)
+        .maybeSingle();
         
-      if (userRoadmapError) throw userRoadmapError;
+      if (roadmapError) {
+        console.error(`Error fetching user roadmap: ${roadmapError.message}`);
+        return this.error(`Error fetching user roadmap: ${roadmapError.message}`);
+      }
       
-      // If this is the current node, it's accessible
+      // If user doesn't have this roadmap, they can't access the node
+      if (!userRoadmap) {
+        console.log('User does not have access to this roadmap');
+        return this.success(false);
+      }
+      
+      // If the node is the current node, allow access
       if (userRoadmap.current_node_id === nodeId) {
+        console.log('This is the user\'s current node - access granted');
         return this.success(true);
       }
       
-      // Get all nodes for this roadmap with positions less than the requested node
-      const { data: previousNodes, error: previousNodesError } = await this.supabase
-        .from('roadmap_nodes')
-        .select('id')
-        .eq('roadmap_id', node.roadmap_id)
-        .eq('language', node.language)
-        .lt('position', node.position)
-        .order('position', { ascending: true });
-        
-      if (previousNodesError) throw previousNodesError;
-      
-      if (previousNodes.length === 0) {
-        // This is the first node, so it's accessible
-        return this.success(true);
-      }
-      
-      // Get completion status for all previous nodes
-      const previousNodeIds = previousNodes.map(n => n.id);
-      
-      const { data: completedNodes, error: completedNodesError } = await this.supabase
+      // Get all completed nodes for this user and roadmap
+      const { data: progressData, error: progressError } = await this.supabase
         .from('roadmap_progress')
-        .select('node_id, completed')
+        .select('node_id')
         .eq('user_id', auth.userId)
-        .eq('roadmap_id', node.roadmap_id)
-        .in('node_id', previousNodeIds)
+        .eq('roadmap_id', nodeData.roadmap_id)
         .eq('completed', true);
         
-      if (completedNodesError) throw completedNodesError;
+      if (progressError) {
+        console.error(`Error fetching progress data: ${progressError.message}`);
+        return this.error(`Error fetching progress data: ${progressError.message}`);
+      }
       
+      // If the node is already completed, allow access
+      const completedNodeIds = progressData.map(p => p.node_id);
+      if (completedNodeIds.includes(nodeId)) {
+        console.log('Node is already completed - access granted');
+        return this.success(true);
+      }
+      
+      // Get all nodes in order to determine if previous nodes are completed
+      const { data: nodesData, error: nodesError } = await this.supabase
+        .from('roadmap_nodes')
+        .select('id, position')
+        .eq('roadmap_id', nodeData.roadmap_id)
+        .eq('language', nodeData.language)
+        .order('position');
+        
+      if (nodesError) {
+        console.error(`Error fetching nodes: ${nodesError.message}`);
+        return this.error(`Error fetching nodes: ${nodesError.message}`);
+      }
+      
+      // Find all nodes with position less than this node
+      const previousNodes = nodesData
+        .filter(n => n.position < nodeData.position)
+        .map(n => n.id);
+        
       // Check if all previous nodes are completed
-      const completedNodeIds = new Set(completedNodes.map(n => n.node_id));
-      const allPreviousNodesCompleted = previousNodeIds.every(id => completedNodeIds.has(id));
+      const allPreviousNodesCompleted = previousNodes.every(id => 
+        completedNodeIds.includes(id)
+      );
       
-      console.log(`Node access check for ${nodeId}:`, {
-        previousNodeIds,
-        completedNodeIds: Array.from(completedNodeIds),
-        allPreviousNodesCompleted
-      });
-      
+      console.log(`All previous nodes completed: ${allPreviousNodesCompleted}`);
       return this.success(allPreviousNodesCompleted);
     } catch (error) {
       return this.handleError(error);
@@ -90,67 +104,83 @@ export class NodeAccessService extends BaseService {
   }
   
   /**
-   * Get all accessible nodes for the current user and roadmap
-   * This returns nodes that are either:
-   * 1. The current node
-   * 2. Nodes that have been completed
-   * 3. The next immediate node after a completed node
+   * Get all accessible node IDs for a user's roadmap
    */
-  public async getAccessibleNodes(roadmapId: string, language: Language): ServiceResult<string[]> {
+  public async getAccessibleNodes(roadmapId: string, language: string): ServiceResult<string[]> {
     try {
       const auth = await this.ensureAuthenticated();
       if (!auth) {
-        return this.error('User must be authenticated to access roadmap nodes');
+        return this.success([]);
       }
       
-      // Get all nodes for this roadmap ordered by position
+      // Get all nodes for this roadmap
       const { data: nodes, error: nodesError } = await this.supabase
         .from('roadmap_nodes')
         .select('id, position')
         .eq('roadmap_id', roadmapId)
         .eq('language', language)
-        .order('position', { ascending: true });
+        .order('position');
         
-      if (nodesError) throw nodesError;
-      
-      // Get user's current node
-      const { data: userRoadmap, error: userRoadmapError } = await this.supabase
-        .from('user_roadmaps')
-        .select('current_node_id')
-        .eq('user_id', auth.userId)
-        .eq('roadmap_id', roadmapId)
-        .eq('language', language)
-        .single();
-        
-      if (userRoadmapError) throw userRoadmapError;
+      if (nodesError) {
+        return this.error(`Error fetching nodes: ${nodesError.message}`);
+      }
       
       // Get all completed nodes
-      const { data: completedProgress, error: progressError } = await this.supabase
+      const { data: progress, error: progressError } = await this.supabase
         .from('roadmap_progress')
         .select('node_id')
         .eq('user_id', auth.userId)
         .eq('roadmap_id', roadmapId)
         .eq('completed', true);
         
-      if (progressError) throw progressError;
-      
-      // Build the set of accessible node IDs
-      const completedNodeIds = new Set(completedProgress.map(p => p.node_id));
-      const accessibleNodeIds: string[] = [];
-      let previousNodeCompleted = true; // First node is always accessible
-      
-      for (const node of nodes) {
-        if (
-          previousNodeCompleted || // Previous node is completed
-          completedNodeIds.has(node.id) || // This node is completed
-          node.id === userRoadmap.current_node_id // This is the current node
-        ) {
-          accessibleNodeIds.push(node.id);
-        }
-        
-        // Update for next iteration
-        previousNodeCompleted = completedNodeIds.has(node.id);
+      if (progressError) {
+        return this.error(`Error fetching progress: ${progressError.message}`);
       }
+      
+      // Get user roadmap to find current node
+      const { data: userRoadmap, error: roadmapError } = await this.supabase
+        .from('user_roadmaps')
+        .select('current_node_id')
+        .eq('user_id', auth.userId)
+        .eq('roadmap_id', roadmapId)
+        .eq('language', language)
+        .maybeSingle();
+        
+      if (roadmapError) {
+        return this.error(`Error fetching user roadmap: ${roadmapError.message}`);
+      }
+      
+      const completedNodeIds = progress.map(p => p.node_id);
+      const currentNodeId = userRoadmap?.current_node_id;
+      
+      // First node is always accessible
+      const accessibleNodeIds: string[] = [];
+      if (nodes.length > 0) {
+        accessibleNodeIds.push(nodes[0].id);
+      }
+      
+      // Add current node to accessible nodes
+      if (currentNodeId && !accessibleNodeIds.includes(currentNodeId)) {
+        accessibleNodeIds.push(currentNodeId);
+      }
+      
+      // Add all completed nodes
+      completedNodeIds.forEach(id => {
+        if (!accessibleNodeIds.includes(id)) {
+          accessibleNodeIds.push(id);
+        }
+      });
+      
+      // For each completed node, the next node becomes accessible
+      completedNodeIds.forEach(completedId => {
+        const completedNode = nodes.find(n => n.id === completedId);
+        if (completedNode) {
+          const nextNode = nodes.find(n => n.position === completedNode.position + 1);
+          if (nextNode && !accessibleNodeIds.includes(nextNode.id)) {
+            accessibleNodeIds.push(nextNode.id);
+          }
+        }
+      });
       
       return this.success(accessibleNodeIds);
     } catch (error) {
