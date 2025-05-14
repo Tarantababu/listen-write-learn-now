@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -121,3 +122,5 @@ export function AdminMessagesForm({ onMessageAdded }: { onMessageAdded?: () => v
     </Card>
   );
 }
+
+export default AdminMessagesForm; // Added default export
