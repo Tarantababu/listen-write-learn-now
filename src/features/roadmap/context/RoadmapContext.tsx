@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -5,7 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language, RoadmapNodeProgress, RoadmapContextType } from '@/types';
 
-export const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
+// Create the context but only export it through the hook
+const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
 
 export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -708,5 +710,4 @@ export const useRoadmap = () => {
   return context;
 };
 
-// Export RoadmapContext explicitly
-export { RoadmapContext };
+// Only export the context through the useRoadmap hook
