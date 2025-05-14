@@ -7,6 +7,7 @@ import RoadmapExerciseModal from '@/features/roadmap/components/RoadmapExerciseM
 import { RoadmapNode } from '@/features/roadmap/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/integrations/supabase/client';
 
 const RoadmapPage: React.FC = () => {
   const [userRoadmaps, setUserRoadmaps] = useState<any[]>([]);
