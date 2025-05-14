@@ -132,90 +132,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     }
   }, [settings.selectedLanguage]);
 
-  // Load roadmaps
-  const loadRoadmaps = useCallback(async (language: Language) => {
-    if (isLoading || fetchError) return;
-    
-    setIsLoading(true);
-    try {
-      console.log('Loading roadmaps for language:', language);
-      const result = await roadmapService.getRoadmapsByLanguage(language);
-      if (result.status === 'success' && result.data) {
-        setRoadmaps(result.data);
-        console.log('Roadmaps loaded:', result.data.length);
-      } else {
-        console.error('Error loading roadmaps:', result.error);
-        setFetchError(true);
-        toast({
-          variant: "destructive",
-          title: "Failed to load roadmaps",
-          description: "There was an error loading available roadmaps."
-        });
-      }
-    } catch (error) {
-      console.error('Error loading roadmaps:', error);
-      setFetchError(true);
-      toast({
-        variant: "destructive",
-        title: "Failed to load roadmaps",
-        description: "There was an error loading available roadmaps."
-      });
-    } finally {
-      setIsLoading(false);
-      setDataFetched(true);
-    }
-  }, [fetchError]);
-
-  // Load user roadmaps
-  const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
-    if (isLoading || fetchError) return [];
-    
-    setIsLoading(true);
-    try {
-      console.log('Loading user roadmaps for language:', language);
-      const result = await roadmapService.getUserRoadmaps(language);
-      if (result.status === 'success' && result.data) {
-        const userRoadmapsData = result.data;
-        
-        // Update state immediately so other functions have access to the latest data
-        setUserRoadmaps(userRoadmapsData);
-        console.log('User roadmaps loaded:', userRoadmapsData.length);
-        
-        // If we have user roadmaps and none is currently selected, select the first one
-        if (userRoadmapsData.length > 0 && !currentRoadmap) {
-          // Don't await here to prevent blocking, but handle errors
-          selectRoadmap(userRoadmapsData[0].id).catch(err => {
-            console.error('Error auto-selecting first roadmap:', err);
-          });
-        }
-        
-        return userRoadmapsData;
-      } else {
-        console.error('Error loading user roadmaps:', result.error);
-        setFetchError(true);
-        toast({
-          variant: "destructive",
-          title: "Failed to load your roadmaps",
-          description: "There was an error loading your roadmaps."
-        });
-        return [];
-      }
-    } catch (error) {
-      console.error('Error loading user roadmaps:', error);
-      setFetchError(true);
-      toast({
-        variant: "destructive",
-        title: "Failed to load your roadmaps",
-        description: "There was an error loading your roadmaps."
-      });
-      return [];
-    } finally {
-      setIsLoading(false);
-      setDataFetched(true);
-    }
-  }, [currentRoadmap, selectRoadmap, fetchError]);
-
-  // Select a roadmap
+  // Select a roadmap - moved up before it's referenced by other functions
   const selectRoadmap = useCallback(async (roadmapId: string): Promise<RoadmapNode[]> => {
     if (isLoading || fetchError) return [];
     
@@ -307,6 +224,89 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       setIsLoading(false);
     }
   }, [userRoadmaps, settings.selectedLanguage, loadUserRoadmaps, fetchError]);
+
+  // Load roadmaps
+  const loadRoadmaps = useCallback(async (language: Language) => {
+    if (isLoading || fetchError) return;
+    
+    setIsLoading(true);
+    try {
+      console.log('Loading roadmaps for language:', language);
+      const result = await roadmapService.getRoadmapsByLanguage(language);
+      if (result.status === 'success' && result.data) {
+        setRoadmaps(result.data);
+        console.log('Roadmaps loaded:', result.data.length);
+      } else {
+        console.error('Error loading roadmaps:', result.error);
+        setFetchError(true);
+        toast({
+          variant: "destructive",
+          title: "Failed to load roadmaps",
+          description: "There was an error loading available roadmaps."
+        });
+      }
+    } catch (error) {
+      console.error('Error loading roadmaps:', error);
+      setFetchError(true);
+      toast({
+        variant: "destructive",
+        title: "Failed to load roadmaps",
+        description: "There was an error loading available roadmaps."
+      });
+    } finally {
+      setIsLoading(false);
+      setDataFetched(true);
+    }
+  }, [fetchError]);
+
+  // Load user roadmaps
+  const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
+    if (isLoading || fetchError) return [];
+    
+    setIsLoading(true);
+    try {
+      console.log('Loading user roadmaps for language:', language);
+      const result = await roadmapService.getUserRoadmaps(language);
+      if (result.status === 'success' && result.data) {
+        const userRoadmapsData = result.data;
+        
+        // Update state immediately so other functions have access to the latest data
+        setUserRoadmaps(userRoadmapsData);
+        console.log('User roadmaps loaded:', userRoadmapsData.length);
+        
+        // If we have user roadmaps and none is currently selected, select the first one
+        if (userRoadmapsData.length > 0 && !currentRoadmap) {
+          // Don't await here to prevent blocking, but handle errors
+          selectRoadmap(userRoadmapsData[0].id).catch(err => {
+            console.error('Error auto-selecting first roadmap:', err);
+          });
+        }
+        
+        return userRoadmapsData;
+      } else {
+        console.error('Error loading user roadmaps:', result.error);
+        setFetchError(true);
+        toast({
+          variant: "destructive",
+          title: "Failed to load your roadmaps",
+          description: "There was an error loading your roadmaps."
+        });
+        return [];
+      }
+    } catch (error) {
+      console.error('Error loading user roadmaps:', error);
+      setFetchError(true);
+      toast({
+        variant: "destructive",
+        title: "Failed to load your roadmaps",
+        description: "There was an error loading your roadmaps."
+      });
+      return [];
+    } finally {
+      setIsLoading(false);
+      setDataFetched(true);
+    }
+  }, [currentRoadmap, selectRoadmap, fetchError]);
 
   // Initialize a new roadmap
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language): Promise<string> => {
