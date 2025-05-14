@@ -54,7 +54,7 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
       console.log('Formatted roadmaps:', formattedRoadmaps);
       return this.success(formattedRoadmaps);
     } catch (error) {
-      return this.handleError(error);
+      return this.handleError('getRoadmapsByLanguage', error);
     }
   }
   
@@ -119,7 +119,7 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
       console.log('User roadmaps loaded:', formattedRoadmaps);
       return this.success(formattedRoadmaps);
     } catch (error) {
-      return this.handleError(error);
+      return this.handleError('getUserRoadmaps', error);
     }
   }
   
@@ -254,7 +254,7 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
       return this.success(formattedNodes);
     } catch (error) {
       console.error(`Error in getRoadmapNodes for roadmap ID ${userRoadmapId}:`, error);
-      return this.handleError(error);
+      return this.handleError('getRoadmapNodes', error);
     }
   }
   
@@ -375,7 +375,7 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
       return this.success(userRoadmap.id);
     } catch (error) {
       console.error('Error in initializeRoadmap:', error);
-      return this.handleError(error);
+      return this.handleError('initializeRoadmap', error);
     }
   }
 }

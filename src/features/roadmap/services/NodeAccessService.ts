@@ -71,18 +71,6 @@ class NodeAccessService extends BaseService {
       return this.handleError('getAccessibleNodes', error);
     }
   }
-  
-  /**
-   * Handle service errors consistently
-   */
-  protected handleError(methodName: string, error: any): ServiceResponse<string[]> {
-    console.error(`NodeAccessService.${methodName} error:`, error);
-    return {
-      status: 'error',
-      error: error?.message || 'An unexpected error occurred',
-      data: null
-    };
-  }
 }
 
 export const nodeAccessService = new NodeAccessService();

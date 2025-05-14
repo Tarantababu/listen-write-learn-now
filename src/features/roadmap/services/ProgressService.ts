@@ -149,18 +149,6 @@ class ProgressService extends BaseService {
       return this.handleError('getNodeProgress', error);
     }
   }
-  
-  /**
-   * Handle service errors consistently
-   */
-  protected handleError(methodName: string, error: any): ServiceResponse<any[]> {
-    console.error(`ProgressService.${methodName} error:`, error);
-    return {
-      status: 'error',
-      error: error?.message || 'An unexpected error occurred',
-      data: null
-    };
-  }
 }
 
 export const progressService = new ProgressService();

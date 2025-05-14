@@ -43,18 +43,6 @@ class UserService extends BaseService {
       return this.handleError('getUserProfile', error);
     }
   }
-  
-  /**
-   * Handle service errors consistently
-   */
-  protected handleError(methodName: string, error: any): ServiceResponse<any> {
-    console.error(`UserService.${methodName} error:`, error);
-    return {
-      status: 'error',
-      error: error?.message || 'An unexpected error occurred',
-      data: null
-    };
-  }
 }
 
 export const userService = new UserService();

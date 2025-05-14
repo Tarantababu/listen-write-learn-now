@@ -26,6 +26,28 @@ export class BaseService {
   }
   
   /**
+   * Create a success response
+   */
+  protected success<T>(data: T): ServiceResponse<T> {
+    return {
+      status: 'success',
+      data,
+      error: null
+    };
+  }
+  
+  /**
+   * Create an error response
+   */
+  protected error<T>(message: string): ServiceResponse<T> {
+    return {
+      status: 'error',
+      data: null,
+      error: message
+    };
+  }
+  
+  /**
    * Handle errors consistently
    */
   protected handleError<T>(methodName: string, error: any): ServiceResponse<T> {
