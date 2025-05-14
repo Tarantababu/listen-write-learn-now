@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -41,7 +41,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Save, Trash2, Star, Pencil, Check, X, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, Save, Trash2, Star, Pencil, Check, X, AlertCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import { LanguageLevel, Language, Roadmap, RoadmapNode, RoadmapLanguage } from '@/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -60,6 +60,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Form schemas
 const roadmapFormSchema = z.object({
@@ -98,6 +99,7 @@ export const RoadmapEditor: React.FC = () => {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [availableLanguages, setAvailableLanguages] = useState<{value: string, label: string}[]>([]);
   const [filteredExercises, setFilteredExercises] = useState<any[]>([]);
+  const [reorderingNode, setReorderingNode] = useState<string | null>(null);
 
   const roadmapForm = useForm<RoadmapFormValues>({
     resolver: zodResolver(roadmapFormSchema),
@@ -170,7 +172,11 @@ export const RoadmapEditor: React.FC = () => {
         setRoadmaps(formattedRoadmaps);
       } catch (err: any) {
         console.error('Error fetching roadmaps:', err);
-        toast.error('Failed to load roadmaps');
+        toast({
+          variant: "destructive",
+          title: "Failed to load roadmaps",
+          description: "Could not fetch the roadmap data. Please try again."
+        });
       } finally {
         setLoading(false);
       }
@@ -193,6 +199,11 @@ export const RoadmapEditor: React.FC = () => {
         setDefaultExercises(data);
       } catch (err: any) {
         console.error('Error fetching default exercises:', err);
+        toast({
+          variant: "destructive",
+          title: "Failed to load exercises",
+          description: "Could not fetch available exercises. Some features might be limited."
+        });
       }
     };
 
@@ -233,7 +244,11 @@ export const RoadmapEditor: React.FC = () => {
         setNodes(formattedNodes);
       } catch (err: any) {
         console.error('Error fetching nodes:', err);
-        toast.error('Failed to load roadmap nodes');
+        toast({
+          variant: "destructive",
+          title: "Failed to load roadmap nodes",
+          description: "Could not fetch the nodes for this roadmap."
+        });
       } finally {
         setLoading(false);
       }
@@ -262,6 +277,11 @@ export const RoadmapEditor: React.FC = () => {
         setSelectedLanguages(formattedLanguages.map(l => l.language));
       } catch (err: any) {
         console.error('Error fetching roadmap languages:', err);
+        toast({
+          variant: "destructive",
+          title: "Failed to load roadmap languages",
+          description: "Could not fetch the language support information for this roadmap."
+        });
       }
     };
 
@@ -336,6 +356,11 @@ export const RoadmapEditor: React.FC = () => {
       const exerciseExists = exercises.some(ex => ex.id === currentExerciseId);
       if (!exerciseExists) {
         nodeForm.setValue('defaultExerciseId', undefined);
+        toast({
+          variant: "destructive",
+          title: "Exercise unavailable",
+          description: `The previously selected exercise is not available in ${getLanguageName(language)}.`
+        });
       }
     }
   };
@@ -401,7 +426,11 @@ export const RoadmapEditor: React.FC = () => {
           languages: values.languages as Language[]
         });
         setSelectedLanguages(values.languages);
-        toast.success('Roadmap updated successfully');
+        toast({
+          variant: "success",
+          title: "Roadmap updated successfully",
+          description: `The roadmap "${values.name}" has been updated.`
+        });
       } else {
         // Create new roadmap
         const { data: roadmapData, error: roadmapError } = await supabase
@@ -444,11 +473,19 @@ export const RoadmapEditor: React.FC = () => {
         setRoadmaps([...roadmaps, newRoadmap]);
         setSelectedRoadmap(newRoadmap);
         setSelectedLanguages(values.languages);
-        toast.success('Roadmap created successfully');
+        toast({
+          variant: "success",
+          title: "Roadmap created successfully",
+          description: `The roadmap "${values.name}" has been created.`
+        });
       }
     } catch (err: any) {
       console.error('Error saving roadmap:', err);
-      toast.error(selectedRoadmap ? 'Failed to update roadmap' : 'Failed to create roadmap');
+      toast({
+        variant: "destructive",
+        title: selectedRoadmap ? 'Failed to update roadmap' : 'Failed to create roadmap',
+        description: err.message || "An unexpected error occurred. Please try again."
+      });
     } finally {
       setSavingRoadmap(false);
     }
@@ -457,7 +494,11 @@ export const RoadmapEditor: React.FC = () => {
   // Create or update node
   const handleSaveNode = async (values: NodeFormValues) => {
     if (!selectedRoadmap) {
-      toast.error('Please select a roadmap first');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: 'Please select a roadmap first'
+      });
       return;
     }
 
@@ -465,53 +506,75 @@ export const RoadmapEditor: React.FC = () => {
     try {
       // Validate that the language is associated with the roadmap
       if (!selectedLanguages.includes(values.language)) {
-        toast.error(`The language "${values.language}" is not associated with this roadmap`);
+        toast({
+          variant: "destructive",
+          title: "Invalid language",
+          description: `The language "${getLanguageName(values.language)}" is not associated with this roadmap.`
+        });
+        setSavingNode(false);
         return;
       }
       
       // Validate that there's an exercise for this language
       if (!filteredExercises.some(ex => ex.id === values.defaultExerciseId)) {
-        toast.error(`Please select a valid exercise for the "${values.language}" language`);
+        toast({
+          variant: "destructive",
+          title: "Invalid exercise",
+          description: `Please select a valid exercise for the "${getLanguageName(values.language)}" language.`
+        });
+        setSavingNode(false);
         return;
       }
 
+      // Check position value - make sure it's valid
+      if (values.position < 0) {
+        values.position = 0;
+      }
+
+      const maxPosition = nodes.length - (selectedNode ? 1 : 0);
+      if (values.position > maxPosition) {
+        values.position = maxPosition;
+      }
+
       if (selectedNode) {
+        // Handle position updates for other nodes if position changed
+        if (values.position !== selectedNode.position) {
+          // Reorder the nodes
+          await reorderNodes(selectedNode.id, selectedNode.position, values.position);
+        }
+
         // Update existing node
         const { error } = await supabase
           .from('roadmap_nodes')
           .update({
             title: values.title,
             position: values.position,
-            default_exercise_id: values.defaultExerciseId, // Now required
+            default_exercise_id: values.defaultExerciseId,
             description: values.description,
             is_bonus: values.isBonus,
-            language: values.language, // Now required
+            language: values.language,
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedNode.id);
 
         if (error) throw error;
 
-        // Update local state
-        const updatedNodes = nodes.map(node => 
-          node.id === selectedNode.id 
-            ? { 
-                ...node, 
-                title: values.title, 
-                position: values.position, 
-                defaultExerciseId: values.defaultExerciseId,
-                description: values.description,
-                isBonus: values.isBonus,
-                language: values.language as Language,
-                updatedAt: new Date()
-              } 
-            : node
-        );
-        setNodes(updatedNodes.sort((a, b) => a.position - b.position));
+        // Fetch updated nodes to ensure correct order
+        await fetchNodesAfterChange();
+        
         setSelectedNode(null);
         setNodeDialogOpen(false);
-        toast.success('Node updated successfully');
+        toast({
+          variant: "success",
+          title: "Node updated successfully",
+          description: `The node "${values.title}" has been updated.`
+        });
       } else {
+        // If adding a new node at a specific position, reorder existing nodes
+        if (values.position < nodes.length) {
+          await batchUpdatePositions(values.position, nodes.length - 1, 1);
+        }
+
         // Create new node
         const { data, error } = await supabase
           .from('roadmap_nodes')
@@ -520,10 +583,10 @@ export const RoadmapEditor: React.FC = () => {
               roadmap_id: selectedRoadmap.id,
               title: values.title,
               position: values.position,
-              default_exercise_id: values.defaultExerciseId, // Now required
+              default_exercise_id: values.defaultExerciseId,
               description: values.description,
               is_bonus: values.isBonus,
-              language: values.language // Now required
+              language: values.language
             }
           ])
           .select()
@@ -531,28 +594,184 @@ export const RoadmapEditor: React.FC = () => {
 
         if (error) throw error;
 
-        // Add to local state
-        const newNode: RoadmapNode = {
-          id: data.id,
-          roadmapId: data.roadmap_id,
-          defaultExerciseId: data.default_exercise_id,
-          title: data.title,
-          description: data.description,
-          position: data.position,
-          isBonus: data.is_bonus,
-          language: data.language as Language,
-          createdAt: new Date(data.created_at),
-          updatedAt: new Date(data.updated_at)
-        };
-        setNodes([...nodes, newNode].sort((a, b) => a.position - b.position));
+        // Fetch updated nodes to ensure correct order
+        await fetchNodesAfterChange();
+        
         setNodeDialogOpen(false);
-        toast.success('Node created successfully');
+        toast({
+          variant: "success",
+          title: "Node created successfully",
+          description: `The node "${values.title}" has been created.`
+        });
       }
     } catch (err: any) {
       console.error('Error saving node:', err);
-      toast.error(selectedNode ? 'Failed to update node' : 'Failed to create node');
+      toast({
+        variant: "destructive",
+        title: selectedNode ? 'Failed to update node' : 'Failed to create node',
+        description: err.message || "An unexpected error occurred. Please try again."
+      });
     } finally {
       setSavingNode(false);
+    }
+  };
+
+  // Re-fetch nodes after changes
+  const fetchNodesAfterChange = async () => {
+    if (!selectedRoadmap) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('roadmap_nodes')
+        .select('*')
+        .eq('roadmap_id', selectedRoadmap.id)
+        .order('position', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedNodes: RoadmapNode[] = data.map(node => ({
+        id: node.id,
+        roadmapId: node.roadmap_id,
+        defaultExerciseId: node.default_exercise_id,
+        title: node.title,
+        description: node.description,
+        position: node.position,
+        isBonus: node.is_bonus,
+        language: node.language as Language | undefined,
+        createdAt: new Date(node.created_at),
+        updatedAt: new Date(node.updated_at)
+      }));
+
+      setNodes(formattedNodes);
+    } catch (err) {
+      console.error('Error refreshing nodes:', err);
+    }
+  };
+
+  // Reorder nodes when a node's position changes
+  const reorderNodes = async (nodeId: string, oldPosition: number, newPosition: number) => {
+    if (oldPosition === newPosition) return;
+    
+    try {
+      setReorderingNode(nodeId);
+      
+      if (oldPosition < newPosition) {
+        // Moving down - nodes in between need to move up
+        await batchUpdatePositions(oldPosition + 1, newPosition, -1);
+      } else {
+        // Moving up - nodes in between need to move down
+        await batchUpdatePositions(newPosition, oldPosition - 1, 1);
+      }
+    } catch (err) {
+      console.error('Error reordering nodes:', err);
+      toast({
+        variant: "destructive",
+        title: "Failed to reorder nodes",
+        description: "There was an error updating node positions."
+      });
+    } finally {
+      setReorderingNode(null);
+    }
+  };
+
+  // Update positions for a range of nodes by an offset
+  const batchUpdatePositions = async (startPos: number, endPos: number, offset: number) => {
+    if (!selectedRoadmap) return;
+    
+    // Get nodes in the affected range
+    const affectedNodes = nodes.filter(
+      node => node.position >= startPos && node.position <= endPos
+    );
+    
+    // Update each node's position
+    for (const node of affectedNodes) {
+      const newPosition = node.position + offset;
+      
+      const { error } = await supabase
+        .from('roadmap_nodes')
+        .update({ position: newPosition })
+        .eq('id', node.id);
+      
+      if (error) {
+        console.error('Error updating node position:', error);
+        throw error;
+      }
+    }
+  };
+
+  // Move a node up in the sequence
+  const handleMoveNodeUp = async (nodeId: string) => {
+    const nodeIndex = nodes.findIndex(node => node.id === nodeId);
+    if (nodeIndex <= 0) return; // Already at the top
+    
+    const node = nodes[nodeIndex];
+    const newPosition = node.position - 1;
+    
+    try {
+      setReorderingNode(nodeId);
+      await reorderNodes(nodeId, node.position, newPosition);
+      
+      // Update the node's position
+      const { error } = await supabase
+        .from('roadmap_nodes')
+        .update({ position: newPosition })
+        .eq('id', nodeId);
+      
+      if (error) throw error;
+      
+      await fetchNodesAfterChange();
+      
+      toast({
+        title: "Node moved up",
+        description: `"${node.title}" moved to position ${newPosition + 1}.`
+      });
+    } catch (err) {
+      console.error('Error moving node up:', err);
+      toast({
+        variant: "destructive",
+        title: "Failed to move node",
+        description: "There was an error updating node positions."
+      });
+    } finally {
+      setReorderingNode(null);
+    }
+  };
+
+  // Move a node down in the sequence
+  const handleMoveNodeDown = async (nodeId: string) => {
+    const nodeIndex = nodes.findIndex(node => node.id === nodeId);
+    if (nodeIndex === -1 || nodeIndex >= nodes.length - 1) return; // Already at the bottom
+    
+    const node = nodes[nodeIndex];
+    const newPosition = node.position + 1;
+    
+    try {
+      setReorderingNode(nodeId);
+      await reorderNodes(nodeId, node.position, newPosition);
+      
+      // Update the node's position
+      const { error } = await supabase
+        .from('roadmap_nodes')
+        .update({ position: newPosition })
+        .eq('id', nodeId);
+      
+      if (error) throw error;
+      
+      await fetchNodesAfterChange();
+      
+      toast({
+        title: "Node moved down",
+        description: `"${node.title}" moved to position ${newPosition + 1}.`
+      });
+    } catch (err) {
+      console.error('Error moving node down:', err);
+      toast({
+        variant: "destructive",
+        title: "Failed to move node",
+        description: "There was an error updating node positions."
+      });
+    } finally {
+      setReorderingNode(null);
     }
   };
 
@@ -573,8 +792,18 @@ export const RoadmapEditor: React.FC = () => {
         if (selectedRoadmap?.id === itemToDelete.id) {
           setSelectedRoadmap(null);
         }
-        toast.success('Roadmap deleted successfully');
+        toast({
+          variant: "success",
+          title: "Roadmap deleted successfully",
+          description: "The roadmap and all its nodes have been removed."
+        });
       } else {
+        const nodeToDelete = nodes.find(n => n.id === itemToDelete.id);
+        if (!nodeToDelete) {
+          throw new Error("Node not found");
+        }
+
+        // Delete the node
         const { error } = await supabase
           .from('roadmap_nodes')
           .delete()
@@ -582,12 +811,28 @@ export const RoadmapEditor: React.FC = () => {
 
         if (error) throw error;
 
-        setNodes(nodes.filter(n => n.id !== itemToDelete.id));
-        toast.success('Node deleted successfully');
+        // Update positions for nodes after the deleted node
+        await batchUpdatePositions(
+          nodeToDelete.position + 1, 
+          nodes.length - 1, 
+          -1
+        );
+
+        await fetchNodesAfterChange();
+        
+        toast({
+          variant: "success",
+          title: "Node deleted successfully",
+          description: "The node has been removed from the roadmap."
+        });
       }
     } catch (err: any) {
       console.error('Error deleting item:', err);
-      toast.error(`Failed to delete ${itemToDelete.type}`);
+      toast({
+        variant: "destructive",
+        title: `Failed to delete ${itemToDelete.type}`,
+        description: err.message || "An unexpected error occurred. Please try again."
+      });
     } finally {
       setDeleteDialogOpen(false);
       setItemToDelete(null);
@@ -619,6 +864,13 @@ export const RoadmapEditor: React.FC = () => {
   const getLanguageName = (code: string): string => {
     const language = availableLanguages.find(l => l.value === code);
     return language ? language.label : code;
+  };
+
+  // Get exercise name from exercise ID
+  const getExerciseName = (exerciseId: string | undefined): string => {
+    if (!exerciseId) return "None";
+    const exercise = defaultExercises.find(e => e.id === exerciseId);
+    return exercise ? exercise.title : "Unknown exercise";
   };
 
   return (
@@ -818,7 +1070,7 @@ export const RoadmapEditor: React.FC = () => {
 
                       <Button 
                         type="submit" 
-                        disabled={savingRoadmap}
+                        disabled={savingRoadmap || !roadmapForm.formState.isValid}
                       >
                         {savingRoadmap && (
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -845,106 +1097,177 @@ export const RoadmapEditor: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
-                <Table>
-                  <TableCaption>
-                    {nodes.length === 0 ? (
-                      'No nodes found. Create your first node to get started.'
-                    ) : (
-                      'List of roadmap nodes in sequential order'
-                    )}
-                  </TableCaption>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">Pos</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead className="w-32">Type</TableHead>
-                      <TableHead className="w-32">Language</TableHead>
-                      <TableHead>Exercise</TableHead>
-                      <TableHead className="text-right w-24">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
+              <TooltipProvider>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableCaption>
+                      {nodes.length === 0 ? (
+                        'No nodes found. Create your first node to get started.'
+                      ) : (
+                        'List of roadmap nodes in sequential order'
+                      )}
+                    </TableCaption>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center h-24">
-                          <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
-                        </TableCell>
+                        <TableHead className="w-12 text-center">Pos</TableHead>
+                        <TableHead>Title</TableHead>
+                        <TableHead className="w-32">Type</TableHead>
+                        <TableHead className="w-32">Language</TableHead>
+                        <TableHead>Exercise</TableHead>
+                        <TableHead className="text-right w-36">Actions</TableHead>
                       </TableRow>
-                    ) : nodes.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
-                          No nodes found
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      nodes.map((node) => {
-                        const exercise = defaultExercises.find(e => e.id === node.defaultExerciseId);
-                        
-                        return (
-                          <TableRow key={node.id}>
-                            <TableCell className="font-medium">{node.position + 1}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {node.isBonus && (
-                                  <Badge variant="outline" className="bg-amber-500/20 border-amber-500/50">
-                                    <Star className="h-3 w-3 text-amber-500 mr-1" />
-                                    Bonus
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center h-24">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+                          </TableCell>
+                        </TableRow>
+                      ) : nodes.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
+                            No nodes found
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        nodes.map((node) => {
+                          const exercise = defaultExercises.find(e => e.id === node.defaultExerciseId);
+                          const isBeingReordered = reorderingNode === node.id;
+                          
+                          return (
+                            <TableRow 
+                              key={node.id} 
+                              className={isBeingReordered ? "opacity-50 bg-muted/20" : ""}
+                            >
+                              <TableCell className="font-medium text-center">
+                                {node.position + 1}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {node.isBonus && (
+                                    <Badge variant="outline" className="bg-amber-500/20 border-amber-500/50">
+                                      <Star className="h-3 w-3 text-amber-500 mr-1" />
+                                      Bonus
+                                    </Badge>
+                                  )}
+                                  <span className="font-medium">{node.title}</span>
+                                </div>
+                                {node.description && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1 cursor-help">
+                                        {node.description}
+                                      </p>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[300px]">
+                                      <p>{node.description}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </TableCell>
+                              <TableCell>{node.isBonus ? 'Bonus' : 'Required'}</TableCell>
+                              <TableCell>
+                                {node.language ? (
+                                  <Badge variant="outline" className="bg-blue-500/10 border-blue-500/30">
+                                    {getLanguageName(node.language)}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">None</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {exercise ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-xs font-mono bg-muted px-2 py-1 rounded truncate block max-w-[120px] cursor-help">
+                                        {exercise.title}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{exercise.title}</p>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        Language: {getLanguageName(exercise.language)}
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : (
+                                  <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30">
+                                    <AlertCircle className="h-3 w-3 mr-1" />
+                                    Missing exercise
                                   </Badge>
                                 )}
-                                {node.title}
-                              </div>
-                            </TableCell>
-                            <TableCell>{node.isBonus ? 'Bonus' : 'Required'}</TableCell>
-                            <TableCell>
-                              {node.language ? (
-                                <Badge variant="outline" className="bg-blue-500/10 border-blue-500/30">
-                                  {getLanguageName(node.language)}
-                                </Badge>
-                              ) : (
-                                <span className="text-muted-foreground text-xs">None</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {exercise ? (
-                                <span className="text-xs font-mono bg-muted px-2 py-1 rounded">
-                                  {exercise.title}
-                                </span>
-                              ) : (
-                                <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30">
-                                  <AlertCircle className="h-3 w-3 mr-1" />
-                                  Missing exercise
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => handleEditNode(node)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setItemToDelete({ type: 'node', id: node.id });
-                                    setDeleteDialogOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={() => handleMoveNodeUp(node.id)}
+                                        disabled={node.position === 0 || isBeingReordered}
+                                      >
+                                        <ArrowUp className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Move up</TooltipContent>
+                                  </Tooltip>
+                                  
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={() => handleMoveNodeDown(node.id)}
+                                        disabled={node.position === nodes.length - 1 || isBeingReordered}
+                                      >
+                                        <ArrowDown className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Move down</TooltipContent>
+                                  </Tooltip>
+                                  
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={() => handleEditNode(node)}
+                                        disabled={isBeingReordered}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Edit node</TooltipContent>
+                                  </Tooltip>
+                                  
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => {
+                                          setItemToDelete({ type: 'node', id: node.id });
+                                          setDeleteDialogOpen(true);
+                                        }}
+                                        disabled={isBeingReordered}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Delete node</TooltipContent>
+                                  </Tooltip>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TooltipProvider>
             </CardContent>
             <CardFooter>
               <Button onClick={handleAddNode} className="ml-auto">
@@ -1002,6 +1325,9 @@ export const RoadmapEditor: React.FC = () => {
                           value={field.value}
                         />
                       </FormControl>
+                      <FormDescription>
+                        Position {field.value + 1} of {nodes.length + (selectedNode ? 0 : 1)}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
