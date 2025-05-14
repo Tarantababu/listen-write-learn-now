@@ -11,7 +11,7 @@ import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from 
  */
 export interface UnifiedRoadmapContextType {
   // Common state properties
-  isLoading?: boolean;
+  isLoading: boolean;
   nodeLoading?: boolean;
   hasError?: boolean;
   

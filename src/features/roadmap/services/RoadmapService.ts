@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Language, LanguageLevel } from '@/types';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
@@ -109,7 +108,7 @@ class RoadmapService {
           name: roadmap?.name || 'Unnamed Roadmap',
           level: roadmap?.level as LanguageLevel || 'A1',
           description: roadmap?.description || 'No description',
-          language: userRoadmap.language as Language,
+          language: userRoadmap.language as Language, // Explicitly cast to Language type
           languages: roadmap?.roadmap_languages?.map((l: any) => l.language as Language) || [userRoadmap.language as Language],
           currentNodeId: userRoadmap.current_node_id,
           createdAt: new Date(userRoadmap.created_at),
@@ -247,7 +246,7 @@ class RoadmapService {
           const exerciseContent: ExerciseContent = {
             title: exerciseData.title,
             text: exerciseData.text,
-            language: exerciseData.language,
+            language: exerciseData.language as Language, // Explicitly cast to Language type
             audioUrl: exerciseData.audio_url,
             readingAnalysisId: analysisData?.id || null,
           };
@@ -263,7 +262,7 @@ class RoadmapService {
       const basicContent: ExerciseContent = {
         title: "Practice Exercise",
         text: "Sample text for practice. This node doesn't have specific exercise content.",
-        language: "english",
+        language: "english" as Language, // Explicitly cast to Language type
         audioUrl: null
       };
       
