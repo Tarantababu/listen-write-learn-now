@@ -5,6 +5,7 @@ import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from 
 import { Language, LanguageLevel } from '@/types';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { toast } from '@/components/ui/use-toast';
+import { exerciseService } from '../services/ExerciseService';
 
 // Define the context type
 interface RoadmapContextType {
@@ -78,22 +79,10 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
   // Constants for local storage
   const LOCAL_STORAGE_KEY = 'roadmap_state';
   
-  // Declare all functions upfront to avoid circular dependencies
-  // These declarations only - implementations will follow
-  const saveStateToLocalStorage = useCallback(() => {}, []);
-  const restoreStateFromLocalStorage = useCallback(() => false, []);
-  const loadRoadmaps = useCallback(async (language: Language) => {}, []);
-  const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => [], []);
-  const selectRoadmap = useCallback(async (roadmapId: string): Promise<RoadmapNode[]> => [], []);
-  const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language): Promise<string> => '', []);
-  const getNodeExercise = useCallback(async (nodeId: string): Promise<ExerciseContent | null> => null, []);
-  const recordNodeCompletion = useCallback(async (nodeId: string, accuracy: number): Promise<NodeCompletionResult> => ({ isCompleted: false, completionCount: 0 }), []);
-  const markNodeAsCompleted = useCallback(async (nodeId: string): Promise<void> => {}, []);
-
-  // Now implement the actual functions
+  // Define all functions first to avoid reference issues
   
-  // Add functions to save and restore state from localStorage
-  const actualSaveStateToLocalStorage = useCallback(() => {
+  // Save state to local storage
+  const saveStateToLocalStorage = useCallback(() => {
     if (userRoadmaps.length > 0) {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
         userRoadmaps,
@@ -104,8 +93,8 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     }
   }, [userRoadmaps, currentRoadmap, settings.selectedLanguage]);
   
-  // Add function to restore state from local storage when needed
-  const actualRestoreStateFromLocalStorage = useCallback(() => {
+  // Restore state from local storage
+  const restoreStateFromLocalStorage = useCallback(() => {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (stored) {
@@ -137,8 +126,8 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     }
   }, [settings.selectedLanguage]);
 
-  // Implement the actual loadRoadmaps function
-  const actualLoadRoadmaps = useCallback(async (language: Language) => {
+  // Load roadmaps
+  const loadRoadmaps = useCallback(async (language: Language) => {
     setIsLoading(true);
     try {
       const result = await roadmapService.getRoadmapsByLanguage(language);
@@ -164,8 +153,8 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     }
   }, []);
 
-  // Implement the actual selectRoadmap function  
-  const actualSelectRoadmap = useCallback(async (roadmapId: string): Promise<RoadmapNode[]> => {
+  // Select roadmap
+  const selectRoadmap = useCallback(async (roadmapId: string): Promise<RoadmapNode[]> => {
     setIsLoading(true);
     let retryCount = 0;
     const MAX_RETRIES = 3;
@@ -184,7 +173,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
           retryCount++;
           
           // Reload user roadmaps with the current language
-          const refreshedRoadmaps = await actualLoadUserRoadmaps(settings.selectedLanguage);
+          const refreshedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
           
           // Check again after refresh
           roadmap = refreshedRoadmaps.find(r => r.id === roadmapId);
@@ -251,10 +240,10 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  }, [userRoadmaps, settings.selectedLanguage]);
+  }, [userRoadmaps, loadUserRoadmaps, settings.selectedLanguage]);
 
-  // Implement actualLoadUserRoadmaps function
-  const actualLoadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
+  // Load user roadmaps
+  const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
     setIsLoading(true);
     try {
       const result = await roadmapService.getUserRoadmaps(language);
@@ -268,7 +257,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         // If we have user roadmaps and none is currently selected, select the first one
         if (userRoadmapsData.length > 0 && !currentRoadmap) {
           // Don't await here to prevent blocking, but handle errors
-          actualSelectRoadmap(userRoadmapsData[0].id).catch(err => {
+          selectRoadmap(userRoadmapsData[0].id).catch(err => {
             console.error('Error auto-selecting first roadmap:', err);
           });
         }
@@ -294,16 +283,16 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  }, [currentRoadmap]);
+  }, [currentRoadmap, selectRoadmap]);
 
-  // Initialize a new roadmap for the user based on level
-  const actualInitializeRoadmap = useCallback(async (level: LanguageLevel, language: Language): Promise<string> => {
+  // Initialize a new roadmap
+  const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language): Promise<string> => {
     setIsLoading(true);
     try {
       const result = await roadmapService.initializeRoadmap(level, language);
       if (result.status === 'success' && result.data) {
         // Reload user roadmaps to include the new one
-        await actualLoadUserRoadmaps(language);
+        await loadUserRoadmaps(language);
         
         // Return the ID of the newly created roadmap
         return result.data;
@@ -327,14 +316,29 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [loadUserRoadmaps]);
 
-  // Get exercise content for a roadmap node
-  const actualGetNodeExercise = useCallback(async (nodeId: string): Promise<ExerciseContent | null> => {
+  // Get node exercise - Fixed to use the exerciseService
+  const getNodeExercise = useCallback(async (nodeId: string): Promise<ExerciseContent | null> => {
+    setNodeLoading(true);
     try {
-      // Implementation would call the appropriate service method
-      // For now, just return null
-      return null;
+      console.log('Getting exercise for node:', nodeId);
+      
+      // Use the exerciseService to get the node exercise content
+      const result = await exerciseService.getNodeExercise(nodeId);
+      
+      if (result.status === 'success' && result.data) {
+        console.log('Exercise content loaded successfully:', result.data);
+        return result.data;
+      } else {
+        console.error('Error getting node exercise:', result.error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load exercise",
+          description: "There was an error loading the exercise content."
+        });
+        return null;
+      }
     } catch (error) {
       console.error('Error getting node exercise:', error);
       toast({
@@ -343,23 +347,45 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         description: "There was an error loading the exercise content."
       });
       return null;
+    } finally {
+      setNodeLoading(false);
     }
   }, []);
 
   // Record completion of a node with accuracy score
-  const actualRecordNodeCompletion = useCallback(async (nodeId: string, accuracy: number): Promise<NodeCompletionResult> => {
+  const recordNodeCompletion = useCallback(async (nodeId: string, accuracy: number): Promise<NodeCompletionResult> => {
     setNodeLoading(true);
     try {
-      // Implementation would call the appropriate service method
-      // For now, simulate a successful completion
+      console.log(`Recording completion for node ${nodeId} with accuracy ${accuracy}%`);
       
-      // Refresh nodes to update status after completion
-      if (currentRoadmap) {
-        await actualSelectRoadmap(currentRoadmap.id);
+      // Only proceed if we have high enough accuracy
+      if (accuracy < 70) {
+        console.log('Accuracy too low, not recording completion');
+        return { 
+          isCompleted: false, 
+          completionCount: 0 
+        };
       }
       
-      // Simulate a result
-      return { isCompleted: true, completionCount: 1 };
+      // Get the current roadmap ID
+      if (!currentRoadmap) {
+        throw new Error('No current roadmap selected');
+      }
+      
+      // Call the service to record completion
+      const result = await roadmapService.recordNodeCompletion(nodeId, accuracy);
+      
+      if (result.status === 'success' && result.data) {
+        console.log('Node completion recorded successfully:', result.data);
+        
+        // Refresh nodes to update status after completion
+        await selectRoadmap(currentRoadmap.id);
+        
+        return result.data;
+      } else {
+        console.error('Error recording node completion:', result.error);
+        throw new Error(result.error || 'Unknown error recording completion');
+      }
     } catch (error) {
       console.error('Error recording completion:', error);
       toast({
@@ -367,21 +393,41 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         title: "Failed to save progress",
         description: "There was an error saving your progress."
       });
-      throw error;
+      return { 
+        isCompleted: false,
+        completionCount: 0
+      };
     } finally {
       setNodeLoading(false);
     }
-  }, [currentRoadmap]);
+  }, [currentRoadmap, selectRoadmap]);
 
   // Mark a node as completed manually
-  const actualMarkNodeAsCompleted = useCallback(async (nodeId: string): Promise<void> => {
+  const markNodeAsCompleted = useCallback(async (nodeId: string): Promise<void> => {
     setNodeLoading(true);
     try {
-      // Implementation would call the appropriate service method
+      console.log('Marking node as completed:', nodeId);
       
-      // Refresh nodes after completion
-      if (currentRoadmap) {
-        await actualSelectRoadmap(currentRoadmap.id);
+      if (!currentRoadmap) {
+        throw new Error('No current roadmap selected');
+      }
+      
+      // Call the service to mark the node as completed
+      const result = await roadmapService.markNodeAsCompleted(nodeId);
+      
+      if (result.status === 'success') {
+        console.log('Node marked as completed successfully');
+        
+        // Refresh nodes after completion
+        await selectRoadmap(currentRoadmap.id);
+        
+        toast({
+          title: "Lesson completed",
+          description: "You've completed this lesson successfully."
+        });
+      } else {
+        console.error('Error marking node as completed:', result.error);
+        throw new Error(result.error || 'Unknown error marking node as completed');
       }
     } catch (error) {
       console.error('Error marking node as completed:', error);
@@ -394,18 +440,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     } finally {
       setNodeLoading(false);
     }
-  }, [currentRoadmap]);
-
-  // Now assign the actual implementations to our placeholder functions
-  Object.assign(saveStateToLocalStorage, actualSaveStateToLocalStorage);
-  Object.assign(restoreStateFromLocalStorage, actualRestoreStateFromLocalStorage);
-  Object.assign(loadRoadmaps, actualLoadRoadmaps);
-  Object.assign(selectRoadmap, actualSelectRoadmap);
-  Object.assign(loadUserRoadmaps, actualLoadUserRoadmaps);
-  Object.assign(initializeRoadmap, actualInitializeRoadmap);
-  Object.assign(getNodeExercise, actualGetNodeExercise);
-  Object.assign(recordNodeCompletion, actualRecordNodeCompletion);
-  Object.assign(markNodeAsCompleted, actualMarkNodeAsCompleted);
+  }, [currentRoadmap, selectRoadmap]);
 
   // Create an alias for initializeRoadmap for backward compatibility
   const initializeUserRoadmap = initializeRoadmap;

@@ -9,6 +9,7 @@ import ExerciseContent from '@/components/ExerciseContent';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { nodeAccessService } from '../services/NodeAccessService';
+import DictationPractice from '@/components/DictationPractice';
 
 interface RoadmapExerciseModalProps {
   node: RoadmapNode | null;
@@ -25,7 +26,8 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
   const [accessChecking, setAccessChecking] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [exerciseContent, setExerciseContent] = useState<any | null>(null);
-  const { getNodeExercise, markNodeAsCompleted } = useRoadmap();
+  const [exerciseMode, setExerciseMode] = useState<'dictation' | 'reading' | null>(null);
+  const { getNodeExercise, markNodeAsCompleted, recordNodeCompletion } = useRoadmap();
 
   // Check if node is accessible and load exercise content
   useEffect(() => {
@@ -34,6 +36,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
       
       setLoading(true);
       setAccessChecking(true);
+      setExerciseMode(null);
       
       try {
         // Verify node access first (server-side validation)
@@ -71,6 +74,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
         
         // Load exercise content
         const exercise = await getNodeExercise(node.id);
+        console.log("Exercise loaded:", exercise);
         setExerciseContent(exercise);
       } catch (error) {
         console.error("Error loading exercise:", error);
@@ -107,6 +111,48 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
         variant: "destructive",
         title: "Error",
         description: "Failed to mark lesson as complete"
+      });
+    }
+  };
+
+  const handleStartDictation = () => {
+    setExerciseMode('dictation');
+  };
+
+  const handleStartReading = () => {
+    setExerciseMode('reading');
+  };
+
+  const handleBackToOptions = () => {
+    setExerciseMode(null);
+  };
+
+  const handlePracticeComplete = async (accuracy: number) => {
+    if (!node) return;
+    
+    try {
+      // Record completion through the roadmap system
+      const result = await recordNodeCompletion(node.id, accuracy);
+      
+      if (result.isCompleted) {
+        toast({
+          title: "Great job!",
+          description: `You scored ${Math.round(accuracy)}%. Lesson completed!`
+        });
+        // Close modal after successful completion
+        setTimeout(() => onOpenChange(false), 2000);
+      } else {
+        toast({
+          title: "Good progress!",
+          description: `You scored ${Math.round(accuracy)}%. Keep practicing to complete the lesson!`
+        });
+      }
+    } catch (error) {
+      console.error("Error recording completion:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save your progress"
       });
     }
   };
@@ -152,25 +198,83 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
               <p className="text-muted-foreground">{node.description}</p>
             )}
             
-            {exerciseContent ? (
-              <ExerciseContent 
-                exercise={exerciseContent}
-                showActions={false}
-              />
-            ) : (
+            {!exerciseContent ? (
               <Card className="p-6 text-center">
                 <p className="text-muted-foreground">No exercise content available for this lesson.</p>
+                <div className="mt-4">
+                  <Button onClick={handleMarkComplete}>
+                    Mark as Complete
+                  </Button>
+                </div>
               </Card>
-            )}
-            
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" onClick={handleCompleteLater}>
-                Complete Later
-              </Button>
-              <Button onClick={handleMarkComplete}>
-                Mark as Complete
-              </Button>
-            </div>
+            ) : exerciseMode === null ? (
+              <Card className="p-6">
+                <h3 className="text-lg font-medium mb-4">Choose Your Learning Method</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Button 
+                    onClick={handleStartReading} 
+                    variant="outline" 
+                    className="h-auto py-4 justify-start"
+                  >
+                    <div className="flex flex-col items-start">
+                      <span className="text-base font-medium">Reading Analysis</span>
+                      <span className="text-sm text-muted-foreground">Study the text with explanations</span>
+                    </div>
+                  </Button>
+                  <Button 
+                    onClick={handleStartDictation} 
+                    variant="default" 
+                    className="h-auto py-4 justify-start"
+                  >
+                    <div className="flex flex-col items-start">
+                      <span className="text-base font-medium">Dictation Practice</span>
+                      <span className="text-sm">Practice listening and writing</span>
+                    </div>
+                  </Button>
+                </div>
+                <div className="flex justify-end space-x-2 mt-6">
+                  <Button variant="outline" onClick={handleCompleteLater}>
+                    Complete Later
+                  </Button>
+                  <Button onClick={handleMarkComplete}>
+                    Mark as Complete
+                  </Button>
+                </div>
+              </Card>
+            ) : exerciseMode === 'reading' ? (
+              <div className="space-y-4">
+                <ExerciseContent 
+                  exercise={exerciseContent}
+                  showActions={false}
+                />
+                <div className="flex justify-between pt-4">
+                  <Button variant="outline" onClick={handleBackToOptions}>
+                    Back to Options
+                  </Button>
+                  <Button onClick={handleMarkComplete}>
+                    Mark as Complete
+                  </Button>
+                </div>
+              </div>
+            ) : exerciseMode === 'dictation' ? (
+              <DictationPractice
+                exercise={{
+                  id: `roadmap-${node.id}`,
+                  title: exerciseContent.title || node.title,
+                  text: exerciseContent.text || "",
+                  language: exerciseContent.language || 'english',
+                  audioUrl: exerciseContent.audioUrl,
+                  tags: exerciseContent.tags || [],
+                  directoryId: null,
+                  createdAt: new Date(),
+                  completionCount: 0,
+                  isCompleted: false
+                }}
+                onTryAgain={handleBackToOptions}
+                onComplete={handlePracticeComplete}
+                inRoadmapMode={true}
+              />
+            ) : null}
           </div>
         )}
       </DialogContent>

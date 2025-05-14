@@ -1,7 +1,6 @@
 
-import { useToast, toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 
-// Add the toasts property
-toast.toasts = [];
-
+// Export the toast components
 export { useToast, toast };
