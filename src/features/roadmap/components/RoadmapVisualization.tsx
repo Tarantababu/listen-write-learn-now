@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '../types';
@@ -20,6 +19,8 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
   onNodeSelect,
   className
 }) => {
+  // Get all the required properties from the context
+  const context = useRoadmap();
   const { 
     currentRoadmap, 
     nodes, 
@@ -28,7 +29,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
     roadmaps,
     currentNodeId,
     selectRoadmap
-  } = useRoadmap();
+  } = context;
   
   const [accessibleNodeIds, setAccessibleNodeIds] = useState<string[]>([]);
   const [isAccessLoading, setIsAccessLoading] = useState(false);

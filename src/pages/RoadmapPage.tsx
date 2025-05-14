@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
@@ -19,6 +18,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 
 const RoadmapPage: React.FC = () => {
+  const context = useRoadmap();
   const { 
     currentRoadmap, 
     isLoading, 
@@ -29,7 +29,7 @@ const RoadmapPage: React.FC = () => {
     completedNodes,
     nodes,
     currentNodeId
-  } = useRoadmap();
+  } = context;
   
   // Derive hasError from context data
   const hasError = !isLoading && userRoadmaps.length > 0 && !currentRoadmap;

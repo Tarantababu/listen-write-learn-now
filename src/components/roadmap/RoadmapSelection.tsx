@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -23,14 +22,24 @@ import { LanguageLevel } from '@/types';
 import { Loader2, RefreshCw, InfoIcon, PlusCircle } from 'lucide-react';
 import LevelBadge from '@/components/LevelBadge';
 import LevelInfoTooltip from '@/components/LevelInfoTooltip';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext'; // Import auth context to check for user authentication
 
 const RoadmapSelection: React.FC = () => {
-  const { initializeUserRoadmap, roadmaps, isLoading, userRoadmaps, loadUserRoadmaps } = useRoadmap();
+  // Use the context properly through useRoadmap
+  const context = useRoadmap();
+  const { 
+    initializeUserRoadmap, 
+    roadmaps, 
+    isLoading, 
+    userRoadmaps, 
+    loadUserRoadmaps 
+  } = context;
+  
   const { settings } = useUserSettingsContext();
   const { user } = useAuth(); // Get current user from auth context
+  
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel | ''>('');
   const [initializing, setInitializing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);

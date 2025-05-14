@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -26,7 +25,14 @@ import { toast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 
 const RoadmapSelection: React.FC = () => {
-  const { initializeUserRoadmap, roadmaps, isLoading, userRoadmaps } = useRoadmap();
+  const context = useRoadmap();
+  const { 
+    initializeUserRoadmap, 
+    roadmaps, 
+    isLoading, 
+    userRoadmaps 
+  } = context;
+  
   const { settings } = useUserSettingsContext();
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>('A1');
   const [initializing, setInitializing] = useState(false);
