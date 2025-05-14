@@ -1,63 +1,76 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useAuth } from '@/contexts/AuthContext';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 
-const messageSchema = z.object({
-  title: z.string().min(3, 'Title must be at least 3 characters'),
-  content: z.string().min(10, 'Content must be at least 10 characters'),
+const formSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  content: z.string().min(1, 'Content is required')
 });
 
-type MessageFormValues = z.infer<typeof messageSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
-export default function AdminMessagesForm() {
+export function AdminMessagesForm({ onMessageAdded }: { onMessageAdded?: () => void }) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  const form = useForm<MessageFormValues>({
-    resolver: zodResolver(messageSchema),
+  const { toast } = useToast();
+  
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       title: '',
-      content: '',
-    },
+      content: ''
+    }
   });
 
-  const onSubmit = async (values: MessageFormValues) => {
+  const onSubmit = async (values: FormValues) => {
+    if (!user) return;
+    
+    setIsSubmitting(true);
     try {
-      if (!user) {
-        toast.error('You must be logged in to send messages');
-        return;
-      }
-
-      // No need to call set_admin_email function anymore since our RLS is more permissive
-      // Just insert directly - the trigger will handle creating user_message entries
-      const { error } = await supabase.from('admin_messages').insert({
-        title: values.title,
-        content: values.content,
-        created_by: user.id,
-      });
-
-      if (error) {
-        console.error('Insert error:', error);
-        throw error;
-      }
-
-      toast.success('Message sent to all users successfully');
-      queryClient.invalidateQueries({ queryKey: ['admin-messages'] });
+      // Create a new message
+      const { data, error } = await supabase
+        .from('admin_messages')
+        .insert({
+          title: values.title,
+          content: values.content,
+          created_by: user.id as unknown as DbId
+        } as any)
+        .select('id')
+        .single();
+      
+      if (error) throw error;
+      
+      // Reset form
       form.reset();
+      
+      // Show success toast
+      toast({
+        title: "Message created",
+        description: "Your message has been sent to all users.",
+      });
+      
+      // Callback to parent component
+      if (onMessageAdded) onMessageAdded();
+      
     } catch (error: any) {
-      console.error('Error sending message:', error);
-      toast.error(error.message || 'Failed to send message');
+      console.error('Error creating message:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create message",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

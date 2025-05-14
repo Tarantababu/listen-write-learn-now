@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -69,7 +70,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
               throw error;
             }
             
-            if (data && data.content) {
+            if (data && 'content' in data) {
               // Type assertion to ensure the content is treated as AnalysisContent
               const analysisContent = data.content as unknown as AnalysisContent;
               
