@@ -1,75 +1,165 @@
 
-import { useContext } from 'react';
-import { RoadmapContext } from '@/contexts/RoadmapContext';
-import { RoadmapContext as NewRoadmapContext } from '@/features/roadmap/context/RoadmapContext';
-import { Language, LanguageLevel } from '@/types';
-import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '@/features/roadmap/types';
+import { useRoadmap as useOldRoadmap } from "@/contexts/RoadmapContext";
+import { useRoadmap as useNewRoadmap } from "@/features/roadmap/context/RoadmapContext";
+import { useEffect, useState, useCallback } from "react";
+import { toast } from "@/hooks/use-toast";
+import { useUserSettingsContext } from "@/contexts/UserSettingsContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 /**
- * Type definition that combines both old and new context types
- * This ensures that all required properties are available regardless of which context is used
+ * This hook serves as a compatibility layer between the old and new roadmap contexts.
+ * It will attempt to use the new context first, and if that fails, it will use the old one.
  */
-export interface UnifiedRoadmapContextType {
-  // Common state properties
-  isLoading: boolean;
-  nodeLoading?: boolean;
-  hasError?: boolean;
+export function useRoadmap() {
+  const { settings } = useUserSettingsContext();
+  const { user } = useAuth();
   
-  // Data properties
-  roadmaps?: RoadmapItem[];
-  userRoadmaps?: RoadmapItem[];
-  currentRoadmap?: RoadmapItem | RoadmapNode[] | null;
-  nodes?: RoadmapNode[];
-  completedNodes?: string[];
-  availableNodes?: string[];
-  currentNodeId?: string;
-  currentNode?: RoadmapNode | null;
-  nodeProgress?: any[];
+  // Initialize state to track which implementation to use
+  const [usingOldImplementation, setUsingOldImplementation] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [hasInitializationFailed, setHasInitializationFailed] = useState(false);
   
-  // Methods common to both contexts
-  initializeRoadmap?: (level: LanguageLevel, language: Language) => Promise<string>;
-  initializeUserRoadmap?: (level: LanguageLevel, language: Language) => Promise<string>;
-  loadRoadmaps?: (language: Language) => Promise<void>;
-  loadUserRoadmaps?: (language: Language) => Promise<RoadmapItem[]>;
-  selectRoadmap?: (roadmapId: string) => Promise<RoadmapNode[]>;
-  getNodeExercise?: (nodeId: string) => Promise<ExerciseContent | null>;
-  recordNodeCompletion?: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>;
-  incrementNodeCompletion?: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>;
-  markNodeAsCompleted?: (nodeId: string) => Promise<void>;
+  // Try to get the contexts
+  let newContext;
+  let oldContext;
+  
+  try {
+    newContext = useNewRoadmap();
+  } catch (e) {
+    // If the new context fails, we'll fall back to the old one
+    console.warn("New roadmap context not available, falling back to old implementation");
+    try {
+      oldContext = useOldRoadmap();
+      setUsingOldImplementation(true);
+    } catch (e2) {
+      console.error("No roadmap context available", e2);
+      // We'll handle this case in the returned object
+    }
+  }
+
+  const context = usingOldImplementation ? oldContext : newContext;
+  
+  // Initialize the roadmap context (load roadmaps) when component mounts
+  useEffect(() => {
+    if (!isInitialized && context && user) {
+      const initialize = async () => {
+        try {
+          console.log("Initializing roadmap context...", {
+            user,
+            language: settings.selectedLanguage,
+            isOldImplementation: usingOldImplementation
+          });
+          
+          if (context.loadUserRoadmaps) {
+            // Make sure to pass the selected language when loading roadmaps
+            await context.loadUserRoadmaps(settings.selectedLanguage);
+            console.log("Roadmaps loaded successfully for language:", settings.selectedLanguage);
+          }
+          
+          setIsInitialized(true);
+          setHasInitializationFailed(false);
+        } catch (error) {
+          console.error("Failed to initialize roadmap context:", error);
+          setHasInitializationFailed(true);
+          
+          toast({
+            variant: "destructive",
+            title: "Failed to load roadmaps",
+            description: "Please refresh the page or try again later."
+          });
+        }
+      };
+      
+      initialize();
+    }
+  }, [context, isInitialized, settings.selectedLanguage, user]);
+  
+  // Re-initialize when language changes
+  useEffect(() => {
+    if (isInitialized && context && user) {
+      const refreshRoadmaps = async () => {
+        try {
+          console.log("Language changed, refreshing roadmaps...", {
+            language: settings.selectedLanguage,
+            user: user?.id
+          });
+          
+          if (context.loadUserRoadmaps) {
+            await context.loadUserRoadmaps(settings.selectedLanguage);
+            console.log("Roadmaps refreshed successfully for language:", settings.selectedLanguage);
+          }
+        } catch (error) {
+          console.error("Failed to refresh roadmaps after language change:", error);
+          toast({
+            variant: "destructive",
+            title: "Failed to refresh roadmaps",
+            description: "There was an error loading roadmaps for the selected language."
+          });
+        }
+      };
+      
+      refreshRoadmaps();
+    }
+  }, [settings.selectedLanguage, context, isInitialized, user]);
+  
+  // Debug logs for tracking which implementation is being used
+  useEffect(() => {
+    if (context) {
+      if (usingOldImplementation) {
+        console.log("Using legacy roadmap implementation");
+      } else {
+        console.log("Using new roadmap implementation");
+      }
+    }
+  }, [usingOldImplementation, context]);
+  
+  // Add debug logging for roadmaps data
+  useEffect(() => {
+    if (context) {
+      console.log("Current roadmap data:", {
+        authenticated: !!user,
+        userID: user?.id,
+        language: settings.selectedLanguage,
+        roadmapsCount: (context.roadmaps || []).length,
+        userRoadmapsCount: (context.userRoadmaps || []).length,
+        hasCurrentRoadmap: !!context.currentRoadmap,
+        nodesCount: (context.nodes || []).length,
+        loadedWithImpl: usingOldImplementation ? "legacy" : "new"
+      });
+    }
+  }, [context?.roadmaps, context?.userRoadmaps, context?.currentRoadmap, context?.nodes, user, settings.selectedLanguage]);
+
+  // If neither context is available, return a fallback object with empty arrays and isLoading=true
+  if (!context) {
+    return {
+      roadmaps: [],
+      userRoadmaps: [],
+      currentRoadmap: null,
+      nodes: [],
+      isLoading: true,
+      hasError: true,
+      loadUserRoadmaps: async () => {
+        console.error("No roadmap context available");
+        return [];
+      },
+      selectRoadmap: async () => {
+        console.error("No roadmap context available");
+      },
+      initializeUserRoadmap: async () => {
+        console.error("No roadmap context available");
+      },
+      completedNodes: [],
+      availableNodes: [],
+    };
+  }
+  
+  return {
+    ...context,
+    isLoading: context.loading || !isInitialized,
+    hasError: hasInitializationFailed
+  };
 }
 
-// Check if we should use the new context implementation
-const useNewImplementation = () => {
-  try {
-    const context = useContext(NewRoadmapContext);
-    // If the new context is available and initialized, use it
-    if (context && context.roadmaps) {
-      return true;
-    }
-    return false;
-  } catch (e) {
-    return false;
-  }
-};
-
-/**
- * Custom hook that provides access to the roadmap context.
- * It first tries to use the new implementation, and falls back to the old one.
- * Returns a unified context type that works with both implementations.
- */
-export const useRoadmap = (): UnifiedRoadmapContextType => {
-  const oldContext = useContext(RoadmapContext);
-  const newContext = useContext(NewRoadmapContext);
-  
-  // Use the new implementation if it's available
-  if (useNewImplementation()) {
-    return newContext as unknown as UnifiedRoadmapContextType;
-  }
-  
-  // Fall back to the old implementation
-  if (!oldContext) {
-    throw new Error('useRoadmap must be used within a RoadmapProvider');
-  }
-  
-  return oldContext as unknown as UnifiedRoadmapContextType;
-};
+// For backward compatibility, also export the specific hook versions
+export const useOldRoadmapContext = useOldRoadmap;
+export const useNewRoadmapContext = useNewRoadmap;

@@ -4,23 +4,18 @@ import { Exercise } from '@/types';
 import ExerciseCard from '@/components/ExerciseCard';
 import CreateExerciseCard from '@/components/exercises/CreateExerciseCard';
 
-// Define the component props interface
-export interface ExerciseGridProps {
-  limit?: number;
-  showHeader?: boolean;
-  paginatedExercises?: Exercise[];
-  exercisesPerPage?: number;
-  onPractice?: (exercise: Exercise) => void;
-  onEdit?: (exercise: Exercise) => void;
-  onDelete?: (exercise: Exercise) => void;
-  onMove?: (exercise: Exercise) => void;
-  onCreateClick?: () => void;
-  canEdit?: boolean;
+interface ExerciseGridProps {
+  paginatedExercises: Exercise[];
+  exercisesPerPage: number;
+  onPractice: (exercise: Exercise) => void;
+  onEdit: (exercise: Exercise) => void;
+  onDelete: (exercise: Exercise) => void;
+  onMove: (exercise: Exercise) => void;
+  onCreateClick: () => void;
+  canEdit: boolean;
 }
 
-const ExerciseGrid: React.FC<ExerciseGridProps> = ({ 
-  limit, 
-  showHeader = true,
+const ExerciseGrid: React.FC<ExerciseGridProps> = ({
   paginatedExercises,
   exercisesPerPage,
   onPractice,
@@ -30,20 +25,8 @@ const ExerciseGrid: React.FC<ExerciseGridProps> = ({
   onCreateClick,
   canEdit
 }) => {
-  // Simple mode (for HomePage)
-  if (!paginatedExercises) {
-    return (
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {showHeader && <h3>Exercise Grid</h3>}
-        {/* Exercise content would go here */}
-        <div>Exercise Card (Limit: {limit || 'unlimited'})</div>
-      </div>
-    );
-  }
-  
-  // Advanced mode (for ExercisesPage)
   // Fill array to maintain grid layout
-  const fillerCount = Math.max(0, (exercisesPerPage || 0) - paginatedExercises.length - 1);
+  const fillerCount = Math.max(0, exercisesPerPage - paginatedExercises.length - 1);
   const fillers = Array(fillerCount).fill(null);
 
   return (
@@ -52,16 +35,16 @@ const ExerciseGrid: React.FC<ExerciseGridProps> = ({
         <ExerciseCard
           key={exercise.id}
           exercise={exercise}
-          onPractice={() => onPractice && onPractice(exercise)}
-          onEdit={() => onEdit && onEdit(exercise)}
-          onDelete={() => onDelete && onDelete(exercise)}
-          onMove={() => onMove && onMove(exercise)}
-          canEdit={!!canEdit}
+          onPractice={() => onPractice(exercise)}
+          onEdit={() => onEdit(exercise)}
+          onDelete={() => onDelete(exercise)}
+          onMove={() => onMove(exercise)} // Moving is now available for all users
+          canEdit={canEdit}
           canMove={true} // Allow moving for all users
         />
       ))}
       
-      {onCreateClick && <CreateExerciseCard onClick={onCreateClick} />}
+      <CreateExerciseCard onClick={onCreateClick} />
       
       {fillers.map((_, index) => (
         <div 

@@ -1,3 +1,4 @@
+
 export type Language = 
   | 'english' 
   | 'german' 
@@ -29,7 +30,6 @@ export interface Exercise {
   isCompleted: boolean;
   archived?: boolean;
   default_exercise_id?: string;  // Add this line to include the default exercise ID
-  readingAnalysisId?: string | null; // Add this for compatibility
 }
 
 export interface Directory {
@@ -70,19 +70,15 @@ export interface Roadmap {
 
 export interface RoadmapNode {
   id: string;
+  roadmapId: string;
+  defaultExerciseId?: string;
   title: string;
-  description: string;
+  description?: string;
   position: number;
   isBonus: boolean;
-  language: string;
-  roadmapId?: string;
+  language?: Language; // Added language field
   createdAt: Date;
   updatedAt: Date;
-  defaultExerciseId?: string; // Add defaultExerciseId
-  status?: 'completed' | 'current' | 'locked' | 'available'; // Add this property
-  progressCount?: number; // Add this property
-  completionCount?: number;
-  isCompleted?: boolean;
 }
 
 export interface RoadmapLanguage {

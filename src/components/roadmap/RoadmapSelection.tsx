@@ -25,23 +25,8 @@ import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const RoadmapSelection: React.FC = () => {
-  const roadmapContext = useRoadmap();
-  
-  // Extract properties from context with fallbacks for compatibility
-  const initializeUserRoadmap = roadmapContext.initializeUserRoadmap || 
-    roadmapContext.initializeRoadmap || 
-    (async () => '');
-  
-  const roadmaps = roadmapContext.roadmaps || [];
-  
-  const isLoading = roadmapContext.isLoading || false;
-  
-  const userRoadmaps = roadmapContext.userRoadmaps || [];
-  
-  const loadUserRoadmaps = roadmapContext.loadUserRoadmaps || (async () => []);
-  
+  const { initializeUserRoadmap, roadmaps, isLoading, userRoadmaps, loadUserRoadmaps } = useRoadmap();
   const { settings } = useUserSettingsContext();
-  
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel | ''>('');
   const [initializing, setInitializing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);

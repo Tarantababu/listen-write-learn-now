@@ -1,7 +1,6 @@
-
 import React, { useEffect } from 'react';
-import { useRoadmap } from '../hooks/use-hook-imports';
-import { RoadmapNode, RoadmapItem } from '../types';
+import { useRoadmap } from '../context/RoadmapContext';
+import { RoadmapNode } from '../types';
 import { Loader2 } from 'lucide-react';
 import RoadmapPath from './RoadmapPath';
 import LevelBadge from '@/components/LevelBadge';
@@ -19,18 +18,15 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
   onNodeSelect,
   className
 }) => {
-  const roadmapContext = useRoadmap();
-  
-  // Safely access properties with type checking
-  const nodes = roadmapContext?.nodes || [] as RoadmapNode[];
-  const isLoading = roadmapContext?.isLoading || false;
-  const roadmaps = roadmapContext?.roadmaps || [];
-  const currentNodeId = roadmapContext?.currentNodeId;
-  const selectRoadmap = roadmapContext?.selectRoadmap;
-  const completedNodes = roadmapContext?.completedNodes || [];
-  
-  // Make sure to check that currentRoadmap is not an array before accessing properties
-  const currentRoadmap = roadmapContext?.currentRoadmap;
+  const { 
+    currentRoadmap, 
+    nodes, 
+    completedNodes,
+    isLoading,
+    roadmaps,
+    currentNodeId,
+    selectRoadmap
+  } = useRoadmap();
   
   useEffect(() => {
     console.log("RoadmapVisualization rendered with:", { 
@@ -39,15 +35,10 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
       currentNodeId
     });
     
-    if (currentRoadmap && !Array.isArray(currentRoadmap) && (!nodes || nodes.length === 0)) {
+    if (currentRoadmap && (!nodes || nodes.length === 0)) {
       console.log("No nodes found for current roadmap, attempting to reload");
-      handleReloadRoadmap();
-    }
-  }, [currentRoadmap, nodes, currentNodeId, selectRoadmap]);
-
-  const handleReloadRoadmap = () => {
-    if (currentRoadmap && !Array.isArray(currentRoadmap) && currentRoadmap.id && selectRoadmap) {
-      selectRoadmap(currentRoadmap.id).catch(err => {
+      // Attempt to reload the current roadmap if no nodes are found
+      selectRoadmap?.(currentRoadmap.id).catch(err => {
         console.error("Failed to reload roadmap:", err);
         toast({
           variant: "destructive",
@@ -56,7 +47,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
         });
       });
     }
-  };
+  }, [currentRoadmap, nodes, currentNodeId, selectRoadmap]);
 
   if (isLoading) {
     return (
@@ -76,17 +67,9 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
   }
 
   // Find the roadmap details using the roadmapId from currentRoadmap
-  const getRoadmapInfo = () => {
-    if (!currentRoadmap || Array.isArray(currentRoadmap)) return { name: "Learning Path", level: undefined };
-    
-    const roadmapDetails = roadmaps?.find(r => r.id === currentRoadmap.roadmapId);
-    return {
-      name: roadmapDetails?.name || "Learning Path",
-      level: roadmapDetails?.level
-    };
-  };
-  
-  const roadmapInfo = getRoadmapInfo();
+  const roadmapDetails = roadmaps?.find(r => r.id === currentRoadmap.roadmapId);
+  const roadmapName = roadmapDetails?.name || "Learning Path";
+  const roadmapLevel = roadmapDetails?.level;
   
   // Find current node
   const currentNode = nodes?.find(n => n.id === currentNodeId);
@@ -109,9 +92,9 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
           transition={{ duration: 0.3 }}
         >
           <div>
-            <h2 className="text-xl font-bold">{roadmapInfo.name}</h2>
+            <h2 className="text-xl font-bold">{roadmapName}</h2>
             <div className="flex items-center mt-1">
-              {roadmapInfo.level && <LevelBadge level={roadmapInfo.level} className="mr-2" />}
+              {roadmapLevel && <LevelBadge level={roadmapLevel} className="mr-2" />}
             </div>
           </div>
         </motion.div>
@@ -135,9 +118,9 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
         transition={{ duration: 0.3 }}
       >
         <div>
-          <h2 className="text-xl font-bold">{roadmapInfo.name}</h2>
+          <h2 className="text-xl font-bold">{roadmapName}</h2>
           <div className="flex items-center mt-1">
-            {roadmapInfo.level && <LevelBadge level={roadmapInfo.level} className="mr-2" />}
+            {roadmapLevel && <LevelBadge level={roadmapLevel} className="mr-2" />}
             <span className="text-sm text-muted-foreground">
               {completedNodes?.length || 0} of {nodes.length} completed
             </span>
