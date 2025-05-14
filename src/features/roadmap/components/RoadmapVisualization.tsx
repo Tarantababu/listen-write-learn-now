@@ -40,9 +40,9 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
       
       setIsAccessLoading(true);
       try {
+        // Fixing parameter count here - using only roadmapId
         const { data, error } = await nodeAccessService.getAccessibleNodes(
-          currentRoadmap.roadmapId, 
-          currentRoadmap.language
+          currentRoadmap.roadmapId
         );
         
         if (error) {

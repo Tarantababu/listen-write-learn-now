@@ -18,6 +18,7 @@ export interface RoadmapServiceInterface {
   getUserRoadmaps(language: Language): ServiceResult<RoadmapItem[]>;
   getRoadmapNodes(userRoadmapId: string): ServiceResult<RoadmapNode[]>;
   initializeRoadmap(level: LanguageLevel, language: Language): ServiceResult<string>;
+  getNodeExerciseContent(nodeId: string): Promise<ExerciseContent | null>;
 }
 
 // ProgressService types
@@ -28,6 +29,9 @@ export interface ProgressServiceInterface {
   resetProgress(roadmapId: string): ServiceResult<void>;
   getNodeProgress(nodeId: string): ServiceResult<NodeProgressDetails>;
 }
+
+// Export NodeCompletionResult to fix the error
+export { NodeCompletionResult };
 
 // ExerciseService types
 export interface ExerciseServiceInterface {
