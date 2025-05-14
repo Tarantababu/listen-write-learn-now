@@ -46,3 +46,15 @@ export function eqFilter<T extends Record<string, any>, K extends keyof T>(
 export function isNullOrUndefined(value: any): boolean {
   return value === null || value === undefined;
 }
+
+// Helper to safely access data from Supabase responses
+export function safeDataAccess<T>(data: T | null | undefined): T | null {
+  if (isNullOrUndefined(data)) return null;
+  return data as T;
+}
+
+// Helper for safely handling type assertions in array data
+export function asTypedArray<T>(data: any[] | null | undefined): T[] {
+  if (!data || !Array.isArray(data)) return [];
+  return data as T[];
+}

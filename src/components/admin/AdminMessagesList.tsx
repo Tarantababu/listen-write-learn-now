@@ -28,12 +28,31 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { asUpdateObject } from '@/utils/supabaseHelpers';
+import { asUpdateObject, asString, safeDataAccess, asTypedArray } from '@/utils/supabaseHelpers';
+
+interface AdminMessage {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  is_active: boolean;
+  created_by: string;
+}
+
+interface MessageStats {
+  total: number;
+  read: number;
+  readPercentage: number;
+}
+
+interface MessageWithStats extends AdminMessage {
+  stats: MessageStats;
+}
 
 export function AdminMessagesList() {
   const [deleteMessageId, setDeleteMessageId] = useState<string | null>(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState<any | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<MessageWithStats | null>(null);
   const [isViewMessageOpen, setIsViewMessageOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('messages');
 
@@ -46,7 +65,7 @@ export function AdminMessagesList() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      return asTypedArray<AdminMessage>(data);
     },
   });
 
@@ -56,39 +75,41 @@ export function AdminMessagesList() {
       const { data: message, error: messageError } = await supabase
         .from('admin_messages')
         .select('*')
-        .eq('id', messageId as any)
+        .eq('id', asString(messageId))
         .single();
 
       if (messageError) throw messageError;
+      if (!message) throw new Error('Message not found');
 
       // Get read statistics
       const { data: userMessagesTotal, error: statsError } = await supabase
         .from('user_messages')
         .select('*', { count: 'exact' })
-        .eq('message_id', messageId as any);
+        .eq('message_id', asString(messageId));
 
       if (statsError) throw statsError;
 
       const { data: userMessagesRead, error: readStatsError } = await supabase
         .from('user_messages')
         .select('*', { count: 'exact' })
-        .eq('message_id', messageId as any)
-        .eq('is_read', true as any);
+        .eq('message_id', asString(messageId))
+        .eq('is_read', true);
 
       if (readStatsError) throw readStatsError;
 
       const totalCount = userMessagesTotal?.length || 0;
       const readCount = userMessagesRead?.length || 0;
 
-      setSelectedMessage({
-        ...message,
+      const messageWithStats: MessageWithStats = {
+        ...message as AdminMessage,
         stats: {
           total: totalCount,
           read: readCount,
           readPercentage: totalCount > 0 ? Math.round((readCount / totalCount) * 100) : 0,
-        },
-      });
+        }
+      };
 
+      setSelectedMessage(messageWithStats);
       setIsViewMessageOpen(true);
       setActiveTab('messages');
     } catch (error: any) {
@@ -104,7 +125,7 @@ export function AdminMessagesList() {
       const { error } = await supabase
         .from('admin_messages')
         .update(asUpdateObject<'admin_messages'>({ is_active: false }))
-        .eq('id', deleteMessageId as any);
+        .eq('id', asString(deleteMessageId));
 
       if (error) throw error;
 
@@ -123,7 +144,7 @@ export function AdminMessagesList() {
       const { error } = await supabase
         .from('admin_messages')
         .update(asUpdateObject<'admin_messages'>({ is_active: !currentStatus }))
-        .eq('id', messageId as any);
+        .eq('id', asString(messageId));
 
       if (error) throw error;
 
@@ -322,5 +343,4 @@ export function AdminMessagesList() {
   );
 }
 
-// Add default export
 export default AdminMessagesList;

@@ -22,10 +22,19 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { asUpdateObject } from '@/utils/supabaseHelpers';
+import { asUpdateObject, asString, asTypedArray } from '@/utils/supabaseHelpers';
+
+interface FeedbackItem {
+  id: string;
+  name: string;
+  email: string | null;
+  message: string;
+  read: boolean;
+  created_at: string;
+}
 
 export function FeedbackList() {
-  const [selectedFeedback, setSelectedFeedback] = useState<any | null>(null);
+  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: feedback = [], isLoading, refetch } = useQuery({
@@ -37,7 +46,7 @@ export function FeedbackList() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      return asTypedArray<FeedbackItem>(data);
     },
   });
 
@@ -46,7 +55,7 @@ export function FeedbackList() {
       const { error } = await supabase
         .from('feedback')
         .update(asUpdateObject<'feedback'>({ read: true }))
-        .eq('id', id as any);
+        .eq('id', asString(id));
 
       if (error) throw error;
       
@@ -57,7 +66,7 @@ export function FeedbackList() {
     }
   };
 
-  const handleViewFeedback = (item: any) => {
+  const handleViewFeedback = (item: FeedbackItem) => {
     setSelectedFeedback(item);
     setIsModalOpen(true);
     

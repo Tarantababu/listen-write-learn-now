@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo } from 'react';
 import { format, subDays, isSameDay, differenceInDays, startOfDay } from 'date-fns';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -12,7 +11,7 @@ import StatsHeatmap from './StatsHeatmap';
 import { getUserLevel, getLevelProgress } from '@/utils/levelSystem';
 import LanguageLevelDisplay from './LanguageLevelDisplay';
 import { compareWithPreviousDay } from '@/utils/trendUtils';
-import { asUUID } from '@/utils/supabaseHelpers';
+import { asUUID, asString } from '@/utils/supabaseHelpers';
 
 interface CompletionData {
   date: Date;
@@ -48,6 +47,7 @@ const UserStatistics: React.FC = () => {
       }
 
       try {
+        // Use asUUID to properly cast the UUID value for Supabase query
         const { data, error } = await supabase
           .from('completions')
           .select('exercise_id, created_at, accuracy')
