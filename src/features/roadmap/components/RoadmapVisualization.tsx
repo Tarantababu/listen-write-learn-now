@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
-import { useRoadmap } from '../context/RoadmapContext';
+
+import React, { useEffect, useState } from 'react';
+import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '../types';
 import { Loader2 } from 'lucide-react';
 import RoadmapPath from './RoadmapPath';
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
+import { nodeAccessService } from '../services/NodeAccessService';
 
 interface RoadmapVisualizationProps {
   onNodeSelect: (node: RoadmapNode) => void;
@@ -28,11 +30,83 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
     selectRoadmap
   } = useRoadmap();
   
+  const [accessibleNodeIds, setAccessibleNodeIds] = useState<string[]>([]);
+  const [isAccessLoading, setIsAccessLoading] = useState(false);
+  
+  // Load accessible nodes
+  useEffect(() => {
+    const loadAccessibleNodes = async () => {
+      if (!currentRoadmap) return;
+      
+      setIsAccessLoading(true);
+      try {
+        const { data, error } = await nodeAccessService.getAccessibleNodes(
+          currentRoadmap.roadmapId, 
+          currentRoadmap.language
+        );
+        
+        if (error) {
+          console.error("Error loading accessible nodes:", error);
+          return;
+        }
+        
+        setAccessibleNodeIds(data || []);
+      } catch (err) {
+        console.error("Failed to load accessible nodes:", err);
+      } finally {
+        setIsAccessLoading(false);
+      }
+    };
+    
+    loadAccessibleNodes();
+  }, [currentRoadmap, completedNodes]);
+  
+  // Handle node click - check access before selection
+  const handleNodeClick = async (node: RoadmapNode) => {
+    // If node is marked as completed or is the current node, allow access
+    if (completedNodes.includes(node.id) || node.id === currentNodeId) {
+      onNodeSelect(node);
+      return;
+    }
+    
+    // For other nodes, check access server-side
+    try {
+      const { data: hasAccess, error } = await nodeAccessService.canAccessNode(node.id);
+      
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not verify access to this lesson"
+        });
+        return;
+      }
+      
+      if (hasAccess) {
+        onNodeSelect(node);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Lesson locked",
+          description: "You need to complete previous lessons first"
+        });
+      }
+    } catch (err) {
+      console.error("Error checking node access:", err);
+      toast({
+        variant: "destructive",
+        title: "Access error",
+        description: "An error occurred while checking lesson access"
+      });
+    }
+  };
+  
   useEffect(() => {
     console.log("RoadmapVisualization rendered with:", { 
       currentRoadmap,
       nodes: nodes?.length || 0,
-      currentNodeId
+      currentNodeId,
+      accessibleNodeIds
     });
     
     if (currentRoadmap && (!nodes || nodes.length === 0)) {
@@ -47,9 +121,10 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
         });
       });
     }
-  }, [currentRoadmap, nodes, currentNodeId, selectRoadmap]);
+  }, [currentRoadmap, nodes, currentNodeId, selectRoadmap, accessibleNodeIds]);
 
-  if (isLoading) {
+  // Loading state
+  if (isLoading || isAccessLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
@@ -58,6 +133,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
     );
   }
 
+  // No roadmap selected
   if (!currentRoadmap) {
     return (
       <div className="text-center p-8">
@@ -74,14 +150,26 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
   // Find current node
   const currentNode = nodes?.find(n => n.id === currentNodeId);
   
-  // Debug info about the nodes
-  console.log("Current roadmap nodes:", {
-    count: nodes?.length || 0,
-    nodeIds: nodes?.map(n => n.id) || [],
-    currentNodeId,
-    currentNode: currentNode ? { id: currentNode.id, title: currentNode.title } : null
+  // Enrich nodes with accessibility information
+  const enrichedNodes = nodes?.map(node => {
+    // Determine node status
+    let status: 'locked' | 'available' | 'completed' | 'current' = 'locked';
+    
+    if (completedNodes.includes(node.id)) {
+      status = 'completed';
+    } else if (node.id === currentNodeId) {
+      status = 'current';
+    } else if (accessibleNodeIds.includes(node.id)) {
+      status = 'available';
+    }
+    
+    return {
+      ...node,
+      status
+    };
   });
 
+  // No nodes available
   if (!nodes || nodes.length === 0) {
     return (
       <div className={cn("space-y-6", className)}>
@@ -128,24 +216,18 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
         </div>
         
         {currentNode && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
+          <Button 
+            onClick={() => handleNodeClick(currentNode)}
+            className="bg-secondary hover:bg-secondary/80"
           >
-            <Button 
-              onClick={() => onNodeSelect(currentNode)}
-              className="bg-secondary hover:bg-secondary/90"
-            >
-              Continue Learning
-            </Button>
-          </motion.div>
+            Continue Learning
+          </Button>
         )}
       </motion.div>
-
-      <RoadmapPath
-        nodes={nodes}
-        onNodeSelect={onNodeSelect}
+      
+      <RoadmapPath 
+        nodes={enrichedNodes} 
+        onNodeSelect={handleNodeClick} 
       />
     </div>
   );

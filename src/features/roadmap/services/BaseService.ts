@@ -1,14 +1,33 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { ServiceResponse } from '../types/service-types';
 
 export class BaseService {
   protected supabase = supabase;
   
   /**
-   * Helper to create consistent success responses
+   * Ensures the user is authenticated and returns user info
+   * @returns Object with userId and email if authenticated, null otherwise
    */
-  protected success<T>(data: T): ServiceResponse<T> {
+  protected async ensureAuthenticated() {
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) {
+        return null;
+      }
+      return {
+        userId: user.id,
+        email: user.email
+      };
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Create a standardized success response
+   */
+  protected success<T>(data: T): { data: T, error: null, status: 'success' } {
     return {
       data,
       error: null,
@@ -17,10 +36,9 @@ export class BaseService {
   }
   
   /**
-   * Helper to create consistent error responses
+   * Create a standardized error response
    */
-  protected error<T>(message: string): ServiceResponse<T> {
-    console.error(`Service error: ${message}`);
+  protected error<T>(message: string): { data: null, error: string, status: 'error' } {
     return {
       data: null,
       error: message,
@@ -29,27 +47,11 @@ export class BaseService {
   }
   
   /**
-   * Helper to handle service errors consistently
+   * Handle errors consistently
    */
-  protected handleError<T>(error: any): ServiceResponse<T> {
-    const errorMessage = error.message || 'An unknown error occurred';
+  protected handleError(error: any) {
     console.error('Service error:', error);
+    const errorMessage = error?.message || 'An unexpected error occurred';
     return this.error(errorMessage);
-  }
-  
-  /**
-   * Check if the user is authenticated
-   */
-  protected async ensureAuthenticated(): Promise<{ userId: string } | null> {
-    try {
-      const { data } = await this.supabase.auth.getUser();
-      if (!data.user) {
-        return null;
-      }
-      return { userId: data.user.id };
-    } catch (error) {
-      console.error('Authentication error:', error);
-      return null;
-    }
   }
 }

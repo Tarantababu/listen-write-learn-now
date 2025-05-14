@@ -1,137 +1,127 @@
 
 import React from 'react';
 import { RoadmapNode } from '../types';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Check, Lock, Star } from 'lucide-react';
 import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@/components/ui/tooltip';
-import { Badge } from '@/components/ui/badge';
-import { motion } from 'framer-motion';
+  CheckCircle, 
+  CircleDashed, 
+  Lock,
+  PlayCircle,
+  Sparkles
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface RoadmapNodeCardProps {
   node: RoadmapNode;
   onNodeClick: (node: RoadmapNode) => void;
+  className?: string;
 }
 
-const RoadmapNodeCard: React.FC<RoadmapNodeCardProps> = ({ node, onNodeClick }) => {
-  const { status, isBonus, progressCount, position } = node;
-
-  const getNodeColor = () => {
-    switch (status) {
-      case 'completed': 
-        return 'bg-primary text-primary-foreground border-primary';
-      case 'current': 
-        return 'bg-secondary text-secondary-foreground border-secondary';
-      case 'available': 
-        return 'bg-background text-foreground border-muted-foreground';
-      default: 
-        return 'bg-muted text-muted-foreground border-muted opacity-70';
+const RoadmapNodeCard: React.FC<RoadmapNodeCardProps> = ({ 
+  node, 
+  onNodeClick,
+  className
+}) => {
+  // Determine styles and icon based on status
+  const getStatusDetails = () => {
+    switch (node.status) {
+      case 'completed':
+        return {
+          containerClass: 'bg-primary text-primary-foreground border-primary/50',
+          iconBgClass: 'bg-primary-foreground text-primary',
+          icon: <CheckCircle className="h-4 w-4" />,
+          buttonVariant: 'secondary' as const,
+          buttonText: 'Review',
+          clickable: true
+        };
+      case 'current':
+        return {
+          containerClass: 'bg-secondary text-secondary-foreground border-secondary/50',
+          iconBgClass: 'bg-secondary-foreground text-secondary',
+          icon: <PlayCircle className="h-4 w-4" />,
+          buttonVariant: 'default' as const,
+          buttonText: 'Continue',
+          clickable: true
+        };
+      case 'available':
+        return {
+          containerClass: 'bg-background hover:bg-accent border-input',
+          iconBgClass: 'bg-muted text-muted-foreground',
+          icon: <CircleDashed className="h-4 w-4" />,
+          buttonVariant: 'outline' as const,
+          buttonText: 'Start',
+          clickable: true
+        };
+      case 'locked':
+      default:
+        return {
+          containerClass: 'bg-muted text-muted-foreground border-muted/50',
+          iconBgClass: 'bg-muted-foreground/20 text-muted-foreground',
+          icon: <Lock className="h-4 w-4" />,
+          buttonVariant: 'ghost' as const,
+          buttonText: 'Locked',
+          clickable: false
+        };
     }
   };
 
-  const getNodeIcon = () => {
-    if (status === 'completed') return <Check className="h-5 w-5" />;
-    if (status === 'locked') return <Lock className="h-4 w-4" />;
-    if (isBonus) return <Star className="h-4 w-4 text-amber-500" />;
-    return null;
-  };
+  const { 
+    containerClass, 
+    iconBgClass, 
+    icon, 
+    buttonVariant, 
+    buttonText,
+    clickable
+  } = getStatusDetails();
 
-  // Display progress badge if there is progress but not completed
-  const showProgressBadge = progressCount > 0 && status !== 'completed';
-
-  // Animations based on node status
-  const pulseAnimation = status === 'current' ? {
-    scale: [1, 1.05, 1],
-    transition: {
-      duration: 2,
-      repeat: Infinity,
-      repeatType: "reverse" as const
+  const handleClick = () => {
+    if (clickable) {
+      onNodeClick(node);
     }
-  } : {};
-
-  const completedAnimation = status === 'completed' ? {
-    scale: [0.8, 1],
-    opacity: [0, 1],
-    transition: { duration: 0.5 }
-  } : {};
+  };
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="relative">
-            <motion.div
-              whileHover={status !== 'locked' ? { scale: 1.1 } : {}}
-              animate={status === 'current' ? pulseAnimation : completedAnimation}
-            >
-              <Button
-                onClick={() => status !== 'locked' && onNodeClick(node)}
-                disabled={status === 'locked'}
-                variant="outline"
-                className={cn(
-                  "h-16 w-16 rounded-full border-2 flex flex-col items-center justify-center p-0 transition-all",
-                  getNodeColor(),
-                  status === 'current' && "ring-2 ring-offset-2 ring-primary",
-                  isBonus && "border-amber-500"
-                )}
-              >
-                {getNodeIcon()}
-                <span className="text-xs font-bold mt-1">{position + 1}</span>
-              </Button>
-            </motion.div>
-            
-            {showProgressBadge && (
-              <motion.div 
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute -bottom-2 -right-2 bg-amber-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold"
-              >
-                {progressCount}
-              </motion.div>
-            )}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="z-50">
-          <div className="space-y-1 p-1 max-w-xs">
-            <div className="flex items-center gap-1 flex-wrap">
-              {isBonus && (
-                <Badge variant="secondary" className="text-xs px-1 py-0 h-4 bg-amber-500/20 text-amber-700">
-                  BONUS
-                </Badge>
+    <div 
+      className={cn(
+        "flex flex-col items-center justify-center text-center p-2 rounded-lg border transition-all",
+        "w-16 h-16 relative",
+        containerClass,
+        clickable ? "cursor-pointer" : "cursor-not-allowed opacity-80",
+        className
+      )}
+      onClick={handleClick}
+      role="button"
+      aria-disabled={!clickable}
+      tabIndex={clickable ? 0 : -1}
+    >
+      <div className={cn(
+        "absolute -top-1 -right-1 h-5 w-5 rounded-full flex items-center justify-center",
+        iconBgClass
+      )}>
+        {node.isBonus ? <Sparkles className="h-3 w-3" /> : icon}
+      </div>
+      
+      <span className="text-xs font-medium mb-1 line-clamp-1">
+        {node.title}
+      </span>
+      
+      {node.progressCount > 0 && (
+        <div className="flex items-center justify-center space-x-0.5 absolute -bottom-1">
+          {[...Array(3)].map((_, i) => (
+            <div 
+              key={`progress-${i}`} 
+              className={cn(
+                "h-1 w-1 rounded-full",
+                i < (node.progressCount || 0) 
+                  ? "bg-current" 
+                  : "bg-current/30"
               )}
-              <span className="font-medium">{node.title}</span>
-            </div>
-            {node.description && (
-              <p className="text-xs text-muted-foreground">{node.description}</p>
-            )}
-            <div className="text-xs flex items-center gap-1 mt-1">
-              <span className={cn(
-                "px-1.5 py-0.5 rounded-sm",
-                status === 'locked' ? "bg-muted text-muted-foreground" :
-                status === 'completed' ? "bg-primary/10 text-primary" :
-                status === 'current' ? "bg-secondary/10 text-secondary" :
-                "bg-muted/50"
-              )}>
-                {status === 'locked' ? 'Locked' : 
-                 status === 'completed' ? 'Completed' : 
-                 status === 'current' ? 'Current' : 'Available'}
-              </span>
-              {progressCount > 0 && status !== 'completed' && (
-                <span className="ml-1 bg-amber-500/10 text-amber-700 px-1.5 py-0.5 rounded-sm">
-                  Progress: {progressCount}/3
-                </span>
-              )}
-            </div>
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
-}
+};
 
 export default RoadmapNodeCard;
