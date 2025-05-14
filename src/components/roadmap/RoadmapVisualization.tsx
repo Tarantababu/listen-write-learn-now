@@ -104,9 +104,6 @@ interface RoadmapVisualizationProps {
 }
 
 const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelect }) => {
-  // Ensure we're destructuring the correct properties from the context
-  // By using the useRoadmap hook which should provide all needed context values
-  const context = useRoadmap();
   const { 
     currentRoadmap, 
     nodes, 
@@ -116,7 +113,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     nodeProgress,
     isLoading,
     roadmaps 
-  } = context;
+  } = useRoadmap();
 
   console.log("Legacy RoadmapVisualization rendered with:", {
     hasCurrentRoadmap: !!currentRoadmap,

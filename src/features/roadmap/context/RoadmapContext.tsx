@@ -1,8 +1,9 @@
+
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { useAuth } from './AuthContext';
-import { useUserSettingsContext } from './UserSettingsContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language, RoadmapNodeProgress } from '@/types';
 
 interface RoadmapContextType {
@@ -728,3 +729,5 @@ export const useRoadmap = () => {
   }
   return context;
 };
+
+export { RoadmapContext }; // Add this export explicitly
