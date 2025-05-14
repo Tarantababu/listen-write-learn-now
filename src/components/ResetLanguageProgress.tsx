@@ -68,7 +68,7 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
         if (fetchError) throw fetchError;
         
         if (languageExercises && languageExercises.length > 0) {
-          const exerciseIds = languageExercises.map(ex => ex.id);
+          const exerciseIds = languageExercises.map(ex => 'id' in ex ? ex.id : '');
           
           // Reset exercise completion counts for the selected language
           const { error: exerciseError } = await supabase
@@ -84,7 +84,9 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
           
           // Delete all completions for these exercises
           for (const exerciseId of exerciseIds) {
-            await deleteAssociatedCompletions(userId, exerciseId);
+            if (exerciseId) {
+              await deleteAssociatedCompletions(userId, exerciseId);
+            }
           }
           
           // Refresh the exercises in context after reset

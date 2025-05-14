@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -120,7 +119,7 @@ export function UserMessages() {
           updated_at: new Date().toISOString() 
         } as any)
         .eq('user_id', userId)
-        .eq('is_read', false);
+        .eq('is_read', false as unknown as boolean);
         
       if (error) throw error;
       

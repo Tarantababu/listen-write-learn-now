@@ -144,7 +144,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             if (saveError) {
               console.error('Error saving analysis:', saveError);
               // Continue even if saving fails
-            } else if (savedData) {
+            } else if (savedData && 'id' in savedData) {
               console.log('Analysis saved with ID:', savedData.id);
               
               // Increment the reading_analyses_count for free users using a direct update
@@ -157,7 +157,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                   
                 if (fetchError) {
                   console.error('Error fetching profile:', fetchError);
-                } else if (profileData) {
+                } else if (profileData && 'reading_analyses_count' in profileData) {
                   // Check if data exists and has reading_analyses_count
                   const currentCount = profileData?.reading_analyses_count || 0;
                   const newCount = currentCount + 1;
