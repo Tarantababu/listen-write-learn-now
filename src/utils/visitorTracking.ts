@@ -26,19 +26,31 @@ export const trackPageView = async (page: string): Promise<void> => {
   try {
     const visitorId = getVisitorId();
     
-    await supabase.functions.invoke('track-visitor', {
+    // Add timeout to prevent long-running requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await supabase.functions.invoke('track-visitor', {
       body: {
         visitorId,
         page,
         referer: document.referrer || null,
         userAgent: navigator.userAgent
-      }
+      },
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
+    
+    if (response.error) {
+      console.warn(`Page view tracking failed: ${response.error.message}`);
+      return;
+    }
     
     console.log(`Page view tracked: ${page}`);
   } catch (error) {
-    console.error('Failed to track page view:', error);
-    // Continue execution even if tracking fails
+    // Log but don't throw error - tracking shouldn't break the app
+    console.warn('Failed to track page view:', error);
   }
 };
 
@@ -49,19 +61,31 @@ export const trackButtonClick = async (buttonName: string): Promise<void> => {
   try {
     const visitorId = getVisitorId();
     
-    await supabase.functions.invoke('track-visitor', {
+    // Add timeout to prevent long-running requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await supabase.functions.invoke('track-visitor', {
       body: {
         visitorId,
         page: `button_click:${buttonName}`,
         referer: document.referrer || null,
         userAgent: navigator.userAgent
-      }
+      },
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
+    
+    if (response.error) {
+      console.warn(`Button click tracking failed: ${response.error.message}`);
+      return;
+    }
     
     console.log(`Button click tracked: ${buttonName}`);
   } catch (error) {
-    console.error('Failed to track button click:', error);
-    // Continue execution even if tracking fails
+    // Log but don't throw error - tracking shouldn't break the app
+    console.warn('Failed to track button click:', error);
   }
 };
 
