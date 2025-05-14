@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { asUUID, asBoolean } from '@/utils/supabaseHelpers';
 
 interface UserMessage {
   id: string;
@@ -35,8 +36,6 @@ export function UserMessages() {
     queryFn: async () => {
       if (!user) return [];
       
-      // Cast user.id to satisfy TypeScript
-      const userId = user.id as unknown as DbId;
       const { data, error } = await supabase
         .from('user_messages')
         .select(`
@@ -50,12 +49,11 @@ export function UserMessages() {
             created_at
           )
         `)
-        .eq('user_id', userId)
+        .eq('user_id', asUUID(user.id))
         .order('is_read', { ascending: true })
         .order('created_at', { foreignTable: 'message', ascending: false });
         
       if (error) throw error;
-      // Convert the Supabase response to the expected UserMessage format
       return (data as unknown as UserMessage[]) || [];
     },
     enabled: !!user
@@ -72,8 +70,8 @@ export function UserMessages() {
         .update({ 
           is_read: true, 
           updated_at: new Date().toISOString() 
-        } as any)
-        .eq('id', messageId as unknown as DbId);
+        })
+        .eq('id', asUUID(messageId));
         
       if (error) throw error;
     },
@@ -93,8 +91,8 @@ export function UserMessages() {
           is_archived: true, 
           is_read: true, 
           updated_at: new Date().toISOString() 
-        } as any)
-        .eq('id', messageId as unknown as DbId);
+        })
+        .eq('id', asUUID(messageId));
         
       if (error) throw error;
     },
@@ -111,15 +109,14 @@ export function UserMessages() {
     if (!user || unreadMessages.length === 0) return;
     
     try {
-      const userId = user.id as unknown as DbId;
       const { error } = await supabase
         .from('user_messages')
         .update({ 
           is_read: true, 
           updated_at: new Date().toISOString() 
-        } as any)
-        .eq('user_id', userId)
-        .eq('is_read', false as unknown as boolean);
+        })
+        .eq('user_id', asUUID(user.id))
+        .eq('is_read', asBoolean(false));
         
       if (error) throw error;
       

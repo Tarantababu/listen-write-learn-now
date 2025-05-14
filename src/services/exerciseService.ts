@@ -2,6 +2,7 @@
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { asUUID, asString, asBoolean, asNumber, asArray } from '@/utils/supabaseHelpers';
 
 /**
  * Fetches exercises from Supabase for an authenticated user
@@ -11,12 +12,11 @@ export const fetchExercises = async (userId: string | undefined) => {
     throw new Error('User ID is required to fetch exercises');
   }
 
-  // Use explicit type casting to avoid deep recursion
   const { data, error } = await supabase
     .from('exercises')
     .select('*')
-    .eq('user_id', userId as unknown as DbId)
-    .eq('archived', false as unknown as boolean) // Only fetch non-archived exercises
+    .eq('user_id', asUUID(userId))
+    .eq('archived', asBoolean(false)) // Only fetch non-archived exercises
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -37,15 +37,15 @@ export const createExercise = async (
   const { data, error } = await supabase
     .from('exercises')
     .insert({
-      user_id: userId as unknown as DbId,
+      user_id: asUUID(userId),
       title: exercise.title,
       text: exercise.text,
-      language: exercise.language as unknown as string,
-      tags: exercise.tags as unknown as string[],
+      language: asString(exercise.language),
+      tags: asArray(exercise.tags),
       audio_url: exercise.audioUrl,
       directory_id: exercise.directoryId,
       archived: false // New exercises are not archived
-    } as any)
+    })
     .select('*')
     .single();
 
@@ -63,19 +63,19 @@ export const updateExercise = async (userId: string, id: string, updates: Partia
   
   if (updates.title !== undefined) updateData.title = updates.title;
   if (updates.text !== undefined) updateData.text = updates.text;
-  if (updates.language !== undefined) updateData.language = updates.language;
-  if (updates.tags !== undefined) updateData.tags = updates.tags;
+  if (updates.language !== undefined) updateData.language = asString(updates.language);
+  if (updates.tags !== undefined) updateData.tags = asArray(updates.tags);
   if (updates.audioUrl !== undefined) updateData.audio_url = updates.audioUrl;
   if (updates.directoryId !== undefined) updateData.directory_id = updates.directoryId;
-  if (updates.completionCount !== undefined) updateData.completion_count = updates.completionCount;
-  if (updates.isCompleted !== undefined) updateData.is_completed = updates.isCompleted;
-  if (updates.archived !== undefined) updateData.archived = updates.archived;
+  if (updates.completionCount !== undefined) updateData.completion_count = asNumber(updates.completionCount);
+  if (updates.isCompleted !== undefined) updateData.is_completed = asBoolean(updates.isCompleted);
+  if (updates.archived !== undefined) updateData.archived = asBoolean(updates.archived);
 
   const { error } = await supabase
     .from('exercises')
     .update(updateData)
-    .eq('id', id as unknown as DbId)
-    .eq('user_id', userId as unknown as DbId);
+    .eq('id', asUUID(id))
+    .eq('user_id', asUUID(userId));
 
   if (error) throw error;
 };
@@ -88,8 +88,8 @@ export const deleteAssociatedVocabulary = async (userId: string, exerciseId: str
   const { error } = await supabase
     .from('vocabulary')
     .delete()
-    .eq('exercise_id', exerciseId as unknown as DbId)
-    .eq('user_id', userId as unknown as DbId);
+    .eq('exercise_id', asUUID(exerciseId))
+    .eq('user_id', asUUID(userId));
 
   if (error) {
     console.error('Error deleting associated vocabulary:', error);
@@ -108,8 +108,8 @@ export const deleteAssociatedCompletions = async (userId: string, exerciseId: st
     const { error, count } = await supabase
       .from('completions')
       .delete({ count: 'exact' })
-      .eq('exercise_id', exerciseId as unknown as DbId)
-      .eq('user_id', userId as unknown as DbId);
+      .eq('exercise_id', asUUID(exerciseId))
+      .eq('user_id', asUUID(userId));
 
     if (error) {
       console.error('Error deleting associated completions:', error);
@@ -131,8 +131,8 @@ export const archiveExercise = async (userId: string, id: string) => {
   const { error } = await supabase
     .from('exercises')
     .update({ archived: true })
-    .eq('id', id as unknown as DbId)
-    .eq('user_id', userId as unknown as DbId);
+    .eq('id', asUUID(id))
+    .eq('user_id', asUUID(userId));
 
   if (error) throw error;
 };
@@ -146,8 +146,8 @@ export const deleteExercise = async (userId: string, id: string) => {
   const { error } = await supabase
     .from('exercises')
     .delete()
-    .eq('id', id as unknown as DbId)
-    .eq('user_id', userId as unknown as DbId);
+    .eq('id', asUUID(id))
+    .eq('user_id', asUUID(userId));
 
   if (error) throw error;
 };
@@ -159,11 +159,11 @@ export const recordCompletion = async (userId: string, exerciseId: string, accur
   const { error: completionError } = await supabase
     .from('completions')
     .insert({
-      user_id: userId as unknown as DbId,
-      exercise_id: exerciseId as unknown as DbId,
-      accuracy: accuracy,
-      completed: isCompleted
-    } as any);
+      user_id: asUUID(userId),
+      exercise_id: asUUID(exerciseId),
+      accuracy: asNumber(accuracy),
+      completed: asBoolean(isCompleted)
+    });
 
   if (completionError) {
     console.error('Error saving completion record:', completionError);

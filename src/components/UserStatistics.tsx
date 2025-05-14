@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { format, subDays, isSameDay, differenceInDays, startOfDay } from 'date-fns';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -11,6 +12,7 @@ import StatsHeatmap from './StatsHeatmap';
 import { getUserLevel, getLevelProgress } from '@/utils/levelSystem';
 import LanguageLevelDisplay from './LanguageLevelDisplay';
 import { compareWithPreviousDay } from '@/utils/trendUtils';
+import { asUUID } from '@/utils/supabaseHelpers';
 
 interface CompletionData {
   date: Date;
@@ -49,7 +51,7 @@ const UserStatistics: React.FC = () => {
         const { data, error } = await supabase
           .from('completions')
           .select('exercise_id, created_at, accuracy')
-          .eq('user_id', user.id as unknown as DbId);
+          .eq('user_id', asUUID(user.id));
 
         if (error) throw error;
 
@@ -64,21 +66,24 @@ const UserStatistics: React.FC = () => {
           return acc;
         }, {});
 
-        const completionData: CompletionData[] = data.map(completion => {
-          // Use optional chaining and type checks to safely access properties
-          const exerciseId = completion?.exercise_id as string;
-          const createdAt = completion?.created_at as string;
-          const accuracy = completion?.accuracy as number;
-
-          return {
-            date: new Date(createdAt),
-            exerciseId,
-            accuracy,
-            words: exerciseTexts[exerciseId]
-              ? normalizeText(exerciseTexts[exerciseId]).split(' ').length
-              : 0,
-          };
-        });
+        const completionData: CompletionData[] = [];
+        
+        for (const completion of data) {
+          if (completion && typeof completion === 'object') {
+            const exerciseId = completion.exercise_id as string;
+            const createdAt = completion.created_at as string;
+            const accuracy = completion.accuracy as number;
+            
+            completionData.push({
+              date: new Date(createdAt),
+              exerciseId,
+              accuracy,
+              words: exerciseTexts[exerciseId]
+                ? normalizeText(exerciseTexts[exerciseId]).split(' ').length
+                : 0,
+            });
+          }
+        }
 
         setCompletions(completionData);
       } catch (error) {

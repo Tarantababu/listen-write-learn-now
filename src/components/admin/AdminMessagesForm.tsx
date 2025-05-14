@@ -11,6 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { asUUID } from '@/utils/supabaseHelpers';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -43,8 +44,8 @@ export function AdminMessagesForm({ onMessageAdded }: { onMessageAdded?: () => v
         .insert({
           title: values.title,
           content: values.content,
-          created_by: user.id as unknown as DbId
-        } as any)
+          created_by: asUUID(user.id)
+        })
         .select('id')
         .single();
       

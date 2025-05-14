@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { deleteAssociatedCompletions } from '@/services/exerciseService';
 import { useLocalExercises } from '@/hooks/useLocalExercises';
+import { asUUID, asString, asBoolean } from '@/utils/supabaseHelpers';
 
 interface ResetLanguageProgressProps {
   className?: string;
@@ -43,10 +44,8 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
         // Handle local storage reset for non-authenticated users
         const currentLanguage = settings.selectedLanguage;
         
-        // Use the new resetLanguageProgress method for non-authenticated users
         localExercises.resetLanguageProgress(currentLanguage);
         
-        // Also update the exercises in the context for immediate UI update
         const languageExercises = exercises.filter(ex => ex.language === currentLanguage);
         for (const exercise of languageExercises) {
           await markProgress(exercise.id, 0, true);
@@ -57,39 +56,34 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
         // Reset authenticated user's progress in the database
         const currentLanguage = settings.selectedLanguage;
         
-        // Get all exercise IDs for the current language to properly remove completions
-        const userId = user.id;
         const { data: languageExercises, error: fetchError } = await supabase
           .from('exercises')
           .select('id')
-          .eq('user_id', userId as unknown as DbId)
-          .eq('language', currentLanguage as unknown as string);
+          .eq('user_id', asUUID(user.id))
+          .eq('language', asString(currentLanguage));
           
         if (fetchError) throw fetchError;
         
         if (languageExercises && languageExercises.length > 0) {
           const exerciseIds = languageExercises.map(ex => 'id' in ex ? ex.id : '');
           
-          // Reset exercise completion counts for the selected language
           const { error: exerciseError } = await supabase
             .from('exercises')
             .update({ 
               completion_count: 0, 
               is_completed: false 
-            } as any)
-            .eq('user_id', userId as unknown as DbId)
-            .eq('language', currentLanguage as unknown as string);
+            })
+            .eq('user_id', asUUID(user.id))
+            .eq('language', asString(currentLanguage));
             
           if (exerciseError) throw exerciseError;
           
-          // Delete all completions for these exercises
           for (const exerciseId of exerciseIds) {
             if (exerciseId) {
-              await deleteAssociatedCompletions(userId, exerciseId);
+              await deleteAssociatedCompletions(user.id, exerciseId);
             }
           }
           
-          // Refresh the exercises in context after reset
           for (const exercise of exercises.filter(ex => ex.language === currentLanguage)) {
             await markProgress(exercise.id, 0, true);
           }
@@ -98,7 +92,6 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
         toast.success(`Progress for ${settings.selectedLanguage} has been reset successfully`);
       }
       
-      // Close the dialog
       setIsResetDialogOpen(false);
     } catch (error) {
       console.error('Error resetting progress:', error);

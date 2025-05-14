@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -18,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { asUUID, asBoolean } from '@/utils/supabaseHelpers';
 
 interface AdminMessage {
   id: string;
@@ -53,14 +55,14 @@ export function AdminMessagesList({ onRefresh }: { onRefresh?: () => void }) {
           const { count: userCount, error: userCountError } = await supabase
             .from('user_messages')
             .select('*', { count: 'exact', head: true })
-            .eq('message_id', message.id as unknown as DbId);
+            .eq('message_id', asUUID(message.id));
           
           // Get read count
           const { count: readCount, error: readCountError } = await supabase
             .from('user_messages')
             .select('*', { count: 'exact', head: true })
-            .eq('message_id', message.id as unknown as DbId)
-            .eq('is_read', true as unknown as boolean);
+            .eq('message_id', asUUID(message.id))
+            .eq('is_read', asBoolean(true));
           
           return {
             ...message,
