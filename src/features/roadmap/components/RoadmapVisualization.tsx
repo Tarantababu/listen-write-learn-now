@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '@/types';
@@ -38,8 +39,6 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   if (!currentRoadmap) {
     return <div>No roadmap selected.</div>;
   }
-
-  const availableNodes = nodes.filter(node => getNodeStatus(node) === 'available');
 
   const handleNodeClick = (node: RoadmapNode) => {
     onNodeSelect(node);

@@ -10,7 +10,7 @@ import { LanguageLevel } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 
 const RoadmapSelection: React.FC = () => {
-  const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>("beginner");
+  const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>("A1");
   const { settings } = useUserSettingsContext();
   
   const {
@@ -43,7 +43,7 @@ const RoadmapSelection: React.FC = () => {
     roadmaps
       .filter(roadmap => roadmap.languages?.includes(settings.selectedLanguage))
       .map(roadmap => roadmap.level)
-  ));
+  )) as LanguageLevel[];
 
   const getCapitalizedLanguage = (lang: string) => {
     return lang.charAt(0).toUpperCase() + lang.slice(1);

@@ -3,35 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language, RoadmapNodeProgress } from '@/types';
-
-export interface RoadmapContextType {
-  roadmaps: Roadmap[];
-  userRoadmaps: UserRoadmap[]; // New property to store all user's roadmaps
-  selectedRoadmap: UserRoadmap | null;
-  currentNode: RoadmapNode | null;
-  roadmapNodes: RoadmapNode[];
-  progress: RoadmapProgress[];
-  nodeProgress: RoadmapNodeProgress[]; // New property to store detailed node progress
-  loading: boolean;
-  nodeLoading: boolean;
-  // Property names used in other components
-  currentRoadmap: UserRoadmap | null; 
-  nodes: RoadmapNode[];
-  currentNodeId: string | undefined;
-  completedNodes: string[];
-  availableNodes: string[];
-  isLoading: boolean;
-  initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
-  loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
-  loadUserRoadmaps: () => Promise<void>; // New method to load all user roadmaps
-  completeNode: (nodeId: string) => Promise<void>;
-  resetProgress: () => Promise<void>;
-  getNodeExercise: (nodeId: string) => Promise<any>;
-  markNodeAsCompleted: (nodeId: string) => Promise<void>;
-  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>; // New method for incrementing completion count
-  selectRoadmap: (roadmapId: string) => Promise<void>; // New method to switch between roadmaps
-}
+import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language, RoadmapNodeProgress, RoadmapContextType } from '@/types';
 
 export const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
 

@@ -10,7 +10,7 @@ import { LanguageLevel } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 
 const RoadmapSelection: React.FC = () => {
-  const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>("beginner");
+  const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>("A1");
   const { settings } = useUserSettingsContext();
   
   const {
@@ -74,19 +74,39 @@ const RoadmapSelection: React.FC = () => {
               <SelectValue placeholder="Select a level" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="beginner">
+              <SelectItem value="A0">
                 <div className="flex items-center">
-                  Beginner <LevelBadge level="beginner" className="ml-2" />
+                  Beginner <LevelBadge level="A0" className="ml-2" />
                 </div>
               </SelectItem>
-              <SelectItem value="intermediate">
+              <SelectItem value="A1">
                 <div className="flex items-center">
-                  Intermediate <LevelBadge level="intermediate" className="ml-2" />
+                  Beginner <LevelBadge level="A1" className="ml-2" />
                 </div>
               </SelectItem>
-              <SelectItem value="advanced">
+              <SelectItem value="A2">
                 <div className="flex items-center">
-                  Advanced <LevelBadge level="advanced" className="ml-2" />
+                  Elementary <LevelBadge level="A2" className="ml-2" />
+                </div>
+              </SelectItem>
+              <SelectItem value="B1">
+                <div className="flex items-center">
+                  Intermediate <LevelBadge level="B1" className="ml-2" />
+                </div>
+              </SelectItem>
+              <SelectItem value="B2">
+                <div className="flex items-center">
+                  Upper Intermediate <LevelBadge level="B2" className="ml-2" />
+                </div>
+              </SelectItem>
+              <SelectItem value="C1">
+                <div className="flex items-center">
+                  Advanced <LevelBadge level="C1" className="ml-2" />
+                </div>
+              </SelectItem>
+              <SelectItem value="C2">
+                <div className="flex items-center">
+                  Proficient <LevelBadge level="C2" className="ml-2" />
                 </div>
               </SelectItem>
             </SelectContent>
