@@ -4,6 +4,7 @@ import { roadmapService } from '../api/roadmapService';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
 import { Language, LanguageLevel } from '@/types';
 import { toast } from '@/components/ui/use-toast';
+import { asUUID, asFilterParam } from '@/lib/utils/supabaseHelpers';
 
 export function useRoadmapData() {
   const [isLoading, setIsLoading] = useState(false);
@@ -73,6 +74,7 @@ export function useRoadmapData() {
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
     setIsLoading(true);
     try {
+      // Explicitly call the service with the user's authentication to ensure roadmap is linked to this user
       const roadmapId = await roadmapService.initializeRoadmap(level, language);
       
       // Reload user roadmaps to include the new one

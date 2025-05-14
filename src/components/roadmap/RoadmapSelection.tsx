@@ -23,10 +23,12 @@ import LevelBadge from '@/components/LevelBadge';
 import LevelInfoTooltip from '@/components/LevelInfoTooltip';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/contexts/AuthContext'; // Import auth context to check for user authentication
 
 const RoadmapSelection: React.FC = () => {
   const { initializeUserRoadmap, roadmaps, isLoading, userRoadmaps, loadUserRoadmaps } = useRoadmap();
   const { settings } = useUserSettingsContext();
+  const { user } = useAuth(); // Get current user from auth context
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel | ''>('');
   const [initializing, setInitializing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -89,6 +91,14 @@ const RoadmapSelection: React.FC = () => {
 
   const handleInitializeRoadmap = async () => {
     if (!selectedLevel) return;
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Required",
+        description: "Please sign in to create a learning roadmap.",
+      });
+      return;
+    }
     
     setInitializing(true);
     try {
@@ -96,7 +106,7 @@ const RoadmapSelection: React.FC = () => {
       
       toast({
         title: "Roadmap Initialized",
-        description: `Your ${selectedLevel} level roadmap for ${settings.selectedLanguage} has been created.`,
+        description: `Your ${selectedLevel} level roadmap for ${settings.selectedLanguage} has been created and linked to your account.`,
       });
       
       // Reload user roadmaps to refresh the UI

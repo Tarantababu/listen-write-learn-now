@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo } from 'react';
 import { format, subDays, isSameDay, differenceInDays, startOfDay, subMonths } from 'date-fns';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -12,6 +11,7 @@ import StatsHeatmap from './StatsHeatmap';
 import { getUserLevel, getLevelProgress } from '@/utils/levelSystem';
 import LanguageLevelDisplay from './LanguageLevelDisplay';
 import { compareWithPreviousDay } from '@/utils/trendUtils';
+import { asUUID } from '@/lib/utils/supabaseHelpers';
 
 interface CompletionData {
   date: Date;
@@ -39,28 +39,25 @@ const UserStatistics: React.FC = () => {
 
   // Fetch completion data from Supabase
   useEffect(() => {
-    const fetchCompletionData = async () => {
-      if (!user) {
-        setCompletions([]);
-        setIsLoading(false);
-        return;
-      }
-
+    const fetchCompletions = async () => {
+      if (!user) return;
+      
+      setIsLoading(true);
       try {
-        const { data, error } = await supabase
+        const { data: completionsData, error: completionsError } = await supabase
           .from('completions')
-          .select('exercise_id, created_at, accuracy')
-          .eq('user_id', user.id)
+          .select('*')
+          .eq('user_id', asUUID(user.id)) // Use the helper function to convert string to UUID
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (completionsError) throw completionsError;
 
         const exerciseTexts = exercises.reduce((acc: Record<string, string>, ex) => {
           acc[ex.id] = ex.text;
           return acc;
         }, {});
 
-        const completionData: CompletionData[] = data.map(completion => ({
+        const completionData: CompletionData[] = completionsData.map(completion => ({
           date: new Date(completion.created_at),
           exerciseId: completion.exercise_id,
           accuracy: completion.accuracy,
@@ -77,7 +74,7 @@ const UserStatistics: React.FC = () => {
       }
     };
 
-    fetchCompletionData();
+    fetchCompletions();
   }, [user, exercises]);
 
   // Current language filter
