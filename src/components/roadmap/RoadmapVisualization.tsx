@@ -112,14 +112,14 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     completedNodes, 
     availableNodes,
     nodeProgress,
-    loading,
+    isLoading,
     roadmaps 
   } = useRoadmap();
 
   console.log("Legacy RoadmapVisualization rendered with:", {
     hasCurrentRoadmap: !!currentRoadmap,
     nodesCount: nodes?.length || 0,
-    loading
+    isLoading
   });
 
   // First try to use the new implementation if data is available
@@ -130,7 +130,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   }
 
   // Fall back to the legacy implementation
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />

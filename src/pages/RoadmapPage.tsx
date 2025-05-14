@@ -22,7 +22,6 @@ const RoadmapPage: React.FC = () => {
   const { 
     currentRoadmap, 
     isLoading, 
-    hasError,
     roadmaps, 
     userRoadmaps,
     loadUserRoadmaps,
@@ -31,6 +30,9 @@ const RoadmapPage: React.FC = () => {
     nodes,
     currentNodeId
   } = useRoadmap();
+  
+  // Derive hasError from context data
+  const hasError = !isLoading && userRoadmaps.length > 0 && !currentRoadmap;
   
   const { settings } = useUserSettingsContext();
   const { user } = useAuth();
