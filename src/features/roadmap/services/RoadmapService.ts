@@ -12,22 +12,36 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
    */
   public async getRoadmapsByLanguage(language: Language): ServiceResult<RoadmapItem[]> {
     try {
+      console.log('Fetching roadmaps for language:', language);
+      
       // Call the stored procedure to get roadmaps by language
       const { data, error } = await this.supabase
         .rpc('get_roadmaps_by_language', {
           requested_language: language
         });
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching roadmaps by language:', error);
+        throw error;
+      }
       
       console.log('Roadmaps data from DB:', data);
+      
+      // If no data or empty array, return empty array
+      if (!data || data.length === 0) {
+        console.log('No roadmaps found for language:', language);
+        return this.success([]);
+      }
       
       // Get all roadmap languages to associate with the roadmaps
       const { data: languagesData, error: languagesError } = await this.supabase
         .from('roadmap_languages')
         .select('roadmap_id, language');
         
-      if (languagesError) throw languagesError;
+      if (languagesError) {
+        console.error('Error fetching roadmap languages:', languagesError);
+        throw languagesError;
+      }
       
       console.log('Languages data from DB:', languagesData);
       
@@ -54,6 +68,7 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
       console.log('Formatted roadmaps:', formattedRoadmaps);
       return this.success(formattedRoadmaps);
     } catch (error) {
+      console.error('Error in getRoadmapsByLanguage:', error);
       return this.handleError(error);
     }
   }

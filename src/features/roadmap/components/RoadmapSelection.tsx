@@ -37,7 +37,7 @@ const RoadmapSelection: React.FC = () => {
     roadmap.languages?.includes(settings.selectedLanguage)
   );
   
-  console.log('RoadmapSelection (new) - Available roadmaps:', { 
+  console.log('RoadmapSelection - Available roadmaps:', { 
     language: settings.selectedLanguage,
     roadmaps: roadmaps,
     availableForLanguage: availableRoadmapsForLanguage,
@@ -52,7 +52,7 @@ const RoadmapSelection: React.FC = () => {
     })
     .filter(Boolean) as LanguageLevel[];
     
-  console.log('RoadmapSelection (new) - Existing levels:', existingLevels);
+  console.log('RoadmapSelection - Existing levels:', existingLevels);
 
   const handleInitializeRoadmap = async () => {
     setInitializing(true);
@@ -107,7 +107,7 @@ const RoadmapSelection: React.FC = () => {
   };
 
   const availableLevels = getAvailableLevels();
-  console.log('RoadmapSelection (new) - Available levels:', availableLevels);
+  console.log('RoadmapSelection - Available levels:', availableLevels);
 
   // Set default selected level to first available that isn't already selected
   useEffect(() => {
@@ -123,7 +123,7 @@ const RoadmapSelection: React.FC = () => {
 
   // Add debug for button disabled state
   const buttonDisabled = initializing || !selectedLevel || isLevelAlreadySelected(selectedLevel);
-  console.log('RoadmapSelection (new) - Button disabled state:', {
+  console.log('RoadmapSelection - Button disabled state:', {
     initializing,
     selectedLevel,
     isAlreadySelected: selectedLevel ? isLevelAlreadySelected(selectedLevel) : false,
