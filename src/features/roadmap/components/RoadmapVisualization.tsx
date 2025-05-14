@@ -1,7 +1,7 @@
 import React from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '@/types';
-import { Check, Lock } from 'lucide-react';
+import { Check, Lock, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface RoadmapVisualizationProps {

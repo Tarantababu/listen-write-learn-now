@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { useAuth } from './AuthContext';
-import { useUserSettingsContext } from './UserSettingsContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language, RoadmapNodeProgress } from '@/types';
 
-interface RoadmapContextType {
+export interface RoadmapContextType {
   roadmaps: Roadmap[];
   userRoadmaps: UserRoadmap[]; // New property to store all user's roadmaps
   selectedRoadmap: UserRoadmap | null;
@@ -21,6 +21,7 @@ interface RoadmapContextType {
   currentNodeId: string | undefined;
   completedNodes: string[];
   availableNodes: string[];
+  isLoading: boolean;
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
   loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
   loadUserRoadmaps: () => Promise<void>; // New method to load all user roadmaps
@@ -32,7 +33,7 @@ interface RoadmapContextType {
   selectRoadmap: (roadmapId: string) => Promise<void>; // New method to switch between roadmaps
 }
 
-const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
+export const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
 
 export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -47,6 +48,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [loading, setLoading] = useState<boolean>(true);
   const [nodeLoading, setNodeLoading] = useState<boolean>(false);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(settings.selectedLanguage);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Memoized function to fetch roadmaps
   const fetchRoadmaps = useCallback(async () => {
@@ -102,6 +104,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
     } finally {
       setLoading(false);
+      setIsLoading(false);
     }
   }, [user, settings.selectedLanguage]);
 
@@ -706,6 +709,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentNodeId: selectedRoadmap?.currentNodeId,
       completedNodes,
       availableNodes,
+      isLoading,
       initializeUserRoadmap,
       loadUserRoadmap,
       loadUserRoadmaps,

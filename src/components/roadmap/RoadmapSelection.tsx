@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { LanguageLevel } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 
 const RoadmapSelection: React.FC = () => {
-  const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>('beginner');
+  const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>("beginner");
   const { settings } = useUserSettingsContext();
   
   const {
@@ -59,7 +60,10 @@ const RoadmapSelection: React.FC = () => {
         </p>
         
         <div className="grid gap-2">
-          <Select value={selectedLevel} onValueChange={setSelectedLevel}>
+          <Select 
+            value={selectedLevel} 
+            onValueChange={(value: LanguageLevel) => setSelectedLevel(value)}
+          >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select your level" />
             </SelectTrigger>

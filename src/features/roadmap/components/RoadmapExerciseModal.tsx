@@ -23,7 +23,6 @@ enum PracticeStage {
 }
 
 const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpen, onOpenChange }) => {
-  const context = useRoadmap();
   const { 
     markNodeAsCompleted, 
     getNodeExercise, 
@@ -31,7 +30,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     completedNodes, 
     incrementNodeCompletion,
     nodeProgress 
-  } = context;
+  } = useRoadmap();
   
   const [exercise, setExercise] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);

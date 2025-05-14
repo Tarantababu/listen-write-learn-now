@@ -18,7 +18,6 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 
 const RoadmapPage: React.FC = () => {
-  const context = useRoadmap();
   const { 
     currentRoadmap, 
     isLoading, 
@@ -29,7 +28,7 @@ const RoadmapPage: React.FC = () => {
     completedNodes,
     nodes,
     currentNodeId
-  } = context;
+  } = useRoadmap();
   
   // Derive hasError from context data
   const hasError = !isLoading && userRoadmaps.length > 0 && !currentRoadmap;
