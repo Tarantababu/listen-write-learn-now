@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Language } from '@/types';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
@@ -35,7 +34,7 @@ class RoadmapService {
         name: roadmap.name,
         level: roadmap.level,
         description: roadmap.description,
-        language,
+        language: language as Language, // Cast to Language type
         createdAt: new Date(roadmap.created_at),
         updatedAt: new Date(roadmap.updated_at)
       }));
@@ -67,7 +66,7 @@ class RoadmapService {
         name: userRoadmap.roadmaps.name,
         level: userRoadmap.roadmaps.level,
         description: userRoadmap.roadmaps.description,
-        language: userRoadmap.language,
+        language: userRoadmap.language as Language, // Cast to Language type
         createdAt: new Date(userRoadmap.created_at),
         updatedAt: new Date(userRoadmap.updated_at),
         currentNodeId: userRoadmap.current_node_id,
@@ -165,7 +164,7 @@ class RoadmapService {
           position: node.position,
           exerciseId: node.default_exercise_id,
           isBonus: node.is_bonus,
-          language: node.language,
+          language: node.language as Language, // Cast to Language type
           createdAt: new Date(node.created_at),
           updatedAt: new Date(node.updated_at),
           status,
@@ -207,7 +206,7 @@ class RoadmapService {
         title: exercise.title,
         text: exercise.text,
         audioUrl: exercise.audio_url,
-        language: exercise.language,
+        language: exercise.language as Language, // Cast to Language type
         tags: exercise.tags
       };
     } catch (error) {

@@ -17,6 +17,8 @@ export type Language =
   | 'korean'
   | 'arabic';
 
+export type LanguageLevel = 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+
 export interface Exercise {
   id: string;
   title: string;
@@ -29,6 +31,7 @@ export interface Exercise {
   completionCount: number;
   isCompleted: boolean;
   archived?: boolean;
+  default_exercise_id?: string; // Added this field
 }
 
 export interface Directory {
@@ -52,3 +55,82 @@ export interface UserSettings {
   learningLanguages: Language[];
   selectedLanguage: Language;
 }
+
+// New Roadmap interfaces
+export interface Roadmap {
+  id: string;
+  name: string;
+  level: LanguageLevel;
+  description?: string;
+  language?: Language;
+  languages?: Language[];
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+}
+
+export interface RoadmapNode {
+  id: string;
+  roadmapId: string;
+  title: string;
+  description?: string;
+  position: number;
+  exerciseId?: string;
+  defaultExerciseId?: string;
+  isBonus: boolean;
+  language: Language;
+  createdAt: Date;
+  updatedAt: Date;
+  
+  // UI state properties
+  status?: 'locked' | 'available' | 'completed' | 'current';
+  progressCount?: number;
+}
+
+export interface UserRoadmap {
+  id: string;
+  roadmapId: string;
+  userId: string;
+  language: Language;
+  currentNodeId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RoadmapProgress {
+  id: string;
+  userId: string;
+  roadmapId: string;
+  nodeId: string;
+  completed: boolean;
+  completedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RoadmapNodeProgress {
+  id: string;
+  userId: string;
+  roadmapId: string;
+  nodeId: string;
+  completionCount: number;
+  isCompleted: boolean;
+  lastPracticedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RoadmapLanguage {
+  id: string;
+  roadmapId: string;
+  language: Language;
+}
+
+// Add Json type for Supabase
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
