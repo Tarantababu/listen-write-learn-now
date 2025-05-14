@@ -1,3 +1,4 @@
+
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -14,8 +15,8 @@ export const fetchExercises = async (userId: string | undefined) => {
   const { data, error } = await supabase
     .from('exercises')
     .select('*')
-    .eq('user_id', userId)
-    .eq('archived', false) // Only fetch non-archived exercises
+    .eq('user_id', asUUID(userId))
+    .eq('archived', asBoolean(false)) // Only fetch non-archived exercises
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -79,8 +80,8 @@ export const updateExercise = async (userId: string, id: string, updates: Partia
   const { error } = await supabase
     .from('exercises')
     .update(typedUpdateData)
-    .eq('id', id)
-    .eq('user_id', userId);
+    .eq('id', asUUID(id))
+    .eq('user_id', asUUID(userId));
 
   if (error) throw error;
 };
@@ -133,9 +134,11 @@ export const deleteAssociatedCompletions = async (userId: string, exerciseId: st
  * Archives an exercise in Supabase instead of deleting it
  */
 export const archiveExercise = async (userId: string, id: string) => {
+  const updateData = asUpdateObject({ archived: true });
+  
   const { error } = await supabase
     .from('exercises')
-    .update({ archived: true })
+    .update(updateData)
     .eq('id', asUUID(id))
     .eq('user_id', asUUID(userId));
 

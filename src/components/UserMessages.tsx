@@ -49,7 +49,7 @@ export function UserMessages() {
             created_at
           )
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', asUUID(user.id))
         .order('is_read', { ascending: true })
         .order('created_at', { foreignTable: 'message', ascending: false });
         
@@ -74,7 +74,7 @@ export function UserMessages() {
       const { error } = await supabase
         .from('user_messages')
         .update(updateData)
-        .eq('id', messageId);
+        .eq('id', asUUID(messageId));
         
       if (error) throw error;
     },
@@ -98,7 +98,7 @@ export function UserMessages() {
       const { error } = await supabase
         .from('user_messages')
         .update(updateData)
-        .eq('id', messageId);
+        .eq('id', asUUID(messageId));
         
       if (error) throw error;
     },
@@ -124,8 +124,8 @@ export function UserMessages() {
       const { error } = await supabase
         .from('user_messages')
         .update(updateData)
-        .eq('user_id', user.id)
-        .eq('is_read', false);
+        .eq('user_id', asUUID(user.id))
+        .eq('is_read', asBoolean(false));
         
       if (error) throw error;
       

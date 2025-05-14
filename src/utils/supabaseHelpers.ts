@@ -4,7 +4,7 @@
  */
 
 // Type alias for database ID
-type DbId = string;
+export type DbId = string;
 
 // For inserting data with proper typing
 export function asInsertObject<T>(obj: any): T {

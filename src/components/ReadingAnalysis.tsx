@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -61,7 +60,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             const { data, error } = await supabase
               .from('reading_analyses')
               .select('content')
-              .eq('id', existingAnalysisId)
+              .eq('id', asUUID(existingAnalysisId))
               .maybeSingle();
               
             if (error) {
@@ -123,7 +122,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
           try {
             const jsonContent = analysisContent as unknown as Json;
             
-            // Fix: Use proper type casting for the insert operation
+            // Use proper type casting for the insert operation
             const insertData = asInsertObject({
               user_id: user.id,
               exercise_id: exercise.id,
@@ -145,7 +144,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                 const { data: profileData, error: fetchError } = await supabase
                   .from('profiles')
                   .select('reading_analyses_count')
-                  .eq('id', user.id)
+                  .eq('id', asUUID(user.id))
                   .maybeSingle();
                   
                 if (fetchError) {
@@ -154,7 +153,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                   const currentCount = profileData.reading_analyses_count || 0;
                   const newCount = currentCount + 1;
                   
-                  // Fix: Use proper type casting for the update operation
+                  // Use proper type casting for the update operation
                   const updateData = asUpdateObject({
                     reading_analyses_count: newCount
                   });
@@ -162,7 +161,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                   const { error: updateError } = await supabase
                     .from('profiles')
                     .update(updateData)
-                    .eq('id', user.id);
+                    .eq('id', asUUID(user.id));
                     
                   if (updateError) {
                     console.error('Error updating analysis count:', updateError);

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCcw } from 'lucide-react';
@@ -58,8 +59,8 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
         const { data: languageExercises, error: fetchError } = await supabase
           .from('exercises')
           .select('id')
-          .eq('user_id', user.id)
-          .eq('language', currentLanguage);
+          .eq('user_id', asUUID(user.id))
+          .eq('language', asString(currentLanguage));
           
         if (fetchError) throw fetchError;
         
@@ -75,8 +76,8 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
           const { error: exerciseError } = await supabase
             .from('exercises')
             .update(updateData)
-            .eq('user_id', user.id)
-            .eq('language', currentLanguage);
+            .eq('user_id', asUUID(user.id))
+            .eq('language', asString(currentLanguage));
             
           if (exerciseError) throw exerciseError;
           
