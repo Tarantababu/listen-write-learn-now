@@ -64,7 +64,7 @@ export const useRoadmap = (): UnifiedRoadmapContextType => {
   
   // Use the new implementation if it's available
   if (useNewImplementation()) {
-    return newContext as UnifiedRoadmapContextType;
+    return newContext as unknown as UnifiedRoadmapContextType;
   }
   
   // Fall back to the old implementation

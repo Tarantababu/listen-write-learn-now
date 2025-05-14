@@ -1,11 +1,10 @@
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Session } from '@supabase/supabase-js';
 import { useAuth } from './AuthContext';
 import { Language } from '@/types';
 
-interface RoadmapNode {
+export interface RoadmapNode {
   id: string;
   title: string;
   description: string;
@@ -31,6 +30,22 @@ export interface RoadmapContextType {
     isCompleted: boolean;
     nextNodeId?: string;
   }>;
+  // Add these properties to ensure compatibility with the unified type
+  isLoading?: boolean;
+  loading?: boolean;
+  hasError?: boolean;
+  roadmaps?: any[];
+  userRoadmaps?: any[];
+  nodes?: RoadmapNode[];
+  availableNodes?: string[];
+  currentNodeId?: string;
+  currentNode?: RoadmapNode | null;
+  initializeRoadmap?: (level: any, language: Language) => Promise<string>;
+  initializeUserRoadmap?: (level: any, language: Language) => Promise<string>;
+  loadRoadmaps?: (language: Language) => Promise<void>;
+  loadUserRoadmaps?: (language: Language) => Promise<any[]>;
+  selectRoadmap?: (roadmapId: string) => Promise<RoadmapNode[]>;
+  recordNodeCompletion?: (nodeId: string, accuracy: number) => Promise<any>;
 }
 
 interface RoadmapProviderProps {
