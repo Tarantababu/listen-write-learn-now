@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import Layout from '@/components/Layout';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -16,14 +15,12 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import LevelBadge from '@/components/LevelBadge';
 import { toast } from '@/components/ui/use-toast';
 
-// Creating a wrapper component for TabsContent to properly handle children prop
-interface TabsContentWrapperProps {
-  value: string;
-  className?: string;
-  children: React.ReactNode;
-}
-
-const TabsContentWrapper: React.FC<TabsContentWrapperProps> = ({ value, className, children }) => (
+// Creating a component wrapper for TabsContent to properly handle children prop
+const TabsContentWrapper: React.FC<React.PropsWithChildren<{ value: string; className?: string }>> = ({ 
+  value, 
+  className,
+  children 
+}) => (
   <TabsContent value={value} className={className}>
     {children}
   </TabsContent>
@@ -71,7 +68,7 @@ const RoadmapPage = () => {
         });
     }
   }, [settings.selectedLanguage, loadUserRoadmaps]);
-
+  
   // Refresh user roadmaps
   const handleRefreshRoadmaps = async () => {
     if (!loadUserRoadmaps) return;
