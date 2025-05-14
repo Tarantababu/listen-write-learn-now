@@ -56,7 +56,12 @@ class RoadmapService {
   // Get roadmaps that a user has enrolled in
   async getUserRoadmaps(language: Language): Promise<ServiceResult<RoadmapItem[]>> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
+      
+      if (!user) {
+        return { status: 'error', error: 'User not authenticated' };
+      }
       
       const { data, error } = await supabase
         .from('user_roadmaps')
@@ -80,7 +85,7 @@ class RoadmapService {
             )
           )
         `)
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .eq('language', language)
         .order('created_at', { ascending: false });
   
@@ -90,7 +95,7 @@ class RoadmapService {
       }
   
       if (!data) {
-        console.warn('No user roadmaps found for user:', user?.id);
+        console.warn('No user roadmaps found for user:', user.id);
         return { status: 'success', data: [] };
       }
   
@@ -143,7 +148,8 @@ class RoadmapService {
   
       const roadmapId = roadmaps[0].id;
       
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
       
       if (!user) {
         return { status: 'error', error: 'User not authenticated' };
@@ -293,7 +299,8 @@ class RoadmapService {
 
       if (roadmapError) throw roadmapError;
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
       
       if (!user) {
         return { status: 'error', error: 'User not authenticated' };
@@ -364,7 +371,8 @@ class RoadmapService {
         // Create new progress record with completion_count = 1
         const isCompleted = 1 >= 3; // Will be false
         
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: userData } = await supabase.auth.getUser();
+        const user = userData?.user;
         
         if (!user) {
           return { status: 'error', error: 'User not authenticated' };
@@ -378,7 +386,7 @@ class RoadmapService {
             node_id: nodeId,
             completion_count: 1,
             is_completed: isCompleted,
-            language: 'english' as Language, // Assuming default language
+            language: 'english' as Language, // Fixing explicit type cast
             last_practiced_at: new Date().toISOString(),
           });
 
@@ -412,7 +420,8 @@ class RoadmapService {
 
       if (roadmapError) throw roadmapError;
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
       
       if (!user) {
         return { status: 'error', error: 'User not authenticated' };

@@ -14,6 +14,12 @@ import RoadmapExerciseModal from '@/components/roadmap/RoadmapExerciseModal';
 import { useState } from 'react';
 import { RoadmapNode } from '@/types';
 
+// Define the ExerciseGrid props to match component expectations
+interface ExerciseGridProps {
+  limit?: number;
+  showHeader?: boolean;
+}
+
 const HomePage: React.FC = () => {
   const { currentNodeId, nodes, isLoading, roadmaps } = useRoadmap();
   const userSettings = useUserSettingsContext();
@@ -44,7 +50,7 @@ const HomePage: React.FC = () => {
   
   // For type safety, ensure currentRoadmap is an RoadmapItem and not an array
   const isSingleRoadmap = currentRoadmap && !Array.isArray(currentRoadmap);
-  const roadmapId = isSingleRoadmap ? (currentRoadmap as RoadmapItem).roadmapId : undefined;
+  const roadmapId = isSingleRoadmap && 'roadmapId' in currentRoadmap ? (currentRoadmap as RoadmapItem).roadmapId : undefined;
   
   // Use a strong type assertion for roadmap
   const roadmap = isSingleRoadmap ? currentRoadmap as RoadmapItem : null;

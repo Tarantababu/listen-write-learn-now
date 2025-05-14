@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -46,6 +47,8 @@ const RoadmapSelection: React.FC = () => {
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>('A1');
   const [initializing, setInitializing] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   
   // Filter roadmaps to only show those for the currently selected language
   const availableRoadmapsForLanguage = roadmaps.filter(roadmap => 
@@ -83,6 +86,9 @@ const RoadmapSelection: React.FC = () => {
         description: `Your ${selectedLevel} level roadmap for ${settings.selectedLanguage} has been created.`,
       });
       setShowInfo(false);
+      
+      // Reload user roadmaps to refresh the UI
+      await loadUserRoadmaps(settings.selectedLanguage);
     } catch (error) {
       console.error('Error initializing roadmap:', error);
       toast({
@@ -92,6 +98,28 @@ const RoadmapSelection: React.FC = () => {
       });
     } finally {
       setInitializing(false);
+    }
+  };
+
+  const handleRefreshRoadmaps = async () => {
+    setRefreshing(true);
+    try {
+      await loadUserRoadmaps(settings.selectedLanguage);
+      setRetryCount(count => count + 1); // Force recalculation of available levels
+      
+      toast({
+        title: "Roadmaps Refreshed",
+        description: "Available roadmaps have been refreshed.",
+      });
+    } catch (error) {
+      console.error('Error refreshing roadmaps:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to refresh roadmaps",
+        description: "There was an error refreshing roadmaps. Please try again.",
+      });
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -173,11 +201,7 @@ const RoadmapSelection: React.FC = () => {
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
+    <div className="animate-fade-in">
       <Card className="w-full max-w-md mx-auto shadow-md">
         <CardHeader>
           <CardTitle className="text-xl font-semibold flex items-center">
@@ -200,12 +224,7 @@ const RoadmapSelection: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           {showInfo && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="bg-primary/5 p-4 rounded-md border border-primary/20 mb-4"
-            >
+            <div className="animate-fade-in bg-primary/5 p-4 rounded-md border border-primary/20 mb-4">
               <h4 className="font-medium text-sm mb-1">Getting Started</h4>
               <p className="text-sm text-muted-foreground mb-2">
                 Learning paths are organized by proficiency levels from A0 (absolute beginner) to C2 (mastery).
@@ -214,23 +233,18 @@ const RoadmapSelection: React.FC = () => {
               <p className="text-sm text-muted-foreground">
                 You can follow multiple learning paths at different levels simultaneously.
               </p>
-            </motion.div>
+            </div>
           )}
         
           {existingLevels.length > 0 && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-primary/5 p-4 rounded-md border border-primary/20 mb-4"
-            >
+            <div className="animate-fade-in bg-primary/5 p-4 rounded-md border border-primary/20 mb-4">
               <h4 className="font-medium text-sm mb-1">Your Current Roadmaps</h4>
               <div className="flex flex-wrap gap-2">
                 {existingLevels.map(level => (
                   <LevelBadge key={level} level={level} />
                 ))}
               </div>
-            </motion.div>
+            </div>
           )}
         
           <div className="flex items-center space-x-2 mb-6">
@@ -264,52 +278,38 @@ const RoadmapSelection: React.FC = () => {
             <LevelInfoTooltip />
           </div>
 
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="p-4 bg-muted/50 rounded-md"
-          >
+          <div className="animate-fade-in p-4 bg-muted/50 rounded-md">
             <h3 className="font-medium mb-2 flex items-center">
               <LevelBadge level={selectedLevel} className="mr-2" /> 
               {selectedLevel} Level
             </h3>
             <p className="text-sm text-muted-foreground">{levelDescriptions[selectedLevel]}</p>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="bg-primary/5 p-4 rounded-md border border-primary/20"
-          >
+          <div className="animate-fade-in bg-primary/5 p-4 rounded-md border border-primary/20">
             <h4 className="font-medium text-sm mb-1">What will you learn?</h4>
             <p className="text-sm text-muted-foreground">
               The {selectedLevel} roadmap includes {availableRoadmapsForLanguage.find(r => r.level === selectedLevel)?.name || 'exercises'} 
               designed to improve your {settings.selectedLanguage} skills through focused listening and writing practice.
             </p>
-          </motion.div>
+          </div>
         </CardContent>
         <CardFooter>
           <Button 
             onClick={handleInitializeRoadmap} 
-            disabled={initializing || !selectedLevel || isLevelAlreadySelected(selectedLevel)}
+            disabled={buttonDisabled}
             className="w-full relative overflow-hidden group"
           >
             {initializing ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (
-              <motion.span
-                className="absolute inset-0 w-0 bg-white/20 transition-all duration-300 group-hover:w-full"
-                initial={false}
-                animate={{ width: initializing ? "100%" : "0%" }}
-              />
+              <span className="absolute inset-0 w-0 bg-white/20 transition-all duration-300 group-hover:w-full"></span>
             )}
             {existingLevels.length > 0 ? 'Add This Roadmap' : 'Start Learning Journey'}
           </Button>
         </CardFooter>
       </Card>
-    </motion.div>
+    </div>
   );
 };
 
