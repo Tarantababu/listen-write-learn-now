@@ -31,27 +31,27 @@ export function asUpdateObject<T extends keyof Database['public']['Tables']>(
 }
 
 // For UUID parameters
-export function asUUID(id: string): string {
+export function asUUID(id: string): any {
   return id;
 }
 
 // For string parameters
-export function asString(str: string): string {
+export function asString(str: string): any {
   return str;
 }
 
 // For boolean parameters
-export function asBoolean(bool: boolean): boolean {
+export function asBoolean(bool: boolean): any {
   return bool;
 }
 
 // For number parameters
-export function asNumber(num: number): number {
+export function asNumber(num: number): any {
   return num;
 }
 
 // For array parameters
-export function asArray<T>(arr: T[]): T[] {
+export function asArray<T>(arr: T[]): any {
   return arr;
 }
 
