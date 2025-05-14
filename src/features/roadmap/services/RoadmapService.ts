@@ -45,7 +45,6 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
         name: item.name,
         level: item.level as LanguageLevel,
         description: item.description,
-        language: language,
         languages: languagesByRoadmap[item.id] || [],
         createdAt: new Date(item.created_at),
         updatedAt: new Date(item.updated_at),

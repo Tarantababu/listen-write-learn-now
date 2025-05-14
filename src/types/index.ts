@@ -17,8 +17,6 @@ export type Language =
   | 'korean'
   | 'arabic';
 
-export type LanguageLevel = 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
-
 export interface Exercise {
   id: string;
   title: string;
@@ -31,7 +29,7 @@ export interface Exercise {
   completionCount: number;
   isCompleted: boolean;
   archived?: boolean;
-  default_exercise_id?: string; // Added this field
+  default_exercise_id?: string;  // Add this line to include the default exercise ID
 }
 
 export interface Directory {
@@ -56,41 +54,44 @@ export interface UserSettings {
   selectedLanguage: Language;
 }
 
-// New Roadmap interfaces
+// Add the new Roadmap types
+export type LanguageLevel = 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+
 export interface Roadmap {
   id: string;
   name: string;
   level: LanguageLevel;
   description?: string;
-  language?: Language;
-  languages?: Language[];
   createdAt: Date;
   updatedAt: Date;
   createdBy?: string;
+  languages?: Language[]; // Added languages array
 }
 
 export interface RoadmapNode {
   id: string;
   roadmapId: string;
+  defaultExerciseId?: string;
   title: string;
   description?: string;
   position: number;
-  exerciseId?: string;
-  defaultExerciseId?: string;
   isBonus: boolean;
-  language: Language;
+  language?: Language; // Added language field
   createdAt: Date;
   updatedAt: Date;
-  
-  // UI state properties
-  status?: 'locked' | 'available' | 'completed' | 'current';
-  progressCount?: number;
+}
+
+export interface RoadmapLanguage {
+  id: string;
+  roadmapId: string;
+  language: Language;
+  createdAt: Date;
 }
 
 export interface UserRoadmap {
   id: string;
-  roadmapId: string;
   userId: string;
+  roadmapId: string;
   language: Language;
   currentNodeId?: string;
   createdAt: Date;
@@ -108,11 +109,13 @@ export interface RoadmapProgress {
   updatedAt: Date;
 }
 
+// Add new RoadmapNodeProgress type
 export interface RoadmapNodeProgress {
   id: string;
   userId: string;
   roadmapId: string;
   nodeId: string;
+  language: Language;
   completionCount: number;
   isCompleted: boolean;
   lastPracticedAt?: Date;
@@ -120,13 +123,7 @@ export interface RoadmapNodeProgress {
   updatedAt: Date;
 }
 
-export interface RoadmapLanguage {
-  id: string;
-  roadmapId: string;
-  language: Language;
-}
-
-// Add Json type for Supabase
+// Add Json type for compatibility with Supabase
 export type Json =
   | string
   | number

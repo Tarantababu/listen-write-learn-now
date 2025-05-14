@@ -7,7 +7,6 @@ export interface RoadmapItem {
   name: string;
   level: LanguageLevel;
   description?: string;
-  language: Language;
   languages?: Language[];
   createdAt: Date;
   updatedAt: Date;
@@ -15,8 +14,9 @@ export interface RoadmapItem {
   
   // User-specific properties when this is a user roadmap
   currentNodeId?: string;
-  roadmapId?: string;
   progress?: number;
+  language?: Language; 
+  roadmapId?: string; // Add this for user roadmaps that reference parent roadmap
 }
 
 export interface RoadmapNode {
@@ -25,16 +25,15 @@ export interface RoadmapNode {
   title: string;
   description?: string;
   position: number;
-  exerciseId?: string;
-  defaultExerciseId?: string;
   isBonus: boolean;
-  language: Language;
+  defaultExerciseId?: string;
+  language?: Language;
   createdAt: Date;
   updatedAt: Date;
   
   // UI state properties
   status?: 'locked' | 'available' | 'completed' | 'current';
-  progressCount?: number;
+  progressCount?: number; // Add this for tracking node progress count
 }
 
 // API response for node exercise content
@@ -50,6 +49,7 @@ export interface ExerciseContent {
 // Result of node completion
 export interface NodeCompletionResult {
   isCompleted: boolean;
+  completionCount: number;
   nextNodeId?: string;
-  completionCount?: number;
+  unlockedNodeIds?: string[];
 }

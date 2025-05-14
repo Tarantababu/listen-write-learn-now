@@ -73,16 +73,7 @@ export function useRoadmapData() {
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
     setIsLoading(true);
     try {
-      // First find a suitable roadmap for the given level and language
-      const availableRoadmaps = await roadmapService.getRoadmapsForLanguage(language);
-      const matchingRoadmap = availableRoadmaps.find(r => r.level === level);
-      
-      if (!matchingRoadmap) {
-        throw new Error(`No roadmap found for ${language} at ${level} level`);
-      }
-      
-      // Now initialize this roadmap for the user
-      const roadmapId = await roadmapService.initializeRoadmap(matchingRoadmap.id);
+      const roadmapId = await roadmapService.initializeRoadmap(level, language);
       
       // Reload user roadmaps to include the new one
       const updatedRoadmaps = await loadUserRoadmaps(language);

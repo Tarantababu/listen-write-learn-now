@@ -1,21 +1,16 @@
 
-import React, { useEffect, useState } from 'react';
-import { RoadmapNode, ExerciseContent } from '../types';
-import { roadmapService } from '../api/roadmapService';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, PlayCircle, Star } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { useRoadmap } from '../context/RoadmapContext';
+import { RoadmapNode, ExerciseContent } from '../types';
+import DictationPractice from '@/components/DictationPractice';
 import { toast } from '@/components/ui/use-toast';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
-import confetti from 'canvas-confetti';
+import LearningOptionsMenu from './LearningOptionsMenu';
+import { Progress } from '@/components/ui/progress';
+import { CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
 
 interface RoadmapExerciseModalProps {
   node: RoadmapNode | null;
@@ -23,169 +18,313 @@ interface RoadmapExerciseModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Practice stage enum
+enum PracticeStage {
+  LEARNING_OPTIONS, // Show reading analysis / dictation options
+  READING,         // Reading Analysis mode
+  DICTATION,       // Dictation Practice mode
+  RESULTS,         // Show results after completion
+}
+
 const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ 
   node, 
   isOpen, 
   onOpenChange 
 }) => {
+  const { 
+    getNodeExercise,
+    markNodeAsCompleted,
+    incrementNodeCompletion,
+    nodeLoading,
+  } = useRoadmap();
+
   const [exercise, setExercise] = useState<ExerciseContent | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCompleting, setIsCompleting] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [practiceStage, setPracticeStage] = useState<PracticeStage>(PracticeStage.LEARNING_OPTIONS);
+  const [exerciseResult, setExerciseResult] = useState<{ 
+    accuracy: number; 
+    isCompleted: boolean;
+    nextNodeId?: string;
+  } | null>(null);
 
-  // Load exercise content when a node is selected
+  // Load exercise when modal is opened with a node
   useEffect(() => {
-    const loadExercise = async () => {
-      if (node && isOpen) {
-        setIsLoading(true);
-        try {
-          const exerciseContent = await roadmapService.getNodeExercise(node.id);
-          setExercise(exerciseContent);
-        } catch (error) {
-          console.error("Error loading exercise:", error);
-          toast({
-            variant: "destructive",
-            title: "Error loading exercise",
-            description: "Failed to load exercise content. Please try again."
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
-        setExercise(null);
-      }
-    };
-
-    loadExercise();
+    if (node && isOpen) {
+      loadExercise(node.id);
+      setPracticeStage(PracticeStage.LEARNING_OPTIONS);
+      setExerciseResult(null);
+    } else if (!isOpen) {
+      // Reset states when modal is closed
+      setExercise(null);
+      setExerciseResult(null);
+    }
   }, [node, isOpen]);
 
-  const handleCompleteNode = async () => {
-    if (!node) return;
-    
-    setIsCompleting(true);
+  const loadExercise = async (nodeId: string) => {
     try {
-      await roadmapService.completeNode(node.id, node.roadmapId);
-      
-      // Trigger confetti animation
-      if (typeof window !== 'undefined') {
-        confetti({
-          particleCount: 200,
-          spread: 90,
-          origin: { y: 0.6 }
-        });
-      }
-      
-      toast({
-        title: "Exercise completed!",
-        description: "Great job! You've completed this exercise."
-      });
-      
-      // Close the modal
-      onOpenChange(false);
-      
-      // Let the animation finish before fully closing
-      setTimeout(() => {
-        setExercise(null);
-      }, 500);
-      
+      setLoading(true);
+      const exerciseData = await getNodeExercise(nodeId);
+      setExercise(exerciseData);
     } catch (error) {
-      console.error("Error completing node:", error);
+      console.error("Error loading exercise:", error);
       toast({
+        title: "Failed to load exercise",
+        description: "Please try again later",
         variant: "destructive",
-        title: "Error completing exercise",
-        description: "Failed to mark exercise as completed. Please try again."
       });
     } finally {
-      setIsCompleting(false);
+      setLoading(false);
     }
   };
 
+  const handleStartReadingAnalysis = () => {
+    setPracticeStage(PracticeStage.READING);
+  };
+
+  const handleStartDictation = () => {
+    setPracticeStage(PracticeStage.DICTATION);
+  };
+
+  const handlePracticeComplete = async (accuracy: number) => {
+    if (!node) return;
+
+    try {
+      const result = await incrementNodeCompletion(node.id, accuracy);
+      
+      setExerciseResult({
+        accuracy,
+        isCompleted: result.isCompleted,
+        nextNodeId: result.nextNodeId,
+      });
+      
+      setPracticeStage(PracticeStage.RESULTS);
+      
+      // Show feedback based on accuracy
+      if (accuracy >= 95) {
+        toast({
+          title: "Great job!",
+          description: `You scored ${Math.round(accuracy)}%. Your progress has been saved.`,
+        });
+      } else {
+        toast({
+          title: "Keep practicing!",
+          description: `You scored ${Math.round(accuracy)}%. Try to get above 95% for it to count toward completion.`,
+        });
+      }
+    } catch (error) {
+      console.error("Error updating progress:", error);
+      toast({
+        title: "Error saving progress",
+        description: "There was a problem updating your progress",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleTryAgain = () => {
+    setPracticeStage(PracticeStage.LEARNING_OPTIONS);
+  };
+
+  const handleMarkCompleted = async () => {
+    if (!node) return;
+    
+    try {
+      await markNodeAsCompleted(node.id);
+      toast({
+        title: "Progress saved!",
+        description: "You've completed this exercise",
+      });
+      onOpenChange(false); // Close the modal after marking as completed
+    } catch (error) {
+      console.error("Error marking node as completed:", error);
+      toast({
+        title: "Failed to save progress",
+        description: "Please try again later",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleContinue = () => {
+    onOpenChange(false);
+  };
+
+  const renderResultsScreen = () => {
+    if (!exerciseResult) return null;
+    
+    const accuracy = exerciseResult.accuracy;
+    const isPassing = accuracy >= 95;
+    const progressValue = Math.min(100, Math.round(accuracy));
+    
+    return (
+      <div className="p-6 space-y-6">
+        <div className="text-center space-y-2 mb-4">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="inline-flex justify-center mb-2"
+          >
+            {isPassing ? (
+              <CheckCircle className="h-16 w-16 text-green-500" />
+            ) : (
+              <AlertTriangle className="h-16 w-16 text-amber-500" />
+            )}
+          </motion.div>
+          
+          <h3 className="text-xl font-bold">
+            {isPassing ? 'Exercise completed!' : 'Keep practicing'}
+          </h3>
+          
+          <p className="text-muted-foreground">
+            {isPassing 
+              ? 'Great job! Your progress has been saved.' 
+              : 'You need 95% or higher accuracy for the exercise to count toward completion.'}
+          </p>
+        </div>
+        
+        <div className="space-y-2 py-2">
+          <div className="flex justify-between text-sm mb-1">
+            <span>Your accuracy</span>
+            <span className={isPassing ? "text-green-500 font-semibold" : "text-amber-500 font-semibold"}>
+              {Math.round(accuracy)}%
+            </span>
+          </div>
+          <Progress value={progressValue} className={isPassing ? "bg-green-100" : "bg-amber-100"} />
+          
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>0%</span>
+            <div className="flex items-center">
+              <span>Target: 95%</span>
+              <div className="h-3 w-px bg-muted-foreground mx-2" />
+              <span>100%</span>
+            </div>
+          </div>
+        </div>
+        
+        {exerciseResult.isCompleted && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="bg-green-50 dark:bg-green-900/20 p-4 rounded-md border border-green-200 dark:border-green-800 text-center"
+          >
+            <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 mb-2">
+              Node Completed!
+            </Badge>
+            <p className="text-sm text-muted-foreground">
+              You've completed this lesson. The next lesson has been unlocked.
+            </p>
+          </motion.div>
+        )}
+        
+        <div className="flex justify-center space-x-4 mt-6">
+          <Button variant="outline" onClick={handleTryAgain}>
+            Practice Again
+          </Button>
+          <Button onClick={handleContinue}>
+            {exerciseResult.isCompleted ? 'Continue to Next Lesson' : 'Close'}
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  if (!node) {
+    return null;
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <DialogTitle>
-              {node?.title || "Exercise"}
-              {node?.isBonus && (
-                <Badge variant="outline" className="ml-2 bg-amber-500/20 text-amber-700 border-amber-200">
-                  <Star className="h-3 w-3 mr-1 text-amber-500" />
-                  Bonus
-                </Badge>
-              )}
-            </DialogTitle>
-          </div>
-          <DialogDescription>
-            {node?.description || "Complete this exercise to progress on your learning path."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="py-4 max-h-[60vh] overflow-y-auto">
-          {isLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : exercise ? (
-            <div className="space-y-6">
-              <div className="bg-muted rounded-md p-5 relative">
-                <h3 className="font-medium text-lg mb-3">{exercise.title}</h3>
-                
-                {exercise.tags && exercise.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {exercise.tags.map((tag) => (
-                      <Badge variant="outline" key={tag} className="text-xs py-0">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
+      <DialogContent className="sm:max-w-2xl max-w-[95vw] p-0 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`stage-${practiceStage}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+          >
+            <DialogHeader className="p-6">
+              <DialogTitle className="text-xl">
+                {node.title}
+                {node.isBonus && (
+                  <Badge variant="outline" className="ml-2 bg-amber-50 text-amber-700 border-amber-200">
+                    Bonus
+                  </Badge>
                 )}
-                
-                <div className="whitespace-pre-line">
-                  {exercise.text}
+              </DialogTitle>
+              <DialogDescription className="text-base mt-2">
+                {node.description}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {practiceStage === PracticeStage.LEARNING_OPTIONS && (
+              <LearningOptionsMenu 
+                onStartReadingAnalysis={handleStartReadingAnalysis}
+                onStartDictation={handleStartDictation}
+                exerciseTitle={exercise?.title}
+              />
+            )}
+            
+            {practiceStage === PracticeStage.READING && (
+              <div className="text-center py-6 px-6">
+                <div className="bg-muted/40 rounded-lg p-6">
+                  <p className="mb-4">Reading Analysis functionality is coming soon.</p>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    This feature will provide detailed vocabulary and grammar explanations to help you understand the text.
+                  </p>
+                  <Button onClick={handleStartDictation} className="mt-4">
+                    Proceed to Dictation
+                  </Button>
                 </div>
               </div>
-              
-              {exercise.audioUrl && (
-                <div className="rounded-md border p-4 bg-background">
-                  <div className="mb-2 text-sm font-medium">Audio Exercise</div>
-                  <AspectRatio ratio={16/3} className="bg-muted rounded-md">
-                    <div className="flex items-center justify-center h-full">
-                      <audio 
-                        controls 
-                        className="w-full max-w-md"
-                        controlsList="nodownload"
-                      >
-                        <source src={exercise.audioUrl} type="audio/mpeg" />
-                        Your browser does not support the audio element.
-                      </audio>
-                    </div>
-                  </AspectRatio>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              No exercise content available for this node.
-            </div>
-          )}
-        </div>
-
-        <DialogFooter className="flex items-center justify-between sm:justify-between">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-          <Button 
-            onClick={handleCompleteNode} 
-            disabled={isCompleting || isLoading || !exercise}
-            className="gap-2"
-          >
-            {isCompleting ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <PlayCircle className="h-4 w-4" />
             )}
-            {node?.status === 'completed' ? "Mark as Reviewed" : "Mark as Completed"}
-          </Button>
-        </DialogFooter>
+            
+            {practiceStage === PracticeStage.DICTATION && exercise && (
+              <DictationPractice
+                exercise={{
+                  id: `roadmap-${node.id}`,
+                  title: exercise.title || node.title,
+                  text: exercise.text || "",
+                  language: node.language || 'english',
+                  audioUrl: exercise.audioUrl,
+                  tags: [],
+                  directoryId: null,
+                  createdAt: new Date(),
+                  completionCount: 0,
+                  isCompleted: false
+                }}
+                onTryAgain={handleTryAgain}
+                onComplete={handlePracticeComplete}
+              />
+            )}
+            
+            {practiceStage === PracticeStage.DICTATION && !exercise && (
+              <div className="text-center py-6 px-6">
+                {loading ? (
+                  <div className="flex flex-col items-center space-y-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p>Loading exercise content...</p>
+                  </div>
+                ) : (
+                  <div className="bg-muted/40 rounded-lg p-6">
+                    <p className="mb-4">No exercise content available.</p>
+                    <Button onClick={handleTryAgain} className="mt-2">
+                      Go Back
+                    </Button>
+                    <div className="mt-4 pt-4 border-t">
+                      <Button variant="outline" size="sm" onClick={handleMarkCompleted}>
+                        Mark as completed anyway
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {practiceStage === PracticeStage.RESULTS && renderResultsScreen()}
+          </motion.div>
+        </AnimatePresence>
       </DialogContent>
     </Dialog>
   );

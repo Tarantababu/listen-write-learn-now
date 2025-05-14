@@ -1,230 +1,153 @@
-
-import React, { useEffect, useState } from 'react';
-import { RoadmapItem, RoadmapNode } from '../types';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { roadmapService } from '../api/roadmapService';
+import React, { useEffect } from 'react';
+import { useRoadmap } from '../context/RoadmapContext';
+import { RoadmapNode } from '../types';
+import { Loader2 } from 'lucide-react';
 import RoadmapPath from './RoadmapPath';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
+import LevelBadge from '@/components/LevelBadge';
+import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
-import confetti from 'canvas-confetti';
-import { useMediaQuery } from '@/hooks/use-mobile';
 
 interface RoadmapVisualizationProps {
-  roadmapId?: string;
   onNodeSelect: (node: RoadmapNode) => void;
+  className?: string;
 }
 
 const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ 
-  roadmapId,
-  onNodeSelect
+  onNodeSelect,
+  className
 }) => {
-  const { settings } = useUserSettingsContext();
-  const [roadmap, setRoadmap] = useState<RoadmapItem | null>(null);
-  const [nodes, setNodes] = useState<RoadmapNode[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [lastCompletedNode, setLastCompletedNode] = useState<string | null>(null);
-  const isMobile = useMediaQuery('(max-width: 768px)');
-  const isTablet = useMediaQuery('(min-width: 769px) and (max-width: 1024px)');
+  const { 
+    currentRoadmap, 
+    nodes, 
+    completedNodes,
+    isLoading,
+    roadmaps,
+    currentNodeId,
+    selectRoadmap
+  } = useRoadmap();
   
-  // Load roadmap data
   useEffect(() => {
-    const loadRoadmap = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Get user's roadmaps
-        const userRoadmaps = await roadmapService.getUserRoadmaps(settings.selectedLanguage);
-        
-        let currentRoadmap: RoadmapItem | undefined;
-        if (roadmapId) {
-          currentRoadmap = userRoadmaps.find(r => r.id === roadmapId);
-        } else if (userRoadmaps.length > 0) {
-          currentRoadmap = userRoadmaps[0]; // Default to first roadmap
-        }
-        
-        if (!currentRoadmap) {
-          setRoadmap(null);
-          setNodes([]);
-          setIsLoading(false);
-          return;
-        }
-        
-        setRoadmap(currentRoadmap);
-        
-        // Load roadmap nodes
-        const roadmapNodes = await roadmapService.getRoadmapNodes(currentRoadmap.id);
-        setNodes(roadmapNodes);
-      } catch (error) {
-        console.error("Error loading roadmap:", error);
+    console.log("RoadmapVisualization rendered with:", { 
+      currentRoadmap,
+      nodes: nodes?.length || 0,
+      currentNodeId
+    });
+    
+    if (currentRoadmap && (!nodes || nodes.length === 0)) {
+      console.log("No nodes found for current roadmap, attempting to reload");
+      // Attempt to reload the current roadmap if no nodes are found
+      selectRoadmap?.(currentRoadmap.id).catch(err => {
+        console.error("Failed to reload roadmap:", err);
         toast({
           variant: "destructive",
-          title: "Error loading roadmap",
-          description: "Failed to load your learning path. Please try again."
+          title: "Failed to load roadmap content",
+          description: "Please try refreshing the page"
         });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    loadRoadmap();
-  }, [roadmapId, settings.selectedLanguage]);
-
-  // Handle node selection
-  const handleNodeSelect = (node: RoadmapNode) => {
-    onNodeSelect(node);
-  };
-
-  // Trigger confetti effect when a new node is completed
-  useEffect(() => {
-    // Find current node
-    const currentNodeIndex = nodes.findIndex(node => node.status === 'current');
-    const currentNode = currentNodeIndex >= 0 ? nodes[currentNodeIndex] : null;
-    
-    // If there's a new completed node (based on status) compared to last render
-    const completedNodes = nodes.filter(n => n.status === 'completed');
-    const lastNode = completedNodes[completedNodes.length - 1];
-    
-    if (lastNode && lastNode.id !== lastCompletedNode) {
-      // Update last completed node
-      setLastCompletedNode(lastNode.id);
-      
-      // Trigger confetti
-      if (typeof window !== 'undefined') {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      }
+      });
     }
-  }, [nodes, lastCompletedNode]);
+  }, [currentRoadmap, nodes, currentNodeId, selectRoadmap]);
 
-  // Calculate estimated time to completion
-  const calculateEstimatedTime = () => {
-    const remainingNodes = nodes.filter(n => n.status !== 'completed').length;
-    // Assume 10 minutes per node
-    const remainingMinutes = remainingNodes * 10;
-    
-    if (remainingMinutes < 60) {
-      return `${remainingMinutes} minutes`;
-    }
-    
-    const hours = Math.floor(remainingMinutes / 60);
-    const minutes = remainingMinutes % 60;
-    
-    if (minutes === 0) {
-      return `${hours} hours`;
-    }
-    
-    return `${hours} hours, ${minutes} minutes`;
-  };
-
-  // Responsive design
-  const getVisibleNodes = () => {
-    if (nodes.length === 0) return [];
-    
-    // Calculate how many nodes to show based on screen size
-    let visibleCount = 15; // Desktop default
-    
-    if (isMobile) {
-      visibleCount = 5;
-    } else if (isTablet) {
-      visibleCount = 8;
-    }
-    
-    // Find the current node's index
-    const currentNodeIndex = nodes.findIndex(node => node.status === 'current');
-    
-    if (currentNodeIndex === -1) {
-      // If no current node, start from the beginning
-      return nodes.slice(0, visibleCount);
-    }
-    
-    // Calculate start index (center the current node)
-    const startIndex = Math.max(0, currentNodeIndex - Math.floor(visibleCount / 2));
-    
-    return nodes.slice(startIndex, startIndex + visibleCount);
-  };
-
-  // Show loading skeleton
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-8 w-48" />
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-8">
-            <Skeleton className="h-2 w-full" />
-            <div className="flex justify-between">
-              <Skeleton className="h-16 w-16 rounded-full" />
-              <Skeleton className="h-16 w-16 rounded-full" />
-              <Skeleton className="h-16 w-16 rounded-full" />
-              <Skeleton className="h-16 w-16 rounded-full" />
-              <Skeleton className="h-16 w-16 rounded-full" />
+      <div className="flex flex-col items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+        <p>Loading your learning path...</p>
+      </div>
+    );
+  }
+
+  if (!currentRoadmap) {
+    return (
+      <div className="text-center p-8">
+        <p className="text-muted-foreground">No learning path selected</p>
+      </div>
+    );
+  }
+
+  // Find the roadmap details using the roadmapId from currentRoadmap
+  const roadmapDetails = roadmaps?.find(r => r.id === currentRoadmap.roadmapId);
+  const roadmapName = roadmapDetails?.name || "Learning Path";
+  const roadmapLevel = roadmapDetails?.level;
+  
+  // Find current node
+  const currentNode = nodes?.find(n => n.id === currentNodeId);
+  
+  // Debug info about the nodes
+  console.log("Current roadmap nodes:", {
+    count: nodes?.length || 0,
+    nodeIds: nodes?.map(n => n.id) || [],
+    currentNodeId,
+    currentNode: currentNode ? { id: currentNode.id, title: currentNode.title } : null
+  });
+
+  if (!nodes || nodes.length === 0) {
+    return (
+      <div className={cn("space-y-6", className)}>
+        <motion.div 
+          className="flex items-center justify-between"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div>
+            <h2 className="text-xl font-bold">{roadmapName}</h2>
+            <div className="flex items-center mt-1">
+              {roadmapLevel && <LevelBadge level={roadmapLevel} className="mr-2" />}
             </div>
           </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Show not found message
-  if (!roadmap) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>No Roadmap Found</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-center py-8">
-            No learning path found. Please start a new one.
+        </motion.div>
+        
+        <div className="p-8 text-center rounded-lg border border-dashed border-muted-foreground/50">
+          <h3 className="font-medium text-muted-foreground">No content available</h3>
+          <p className="text-sm text-muted-foreground mt-2">
+            This roadmap doesn't have any nodes yet. Please check back later or select a different roadmap.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
-
-  // Calculate progress metrics
-  const completedCount = nodes.filter(n => n.status === 'completed').length;
-  const totalNodes = nodes.length;
-  const progressPercentage = Math.round((completedCount / totalNodes) * 100);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+    <div className={cn("space-y-6", className)}>
+      <motion.div 
+        className="flex items-center justify-between"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
         <div>
-          <CardTitle>{roadmap.name}</CardTitle>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="outline" className="capitalize">
-              {roadmap.language}
-            </Badge>
-            <Badge variant="secondary">{roadmap.level}</Badge>
+          <h2 className="text-xl font-bold">{roadmapName}</h2>
+          <div className="flex items-center mt-1">
+            {roadmapLevel && <LevelBadge level={roadmapLevel} className="mr-2" />}
             <span className="text-sm text-muted-foreground">
-              {completedCount}/{totalNodes} ({progressPercentage}%)
+              {completedNodes?.length || 0} of {nodes.length} completed
             </span>
           </div>
         </div>
-        <div className="hidden sm:flex flex-col items-end">
-          <span className="text-sm font-medium">Est. completion time</span>
-          <span className="text-sm text-muted-foreground">
-            {calculateEstimatedTime()}
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="relative overflow-x-auto pb-4">
-          <div className={`min-w-full ${isMobile ? 'w-[600px]' : 'w-full'}`}>
-            <RoadmapPath 
-              nodes={isMobile || isTablet ? getVisibleNodes() : nodes} 
-              onNodeSelect={handleNodeSelect} 
-            />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        
+        {currentNode && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <Button 
+              onClick={() => onNodeSelect(currentNode)}
+              className="bg-secondary hover:bg-secondary/90"
+            >
+              Continue Learning
+            </Button>
+          </motion.div>
+        )}
+      </motion.div>
+
+      <RoadmapPath
+        nodes={nodes}
+        onNodeSelect={onNodeSelect}
+      />
+    </div>
   );
 };
 
