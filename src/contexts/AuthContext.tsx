@@ -32,28 +32,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const authInitialized = useRef(false);
   const profileInitialized = useRef<{[key: string]: boolean}>({});
+  
+  // Add throttling mechanism to prevent excessive profile initializations
+  const profileInitThrottleTimeout = useRef<NodeJS.Timeout | null>(null);
+  const authCheckThrottleTimeout = useRef<NodeJS.Timeout | null>(null);
+  const lastAuthCheck = useRef<number>(0);
+  const AUTH_CHECK_INTERVAL = 10 * 60 * 1000; // Check auth at most every 10 minutes
 
   useEffect(() => {
     // Only run auth initialization once
     if (authInitialized.current) return;
     authInitialized.current = true;
     
-    console.log("Setting up auth state listener");
+    console.log("Setting up auth state listener (optimized)");
     
     // First set up auth state listener to avoid missing auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (event, newSession) => {
         console.log("Auth state changed:", event);
-        setSession(session);
-        setUser(session?.user ?? null);
+        
+        // Only update state if there's an actual change to avoid rerenders
+        const shouldUpdateState = !session || 
+          !newSession || 
+          session.access_token !== newSession.access_token;
+        
+        if (shouldUpdateState) {
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
+        }
         
         if (event === 'SIGNED_IN') {
-          // Initialize user profile on sign in, but only if we haven't already done so
-          if (session?.user && !profileInitialized.current[session.user.id]) {
-            setTimeout(() => {
-              initializeUserProfile(session.user.id);
-              profileInitialized.current[session.user.id] = true;
-            }, 0);
+          // Initialize user profile on sign in, but throttle to prevent rapid repeated calls
+          if (newSession?.user && !profileInitialized.current[newSession.user.id]) {
+            // Clear any pending profile initialization
+            if (profileInitThrottleTimeout.current) {
+              clearTimeout(profileInitThrottleTimeout.current);
+            }
+            
+            // Set a small delay to batch potential repeated auth events
+            profileInitThrottleTimeout.current = setTimeout(() => {
+              initializeUserProfile(newSession.user.id);
+              profileInitialized.current[newSession.user.id] = true;
+              profileInitThrottleTimeout.current = null;
+            }, 500);
           }
           
           // Redirect to dashboard on sign in
@@ -61,33 +82,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (event === 'SIGNED_OUT') {
-          // Ensure we redirect on sign out event
+          // Ensure we redirect on sign out event and clear state
+          setSession(null);
+          setUser(null);
           navigate('/login');
         }
       }
     );
 
-    // Then check for existing session - but only once
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log("Initial session check:", session ? "Session found" : "No session");
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+    // Then check for existing session - but only once and with throttling
+    const now = Date.now();
+    const timeSinceLastCheck = now - lastAuthCheck.current;
+    
+    if (timeSinceLastCheck > AUTH_CHECK_INTERVAL) {
+      lastAuthCheck.current = now;
       
-      if (session?.user && !profileInitialized.current[session.user.id]) {
-        setTimeout(() => {
-          initializeUserProfile(session.user.id);
-          profileInitialized.current[session.user.id] = true;
-        }, 0);
-      }
-    });
+      supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+        console.log("Initial session check:", existingSession ? "Session found" : "No session");
+        setSession(existingSession);
+        setUser(existingSession?.user ?? null);
+        setLoading(false);
+        
+        if (existingSession?.user && !profileInitialized.current[existingSession.user.id]) {
+          // Use throttling for profile initialization
+          if (profileInitThrottleTimeout.current) {
+            clearTimeout(profileInitThrottleTimeout.current);
+          }
+          
+          profileInitThrottleTimeout.current = setTimeout(() => {
+            initializeUserProfile(existingSession.user.id);
+            profileInitialized.current[existingSession.user.id] = true;
+            profileInitThrottleTimeout.current = null;
+          }, 500);
+        }
+      });
+    } else {
+      // Skip redundant auth check if we checked recently
+      console.log("Skipping redundant auth check - last check was", 
+        Math.round(timeSinceLastCheck/1000), "seconds ago");
+      setLoading(false);
+    }
 
     return () => {
+      // Clean up all timeouts and subscriptions
+      if (profileInitThrottleTimeout.current) {
+        clearTimeout(profileInitThrottleTimeout.current);
+      }
+      if (authCheckThrottleTimeout.current) {
+        clearTimeout(authCheckThrottleTimeout.current);
+      }
       subscription.unsubscribe();
     };
   }, [navigate]);
 
-  // Initialize user profile if it doesn't exist - modified to prevent duplicate calls
+  // Initialize user profile if it doesn't exist - now with debouncing
   const initializeUserProfile = async (userId: string) => {
     try {
       console.log("Initializing user profile for:", userId);

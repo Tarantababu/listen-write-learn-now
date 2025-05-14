@@ -44,6 +44,7 @@ const RoadmapPage: React.FC = () => {
   const [initialized, setInitialized] = useState(false);
   const [loadAttempted, setLoadAttempted] = useState(false);
   const dataLoadedTimestamp = useRef<number | null>(null);
+  const dataLoadDebounceTimer = useRef<NodeJS.Timeout | null>(null);
   const navigate = useNavigate();
 
   // One-time initialization with protection against infinite loops, with debounce
@@ -53,28 +54,46 @@ const RoadmapPage: React.FC = () => {
       return;
     }
 
-    // Skip if we already attempted a load in the last 10 seconds
+    // Skip if we already attempted a load in the last 30 seconds
     const now = Date.now();
-    if (dataLoadedTimestamp.current && now - dataLoadedTimestamp.current < 10000) {
+    if (dataLoadedTimestamp.current && now - dataLoadedTimestamp.current < 30000) {
       console.log("Skipping load attempt - too soon since last attempt");
       return;
     }
     
-    // Mark as attempted and update timestamp
-    dataLoadedTimestamp.current = now;
+    // Clear any existing timers
+    if (dataLoadDebounceTimer.current) {
+      clearTimeout(dataLoadDebounceTimer.current);
+    }
     
-    const initializeData = async () => {
-      try {
-        console.log("Initial data loading for language:", settings.selectedLanguage);
-        setLoadAttempted(true); // Mark as attempted before the actual load
-        await loadUserRoadmaps(settings.selectedLanguage);
-        setInitialized(true);
-      } catch (error) {
-        console.error("Error during initial data loading:", error);
+    // Use debounce to prevent rapid repeated calls on mount/auth changes
+    dataLoadDebounceTimer.current = setTimeout(() => {
+      // Mark as attempted and update timestamp
+      dataLoadedTimestamp.current = Date.now();
+      
+      const initializeData = async () => {
+        try {
+          console.log("Initial data loading for language:", settings.selectedLanguage);
+          setLoadAttempted(true); // Mark as attempted before the actual load
+          await loadUserRoadmaps(settings.selectedLanguage);
+          setInitialized(true);
+        } catch (error) {
+          console.error("Error during initial data loading:", error);
+        } finally {
+          dataLoadDebounceTimer.current = null;
+        }
+      };
+      
+      initializeData();
+    }, 500); // 500ms debounce
+    
+    // Cleanup function
+    return () => {
+      if (dataLoadDebounceTimer.current) {
+        clearTimeout(dataLoadDebounceTimer.current);
+        dataLoadDebounceTimer.current = null;
       }
     };
-    
-    initializeData();
   }, [user, settings.selectedLanguage, initialized, isLoading, loadAttempted, loadUserRoadmaps]);
 
   // Set active tab based on whether we have user roadmaps or not
