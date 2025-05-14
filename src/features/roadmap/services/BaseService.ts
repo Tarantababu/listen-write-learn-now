@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { ServiceResponse } from '../types/service-types';
 
 export class BaseService {
   protected supabase = supabase;
@@ -26,37 +25,33 @@ export class BaseService {
   }
   
   /**
-   * Create a success response
+   * Create a standardized success response
    */
-  protected success<T>(data: T): ServiceResponse<T> {
+  protected success<T>(data: T): { data: T, error: null, status: 'success' } {
     return {
-      status: 'success',
       data,
-      error: null
+      error: null,
+      status: 'success'
     };
   }
   
   /**
-   * Create an error response
+   * Create a standardized error response
    */
-  protected error<T>(message: string): ServiceResponse<T> {
+  protected error<T>(message: string): { data: null, error: string, status: 'error' } {
     return {
-      status: 'error',
       data: null,
-      error: message
+      error: message,
+      status: 'error'
     };
   }
   
   /**
    * Handle errors consistently
    */
-  protected handleError<T>(methodName: string, error: any): ServiceResponse<T> {
-    console.error(`${this.constructor.name}.${methodName} error:`, error);
+  protected handleError(error: any) {
+    console.error('Service error:', error);
     const errorMessage = error?.message || 'An unexpected error occurred';
-    return {
-      status: 'error',
-      error: errorMessage,
-      data: null
-    };
+    return this.error(errorMessage);
   }
 }

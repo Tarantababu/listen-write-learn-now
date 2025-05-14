@@ -40,8 +40,7 @@ const DefaultExercisesList: React.FC = () => {
     try {
       setIsLoading(true);
       const data = await fetchDefaultExercises();
-      // Fix: Use proper type casting
-      setExercises(data as unknown as DefaultExerciseItem[]);
+      setExercises(data as DefaultExerciseItem[]);
     } catch (error) {
       console.error('Error fetching default exercises:', error);
       toast.error('Failed to load default exercises');

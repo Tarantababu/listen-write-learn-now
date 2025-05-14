@@ -1,192 +1,141 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Check, Mail, User } from 'lucide-react';
-import { format } from 'date-fns';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { Inbox, CheckCircle, Mail } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { asUpdateObject, asString, asTypedArray } from '@/utils/supabaseHelpers';
 
-interface FeedbackItem {
+interface Feedback {
   id: string;
+  created_at: string;
   name: string;
   email: string | null;
   message: string;
   read: boolean;
-  created_at: string;
 }
 
 export function FeedbackList() {
-  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const { data: feedback = [], isLoading, refetch } = useQuery({
-    queryKey: ['feedback'],
+  // Fetch feedback from database
+  const { data: feedback, isLoading, error, refetch } = useQuery({
+    queryKey: ['admin-feedback'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('feedback')
         .select('*')
         .order('created_at', { ascending: false });
-
+      
       if (error) throw error;
-      return asTypedArray<FeedbackItem>(data);
-    },
+      return data as Feedback[];
+    }
   });
 
+  // Handle marking feedback as read
   const markAsRead = async (id: string) => {
     try {
       const { error } = await supabase
         .from('feedback')
-        .update(asUpdateObject<'feedback'>({ read: true }))
-        .eq('id', asString(id));
-
+        .update({ read: true })
+        .eq('id', id);
+      
       if (error) throw error;
       
       toast.success('Feedback marked as read');
       refetch();
-    } catch (error: any) {
-      toast.error(`Error marking feedback as read: ${error.message}`);
+    } catch (error) {
+      console.error('Error marking feedback as read:', error);
+      toast.error('Failed to update feedback status');
     }
   };
 
-  const handleViewFeedback = (item: FeedbackItem) => {
-    setSelectedFeedback(item);
-    setIsModalOpen(true);
-    
-    if (!item.read) {
-      markAsRead(item.id);
-    }
-  };
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-red-500 py-4">
+            Failed to load feedback entries. You may not have permission to view this data.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">User Feedback</h2>
-      </div>
-
-      {isLoading ? (
-        <div className="flex justify-center p-6">
-          <p>Loading feedback...</p>
-        </div>
-      ) : (
-        <div className="bg-card rounded-md border shadow-sm">
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-xl font-semibold">User Feedback</CardTitle>
+        <Inbox className="h-5 w-5 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : feedback && feedback.length > 0 ? (
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[180px]">Date</TableHead>
                 <TableHead>From</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Message Preview</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Message</TableHead>
+                <TableHead className="w-[100px]">Status</TableHead>
+                <TableHead className="w-[100px]">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {feedback.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                    No feedback found.
+              {feedback.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">
+                    {format(new Date(item.created_at), 'MMM d, yyyy HH:mm')}
+                  </TableCell>
+                  <TableCell>
+                    <div>{item.name}</div>
+                    {item.email && (
+                      <div className="text-xs text-muted-foreground">{item.email}</div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="max-h-24 overflow-y-auto">{item.message}</div>
+                  </TableCell>
+                  <TableCell>
+                    {item.read ? (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-50">
+                        <CheckCircle className="mr-1 h-3 w-3" /> Read
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 hover:bg-blue-50">
+                        <Mail className="mr-1 h-3 w-3" /> New
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {!item.read && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => markAsRead(item.id)}
+                      >
+                        Mark Read
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
-              ) : (
-                feedback.map((item) => (
-                  <TableRow key={item.id} className={!item.read ? "bg-muted/30" : ""}>
-                    <TableCell>
-                      <div className="font-medium">{item.name}</div>
-                      {item.email && (
-                        <div className="text-sm text-muted-foreground flex items-center mt-1">
-                          <Mail className="h-3 w-3 mr-1" /> {item.email}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {item.read ? (
-                        <Badge variant="outline" className="text-muted-foreground">
-                          Read
-                        </Badge>
-                      ) : (
-                        <Badge>New</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {item.created_at ? format(new Date(item.created_at), 'MMM d, yyyy') : 'Unknown'}
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm truncate max-w-[300px]">{item.message}</p>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => handleViewFeedback(item)}>
-                        View Details
-                      </Button>
-                      {!item.read && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => markAsRead(item.id)}
-                          className="ml-1"
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
-        </div>
-      )}
-
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Feedback Details</DialogTitle>
-            <DialogDescription>
-              Submitted on {selectedFeedback?.created_at ? format(new Date(selectedFeedback.created_at), 'MMMM d, yyyy') : 'Unknown date'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedFeedback && (
-            <div className="space-y-4 mt-2">
-              <div className="bg-muted p-3 rounded-md">
-                <div className="flex items-center mb-2">
-                  <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span className="font-medium">{selectedFeedback.name}</span>
-                </div>
-                {selectedFeedback.email && (
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Mail className="h-4 w-4 mr-2" />
-                    <span>{selectedFeedback.email}</span>
-                  </div>
-                )}
-              </div>
-              
-              <div className="border p-4 rounded-md">
-                <h3 className="text-sm font-medium mb-2 text-muted-foreground">Message:</h3>
-                <div className="whitespace-pre-wrap">{selectedFeedback.message}</div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            No feedback entries found
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
-
-export default FeedbackList;

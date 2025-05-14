@@ -2,7 +2,7 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Archive, CheckCircle, MessageSquareText } from 'lucide-react';
+import { Archive, CheckCircle, MessageSquareText, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -11,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { asUUID, asBoolean, asInsertObject, asUpdateObject } from '@/utils/supabaseHelpers';
 
 interface UserMessage {
   id: string;
@@ -50,12 +49,12 @@ export function UserMessages() {
             created_at
           )
         `)
-        .eq('user_id', user.id as any)
+        .eq('user_id', user.id)
         .order('is_read', { ascending: true })
         .order('created_at', { foreignTable: 'message', ascending: false });
         
       if (error) throw error;
-      return (data as unknown as UserMessage[]) || [];
+      return data as UserMessage[];
     },
     enabled: !!user
   });
@@ -66,38 +65,31 @@ export function UserMessages() {
 
   const markAsRead = useMutation({
     mutationFn: async (messageId: string) => {
-      const updateData = asUpdateObject<'user_messages'>({
-        is_read: true, 
-        updated_at: new Date().toISOString() 
-      });
-      
       const { error } = await supabase
         .from('user_messages')
-        .update(updateData)
-        .eq('id', messageId as any);
+        .update({ is_read: true, updated_at: new Date().toISOString() })
+        .eq('id', messageId);
         
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-messages'] });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error(`Failed to mark message as read: ${error.message}`);
     }
   });
 
   const archiveMessage = useMutation({
     mutationFn: async (messageId: string) => {
-      const updateData = asUpdateObject<'user_messages'>({
-        is_archived: true, 
-        is_read: true, 
-        updated_at: new Date().toISOString()
-      });
-      
       const { error } = await supabase
         .from('user_messages')
-        .update(updateData)
-        .eq('id', messageId as any);
+        .update({ 
+          is_archived: true, 
+          is_read: true, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', messageId);
         
       if (error) throw error;
     },
@@ -105,7 +97,7 @@ export function UserMessages() {
       queryClient.invalidateQueries({ queryKey: ['user-messages'] });
       toast.success('Message archived');
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error(`Failed to archive message: ${error.message}`);
     }
   });
@@ -114,16 +106,11 @@ export function UserMessages() {
     if (!user || unreadMessages.length === 0) return;
     
     try {
-      const updateData = asUpdateObject<'user_messages'>({
-        is_read: true, 
-        updated_at: new Date().toISOString()
-      });
-      
       const { error } = await supabase
         .from('user_messages')
-        .update(updateData)
-        .eq('user_id', user.id as any)
-        .eq('is_read', false as any);
+        .update({ is_read: true, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
         
       if (error) throw error;
       

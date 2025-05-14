@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAdmin } from '@/hooks/use-admin';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import DefaultExerciseForm from '@/components/admin/DefaultExerciseForm';
 import DefaultExercisesList from '@/components/admin/DefaultExercisesList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AdminMessagesForm } from '@/components/admin/AdminMessagesForm';
+import AdminMessagesForm from '@/components/admin/AdminMessagesForm';
 import AdminMessagesList from '@/components/admin/AdminMessagesList';
 import RoadmapEditor from '@/components/admin/RoadmapEditor';
 

@@ -1,65 +1,80 @@
 
-import { useState, useEffect } from 'react';
-import { useRoadmap } from '@/hooks/use-roadmap';
+import { useState, useCallback } from 'react';
 import { nodeAccessService } from '../services/NodeAccessService';
+import { toast } from '@/components/ui/use-toast';
+import { Language } from '@/types';
 
-/**
- * Hook to determine node access for the roadmap visualization
- */
 export function useNodeAccess() {
-  const { currentRoadmap, nodes, completedNodes, currentNodeId } = useRoadmap();
   const [accessibleNodes, setAccessibleNodes] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const loadAccessibleNodes = async () => {
-      if (!currentRoadmap) {
-        setAccessibleNodes([]);
-        return;
+  const [isLoading, setIsLoading] = useState(false);
+  
+  /**
+   * Check if a specific node is accessible
+   */
+  const checkNodeAccess = useCallback(async (nodeId: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const { data: hasAccess, error } = await nodeAccessService.canAccessNode(nodeId);
+      
+      if (error) {
+        console.error('Error checking node access:', error);
+        toast({
+          variant: "destructive",
+          title: "Error checking access",
+          description: error
+        });
+        return false;
       }
-
-      setLoading(true);
-      try {
-        // Use the NodeAccessService to get accessible nodes
-        const response = await nodeAccessService.getAccessibleNodes(currentRoadmap.id);
-        if (response.status === 'success' && response.data) {
-          setAccessibleNodes(response.data);
-        } else {
-          console.error('Error loading accessible nodes:', response.error);
-          // Fallback: first node is always accessible
-          const firstNode = nodes[0]?.id;
-          setAccessibleNodes(firstNode ? [firstNode] : []);
-        }
-      } catch (error) {
-        console.error('Error in useNodeAccess:', error);
-        // Fallback: first node is always accessible
-        const firstNode = nodes[0]?.id;
-        setAccessibleNodes(firstNode ? [firstNode] : []);
-      } finally {
-        setLoading(false);
+      
+      return hasAccess || false;
+    } catch (error) {
+      console.error('Error in checkNodeAccess:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+  
+  /**
+   * Get all accessible nodes for a roadmap
+   */
+  const loadAccessibleNodes = useCallback(async (roadmapId: string, language: Language) => {
+    setIsLoading(true);
+    try {
+      const { data: nodeIds, error } = await nodeAccessService.getAccessibleNodes(roadmapId, language);
+      
+      if (error) {
+        console.error('Error loading accessible nodes:', error);
+        toast({
+          variant: "destructive",
+          title: "Error loading accessible nodes",
+          description: error
+        });
+        return [];
       }
-    };
-
-    loadAccessibleNodes();
-  }, [currentRoadmap, nodes, completedNodes]);
-
-  const isNodeAccessible = (nodeId: string): boolean => {
+      
+      setAccessibleNodes(nodeIds || []);
+      return nodeIds || [];
+    } catch (error) {
+      console.error('Error in loadAccessibleNodes:', error);
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+  
+  /**
+   * Check if a node is in the accessible nodes list
+   */
+  const isNodeAccessible = useCallback((nodeId: string): boolean => {
     return accessibleNodes.includes(nodeId);
-  };
-
-  const isNodeCompleted = (nodeId: string): boolean => {
-    return completedNodes.includes(nodeId);
-  };
-
-  const isCurrentNode = (nodeId: string): boolean => {
-    return nodeId === currentNodeId;
-  };
-
+  }, [accessibleNodes]);
+  
   return {
     accessibleNodes,
-    isNodeAccessible,
-    isNodeCompleted,
-    isCurrentNode,
-    loading
+    isLoading,
+    checkNodeAccess,
+    loadAccessibleNodes,
+    isNodeAccessible
   };
 }

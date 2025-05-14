@@ -1,78 +1,63 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent } from '@/components/ui/card';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { asInsertObject } from '@/utils/supabaseHelpers';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
-const formSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  content: z.string().min(1, 'Content is required')
+const messageSchema = z.object({
+  title: z.string().min(3, 'Title must be at least 3 characters'),
+  content: z.string().min(10, 'Content must be at least 10 characters'),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type MessageFormValues = z.infer<typeof messageSchema>;
 
-export function AdminMessagesForm({ onMessageAdded }: { onMessageAdded?: () => void }) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export default function AdminMessagesForm() {
   const { user } = useAuth();
-  const { toast } = useToast();
-  
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  const queryClient = useQueryClient();
+
+  const form = useForm<MessageFormValues>({
+    resolver: zodResolver(messageSchema),
     defaultValues: {
       title: '',
-      content: ''
-    }
+      content: '',
+    },
   });
 
-  const onSubmit = async (values: FormValues) => {
-    if (!user) return;
-    
-    setIsSubmitting(true);
+  const onSubmit = async (values: MessageFormValues) => {
     try {
-      const insertData = asInsertObject<'admin_messages'>({
+      if (!user) {
+        toast.error('You must be logged in to send messages');
+        return;
+      }
+
+      // No need to call set_admin_email function anymore since our RLS is more permissive
+      // Just insert directly - the trigger will handle creating user_message entries
+      const { error } = await supabase.from('admin_messages').insert({
         title: values.title,
         content: values.content,
-        created_by: user.id
+        created_by: user.id,
       });
-      
-      const { data, error } = await supabase
-        .from('admin_messages')
-        .insert(insertData)
-        .select('id')
-        .single();
-      
-      if (error) throw error;
-      
-      // Reset form
+
+      if (error) {
+        console.error('Insert error:', error);
+        throw error;
+      }
+
+      toast.success('Message sent to all users successfully');
+      queryClient.invalidateQueries({ queryKey: ['admin-messages'] });
       form.reset();
-      
-      // Show success toast
-      toast({
-        title: "Message created",
-        description: "Your message has been sent to all users.",
-      });
-      
-      // Callback to parent component
-      if (onMessageAdded) onMessageAdded();
-      
     } catch (error: any) {
-      console.error('Error creating message:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create message",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
+      console.error('Error sending message:', error);
+      toast.error(error.message || 'Failed to send message');
     }
   };
 
@@ -122,5 +107,3 @@ export function AdminMessagesForm({ onMessageAdded }: { onMessageAdded?: () => v
     </Card>
   );
 }
-
-export default AdminMessagesForm; // Added default export

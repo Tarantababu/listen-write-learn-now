@@ -3,7 +3,6 @@ import { Language, Exercise } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { mapExerciseFromDb } from './exerciseService';
-import { asUUID } from '@/utils/supabaseHelpers';
 
 /**
  * Ensures that the audio storage bucket exists
@@ -46,7 +45,6 @@ export const createDefaultExercise = async (
   // First ensure the audio bucket exists
   await ensureAudioBucket();
 
-  // Direct insert without type helpers
   const { data, error } = await supabase
     .from('default_exercises')
     .insert({

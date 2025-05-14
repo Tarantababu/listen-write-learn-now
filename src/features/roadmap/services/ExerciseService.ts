@@ -46,7 +46,7 @@ export class ExerciseService extends BaseService implements ExerciseServiceInter
         tags: exercise.tags
       });
     } catch (error) {
-      return this.handleError('getNodeExercise', error);
+      return this.handleError(error);
     }
   }
   
@@ -96,7 +96,7 @@ export class ExerciseService extends BaseService implements ExerciseServiceInter
         completionCount: 1
       });
     } catch (error) {
-      return this.handleError('submitExerciseResult', error);
+      return this.handleError(error);
     }
   }
   
@@ -139,7 +139,7 @@ export class ExerciseService extends BaseService implements ExerciseServiceInter
         tags: data.tags
       });
     } catch (error) {
-      return this.handleError('generateExercise', error);
+      return this.handleError(error);
     }
   }
   

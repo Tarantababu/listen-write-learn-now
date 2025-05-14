@@ -33,10 +33,6 @@ const RoadmapSelection: React.FC = () => {
   const [availableLevels, setAvailableLevels] = useState<LanguageLevel[]>([]);
   const [existingLevels, setExistingLevels] = useState<LanguageLevel[]>([]);
   const [retryCount, setRetryCount] = useState(0);
-  const [dataLoaded, setDataLoaded] = useState(false);
-
-  // Define all possible language levels explicitly - this ensures levels are shown even when DB has no roadmaps
-  const allLanguageLevels: LanguageLevel[] = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
   // Filter roadmaps to only show those for the currently selected language
   const availableRoadmapsForLanguage = roadmaps.filter(roadmap => 
@@ -55,9 +51,8 @@ const RoadmapSelection: React.FC = () => {
   };
 
   // Check if the selected level has a roadmap available in the user's language
-  // Always return true to allow all levels to be selected even when no roadmaps exist in DB
   const isLevelAvailable = (level: LanguageLevel): boolean => {
-    return true; // Allow all levels to be selected regardless of DB state
+    return availableRoadmapsForLanguage.some(roadmap => roadmap.level === level);
   };
 
   // Check if the user already has a roadmap for this level and language
@@ -65,23 +60,7 @@ const RoadmapSelection: React.FC = () => {
     return existingLevels.includes(level);
   };
 
-  // Initial data loading - with throttling to prevent excessive calls
-  useEffect(() => {
-    if (!dataLoaded && !isLoading) {
-      const fetchData = async () => {
-        try {
-          await loadUserRoadmaps(settings.selectedLanguage);
-          setDataLoaded(true);
-        } catch (error) {
-          console.error("Error loading roadmap data:", error);
-        }
-      };
-      
-      fetchData();
-    }
-  }, [dataLoaded, isLoading, loadUserRoadmaps, settings.selectedLanguage]);
-
-  // Calculate available and existing levels - run only when data changes, not continuously
+  // Calculate available and existing levels
   useEffect(() => {
     // Get existing roadmap levels for the current language
     const userLevels = userRoadmaps
@@ -94,21 +73,20 @@ const RoadmapSelection: React.FC = () => {
     
     setExistingLevels(userLevels);
 
-    // ALWAYS show all standard levels regardless of what's in the database
-    let levelsToShow: LanguageLevel[] = allLanguageLevels;
-    
-    setAvailableLevels(levelsToShow);
+    // Get all available levels for the current language
+    const levels: LanguageLevel[] = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+    const availableLevels = levels.filter(level => isLevelAvailable(level));
+    setAvailableLevels(availableLevels);
     
     // Set default selected level to first available that isn't already selected
-    if (levelsToShow.length > 0) {
-      const unselectedLevel = levelsToShow.find(level => !userLevels.includes(level));
-      setSelectedLevel(unselectedLevel || levelsToShow[0]);
+    if (availableLevels.length > 0) {
+      const unselectedLevel = availableLevels.find(level => !userLevels.includes(level));
+      setSelectedLevel(unselectedLevel || availableLevels[0]);
     } else {
       setSelectedLevel('');
     }
-  }, [roadmaps, userRoadmaps, settings.selectedLanguage, retryCount, dataLoaded]);
+  }, [roadmaps, userRoadmaps, settings.selectedLanguage, retryCount]);
 
-  // Handle initialization with error catching and clearer messaging
   const handleInitializeRoadmap = async () => {
     if (!selectedLevel) return;
     
@@ -121,8 +99,7 @@ const RoadmapSelection: React.FC = () => {
         description: `Your ${selectedLevel} level roadmap for ${settings.selectedLanguage} has been created.`,
       });
       
-      // Reload user roadmaps to refresh the UI and set dataLoaded to false to trigger a new load
-      setDataLoaded(false);
+      // Reload user roadmaps to refresh the UI
       await loadUserRoadmaps(settings.selectedLanguage);
     } catch (error) {
       console.error('Error initializing roadmap:', error);
@@ -136,14 +113,9 @@ const RoadmapSelection: React.FC = () => {
     }
   };
 
-  // Handle refresh with proper error handling and loading states
   const handleRefreshRoadmaps = async () => {
-    // Prevent multiple rapid refreshes
-    if (refreshing) return;
-    
     setRefreshing(true);
     try {
-      setDataLoaded(false);
       await loadUserRoadmaps(settings.selectedLanguage);
       setRetryCount(count => count + 1); // Force recalculation of available levels
       
@@ -159,10 +131,7 @@ const RoadmapSelection: React.FC = () => {
         description: "There was an error refreshing roadmaps. Please try again.",
       });
     } finally {
-      // Delay turning off refreshing state to prevent rapid repeated clicks
-      setTimeout(() => {
-        setRefreshing(false);
-      }, 1000);
+      setRefreshing(false);
     }
   };
 
@@ -176,8 +145,7 @@ const RoadmapSelection: React.FC = () => {
     ? 'Add This Roadmap' 
     : 'Start Learning Journey';
 
-  if (isLoading && !dataLoaded) {
-    // Keep loading state UI
+  if (isLoading) {
     return (
       <Card className="w-full max-w-md mx-auto shadow-md">
         <CardHeader>
@@ -227,7 +195,7 @@ const RoadmapSelection: React.FC = () => {
                 <h4 className="font-medium text-amber-800 dark:text-amber-400 text-sm">No Roadmaps Available</h4>
                 <p className="text-sm text-amber-700 dark:text-amber-500 mt-1">
                   There are no roadmaps available for {settings.selectedLanguage} at the moment.
-                  Please select a level to create a new roadmap.
+                  Try refreshing or check back later.
                 </p>
               </div>
             </div>
@@ -305,7 +273,8 @@ const RoadmapSelection: React.FC = () => {
           disabled={
             initializing || 
             !selectedLevel || 
-            isLevelAlreadySelected(selectedLevel as LanguageLevel)
+            isLevelAlreadySelected(selectedLevel as LanguageLevel) || 
+            availableLevels.length === 0
           }
           className="w-full"
         >

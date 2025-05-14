@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,7 +8,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { asUUID, asInsertObject, asUpdateObject } from '@/utils/supabaseHelpers';
 
 interface ReadingAnalysisProps {
   exercise: Exercise;
@@ -60,17 +60,20 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             const { data, error } = await supabase
               .from('reading_analyses')
               .select('content')
-              .eq('id', existingAnalysisId as any)
+              .eq('id', existingAnalysisId)
               .maybeSingle();
               
             if (error) {
               console.error('Error fetching analysis:', error);
+              // If we can't fetch the existing analysis, we'll generate a new one
               throw error;
             }
             
-            if (data && 'content' in data) {
+            if (data && data.content) {
+              // Type assertion to ensure the content is treated as AnalysisContent
               const analysisContent = data.content as unknown as AnalysisContent;
               
+              // Validate the analysis content structure
               if (validateAnalysisContent(analysisContent)) {
                 setAnalysis(analysisContent);
                 setIsLoading(false);
@@ -83,12 +86,14 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             }
           } catch (err) {
             console.error('Failed to fetch existing analysis, will generate new one:', err);
+            // Continue to generate a new analysis
           }
         }
         
         // Generate a new analysis
         console.log('Generating new analysis for exercise:', exercise.id);
         
+        // Using the new dedicated reading analysis function
         const response = await supabase.functions.invoke('generate-reading-analysis', {
           body: {
             text: exercise.text,
@@ -103,6 +108,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
           throw new Error(response.error?.message || 'Error generating analysis');
         }
         
+        // Validate response data
         if (!response.data.analysis) {
           console.error('Invalid response data:', response.data);
           throw new Error('Invalid response data format');
@@ -110,6 +116,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         
         const analysisContent = response.data.analysis as AnalysisContent;
         
+        // Validate the analysis content structure
         if (!validateAnalysisContent(analysisContent)) {
           console.error('Invalid analysis content:', analysisContent);
           throw new Error('Invalid analysis data received');
@@ -120,60 +127,53 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         // Save the analysis to the database
         if (user) {
           try {
-            const jsonContent = analysisContent as unknown as Json;
-            
-            const insertData = asInsertObject<'reading_analyses'>({
-              user_id: user.id,
-              exercise_id: exercise.id,
-              content: jsonContent
-            });
-            
+            // When saving to database, explicitly cast the analysisContent to unknown then Json
+            // to satisfy TypeScript's type checking for the Supabase client
             const { error: saveError, data: savedData } = await supabase
               .from('reading_analyses')
-              .insert(insertData)
+              .insert({
+                user_id: user.id,
+                exercise_id: exercise.id,
+                content: analysisContent as unknown as Json
+              })
               .select('id')
               .single();
               
             if (saveError) {
               console.error('Error saving analysis:', saveError);
-            } else if (savedData && 'id' in savedData) {
+              // Continue even if saving fails
+            } else {
               console.log('Analysis saved with ID:', savedData.id);
               
-              try {
-                const { data: profileData, error: fetchError } = await supabase
+              // Increment the reading_analyses_count for free users using a direct update
+              const { data: profileData, error: fetchError } = await supabase
+                .from('profiles')
+                .select('reading_analyses_count')
+                .eq('id', user.id)
+                .maybeSingle();
+                
+              if (fetchError) {
+                console.error('Error fetching profile:', fetchError);
+              } else if (profileData) {
+                const currentCount = profileData.reading_analyses_count || 0;
+                const newCount = currentCount + 1;
+                
+                const { error: updateError } = await supabase
                   .from('profiles')
-                  .select('reading_analyses_count')
-                  .eq('id', user.id as any)
-                  .maybeSingle();
+                  .update({ reading_analyses_count: newCount })
+                  .eq('id', user.id);
                   
-                if (fetchError) {
-                  console.error('Error fetching profile:', fetchError);
-                } else if (profileData && 'reading_analyses_count' in profileData) {
-                  const currentCount = profileData.reading_analyses_count || 0;
-                  const newCount = currentCount + 1;
-                  
-                  const updateData = asUpdateObject<'profiles'>({
-                    reading_analyses_count: newCount
-                  });
-                  
-                  const { error: updateError } = await supabase
-                    .from('profiles')
-                    .update(updateData)
-                    .eq('id', user.id as any);
-                    
-                  if (updateError) {
-                    console.error('Error updating analysis count:', updateError);
-                  }
+                if (updateError) {
+                  console.error('Error updating analysis count:', updateError);
                 }
-              } catch (error) {
-                console.error('Error updating profile counts:', error);
               }
             }
           } catch (error) {
             console.error('Error saving analysis to database:', error);
+            // Continue even if saving fails - user can still see the analysis
           }
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error in reading analysis:', error);
         setError(error.message || 'Failed to generate reading analysis');
         toast({
