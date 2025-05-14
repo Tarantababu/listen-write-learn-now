@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import Layout from '@/components/Layout';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -16,7 +17,13 @@ import LevelBadge from '@/components/LevelBadge';
 import { toast } from '@/components/ui/use-toast';
 
 // Creating a component wrapper for TabsContent to properly handle children prop
-const TabsContentWrapper: React.FC<React.PropsWithChildren<{ value: string; className?: string }>> = ({ 
+interface TabsContentWrapperProps {
+  value: string;
+  className?: string;
+  children: React.ReactNode;
+}
+
+const TabsContentWrapper: React.FC<TabsContentWrapperProps> = ({ 
   value, 
   className,
   children 
