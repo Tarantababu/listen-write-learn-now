@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
 import RoadmapSelection from '@/features/roadmap/components/RoadmapSelection';
@@ -42,18 +42,37 @@ const RoadmapPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'map' | 'dashboard'>('map');
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const navigate = useNavigate();
+
+  // One-time initialization
+  useEffect(() => {
+    // Only run once when component mounts
+    if (!initialized && user && !isLoading) {
+      const initializeData = async () => {
+        try {
+          console.log("Initial data loading for language:", settings.selectedLanguage);
+          await loadUserRoadmaps(settings.selectedLanguage);
+          setInitialized(true);
+        } catch (error) {
+          console.error("Error during initial data loading:", error);
+        }
+      };
+      
+      initializeData();
+    }
+  }, [user, settings.selectedLanguage, initialized, isLoading]);
 
   // Set active tab based on whether we have user roadmaps or not
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && initialized) {
       if (userRoadmaps.length === 0) {
         setActiveTab("new");
       } else {
         setActiveTab("active");
       }
     }
-  }, [isLoading, userRoadmaps]);
+  }, [isLoading, userRoadmaps, initialized]);
 
   // When a user clicks on "Continue Learning," open the exercise modal with current node
   useEffect(() => {
@@ -184,18 +203,21 @@ const RoadmapPage: React.FC = () => {
 
   // Detailed debug info
   useEffect(() => {
-    console.log("RoadmapPage state:", {
-      isLoading,
-      hasError,
-      userAuthenticated: !!user,
-      roadmaps: roadmaps.length,
-      userRoadmaps: userRoadmaps.length,
-      hasCurrentRoadmap: !!currentRoadmap,
-      nodes: nodes.length,
-      activeTab,
-      hasAvailableRoadmaps,
-      language: settings.selectedLanguage
-    });
+    if (initialized) {
+      console.log("RoadmapPage state:", {
+        isLoading,
+        hasError,
+        userAuthenticated: !!user,
+        roadmaps: roadmaps.length,
+        userRoadmaps: userRoadmaps.length,
+        hasCurrentRoadmap: !!currentRoadmap,
+        nodes: nodes.length,
+        activeTab,
+        hasAvailableRoadmaps,
+        language: settings.selectedLanguage,
+        initialized
+      });
+    }
   }, [
     isLoading, 
     hasError, 
@@ -205,7 +227,8 @@ const RoadmapPage: React.FC = () => {
     currentRoadmap, 
     nodes.length, 
     activeTab,
-    settings.selectedLanguage
+    settings.selectedLanguage,
+    initialized
   ]);
 
   if (!user) {
@@ -221,7 +244,7 @@ const RoadmapPage: React.FC = () => {
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !initialized) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center items-center h-64">
@@ -293,7 +316,7 @@ const RoadmapPage: React.FC = () => {
           </motion.div>
         )}
 
-        {!hasAvailableRoadmaps && !isLoading && (
+        {!hasAvailableRoadmaps && !isLoading && initialized && (
           <motion.div 
             className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-2 dark:bg-amber-900/20 dark:border-amber-800"
             initial={{ opacity: 0, y: -10 }}
