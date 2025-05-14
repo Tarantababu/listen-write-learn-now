@@ -1,87 +1,230 @@
 
-import React from 'react';
-import { useRoadmap } from '@/hooks/use-roadmap';
-import { RoadmapNode } from '../types';
-import { Button } from '@/components/ui/button';
-import { CheckCircle, CircleDashed, Lock, Play } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { RoadmapItem, RoadmapNode } from '../types';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { roadmapService } from '../api/roadmapService';
+import RoadmapPath from './RoadmapPath';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { toast } from '@/components/ui/use-toast';
+import confetti from 'canvas-confetti';
+import { useMediaQuery } from '@/hooks/use-mobile';
 
 interface RoadmapVisualizationProps {
+  roadmapId?: string;
   onNodeSelect: (node: RoadmapNode) => void;
 }
 
-const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelect }) => {
-  const { nodes, isLoading } = useRoadmap();
+const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ 
+  roadmapId,
+  onNodeSelect
+}) => {
+  const { settings } = useUserSettingsContext();
+  const [roadmap, setRoadmap] = useState<RoadmapItem | null>(null);
+  const [nodes, setNodes] = useState<RoadmapNode[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastCompletedNode, setLastCompletedNode] = useState<string | null>(null);
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isTablet = useMediaQuery('(min-width: 769px) and (max-width: 1024px)');
+  
+  // Load roadmap data
+  useEffect(() => {
+    const loadRoadmap = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Get user's roadmaps
+        const userRoadmaps = await roadmapService.getUserRoadmaps(settings.selectedLanguage);
+        
+        let currentRoadmap: RoadmapItem | undefined;
+        if (roadmapId) {
+          currentRoadmap = userRoadmaps.find(r => r.id === roadmapId);
+        } else if (userRoadmaps.length > 0) {
+          currentRoadmap = userRoadmaps[0]; // Default to first roadmap
+        }
+        
+        if (!currentRoadmap) {
+          setRoadmap(null);
+          setNodes([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        setRoadmap(currentRoadmap);
+        
+        // Load roadmap nodes
+        const roadmapNodes = await roadmapService.getRoadmapNodes(currentRoadmap.id);
+        setNodes(roadmapNodes);
+      } catch (error) {
+        console.error("Error loading roadmap:", error);
+        toast({
+          variant: "destructive",
+          title: "Error loading roadmap",
+          description: "Failed to load your learning path. Please try again."
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadRoadmap();
+  }, [roadmapId, settings.selectedLanguage]);
 
+  // Handle node selection
+  const handleNodeSelect = (node: RoadmapNode) => {
+    onNodeSelect(node);
+  };
+
+  // Trigger confetti effect when a new node is completed
+  useEffect(() => {
+    // Find current node
+    const currentNodeIndex = nodes.findIndex(node => node.status === 'current');
+    const currentNode = currentNodeIndex >= 0 ? nodes[currentNodeIndex] : null;
+    
+    // If there's a new completed node (based on status) compared to last render
+    const completedNodes = nodes.filter(n => n.status === 'completed');
+    const lastNode = completedNodes[completedNodes.length - 1];
+    
+    if (lastNode && lastNode.id !== lastCompletedNode) {
+      // Update last completed node
+      setLastCompletedNode(lastNode.id);
+      
+      // Trigger confetti
+      if (typeof window !== 'undefined') {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }
+    }
+  }, [nodes, lastCompletedNode]);
+
+  // Calculate estimated time to completion
+  const calculateEstimatedTime = () => {
+    const remainingNodes = nodes.filter(n => n.status !== 'completed').length;
+    // Assume 10 minutes per node
+    const remainingMinutes = remainingNodes * 10;
+    
+    if (remainingMinutes < 60) {
+      return `${remainingMinutes} minutes`;
+    }
+    
+    const hours = Math.floor(remainingMinutes / 60);
+    const minutes = remainingMinutes % 60;
+    
+    if (minutes === 0) {
+      return `${hours} hours`;
+    }
+    
+    return `${hours} hours, ${minutes} minutes`;
+  };
+
+  // Responsive design
+  const getVisibleNodes = () => {
+    if (nodes.length === 0) return [];
+    
+    // Calculate how many nodes to show based on screen size
+    let visibleCount = 15; // Desktop default
+    
+    if (isMobile) {
+      visibleCount = 5;
+    } else if (isTablet) {
+      visibleCount = 8;
+    }
+    
+    // Find the current node's index
+    const currentNodeIndex = nodes.findIndex(node => node.status === 'current');
+    
+    if (currentNodeIndex === -1) {
+      // If no current node, start from the beginning
+      return nodes.slice(0, visibleCount);
+    }
+    
+    // Calculate start index (center the current node)
+    const startIndex = Math.max(0, currentNodeIndex - Math.floor(visibleCount / 2));
+    
+    return nodes.slice(startIndex, startIndex + visibleCount);
+  };
+
+  // Show loading skeleton
   if (isLoading) {
-    return <div className="flex justify-center py-8">Loading roadmap...</div>;
-  }
-
-  if (nodes.length === 0) {
-    return <div className="text-center py-8">No nodes found for this roadmap.</div>;
-  }
-
-  return (
-    <div className="py-4">
-      <div className="flex flex-col items-center">
-        {nodes.map((node, index) => (
-          <div key={node.id} className="w-full max-w-md mb-4">
-            <div className="flex items-start">
-              {/* Connector line */}
-              {index > 0 && (
-                <div className="h-8 w-0.5 bg-muted-foreground/30 -mt-4 ml-6"></div>
-              )}
-            </div>
-            
-            <div className="flex items-start space-x-4">
-              {/* Status icon */}
-              <div className="p-2 rounded-full bg-background border">
-                {node.status === 'completed' ? (
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                ) : node.status === 'available' ? (
-                  <CircleDashed className="h-5 w-5 text-blue-500" />
-                ) : (
-                  <Lock className="h-5 w-5 text-muted-foreground" />
-                )}
-              </div>
-              
-              {/* Node content */}
-              <div className="flex-1 bg-card p-4 rounded-lg border shadow-sm">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium">{node.title}</h3>
-                    {node.description && (
-                      <p className="text-sm text-muted-foreground mt-1">{node.description}</p>
-                    )}
-                  </div>
-                  
-                  <Button
-                    variant={node.status === 'current' ? "default" : "outline"}
-                    size="sm"
-                    disabled={node.status === 'locked'}
-                    onClick={() => onNodeSelect(node)}
-                  >
-                    {node.status === 'completed' ? (
-                      "Review"
-                    ) : (
-                      <>
-                        <Play className="h-3 w-3 mr-1" />
-                        Start
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                {node.isBonus && (
-                  <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-500">
-                    Bonus Exercise
-                  </div>
-                )}
-              </div>
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-8 w-48" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-8">
+            <Skeleton className="h-2 w-full" />
+            <div className="flex justify-between">
+              <Skeleton className="h-16 w-16 rounded-full" />
+              <Skeleton className="h-16 w-16 rounded-full" />
+              <Skeleton className="h-16 w-16 rounded-full" />
+              <Skeleton className="h-16 w-16 rounded-full" />
+              <Skeleton className="h-16 w-16 rounded-full" />
             </div>
           </div>
-        ))}
-      </div>
-    </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show not found message
+  if (!roadmap) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>No Roadmap Found</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-center py-8">
+            No learning path found. Please start a new one.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Calculate progress metrics
+  const completedCount = nodes.filter(n => n.status === 'completed').length;
+  const totalNodes = nodes.length;
+  const progressPercentage = Math.round((completedCount / totalNodes) * 100);
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>{roadmap.name}</CardTitle>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant="outline" className="capitalize">
+              {roadmap.language}
+            </Badge>
+            <Badge variant="secondary">{roadmap.level}</Badge>
+            <span className="text-sm text-muted-foreground">
+              {completedCount}/{totalNodes} ({progressPercentage}%)
+            </span>
+          </div>
+        </div>
+        <div className="hidden sm:flex flex-col items-end">
+          <span className="text-sm font-medium">Est. completion time</span>
+          <span className="text-sm text-muted-foreground">
+            {calculateEstimatedTime()}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="relative overflow-x-auto pb-4">
+          <div className={`min-w-full ${isMobile ? 'w-[600px]' : 'w-full'}`}>
+            <RoadmapPath 
+              nodes={isMobile || isTablet ? getVisibleNodes() : nodes} 
+              onNodeSelect={handleNodeSelect} 
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

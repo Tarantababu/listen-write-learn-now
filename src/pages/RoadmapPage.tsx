@@ -1,34 +1,67 @@
 
 import React, { useState } from 'react';
-import { useRoadmap } from '@/hooks/use-roadmap';
+import { roadmapService } from '@/features/roadmap/api/roadmapService';
 import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
-import RoadmapSelection from '@/components/roadmap/RoadmapSelection';
+import RoadmapSelection from '@/features/roadmap/components/RoadmapSelection';
 import RoadmapExerciseModal from '@/features/roadmap/components/RoadmapExerciseModal';
 import { RoadmapNode } from '@/features/roadmap/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const RoadmapPage: React.FC = () => {
-  const { userRoadmaps, currentRoadmap, isLoading } = useRoadmap();
+  const [userRoadmaps, setUserRoadmaps] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedNode, setSelectedNode] = useState<RoadmapNode | null>(null);
   const [exerciseModalOpen, setExerciseModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("active");
+
+  // Load user roadmaps when component mounts
+  React.useEffect(() => {
+    const loadUserRoadmaps = async () => {
+      try {
+        setIsLoading(true);
+        const { data: profile } = await supabase.auth.getUser();
+        
+        if (!profile?.user) {
+          setUserRoadmaps([]);
+          setActiveTab("new");
+          return;
+        }
+        
+        const { data: userSettingsData } = await supabase
+          .from('profiles')
+          .select('selected_language')
+          .eq('id', profile.user.id)
+          .single();
+          
+        if (!userSettingsData) {
+          setUserRoadmaps([]);
+          setActiveTab("new");
+          return;
+        }
+        
+        const roadmaps = await roadmapService.getUserRoadmaps(userSettingsData.selected_language);
+        setUserRoadmaps(roadmaps);
+        
+        // If user has no roadmaps, switch to new tab
+        if (roadmaps.length === 0) {
+          setActiveTab("new");
+        }
+        
+      } catch (error) {
+        console.error("Error loading user roadmaps:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadUserRoadmaps();
+  }, []);
 
   const handleNodeSelect = (node: RoadmapNode) => {
     setSelectedNode(node);
     setExerciseModalOpen(true);
   };
-
-  // Set active tab based on whether we have user roadmaps or not
-  React.useEffect(() => {
-    if (!isLoading) {
-      if (userRoadmaps.length === 0) {
-        setActiveTab("new");
-      } else {
-        setActiveTab("active");
-      }
-    }
-  }, [isLoading, userRoadmaps.length]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -53,16 +86,19 @@ const RoadmapPage: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {currentRoadmap && (
-                <Card>
+              {userRoadmaps.map(roadmap => (
+                <Card key={roadmap.id}>
                   <CardHeader>
-                    <CardTitle>{currentRoadmap.name}</CardTitle>
+                    <CardTitle>{roadmap.name}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <RoadmapVisualization onNodeSelect={handleNodeSelect} />
+                    <RoadmapVisualization 
+                      roadmapId={roadmap.id} 
+                      onNodeSelect={handleNodeSelect} 
+                    />
                   </CardContent>
                 </Card>
-              )}
+              ))}
             </div>
           )}
         </TabsContent>
