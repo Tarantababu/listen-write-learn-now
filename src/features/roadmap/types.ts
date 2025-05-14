@@ -1,22 +1,19 @@
 
-import { Language, LanguageLevel } from '@/types';
+import { Language } from '@/types';
 
 // Core roadmap types
 export interface RoadmapItem {
   id: string;
   name: string;
-  level: LanguageLevel;
+  level: string;
   description?: string;
-  languages?: Language[];
+  language: Language;
   createdAt: Date;
   updatedAt: Date;
-  createdBy?: string;
   
   // User-specific properties when this is a user roadmap
   currentNodeId?: string;
   progress?: number;
-  language?: Language; 
-  roadmapId?: string; // Add this for user roadmaps that reference parent roadmap
 }
 
 export interface RoadmapNode {
@@ -25,15 +22,14 @@ export interface RoadmapNode {
   title: string;
   description?: string;
   position: number;
+  exerciseId?: string;
   isBonus: boolean;
-  defaultExerciseId?: string;
-  language?: Language;
+  language: Language;
   createdAt: Date;
   updatedAt: Date;
   
   // UI state properties
   status?: 'locked' | 'available' | 'completed' | 'current';
-  progressCount?: number; // Add this for tracking node progress count
 }
 
 // API response for node exercise content
@@ -49,7 +45,5 @@ export interface ExerciseContent {
 // Result of node completion
 export interface NodeCompletionResult {
   isCompleted: boolean;
-  completionCount: number;
   nextNodeId?: string;
-  unlockedNodeIds?: string[];
 }

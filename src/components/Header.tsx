@@ -1,301 +1,171 @@
 
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSubscription } from '@/contexts/SubscriptionContext';
+import { Fragment } from 'react';
+import { Menu, Transition } from '@headlessui/react';
+import { ChevronDownIcon } from '@heroicons/react/20/solid';
+import { NavLink } from 'react-router-dom';
+import { HelpCircle, LayoutDashboard, LogOut, Settings, User, Map } from 'lucide-react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { useAdmin } from '@/hooks/use-admin';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
-import { 
-  Headphones, 
-  Menu, 
-  LogOut, 
-  BookOpen, 
-  Home, 
-  Settings, 
-  CreditCard,
-  Crown,
-  LayoutDashboard,
-  Book,
-  Shield,
-  HelpCircle,
-  Map
-} from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { getLanguageFlag } from '@/utils/languageUtils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import UserAvatar from './UserAvatar';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
-import { UserMessages } from '@/components/UserMessages';
-import ThemeToggle from './ThemeToggle';
 
-const Header: React.FC = () => {
-  const { user, signOut } = useAuth();
-  const { isAdmin } = useAdmin();
-  const { subscription } = useSubscription();
-  const { settings, selectLanguage } = useUserSettingsContext();
-  const location = useLocation();
-  const isMobile = useIsMobile();
-  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+function classNames(...classes: string[]) {
+  return classes.filter(Boolean).join(' ');
+}
 
-  const isActive = (path: string) => {
-    return location.pathname === path 
-      || (path !== '/dashboard' && location.pathname.startsWith(path));
-  };
-
-  const languageFlag = getLanguageFlag(settings.selectedLanguage);
-  
-  // Handler for clicking on the language flag
-  const handleLanguageClick = async () => {
-    // Get the next language in the learning languages array
-    const currentIndex = settings.learningLanguages.indexOf(settings.selectedLanguage);
-    const nextIndex = (currentIndex + 1) % settings.learningLanguages.length;
-    const nextLanguage = settings.learningLanguages[nextIndex];
-    
-    try {
-      await selectLanguage(nextLanguage);
-      toast.success(`Switched to ${nextLanguage}`, {
-        description: `Active language changed to ${nextLanguage}`
-      });
-    } catch (error) {
-      console.error('Error switching language:', error);
-      toast.error('Failed to switch language');
-    }
-  };
+export default function Header() {
+  const { settings } = useUserSettingsContext();
 
   return (
-    <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur">
-      <div className="container flex h-14 sm:h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-2 sm:gap-6">
-          <Link 
-            to="/dashboard" 
-            className="flex items-center gap-2 text-lg font-semibold"
-          >
-            <Headphones className="h-5 w-5 text-primary" />
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent hidden sm:inline-block">
-              lwlnow
+    <header className="bg-white border-b dark:bg-gray-900 dark:border-gray-800">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex">
+            <div className="flex-shrink-0 flex items-center">
+              <NavLink to="/" className="text-xl font-bold text-gray-800 dark:text-white">
+                LWL
+              </NavLink>
+            </div>
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-4">
+              <NavLink
+                to="/"
+                className={({ isActive }) =>
+                  classNames(
+                    isActive
+                      ? 'border-primary dark:border-primary text-gray-900 dark:text-gray-100'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 dark:text-gray-300 dark:hover:text-gray-100 dark:hover:border-gray-700',
+                    'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
+                  )
+                }
+              >
+                Home
+              </NavLink>
+              <NavLink
+                to="/dashboard"
+                className={({ isActive }) =>
+                  classNames(
+                    isActive
+                      ? 'border-primary dark:border-primary text-gray-900 dark:text-gray-100'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 dark:text-gray-300 dark:hover:text-gray-100 dark:hover:border-gray-700',
+                    'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
+                  )
+                }
+              >
+                Dashboard
+              </NavLink>
+              <NavLink
+                to="/roadmap"
+                className={({ isActive }) =>
+                  classNames(
+                    isActive
+                      ? 'border-primary dark:border-primary text-gray-900 dark:text-gray-100'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 dark:text-gray-300 dark:hover:text-gray-100 dark:hover:border-gray-700',
+                    'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
+                  )
+                }
+              >
+                Learning Paths
+              </NavLink>
+            </div>
+          </div>
+          <div className="hidden sm:ml-6 sm:flex sm:items-center">
+            {/* Language badge */}
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
+              {settings.selectedLanguage.charAt(0).toUpperCase() + settings.selectedLanguage.slice(1)}
             </span>
-          </Link>
-          
-          {!isMobile && user && (
-            <nav className="flex items-center gap-1">
-              <Button 
-                asChild 
-                variant={isActive('/dashboard') && !isActive('/dashboard/exercises') && !isActive('/dashboard/vocabulary') && !isActive('/dashboard/roadmap') ? "default" : "ghost"}
-                size="sm"
-                className="transition-all"
+
+            {/* Profile dropdown */}
+            <Menu as="div" className="ml-3 relative">
+              <div>
+                <Menu.Button className="bg-white dark:bg-gray-800 rounded-full flex items-center justify-center p-1 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
+                  <span className="sr-only">Open user menu</span>
+                  <User className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                  <ChevronDownIcon className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                </Menu.Button>
+              </div>
+              <Transition
+                as={Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="transform opacity-0 scale-95"
+                enterTo="transform opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 scale-100"
+                leaveTo="transform opacity-0 scale-95"
               >
-                <Link to="/dashboard">
-                  <LayoutDashboard className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Dashboard</span>
-                </Link>
-              </Button>
-              
-              <Button 
-                asChild 
-                variant={isActive('/dashboard/roadmap') ? "default" : "ghost"}
-                size="sm"
-                className="transition-all"
-              >
-                <Link to="/dashboard/roadmap">
-                  <Map className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Roadmap</span>
-                </Link>
-              </Button>
-              
-              <Button 
-                asChild 
-                variant={isActive('/dashboard/exercises') ? "default" : "ghost"}
-                size="sm"
-                className="transition-all"
-              >
-                <Link to="/dashboard/exercises">
-                  <BookOpen className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Exercises</span>
-                </Link>
-              </Button>
-              
-              <Button 
-                asChild 
-                variant={isActive('/dashboard/vocabulary') ? "default" : "ghost"}
-                size="sm"
-                className="transition-all"
-              >
-                <Link to="/dashboard/vocabulary">
-                  <Book className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Vocabulary</span>
-                </Link>
-              </Button>
-              
-              {isAdmin && (
-                <Button 
-                  asChild 
-                  variant={isActive('/dashboard/admin') ? "default" : "ghost"}
-                  size="sm"
-                  className="transition-all bg-amber-500/10 hover:bg-amber-500/20"
-                >
-                  <Link to="/dashboard/admin">
-                    <Shield className="h-4 w-4 sm:mr-1 text-amber-500" />
-                    <span className="hidden sm:inline text-amber-500">Admin</span>
-                  </Link>
-                </Button>
-              )}
-            </nav>
-          )}
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {user && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button 
-                    onClick={handleLanguageClick} 
-                    className="flex items-center justify-center h-8 w-8 text-lg animate-fade-in hover:scale-110 transition-transform rounded-full hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    aria-label="Cycle through languages"
-                  >
-                    {languageFlag}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Click to switch language (current: {settings.selectedLanguage})</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          
-          {/* Theme Toggle Added Here */}
-          <ThemeToggle variant="compact" showLabel={false} />
-          
-          {user ? (
-            <>
-              {subscription.isSubscribed && (
-                <span className="hidden sm:flex items-center text-xs font-medium bg-primary/15 text-primary px-2 py-1 rounded animate-fade-in">
-                  <Crown className="h-3 w-3 mr-1" />
-                  Premium
-                </span>
-              )}
-              
-              {/* Add UserMessages component here */}
-              <UserMessages />
-              
-              {/* Admin quick access button */}
-              {isAdmin && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        asChild
-                        variant="ghost" 
-                        size="icon" 
-                        className="rounded-full text-amber-500 hover:text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                <Menu.Items className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <Menu.Item>
+                    {({ active }) => (
+                      <NavLink
+                        to="/dashboard"
+                        className={classNames(
+                          active ? 'bg-gray-100 dark:bg-gray-700' : '',
+                          'flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200'
+                        )}
                       >
-                        <Link to="/dashboard/admin">
-                          <Shield className="h-5 w-5" />
-                        </Link>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Admin Dashboard</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              
-              {/* User dropdown menu */}
-              <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="rounded-full"
-                  >
-                    <UserAvatar />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className={cn(
-                  "z-50 min-w-[12rem] bg-background border border-border overflow-hidden rounded-md shadow-md",
-                  "animate-in fade-in-80"
-                )}>
-                  {isMobile && (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link to="/dashboard" className="flex items-center w-full">
-                          <Home className="h-4 w-4 mr-2" /> Dashboard
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/dashboard/roadmap" className="flex items-center w-full">
-                          <Map className="h-4 w-4 mr-2" /> Roadmap
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/dashboard/exercises" className="flex items-center w-full">
-                          <BookOpen className="h-4 w-4 mr-2" /> Exercises
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/dashboard/vocabulary" className="flex items-center w-full">
-                          <Book className="h-4 w-4 mr-2" /> Vocabulary
-                        </Link>
-                      </DropdownMenuItem>
-                      {isAdmin && (
-                        <DropdownMenuItem asChild>
-                          <Link to="/dashboard/admin" className="flex items-center w-full">
-                            <Shield className="h-4 w-4 mr-2 text-amber-500" /> Admin Dashboard
-                          </Link>
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
-                  <DropdownMenuItem asChild>
-                    <Link to="/dashboard/settings" className="flex items-center w-full">
-                      <Settings className="h-4 w-4 mr-2" /> Settings
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/dashboard/subscription" className="flex items-center w-full">
-                      <CreditCard className="h-4 w-4 mr-2" /> Subscription
-                      {subscription.isSubscribed && (
-                        <Crown className="h-3 w-3 ml-1 text-primary" />
-                      )}
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/dashboard/tutorial" className="flex items-center w-full">
-                      <HelpCircle className="h-4 w-4 mr-2" /> Tutorial
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut} className="flex items-center w-full">
-                    <LogOut className="h-4 w-4 mr-2" /> Log out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          ) : (
-            <>
-              <Button asChild variant="ghost" className="transition-all text-sm" size="sm">
-                <Link to="/login">Log in</Link>
-              </Button>
-              <Button asChild className="transition-all text-sm" size="sm">
-                <Link to="/signup">Sign up</Link>
-              </Button>
-            </>
-          )}
+                        <LayoutDashboard className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                        Dashboard
+                      </NavLink>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <NavLink
+                        to="/roadmap"
+                        className={classNames(
+                          active ? 'bg-gray-100 dark:bg-gray-700' : '',
+                          'flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200'
+                        )}
+                      >
+                        <Map className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                        Learning Paths
+                      </NavLink>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <a
+                        href="#"
+                        className={classNames(
+                          active ? 'bg-gray-100 dark:bg-gray-700' : '',
+                          'flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200'
+                        )}
+                      >
+                        <Settings className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                        Settings
+                      </a>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <a
+                        href="#"
+                        className={classNames(
+                          active ? 'bg-gray-100 dark:bg-gray-700' : '',
+                          'flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200'
+                        )}
+                      >
+                        <HelpCircle className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                        Help
+                      </a>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <a
+                        href="#"
+                        className={classNames(
+                          active ? 'bg-gray-100 dark:bg-gray-700' : '',
+                          'flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200'
+                        )}
+                      >
+                        <LogOut className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                        Sign out
+                      </a>
+                    )}
+                  </Menu.Item>
+                </Menu.Items>
+              </Transition>
+            </Menu>
+          </div>
         </div>
       </div>
     </header>
   );
-};
-
-export default Header;
+}

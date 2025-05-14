@@ -1,152 +1,86 @@
-import React, { useEffect } from 'react';
-import { useRoadmap } from '../context/RoadmapContext';
+
+import React from 'react';
+import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '../types';
-import { Loader2 } from 'lucide-react';
-import RoadmapPath from './RoadmapPath';
-import LevelBadge from '@/components/LevelBadge';
 import { Button } from '@/components/ui/button';
-import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { toast } from '@/components/ui/use-toast';
+import { CheckCircle, CircleDashed, Lock, Play } from 'lucide-react';
 
 interface RoadmapVisualizationProps {
   onNodeSelect: (node: RoadmapNode) => void;
-  className?: string;
 }
 
-const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ 
-  onNodeSelect,
-  className
-}) => {
-  const { 
-    currentRoadmap, 
-    nodes, 
-    completedNodes,
-    isLoading,
-    roadmaps,
-    currentNodeId,
-    selectRoadmap
-  } = useRoadmap();
-  
-  useEffect(() => {
-    console.log("RoadmapVisualization rendered with:", { 
-      currentRoadmap,
-      nodes: nodes?.length || 0,
-      currentNodeId
-    });
-    
-    if (currentRoadmap && (!nodes || nodes.length === 0)) {
-      console.log("No nodes found for current roadmap, attempting to reload");
-      // Attempt to reload the current roadmap if no nodes are found
-      selectRoadmap?.(currentRoadmap.id).catch(err => {
-        console.error("Failed to reload roadmap:", err);
-        toast({
-          variant: "destructive",
-          title: "Failed to load roadmap content",
-          description: "Please try refreshing the page"
-        });
-      });
-    }
-  }, [currentRoadmap, nodes, currentNodeId, selectRoadmap]);
+const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelect }) => {
+  const { nodes, isLoading } = useRoadmap();
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-        <p>Loading your learning path...</p>
-      </div>
-    );
+    return <div className="flex justify-center py-8">Loading roadmap...</div>;
   }
 
-  if (!currentRoadmap) {
-    return (
-      <div className="text-center p-8">
-        <p className="text-muted-foreground">No learning path selected</p>
-      </div>
-    );
-  }
-
-  // Find the roadmap details using the roadmapId from currentRoadmap
-  const roadmapDetails = roadmaps?.find(r => r.id === currentRoadmap.roadmapId);
-  const roadmapName = roadmapDetails?.name || "Learning Path";
-  const roadmapLevel = roadmapDetails?.level;
-  
-  // Find current node
-  const currentNode = nodes?.find(n => n.id === currentNodeId);
-  
-  // Debug info about the nodes
-  console.log("Current roadmap nodes:", {
-    count: nodes?.length || 0,
-    nodeIds: nodes?.map(n => n.id) || [],
-    currentNodeId,
-    currentNode: currentNode ? { id: currentNode.id, title: currentNode.title } : null
-  });
-
-  if (!nodes || nodes.length === 0) {
-    return (
-      <div className={cn("space-y-6", className)}>
-        <motion.div 
-          className="flex items-center justify-between"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <div>
-            <h2 className="text-xl font-bold">{roadmapName}</h2>
-            <div className="flex items-center mt-1">
-              {roadmapLevel && <LevelBadge level={roadmapLevel} className="mr-2" />}
-            </div>
-          </div>
-        </motion.div>
-        
-        <div className="p-8 text-center rounded-lg border border-dashed border-muted-foreground/50">
-          <h3 className="font-medium text-muted-foreground">No content available</h3>
-          <p className="text-sm text-muted-foreground mt-2">
-            This roadmap doesn't have any nodes yet. Please check back later or select a different roadmap.
-          </p>
-        </div>
-      </div>
-    );
+  if (nodes.length === 0) {
+    return <div className="text-center py-8">No nodes found for this roadmap.</div>;
   }
 
   return (
-    <div className={cn("space-y-6", className)}>
-      <motion.div 
-        className="flex items-center justify-between"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <div>
-          <h2 className="text-xl font-bold">{roadmapName}</h2>
-          <div className="flex items-center mt-1">
-            {roadmapLevel && <LevelBadge level={roadmapLevel} className="mr-2" />}
-            <span className="text-sm text-muted-foreground">
-              {completedNodes?.length || 0} of {nodes.length} completed
-            </span>
+    <div className="py-4">
+      <div className="flex flex-col items-center">
+        {nodes.map((node, index) => (
+          <div key={node.id} className="w-full max-w-md mb-4">
+            <div className="flex items-start">
+              {/* Connector line */}
+              {index > 0 && (
+                <div className="h-8 w-0.5 bg-muted-foreground/30 -mt-4 ml-6"></div>
+              )}
+            </div>
+            
+            <div className="flex items-start space-x-4">
+              {/* Status icon */}
+              <div className="p-2 rounded-full bg-background border">
+                {node.status === 'completed' ? (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : node.status === 'available' ? (
+                  <CircleDashed className="h-5 w-5 text-blue-500" />
+                ) : (
+                  <Lock className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
+              
+              {/* Node content */}
+              <div className="flex-1 bg-card p-4 rounded-lg border shadow-sm">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium">{node.title}</h3>
+                    {node.description && (
+                      <p className="text-sm text-muted-foreground mt-1">{node.description}</p>
+                    )}
+                  </div>
+                  
+                  <Button
+                    variant={node.status === 'current' ? "default" : "outline"}
+                    size="sm"
+                    disabled={node.status === 'locked'}
+                    onClick={() => onNodeSelect(node)}
+                  >
+                    {node.status === 'completed' ? (
+                      "Review"
+                    ) : (
+                      <>
+                        <Play className="h-3 w-3 mr-1" />
+                        Start
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                {node.isBonus && (
+                  <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-500">
+                    Bonus Exercise
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-        
-        {currentNode && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
-          >
-            <Button 
-              onClick={() => onNodeSelect(currentNode)}
-              className="bg-secondary hover:bg-secondary/90"
-            >
-              Continue Learning
-            </Button>
-          </motion.div>
-        )}
-      </motion.div>
-
-      <RoadmapPath
-        nodes={nodes}
-        onNodeSelect={onNodeSelect}
-      />
+        ))}
+      </div>
     </div>
   );
 };

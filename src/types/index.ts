@@ -29,7 +29,6 @@ export interface Exercise {
   completionCount: number;
   isCompleted: boolean;
   archived?: boolean;
-  default_exercise_id?: string;  // Add this line to include the default exercise ID
 }
 
 export interface Directory {
@@ -53,81 +52,3 @@ export interface UserSettings {
   learningLanguages: Language[];
   selectedLanguage: Language;
 }
-
-// Add the new Roadmap types
-export type LanguageLevel = 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
-
-export interface Roadmap {
-  id: string;
-  name: string;
-  level: LanguageLevel;
-  description?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy?: string;
-  languages?: Language[]; // Added languages array
-}
-
-export interface RoadmapNode {
-  id: string;
-  roadmapId: string;
-  defaultExerciseId?: string;
-  title: string;
-  description?: string;
-  position: number;
-  isBonus: boolean;
-  language?: Language; // Added language field
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface RoadmapLanguage {
-  id: string;
-  roadmapId: string;
-  language: Language;
-  createdAt: Date;
-}
-
-export interface UserRoadmap {
-  id: string;
-  userId: string;
-  roadmapId: string;
-  language: Language;
-  currentNodeId?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface RoadmapProgress {
-  id: string;
-  userId: string;
-  roadmapId: string;
-  nodeId: string;
-  completed: boolean;
-  completedAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// Add new RoadmapNodeProgress type
-export interface RoadmapNodeProgress {
-  id: string;
-  userId: string;
-  roadmapId: string;
-  nodeId: string;
-  language: Language;
-  completionCount: number;
-  isCompleted: boolean;
-  lastPracticedAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// Add Json type for compatibility with Supabase
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[];
