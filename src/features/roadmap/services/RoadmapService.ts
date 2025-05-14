@@ -9,11 +9,28 @@ import { exerciseService } from './ExerciseService';
  * Service for managing roadmap data
  */
 class RoadmapService extends BaseService implements RoadmapServiceInterface {
+  private _cacheTimeMs = 5 * 60 * 1000; // 5 minutes cache
+  private _roadmapsCache: { [key: string]: { data: RoadmapItem[], timestamp: number } } = {};
+  private _maxRetries = 2;
+  
   /**
    * Get all roadmaps available for a language
    */
   async getRoadmapsByLanguage(language: Language): Promise<ServiceResponse<RoadmapItem[]>> {
     console.log(`Getting roadmaps for language: ${language}`);
+    
+    // Check cache first
+    const cacheKey = `roadmaps_${language}`;
+    const cachedData = this._roadmapsCache[cacheKey];
+    if (cachedData && (Date.now() - cachedData.timestamp) < this._cacheTimeMs) {
+      console.log('Returning cached roadmaps data');
+      return {
+        status: 'success',
+        data: cachedData.data,
+        error: null
+      };
+    }
+    
     try {
       // Check if the user is authenticated
       const user = this.getUser();
@@ -47,6 +64,12 @@ class RoadmapService extends BaseService implements RoadmapServiceInterface {
           updatedAt: new Date()
         }
       ];
+
+      // Cache the result
+      this._roadmapsCache[cacheKey] = {
+        data: mockRoadmaps,
+        timestamp: Date.now()
+      };
 
       return {
         status: 'success',

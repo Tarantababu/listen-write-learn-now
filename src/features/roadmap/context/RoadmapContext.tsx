@@ -1,10 +1,11 @@
+
 import React, { createContext, useState, useCallback, useEffect } from 'react';
 import { roadmapService } from '../services/RoadmapService';
 import { progressService } from '../services/ProgressService';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
 import { Language, LanguageLevel } from '@/types';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 // Define the context type
 interface RoadmapContextType {
@@ -73,6 +74,8 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
   const [currentRoadmap, setCurrentRoadmap] = useState<RoadmapItem | null>(null);
   const [nodes, setNodes] = useState<RoadmapNode[]>([]);
   const [nodeProgress, setNodeProgress] = useState<Array<{ nodeId: string, completionCount: number, isCompleted: boolean }>>([]);
+  const [dataFetched, setDataFetched] = useState<boolean>(false);
+  const [fetchError, setFetchError] = useState<boolean>(false);
   
   // Get user's selected language
   const { settings } = useUserSettingsContext();
@@ -83,12 +86,16 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
   // Save state to localStorage
   const saveStateToLocalStorage = useCallback(() => {
     if (userRoadmaps.length > 0) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
-        userRoadmaps,
-        currentRoadmapId: currentRoadmap?.id,
-        lastUpdated: new Date().toISOString(),
-        language: settings.selectedLanguage
-      }));
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
+          userRoadmaps,
+          currentRoadmapId: currentRoadmap?.id,
+          lastUpdated: new Date().toISOString(),
+          language: settings.selectedLanguage
+        }));
+      } catch (error) {
+        console.error('Error saving roadmap state to localStorage:', error);
+      }
     }
   }, [userRoadmaps, currentRoadmap, settings.selectedLanguage]);
   
@@ -127,6 +134,8 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
 
   // Load roadmaps
   const loadRoadmaps = useCallback(async (language: Language) => {
+    if (isLoading || fetchError) return;
+    
     setIsLoading(true);
     try {
       console.log('Loading roadmaps for language:', language);
@@ -136,6 +145,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         console.log('Roadmaps loaded:', result.data.length);
       } else {
         console.error('Error loading roadmaps:', result.error);
+        setFetchError(true);
         toast({
           variant: "destructive",
           title: "Failed to load roadmaps",
@@ -144,6 +154,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       }
     } catch (error) {
       console.error('Error loading roadmaps:', error);
+      setFetchError(true);
       toast({
         variant: "destructive",
         title: "Failed to load roadmaps",
@@ -151,11 +162,14 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       });
     } finally {
       setIsLoading(false);
+      setDataFetched(true);
     }
-  }, []);
+  }, [fetchError]);
 
   // Load user roadmaps
   const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
+    if (isLoading || fetchError) return [];
+    
     setIsLoading(true);
     try {
       console.log('Loading user roadmaps for language:', language);
@@ -178,6 +192,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         return userRoadmapsData;
       } else {
         console.error('Error loading user roadmaps:', result.error);
+        setFetchError(true);
         toast({
           variant: "destructive",
           title: "Failed to load your roadmaps",
@@ -187,6 +202,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       }
     } catch (error) {
       console.error('Error loading user roadmaps:', error);
+      setFetchError(true);
       toast({
         variant: "destructive",
         title: "Failed to load your roadmaps",
@@ -195,11 +211,14 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       return [];
     } finally {
       setIsLoading(false);
+      setDataFetched(true);
     }
-  }, [currentRoadmap]);
+  }, [currentRoadmap, selectRoadmap, fetchError]);
 
   // Select a roadmap
   const selectRoadmap = useCallback(async (roadmapId: string): Promise<RoadmapNode[]> => {
+    if (isLoading || fetchError) return [];
+    
     setIsLoading(true);
     let retryCount = 0;
     const MAX_RETRIES = 3;
@@ -260,6 +279,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
           return nodesData;
         } else {
           console.error('Error loading nodes:', result.error);
+          setFetchError(true);
           toast({
             variant: "destructive",
             title: "Failed to load roadmap details",
@@ -276,19 +296,22 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     try {
       return await attemptSelection();
     } catch (error) {
+      setFetchError(true);
       toast({
         variant: "destructive",
         title: "Failed to load roadmap",
         description: "There was an error loading the roadmap details."
       });
-      throw error;
+      return [];
     } finally {
       setIsLoading(false);
     }
-  }, [userRoadmaps, settings.selectedLanguage, loadUserRoadmaps]);
+  }, [userRoadmaps, settings.selectedLanguage, loadUserRoadmaps, fetchError]);
 
   // Initialize a new roadmap
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language): Promise<string> => {
+    if (isLoading || fetchError) return '';
+    
     setIsLoading(true);
     try {
       console.log(`Initializing roadmap: level=${level}, language=${language}`);
@@ -307,6 +330,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         return result.data;
       } else {
         console.error('Error initializing roadmap:', result.error);
+        setFetchError(true);
         toast({
           variant: "destructive",
           title: "Failed to create roadmap",
@@ -316,6 +340,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
       }
     } catch (error) {
       console.error('Error initializing roadmap:', error);
+      setFetchError(true);
       toast({
         variant: "destructive",
         title: "Failed to create roadmap",
@@ -325,7 +350,7 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  }, [loadUserRoadmaps]);
+  }, [loadUserRoadmaps, fetchError]);
 
   // Get exercise content for a node
   const getNodeExercise = useCallback(async (nodeId: string): Promise<ExerciseContent | null> => {
@@ -480,25 +505,39 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
   // Create an alias for recordNodeCompletion for backward compatibility
   const incrementNodeCompletion = recordNodeCompletion;
 
-  // Load roadmaps on language change
+  // Load roadmaps on language change - with safeguards against infinite loops
   useEffect(() => {
-    if (settings.selectedLanguage) {
-      loadUserRoadmaps(settings.selectedLanguage);
-      loadRoadmaps(settings.selectedLanguage);
+    if (settings.selectedLanguage && !dataFetched && !fetchError) {
+      // Try to restore from local storage first
+      const restored = restoreStateFromLocalStorage();
+      
+      // If nothing was restored, load from API
+      if (!restored) {
+        loadUserRoadmaps(settings.selectedLanguage).catch(err => {
+          console.error('Error in initial roadmap data loading:', err);
+        });
+        loadRoadmaps(settings.selectedLanguage).catch(err => {
+          console.error('Error in initial roadmap loading:', err);
+        });
+      }
     }
-  }, [settings.selectedLanguage, loadUserRoadmaps, loadRoadmaps]);
+  }, [settings.selectedLanguage, dataFetched, restoreStateFromLocalStorage, loadUserRoadmaps, loadRoadmaps, fetchError]);
   
   // Add validation effect when component mounts
   useEffect(() => {
     const validateData = async () => {
-      if (!settings.selectedLanguage) return;
+      if (!settings.selectedLanguage || dataFetched || fetchError) return;
       
       // Try to restore from local storage first
       const restored = restoreStateFromLocalStorage();
       
       // If nothing was restored or what was restored is empty, load from API
       if (!restored || userRoadmaps.length === 0) {
-        await loadUserRoadmaps(settings.selectedLanguage);
+        try {
+          await loadUserRoadmaps(settings.selectedLanguage);
+        } catch (error) {
+          console.error('Error loading user roadmaps during validation:', error);
+        }
       }
       
       // Validate that if we have a currentRoadmap, it's actually in userRoadmaps
@@ -524,7 +563,9 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     loadUserRoadmaps, 
     selectRoadmap, 
     userRoadmaps, 
-    currentRoadmap
+    currentRoadmap,
+    dataFetched,
+    fetchError
   ]);
   
   // Add effect to save state when it changes
