@@ -27,8 +27,9 @@ export const trackPageView = async (page: string): Promise<void> => {
     const visitorId = getVisitorId();
     
     // Add timeout to prevent long-running requests
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => {
+      console.warn('Page view tracking timed out');
+    }, 5000);
     
     const response = await supabase.functions.invoke('track-visitor', {
       body: {
@@ -36,8 +37,7 @@ export const trackPageView = async (page: string): Promise<void> => {
         page,
         referer: document.referrer || null,
         userAgent: navigator.userAgent
-      },
-      signal: controller.signal
+      }
     });
     
     clearTimeout(timeoutId);
@@ -62,8 +62,9 @@ export const trackButtonClick = async (buttonName: string): Promise<void> => {
     const visitorId = getVisitorId();
     
     // Add timeout to prevent long-running requests
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => {
+      console.warn('Button click tracking timed out');
+    }, 5000);
     
     const response = await supabase.functions.invoke('track-visitor', {
       body: {
@@ -71,8 +72,7 @@ export const trackButtonClick = async (buttonName: string): Promise<void> => {
         page: `button_click:${buttonName}`,
         referer: document.referrer || null,
         userAgent: navigator.userAgent
-      },
-      signal: controller.signal
+      }
     });
     
     clearTimeout(timeoutId);
