@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCcw } from 'lucide-react';
@@ -20,7 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { deleteAssociatedCompletions } from '@/services/exerciseService';
 import { useLocalExercises } from '@/hooks/useLocalExercises';
-import { asUUID, asString, asUpdateObject } from '@/utils/supabaseHelpers';
+import { asUUID, asString } from '@/utils/supabaseHelpers';
 
 interface ResetLanguageProgressProps {
   className?: string;
@@ -67,15 +66,13 @@ const ResetLanguageProgress: React.FC<ResetLanguageProgressProps> = ({
         if (languageExercises && languageExercises.length > 0) {
           const exerciseIds = languageExercises.map(ex => 'id' in ex ? ex.id : '');
           
-          // Fix: Use proper type casting for the update operation
-          const updateData = asUpdateObject({
-            completion_count: 0, 
-            is_completed: false
-          });
-          
+          // Direct update without type helpers
           const { error: exerciseError } = await supabase
             .from('exercises')
-            .update(updateData)
+            .update({
+              completion_count: 0, 
+              is_completed: false
+            })
             .eq('user_id', asUUID(user.id))
             .eq('language', asString(currentLanguage));
             

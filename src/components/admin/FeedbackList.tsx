@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { asUUID } from '@/utils/supabaseHelpers';
 
 interface Feedback {
   id: string;
@@ -31,7 +32,7 @@ export function FeedbackList() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as Feedback[];
+      return data as unknown as Feedback[];
     }
   });
 
@@ -41,7 +42,7 @@ export function FeedbackList() {
       const { error } = await supabase
         .from('feedback')
         .update({ read: true })
-        .eq('id', id);
+        .eq('id', asUUID(id));
       
       if (error) throw error;
       

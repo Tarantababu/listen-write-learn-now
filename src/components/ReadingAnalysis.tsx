@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { asUUID, asInsertObject, asUpdateObject } from '@/utils/supabaseHelpers';
+import { asUUID } from '@/utils/supabaseHelpers';
 
 interface ReadingAnalysisProps {
   exercise: Exercise;
@@ -122,16 +122,14 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
           try {
             const jsonContent = analysisContent as unknown as Json;
             
-            // Use proper type casting for the insert operation
-            const insertData = asInsertObject({
-              user_id: user.id,
-              exercise_id: exercise.id,
-              content: jsonContent
-            });
-            
+            // Insert analysis without type helpers - using direct typing instead
             const { error: saveError, data: savedData } = await supabase
               .from('reading_analyses')
-              .insert(insertData)
+              .insert({
+                user_id: user.id,
+                exercise_id: exercise.id,
+                content: jsonContent
+              })
               .select('id')
               .single();
               
@@ -153,14 +151,12 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                   const currentCount = profileData.reading_analyses_count || 0;
                   const newCount = currentCount + 1;
                   
-                  // Use proper type casting for the update operation
-                  const updateData = asUpdateObject({
-                    reading_analyses_count: newCount
-                  });
-                  
+                  // Direct update without type helpers
                   const { error: updateError } = await supabase
                     .from('profiles')
-                    .update(updateData)
+                    .update({
+                      reading_analyses_count: newCount
+                    })
                     .eq('id', asUUID(user.id));
                     
                   if (updateError) {

@@ -19,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { asUUID, asString, asBoolean } from '@/utils/supabaseHelpers';
 
 interface AdminMessage {
   id: string;
@@ -76,7 +77,7 @@ export function AdminMessagesList({ onRefresh }: { onRefresh?: () => void }) {
         return message as unknown as AdminMessage;
       }));
       
-      return messagesWithStats as AdminMessage[];
+      return messagesWithStats;
     }
   });
 
@@ -84,8 +85,8 @@ export function AdminMessagesList({ onRefresh }: { onRefresh?: () => void }) {
     try {
       const { error } = await supabase
         .from('admin_messages')
-        .update({ is_active: !message.is_active } as any)
-        .eq('id', message.id);
+        .update({ is_active: !message.is_active })
+        .eq('id', asUUID(message.id));
       
       if (error) throw error;
       
@@ -120,7 +121,7 @@ export function AdminMessagesList({ onRefresh }: { onRefresh?: () => void }) {
       const { error } = await supabase
         .from('admin_messages')
         .delete()
-        .eq('id', selectedMessage.id);
+        .eq('id', asUUID(selectedMessage.id));
       
       if (error) throw error;
       
