@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { asUUID, asString, asBoolean } from '@/utils/supabaseHelpers';
+import { asUUID, asString, asBoolean, asUpdateObject } from '@/utils/supabaseHelpers';
 
 interface AdminMessage {
   id: string;
@@ -57,14 +57,14 @@ export function AdminMessagesList({ onRefresh }: { onRefresh?: () => void }) {
           const { count: userCount, error: userCountError } = await supabase
             .from('user_messages')
             .select('*', { count: 'exact', head: true })
-            .eq('message_id', messageId);
+            .eq('message_id', asString(messageId));
           
           // Get read count
           const { count: readCount, error: readCountError } = await supabase
             .from('user_messages')
             .select('*', { count: 'exact', head: true })
-            .eq('message_id', messageId)
-            .eq('is_read', true);
+            .eq('message_id', asString(messageId))
+            .eq('is_read', asBoolean(true));
           
           return {
             ...message as any,
@@ -83,9 +83,13 @@ export function AdminMessagesList({ onRefresh }: { onRefresh?: () => void }) {
 
   const handleToggleActive = async (message: AdminMessage) => {
     try {
+      const updateData = asUpdateObject<'admin_messages'>({
+        is_active: !message.is_active
+      });
+      
       const { error } = await supabase
         .from('admin_messages')
-        .update({ is_active: !message.is_active })
+        .update(updateData)
         .eq('id', asUUID(message.id));
       
       if (error) throw error;
