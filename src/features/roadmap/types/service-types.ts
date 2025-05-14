@@ -1,6 +1,6 @@
 
 import { Language, LanguageLevel } from '@/types';
-import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
+import { RoadmapItem, RoadmapNode, ExerciseContent } from '../types';
 
 // Base response type for all service methods
 export interface ServiceResponse<T> {
@@ -30,8 +30,12 @@ export interface ProgressServiceInterface {
   getNodeProgress(nodeId: string): ServiceResult<NodeProgressDetails>;
 }
 
-// Export NodeCompletionResult to fix the error
-export { NodeCompletionResult };
+// Export the type using the correct syntax for isolated modules
+export interface NodeCompletionResult {
+  isCompleted: boolean;
+  completionCount: number;
+  nextNodeId?: string;
+}
 
 // ExerciseService types
 export interface ExerciseServiceInterface {
