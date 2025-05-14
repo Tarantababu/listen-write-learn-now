@@ -6,6 +6,7 @@ type ToastProps = {
   description?: string;
   variant?: 'default' | 'destructive' | 'success';
   action?: React.ReactNode;
+  toasts?: any[];
 };
 
 export function useToast() {
@@ -21,6 +22,9 @@ export function useToast() {
     });
   };
 
+  // Add the toasts property to make it compatible with the Toaster component
+  toast.toasts = [];
+
   return { toast };
 }
 
@@ -35,3 +39,6 @@ export const toast = ({ title, description, variant, action }: ToastProps) => {
       : undefined
   });
 };
+
+// Add the toasts property to make it compatible with the Toaster component
+toast.toasts = [];

@@ -226,7 +226,6 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       toast({
         title: "Recording started",
         description: "Speak clearly into your microphone",
-        duration: 2000,
       });
     } catch (error) {
       console.error('Error accessing microphone:', error);
@@ -251,7 +250,6 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       toast({
         title: "Recording paused",
         description: "Press resume when you're ready to continue",
-        duration: 2000,
       });
     }
   };
@@ -269,7 +267,6 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       toast({
         title: "Recording resumed",
         description: "Continue speaking into your microphone",
-        duration: 2000,
       });
     }
   };
@@ -309,7 +306,6 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
     
     toast({
       title: "Recording cancelled",
-      duration: 2000,
     });
   };
 
@@ -358,7 +354,6 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
             toast({
               title: "Transcription complete",
               description: "Your speech has been converted to text",
-              duration: 2000,
             });
           } else {
             console.error('No text in response:', data);

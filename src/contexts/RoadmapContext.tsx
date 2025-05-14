@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -390,7 +389,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
         // No nodes for this roadmap and language
         toast({
-          variant: "warning",
+          variant: "destructive", // Change from "warning" to "destructive"
           title: "Roadmap content missing",
           description: "This roadmap doesn't have any content yet. Please check back later."
         });

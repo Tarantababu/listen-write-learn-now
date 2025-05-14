@@ -10,11 +10,11 @@ import {
 import { useToast } from "@/hooks/use-toast"
 
 export function Toaster() {
-  const { toasts } = useToast()
+  const { toast } = useToast()
 
   return (
     <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, variant, ...props }) {
+      {toast.toasts?.map(function ({ id, title, description, action, variant, ...props }) {
         // Don't auto-dismiss error toasts
         const shouldAutoClose = variant !== 'destructive';
         

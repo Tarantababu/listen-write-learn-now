@@ -12,13 +12,15 @@ interface ExerciseContentProps {
   onComplete?: () => void;
   isLoading?: boolean;
   isCompleted?: boolean;
+  showActions?: boolean; // Add the missing prop
 }
 
 const ExerciseContent: React.FC<ExerciseContentProps> = ({
   exercise,
   onComplete,
   isLoading = false,
-  isCompleted = false
+  isCompleted = false,
+  showActions = true // Default value
 }) => {
   return (
     <Card className="w-full">
@@ -40,15 +42,18 @@ const ExerciseContent: React.FC<ExerciseContentProps> = ({
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex justify-end">
-        <Button 
-          onClick={onComplete} 
-          disabled={isLoading || isCompleted}
-          variant={isCompleted ? "outline" : "default"}
-        >
-          {isCompleted ? "Completed" : "Mark as Complete"}
-        </Button>
-      </CardFooter>
+      
+      {showActions && (
+        <CardFooter className="flex justify-end">
+          <Button 
+            onClick={onComplete} 
+            disabled={isLoading || isCompleted}
+            variant={isCompleted ? "outline" : "default"}
+          >
+            {isCompleted ? "Completed" : "Mark as Complete"}
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 };
