@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -673,18 +672,14 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     <RoadmapContext.Provider value={{
       roadmaps,
       userRoadmaps,
-      selectedRoadmap,
-      currentNode,
-      roadmapNodes,
+      currentRoadmap: selectedRoadmap,
+      currentNodeId: selectedRoadmap?.currentNodeId,
+      nodes: roadmapNodes,
       progress,
       nodeProgress,
       loading,
       nodeLoading,
       isLoading,
-      // Alias properties to match what other components are using
-      currentRoadmap: selectedRoadmap,
-      nodes: roadmapNodes,
-      currentNodeId: selectedRoadmap?.currentNodeId,
       completedNodes,
       availableNodes,
       initializeUserRoadmap,

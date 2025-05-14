@@ -22,7 +22,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   } = useRoadmap();
   
   const getNodeStatus = (node: RoadmapNode): 'completed' | 'available' | 'locked' => {
-    if (completedNodes.includes(node.id)) {
+    if ((completedNodes || []).includes(node.id)) {
       return 'completed';
     }
 
@@ -30,7 +30,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
       return 'available';
     }
 
-    return 'locked';
+    return (availableNodes || []).includes(node.id) ? 'available' : 'locked';
   };
 
   if (isLoading) {

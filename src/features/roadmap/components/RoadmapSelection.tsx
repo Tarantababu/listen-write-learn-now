@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,20 +15,20 @@ const RoadmapSelection: React.FC = () => {
   
   const {
     initializeUserRoadmap,
-    roadmaps,
+    roadmaps = [], // Provide default empty array to prevent filter of undefined
     isLoading, 
-    userRoadmaps,
+    userRoadmaps = [] // Provide default empty array
   } = useRoadmap();
   
-  // Filter roadmaps based on the selected language and level
-  const availableRoadmaps = roadmaps.filter(roadmap =>
+  // Safely filter roadmaps with a null check
+  const availableRoadmaps = roadmaps?.filter(roadmap =>
     roadmap.languages?.includes(settings.selectedLanguage) && roadmap.level === selectedLevel
-  );
+  ) || [];
 
   // Check if there are any available roadmaps for the selected language
-  const hasAvailableRoadmaps = roadmaps.some(roadmap =>
+  const hasAvailableRoadmaps = roadmaps?.some(roadmap =>
     roadmap.languages?.includes(settings.selectedLanguage)
-  );
+  ) || false;
 
   // Get the selected language with proper capitalization
   const getCapitalizedLanguage = (lang: string) => {
@@ -50,6 +50,9 @@ const RoadmapSelection: React.FC = () => {
 
   // Disable the "Start Learning" button if there are no available roadmaps
   const isStartLearningDisabled = availableRoadmaps.length === 0;
+  
+  // Check if the user already has an active roadmap
+  const hasExistingRoadmap = userRoadmaps.length > 0;
 
   return (
     <Card>
@@ -116,14 +119,20 @@ const RoadmapSelection: React.FC = () => {
         <Button 
           className="w-full" 
           onClick={handleStartLearning}
-          disabled={isLoading || isStartLearningDisabled}
+          disabled={isLoading || isStartLearningDisabled || hasExistingRoadmap}
         >
           {isLoading ? 'Loading...' : 'Start Learning'}
         </Button>
         
-        {isStartLearningDisabled && (
+        {isStartLearningDisabled && !hasExistingRoadmap && (
           <p className="text-sm text-muted-foreground mt-2 text-center">
             No roadmaps available for the selected level.
+          </p>
+        )}
+
+        {hasExistingRoadmap && (
+          <p className="text-sm text-muted-foreground mt-2 text-center">
+            You already have an active learning path.
           </p>
         )}
       </CardContent>

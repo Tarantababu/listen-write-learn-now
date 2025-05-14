@@ -15,9 +15,9 @@ const RoadmapSelection: React.FC = () => {
   
   const {
     initializeUserRoadmap,
-    roadmaps,
+    roadmaps = [], // Provide default empty array to prevent filter of undefined
     isLoading, 
-    userRoadmaps,
+    userRoadmaps = [], // Provide default empty array
     loadUserRoadmaps
   } = useRoadmap();
   
@@ -39,8 +39,9 @@ const RoadmapSelection: React.FC = () => {
     }
   };
 
+  // Safely filter by providing default empty arrays
   const availableLevels = Array.from(new Set(
-    roadmaps
+    (roadmaps || [])
       .filter(roadmap => roadmap.languages?.includes(settings.selectedLanguage))
       .map(roadmap => roadmap.level)
   )) as LanguageLevel[];
@@ -49,7 +50,7 @@ const RoadmapSelection: React.FC = () => {
     return lang.charAt(0).toUpperCase() + lang.slice(1);
   };
 
-  const hasExistingRoadmap = userRoadmaps.length > 0;
+  const hasExistingRoadmap = (userRoadmaps || []).length > 0;
 
   return (
     <Card>
