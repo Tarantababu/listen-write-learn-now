@@ -60,7 +60,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             const { data, error } = await supabase
               .from('reading_analyses')
               .select('content')
-              .eq('id', asUUID(existingAnalysisId))
+              .eq('id', existingAnalysisId as any)
               .maybeSingle();
               
             if (error) {
@@ -143,7 +143,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                 const { data: profileData, error: fetchError } = await supabase
                   .from('profiles')
                   .select('reading_analyses_count')
-                  .eq('id', asUUID(user.id))
+                  .eq('id', user.id as any)
                   .maybeSingle();
                   
                 if (fetchError) {
@@ -159,7 +159,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                   const { error: updateError } = await supabase
                     .from('profiles')
                     .update(updateData)
-                    .eq('id', asUUID(user.id));
+                    .eq('id', user.id as any);
                     
                   if (updateError) {
                     console.error('Error updating analysis count:', updateError);

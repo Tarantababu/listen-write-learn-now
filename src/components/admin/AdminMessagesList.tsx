@@ -2,13 +2,16 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { Trash2, Edit, MessageSquare, Users, Clock, Check } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,24 +21,21 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { asUUID, asString, asBoolean, asUpdateObject } from '@/utils/supabaseHelpers';
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { asUpdateObject } from '@/utils/supabaseHelpers';
 
-interface AdminMessage {
-  id: string;
-  title: string;
-  content: string;
-  is_active: boolean;
-  created_at: string;
-  user_count?: number;
-  read_count?: number;
-}
-
-export function AdminMessagesList({ onRefresh }: { onRefresh?: () => void }) {
-  const { toast } = useToast();
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState<AdminMessage | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+export function AdminMessagesList() {
+  const [deleteMessageId, setDeleteMessageId] = useState<string | null>(null);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<any | null>(null);
+  const [isViewMessageOpen, setIsViewMessageOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('messages');
 
   const { data: messages = [], isLoading, refetch } = useQuery({
     queryKey: ['admin-messages'],
@@ -44,192 +44,276 @@ export function AdminMessagesList({ onRefresh }: { onRefresh?: () => void }) {
         .from('admin_messages')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      
-      // Get user count and read count for each message
-      const messagesWithStats = await Promise.all((data || []).map(async (message) => {
-        // Only attempt to get stats if we have a message ID
-        if (message && typeof message === 'object' && 'id' in message) {
-          const messageId = message.id as string;
-          
-          // Get total user count
-          const { count: userCount, error: userCountError } = await supabase
-            .from('user_messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('message_id', asString(messageId));
-          
-          // Get read count
-          const { count: readCount, error: readCountError } = await supabase
-            .from('user_messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('message_id', asString(messageId))
-            .eq('is_read', asBoolean(true));
-          
-          return {
-            ...message as any,
-            user_count: userCount || 0,
-            read_count: readCount || 0
-          } as AdminMessage;
-        }
-        
-        // If the message object doesn't have an ID, cast it to unknown then to AdminMessage
-        return message as unknown as AdminMessage;
-      }));
-      
-      return messagesWithStats;
-    }
+      return data || [];
+    },
   });
 
-  const handleToggleActive = async (message: AdminMessage) => {
+  const handleViewMessageDetails = async (messageId: string) => {
     try {
-      const updateData = asUpdateObject<'admin_messages'>({
-        is_active: !message.is_active
-      });
-      
-      const { error } = await supabase
+      // Get message details
+      const { data: message, error: messageError } = await supabase
         .from('admin_messages')
-        .update(updateData)
-        .eq('id', asUUID(message.id));
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Message updated",
-        description: `Message ${message.is_active ? 'deactivated' : 'activated'}`,
+        .select('*')
+        .eq('id', messageId as any)
+        .single();
+
+      if (messageError) throw messageError;
+
+      // Get read statistics
+      const { data: userMessagesTotal, error: statsError } = await supabase
+        .from('user_messages')
+        .select('*', { count: 'exact' })
+        .eq('message_id', messageId as any);
+
+      if (statsError) throw statsError;
+
+      const { data: userMessagesRead, error: readStatsError } = await supabase
+        .from('user_messages')
+        .select('*', { count: 'exact' })
+        .eq('message_id', messageId as any)
+        .eq('is_read', true as any);
+
+      if (readStatsError) throw readStatsError;
+
+      const totalCount = userMessagesTotal?.length || 0;
+      const readCount = userMessagesRead?.length || 0;
+
+      setSelectedMessage({
+        ...message,
+        stats: {
+          total: totalCount,
+          read: readCount,
+          readPercentage: totalCount > 0 ? Math.round((readCount / totalCount) * 100) : 0,
+        },
       });
-      
-      refetch();
-      
+
+      setIsViewMessageOpen(true);
+      setActiveTab('messages');
     } catch (error: any) {
-      console.error('Error toggling active:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update message",
-        variant: "destructive"
-      });
+      console.error('Error fetching message details:', error);
+      toast.error(`Failed to load message details: ${error.message}`);
     }
   };
 
-  const handleDelete = async (message: AdminMessage) => {
-    setSelectedMessage(message);
-    setDeleteDialogOpen(true);
-  };
+  const handleDeleteMessage = async () => {
+    if (!deleteMessageId) return;
 
-  const confirmDelete = async () => {
-    if (!selectedMessage) return;
-    
-    setIsDeleting(true);
     try {
-      // Delete the message
       const { error } = await supabase
         .from('admin_messages')
-        .delete()
-        .eq('id', asUUID(selectedMessage.id));
-      
+        .update(asUpdateObject<'admin_messages'>({ is_active: false }))
+        .eq('id', deleteMessageId as any);
+
       if (error) throw error;
-      
-      toast({
-        title: "Message deleted",
-        description: "Message has been permanently deleted.",
-      });
-      
-      setDeleteDialogOpen(false);
+
+      toast.success('Message deleted successfully');
       refetch();
-      if (onRefresh) onRefresh();
-      
     } catch (error: any) {
-      console.error('Error deleting message:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete message",
-        variant: "destructive"
-      });
+      toast.error(`Failed to delete message: ${error.message}`);
     } finally {
-      setIsDeleting(false);
+      setDeleteMessageId(null);
+      setIsConfirmDeleteOpen(false);
+    }
+  };
+
+  const handleToggleActiveStatus = async (messageId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('admin_messages')
+        .update(asUpdateObject<'admin_messages'>({ is_active: !currentStatus }))
+        .eq('id', messageId as any);
+
+      if (error) throw error;
+
+      toast.success(`Message ${currentStatus ? 'deactivated' : 'activated'} successfully`);
+      refetch();
+    } catch (error: any) {
+      toast.error(`Failed to update message status: ${error.message}`);
     }
   };
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Admin Messages</h2>
-      
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Message Management</h2>
+      </div>
+
       {isLoading ? (
-        <p>Loading messages...</p>
-      ) : messages.length === 0 ? (
-        <div className="py-6 text-center text-muted-foreground">
-          <AlertCircle className="mx-auto h-8 w-8 mb-2 opacity-50" />
-          <p>No messages yet</p>
+        <div className="flex justify-center p-6">
+          <p>Loading messages...</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {messages.map((message) => (
-            <Card key={message.id}>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>{message.title}</CardTitle>
-                  <Badge variant={message.is_active ? 'default' : 'secondary'}>
-                    {message.is_active ? 'Active' : 'Inactive'}
-                  </Badge>
-                </div>
-                <CardDescription>
-                  Sent on {format(new Date(message.created_at), 'MMMM d, yyyy')}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p>{message.content}</p>
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                  {message.user_count !== undefined && message.read_count !== undefined && (
-                    <>
-                      <p>{message.read_count} of {message.user_count} users read</p>
-                      {message.read_count === message.user_count ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+        <div className="bg-card rounded-md border shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {messages.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                    No messages found. Create your first message to get started.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                messages.map((message) => (
+                  <TableRow key={message.id}>
+                    <TableCell>
+                      <div className="font-medium">{message.title}</div>
+                    </TableCell>
+                    <TableCell>
+                      {message.is_active ? (
+                        <Badge className="bg-green-500 hover:bg-green-600">Active</Badge>
                       ) : (
-                        <AlertCircle className="h-4 w-4 text-amber-500" />
+                        <Badge variant="outline" className="text-muted-foreground">
+                          Inactive
+                        </Badge>
                       )}
-                    </>
-                  )}
-                </div>
-              </CardContent>
-              <CardContent className="flex justify-end space-x-2">
-                <Checkbox 
-                  id={`active-${message.id}`}
-                  checked={message.is_active}
-                  onCheckedChange={() => handleToggleActive(message)}
-                />
-                <label
-                  htmlFor={`active-${message.id}`}
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Active
-                </label>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleDelete(message)}
-                  disabled={isDeleting}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                    </TableCell>
+                    <TableCell>{format(new Date(message.created_at), 'MMM d, yyyy')}</TableCell>
+                    <TableCell className="text-right space-x-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleViewMessageDetails(message.id)}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleToggleActiveStatus(message.id, message.is_active)}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => {
+                          setDeleteMessageId(message.id);
+                          setIsConfirmDeleteOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
       )}
-      
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+
+      {/* Message View Dialog */}
+      <AlertDialog open={isViewMessageOpen} onOpenChange={setIsViewMessageOpen}>
+        <AlertDialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
+          {selectedMessage && (
+            <>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <AlertDialogHeader>
+                  <div className="flex justify-between items-center">
+                    <AlertDialogTitle>{selectedMessage.title}</AlertDialogTitle>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4 mr-1" />
+                      {format(new Date(selectedMessage.created_at), 'MMMM d, yyyy')}
+                    </div>
+                  </div>
+                  <AlertDialogDescription>
+                    Message ID: {selectedMessage.id}
+                  </AlertDialogDescription>
+                  <TabsList className="w-full mt-2">
+                    <TabsTrigger value="messages">Message Content</TabsTrigger>
+                    <TabsTrigger value="stats">Read Statistics</TabsTrigger>
+                  </TabsList>
+                </AlertDialogHeader>
+
+                <TabsContent value="messages" className="pt-2">
+                  <div className="whitespace-pre-wrap text-foreground">
+                    {selectedMessage.content}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="stats" className="pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card>
+                      <CardHeader className="p-4 pb-2">
+                        <CardTitle className="text-base">Total Recipients</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        <div className="text-2xl font-bold flex items-center">
+                          <Users className="h-5 w-5 mr-2 text-muted-foreground" />
+                          {selectedMessage.stats.total}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="p-4 pb-2">
+                        <CardTitle className="text-base">Read Count</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        <div className="text-2xl font-bold flex items-center">
+                          <Check className="h-5 w-5 mr-2 text-green-500" />
+                          {selectedMessage.stats.read}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="p-4 pb-2">
+                        <CardTitle className="text-base">Read Percentage</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        <div className="flex items-end">
+                          <span className="text-2xl font-bold">
+                            {selectedMessage.stats.readPercentage}%
+                          </span>
+                          <div className="ml-2 h-6 w-full bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-green-500"
+                              style={{
+                                width: `${selectedMessage.stats.readPercentage}%`,
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <AlertDialogFooter className="mt-4">
+                <AlertDialogCancel>Close</AlertDialogCancel>
+              </AlertDialogFooter>
+            </>
+          )}
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isConfirmDeleteOpen} onOpenChange={setIsConfirmDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this message? This action cannot be undone.
+              This will deactivate the message for all users. It cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} disabled={isDeleting}>
-              {isDeleting ? 'Deleting...' : 'Delete'}
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteMessage}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

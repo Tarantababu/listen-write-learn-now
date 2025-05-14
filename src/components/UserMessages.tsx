@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -49,7 +50,7 @@ export function UserMessages() {
             created_at
           )
         `)
-        .eq('user_id', asUUID(user.id))
+        .eq('user_id', user.id as any)
         .order('is_read', { ascending: true })
         .order('created_at', { foreignTable: 'message', ascending: false });
         
@@ -73,7 +74,7 @@ export function UserMessages() {
       const { error } = await supabase
         .from('user_messages')
         .update(updateData)
-        .eq('id', asUUID(messageId));
+        .eq('id', messageId as any);
         
       if (error) throw error;
     },
@@ -96,7 +97,7 @@ export function UserMessages() {
       const { error } = await supabase
         .from('user_messages')
         .update(updateData)
-        .eq('id', asUUID(messageId));
+        .eq('id', messageId as any);
         
       if (error) throw error;
     },
@@ -121,8 +122,8 @@ export function UserMessages() {
       const { error } = await supabase
         .from('user_messages')
         .update(updateData)
-        .eq('user_id', asUUID(user.id))
-        .eq('is_read', asBoolean(false));
+        .eq('user_id', user.id as any)
+        .eq('is_read', false as any);
         
       if (error) throw error;
       
