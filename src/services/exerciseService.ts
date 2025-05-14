@@ -34,8 +34,7 @@ export const createExercise = async (
   // Ensure audio bucket exists
   await ensureAudioBucket();
 
-  // Fix: Use proper type casting for the insert operation
-  const insertData = asInsertObject({
+  const insertData = asInsertObject<'exercises'>({
     user_id: userId,
     title: exercise.title,
     text: exercise.text,
@@ -74,8 +73,7 @@ export const updateExercise = async (userId: string, id: string, updates: Partia
   if (updates.isCompleted !== undefined) updateData.is_completed = updates.isCompleted;
   if (updates.archived !== undefined) updateData.archived = updates.archived;
   
-  // Fix: Use proper type casting for the update operation
-  const typedUpdateData = asUpdateObject(updateData);
+  const typedUpdateData = asUpdateObject<'exercises'>(updateData);
 
   const { error } = await supabase
     .from('exercises')
@@ -134,7 +132,7 @@ export const deleteAssociatedCompletions = async (userId: string, exerciseId: st
  * Archives an exercise in Supabase instead of deleting it
  */
 export const archiveExercise = async (userId: string, id: string) => {
-  const updateData = asUpdateObject({ archived: true });
+  const updateData = asUpdateObject<'exercises'>({ archived: true });
   
   const { error } = await supabase
     .from('exercises')
@@ -164,8 +162,7 @@ export const deleteExercise = async (userId: string, id: string) => {
  * Records a completion attempt for an exercise
  */
 export const recordCompletion = async (userId: string, exerciseId: string, accuracy: number, isCompleted: boolean) => {
-  // Fix: Use proper type casting for the insert operation
-  const insertData = asInsertObject({
+  const insertData = asInsertObject<'completions'>({
     user_id: userId,
     exercise_id: exerciseId,
     accuracy: accuracy,

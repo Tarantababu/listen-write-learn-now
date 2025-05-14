@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -10,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { asUUID, asBoolean } from '@/utils/supabaseHelpers';
+import { asUUID, asBoolean, asInsertObject, asUpdateObject } from '@/utils/supabaseHelpers';
 
 interface UserMessage {
   id: string;
@@ -65,13 +66,14 @@ export function UserMessages() {
 
   const markAsRead = useMutation({
     mutationFn: async (messageId: string) => {
-      // Direct update without type helpers
+      const updateData = asUpdateObject<'user_messages'>({
+        is_read: true, 
+        updated_at: new Date().toISOString() 
+      });
+      
       const { error } = await supabase
         .from('user_messages')
-        .update({
-          is_read: true, 
-          updated_at: new Date().toISOString() 
-        })
+        .update(updateData)
         .eq('id', asUUID(messageId));
         
       if (error) throw error;
@@ -86,14 +88,15 @@ export function UserMessages() {
 
   const archiveMessage = useMutation({
     mutationFn: async (messageId: string) => {
-      // Direct update without type helpers  
+      const updateData = asUpdateObject<'user_messages'>({
+        is_archived: true, 
+        is_read: true, 
+        updated_at: new Date().toISOString()
+      });
+      
       const { error } = await supabase
         .from('user_messages')
-        .update({
-          is_archived: true, 
-          is_read: true, 
-          updated_at: new Date().toISOString() 
-        })
+        .update(updateData)
         .eq('id', asUUID(messageId));
         
       if (error) throw error;
@@ -111,13 +114,14 @@ export function UserMessages() {
     if (!user || unreadMessages.length === 0) return;
     
     try {
-      // Direct update without type helpers
+      const updateData = asUpdateObject<'user_messages'>({
+        is_read: true, 
+        updated_at: new Date().toISOString()
+      });
+      
       const { error } = await supabase
         .from('user_messages')
-        .update({
-          is_read: true, 
-          updated_at: new Date().toISOString() 
-        })
+        .update(updateData)
         .eq('user_id', asUUID(user.id))
         .eq('is_read', asBoolean(false));
         

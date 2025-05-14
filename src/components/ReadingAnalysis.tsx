@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { asUUID } from '@/utils/supabaseHelpers';
+import { asUUID, asInsertObject, asUpdateObject } from '@/utils/supabaseHelpers';
 
 interface ReadingAnalysisProps {
   exercise: Exercise;
@@ -122,14 +123,15 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
           try {
             const jsonContent = analysisContent as unknown as Json;
             
-            // Insert analysis without type helpers - using direct typing instead
+            const insertData = asInsertObject<'reading_analyses'>({
+              user_id: user.id,
+              exercise_id: exercise.id,
+              content: jsonContent
+            });
+            
             const { error: saveError, data: savedData } = await supabase
               .from('reading_analyses')
-              .insert({
-                user_id: user.id,
-                exercise_id: exercise.id,
-                content: jsonContent
-              })
+              .insert(insertData)
               .select('id')
               .single();
               
@@ -151,12 +153,13 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                   const currentCount = profileData.reading_analyses_count || 0;
                   const newCount = currentCount + 1;
                   
-                  // Direct update without type helpers
+                  const updateData = asUpdateObject<'profiles'>({
+                    reading_analyses_count: newCount
+                  });
+                  
                   const { error: updateError } = await supabase
                     .from('profiles')
-                    .update({
-                      reading_analyses_count: newCount
-                    })
+                    .update(updateData)
                     .eq('id', asUUID(user.id));
                     
                   if (updateError) {
