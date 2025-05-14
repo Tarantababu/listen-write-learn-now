@@ -153,6 +153,49 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     }
   }, []);
 
+  // Load user roadmaps
+  const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
+    setIsLoading(true);
+    try {
+      const result = await roadmapService.getUserRoadmaps(language);
+      if (result.status === 'success' && result.data) {
+        const userRoadmapsData = result.data;
+        
+        // Update state immediately so other functions have access to the latest data
+        setUserRoadmaps(userRoadmapsData);
+        console.log('User roadmaps loaded:', userRoadmapsData);
+        
+        // If we have user roadmaps and none is currently selected, select the first one
+        if (userRoadmapsData.length > 0 && !currentRoadmap) {
+          // Don't await here to prevent blocking, but handle errors
+          selectRoadmap(userRoadmapsData[0].id).catch(err => {
+            console.error('Error auto-selecting first roadmap:', err);
+          });
+        }
+        
+        return userRoadmapsData;
+      } else {
+        console.error('Error loading user roadmaps:', result.error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load your roadmaps",
+          description: "There was an error loading your roadmaps."
+        });
+        return [];
+      }
+    } catch (error) {
+      console.error('Error loading user roadmaps:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to load your roadmaps",
+        description: "There was an error loading your roadmaps."
+      });
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentRoadmap]);
+
   // Select roadmap
   const selectRoadmap = useCallback(async (roadmapId: string): Promise<RoadmapNode[]> => {
     setIsLoading(true);
@@ -242,49 +285,6 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
     }
   }, [userRoadmaps, loadUserRoadmaps, settings.selectedLanguage]);
 
-  // Load user roadmaps
-  const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
-    setIsLoading(true);
-    try {
-      const result = await roadmapService.getUserRoadmaps(language);
-      if (result.status === 'success' && result.data) {
-        const userRoadmapsData = result.data;
-        
-        // Update state immediately so other functions have access to the latest data
-        setUserRoadmaps(userRoadmapsData);
-        console.log('User roadmaps loaded:', userRoadmapsData);
-        
-        // If we have user roadmaps and none is currently selected, select the first one
-        if (userRoadmapsData.length > 0 && !currentRoadmap) {
-          // Don't await here to prevent blocking, but handle errors
-          selectRoadmap(userRoadmapsData[0].id).catch(err => {
-            console.error('Error auto-selecting first roadmap:', err);
-          });
-        }
-        
-        return userRoadmapsData;
-      } else {
-        console.error('Error loading user roadmaps:', result.error);
-        toast({
-          variant: "destructive",
-          title: "Failed to load your roadmaps",
-          description: "There was an error loading your roadmaps."
-        });
-        return [];
-      }
-    } catch (error) {
-      console.error('Error loading user roadmaps:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to load your roadmaps",
-        description: "There was an error loading your roadmaps."
-      });
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentRoadmap, selectRoadmap]);
-
   // Initialize a new roadmap
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language): Promise<string> => {
     setIsLoading(true);
@@ -372,20 +372,40 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         throw new Error('No current roadmap selected');
       }
       
-      // Call the service to record completion
-      const result = await roadmapService.recordNodeCompletion(nodeId, accuracy);
+      // Call the supabase function directly since the service method may not exist
+      const { data, error } = await exerciseService.supabase
+        .rpc('increment_node_completion', {
+          node_id_param: nodeId, 
+          user_id_param: (await exerciseService.getCurrentUser()).userId,
+          language_param: currentRoadmap.language,
+          roadmap_id_param: currentRoadmap.roadmapId
+        });
       
-      if (result.status === 'success' && result.data) {
-        console.log('Node completion recorded successfully:', result.data);
-        
-        // Refresh nodes to update status after completion
-        await selectRoadmap(currentRoadmap.id);
-        
-        return result.data;
-      } else {
-        console.error('Error recording node completion:', result.error);
-        throw new Error(result.error || 'Unknown error recording completion');
+      if (error) {
+        console.error('Error recording node completion:', error);
+        throw new Error(error.message || 'Unknown error recording completion');
       }
+      
+      // Fetch the updated node progress
+      const { data: progressData, error: progressError } = await exerciseService.supabase
+        .from('roadmap_nodes_progress')
+        .select('*')
+        .eq('user_id', (await exerciseService.getCurrentUser()).userId)
+        .eq('node_id', nodeId)
+        .single();
+      
+      if (progressError) {
+        console.error('Error fetching updated progress:', progressError);
+        throw new Error(progressError.message || 'Unknown error fetching progress');
+      }
+      
+      // Refresh nodes to update status after completion
+      await selectRoadmap(currentRoadmap.id);
+      
+      return {
+        isCompleted: progressData.is_completed,
+        completionCount: progressData.completion_count
+      };
     } catch (error) {
       console.error('Error recording completion:', error);
       toast({
@@ -412,23 +432,70 @@ export const RoadmapProvider: React.FC<RoadmapProviderProps> = ({ children }) =>
         throw new Error('No current roadmap selected');
       }
       
-      // Call the service to mark the node as completed
-      const result = await roadmapService.markNodeAsCompleted(nodeId);
+      // Use supabase directly since the service method doesn't exist
+      const auth = await exerciseService.getCurrentUser();
       
-      if (result.status === 'success') {
-        console.log('Node marked as completed successfully');
-        
-        // Refresh nodes after completion
-        await selectRoadmap(currentRoadmap.id);
-        
+      // Check if already completed
+      const { data: existingProgress, error: queryError } = await exerciseService.supabase
+        .from('roadmap_progress')
+        .select('id, completed')
+        .eq('user_id', auth.userId)
+        .eq('roadmap_id', currentRoadmap.roadmapId)
+        .eq('node_id', nodeId)
+        .single();
+      
+      if (existingProgress && existingProgress.completed) {
+        // Already completed, nothing to do
         toast({
-          title: "Lesson completed",
-          description: "You've completed this lesson successfully."
+          title: "Already completed",
+          description: "This lesson was already marked as completed."
         });
-      } else {
-        console.error('Error marking node as completed:', result.error);
-        throw new Error(result.error || 'Unknown error marking node as completed');
+        return;
       }
+      
+      // Insert or update progress record
+      if (existingProgress) {
+        // Update existing record
+        await exerciseService.supabase
+          .from('roadmap_progress')
+          .update({
+            completed: true,
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', existingProgress.id);
+      } else {
+        // Create new record
+        await exerciseService.supabase
+          .from('roadmap_progress')
+          .insert({
+            user_id: auth.userId,
+            roadmap_id: currentRoadmap.roadmapId,
+            node_id: nodeId,
+            completed: true,
+            completed_at: new Date().toISOString()
+          });
+      }
+      
+      // Update node progress record if it exists
+      await exerciseService.supabase
+        .from('roadmap_nodes_progress')
+        .upsert({
+          user_id: auth.userId,
+          roadmap_id: currentRoadmap.roadmapId,
+          node_id: nodeId,
+          language: currentRoadmap.language,
+          completion_count: 3, // Set to 3 to mark as completed
+          is_completed: true,
+          last_practiced_at: new Date().toISOString()
+        }, { onConflict: 'user_id,node_id,language' });
+      
+      // Refresh nodes after completion
+      await selectRoadmap(currentRoadmap.id);
+      
+      toast({
+        title: "Lesson completed",
+        description: "You've completed this lesson successfully."
+      });
     } catch (error) {
       console.error('Error marking node as completed:', error);
       toast({

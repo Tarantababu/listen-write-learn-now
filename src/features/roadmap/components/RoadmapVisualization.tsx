@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
 import { nodeAccessService } from '../services/NodeAccessService';
+import { useNodeAccess } from '../hooks/useNodeAccess';
 
 interface RoadmapVisualizationProps {
   onNodeSelect: (node: RoadmapNode) => void;
@@ -30,27 +31,23 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
     selectRoadmap
   } = useRoadmap();
   
+  const { loadAccessibleNodes } = useNodeAccess();
   const [accessibleNodeIds, setAccessibleNodeIds] = useState<string[]>([]);
   const [isAccessLoading, setIsAccessLoading] = useState(false);
   
   // Load accessible nodes
   useEffect(() => {
-    const loadAccessibleNodes = async () => {
+    const fetchAccessibleNodes = async () => {
       if (!currentRoadmap) return;
       
       setIsAccessLoading(true);
       try {
-        const { data, error } = await nodeAccessService.getAccessibleNodes(
+        const nodeIds = await loadAccessibleNodes(
           currentRoadmap.roadmapId, 
           currentRoadmap.language
         );
         
-        if (error) {
-          console.error("Error loading accessible nodes:", error);
-          return;
-        }
-        
-        setAccessibleNodeIds(data || []);
+        setAccessibleNodeIds(nodeIds);
       } catch (err) {
         console.error("Failed to load accessible nodes:", err);
       } finally {
@@ -58,8 +55,8 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
       }
     };
     
-    loadAccessibleNodes();
-  }, [currentRoadmap, completedNodes]);
+    fetchAccessibleNodes();
+  }, [currentRoadmap, completedNodes, loadAccessibleNodes]);
   
   // Handle node click - check access before selection
   const handleNodeClick = async (node: RoadmapNode) => {

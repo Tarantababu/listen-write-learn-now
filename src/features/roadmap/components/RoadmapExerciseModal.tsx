@@ -272,7 +272,6 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
                 }}
                 onTryAgain={handleBackToOptions}
                 onComplete={handlePracticeComplete}
-                inRoadmapMode={true}
               />
             ) : null}
           </div>

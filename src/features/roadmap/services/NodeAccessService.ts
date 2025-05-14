@@ -1,7 +1,7 @@
 
 import { BaseService } from './BaseService';
 import { ServiceResult } from '../types/service-types';
-import { useRoadmap } from '@/hooks/use-roadmap';
+import { Language } from '@/types';
 
 class NodeAccessService extends BaseService {
   /**
@@ -88,6 +88,84 @@ class NodeAccessService extends BaseService {
       }
 
       return this.success(progress.completed);
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  /**
+   * Get all accessible nodes for a roadmap
+   */
+  public async getAccessibleNodes(roadmapId: string, language: Language): ServiceResult<string[]> {
+    try {
+      const auth = await this.ensureAuthenticated();
+      if (!auth) {
+        return this.error('User must be authenticated to access roadmap nodes');
+      }
+      
+      // Get all nodes for this roadmap
+      const { data: nodes, error: nodesError } = await this.supabase
+        .from('roadmap_nodes')
+        .select('id, position')
+        .eq('roadmap_id', roadmapId)
+        .eq('language', language)
+        .order('position');
+
+      if (nodesError) {
+        return this.error(`Failed to fetch nodes: ${nodesError.message}`);
+      }
+
+      if (!nodes || nodes.length === 0) {
+        return this.success([]);
+      }
+
+      // Always include the first node
+      const accessibleNodeIds = [nodes[0].id];
+      
+      // Get completed nodes
+      const { data: completedNodes, error: completedError } = await this.supabase
+        .from('roadmap_progress')
+        .select('node_id')
+        .eq('user_id', auth.userId)
+        .eq('roadmap_id', roadmapId)
+        .eq('completed', true);
+
+      if (completedError) {
+        return this.error(`Failed to fetch completed nodes: ${completedError.message}`);
+      }
+      
+      // Get current node from user roadmap
+      const { data: userRoadmap, error: userRoadmapError } = await this.supabase
+        .from('user_roadmaps')
+        .select('current_node_id')
+        .eq('user_id', auth.userId)
+        .eq('roadmap_id', roadmapId)
+        .eq('language', language)
+        .single();
+      
+      if (!userRoadmapError && userRoadmap && userRoadmap.current_node_id) {
+        accessibleNodeIds.push(userRoadmap.current_node_id);
+      }
+
+      // Add completed node IDs
+      if (completedNodes && completedNodes.length > 0) {
+        const completedNodeIds = completedNodes.map(item => item.node_id);
+        accessibleNodeIds.push(...completedNodeIds);
+
+        // For each completed node, add the next node
+        for (const node of nodes) {
+          const nodeIndex = nodes.findIndex(n => n.id === node.id);
+          if (completedNodeIds.includes(node.id) && nodeIndex < nodes.length - 1) {
+            const nextNode = nodes[nodeIndex + 1];
+            if (nextNode && !accessibleNodeIds.includes(nextNode.id)) {
+              accessibleNodeIds.push(nextNode.id);
+            }
+          }
+        }
+      }
+
+      // Remove duplicates and return
+      return this.success([...new Set(accessibleNodeIds)]);
     } catch (error) {
       return this.handleError(error);
     }
