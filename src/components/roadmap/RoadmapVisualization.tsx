@@ -108,7 +108,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   
   // Use safe property access with optional chaining
   const currentRoadmap = roadmapContext?.currentRoadmap || null;
-  const nodes = Array.isArray(roadmapContext?.nodes) ? roadmapContext.nodes : [];
+  const nodes = Array.isArray(roadmapContext?.nodes) ? roadmapContext.nodes as unknown as RoadmapNode[] : [];
   const currentNodeId = roadmapContext?.currentNodeId;
   const completedNodes = roadmapContext?.completedNodes || [];
   const availableNodes = roadmapContext?.availableNodes || [];
@@ -126,7 +126,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   if (currentRoadmap && Array.isArray(nodes) && nodes.length > 0 && 
       nodes[0] && typeof nodes[0] === 'object' && (nodes[0] as any).status) {
     console.log("Using new RoadmapVisualization implementation");
-    return <NewRoadmapVisualization onNodeSelect={(node: any) => onNodeSelect(node as RoadmapNode)} />;
+    return <NewRoadmapVisualization onNodeSelect={onNodeSelect} />;
   }
 
   // Fall back to the legacy implementation

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -16,14 +15,14 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { useRoadmap } from '@/hooks/use-roadmap';
+import { useRoadmap } from '../hooks/use-hook-imports';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { LanguageLevel } from '@/types';
-import { Loader2, HelpCircle } from 'lucide-react';
+import { Loader2, RefreshCw, InfoIcon } from 'lucide-react';
 import LevelBadge from '@/components/LevelBadge';
 import LevelInfoTooltip from '@/components/LevelInfoTooltip';
 import { toast } from '@/hooks/use-toast';
-import { motion } from 'framer-motion';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const RoadmapSelection: React.FC = () => {
   const roadmapContext = useRoadmap();
@@ -35,9 +34,11 @@ const RoadmapSelection: React.FC = () => {
   
   const roadmaps = roadmapContext.roadmaps || [];
   
-  const isLoading = roadmapContext.isLoading || roadmapContext.loading || false;
+  const isLoading = roadmapContext.isLoading || false;
   
   const userRoadmaps = roadmapContext.userRoadmaps || [];
+  
+  const loadUserRoadmaps = roadmapContext.loadUserRoadmaps || (async () => []);
   
   const { settings } = useUserSettingsContext();
   
@@ -187,7 +188,7 @@ const RoadmapSelection: React.FC = () => {
               className="ml-2 h-5 w-5"
               onClick={() => setShowInfo(!showInfo)}
             >
-              <HelpCircle className="h-4 w-4" />
+              <InfoIcon className="h-4 w-4" />
             </Button>
           </CardTitle>
           <CardDescription>

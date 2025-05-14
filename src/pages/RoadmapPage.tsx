@@ -18,17 +18,17 @@ import { toast } from '@/components/ui/use-toast';
 
 const RoadmapPage = () => {
   const { settings } = useUserSettingsContext();
-  const { 
-    isLoading,
-    hasError,
-    roadmaps,
-    userRoadmaps,
-    loadUserRoadmaps,
-    selectRoadmap,
-    currentRoadmap,
-    nodes,
-    currentNodeId
-  } = useRoadmap();
+  const roadmapContext = useRoadmap();
+  
+  const isLoading = roadmapContext?.isLoading || false;
+  const hasError = roadmapContext?.hasError || false;
+  const roadmaps = roadmapContext?.roadmaps || [];
+  const userRoadmaps = roadmapContext?.userRoadmaps || [];
+  const loadUserRoadmaps = roadmapContext?.loadUserRoadmaps;
+  const selectRoadmap = roadmapContext?.selectRoadmap;
+  const currentRoadmap = roadmapContext?.currentRoadmap;
+  const nodes = roadmapContext?.nodes || [];
+  const currentNodeId = roadmapContext?.currentNodeId;
   
   const [activeTab, setActiveTab] = useState('current');
   const [selectedRoadmapId, setSelectedRoadmapId] = useState<string | null>(null);

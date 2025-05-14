@@ -22,7 +22,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
   const roadmapContext = useRoadmap();
   
   // Safely access properties with type checking
-  const nodes = roadmapContext?.nodes || [];
+  const nodes = roadmapContext?.nodes || [] as RoadmapNode[];
   const isLoading = roadmapContext?.isLoading || false;
   const roadmaps = roadmapContext?.roadmaps || [];
   const currentNodeId = roadmapContext?.currentNodeId;

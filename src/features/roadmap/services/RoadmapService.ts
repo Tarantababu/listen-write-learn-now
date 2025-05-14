@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Language, LanguageLevel } from '@/types';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
@@ -55,6 +56,8 @@ class RoadmapService {
   // Get roadmaps that a user has enrolled in
   async getUserRoadmaps(language: Language): Promise<ServiceResult<RoadmapItem[]>> {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase
         .from('user_roadmaps')
         .select(`
@@ -77,7 +80,7 @@ class RoadmapService {
             )
           )
         `)
-        .eq('user_id', supabase.auth.user()?.id)
+        .eq('user_id', user?.id)
         .eq('language', language)
         .order('created_at', { ascending: false });
   
@@ -87,7 +90,7 @@ class RoadmapService {
       }
   
       if (!data) {
-        console.warn('No user roadmaps found for user:', supabase.auth.user()?.id);
+        console.warn('No user roadmaps found for user:', user?.id);
         return { status: 'success', data: [] };
       }
   
@@ -101,8 +104,8 @@ class RoadmapService {
           name: roadmap?.name || 'Unnamed Roadmap',
           level: roadmap?.level as LanguageLevel || 'A1',
           description: roadmap?.description || 'No description',
-          language: userRoadmap.language,
-          languages: roadmap?.roadmap_languages?.map((l: any) => l.language) || [userRoadmap.language],
+          language: userRoadmap.language as Language,
+          languages: roadmap?.roadmap_languages?.map((l: any) => l.language as Language) || [userRoadmap.language as Language],
           currentNodeId: userRoadmap.current_node_id,
           createdAt: new Date(userRoadmap.created_at),
           updatedAt: new Date(userRoadmap.updated_at),
@@ -139,13 +142,19 @@ class RoadmapService {
       }
   
       const roadmapId = roadmaps[0].id;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        return { status: 'error', error: 'User not authenticated' };
+      }
   
       // Insert the new user roadmap
       const { data: userRoadmap, error: userRoadmapError } = await supabase
         .from('user_roadmaps')
         .insert([
           {
-            user_id: supabase.auth.user()?.id,
+            user_id: user.id,
             roadmap_id: roadmapId,
             language: language,
           },
@@ -186,9 +195,11 @@ class RoadmapService {
         description: node.description || '',
         position: node.position,
         isBonus: node.is_bonus || false,
-        language: node.language,
+        language: node.language as Language,
         roadmapId: node.roadmap_id,
         defaultExerciseId: node.default_exercise_id,
+        createdAt: new Date(node.created_at),
+        updatedAt: new Date(node.updated_at),
       }));
   
       return { status: 'success', data: transformedData };
@@ -282,12 +293,18 @@ class RoadmapService {
 
       if (roadmapError) throw roadmapError;
 
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        return { status: 'error', error: 'User not authenticated' };
+      }
+
       // Check if there's existing progress for this node
       const { data: existingProgress, error: progressError } = await supabase
         .from('roadmap_nodes_progress')
         .select('*')
         .eq('node_id', nodeId)
-        .eq('user_id', supabase.auth.user()?.id)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (progressError) throw progressError;
@@ -325,7 +342,7 @@ class RoadmapService {
           const { error: markCompleteError } = await supabase
             .from('roadmap_progress')
             .upsert({
-              user_id: supabase.auth.user()?.id,
+              user_id: user.id,
               roadmap_id: roadmapData.roadmap_id,
               node_id: nodeId,
               completed: true,
@@ -347,15 +364,21 @@ class RoadmapService {
         // Create new progress record with completion_count = 1
         const isCompleted = 1 >= 3; // Will be false
         
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          return { status: 'error', error: 'User not authenticated' };
+        }
+        
         const { error: insertError } = await supabase
           .from('roadmap_nodes_progress')
           .insert({
-            user_id: supabase.auth.user()?.id,
+            user_id: user.id,
             roadmap_id: roadmapData.roadmap_id,
             node_id: nodeId,
             completion_count: 1,
             is_completed: isCompleted,
-            language: 'english', // Assuming default language
+            language: 'english' as Language, // Assuming default language
             last_practiced_at: new Date().toISOString(),
           });
 
@@ -389,10 +412,16 @@ class RoadmapService {
 
       if (roadmapError) throw roadmapError;
 
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        return { status: 'error', error: 'User not authenticated' };
+      }
+
       const { error: progressError } = await supabase
         .from('roadmap_progress')
         .upsert({
-          user_id: supabase.auth.user()?.id,
+          user_id: user.id,
           roadmap_id: roadmapData.roadmap_id,
           node_id: nodeId,
           completed: true,
