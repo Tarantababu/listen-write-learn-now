@@ -1,6 +1,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from "@/hooks/use-toast";
 
 const VISITOR_ID_KEY = 'lwl_visitor_id';
 const VISITOR_EXPIRY_DAYS = 365; // Store ID for 1 year
@@ -38,6 +39,9 @@ export const trackPageView = async (page: string): Promise<void> => {
         referer: document.referrer || null,
         userAgent: navigator.userAgent
       }
+    }).catch(err => {
+      console.warn('Page tracking network error:', err.message);
+      return { error: { message: err.message } };
     });
     
     clearTimeout(timeoutId);
@@ -73,6 +77,9 @@ export const trackButtonClick = async (buttonName: string): Promise<void> => {
         referer: document.referrer || null,
         userAgent: navigator.userAgent
       }
+    }).catch(err => {
+      console.warn('Button tracking network error:', err.message);
+      return { error: { message: err.message } };
     });
     
     clearTimeout(timeoutId);
@@ -94,7 +101,11 @@ export const trackButtonClick = async (buttonName: string): Promise<void> => {
  */
 export const applyMigrations = async (): Promise<void> => {
   try {
-    const { error } = await supabase.functions.invoke('apply-migrations');
+    const { error } = await supabase.functions.invoke('apply-migrations')
+      .catch(err => {
+        console.error('Migrations network error:', err.message);
+        return { error: { message: err.message } };
+      });
     
     if (error) {
       console.error('Failed to apply migrations:', error);

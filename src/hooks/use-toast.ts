@@ -1,3 +1,4 @@
+
 import * as React from "react";
 
 import type {
@@ -189,7 +190,7 @@ function useToast() {
   };
 }
 
-// Add the toasts property 
+// Make sure toast has the toasts property
 toast.toasts = memoryState.toasts;
 
 export { useToast, toast };
