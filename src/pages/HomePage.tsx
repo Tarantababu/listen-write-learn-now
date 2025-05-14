@@ -14,12 +14,6 @@ import RoadmapExerciseModal from '@/components/roadmap/RoadmapExerciseModal';
 import { useState } from 'react';
 import { RoadmapNode } from '@/types';
 
-// Define the ExerciseGrid props to match component expectations
-interface ExerciseGridProps {
-  limit?: number;
-  showHeader?: boolean;
-}
-
 const HomePage: React.FC = () => {
   const { currentNodeId, nodes, isLoading, roadmaps } = useRoadmap();
   const userSettings = useUserSettingsContext();

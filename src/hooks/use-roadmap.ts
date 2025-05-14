@@ -2,6 +2,41 @@
 import { useContext } from 'react';
 import { RoadmapContext } from '@/contexts/RoadmapContext';
 import { RoadmapContext as NewRoadmapContext } from '@/features/roadmap/context/RoadmapContext';
+import { Language, LanguageLevel } from '@/types';
+import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '@/features/roadmap/types';
+
+/**
+ * Type definition that combines both old and new context types
+ * This ensures that all required properties are available regardless of which context is used
+ */
+export interface UnifiedRoadmapContextType {
+  // Common state properties
+  isLoading: boolean;
+  nodeLoading?: boolean;
+  hasError?: boolean;
+  
+  // Data properties
+  roadmaps?: RoadmapItem[];
+  userRoadmaps?: RoadmapItem[];
+  currentRoadmap?: RoadmapItem | RoadmapNode[] | null;
+  nodes?: RoadmapNode[];
+  completedNodes?: string[];
+  availableNodes?: string[];
+  currentNodeId?: string;
+  currentNode?: RoadmapNode | null;
+  nodeProgress?: any[];
+  
+  // Methods common to both contexts
+  initializeRoadmap?: (level: LanguageLevel, language: Language) => Promise<string>;
+  initializeUserRoadmap?: (level: LanguageLevel, language: Language) => Promise<string>;
+  loadRoadmaps?: (language: Language) => Promise<void>;
+  loadUserRoadmaps?: (language: Language) => Promise<RoadmapItem[]>;
+  selectRoadmap?: (roadmapId: string) => Promise<RoadmapNode[]>;
+  getNodeExercise?: (nodeId: string) => Promise<ExerciseContent | null>;
+  recordNodeCompletion?: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>;
+  incrementNodeCompletion?: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>;
+  markNodeAsCompleted?: (nodeId: string) => Promise<void>;
+}
 
 // Check if we should use the new context implementation
 const useNewImplementation = () => {
@@ -17,13 +52,18 @@ const useNewImplementation = () => {
   }
 };
 
-export const useRoadmap = () => {
+/**
+ * Custom hook that provides access to the roadmap context.
+ * It first tries to use the new implementation, and falls back to the old one.
+ * Returns a unified context type that works with both implementations.
+ */
+export const useRoadmap = (): UnifiedRoadmapContextType => {
   const oldContext = useContext(RoadmapContext);
   const newContext = useContext(NewRoadmapContext);
   
   // Use the new implementation if it's available
   if (useNewImplementation()) {
-    return newContext;
+    return newContext as unknown as UnifiedRoadmapContextType;
   }
   
   // Fall back to the old implementation
@@ -31,5 +71,5 @@ export const useRoadmap = () => {
     throw new Error('useRoadmap must be used within a RoadmapProvider');
   }
   
-  return oldContext;
+  return oldContext as unknown as UnifiedRoadmapContextType;
 };

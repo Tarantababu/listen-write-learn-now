@@ -16,23 +16,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import LevelBadge from '@/components/LevelBadge';
 import { toast } from '@/components/ui/use-toast';
 
-// Creating a component wrapper for TabsContent to properly handle children prop
-interface TabsContentWrapperProps {
-  value: string;
-  className?: string;
-  children: React.ReactNode;
-}
-
-const TabsContentWrapper: React.FC<TabsContentWrapperProps> = ({ 
-  value, 
-  className,
-  children 
-}) => (
-  <TabsContent value={value} className={className}>
-    {children}
-  </TabsContent>
-);
-
 const RoadmapPage = () => {
   const { settings } = useUserSettingsContext();
   const roadmapContext = useRoadmap();
@@ -223,7 +206,7 @@ const RoadmapPage = () => {
             <TabsTrigger value="add">Add New Path</TabsTrigger>
           </TabsList>
           
-          <TabsContentWrapper value="current" className="space-y-8">
+          <TabsContent value="current" className="space-y-8">
             {!hasUserRoadmaps ? (
               <Card>
                 <CardHeader>
@@ -296,9 +279,9 @@ const RoadmapPage = () => {
                 </div>
               </div>
             )}
-          </TabsContentWrapper>
+          </TabsContent>
           
-          <TabsContentWrapper value="add">
+          <TabsContent value="add">
             <div className="max-w-2xl mx-auto">
               <Card>
                 <CardHeader>
@@ -312,7 +295,7 @@ const RoadmapPage = () => {
                 </CardContent>
               </Card>
             </div>
-          </TabsContentWrapper>
+          </TabsContent>
         </Tabs>
       </div>
       
