@@ -1,4 +1,3 @@
-
 export type Language = 
   | 'english' 
   | 'german' 
@@ -143,4 +142,39 @@ export interface CurriculumContextType {
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
   incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;
   selectCurriculumPath: (curriculumPathId: string) => Promise<void>;
+}
+
+export interface Roadmap {
+  id: string;
+  name: string;
+  level: LanguageLevel;
+  description?: string;
+  languages?: Language[];
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+}
+
+export interface RoadmapNode {
+  id: string;
+  roadmapId: string;
+  title: string;
+  description?: string;
+  position: number;
+  isBonus: boolean;
+  defaultExerciseId?: string;
+  language?: Language;
+  createdAt: Date;
+  updatedAt: Date;
+  
+  // UI state properties
+  status?: 'locked' | 'available' | 'completed' | 'current';
+  progressCount?: number;
+}
+
+export interface RoadmapLanguage {
+  id: string;
+  roadmapId: string;
+  language: Language;
+  createdAt: Date;
 }

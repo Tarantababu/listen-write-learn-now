@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +59,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { roadmapService } from '@/services/roadmapService';
 
 // Form schemas
 const roadmapFormSchema = z.object({
@@ -125,7 +124,6 @@ export const RoadmapEditor: React.FC = () => {
 
   // Setup available languages
   useEffect(() => {
-    // All supported languages
     const languages: {value: string, label: string}[] = [
       { value: 'english', label: 'English' },
       { value: 'german', label: 'German' },
@@ -152,24 +150,8 @@ export const RoadmapEditor: React.FC = () => {
     const fetchRoadmaps = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('roadmaps')
-          .select('*')
-          .order('level', { ascending: true });
-
-        if (error) throw error;
-
-        const formattedRoadmaps: Roadmap[] = data.map(roadmap => ({
-          id: roadmap.id,
-          name: roadmap.name,
-          level: roadmap.level as LanguageLevel,
-          description: roadmap.description,
-          createdAt: new Date(roadmap.created_at),
-          updatedAt: new Date(roadmap.updated_at),
-          createdBy: roadmap.created_by
-        }));
-
-        setRoadmaps(formattedRoadmaps);
+        const roadmapData = await roadmapService.getRoadmaps();
+        setRoadmaps(roadmapData);
       } catch (err: any) {
         console.error('Error fetching roadmaps:', err);
         toast({
@@ -220,28 +202,8 @@ export const RoadmapEditor: React.FC = () => {
     const fetchNodes = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('roadmap_nodes')
-          .select('*')
-          .eq('roadmap_id', selectedRoadmap.id)
-          .order('position', { ascending: true });
-
-        if (error) throw error;
-
-        const formattedNodes: RoadmapNode[] = data.map(node => ({
-          id: node.id,
-          roadmapId: node.roadmap_id,
-          defaultExerciseId: node.default_exercise_id,
-          title: node.title,
-          description: node.description,
-          position: node.position,
-          isBonus: node.is_bonus,
-          language: node.language as Language | undefined,
-          createdAt: new Date(node.created_at),
-          updatedAt: new Date(node.updated_at)
-        }));
-
-        setNodes(formattedNodes);
+        const nodesData = await roadmapService.getRoadmapNodes(selectedRoadmap.id);
+        setNodes(nodesData);
       } catch (err: any) {
         console.error('Error fetching nodes:', err);
         toast({
@@ -259,22 +221,9 @@ export const RoadmapEditor: React.FC = () => {
     // Also fetch roadmap languages
     const fetchRoadmapLanguages = async () => {
       try {
-        const { data, error } = await supabase
-          .from('roadmap_languages')
-          .select('*')
-          .eq('roadmap_id', selectedRoadmap.id);
-
-        if (error) throw error;
-
-        const formattedLanguages: RoadmapLanguage[] = data.map(lang => ({
-          id: lang.id,
-          roadmapId: lang.roadmap_id,
-          language: lang.language as Language,
-          createdAt: new Date(lang.created_at)
-        }));
-
-        setRoadmapLanguages(formattedLanguages);
-        setSelectedLanguages(formattedLanguages.map(l => l.language));
+        const languagesData = await roadmapService.getRoadmapLanguages(selectedRoadmap.id);
+        setRoadmapLanguages(languagesData);
+        setSelectedLanguages(languagesData.map(l => l.language));
       } catch (err: any) {
         console.error('Error fetching roadmap languages:', err);
         toast({
@@ -371,37 +320,17 @@ export const RoadmapEditor: React.FC = () => {
     try {
       if (selectedRoadmap) {
         // Update existing roadmap
-        const { error: roadmapError } = await supabase
-          .from('roadmaps')
-          .update({
-            name: values.name,
-            level: values.level,
-            description: values.description,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', selectedRoadmap.id);
+        const updated = await roadmapService.updateRoadmap(selectedRoadmap.id, {
+          name: values.name,
+          level: values.level,
+          description: values.description
+        });
 
-        if (roadmapError) throw roadmapError;
+        if (!updated) throw new Error("Failed to update roadmap");
 
-        // Delete existing language associations
-        const { error: deleteError } = await supabase
-          .from('roadmap_languages')
-          .delete()
-          .eq('roadmap_id', selectedRoadmap.id);
-
-        if (deleteError) throw deleteError;
-
-        // Create new language associations
-        const languageEntries = values.languages.map(lang => ({
-          roadmap_id: selectedRoadmap.id,
-          language: lang
-        }));
-
-        const { error: langError } = await supabase
-          .from('roadmap_languages')
-          .insert(languageEntries);
-
-        if (langError) throw langError;
+        // Set roadmap languages
+        const languagesSet = await roadmapService.setRoadmapLanguages(selectedRoadmap.id, values.languages as Language[]);
+        if (!languagesSet) throw new Error("Failed to update roadmap languages");
 
         // Update local state
         const updatedRoadmaps = roadmaps.map(roadmap => 
@@ -433,41 +362,26 @@ export const RoadmapEditor: React.FC = () => {
         });
       } else {
         // Create new roadmap
-        const { data: roadmapData, error: roadmapError } = await supabase
-          .from('roadmaps')
-          .insert([
-            {
-              name: values.name,
-              level: values.level,
-              description: values.description
-            }
-          ])
-          .select()
-          .single();
+        const newRoadmapId = await roadmapService.createRoadmap({
+          name: values.name,
+          level: values.level,
+          description: values.description
+        });
 
-        if (roadmapError) throw roadmapError;
+        if (!newRoadmapId) throw new Error("Failed to create roadmap");
 
-        // Create language associations
-        const languageEntries = values.languages.map(lang => ({
-          roadmap_id: roadmapData.id,
-          language: lang
-        }));
-
-        const { error: langError } = await supabase
-          .from('roadmap_languages')
-          .insert(languageEntries);
-
-        if (langError) throw langError;
+        // Set roadmap languages
+        const languagesSet = await roadmapService.setRoadmapLanguages(newRoadmapId, values.languages as Language[]);
+        if (!languagesSet) throw new Error("Failed to set roadmap languages");
 
         // Add to local state
         const newRoadmap: Roadmap = {
-          id: roadmapData.id,
-          name: roadmapData.name,
-          level: roadmapData.level as LanguageLevel,
-          description: roadmapData.description,
-          createdAt: new Date(roadmapData.created_at),
-          updatedAt: new Date(roadmapData.updated_at),
-          createdBy: roadmapData.created_by,
+          id: newRoadmapId,
+          name: values.name,
+          level: values.level,
+          description: values.description,
+          createdAt: new Date(),
+          updatedAt: new Date(),
           languages: values.languages as Language[]
         };
         setRoadmaps([...roadmaps, newRoadmap]);
@@ -544,20 +458,16 @@ export const RoadmapEditor: React.FC = () => {
         }
 
         // Update existing node
-        const { error } = await supabase
-          .from('roadmap_nodes')
-          .update({
-            title: values.title,
-            position: values.position,
-            default_exercise_id: values.defaultExerciseId,
-            description: values.description,
-            is_bonus: values.isBonus,
-            language: values.language,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', selectedNode.id);
+        const updated = await roadmapService.updateNode(selectedNode.id, {
+          title: values.title,
+          position: values.position,
+          defaultExerciseId: values.defaultExerciseId,
+          description: values.description,
+          isBonus: values.isBonus,
+          language: values.language as Language
+        });
 
-        if (error) throw error;
+        if (!updated) throw new Error("Failed to update node");
 
         // Fetch updated nodes to ensure correct order
         await fetchNodesAfterChange();
@@ -576,23 +486,17 @@ export const RoadmapEditor: React.FC = () => {
         }
 
         // Create new node
-        const { data, error } = await supabase
-          .from('roadmap_nodes')
-          .insert([
-            {
-              roadmap_id: selectedRoadmap.id,
-              title: values.title,
-              position: values.position,
-              default_exercise_id: values.defaultExerciseId,
-              description: values.description,
-              is_bonus: values.isBonus,
-              language: values.language
-            }
-          ])
-          .select()
-          .single();
+        const newNodeId = await roadmapService.createNode({
+          roadmapId: selectedRoadmap.id,
+          title: values.title,
+          position: values.position,
+          defaultExerciseId: values.defaultExerciseId,
+          description: values.description,
+          isBonus: values.isBonus,
+          language: values.language as Language
+        });
 
-        if (error) throw error;
+        if (!newNodeId) throw new Error("Failed to create node");
 
         // Fetch updated nodes to ensure correct order
         await fetchNodesAfterChange();
@@ -621,28 +525,8 @@ export const RoadmapEditor: React.FC = () => {
     if (!selectedRoadmap) return;
     
     try {
-      const { data, error } = await supabase
-        .from('roadmap_nodes')
-        .select('*')
-        .eq('roadmap_id', selectedRoadmap.id)
-        .order('position', { ascending: true });
-
-      if (error) throw error;
-
-      const formattedNodes: RoadmapNode[] = data.map(node => ({
-        id: node.id,
-        roadmapId: node.roadmap_id,
-        defaultExerciseId: node.default_exercise_id,
-        title: node.title,
-        description: node.description,
-        position: node.position,
-        isBonus: node.is_bonus,
-        language: node.language as Language | undefined,
-        createdAt: new Date(node.created_at),
-        updatedAt: new Date(node.updated_at)
-      }));
-
-      setNodes(formattedNodes);
+      const nodesData = await roadmapService.getRoadmapNodes(selectedRoadmap.id);
+      setNodes(nodesData);
     } catch (err) {
       console.error('Error refreshing nodes:', err);
     }
@@ -686,16 +570,7 @@ export const RoadmapEditor: React.FC = () => {
     // Update each node's position
     for (const node of affectedNodes) {
       const newPosition = node.position + offset;
-      
-      const { error } = await supabase
-        .from('roadmap_nodes')
-        .update({ position: newPosition })
-        .eq('id', node.id);
-      
-      if (error) {
-        console.error('Error updating node position:', error);
-        throw error;
-      }
+      await roadmapService.updateNodePosition(node.id, newPosition);
     }
   };
 
@@ -712,12 +587,8 @@ export const RoadmapEditor: React.FC = () => {
       await reorderNodes(nodeId, node.position, newPosition);
       
       // Update the node's position
-      const { error } = await supabase
-        .from('roadmap_nodes')
-        .update({ position: newPosition })
-        .eq('id', nodeId);
-      
-      if (error) throw error;
+      const updated = await roadmapService.updateNodePosition(nodeId, newPosition);
+      if (!updated) throw new Error("Failed to update node position");
       
       await fetchNodesAfterChange();
       
@@ -750,12 +621,8 @@ export const RoadmapEditor: React.FC = () => {
       await reorderNodes(nodeId, node.position, newPosition);
       
       // Update the node's position
-      const { error } = await supabase
-        .from('roadmap_nodes')
-        .update({ position: newPosition })
-        .eq('id', nodeId);
-      
-      if (error) throw error;
+      const updated = await roadmapService.updateNodePosition(nodeId, newPosition);
+      if (!updated) throw new Error("Failed to update node position");
       
       await fetchNodesAfterChange();
       
@@ -781,12 +648,8 @@ export const RoadmapEditor: React.FC = () => {
 
     try {
       if (itemToDelete.type === 'roadmap') {
-        const { error } = await supabase
-          .from('roadmaps')
-          .delete()
-          .eq('id', itemToDelete.id);
-
-        if (error) throw error;
+        const deleted = await roadmapService.deleteRoadmap(itemToDelete.id);
+        if (!deleted) throw new Error("Failed to delete roadmap");
 
         setRoadmaps(roadmaps.filter(r => r.id !== itemToDelete.id));
         if (selectedRoadmap?.id === itemToDelete.id) {
@@ -804,12 +667,8 @@ export const RoadmapEditor: React.FC = () => {
         }
 
         // Delete the node
-        const { error } = await supabase
-          .from('roadmap_nodes')
-          .delete()
-          .eq('id', itemToDelete.id);
-
-        if (error) throw error;
+        const deleted = await roadmapService.deleteNode(itemToDelete.id);
+        if (!deleted) throw new Error("Failed to delete node");
 
         // Update positions for nodes after the deleted node
         await batchUpdatePositions(
@@ -885,7 +744,6 @@ export const RoadmapEditor: React.FC = () => {
 
         <TabsContent value="roadmaps">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Roadmap List */}
             <Card className="lg:col-span-1">
               <CardHeader>
                 <CardTitle className="text-lg">Available Roadmaps</CardTitle>
@@ -949,7 +807,6 @@ export const RoadmapEditor: React.FC = () => {
               </CardFooter>
             </Card>
 
-            {/* Roadmap Editor */}
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle className="text-lg">
@@ -1371,7 +1228,6 @@ export const RoadmapEditor: React.FC = () => {
                     <Select
                       onValueChange={(value) => {
                         field.onChange(value);
-                        // Reset exercise selection when language changes
                         nodeForm.setValue('defaultExerciseId', undefined);
                       }}
                       value={field.value}
