@@ -1,27 +1,27 @@
 
 import React from 'react';
-import { useRoadmap } from '@/hooks/use-roadmap';
-import { RoadmapNode } from '@/types';
+import { useCurriculumPath } from '@/hooks/use-curriculum-path';
+import { CurriculumNode } from '@/types';
 import { Check, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface RoadmapVisualizationProps {
-  onNodeSelect: (node: RoadmapNode) => void;
+interface CurriculumPathVisualizationProps {
+  onNodeSelect: (node: CurriculumNode) => void;
 }
 
-const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelect }) => {
+const CurriculumPathVisualization: React.FC<CurriculumPathVisualizationProps> = ({ onNodeSelect }) => {
   const { 
-    currentRoadmap, 
+    currentCurriculumPath, 
     nodes = [], 
     completedNodes = [], 
     isLoading, 
-    roadmaps = [],
+    curriculumPaths = [],
     currentNodeId,
     availableNodes = [],
     nodeProgress = []
-  } = useRoadmap();
+  } = useCurriculumPath();
   
-  const getNodeStatus = (node: RoadmapNode): 'completed' | 'available' | 'locked' => {
+  const getNodeStatus = (node: CurriculumNode): 'completed' | 'available' | 'locked' => {
     if ((completedNodes || []).includes(node.id)) {
       return 'completed';
     }
@@ -34,23 +34,23 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   };
 
   if (isLoading) {
-    return <div>Loading roadmap...</div>;
+    return <div>Loading curriculum path...</div>;
   }
 
-  if (!currentRoadmap) {
-    return <div>No roadmap selected.</div>;
+  if (!currentCurriculumPath) {
+    return <div>No curriculum path selected.</div>;
   }
 
-  // Find the roadmap details from the roadmaps array
-  const roadmapDetails = roadmaps.find(r => r.id === currentRoadmap.roadmapId);
+  // Find the curriculum path details from the curriculumPaths array
+  const curriculumPathDetails = curriculumPaths.find(r => r.id === currentCurriculumPath.curriculumPathId);
 
-  const handleNodeClick = (node: RoadmapNode) => {
+  const handleNodeClick = (node: CurriculumNode) => {
     onNodeSelect(node);
   };
 
   return (
     <div>
-      <h2>{roadmapDetails?.name || "Learning Path"}</h2>
+      <h2>{curriculumPathDetails?.name || "Learning Path"}</h2>
       <p>Current Node ID: {currentNodeId}</p>
       <div>
         {nodes.map((node) => (
@@ -76,4 +76,4 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   );
 };
 
-export default RoadmapVisualization;
+export default CurriculumPathVisualization;

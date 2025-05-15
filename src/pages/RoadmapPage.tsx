@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useRoadmap } from '@/hooks/use-roadmap';
-import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
-import RoadmapSelection from '@/features/roadmap/components/RoadmapSelection';
-import RoadmapExerciseModal from '@/features/roadmap/components/RoadmapExerciseModal';
-import RoadmapItemCard from '@/features/roadmap/components/RoadmapItemCard';
-import RoadmapProgressDashboard from '@/features/roadmap/components/RoadmapProgressDashboard';
-import { RoadmapNode } from '@/types';
+import { useCurriculumPath } from '@/hooks/use-curriculum-path';
+import CurriculumPathVisualization from '@/components/roadmap/RoadmapVisualization';
+import CurriculumPathSelection from '@/components/roadmap/RoadmapSelection';
+import CurriculumExerciseModal from '@/components/roadmap/RoadmapExerciseModal';
+import CurriculumPathItemCard from '@/features/roadmap/components/CurriculumPathItemCard';
+import CurriculumPathProgressDashboard from '@/features/roadmap/components/CurriculumPathProgressDashboard';
+import { CurriculumNode } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -17,25 +17,25 @@ import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 
-const RoadmapPage: React.FC = () => {
+const CurriculumPathPage: React.FC = () => {
   const { 
-    currentRoadmap, 
+    currentCurriculumPath, 
     isLoading, 
-    roadmaps, 
-    userRoadmaps = [],
-    loadUserRoadmaps,
-    selectRoadmap,
+    curriculumPaths, 
+    userCurriculumPaths = [],
+    loadUserCurriculumPaths,
+    selectCurriculumPath,
     completedNodes = [],
     nodes = [],
     currentNodeId
-  } = useRoadmap();
+  } = useCurriculumPath();
   
   // Derive hasError from context data
-  const hasError = !isLoading && userRoadmaps.length > 0 && !currentRoadmap;
+  const hasError = !isLoading && userCurriculumPaths.length > 0 && !currentCurriculumPath;
   
   const { settings } = useUserSettingsContext();
   const { user } = useAuth();
-  const [selectedNode, setSelectedNode] = useState<RoadmapNode | null>(null);
+  const [selectedNode, setSelectedNode] = useState<CurriculumNode | null>(null);
   const [exerciseModalOpen, setExerciseModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("active");
   const [viewMode, setViewMode] = useState<'map' | 'dashboard'>('map');
@@ -43,28 +43,28 @@ const RoadmapPage: React.FC = () => {
   const [isRetrying, setIsRetrying] = useState(false);
   const navigate = useNavigate();
 
-  // Set active tab based on whether we have user roadmaps or not
+  // Set active tab based on whether we have user curriculum paths or not
   useEffect(() => {
     if (!isLoading) {
-      if (userRoadmaps.length === 0) {
+      if (userCurriculumPaths.length === 0) {
         setActiveTab("new");
       } else {
         setActiveTab("active");
       }
     }
-  }, [isLoading, userRoadmaps]);
+  }, [isLoading, userCurriculumPaths]);
 
   // When a user clicks on "Continue Learning," open the exercise modal with current node
   useEffect(() => {
-    if (currentRoadmap && currentNodeId && nodes.length > 0) {
+    if (currentCurriculumPath && currentNodeId && nodes.length > 0) {
       const currentNode = nodes.find(node => node.id === currentNodeId);
       if (currentNode && selectedNode?.id === currentNode.id && !exerciseModalOpen) {
         setExerciseModalOpen(true);
       }
     }
-  }, [currentRoadmap, currentNodeId, nodes, selectedNode, exerciseModalOpen]);
+  }, [currentCurriculumPath, currentNodeId, nodes, selectedNode, exerciseModalOpen]);
 
-  const handleNodeSelect = (node: RoadmapNode) => {
+  const handleNodeSelect = (node: CurriculumNode) => {
     setSelectedNode(node);
     setExerciseModalOpen(true);
   };
@@ -77,34 +77,34 @@ const RoadmapPage: React.FC = () => {
     });
   };
 
-  const handleRoadmapSelect = async (roadmapId: string) => {
+  const handleCurriculumPathSelect = async (pathId: string) => {
     try {
       setSelectionError(null);
       setIsRetrying(false);
-      await selectRoadmap(roadmapId);
-      setViewMode('map'); // Switch to map view when selecting a roadmap
+      await selectCurriculumPath(pathId);
+      setViewMode('map'); // Switch to map view when selecting a path
     } catch (error) {
-      console.error('Error selecting roadmap:', error);
-      setSelectionError('Failed to load the selected roadmap. Please try again.');
+      console.error('Error selecting curriculum path:', error);
+      setSelectionError('Failed to load the selected curriculum path. Please try again.');
       
-      // After error, try to re-fetch user roadmaps
+      // After error, try to re-fetch user curriculum paths
       try {
-        await loadUserRoadmaps(settings.selectedLanguage);
+        await loadUserCurriculumPaths(settings.selectedLanguage);
         
-        if (userRoadmaps && userRoadmaps.length > 0) {
-          // Try selecting the first available roadmap instead
+        if (userCurriculumPaths && userCurriculumPaths.length > 0) {
+          // Try selecting the first available curriculum path instead
           try {
-            await selectRoadmap(userRoadmaps[0].id);
+            await selectCurriculumPath(userCurriculumPaths[0].id);
             toast({
-              title: "Selected fallback roadmap",
-              description: "We encountered an issue with the selected roadmap and loaded another one instead."
+              title: "Selected fallback curriculum path",
+              description: "We encountered an issue with the selected curriculum path and loaded another one instead."
             });
           } catch (secondError) {
-            console.error('Error selecting fallback roadmap:', secondError);
+            console.error('Error selecting fallback curriculum path:', secondError);
           }
         }
       } catch (loadError) {
-        console.error('Error loading fallback roadmaps:', loadError);
+        console.error('Error loading fallback curriculum paths:', loadError);
       }
     }
   };
@@ -120,46 +120,46 @@ const RoadmapPage: React.FC = () => {
         return;
       }
       
-      // Reload roadmaps first
-      await loadUserRoadmaps(settings.selectedLanguage);
-      console.log("Reloaded roadmaps:", { userRoadmaps });
+      // Reload curriculum paths first
+      await loadUserCurriculumPaths(settings.selectedLanguage);
+      console.log("Reloaded curriculum paths:", { userCurriculumPaths });
       
-      // If we have a current roadmap, try to reload it
-      if (currentRoadmap) {
-        await selectRoadmap(currentRoadmap.id);
+      // If we have a current curriculum path, try to reload it
+      if (currentCurriculumPath) {
+        await selectCurriculumPath(currentCurriculumPath.id);
         toast({
-          title: "Roadmap loaded",
-          description: "Successfully reloaded your roadmap."
+          title: "Curriculum path loaded",
+          description: "Successfully reloaded your curriculum path."
         });
-      } else if (userRoadmaps && userRoadmaps.length > 0) {
-        // Otherwise, select the first available roadmap
-        await selectRoadmap(userRoadmaps[0].id);
+      } else if (userCurriculumPaths && userCurriculumPaths.length > 0) {
+        // Otherwise, select the first available curriculum path
+        await selectCurriculumPath(userCurriculumPaths[0].id);
         toast({
-          title: "Roadmap loaded",
-          description: "Successfully loaded a roadmap."
+          title: "Curriculum path loaded",
+          description: "Successfully loaded a curriculum path."
         });
       }
     } catch (error) {
-      console.error('Error retrying roadmap load:', error);
-      setSelectionError('Still having trouble loading the roadmap. Please try refreshing the page.');
+      console.error('Error retrying curriculum path load:', error);
+      setSelectionError('Still having trouble loading the curriculum path. Please try refreshing the page.');
     } finally {
       setIsRetrying(false);
     }
   };
 
-  const handleContinueLearning = async (roadmapId: string, e: React.MouseEvent) => {
+  const handleContinueLearning = async (pathId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
     try {
       setSelectionError(null);
       
-      // First select the roadmap
-      await selectRoadmap(roadmapId);
+      // First select the curriculum path
+      await selectCurriculumPath(pathId);
       
-      // Find the current node in this roadmap
-      const selectedRoadmap = userRoadmaps.find(r => r.id === roadmapId);
-      if (selectedRoadmap && selectedRoadmap.currentNodeId) {
-        const currentNode = nodes.find(node => node.id === selectedRoadmap.currentNodeId);
+      // Find the current node in this curriculum path
+      const selectedPath = userCurriculumPaths.find(r => r.id === pathId);
+      if (selectedPath && selectedPath.currentNodeId) {
+        const currentNode = nodes.find(node => node.id === selectedPath.currentNodeId);
         if (currentNode) {
           setSelectedNode(currentNode);
           setExerciseModalOpen(true);
@@ -167,7 +167,7 @@ const RoadmapPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error continuing learning:', error);
-      setSelectionError('Failed to load the selected roadmap. Please try again.');
+      setSelectionError('Failed to load the selected curriculum path. Please try again.');
     }
   };
 
@@ -176,36 +176,36 @@ const RoadmapPage: React.FC = () => {
     return lang.charAt(0).toUpperCase() + lang.slice(1);
   };
 
-  // Check if there are any available roadmaps in the system
-  const hasAvailableRoadmaps = roadmaps?.some(roadmap => 
-    roadmap.languages?.includes(settings.selectedLanguage)
+  // Check if there are any available curriculum paths in the system
+  const hasAvailableCurriculumPaths = curriculumPaths?.some(path => 
+    path.languages?.includes(settings.selectedLanguage)
   ) || false;
 
   // Detailed debug info
   useEffect(() => {
-    console.log("RoadmapPage state:", {
+    console.log("CurriculumPathPage state:", {
       isLoading,
       hasError,
       userAuthenticated: !!user,
-      roadmaps: roadmaps?.length || 0,
-      userRoadmaps: userRoadmaps?.length || 0,
-      hasCurrentRoadmap: !!currentRoadmap,
+      curriculumPaths: curriculumPaths?.length || 0,
+      userCurriculumPaths: userCurriculumPaths?.length || 0,
+      hasCurrentCurriculumPath: !!currentCurriculumPath,
       nodes: nodes?.length || 0,
       activeTab,
-      hasAvailableRoadmaps,
+      hasAvailableCurriculumPaths,
       language: settings.selectedLanguage
     });
   }, [
     isLoading, 
     hasError, 
     user, 
-    roadmaps, 
-    userRoadmaps, 
-    currentRoadmap, 
+    curriculumPaths, 
+    userCurriculumPaths, 
+    currentCurriculumPath, 
     nodes, 
     activeTab,
     settings.selectedLanguage,
-    hasAvailableRoadmaps
+    hasAvailableCurriculumPaths
   ]);
 
   if (!user) {
@@ -270,7 +270,7 @@ const RoadmapPage: React.FC = () => {
           >
             <div className="flex justify-between items-center">
               <p className="text-destructive font-medium">
-                {selectionError || "Failed to load your roadmaps. Please try again."}
+                {selectionError || "Failed to load your curriculum paths. Please try again."}
               </p>
               <Button 
                 variant="outline" 
@@ -293,7 +293,7 @@ const RoadmapPage: React.FC = () => {
           </motion.div>
         )}
 
-        {!hasAvailableRoadmaps && !isLoading && (
+        {!hasAvailableCurriculumPaths && !isLoading && (
           <motion.div 
             className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-2 dark:bg-amber-900/20 dark:border-amber-800"
             initial={{ opacity: 0, y: -10 }}
@@ -301,7 +301,7 @@ const RoadmapPage: React.FC = () => {
           >
             <div className="flex items-center">
               <p className="text-amber-800 dark:text-amber-400 font-medium">
-                No roadmaps available for {getCapitalizedLanguage(settings.selectedLanguage)}
+                No curriculum paths available for {getCapitalizedLanguage(settings.selectedLanguage)}
               </p>
             </div>
             <p className="text-sm text-amber-700 dark:text-amber-500 mt-1">
@@ -313,19 +313,19 @@ const RoadmapPage: React.FC = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-4">
-            <TabsTrigger value="active" disabled={!userRoadmaps || userRoadmaps.length === 0}>
-              My Roadmaps
+            <TabsTrigger value="active" disabled={!userCurriculumPaths || userCurriculumPaths.length === 0}>
+              My Curriculum Paths
             </TabsTrigger>
             <TabsTrigger value="new">
-              New Roadmap
+              New Curriculum Path
             </TabsTrigger>
           </TabsList>
           
           <TabsContent value="active" className="space-y-6">
-            {!userRoadmaps || userRoadmaps.length === 0 ? (
+            {!userCurriculumPaths || userCurriculumPaths.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
-                  You don't have any roadmaps for {getCapitalizedLanguage(settings.selectedLanguage)} yet. Start a new one to begin your learning journey.
+                  You don't have any curriculum paths for {getCapitalizedLanguage(settings.selectedLanguage)} yet. Start a new one to begin your learning journey.
                 </p>
               </div>
             ) : (
@@ -338,24 +338,24 @@ const RoadmapPage: React.FC = () => {
                 <h2 className="text-xl font-semibold">{getCapitalizedLanguage(settings.selectedLanguage)}</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {userRoadmaps.map(roadmap => {
-                    // Find the matching roadmap details
-                    const roadmapDetails = roadmaps?.find(r => r.id === roadmap.roadmapId);
+                  {userCurriculumPaths.map(path => {
+                    // Find the matching curriculum path details
+                    const pathDetails = curriculumPaths?.find(r => r.id === path.curriculumPathId);
                     return (
                       <motion.div
-                        key={roadmap.id}
+                        key={path.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <RoadmapItemCard
-                          roadmap={{
-                            ...roadmap,
-                            name: roadmapDetails?.name || "Learning Path",
-                            level: roadmapDetails?.level || "A1"
+                        <CurriculumPathItemCard
+                          curriculumPath={{
+                            ...path,
+                            name: pathDetails?.name || "Learning Path",
+                            level: pathDetails?.level || "A1"
                           }}
-                          isActive={currentRoadmap?.id === roadmap.id}
-                          onCardClick={handleRoadmapSelect}
+                          isActive={currentCurriculumPath?.id === path.id}
+                          onCardClick={handleCurriculumPathSelect}
                           onContinueClick={handleContinueLearning}
                         />
                       </motion.div>
@@ -368,12 +368,12 @@ const RoadmapPage: React.FC = () => {
           
           <TabsContent value="new">
             <div className="max-w-md mx-auto w-full">
-              <RoadmapSelection />
+              <CurriculumPathSelection />
             </div>
           </TabsContent>
         </Tabs>
 
-        {currentRoadmap && activeTab === 'active' && (
+        {currentCurriculumPath && activeTab === 'active' && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -383,7 +383,7 @@ const RoadmapPage: React.FC = () => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">
-                    {roadmaps?.find(r => r.id === currentRoadmap.roadmapId)?.name || "Learning Path"} - {getCapitalizedLanguage(currentRoadmap.language)}
+                    {curriculumPaths?.find(r => r.id === currentCurriculumPath.curriculumPathId)?.name || "Learning Path"} - {getCapitalizedLanguage(currentCurriculumPath.language)}
                   </CardTitle>
                   <div className="flex space-x-2">
                     <Button
@@ -407,14 +407,14 @@ const RoadmapPage: React.FC = () => {
                   </div>
                 </div>
                 <CardDescription>
-                  Follow this path to improve your {currentRoadmap.language} skills step by step
+                  Follow this path to improve your {currentCurriculumPath.language} skills step by step
                 </CardDescription>
               </CardHeader>
               <CardContent className="pb-8 pt-2">
                 {viewMode === 'map' ? (
-                  <RoadmapVisualization onNodeSelect={handleNodeSelect} />
+                  <CurriculumPathVisualization onNodeSelect={handleNodeSelect} />
                 ) : (
-                  <RoadmapProgressDashboard />
+                  <CurriculumPathProgressDashboard />
                 )}
               </CardContent>
             </Card>
@@ -430,7 +430,7 @@ const RoadmapPage: React.FC = () => {
               </Button>
             </div>
             
-            <RoadmapExerciseModal
+            <CurriculumExerciseModal
               node={selectedNode}
               isOpen={exerciseModalOpen}
               onOpenChange={setExerciseModalOpen}
@@ -442,4 +442,4 @@ const RoadmapPage: React.FC = () => {
   );
 };
 
-export default RoadmapPage;
+export default CurriculumPathPage;

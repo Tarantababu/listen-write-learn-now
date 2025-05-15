@@ -29,7 +29,7 @@ export interface Exercise {
   completionCount: number;
   isCompleted: boolean;
   archived?: boolean;
-  default_exercise_id?: string;  // Add this line to include the default exercise ID
+  default_exercise_id?: string;
 }
 
 export interface Directory {
@@ -54,10 +54,10 @@ export interface UserSettings {
   selectedLanguage: Language;
 }
 
-// Add the new Roadmap types
+// Language level types
 export type LanguageLevel = 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 
-export interface Roadmap {
+export interface CurriculumPath {
   id: string;
   name: string;
   level: LanguageLevel;
@@ -65,48 +65,48 @@ export interface Roadmap {
   createdAt: Date;
   updatedAt: Date;
   createdBy?: string;
-  languages?: Language[]; // Added languages array
+  languages?: Language[];
 }
 
-export interface RoadmapNode {
+export interface CurriculumNode {
   id: string;
-  roadmapId: string;
+  curriculumPathId: string;
   defaultExerciseId?: string;
   title: string;
   description?: string;
   position: number;
   isBonus: boolean;
-  language?: Language; // Added language field
+  language?: Language;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface RoadmapLanguage {
+export interface CurriculumPathLanguage {
   id: string;
-  roadmapId: string;
+  curriculumPathId: string;
   language: Language;
   createdAt: Date;
 }
 
-export interface UserRoadmap {
+export interface UserCurriculumPath {
   id: string;
   userId: string;
-  roadmapId: string;
+  curriculumPathId: string;
   language: Language;
   currentNodeId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface RoadmapItem extends UserRoadmap {
+export interface CurriculumPathItem extends UserCurriculumPath {
   name: string;
   level: LanguageLevel;
 }
 
-export interface RoadmapProgress {
+export interface CurriculumProgress {
   id: string;
   userId: string;
-  roadmapId: string;
+  curriculumPathId: string;
   nodeId: string;
   completed: boolean;
   completedAt?: Date;
@@ -114,11 +114,11 @@ export interface RoadmapProgress {
   updatedAt: Date;
 }
 
-// Add new RoadmapNodeProgress type
-export interface RoadmapNodeProgress {
+// Node progress tracking
+export interface CurriculumNodeProgress {
   id: string;
   userId: string;
-  roadmapId: string;
+  curriculumPathId: string;
   nodeId: string;
   language: Language;
   completionCount: number;
@@ -137,24 +137,24 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export interface RoadmapContextType {
-  roadmaps: Roadmap[];
-  userRoadmaps: UserRoadmap[]; 
-  currentRoadmap: UserRoadmap | null;
-  nodes: RoadmapNode[];
+export interface CurriculumContextType {
+  curriculumPaths: CurriculumPath[];
+  userCurriculumPaths: UserCurriculumPath[]; 
+  currentCurriculumPath: UserCurriculumPath | null;
+  nodes: CurriculumNode[];
   currentNodeId: string | undefined;
   completedNodes: string[];
   availableNodes: string[];
-  nodeProgress: RoadmapNodeProgress[];
+  nodeProgress: CurriculumNodeProgress[];
   isLoading: boolean;
   nodeLoading: boolean;
-  initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
-  loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
-  loadUserRoadmaps: (language?: Language) => Promise<UserRoadmap[] | undefined>;
+  initializeUserCurriculumPath: (level: LanguageLevel, language: Language) => Promise<void>;
+  loadUserCurriculumPath: (userCurriculumPathId?: string) => Promise<void>;
+  loadUserCurriculumPaths: (language?: Language) => Promise<UserCurriculumPath[] | undefined>;
   completeNode: (nodeId: string) => Promise<void>;
   resetProgress: () => Promise<void>;
   getNodeExercise: (nodeId: string) => Promise<any>;
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
   incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;
-  selectRoadmap: (roadmapId: string) => Promise<void>;
+  selectCurriculumPath: (curriculumPathId: string) => Promise<void>;
 }

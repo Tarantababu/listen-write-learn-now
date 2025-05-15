@@ -3,34 +3,34 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useRoadmap } from '@/hooks/use-roadmap';
+import { useCurriculumPath } from '@/hooks/use-curriculum-path';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import LevelBadge from '@/components/LevelBadge';
 import { LanguageLevel } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 
-const RoadmapSelection: React.FC = () => {
+const CurriculumPathSelection: React.FC = () => {
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>("A1");
   const { settings } = useUserSettingsContext();
   
   const {
-    initializeUserRoadmap,
-    roadmaps = [], // Provide default empty array to prevent filter of undefined
+    initializeUserCurriculumPath,
+    curriculumPaths = [], // Provide default empty array to prevent filter of undefined
     isLoading, 
-    userRoadmaps = [], // Provide default empty array
-    loadUserRoadmaps
-  } = useRoadmap();
+    userCurriculumPaths = [], // Provide default empty array
+    loadUserCurriculumPaths
+  } = useCurriculumPath();
   
   useEffect(() => {
-    // Reload user roadmaps whenever settings change
-    loadUserRoadmaps();
-  }, [settings, loadUserRoadmaps]);
+    // Reload user curriculum paths whenever settings change
+    loadUserCurriculumPaths();
+  }, [settings, loadUserCurriculumPaths]);
 
   const handleStartLearning = async () => {
     try {
-      await initializeUserRoadmap(selectedLevel, settings.selectedLanguage);
+      await initializeUserCurriculumPath(selectedLevel, settings.selectedLanguage);
     } catch (error) {
-      console.error("Error initializing roadmap:", error);
+      console.error("Error initializing curriculum path:", error);
       toast({
         title: "Failed to start learning path",
         description: "Please try again later.",
@@ -41,16 +41,16 @@ const RoadmapSelection: React.FC = () => {
 
   // Safely filter by providing default empty arrays
   const availableLevels = Array.from(new Set(
-    (roadmaps || [])
-      .filter(roadmap => roadmap.languages?.includes(settings.selectedLanguage))
-      .map(roadmap => roadmap.level)
+    (curriculumPaths || [])
+      .filter(path => path.languages?.includes(settings.selectedLanguage))
+      .map(path => path.level)
   )) as LanguageLevel[];
 
   const getCapitalizedLanguage = (lang: string) => {
     return lang.charAt(0).toUpperCase() + lang.slice(1);
   };
 
-  const hasExistingRoadmap = (userRoadmaps || []).length > 0;
+  const hasExistingCurriculumPath = (userCurriculumPaths || []).length > 0;
 
   return (
     <Card>
@@ -83,13 +83,13 @@ const RoadmapSelection: React.FC = () => {
 
         <Button 
           onClick={handleStartLearning} 
-          disabled={isLoading || hasExistingRoadmap || availableLevels.length === 0}
+          disabled={isLoading || hasExistingCurriculumPath || availableLevels.length === 0}
           className="w-full"
         >
           {isLoading ? 'Loading...' : 'Start Learning'}
         </Button>
 
-        {hasExistingRoadmap && (
+        {hasExistingCurriculumPath && (
           <p className="text-sm text-muted-foreground text-center">
             You already have an active learning path.
           </p>
@@ -105,4 +105,4 @@ const RoadmapSelection: React.FC = () => {
   );
 };
 
-export default RoadmapSelection;
+export default CurriculumPathSelection;

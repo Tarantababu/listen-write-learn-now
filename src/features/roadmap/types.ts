@@ -1,8 +1,8 @@
 
 import { Language, LanguageLevel } from '@/types';
 
-// Core roadmap types
-export interface RoadmapItem {
+// Core curriculum path types
+export interface CurriculumPathItem {
   id: string;
   name: string;
   level: LanguageLevel;
@@ -12,16 +12,16 @@ export interface RoadmapItem {
   updatedAt: Date;
   createdBy?: string;
   
-  // User-specific properties when this is a user roadmap
+  // User-specific properties when this is a user curriculum path
   currentNodeId?: string;
   progress?: number;
   language?: Language; 
-  roadmapId?: string; // Add this for user roadmaps that reference parent roadmap
+  curriculumPathId?: string; // Reference to parent curriculum path
 }
 
-export interface RoadmapNode {
+export interface CurriculumNode {
   id: string;
-  roadmapId: string;
+  curriculumPathId: string;
   title: string;
   description?: string;
   position: number;
@@ -33,7 +33,7 @@ export interface RoadmapNode {
   
   // UI state properties
   status?: 'locked' | 'available' | 'completed' | 'current';
-  progressCount?: number; // Add this for tracking node progress count
+  progressCount?: number; // For tracking node progress count
 }
 
 // API response for node exercise content
