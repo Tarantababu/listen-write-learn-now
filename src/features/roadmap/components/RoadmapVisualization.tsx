@@ -8,7 +8,7 @@ import LevelBadge from '@/components/LevelBadge';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { nodeAccessService } from '../services/NodeAccessService';
 
 interface RoadmapVisualizationProps {

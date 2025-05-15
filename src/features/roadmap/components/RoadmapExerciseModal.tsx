@@ -7,7 +7,7 @@ import { RoadmapNode } from '../types';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import ExerciseContent from '@/components/ExerciseContent';
 import { Card } from '@/components/ui/card';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { nodeAccessService } from '../services/NodeAccessService';
 
 interface RoadmapExerciseModalProps {
