@@ -35,7 +35,8 @@ interface UserWithRole {
   isAdmin: boolean;
 }
 
-export function UserRoleManagement() {
+// Changed from export function to export default function
+export default function UserRoleManagement() {
   const { isAdmin } = useAdmin();
   const [email, setEmail] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
