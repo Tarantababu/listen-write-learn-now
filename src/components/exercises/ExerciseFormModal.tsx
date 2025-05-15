@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Dialog,
@@ -74,10 +73,10 @@ const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
           initialValues={initialValues}
           onSuccess={() => {
             onOpenChange(false);
-            // Use more concise success message
+            // Use more concise success message with default variant
             toast({
               title: mode === 'create' ? "Exercise created" : "Exercise updated",
-              variant: "success",
+              variant: "default",
             });
           }} 
         />
