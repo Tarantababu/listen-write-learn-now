@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { useMediaQuery } from 'usehooks-ts';
+import { useMediaQuery } from 'react-use'; // Changed from usehooks-ts to react-use
 import { 
   BookOpen, 
   Library, 
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/contexts/AuthContext'; // Fixed auth hook import path
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { getLanguageFlag } from '@/utils/languageUtils';
