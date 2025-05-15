@@ -30,6 +30,10 @@ const RoadmapSelection: React.FC = () => {
   const handleStartLearning = async () => {
     try {
       await initializeUserRoadmap(selectedLevel, settings.selectedLanguage);
+      toast({
+        title: "Learning path started",
+        description: `You've successfully started a new ${selectedLevel} learning path in ${getCapitalizedLanguage(settings.selectedLanguage)}.`,
+      });
     } catch (error) {
       console.error("Error initializing roadmap:", error);
       toast({
@@ -40,17 +44,25 @@ const RoadmapSelection: React.FC = () => {
     }
   };
 
+  // Get available levels for the current language
   const availableLevels = Array.from(new Set(
     roadmaps
       .filter(roadmap => roadmap.languages?.includes(settings.selectedLanguage))
       .map(roadmap => roadmap.level)
-  )) as LanguageLevel[];
+  )).sort() as LanguageLevel[];
 
   const getCapitalizedLanguage = (lang: string) => {
     return lang.charAt(0).toUpperCase() + lang.slice(1);
   };
 
   const hasExistingRoadmap = userRoadmaps.length > 0;
+
+  // Check if selected level is available
+  useEffect(() => {
+    if (availableLevels.length > 0 && !availableLevels.includes(selectedLevel)) {
+      setSelectedLevel(availableLevels[0]);
+    }
+  }, [availableLevels, selectedLevel]);
 
   return (
     <Card>
@@ -64,6 +76,7 @@ const RoadmapSelection: React.FC = () => {
           <Select 
             value={selectedLevel} 
             onValueChange={(value: LanguageLevel) => setSelectedLevel(value)}
+            disabled={availableLevels.length === 0 || isLoading}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select your level" />

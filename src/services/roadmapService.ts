@@ -225,7 +225,7 @@ class RoadmapService {
     try {
       const { data, error } = await supabase
         .from('roadmap_nodes')
-        .select('*')
+        .select('*, default_exercises(*)')
         .eq('roadmap_id', roadmapId)
         .order('position', { ascending: true });
         
@@ -239,7 +239,7 @@ class RoadmapService {
         position: node.position,
         isBonus: node.is_bonus,
         defaultExerciseId: node.default_exercise_id,
-        language: node.language,
+        language: node.language as Language, // Cast to Language type
         createdAt: new Date(node.created_at),
         updatedAt: new Date(node.updated_at),
       }));
@@ -346,13 +346,13 @@ class RoadmapService {
       if (userRoadmapError) throw userRoadmapError;
       
       // Use the function to increment completion count
-      // Fix: Cast userRoadmap.language to Language type
+      // Fix the type error by properly casting the language
       const { error: incrementError } = await supabase.rpc(
         'increment_node_completion',
         {
           node_id_param: nodeId,
           user_id_param: userData.user.id,
-          language_param: userRoadmap.language as Language, // Cast string to Language type
+          language_param: userRoadmap.language as Language,
           roadmap_id_param: node.roadmap_id
         }
       );
