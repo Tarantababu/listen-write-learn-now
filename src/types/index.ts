@@ -1,3 +1,4 @@
+
 export type Language = 
   | 'english' 
   | 'german' 
@@ -28,7 +29,7 @@ export interface Exercise {
   completionCount: number;
   isCompleted: boolean;
   archived?: boolean;
-  default_exercise_id?: string;  // Add this line to include the default exercise ID
+  default_exercise_id?: string;
 }
 
 export interface Directory {
@@ -144,12 +145,12 @@ export interface CurriculumContextType {
   selectCurriculumPath: (curriculumPathId: string) => Promise<void>;
 }
 
-export interface Roadmap {
+export interface RoadmapItem {
   id: string;
   name: string;
   level: LanguageLevel;
   description?: string;
-  languages?: Language[];
+  languages: Language[];
   createdAt: Date;
   updatedAt: Date;
   createdBy?: string;
@@ -159,7 +160,7 @@ export interface RoadmapNode {
   id: string;
   roadmapId: string;
   title: string;
-  description: string; // Required to match feature/roadmap/types
+  description: string; // Required field to match feature/roadmap/types
   position: number;
   isBonus: boolean;
   defaultExerciseId?: string;
@@ -184,10 +185,10 @@ export interface UserRoadmap {
   userId: string;
   roadmapId: string;
   language: Language;
-  name?: string; // Added to match RoadmapItem
-  level?: LanguageLevel; // Added to match RoadmapItem
-  description?: string; // Added to match RoadmapItem
-  languages?: Language[]; // Added to match RoadmapItem
+  name: string; // Required to match RoadmapItem
+  level: LanguageLevel; // Required to match RoadmapItem
+  description?: string;
+  languages?: Language[]; // Required to match RoadmapItem
   currentNodeId?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -218,7 +219,7 @@ export interface RoadmapNodeProgress {
 }
 
 export interface RoadmapContextType {
-  roadmaps: Roadmap[];
+  roadmaps: RoadmapItem[];
   userRoadmaps: UserRoadmap[]; 
   currentRoadmap: UserRoadmap | null;
   nodes: RoadmapNode[];
@@ -237,9 +238,9 @@ export interface RoadmapContextType {
   // Methods
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
   loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
-  loadUserRoadmaps: (language?: Language) => Promise<UserRoadmap[] | undefined>;
-  completeNode: (nodeId: string) => Promise<void>;
-  resetProgress: () => Promise<void>;
+  loadUserRoadmaps: () => Promise<UserRoadmap[]>;
+  completeNode: (nodeId: string) => Promise<{ nextNodeId?: string }>;
+  resetProgress: (roadmapId: string) => Promise<void>;
   getNodeExercise: (nodeId: string) => Promise<any>;
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
   incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;

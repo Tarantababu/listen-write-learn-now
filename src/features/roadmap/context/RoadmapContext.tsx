@@ -93,7 +93,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [user, fetchRoadmaps]);
 
   // Load all user roadmaps
-  const loadUserRoadmaps = useCallback(async (): Promise<UserRoadmap[]> => {
+  const loadUserRoadmaps = async (): Promise<UserRoadmap[]> => {
     if (!user) return [];
 
     try {
@@ -122,7 +122,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
       return [];
     }
-  }, [user, settings.selectedLanguage, selectedRoadmap]);
+  };
 
   // Select a specific roadmap
   const selectRoadmap = async (roadmapId: string) => {

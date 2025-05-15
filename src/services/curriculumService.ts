@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { LanguageLevel, Language, CurriculumPath, CurriculumNode, UserCurriculumPath, CurriculumProgress } from '@/types';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 // Helper function to handle possible non-array responses
 const ensureArray = (data: any) => {
@@ -15,8 +15,8 @@ const ensureArray = (data: any) => {
  */
 export async function getCurriculumPaths(language: Language): Promise<CurriculumPath[]> {
   try {
-    // Since we don't have a curriculum-specific function yet, use the roadmap function
-    // and adapt the data structure
+    // Since curriculum paths functionality is not fully implemented,
+    // we'll use the roadmap tables as a fallback
     const { data, error } = await supabase
       .rpc('get_roadmaps_by_language', {
         requested_language: language
@@ -29,7 +29,7 @@ export async function getCurriculumPaths(language: Language): Promise<Curriculum
       id: path.id,
       language: language,
       level: path.level as LanguageLevel,
-      description: path.description,
+      description: path.description || '',
       createdAt: new Date(path.created_at),
       updatedAt: new Date(path.updated_at),
       createdBy: path.created_by
@@ -43,14 +43,13 @@ export async function getCurriculumPaths(language: Language): Promise<Curriculum
 /**
  * Get all nodes for a curriculum path
  */
-export async function getCurriculumNodes(curriculumPathId: string, language: Language): Promise<CurriculumNode[]> {
+export async function getCurriculumNodes(curriculumPathId: string): Promise<CurriculumNode[]> {
   try {
     // We'll use the roadmap nodes table until we have a dedicated curriculum table
     const { data, error } = await supabase
       .from('roadmap_nodes')
       .select('*')
       .eq('roadmap_id', curriculumPathId)
-      .eq('language', language)
       .order('position');
 
     if (error) throw error;
@@ -76,12 +75,12 @@ export async function getCurriculumNodes(curriculumPathId: string, language: Lan
 /**
  * Get all user curriculum paths
  */
-export async function getUserCurriculumPaths(language: Language): Promise<UserCurriculumPath[]> {
+export async function getUserCurriculumPaths(language?: Language): Promise<UserCurriculumPath[]> {
   try {
     // We'll use the user roadmaps table until we have a dedicated user curriculum paths table
     const { data, error } = await supabase
       .rpc('get_user_roadmaps_by_language', {
-        user_id_param: supabase.auth.getUser().then(({ data }) => data.user?.id) || '',
+        user_id_param: (await supabase.auth.getUser()).data.user?.id,
         requested_language: language
       });
 
@@ -106,15 +105,14 @@ export async function getUserCurriculumPaths(language: Language): Promise<UserCu
 /**
  * Get curriculum nodes progress
  */
-export async function getCurriculumNodesProgress(pathId: string, language: Language): Promise<any[]> {
+export async function getCurriculumNodesProgress(userId: string, pathId: string): Promise<any[]> {
   try {
     // We'll use the roadmap nodes progress table
     const { data, error } = await supabase
       .from('roadmap_nodes_progress')
       .select('*')
       .eq('roadmap_id', pathId)
-      .eq('language', language)
-      .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '');
+      .eq('user_id', userId);
 
     if (error) throw error;
 
@@ -245,11 +243,11 @@ export const incrementNodeCompletion = async (
 ): Promise<void> => {
   try {
     const { error } = await supabase
-      .rpc('increment_curriculum_node_completion', {
+      .rpc('increment_node_completion', {
         user_id_param: userId,
         node_id_param: nodeId,
         language_param: language,
-        curriculum_path_id_param: curriculumPathId
+        roadmap_id_param: curriculumPathId
       });
 
     if (error) {
@@ -272,32 +270,30 @@ export const markNodeAsCompleted = async (
 ): Promise<void> => {
   try {
     const { error } = await supabase
-      .from('curriculum_progress')
+      .from('roadmap_progress')
       .insert({
         user_id: userId,
-        curriculum_node_id: nodeId,
-        curriculum_path_id: curriculumPathId,
+        node_id: nodeId,
+        roadmap_id: curriculumPathId,
         completed: true,
         completed_at: new Date().toISOString()
-      })
-      .select()
-      .single();
+      });
 
     if (error) {
       // If it's a duplicate entry, try to update instead
       if (error.code === '23505') { // Unique violation
         const { error: updateError } = await supabase
-          .from('curriculum_progress')
+          .from('roadmap_progress')
           .update({
             completed: true,
             completed_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('user_id', userId)
-          .eq('curriculum_node_id', nodeId);
+          .eq('node_id', nodeId);
           
         if (updateError) {
-          console.error('Error updating curriculum progress:', updateError);
+          console.error('Error updating roadmap progress:', updateError);
           throw updateError;
         }
       } else {
@@ -319,24 +315,24 @@ export const resetProgress = async (
   curriculumPathId: string
 ): Promise<void> => {
   try {
-    // Delete from curriculum_progress
+    // Delete from roadmap_progress
     const { error: deleteProgressError } = await supabase
-      .from('curriculum_progress')
+      .from('roadmap_progress')
       .delete()
       .eq('user_id', userId)
-      .eq('curriculum_path_id', curriculumPathId);
+      .eq('roadmap_id', curriculumPathId);
       
     if (deleteProgressError) {
-      console.error('Error deleting curriculum progress:', deleteProgressError);
+      console.error('Error deleting roadmap progress:', deleteProgressError);
       throw deleteProgressError;
     }
     
-    // Delete from curriculum_nodes_progress
+    // Delete from roadmap_nodes_progress
     const { error: deleteNodeProgressError } = await supabase
-      .from('curriculum_nodes_progress')
+      .from('roadmap_nodes_progress')
       .delete()
       .eq('user_id', userId)
-      .eq('curriculum_path_id', curriculumPathId);
+      .eq('roadmap_id', curriculumPathId);
       
     if (deleteNodeProgressError) {
       console.error('Error deleting node progress:', deleteNodeProgressError);
@@ -355,7 +351,7 @@ export const getNodeExercise = async (nodeId: string): Promise<any> => {
   try {
     // First get the node to get the default exercise ID
     const { data: nodeData, error: nodeError } = await supabase
-      .from('curriculum_nodes')
+      .from('roadmap_nodes')
       .select('default_exercise_id')
       .eq('id', nodeId)
       .single();

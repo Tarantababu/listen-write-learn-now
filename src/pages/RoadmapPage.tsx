@@ -89,7 +89,7 @@ const RoadmapPage: React.FC = () => {
       
       // After error, try to re-fetch user roadmaps
       try {
-        const loadedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
+        const loadedRoadmaps = await loadUserRoadmaps();
         
         if (loadedRoadmaps && loadedRoadmaps.length > 0) {
           // Try selecting the first available roadmap instead

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -11,10 +12,10 @@ import {
   LanguageLevel 
 } from '@/types';
 import {
-  fetchCurriculumPathsByLanguage,
-  fetchCurriculumNodes,
-  fetchUserCurriculumPaths,
-  fetchNodeProgress,
+  getCurriculumPaths,
+  getCurriculumNodes,
+  getUserCurriculumPaths,
+  getCurriculumNodesProgress as getNodeProgress,
   initializeUserCurriculumPath as initPath,
   resetProgress as resetPathProgress,
   incrementNodeCompletion,
@@ -68,7 +69,7 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Load curriculum paths for the selected language
   useEffect(() => {
     if (settings.selectedLanguage) {
-      fetchCurriculumPathsByLanguage(settings.selectedLanguage)
+      getCurriculumPaths(settings.selectedLanguage)
         .then(paths => {
           setCurriculumPaths(paths);
         })
@@ -82,8 +83,8 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     if (currentCurriculumPath) {
       Promise.all([
-        fetchCurriculumNodes(currentCurriculumPath.curriculumPathId),
-        fetchNodeProgress(user!.id, currentCurriculumPath.curriculumPathId)
+        getCurriculumNodes(currentCurriculumPath.curriculumPathId),
+        getNodeProgress(user!.id, currentCurriculumPath.curriculumPathId)
       ])
         .then(([nodesData, progressData]) => {
           setNodes(nodesData);
@@ -105,7 +106,7 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     setIsLoading(true);
     try {
-      const paths = await fetchUserCurriculumPaths(user.id, language);
+      const paths = await getUserCurriculumPaths(language);
       setUserCurriculumPaths(paths);
       
       // If we have paths and no current path, set the first one as current
@@ -137,12 +138,24 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     setIsLoading(true);
     try {
-      const newPath = await initPath(user.id, language, level);
+      const newPathId = await initPath(level, language);
+      if (!newPathId) {
+        throw new Error('Failed to initialize curriculum path');
+      }
       
-      // Add to the user paths list
-      setUserCurriculumPaths(prev => [...prev, newPath]);
+      // Load the paths again to get the new path
+      const updatedPaths = await loadUserCurriculumPaths(language);
+      if (!updatedPaths) {
+        throw new Error('Failed to load updated paths');
+      }
       
-      // Set as current
+      // Find the new path in the updated paths
+      const newPath = updatedPaths.find(p => p.id === newPathId);
+      if (!newPath) {
+        throw new Error('New path not found in updated paths');
+      }
+      
+      // Set it as the current path
       setCurrentCurriculumPath(newPath);
       
       toast({
@@ -321,7 +334,7 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       );
       
       // Refetch the node progress to get the updated counts
-      const updatedProgress = await fetchNodeProgress(user.id, currentCurriculumPath.curriculumPathId);
+      const updatedProgress = await getNodeProgress(user.id, currentCurriculumPath.curriculumPathId);
       setNodeProgress(updatedProgress);
       
       setNodeLoading(false);

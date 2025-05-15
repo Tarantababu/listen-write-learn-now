@@ -28,8 +28,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     getNodeExercise, 
     nodeLoading, 
     completedNodes, 
-    incrementNodeCompletion,
-    nodeProgress 
+    incrementNodeCompletion
   } = useRoadmap();
   
   const [exercise, setExercise] = useState<any>(null);
@@ -117,13 +116,8 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     }
   };
 
-  // Get the completion count for this node (if it exists)
-  const nodeCompletionInfo = node ? 
-    nodeProgress.find(np => np.nodeId === node.id) : 
-    null;
-  
-  const completionCount = nodeCompletionInfo?.completionCount || 0;
-  const isNodeCompleted = node ? completedNodes.includes(node.id) || nodeCompletionInfo?.isCompleted : false;
+  // Get completion information
+  const isNodeCompleted = node ? completedNodes.includes(node.id) : false;
 
   if (!node) {
     return null;

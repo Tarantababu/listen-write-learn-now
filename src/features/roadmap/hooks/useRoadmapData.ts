@@ -10,7 +10,7 @@ export function useRoadmapData() {
   const [isLoading, setIsLoading] = useState(false);
   const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
   const [userRoadmaps, setUserRoadmaps] = useState<UserRoadmap[]>([]);
-  const [selectedRoadmap, setSelectedRoadmap] = useState<RoadmapItem | null>(null);
+  const [selectedRoadmap, setSelectedRoadmap] = useState<UserRoadmap | null>(null);
   const [nodes, setNodes] = useState<RoadmapNode[]>([]);
   const loadingRef = useRef<{[key: string]: boolean}>({});
   
@@ -54,6 +54,7 @@ export function useRoadmapData() {
     
     try {
       const userRoadmapsData = await roadmapService.getUserRoadmaps(language);
+      // Make sure to convert user roadmaps to the right type
       setUserRoadmaps(userRoadmapsData);
       return userRoadmapsData;
     } catch (error) {
@@ -172,7 +173,7 @@ export function useRoadmapData() {
   // Mark a node as completed
   const markNodeAsCompleted = useCallback(async (nodeId: string) => {
     try {
-      await roadmapService.markNodeCompleted(nodeId);
+      await roadmapService.markNodeAsCompleted(nodeId);
       
       // Refresh nodes after completion
       if (selectedRoadmap) {
