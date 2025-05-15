@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
+import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult, UserRoadmap } from '../types';
 import { Language, LanguageLevel } from '@/types';
 import { asUUID, asFilterParam } from '@/lib/utils';
 
@@ -22,7 +22,7 @@ class RoadmapService {
         name: item.name,
         level: item.level as LanguageLevel,
         description: item.description,
-        languages: [],
+        languages: [], // Empty array as default
         createdAt: new Date(item.created_at),
         updatedAt: new Date(item.updated_at),
       }));
@@ -35,7 +35,7 @@ class RoadmapService {
   /**
    * Get roadmaps that the current user has started for a specific language
    */
-  async getUserRoadmaps(language: Language): Promise<RoadmapItem[]> {
+  async getUserRoadmaps(language: Language): Promise<UserRoadmap[]> {
     try {
       const { data, error } = await supabase
         .rpc('get_user_roadmaps_by_language', {
@@ -46,16 +46,17 @@ class RoadmapService {
       if (error) throw error;
       
       // Format the user roadmap data
-      return (data || []).map((item: any): RoadmapItem => ({
+      return (data || []).map((item: any): UserRoadmap => ({
         id: item.id,
+        userId: item.user_id,
         roadmapId: item.roadmap_id,
-        name: "Learning Path", // Placeholder
-        level: "A1" as LanguageLevel, // Placeholder
-        description: "",
         language: item.language as Language,
         currentNodeId: item.current_node_id,
         createdAt: new Date(item.created_at),
         updatedAt: new Date(item.updated_at),
+        // Optional fields to match RoadmapItem
+        name: "Learning Path", // Placeholder
+        level: "A1" as LanguageLevel, // Placeholder
       }));
     } catch (error) {
       console.error('Error getting user roadmaps:', error);
@@ -139,6 +140,32 @@ class RoadmapService {
       };
     } catch (error) {
       console.error('Error recording node completion:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mark a node as completed
+   */
+  async markNodeAsCompleted(nodeId: string): Promise<void> {
+    try {
+      console.log('Marking node as completed:', nodeId);
+      // This is a stub implementation
+    } catch (error) {
+      console.error('Error marking node as completed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset progress for a roadmap
+   */
+  async resetProgress(roadmapId: string): Promise<void> {
+    try {
+      console.log('Resetting progress for roadmap:', roadmapId);
+      // This is a stub implementation
+    } catch (error) {
+      console.error('Error resetting progress:', error);
       throw error;
     }
   }

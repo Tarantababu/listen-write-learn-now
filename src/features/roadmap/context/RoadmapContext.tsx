@@ -3,31 +3,50 @@ import React, { createContext, useState, useContext, ReactNode, useCallback, use
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { 
-  Roadmap, 
-  RoadmapNode, 
-  UserRoadmap, 
-  RoadmapProgress, 
-  LanguageLevel, 
-  Language, 
-  RoadmapNodeProgress, 
-  RoadmapContextType 
-} from '@/types';
+import { RoadmapItem, UserRoadmap, RoadmapNode, NodeCompletionResult } from '../types';
+import { Language, LanguageLevel } from '@/types';
 import { roadmapService } from '../services/RoadmapService';
 
+// Define the context type
+interface RoadmapContextType {
+  roadmaps: RoadmapItem[];
+  userRoadmaps: UserRoadmap[];
+  selectedRoadmap: UserRoadmap | null;
+  currentNode: RoadmapNode | null;
+  roadmapNodes: RoadmapNode[];
+  loading: boolean;
+  nodeLoading: boolean;
+  isLoading: boolean;
+  // Alias properties to match what other components are using
+  currentRoadmap: UserRoadmap | null;
+  nodes: RoadmapNode[];
+  currentNodeId?: string;
+  completedNodes: string[];
+  availableNodes: string[];
+  initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
+  loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
+  loadUserRoadmaps: () => Promise<UserRoadmap[]>;
+  completeNode: (nodeId: string) => Promise<{ nextNodeId?: string }>;
+  resetProgress: (roadmapId: string) => Promise<void>;
+  getNodeExercise: (nodeId: string) => Promise<any>;
+  markNodeAsCompleted: (nodeId: string) => Promise<void>;
+  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;
+  selectRoadmap: (roadmapId: string) => Promise<void>;
+}
+
 // Create the context
-const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
+export const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
 
 export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const { settings } = useUserSettingsContext();
-  const [roadmaps, setRoadmaps] = useState<Roadmap[]>([]);
+  const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
   const [userRoadmaps, setUserRoadmaps] = useState<UserRoadmap[]>([]); 
   const [selectedRoadmap, setSelectedRoadmap] = useState<UserRoadmap | null>(null);
   const [roadmapNodes, setRoadmapNodes] = useState<RoadmapNode[]>([]);
   const [currentNode, setCurrentNode] = useState<RoadmapNode | null>(null);
-  const [progress, setProgress] = useState<RoadmapProgress[]>([]);
-  const [nodeProgress, setNodeProgress] = useState<RoadmapNodeProgress[]>([]);
+  const [completedNodeIds, setCompletedNodeIds] = useState<string[]>([]);
+  const [availableNodeIds, setAvailableNodeIds] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [nodeLoading, setNodeLoading] = useState<boolean>(false);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(settings.selectedLanguage);
@@ -74,11 +93,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [user, fetchRoadmaps]);
 
   // Load all user roadmaps
-  const loadUserRoadmaps = useCallback(async (language?: Language): Promise<UserRoadmap[]> => {
+  const loadUserRoadmaps = useCallback(async (): Promise<UserRoadmap[]> => {
     if (!user) return [];
 
     try {
-      const userRoadmapsList = await roadmapService.getUserRoadmaps(language || settings.selectedLanguage);
+      const userRoadmapsList = await roadmapService.getUserRoadmaps(settings.selectedLanguage);
       
       if (!userRoadmapsList || userRoadmapsList.length === 0) {
         setUserRoadmaps([]);
@@ -128,14 +147,20 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       let userRoadmap: UserRoadmap | null = null;
       
       if (userRoadmapId) {
-        // Get specific user roadmap by ID
-        const roadmapItems = await roadmapService.getUserRoadmaps(settings.selectedLanguage);
-        userRoadmap = roadmapItems.find(r => r.id === userRoadmapId) || null;
+        // Find roadmap in existing user roadmaps
+        userRoadmap = userRoadmaps.find(r => r.id === userRoadmapId) || null;
+        
+        // If not found in memory, try to fetch it
+        if (!userRoadmap) {
+          // For now, let's just reload all user roadmaps and find the one we need
+          const refreshedRoadmaps = await loadUserRoadmaps();
+          userRoadmap = refreshedRoadmaps.find(r => r.id === userRoadmapId) || null;
+        }
       } else {
         // Get first user roadmap for current language
-        const userRoadmaps = await roadmapService.getUserRoadmaps(settings.selectedLanguage);
-        if (userRoadmaps.length > 0) {
-          userRoadmap = userRoadmaps[0];
+        const userRoadmapsList = await roadmapService.getUserRoadmaps(settings.selectedLanguage);
+        if (userRoadmapsList.length > 0) {
+          userRoadmap = userRoadmapsList[0];
         }
       }
 
@@ -143,8 +168,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         setSelectedRoadmap(null);
         setRoadmapNodes([]);
         setCurrentNode(null);
-        setProgress([]);
-        setNodeProgress([]);
+        setCompletedNodeIds([]);
+        setAvailableNodeIds([]);
         setLoading(false);
         return;
       }
@@ -163,16 +188,16 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       // Find current node
       if (userRoadmap.currentNodeId) {
-        const current = filteredNodes.find(node => node.id === userRoadmap.currentNodeId);
+        const current = filteredNodes.find(node => node.id === userRoadmap!.currentNodeId);
         setCurrentNode(current || null);
       } else if (filteredNodes.length > 0) {
         setCurrentNode(filteredNodes[0]);
       }
 
-      // For now, use an empty progress array
-      // Eventually this should be retrieved from the service
-      setProgress([]);
-      setNodeProgress([]);
+      // Calculate completed and available nodes
+      // This is a simplified implementation - in a real app, this data would come from the service
+      setCompletedNodeIds([]);
+      setAvailableNodeIds(filteredNodes.length > 0 ? [filteredNodes[0].id] : []);
       
     } catch (error) {
       console.error("Error loading user roadmap:", error);
@@ -258,26 +283,23 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     setNodeLoading(true);
     try {
       // Update completion count through service
-      await roadmapService.recordNodeCompletion(nodeId, accuracy);
+      const result = await roadmapService.recordNodeCompletion(nodeId, accuracy);
       
       // Reload roadmap data to get updated progress
       await loadUserRoadmap(selectedRoadmap.id);
       
-      // Find updated node progress (this is simplified since we don't have real progress yet)
-      const updatedNodeProgress = nodeProgress.find(np => np.nodeId === nodeId);
-      
-      if (updatedNodeProgress && updatedNodeProgress.isCompleted) {
+      if (result.isCompleted) {
         toast({
           title: "Node completed!",
-          description: `You've completed this lesson! Completion count: ${updatedNodeProgress.completionCount}/3`
+          description: `You've completed this lesson! Completion count: ${result.completionCount}/3`
         });
         
         // If this is now completed, check if we need to move to the next node
         await completeNode(nodeId);
-      } else if (updatedNodeProgress) {
+      } else {
         toast({
           title: "Progress saved!",
-          description: `Practice progress saved. Completion count: ${updatedNodeProgress.completionCount}/3`
+          description: `Practice progress saved. Completion count: ${result.completionCount}/3`
         });
       }
       
@@ -295,8 +317,14 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // Mark node as completed
   const markNodeAsCompleted = async (nodeId: string) => {
-    const result = await completeNode(nodeId);
-    return;
+    try {
+      await roadmapService.markNodeAsCompleted(nodeId);
+      const result = await completeNode(nodeId);
+      return;
+    } catch (error) {
+      console.error("Error marking node as completed:", error);
+      throw error;
+    }
   };
 
   // Complete a node
@@ -332,11 +360,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   // Reset progress
-  const resetProgress = async () => {
+  const resetProgress = async (roadmapId: string) => {
     if (!user || !selectedRoadmap) return;
 
     try {
-      // Simplified implementation - would call service in real implementation
+      await roadmapService.resetProgress(roadmapId);
       toast({
         title: "Progress reset",
         description: "Progress reset successfully"
@@ -352,21 +380,6 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  // Calculate completed nodes ids
-  const completedNodes = progress.filter(p => p.completed).map(p => p.nodeId);
-  
-  // Calculate available nodes
-  const availableNodes = roadmapNodes
-    .filter((node, index, array) => {
-      // First node is always available
-      if (index === 0) return true;
-      
-      // Previous node is completed, this one is available
-      const prevNode = array[index - 1];
-      return prevNode && completedNodes.includes(prevNode.id);
-    })
-    .map(node => node.id);
-
   return (
     <RoadmapContext.Provider value={{
       roadmaps,
@@ -374,8 +387,6 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       selectedRoadmap,
       currentNode,
       roadmapNodes,
-      progress,
-      nodeProgress,
       loading,
       nodeLoading,
       isLoading,
@@ -383,8 +394,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentRoadmap: selectedRoadmap,
       nodes: roadmapNodes,
       currentNodeId: selectedRoadmap?.currentNodeId,
-      completedNodes,
-      availableNodes,
+      completedNodes: completedNodeIds,
+      availableNodes: availableNodeIds,
       initializeUserRoadmap,
       loadUserRoadmap,
       loadUserRoadmaps,
@@ -399,5 +410,3 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     </RoadmapContext.Provider>
   );
 };
-
-export { RoadmapContext };

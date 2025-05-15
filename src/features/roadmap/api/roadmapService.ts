@@ -1,5 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
+import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult, UserRoadmap } from '../types';
 import { Language, LanguageLevel } from '@/types';
 import { asUUID, asFilterParam, asBooleanParam } from '@/lib/utils/supabaseHelpers';
 
@@ -40,7 +41,6 @@ class RoadmapService {
         languages: languagesByRoadmap[item.id] || [],
         createdAt: new Date(item.created_at),
         updatedAt: new Date(item.updated_at),
-        createdBy: item.created_by,
       }));
     } catch (error) {
       console.error('Error getting roadmaps for language:', error);
@@ -51,7 +51,7 @@ class RoadmapService {
   /**
    * Get roadmaps that the current user has started for a specific language
    */
-  async getUserRoadmaps(language: Language): Promise<RoadmapItem[]> {
+  async getUserRoadmaps(language: Language): Promise<UserRoadmap[]> {
     try {
       // First check if the user is authenticated
       const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -86,16 +86,17 @@ class RoadmapService {
       
       // Create a map of roadmap data for easy lookup
       const roadmapMap: Record<string, any> = {};
-      roadmapsData.forEach(roadmap => {
+      roadmapsData?.forEach(roadmap => {
         roadmapMap[roadmap.id] = roadmap;
       });
       
       // Format the user roadmap data
-      return data.map((item: any): RoadmapItem => {
+      return data.map((item: any): UserRoadmap => {
         const roadmapDetails = roadmapMap[item.roadmap_id] || {};
         
         return {
           id: item.id,
+          userId: item.user_id,
           roadmapId: item.roadmap_id,
           name: roadmapDetails.name || 'Unnamed Roadmap',
           level: roadmapDetails.level as LanguageLevel || 'A1',

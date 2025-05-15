@@ -12,13 +12,28 @@ export interface RoadmapItem {
   roadmapId?: string;
   currentNodeId?: string;
   language?: Language;
+  userId?: string; // Added to match UserRoadmap type
+}
+
+export interface UserRoadmap {
+  id: string;
+  userId: string;
+  roadmapId: string;
+  language: Language;
+  name?: string; // Added to match expected fields
+  level?: LanguageLevel; // Added to match expected fields
+  description?: string;
+  languages?: Language[]; // Added to match expected fields
+  currentNodeId?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface RoadmapNode {
   id: string;
   roadmapId: string;
   title: string;
-  description: string;
+  description: string; // Made required to match usage
   position: number;
   isBonus: boolean;
   defaultExerciseId?: string;
