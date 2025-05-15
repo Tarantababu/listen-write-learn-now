@@ -1,136 +1,67 @@
 
-import React, { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { useAdmin } from '@/hooks/use-admin';
-import { VisitorStats } from '@/components/admin/VisitorStats';
-import { AdminStats } from '@/components/admin/AdminStats';
-import { FeedbackList } from '@/components/admin/FeedbackList';
-import { UserRoleManagement } from '@/components/admin/UserRoleManagement';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import DefaultExerciseForm from '@/components/admin/DefaultExerciseForm';
-import DefaultExercisesList from '@/components/admin/DefaultExercisesList';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AdminMessagesForm from '@/components/admin/AdminMessagesForm';
-import AdminMessagesList from '@/components/admin/AdminMessagesList';
-import RoadmapEditor from '@/components/admin/RoadmapEditor';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import DefaultExercisesList from "@/components/admin/DefaultExercisesList";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
-const AdminPage: React.FC = () => {
-  const { isAdmin, loading } = useAdmin();
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('default-exercises');
+const AdminPage = () => {
+  const [activeTab, setActiveTab] = useState("exercises");
+  const [isNewExerciseModalOpen, setIsNewExerciseModalOpen] = useState(false);
   
-  // Show loading state while checking admin status
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8 flex justify-center items-center h-[80vh]">
-        <div className="flex flex-col items-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-          <p>Verifying admin access...</p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    document.title = "Admin Dashboard";
+  }, []);
   
-  // If user is not an admin, redirect to home
-  if (!isAdmin) {
-    return <Navigate to="/" replace />;
-  }
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center mb-6">
-        <Button 
-          variant="outline"
-          size="sm"
-          className="mr-2"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+    <div className="container max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <div className="flex flex-col space-y-1.5">
+        <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+        <p className="text-muted-foreground">
+          Manage content, exercises, and users
+        </p>
       </div>
       
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Welcome to the Admin Dashboard</CardTitle>
-          <CardDescription>
-            Here you can monitor visitor statistics and manage your site
-          </CardDescription>
-        </CardHeader>
-      </Card>
-      
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-        <TabsList className="mb-4">
-          <TabsTrigger value="default-exercises">Default Exercises</TabsTrigger>
-          <TabsTrigger value="roadmaps">Roadmaps</TabsTrigger>
-          <TabsTrigger value="messages">User Messages</TabsTrigger>
-          <TabsTrigger value="statistics">Statistics</TabsTrigger>
-          <TabsTrigger value="feedback">Feedback</TabsTrigger>
-          <TabsTrigger value="users">User Roles</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="default-exercises" className="space-y-8">
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">Create Default Exercise</h2>
-            <Card>
-              <CardContent className="pt-6">
-                <DefaultExerciseForm />
-              </CardContent>
-            </Card>
-          </div>
+      <Tabs defaultValue="exercises" value={activeTab} onValueChange={setActiveTab}>
+        <div className="flex justify-between items-center">
+          <TabsList>
+            <TabsTrigger value="exercises">Default Exercises</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="stats">Statistics</TabsTrigger>
+          </TabsList>
           
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Default Exercises</h2>
-            <DefaultExercisesList />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="roadmaps" className="space-y-8">
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Roadmap Management</h2>
-            <RoadmapEditor />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="messages" className="space-y-8">
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">Create New Message</h2>
-            <AdminMessagesForm />
-          </div>
-          
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Message History</h2>
-            <AdminMessagesList />
-          </div>
-        </TabsContent>
+          {activeTab === "exercises" && (
+            <Button onClick={() => setIsNewExerciseModalOpen(true)} size="sm">
+              <Plus className="mr-1 h-4 w-4" /> New Exercise
+            </Button>
+          )}
+        </div>
         
-        <TabsContent value="statistics">
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">User Statistics</h2>
-            <AdminStats />
-          </div>
-          
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">Visitor Analytics</h2>
-            <VisitorStats />
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="feedback">
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">User Feedback</h2>
-            <FeedbackList />
-          </div>
+        <TabsContent value="exercises" className="mt-6">
+          <DefaultExercisesList />
         </TabsContent>
         
         <TabsContent value="users">
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">User Role Management</h2>
-            <UserRoleManagement />
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>User Management</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-center text-muted-foreground">User management features coming soon.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="stats">
+          <Card>
+            <CardHeader>
+              <CardTitle>Platform Statistics</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-center text-muted-foreground">Statistics dashboard coming soon.</p>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
