@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { 
   RoadmapItem, 
@@ -351,7 +352,7 @@ class RoadmapService {
         {
           node_id_param: nodeId,
           user_id_param: userData.user.id,
-          language_param: userRoadmap.language as string,
+          language_param: userRoadmap.language as Language,
           roadmap_id_param: node.roadmap_id
         }
       );
