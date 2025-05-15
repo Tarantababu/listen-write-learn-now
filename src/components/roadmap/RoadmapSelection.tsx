@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,6 +16,8 @@ const RoadmapSelection: React.FC = () => {
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>("A1");
   const { settings } = useUserSettingsContext();
   const dataLoaded = useRef(false);
+  const lastLanguageRef = useRef(settings.selectedLanguage);
+  const [isInitializing, setIsInitializing] = useState(false);
   
   const {
     roadmaps,
@@ -31,25 +32,62 @@ const RoadmapSelection: React.FC = () => {
     languageAvailability
   } = useRoadmap();
   
+  // Load roadmaps only when component mounts or language changes
   useEffect(() => {
-    // Only load roadmaps once when component mounts or when language changes
-    // Using a ref to track if we've already loaded data for this language
     if (!dataLoaded.current || lastLanguageRef.current !== settings.selectedLanguage) {
-      loadUserRoadmaps(settings.selectedLanguage);
-      lastLanguageRef.current = settings.selectedLanguage;
+      // Prevent multiple loading attempts
       dataLoaded.current = true;
+      lastLanguageRef.current = settings.selectedLanguage;
+      
+      // Use a safe version of loadUserRoadmaps that won't cause additional renders
+      // if the component unmounts during the process
+      let isMounted = true;
+      loadUserRoadmaps(settings.selectedLanguage).then(() => {
+        // Only update state if the component is still mounted
+        if (!isMounted) return;
+      });
+      
+      return () => {
+        isMounted = false;
+      };
     }
-    
-    // Cleanup function to prevent state updates after unmounting
-    return () => {
-      // No polling cleanup needed since we're not polling anymore
-    };
   }, [settings.selectedLanguage, loadUserRoadmaps]);
   
-  // Track the last language we loaded data for
-  const lastLanguageRef = useRef(settings.selectedLanguage);
+  // Get available levels for the current language (memoized)
+  const availableLevels = useMemo(() => {
+    return Array.from(new Set(
+      roadmaps
+        .filter(roadmap => roadmap.languages?.includes(settings.selectedLanguage))
+        .map(roadmap => roadmap.level)
+    )).sort() as LanguageLevel[];
+  }, [roadmaps, settings.selectedLanguage]);
 
+  // Check if the language has available roadmaps (memoized)
+  const isLanguageAvailable = useMemo(() => {
+    // First check the availability map, then check if we have roadmaps for this language
+    return languageAvailability[settings.selectedLanguage] !== false || 
+      roadmaps.some(roadmap => roadmap.languages?.includes(settings.selectedLanguage));
+  }, [languageAvailability, settings.selectedLanguage, roadmaps]);
+
+  // Update selected level if current selection is not available
+  useEffect(() => {
+    if (availableLevels.length > 0 && !availableLevels.includes(selectedLevel)) {
+      setSelectedLevel(availableLevels[0]);
+    }
+  }, [availableLevels, selectedLevel]);
+
+  const getCapitalizedLanguage = (lang: string) => {
+    return lang.charAt(0).toUpperCase() + lang.slice(1);
+  };
+
+  // Check if user already has roadmaps
+  const hasExistingRoadmap = userRoadmaps.length > 0;
+
+  // Handle the start learning process
   const handleStartLearning = async () => {
+    // Don't do anything if we're already initializing
+    if (isInitializing) return;
+    
     try {
       if (!selectedLevel) {
         toast({
@@ -60,8 +98,16 @@ const RoadmapSelection: React.FC = () => {
         return;
       }
       
+      // Track initialization state
+      setIsInitializing(true);
+      
       // Register this as an open dialog to prevent background polling during initialization
       registerOpenPopup('roadmap-initialization');
+      
+      // Clear any previous errors
+      if (errorState.hasError && clearErrorState) {
+        clearErrorState();
+      }
       
       await initializeUserRoadmap(selectedLevel, settings.selectedLanguage);
       toast({
@@ -78,7 +124,7 @@ const RoadmapSelection: React.FC = () => {
           `${error.message || `No roadmap is available for ${settings.selectedLanguage}.`} Would you like to try with ${error.suggestedLanguage} instead?`
         );
         
-        if (shouldTryAlternate) {
+        if (shouldTryAlternate && tryAlternateLanguage) {
           try {
             await tryAlternateLanguage(selectedLevel, settings.selectedLanguage);
             toast({
@@ -101,37 +147,33 @@ const RoadmapSelection: React.FC = () => {
         });
       }
     } finally {
-      // Unregister popup when done
+      // Always clean up, whether successful or not
+      setIsInitializing(false);
       unregisterPopup('roadmap-initialization');
     }
   };
 
-  // Get available levels for the current language
-  const availableLevels = React.useMemo(() => {
-    return Array.from(new Set(
-      roadmaps
-        .filter(roadmap => roadmap.languages?.includes(settings.selectedLanguage))
-        .map(roadmap => roadmap.level)
-    )).sort() as LanguageLevel[];
-  }, [roadmaps, settings.selectedLanguage]);
-
-  const getCapitalizedLanguage = (lang: string) => {
-    return lang.charAt(0).toUpperCase() + lang.slice(1);
+  // Handle the refresh button click
+  const handleRefresh = () => {
+    // Reset the data loaded flag to force reload
+    dataLoaded.current = false;
+    
+    // Be defensive about the refreshData function existing
+    if (refreshData) {
+      refreshData(settings.selectedLanguage);
+    } else {
+      // Fallback to loadUserRoadmaps if refreshData doesn't exist
+      loadUserRoadmaps(settings.selectedLanguage);
+    }
   };
 
-  const hasExistingRoadmap = userRoadmaps.length > 0;
-
-  // Check if selected level is available
-  useEffect(() => {
-    if (availableLevels.length > 0 && !availableLevels.includes(selectedLevel)) {
-      setSelectedLevel(availableLevels[0]);
-    }
-  }, [availableLevels, selectedLevel]);
-
-  // Prevent unnecessary rerender cycles
-  const isLanguageAvailable = React.useMemo(() => {
-    return languageAvailability[settings.selectedLanguage] !== false;
-  }, [languageAvailability, settings.selectedLanguage]);
+  // Handle alternate language selection
+  const handleTryAlternateLanguage = () => {
+    if (!tryAlternateLanguage || !errorState.suggestedLanguage) return;
+    
+    tryAlternateLanguage(selectedLevel, settings.selectedLanguage);
+    if (clearErrorState) clearErrorState();
+  };
 
   return (
     <ErrorBoundary>
@@ -140,11 +182,8 @@ const RoadmapSelection: React.FC = () => {
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold">Start a New Learning Path</h2>
             <RefreshButton 
-              onRefresh={() => {
-                dataLoaded.current = false; // Reset the ref so we can reload data
-                refreshData(settings.selectedLanguage);
-              }} 
-              isLoading={isLoading} 
+              onRefresh={handleRefresh} 
+              isLoading={isLoading || isInitializing} 
             />
           </div>
           
@@ -152,7 +191,7 @@ const RoadmapSelection: React.FC = () => {
             Select your level to begin a new learning path in {getCapitalizedLanguage(settings.selectedLanguage)}.
           </p>
           
-          {errorState.hasError && (
+          {errorState?.hasError && (
             <div className="bg-yellow-50 p-3 rounded-md border border-yellow-200 flex items-start space-x-2">
               <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
               <div>
@@ -161,10 +200,7 @@ const RoadmapSelection: React.FC = () => {
                   <Button
                     variant="link"
                     className="p-0 h-auto text-sm text-blue-600"
-                    onClick={() => {
-                      tryAlternateLanguage(selectedLevel, settings.selectedLanguage);
-                      clearErrorState();
-                    }}
+                    onClick={handleTryAlternateLanguage}
                   >
                     Try with {errorState.suggestedLanguage} instead
                   </Button>
@@ -177,33 +213,42 @@ const RoadmapSelection: React.FC = () => {
             <Select 
               value={selectedLevel} 
               onValueChange={(value: LanguageLevel) => setSelectedLevel(value)}
-              disabled={availableLevels.length === 0 || isLoading}
+              disabled={availableLevels.length === 0 || isLoading || isInitializing}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select your level" />
               </SelectTrigger>
               <SelectContent>
-                {availableLevels.map((level) => (
-                  <SelectItem key={level} value={level}>
+                {availableLevels.length > 0 ? (
+                  availableLevels.map((level) => (
+                    <SelectItem key={level} value={level}>
+                      <div className="flex items-center">
+                        <LevelBadge level={level} className="mr-2" />
+                        {level}
+                      </div>
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="A1" disabled>
                     <div className="flex items-center">
-                      <LevelBadge level={level} className="mr-2" />
-                      {level}
+                      <LevelBadge level="A1" className="mr-2" />
+                      No levels available
                     </div>
                   </SelectItem>
-                ))}
+                )}
               </SelectContent>
             </Select>
           </div>
 
           <Button 
             onClick={handleStartLearning} 
-            disabled={isLoading || hasExistingRoadmap || availableLevels.length === 0}
+            disabled={isLoading || isInitializing || hasExistingRoadmap || availableLevels.length === 0}
             className="w-full"
           >
-            {isLoading ? (
+            {isLoading || isInitializing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading...
+                {isInitializing ? 'Starting...' : 'Loading...'}
               </>
             ) : (
               'Start Learning'
@@ -216,7 +261,7 @@ const RoadmapSelection: React.FC = () => {
             </p>
           )}
 
-          {availableLevels.length === 0 && !isLoading && (
+          {availableLevels.length === 0 && !isLoading && !isInitializing && (
             <p className="text-sm text-muted-foreground text-center">
               {!isLanguageAvailable ? 
                 `No learning paths available for ${getCapitalizedLanguage(settings.selectedLanguage)}. Try a different language.` : 
