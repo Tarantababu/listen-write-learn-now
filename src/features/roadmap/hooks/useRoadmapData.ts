@@ -6,16 +6,48 @@ import { Language, LanguageLevel } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { asUUID, asFilterParam } from '@/lib/utils/supabaseHelpers';
 
+// Constants for data refresh management
+const DATA_REFRESH_INTERVAL = 60000; // 1 minute interval for data refresh
+const MAX_REFRESH_INTERVAL = 300000; // 5 minutes maximum interval with backoff
+const BACKOFF_MULTIPLIER = 2; // Exponential backoff multiplier
+
 export function useRoadmapData() {
   const [isLoading, setIsLoading] = useState(false);
   const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
   const [userRoadmaps, setUserRoadmaps] = useState<UserRoadmap[]>([]);
   const [selectedRoadmap, setSelectedRoadmap] = useState<RoadmapItem | null>(null);
   const [nodes, setNodes] = useState<RoadmapNode[]>([]);
-  const loadingRef = useRef<{[key: string]: boolean}>({});
+  const [refreshInterval, setRefreshInterval] = useState(DATA_REFRESH_INTERVAL);
+  const [lastActivity, setLastActivity] = useState(Date.now());
   
-  // Add this to track if initial loads have been done
+  // Use refs to prevent unnecessary renders and track loading states
+  const loadingRef = useRef<{[key: string]: boolean}>({});
   const initialLoadedRef = useRef<{[key: string]: boolean}>({});
+  const timerRef = useRef<number | null>(null);
+  
+  // Track user activity to implement exponential backoff
+  const trackActivity = useCallback(() => {
+    setLastActivity(Date.now());
+    setRefreshInterval(DATA_REFRESH_INTERVAL); // Reset interval on activity
+  }, []);
+  
+  useEffect(() => {
+    // Setup activity tracking
+    window.addEventListener('click', trackActivity);
+    window.addEventListener('keydown', trackActivity);
+    window.addEventListener('mousemove', trackActivity);
+    
+    return () => {
+      window.removeEventListener('click', trackActivity);
+      window.removeEventListener('keydown', trackActivity);
+      window.removeEventListener('mousemove', trackActivity);
+      
+      // Clear any timers on unmount
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, [trackActivity]);
   
   // Load all roadmaps available for a language
   const loadRoadmaps = useCallback(async (language: Language) => {
@@ -286,11 +318,93 @@ export function useRoadmapData() {
     }
   }, []);
   
+  // Manual refresh function for user-triggered data refresh
+  const refreshData = useCallback(async (language?: Language) => {
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    
+    try {
+      trackActivity(); // Track this as user activity
+      
+      // Refresh roadmaps if we have a language
+      if (language) {
+        await loadRoadmaps(language);
+      }
+      
+      // Refresh user roadmaps
+      if (language) {
+        await loadUserRoadmaps(language);
+      }
+      
+      // Refresh selected roadmap's nodes
+      if (selectedRoadmap) {
+        await selectRoadmap(selectedRoadmap.id);
+      }
+      
+      toast({
+        title: "Data refreshed",
+        description: "Your data has been successfully refreshed."
+      });
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to refresh data",
+        description: "There was an error refreshing your data."
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, loadRoadmaps, loadUserRoadmaps, selectRoadmap, selectedRoadmap, trackActivity]);
+  
   // Helper derived values
   const currentNodeId = selectedRoadmap?.currentNodeId;
   const currentNode = nodes.find(n => n.id === currentNodeId) || null;
   const completedNodes = nodes.filter(n => n.status === 'completed').map(n => n.id);
   const availableNodes = nodes.filter(n => n.status === 'available').map(n => n.id);
+  
+  // Implement smart polling with backoff
+  useEffect(() => {
+    // Only set up polling if we have a selectedRoadmap
+    if (!selectedRoadmap) return;
+    
+    // Clear any existing timer
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    
+    // Calculate backoff based on inactivity
+    const inactiveTime = Date.now() - lastActivity;
+    let currentInterval = refreshInterval;
+    
+    // Implement exponential backoff if user has been inactive
+    if (inactiveTime > DATA_REFRESH_INTERVAL) {
+      currentInterval = Math.min(
+        refreshInterval * BACKOFF_MULTIPLIER, 
+        MAX_REFRESH_INTERVAL
+      );
+      setRefreshInterval(currentInterval);
+    }
+    
+    // Set the timer for the next refresh
+    const timerId = window.setTimeout(() => {
+      // Only refresh if we're not already loading something
+      if (!isLoading && selectedRoadmap?.language) {
+        // Check for updates to the currently selected roadmap
+        selectRoadmap(selectedRoadmap.id).catch(console.error);
+      }
+    }, currentInterval);
+    
+    timerRef.current = timerId;
+    
+    return () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, [selectedRoadmap, refreshInterval, lastActivity, isLoading]);
   
   return {
     isLoading,
@@ -310,6 +424,6 @@ export function useRoadmapData() {
     recordNodeCompletion,
     markNodeAsCompleted,
     markNodeWithAccuracy,
+    refreshData, // New manual refresh function
   };
 }
-

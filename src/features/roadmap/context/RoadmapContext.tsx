@@ -33,6 +33,7 @@ interface RoadmapContextType {
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
   incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;
   selectRoadmap: (roadmapId: string) => Promise<void>;
+  refreshData: () => Promise<void>; // New manual refresh function
 }
 
 // Add type for RoadmapNodeProgress that was missing
@@ -52,6 +53,9 @@ interface RoadmapNodeProgress {
 // Create the context
 export const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
 
+// Constants for refresh control
+const DATA_REFRESH_INTERVAL = 60000; // 1 minute
+
 export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const { settings } = useUserSettingsContext();
@@ -68,9 +72,37 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [nodeProgress, setNodeProgress] = useState<RoadmapNodeProgress[]>([]);
   
+  // Track user activity and refresh state
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  
   // Add these refs to prevent infinite fetching loops
   const fetchingRef = useRef<boolean>(false);
   const initialFetchDone = useRef<boolean>(false);
+  const timerRef = useRef<number | null>(null);
+  const popupStateRef = useRef<{isOpen: boolean, id?: string}>({ isOpen: false });
+  
+  // Track user activity to manage refresh behavior
+  const trackActivity = useCallback(() => {
+    setLastActivity(Date.now());
+  }, []);
+  
+  useEffect(() => {
+    // Setup activity tracking
+    window.addEventListener('click', trackActivity);
+    window.addEventListener('keydown', trackActivity);
+    window.addEventListener('mousemove', trackActivity);
+    
+    return () => {
+      window.removeEventListener('click', trackActivity);
+      window.removeEventListener('keydown', trackActivity);
+      window.removeEventListener('mousemove', trackActivity);
+      
+      // Clear any timers on unmount
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, [trackActivity]);
 
   // Memoized function to fetch roadmaps
   const fetchRoadmaps = useCallback(async () => {
@@ -113,6 +145,23 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       fetchRoadmaps();
     }
   }, [settings.selectedLanguage, selectedLanguage, fetchRoadmaps, user]);
+
+  // Manual refresh function for user-triggered refresh
+  const refreshData = useCallback(async () => {
+    if (!user || fetchingRef.current) return;
+    
+    trackActivity(); // Track this as user activity
+    fetchRoadmaps();
+    
+    if (selectedRoadmap) {
+      await loadUserRoadmap(selectedRoadmap.id);
+    }
+    
+    toast({
+      title: "Data refreshed",
+      description: "Your data has been successfully refreshed."
+    });
+  }, [user, fetchRoadmaps, loadUserRoadmap, selectedRoadmap, trackActivity]);
 
   // Load all user roadmaps
   const loadUserRoadmaps = async (language?: Language): Promise<UserRoadmap[]> => {
@@ -324,6 +373,15 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  // Methods for popup state persistence
+  const savePopupState = (isOpen: boolean, id?: string) => {
+    popupStateRef.current = { isOpen, id };
+  };
+  
+  const getPopupState = () => {
+    return {...popupStateRef.current};
+  };
+
   // Increment node completion count when dictation is completed with good accuracy
   const incrementNodeCompletion = async (nodeId: string, accuracy: number) => {
     if (!user || !selectedRoadmap) return;
@@ -421,6 +479,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         description: "Progress reset successfully"
       });
       
+      // Refresh the data after reset
+      if (selectedRoadmap.id === roadmapId) {
+        await loadUserRoadmap(roadmapId);
+      }
+      
     } catch (error) {
       console.error("Error resetting progress:", error);
       toast({
@@ -430,6 +493,35 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
     }
   };
+  
+  // Use this effect for smart polling with backoff
+  useEffect(() => {
+    // Only set up periodic refresh if we have a user and a selectedRoadmap 
+    // and no popup is currently open
+    if (!user || !selectedRoadmap || popupStateRef.current.isOpen) return;
+    
+    // Clear any existing timer
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    
+    // Set the timer for periodic refresh with a reasonable interval
+    const timerId = window.setTimeout(() => {
+      // Only refresh if we're not already loading something and not focused on a popup
+      if (!fetchingRef.current && !loading && !popupStateRef.current.isOpen) {
+        loadUserRoadmap(selectedRoadmap.id).catch(console.error);
+      }
+    }, DATA_REFRESH_INTERVAL);
+    
+    timerRef.current = timerId;
+    
+    return () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, [user, selectedRoadmap, lastActivity, loading]);
 
   return (
     <RoadmapContext.Provider value={{
@@ -456,7 +548,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       getNodeExercise,
       markNodeAsCompleted,
       incrementNodeCompletion,
-      selectRoadmap
+      selectRoadmap,
+      refreshData
     }}>
       {children}
     </RoadmapContext.Provider>

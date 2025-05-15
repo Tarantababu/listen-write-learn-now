@@ -1,44 +1,17 @@
 
-import { toast as sonnerToast } from 'sonner';
+import { useToast as useToastOriginal } from "@/components/ui/use-toast";
 
-type ToastProps = {
-  title?: string;
-  description?: string;
-  variant?: 'default' | 'destructive' | 'success';
-  action?: React.ReactNode;
-  toasts?: any[];
-};
+// Export the toast function directly from the useToast hook
+export { toast } from "@/components/ui/use-toast";
 
-export function useToast() {
-  const toast = ({ title, description, variant = 'default', action }: ToastProps) => {
-    sonnerToast(title, {
-      description,
-      action,
-      className: variant === 'destructive' 
-        ? 'bg-destructive text-destructive-foreground border-destructive' 
-        : variant === 'success'
-        ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500'
-        : undefined
-    });
-  };
+// Re-export the useToast hook to maintain compatibility
+export const useToast = useToastOriginal;
 
-  // Add the toasts property to make it compatible with the Toaster component
-  toast.toasts = [];
-
-  return { toast };
-}
-
-export const toast = ({ title, description, variant, action }: ToastProps) => {
-  sonnerToast(title, {
-    description,
-    action,
-    className: variant === 'destructive' 
-      ? 'bg-destructive text-destructive-foreground border-destructive' 
-      : variant === 'success'
-      ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500'
-      : undefined
+// Add a helper for showing a refresh message
+export const showRefreshMessage = (message: string) => {
+  const { toast } = useToastOriginal();
+  toast({
+    title: "Data refreshed",
+    description: message,
   });
 };
-
-// Add the toasts property to make it compatible with the Toaster component
-toast.toasts = [];
