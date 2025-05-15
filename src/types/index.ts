@@ -241,22 +241,22 @@ export interface RoadmapContextType {
   progress?: RoadmapProgress[];
   loading?: boolean;
   
-  // Add missing properties
+  // Adding the missing properties
   errorState: RoadmapErrorState;
   clearErrorState: () => void;
   languageAvailability: Record<string, boolean>;
   tryAlternateLanguage: (level: LanguageLevel, originalLanguage: Language) => Promise<boolean>;
   setRoadmapPageActive: (active: boolean) => void;
+  refreshData: (language?: Language) => Promise<void>;
   
   // Methods
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
   loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
   loadUserRoadmaps: (language?: Language) => Promise<UserRoadmap[]>;
   completeNode: (nodeId: string) => Promise<{ nextNodeId?: string }>;
-  resetProgress: (roadmapId: string) => Promise<void>;
+  resetProgress: (roadmapId: string) => Promise<void>;  // Updated to include roadmapId parameter
   getNodeExercise: (nodeId: string) => Promise<any>;
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
   incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;
   selectRoadmap: (roadmapId: string) => Promise<void>;
-  refreshData: (language?: Language) => Promise<void>;
 }

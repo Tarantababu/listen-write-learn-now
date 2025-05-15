@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import LevelBadge from '@/components/LevelBadge';
-import { LanguageLevel } from '@/types';
+import { LanguageLevel, RoadmapContextType, RoadmapErrorState } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { RefreshButton } from '@/components/RefreshButton';
@@ -26,17 +26,15 @@ const RoadmapSelection: React.FC = () => {
   const lastLanguageRef = useRef(settings.selectedLanguage);
   const [isInitializing, setIsInitializing] = useState(false);
   
-  // Handle TypeScript errors by assuming these properties might not exist
-  // but our code will adapt to their presence or absence
+  // Handle TypeScript errors by safely accessing the context properties
+  const roadmapContext = useRoadmap();
   const {
     roadmaps,
     initializeUserRoadmap,
     isLoading, 
     userRoadmaps,
     loadUserRoadmaps,
-    // Properties that don't exist in the type definition
-    // but are used in the implementation
-  } = useRoadmap();
+  } = roadmapContext;
   
   // Access potentially undefined properties safely
   // We'll define local state to handle these if they don't exist
@@ -45,12 +43,11 @@ const RoadmapSelection: React.FC = () => {
   });
   
   // Safely accessing context properties that might not exist in the type
-  const roadmapContext = useRoadmap() as any; // Use any to bypass type checking
-  const refreshData = roadmapContext.refreshData;
-  const errorState = roadmapContext.errorState || localErrorState;
-  const clearErrorState = roadmapContext.clearErrorState;
-  const tryAlternateLanguage = roadmapContext.tryAlternateLanguage;
-  const languageAvailability = roadmapContext.languageAvailability || {};
+  const refreshData = (roadmapContext as any).refreshData;
+  const errorState = (roadmapContext as any).errorState || localErrorState;
+  const clearErrorState = (roadmapContext as any).clearErrorState;
+  const tryAlternateLanguage = (roadmapContext as any).tryAlternateLanguage;
+  const languageAvailability = (roadmapContext as any).languageAvailability || {};
   
   // Load roadmaps only when component mounts or language changes
   useEffect(() => {
