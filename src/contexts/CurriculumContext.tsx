@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -24,8 +23,8 @@ import {
 } from '@/services/curriculumService';
 import { toast } from '@/hooks/use-toast';
 
-// Create the context
-const CurriculumContext = createContext<CurriculumContextType | undefined>(undefined);
+// Create the context and export it
+export const CurriculumContext = createContext<CurriculumContextType | undefined>(undefined);
 
 export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();

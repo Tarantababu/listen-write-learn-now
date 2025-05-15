@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useCurriculumContext } from '@/hooks/use-curriculum';
+import { useCurriculum } from '@/hooks/use-curriculum';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { LanguageLevel } from '@/types';
 import { Button } from '@/components/ui/button';
