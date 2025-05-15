@@ -50,13 +50,13 @@ export function useRoadmapData() {
       
       if (roadmapsList.length > 0 && !selectedRoadmap) {
         // Convert UserRoadmap to RoadmapItem for compatibility
-        // Ensure all required properties are set when converting from UserRoadmap to RoadmapItem
+        // We need to ensure all required properties of RoadmapItem are provided
         const firstRoadmap: RoadmapItem = {
           id: roadmapsList[0].id,
           name: roadmapsList[0].name,
           level: roadmapsList[0].level,
           description: roadmapsList[0].description,
-          languages: roadmapsList[0].languages || [], // Use empty array as fallback
+          languages: roadmapsList[0].languages ?? [], // Ensure we have a non-optional array
           createdAt: roadmapsList[0].createdAt,
           updatedAt: roadmapsList[0].updatedAt,
           userId: roadmapsList[0].userId,

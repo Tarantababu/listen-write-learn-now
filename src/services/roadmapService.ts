@@ -61,7 +61,7 @@ class RoadmapService {
       const { data, error } = await supabase
         .from('user_roadmaps')
         .select('*')
-        .eq('language', language as string)
+        .eq('language', language)
         .eq('user_id', userData.user.id);
         
       if (error) throw error;
@@ -95,7 +95,7 @@ class RoadmapService {
           name: roadmapDetails.name || 'Unnamed Roadmap',
           level: (roadmapDetails.level || 'A1') as LanguageLevel,
           description: roadmapDetails.description,
-          language: item.language as Language, // Cast string to Language type
+          language: item.language as Language,
           currentNodeId: item.current_node_id,
           createdAt: new Date(item.created_at),
           updatedAt: new Date(item.updated_at || item.created_at),
@@ -104,7 +104,7 @@ class RoadmapService {
       });
     } catch (error) {
       console.error('Error getting user roadmaps:', error);
-      throw error;
+      return [];
     }
   }
 
@@ -158,7 +158,7 @@ class RoadmapService {
           roadmap_languages!inner(language)
         `)
         .eq('level', level)
-        .eq('roadmap_languages.language', language as string);
+        .eq('roadmap_languages.language', language);
         
       if (roadmapsError) throw roadmapsError;
       
