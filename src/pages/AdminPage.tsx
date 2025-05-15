@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdmin } from '@/hooks/use-admin';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -19,34 +20,33 @@ import CurriculumEditor from '@/components/admin/CurriculumEditor';
 
 const AdminPage: React.FC = () => {
   const { user } = useAuth();
+  const { isAdmin, loading } = useAdmin();
   const navigate = useNavigate();
-  const [activeUser, setActiveUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
-      if (user) {
-        // Check if the user has the admin role
-        const isAdmin = user.app_metadata?.roles?.includes('admin');
+    console.log('AdminPage - User:', user);
+    console.log('AdminPage - Admin status:', isAdmin);
+    console.log('AdminPage - Loading state:', loading);
+    
+    // Wait for admin check to complete
+    if (loading) return;
+    
+    // Set loading state to false when admin check is done
+    setIsLoading(false);
+    
+    // If user is not admin, show error and redirect
+    if (!isAdmin) {
+      toast({
+        title: "Unauthorized",
+        description: "You do not have permission to access this page.",
+        variant: "destructive",
+      });
+      navigate('/dashboard');
+    }
+  }, [user, isAdmin, loading, navigate]);
 
-        if (!isAdmin) {
-          toast({
-            title: "Unauthorized",
-            description: "You do not have permission to access this page.",
-            variant: "destructive",
-          });
-          navigate('/dashboard');
-        } else {
-          setActiveUser(user);
-        }
-      }
-      setIsLoading(false);
-    };
-
-    checkAdminStatus();
-  }, [user, navigate]);
-
-  if (isLoading) {
+  if (isLoading || loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center items-center h-64">
@@ -56,7 +56,7 @@ const AdminPage: React.FC = () => {
     );
   }
 
-  if (!activeUser) {
+  if (!isAdmin) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Alert>
@@ -93,7 +93,7 @@ const AdminPage: React.FC = () => {
         <TabsContent value="exercises">
           <div className="space-y-6">
             <DefaultExercisesList />
-            {activeUser && <DefaultExerciseForm />}
+            <DefaultExerciseForm />
           </div>
         </TabsContent>
         

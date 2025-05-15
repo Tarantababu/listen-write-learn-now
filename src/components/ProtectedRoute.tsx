@@ -12,23 +12,33 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin = false }) => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
   const location = useLocation();
 
+  // Add debug logging
+  useEffect(() => {
+    if (requireAdmin) {
+      console.log('Protected route requires admin:', requireAdmin);
+      console.log('Current admin status:', isAdmin);
+      console.log('Admin loading state:', adminLoading);
+      console.log('Current user:', user);
+    }
+  }, [requireAdmin, isAdmin, adminLoading, user]);
+
   // Notify user when they're redirected due to authentication
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       toast({
         title: "Authentication Required",
         description: "Please log in to access this page",
         variant: "default"
       });
     }
-  }, [loading, user]);
+  }, [authLoading, user]);
 
   // Show loading state while checking authentication and admin status
-  if (loading || (requireAdmin && adminLoading)) {
+  if (authLoading || (requireAdmin && adminLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -43,6 +53,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin 
 
   // If route requires admin access but user is not admin
   if (requireAdmin && !isAdmin) {
+    console.error('Admin access denied. User does not have admin privileges.');
+    
     // Redirect to dashboard with access denied message
     return <Navigate to="/dashboard" state={{ 
       accessDenied: true, 

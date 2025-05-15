@@ -25,6 +25,7 @@ export function useAdmin() {
           setIsAdmin(false);
         } else {
           setIsAdmin(!!data);
+          console.log('Admin status check result:', data);
         }
       } catch (error) {
         console.error('Unexpected error checking admin status:', error);
