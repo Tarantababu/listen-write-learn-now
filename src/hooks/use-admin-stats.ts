@@ -25,16 +25,19 @@ export function useAdminStats() {
     queryKey: ['admin-stats', refreshKey],
     queryFn: async (): Promise<AdminStats> => {
       try {
+        console.log('Fetching admin stats from edge function...');
         const { data, error } = await supabase.functions.invoke('get-admin-stats');
         
         if (error) {
           console.error('Error fetching admin stats:', error);
-          throw new Error(`Failed to fetch admin stats: ${error.message}`);
+          throw error;
         }
         
         if (!data) {
           throw new Error('No data returned from admin stats function');
         }
+        
+        console.log('Admin stats received:', data);
         
         return {
           totalUsers: data.totalUsers || 0,
@@ -47,7 +50,8 @@ export function useAdminStats() {
       }
     },
     retry: 1,
-    staleTime: 5 * 60 * 1000 // 5 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false
   });
 
   // Fallback queries for direct database access if edge function fails
@@ -62,6 +66,7 @@ export function useAdminStats() {
       return count || 0;
     },
     enabled: isError,
+    staleTime: 5 * 60 * 1000
   });
 
   const { data: subscribedUsers } = useQuery({
@@ -76,6 +81,27 @@ export function useAdminStats() {
       return count || 0;
     },
     enabled: isError,
+    staleTime: 5 * 60 * 1000
+  });
+
+  const { data: buttonClicks } = useQuery({
+    queryKey: ['admin-button-clicks', refreshKey],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from('button_clicks')
+          .select('count')
+          .eq('button_name', 'subscribe')
+          .single();
+        
+        if (error) return 0; // Table might not exist
+        return data?.count || 0;
+      } catch (e) {
+        return 0; // Return 0 if table doesn't exist
+      }
+    },
+    enabled: isError,
+    staleTime: 5 * 60 * 1000
   });
 
   const refreshStats = () => {
@@ -98,7 +124,7 @@ export function useAdminStats() {
   const finalStats: AdminStats = isError ? {
     totalUsers: totalUsers || 0,
     subscribedUsers: subscribedUsers || 0,
-    subscribeButtonClicks: 0 // No fallback for this one as it's specialized
+    subscribeButtonClicks: buttonClicks || 0
   } : (stats || { totalUsers: 0, subscribedUsers: 0, subscribeButtonClicks: 0 });
 
   return {

@@ -1,128 +1,125 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.6';
 
-// Set up CORS headers for browser compatibility
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-export const handler = async (req: Request): Promise<Response> => {
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-
+  
   try {
-    // Create a Supabase client with the admin key
-    const supabaseAdmin = createClient(
+    // Check if request is authorized (user is an admin)
+    const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
     
-    // Extract the authorization header from the request
+    // Get the user's JWT from the request
     const authHeader = req.headers.get('Authorization');
-    
     if (!authHeader) {
-      console.log("[GET-ADMIN-STATS] No authorization header found");
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
-    // Verify the user is authenticated
+    // Validate the JWT and get user info
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     
-    if (authError || !user) {
-      console.log("[GET-ADMIN-STATS] Auth error or no user found:", authError);
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (userError || !user) {
+      console.error("Authentication error:", userError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-
-    // Check if the user is an admin using the user_roles table
-    const { data: roleData, error: roleError } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
+    
+    // Check if the user is an admin
+    const { data: adminData, error: adminError } = await supabaseClient
+      .from('admin_users')
+      .select('user_id')
       .eq('user_id', user.id)
-      .eq('role', 'admin')
       .single();
     
-    if (roleError || !roleData) {
-      console.log(`[GET-ADMIN-STATS] User ${user.email} is not an admin`);
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (adminError || !adminData) {
+      console.error("Admin check error:", adminError);
+      return new Response(
+        JSON.stringify({ error: 'Not an admin user' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
-    console.log(`[GET-ADMIN-STATS] Admin authenticated: ${user.email}`);
+    console.log("Admin user authenticated:", user.email);
     
-    // Get total profiles count 
-    const { count: profilesCount, error: profilesError } = await supabaseAdmin
+    // Get total users count
+    const { count: totalUsersCount, error: totalUsersError } = await supabaseClient
       .from('profiles')
       .select('*', { count: 'exact', head: true });
     
-    if (profilesError) {
-      console.log("[GET-ADMIN-STATS] Error fetching profiles:", profilesError);
-      return new Response(JSON.stringify({ error: profilesError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (totalUsersError) {
+      console.error("Error counting users:", totalUsersError);
+      throw totalUsersError;
     }
     
     // Get subscribed users count
-    const { count: subscribedCount, error: subscribedError } = await supabaseAdmin
+    const { count: subscribedUsersCount, error: subscribedUsersError } = await supabaseClient
       .from('subscribers')
       .select('*', { count: 'exact', head: true })
       .eq('subscribed', true);
-      
-    if (subscribedError) {
-      console.log("[GET-ADMIN-STATS] Error fetching subscribers:", subscribedError);
-      return new Response(JSON.stringify({ error: subscribedError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    
+    if (subscribedUsersError) {
+      console.error("Error counting subscribers:", subscribedUsersError);
+      throw subscribedUsersError;
     }
     
-    // Get subscribe button click count
-    const { count: subscribeButtonClickCount, error: clickError } = await supabaseAdmin
-      .from('visitors')
-      .select('*', { count: 'exact', head: true })
-      .like('page', 'button_click:subscribe%');
+    // Get subscribe button clicks (if tracking table exists)
+    let subscribeButtonClicks = 0;
+    try {
+      const { data: clickData, error: clickError } = await supabaseClient
+        .from('button_clicks')
+        .select('count')
+        .eq('button_name', 'subscribe')
+        .single();
       
-    if (clickError) {
-      console.log("[GET-ADMIN-STATS] Error fetching subscribe button clicks:", clickError);
-      return new Response(JSON.stringify({ error: clickError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    // Log the counts for debugging
-    console.log(`[GET-ADMIN-STATS] Found ${profilesCount} total users, ${subscribedCount} subscribed users, and ${subscribeButtonClickCount} subscribe button clicks`);
-    
-    // Return all counts
-    return new Response(
-      JSON.stringify({ 
-        totalUsers: profilesCount || 0,
-        subscribedUsers: subscribedCount || 0,
-        subscribeButtonClicks: subscribeButtonClickCount || 0
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      if (!clickError && clickData) {
+        subscribeButtonClicks = clickData.count || 0;
+      } else {
+        // If table doesn't exist or there's an error, we'll just use 0
+        console.log("No button click data available:", clickError);
       }
+    } catch (err) {
+      console.warn("Error fetching button clicks:", err);
+      // Continue with 0 clicks
+    }
+    
+    // Return the data
+    const responseData = {
+      totalUsers: totalUsersCount || 0,
+      subscribedUsers: subscribedUsersCount || 0,
+      subscribeButtonClicks: subscribeButtonClicks,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log("Admin stats retrieved successfully:", responseData);
+    
+    return new Response(
+      JSON.stringify(responseData),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
     
   } catch (error) {
-    console.log("[GET-ADMIN-STATS] Unexpected error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error("Error in admin stats function:", error);
+    
+    return new Response(
+      JSON.stringify({ error: error.message || 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
-};
+});

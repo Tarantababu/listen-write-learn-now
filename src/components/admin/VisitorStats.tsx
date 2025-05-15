@@ -218,11 +218,15 @@ export function VisitorStats() {
     );
   }
 
-  // Configure chart colors
+  // Configure chart colors with explicit values instead of CSS variables
   const chartConfig = {
-    visitors: { color: '#8884d8' },
-    pages: { color: '#82ca9d' },
-    sources: {},
+    visitors: { 
+      color: '#8884d8' // Using direct color instead of CSS variable
+    },
+    pages: { 
+      color: '#82ca9d' // Using direct color instead of CSS variable
+    },
+    sources: {}
   };
 
   for (let i = 0; i < referrerCounts.length; i++) {
@@ -287,7 +291,11 @@ export function VisitorStats() {
                         />
                       } 
                     />
-                    <Bar dataKey="count" name="Visitors" fill="var(--color-visitors)" />
+                    <Bar 
+                      dataKey="count" 
+                      name="Visitors" 
+                      fill={chartConfig.visitors.color} // Use direct color reference
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -378,7 +386,11 @@ export function VisitorStats() {
                           />
                         }
                       />
-                      <Bar dataKey="count" name="Views" fill="var(--color-pages)" />
+                      <Bar 
+                        dataKey="count" 
+                        name="Views" 
+                        fill={chartConfig.pages.color} // Use direct color reference
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </ChartContainer>
