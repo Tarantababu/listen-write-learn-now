@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,14 +19,17 @@ const RoadmapSelection: React.FC = () => {
     userRoadmaps,
   } = useRoadmap();
   
-  // Filter roadmaps based on the selected language and level
-  const availableRoadmaps = roadmaps.filter(roadmap =>
-    roadmap.languages?.includes(settings.selectedLanguage) && roadmap.level === selectedLevel
+  // Memoize filtered roadmaps to prevent recalculation on every render
+  const availableRoadmaps = useMemo(() => 
+    roadmaps.filter(roadmap =>
+      roadmap.languages?.includes(settings.selectedLanguage) && roadmap.level === selectedLevel
+    ), [roadmaps, settings.selectedLanguage, selectedLevel]
   );
 
-  // Check if there are any available roadmaps for the selected language
-  const hasAvailableRoadmaps = roadmaps.some(roadmap =>
-    roadmap.languages?.includes(settings.selectedLanguage)
+  // Memoize this check as well
+  const hasAvailableRoadmaps = useMemo(() => 
+    roadmaps.some(roadmap => roadmap.languages?.includes(settings.selectedLanguage)), 
+    [roadmaps, settings.selectedLanguage]
   );
 
   // Get the selected language with proper capitalization
@@ -36,6 +38,8 @@ const RoadmapSelection: React.FC = () => {
   };
 
   const handleStartLearning = async () => {
+    if (isLoading || availableRoadmaps.length === 0) return;
+    
     try {
       await initializeUserRoadmap(selectedLevel, settings.selectedLanguage);
     } catch (error) {
