@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { useCurriculum } from '@/contexts/CurriculumContext';
+import { useCurriculumContext } from '@/hooks/use-curriculum';
 import CurriculumVisualization from '@/components/curriculum/CurriculumVisualization';
 import CurriculumSelection from '@/components/curriculum/CurriculumSelection';
 import CurriculumExerciseModal from '@/components/curriculum/CurriculumExerciseModal';
@@ -25,7 +24,7 @@ const CurriculumPage: React.FC = () => {
     loadUserCurriculumPaths,
     selectCurriculumPath,
     isLoading
-  } = useCurriculum();
+  } = useCurriculumContext();
   
   // Derive hasError from context data
   const hasError = !isLoading && userCurriculumPaths.length > 0 && !curriculumPaths.length;

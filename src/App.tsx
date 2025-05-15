@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -51,54 +52,56 @@ function App() {
                       <ExerciseProvider>
                         <DirectoryProvider>
                           <VocabularyProvider>
-                            <TooltipProvider>
-                              <Toaster />
-                              <Sonner position="bottom-right" />
-                              <div className="min-h-screen flex flex-col">
-                                <Routes>
-                                  {/* Public Routes */}
-                                  <Route path="/" element={<Index />} />
-                                  <Route path="/login" element={<LoginPage />} />
-                                  <Route path="/signup" element={<SignUpPage />} />
-                                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                                  <Route path="/reset-password" element={<ResetPasswordPage />} />
-                                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                                  <Route path="/terms-of-service" element={<TermsOfService />} />
-                                  <Route path="/cookie-policy" element={<CookiePolicy />} />
-                                  
-                                  {/* Protected Routes - Regular User Access */}
-                                  <Route element={<ProtectedRoute />}>
-                                    <Route path="/dashboard" element={<Layout />}>
-                                      <Route index element={<HomePage />} />
-                                      <Route path="exercises" element={<ExercisesPage />} />
-                                      <Route path="roadmap" element={<RoadmapPage />} />
-                                      <Route path="vocabulary" element={<VocabularyPage />} />
-                                      <Route path="settings" element={<SettingsPage />} />
-                                      <Route path="subscription" element={<SubscriptionPage />} />
-                                      <Route path="tutorial" element={<TutorialPage />} />
+                            <CurriculumProvider>
+                              <TooltipProvider>
+                                <Toaster />
+                                <Sonner position="bottom-right" />
+                                <div className="min-h-screen flex flex-col">
+                                  <Routes>
+                                    {/* Public Routes */}
+                                    <Route path="/" element={<Index />} />
+                                    <Route path="/login" element={<LoginPage />} />
+                                    <Route path="/signup" element={<SignUpPage />} />
+                                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+                                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                                    <Route path="/terms-of-service" element={<TermsOfService />} />
+                                    <Route path="/cookie-policy" element={<CookiePolicy />} />
+                                    
+                                    {/* Protected Routes - Regular User Access */}
+                                    <Route element={<ProtectedRoute />}>
+                                      <Route path="/dashboard" element={<Layout />}>
+                                        <Route index element={<HomePage />} />
+                                        <Route path="exercises" element={<ExercisesPage />} />
+                                        <Route path="roadmap" element={<RoadmapPage />} />
+                                        <Route path="vocabulary" element={<VocabularyPage />} />
+                                        <Route path="settings" element={<SettingsPage />} />
+                                        <Route path="subscription" element={<SubscriptionPage />} />
+                                        <Route path="tutorial" element={<TutorialPage />} />
+                                      </Route>
                                     </Route>
-                                  </Route>
-                                  
-                                  {/* Protected Routes - Admin Only */}
-                                  <Route element={<ProtectedRoute requireAdmin={true} />}>
-                                    <Route path="/dashboard" element={<Layout />}>
-                                      <Route path="admin" element={<AdminPage />} />
+                                    
+                                    {/* Protected Routes - Admin Only */}
+                                    <Route element={<ProtectedRoute requireAdmin={true} />}>
+                                      <Route path="/dashboard" element={<Layout />}>
+                                        <Route path="admin" element={<AdminPage />} />
+                                      </Route>
                                     </Route>
-                                  </Route>
-                                  
-                                  <Route
-                                    path="/dashboard/curriculum"
-                                    element={
-                                      <ProtectedRoute>
-                                        <CurriculumPage />
-                                      </ProtectedRoute>
-                                    }
-                                  />
-                                  
-                                  <Route path="*" element={<NotFound />} />
-                                </Routes>
-                              </div>
-                            </TooltipProvider>
+                                    
+                                    <Route
+                                      path="/dashboard/curriculum"
+                                      element={
+                                        <ProtectedRoute>
+                                          <CurriculumPage />
+                                        </ProtectedRoute>
+                                      }
+                                    />
+                                    
+                                    <Route path="*" element={<NotFound />} />
+                                  </Routes>
+                                </div>
+                              </TooltipProvider>
+                            </CurriculumProvider>
                           </VocabularyProvider>
                         </DirectoryProvider>
                       </ExerciseProvider>

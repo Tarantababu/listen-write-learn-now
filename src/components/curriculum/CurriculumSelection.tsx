@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { useCurriculum } from '@/contexts/CurriculumContext';
+import { useCurriculumContext } from '@/hooks/use-curriculum';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { LanguageLevel } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -49,7 +48,7 @@ const levels: { level: LanguageLevel; title: string; description: string }[] = [
 ];
 
 const CurriculumSelection: React.FC = () => {
-  const { initializeUserCurriculumPath, isLoading } = useCurriculum();
+  const { initializeUserCurriculumPath, isLoading } = useCurriculumContext();
   const { settings } = useUserSettingsContext();
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel | null>(null);
   
