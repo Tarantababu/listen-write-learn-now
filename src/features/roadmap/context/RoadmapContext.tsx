@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -146,79 +145,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [settings.selectedLanguage, selectedLanguage, fetchRoadmaps, user]);
 
-  // Manual refresh function for user-triggered refresh
-  const refreshData = useCallback(async () => {
-    if (!user || fetchingRef.current) return;
-    
-    trackActivity(); // Track this as user activity
-    fetchRoadmaps();
-    
-    if (selectedRoadmap) {
-      await loadUserRoadmap(selectedRoadmap.id);
-    }
-    
-    toast({
-      title: "Data refreshed",
-      description: "Your data has been successfully refreshed."
-    });
-  }, [user, fetchRoadmaps, loadUserRoadmap, selectedRoadmap, trackActivity]);
-
-  // Load all user roadmaps
-  const loadUserRoadmaps = async (language?: Language): Promise<UserRoadmap[]> => {
-    if (!user) return [];
-    
-    try {
-      const loadedLanguage = language || settings.selectedLanguage;
-      const userRoadmapsList = await roadmapService.getUserRoadmaps(loadedLanguage);
-      
-      if (!userRoadmapsList || userRoadmapsList.length === 0) {
-        setUserRoadmaps([]);
-        return [];
-      }
-
-      // Make sure the user roadmaps have required name and level properties
-      const completeUserRoadmaps = userRoadmapsList.map(roadmap => ({
-        ...roadmap,
-        name: roadmap.name || "Learning Path",
-        level: roadmap.level || "A1" as LanguageLevel
-      }));
-
-      setUserRoadmaps(completeUserRoadmaps);
-      
-      // If no roadmap is selected but user has roadmaps, select the first one
-      if (!selectedRoadmap && completeUserRoadmaps.length > 0) {
-        await loadUserRoadmap(completeUserRoadmaps[0].id);
-      }
-      
-      return completeUserRoadmaps;
-    } catch (error) {
-      console.error("Error loading user roadmaps:", error);
-      toast({
-        variant: "destructive",
-        title: "Failed to load your learning paths",
-        description: "There was an error loading your learning paths."
-      });
-      return [];
-    }
-  };
-
-  // Select a specific roadmap
-  const selectRoadmap = async (roadmapId: string) => {
-    if (selectedRoadmap?.id === roadmapId) return; // Prevent reloading same roadmap
-    
-    const roadmap = userRoadmaps.find(r => r.id === roadmapId);
-    if (roadmap) {
-      await loadUserRoadmap(roadmap.id);
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Roadmap not found",
-        description: "The selected roadmap could not be found."
-      });
-    }
-  };
-
-  // Load user's selected roadmap
+  // Forward declaration of loadUserRoadmap function to fix the "used before declaration" error
   const loadUserRoadmap = async (userRoadmapId?: string) => {
     if (!user) return;
     if (fetchingRef.current) return; // Prevent concurrent fetches
@@ -301,6 +228,78 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setLoading(false);
       fetchingRef.current = false;
+    }
+  };
+
+  // Manual refresh function for user-triggered refresh
+  const refreshData = useCallback(async () => {
+    if (!user || fetchingRef.current) return;
+    
+    trackActivity(); // Track this as user activity
+    fetchRoadmaps();
+    
+    if (selectedRoadmap) {
+      await loadUserRoadmap(selectedRoadmap.id);
+    }
+    
+    toast({
+      title: "Data refreshed",
+      description: "Your data has been successfully refreshed."
+    });
+  }, [user, fetchRoadmaps, loadUserRoadmap, selectedRoadmap, trackActivity]);
+
+  // Load all user roadmaps
+  const loadUserRoadmaps = async (language?: Language): Promise<UserRoadmap[]> => {
+    if (!user) return [];
+    
+    try {
+      const loadedLanguage = language || settings.selectedLanguage;
+      const userRoadmapsList = await roadmapService.getUserRoadmaps(loadedLanguage);
+      
+      if (!userRoadmapsList || userRoadmapsList.length === 0) {
+        setUserRoadmaps([]);
+        return [];
+      }
+
+      // Make sure the user roadmaps have required name and level properties
+      const completeUserRoadmaps = userRoadmapsList.map(roadmap => ({
+        ...roadmap,
+        name: roadmap.name || "Learning Path",
+        level: roadmap.level || "A1" as LanguageLevel
+      }));
+
+      setUserRoadmaps(completeUserRoadmaps);
+      
+      // If no roadmap is selected but user has roadmaps, select the first one
+      if (!selectedRoadmap && completeUserRoadmaps.length > 0) {
+        await loadUserRoadmap(completeUserRoadmaps[0].id);
+      }
+      
+      return completeUserRoadmaps;
+    } catch (error) {
+      console.error("Error loading user roadmaps:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to load your learning paths",
+        description: "There was an error loading your learning paths."
+      });
+      return [];
+    }
+  };
+
+  // Select a specific roadmap
+  const selectRoadmap = async (roadmapId: string) => {
+    if (selectedRoadmap?.id === roadmapId) return; // Prevent reloading same roadmap
+    
+    const roadmap = userRoadmaps.find(r => r.id === roadmapId);
+    if (roadmap) {
+      await loadUserRoadmap(roadmap.id);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Roadmap not found",
+        description: "The selected roadmap could not be found."
+      });
     }
   };
 
