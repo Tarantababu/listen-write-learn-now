@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -25,7 +26,8 @@ import {
   Book,
   Shield,
   HelpCircle,
-  Map
+  Map,
+  LayoutDashboard
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getLanguageFlag } from '@/utils/languageUtils';
