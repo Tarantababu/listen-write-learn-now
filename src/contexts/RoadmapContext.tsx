@@ -1,17 +1,41 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { RoadmapItem, UserRoadmap, RoadmapNode, RoadmapProgress, RoadmapNodeProgress } from '@/features/roadmap/types';
 import { Language, LanguageLevel, RoadmapContextType } from '@/types';
-import { 
-  RoadmapItem, 
-  RoadmapNode, 
-  UserRoadmap, 
-  RoadmapNodeProgress, 
-  RoadmapProgress 
-} from '@/features/roadmap/types';
+import { roadmapService } from '../services/RoadmapService';
 
+// Define the context type
+interface RoadmapContextType {
+  roadmaps: RoadmapItem[];
+  userRoadmaps: UserRoadmap[];
+  selectedRoadmap: UserRoadmap | null;
+  currentNode: RoadmapNode | null;
+  roadmapNodes: RoadmapNode[];
+  progress: RoadmapProgress[];
+  nodeProgress: RoadmapNodeProgress[];
+  loading: boolean;
+  nodeLoading: boolean;
+  // Alias properties to match what other components are using
+  currentRoadmap: UserRoadmap | null;
+  nodes: RoadmapNode[];
+  currentNodeId?: string;
+  completedNodes: string[];
+  availableNodes: string[];
+  isLoading: boolean;
+  initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
+  loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
+  loadUserRoadmaps: (language?: Language) => Promise<UserRoadmap[]>; // Updated to make language optional
+  completeNode: (nodeId: string) => Promise<{ nextNodeId?: string }>;
+  resetProgress: () => Promise<void>;
+  getNodeExercise: (nodeId: string) => Promise<any>;
+  markNodeAsCompleted: (nodeId: string) => Promise<void>;
+  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;
+  selectRoadmap: (roadmapId: string) => Promise<void>;
+}
+
+// Create the context
 export const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
 
 export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -103,7 +127,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [user]);
 
   // Load all user roadmaps
-  const loadUserRoadmaps = useCallback(async (language?: Language): Promise<UserRoadmap[]> => {
+  const loadUserRoadmaps = async (language?: Language): Promise<UserRoadmap[]> => {
     if (!user) return [];
 
     try {
@@ -123,15 +147,15 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
 
       // Format user roadmaps with the required fields
-      const formattedUserRoadmaps: UserRoadmap[] = userRoadmapData.map(roadmap => {
+      const formattedUserRoadmaps: UserRoadmap[] = userRoadmapData.map((roadmap: any) => {
         // Add default values for required properties
         return {
           id: roadmap.id,
           userId: roadmap.user_id,
           roadmapId: roadmap.roadmap_id,
           language: roadmap.language as Language,
-          name: roadmap.name || "Learning Path", // Default name
-          level: (roadmap.level || "A1") as LanguageLevel, // Default level
+          name: "Learning Path", // Default name
+          level: "A1" as LanguageLevel, // Default level
           currentNodeId: roadmap.current_node_id,
           createdAt: new Date(roadmap.created_at),
           updatedAt: new Date(roadmap.updated_at),
@@ -156,7 +180,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
       return [];
     }
-  }, [user, settings.selectedLanguage, selectedRoadmap]);
+  };
 
   // Select a specific roadmap
   const selectRoadmap = async (roadmapId: string) => {

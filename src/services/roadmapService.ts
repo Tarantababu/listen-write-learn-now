@@ -158,7 +158,7 @@ class RoadmapService {
           roadmap_languages!inner(language)
         `)
         .eq('level', level)
-        .eq('roadmap_languages.language', language);
+        .eq('roadmap_languages.language', language as string);
         
       if (roadmapsError) throw roadmapsError;
       
