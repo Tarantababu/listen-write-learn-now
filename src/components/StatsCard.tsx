@@ -1,89 +1,103 @@
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { TrendingDown, TrendingUp, Activity } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
+import { TrendData } from '@/utils/trendUtils';
 
 interface StatsCardProps {
   title: string;
-  value: string | number;
-  icon?: React.ReactNode;
+  value: number;
   description?: string;
-  className?: string;
+  icon?: React.ReactNode;
+  trend?: TrendData;
   progress?: number;
   progressColor?: string;
-  trend?: {
-    value: number;
-    label: string;
-  };
+  className?: string;
+  isLoading?: boolean;
 }
 
 const StatsCard: React.FC<StatsCardProps> = ({
   title,
   value,
-  icon,
   description,
-  className,
+  icon,
+  trend,
   progress,
   progressColor = "bg-primary",
-  trend,
+  className,
+  isLoading = false
 }) => {
-  const renderTrend = () => {
+  // Format value for display
+  const formattedValue = value?.toLocaleString() || '0';
+  
+  // Determine trend arrow direction and color
+  const getTrendDisplay = (trend?: TrendData) => {
     if (!trend) return null;
     
-    const isPositive = trend.value >= 0;
-    const Icon = isPositive ? TrendingUp : TrendingDown;
-    const displayValue = Math.abs(trend.value);
+    const { value: trendValue } = trend;
     
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className={cn(
-              "flex items-center gap-1 text-xs font-medium",
-              isPositive ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
-            )}>
-              <Icon className={cn(
-                "h-3 w-3 transition-transform",
-                isPositive && "animate-bounce-once"
-              )} />
-              <span>{isPositive ? "+" : "-"}{displayValue}%</span>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{trend.label}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
+    if (trendValue > 0) {
+      return (
+        <div className="flex items-center text-green-600 text-xs font-medium">
+          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path>
+          </svg>
+          <span>{Math.abs(trendValue)}%</span>
+        </div>
+      );
+    } else if (trendValue < 0) {
+      return (
+        <div className="flex items-center text-red-600 text-xs font-medium">
+          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+          <span>{Math.abs(trendValue)}%</span>
+        </div>
+      );
+    } else {
+      return (
+        <div className="flex items-center text-gray-500 text-xs font-medium">
+          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 12h14"></path>
+          </svg>
+          <span>0%</span>
+        </div>
+      );
+    }
   };
 
   return (
-    <Card className={cn(
-      "overflow-hidden hover:shadow-md transition-all duration-300 animate-fade-in bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900", 
-      className
-    )}>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        {icon && <div className="h-4 w-4">{icon}</div>}
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-between">
-          <div className="text-2xl font-bold">{value}</div>
-          {renderTrend()}
+    <Card className={cn("overflow-hidden", className)}>
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+          {icon && <div className="text-muted-foreground">{icon}</div>}
         </div>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        
+        {isLoading ? (
+          <Skeleton className="h-8 w-20 mb-1" />
+        ) : (
+          <div className="text-2xl font-bold mb-1">{formattedValue}</div>
         )}
-        {typeof progress === 'number' && (
-          <div className="mt-3">
-            <Progress 
-              value={progress} 
-              className="h-1.5" 
-              indicatorClassName={progressColor} 
-            />
+        
+        {description && (
+          <p className="text-xs text-muted-foreground">{description}</p>
+        )}
+        
+        {trend && !isLoading && (
+          <div className="mt-2 flex items-center">
+            {getTrendDisplay(trend)}
+            <span className="text-xs text-muted-foreground ml-2">
+              {trend.label || ''}
+            </span>
+          </div>
+        )}
+        
+        {typeof progress === 'number' && !isLoading && (
+          <div className="mt-2">
+            <Progress value={progress} className={cn("h-1", progressColor)} />
           </div>
         )}
       </CardContent>

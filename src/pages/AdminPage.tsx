@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAdmin } from '@/hooks/use-admin';
 import { VisitorStats } from '@/components/admin/VisitorStats';
-import { AdminStats } from '@/components/admin/AdminStats';
+import { AdminStatsDashboard } from '@/components/admin/AdminStatsDashboard';
 import { FeedbackList } from '@/components/admin/FeedbackList';
 import { UserRoleManagement } from '@/components/admin/UserRoleManagement';
 import { Button } from '@/components/ui/button';
@@ -109,8 +109,8 @@ const AdminPage: React.FC = () => {
         
         <TabsContent value="statistics">
           <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">User Statistics</h2>
-            <AdminStats />
+            <h2 className="text-xl font-semibold mb-4">Admin Statistics</h2>
+            <AdminStatsDashboard />
           </div>
           
           <div className="mb-8">
