@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,6 +25,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Plus, Edit, Trash2 } from 'lucide-react';
 import LevelBadge from '@/components/LevelBadge';
+import { 
+  fetchCurriculumPathsByLanguage,
+  fetchCurriculumNodes,
+  mapCurriculumPathFromDb,
+  mapCurriculumNodeFromDb
+} from '@/services/curriculumService';
+import { supabase } from '@/integrations/supabase/client';
 
 const languageLevels: LanguageLevel[] = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
@@ -87,25 +92,37 @@ const CurriculumEditor: React.FC = () => {
   // Load nodes when a path is selected
   useEffect(() => {
     if (selectedPath) {
-      fetchCurriculumNodes(selectedPath);
+      fetchCurriculumNodes(selectedPath).then(nodes => {
+        setNodes(nodes);
+        setLoading(false);
+      }).catch(error => {
+        console.error('Error fetching curriculum nodes:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load curriculum nodes',
+          variant: 'destructive'
+        });
+        setLoading(false);
+      });
     }
   }, [selectedPath]);
   
   const fetchCurriculumPaths = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('curriculum_paths')
-        .select('*')
-        .order('language, level');
-        
-      if (error) throw error;
       
-      setPaths(data || []);
+      // Fetch paths for all languages
+      const allPaths: any[] = [];
+      for (const language of availableLanguages) {
+        const pathsForLanguage = await fetchCurriculumPathsByLanguage(language as Language);
+        allPaths.push(...pathsForLanguage);
+      }
+      
+      setPaths(allPaths);
       
       // Set the first path as selected if exists
-      if (data && data.length > 0 && !selectedPath) {
-        setSelectedPath(data[0].id);
+      if (allPaths && allPaths.length > 0 && !selectedPath) {
+        setSelectedPath(allPaths[0].id);
       }
     } catch (error) {
       console.error('Error fetching curriculum paths:', error);
@@ -131,30 +148,6 @@ const CurriculumEditor: React.FC = () => {
       setDefaultExercises(data || []);
     } catch (error) {
       console.error('Error fetching default exercises:', error);
-    }
-  };
-  
-  const fetchCurriculumNodes = async (pathId: string) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('curriculum_nodes')
-        .select('*')
-        .eq('curriculum_path_id', pathId)
-        .order('position');
-        
-      if (error) throw error;
-      
-      setNodes(data || []);
-    } catch (error) {
-      console.error('Error fetching curriculum nodes:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load curriculum nodes',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
     }
   };
   
