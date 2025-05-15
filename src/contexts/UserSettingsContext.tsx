@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserSettings, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +22,7 @@ const defaultSettings: UserSettings = {
 
 const UserSettingsContext = createContext<UserSettingsContextProps | undefined>(undefined);
 
+// Export both the original name and the simpler alias for backward compatibility
 export const useUserSettingsContext = () => {
   const context = useContext(UserSettingsContext);
   if (!context) {
@@ -30,6 +30,9 @@ export const useUserSettingsContext = () => {
   }
   return context;
 };
+
+// Add this alias to match what HomePage.tsx is importing
+export const useUserSettings = useUserSettingsContext;
 
 export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
