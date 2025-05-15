@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -6,10 +7,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
-import AdminStats from '@/components/admin/AdminStats';
+import { AdminStats } from '@/components/admin/AdminStats';
 import DefaultExercisesList from '@/components/admin/DefaultExercisesList';
 import DefaultExerciseForm from '@/components/admin/DefaultExerciseForm';
-import UserStats from '@/components/admin/UserStats';
+import { UserStats } from '@/components/admin/UserStats';
 import UserRoleManagement from '@/components/admin/UserRoleManagement';
 import AdminMessagesList from '@/components/admin/AdminMessagesList';
 import AdminMessagesForm from '@/components/admin/AdminMessagesForm';
