@@ -346,6 +346,7 @@ class RoadmapService {
       if (userRoadmapError) throw userRoadmapError;
       
       // Use the function to increment completion count
+      // Fix: Cast userRoadmap.language to Language type
       const { error: incrementError } = await supabase.rpc(
         'increment_node_completion',
         {
