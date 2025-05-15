@@ -99,44 +99,7 @@ export function useRoadmapData() {
     }
   }, [selectedRoadmap]);
   
-  // Initialize a new roadmap for the user
-  const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
-    if (loadingRef.current['initialize']) {
-      return '';
-    }
-    
-    loadingRef.current['initialize'] = true;
-    setIsLoading(true);
-    
-    try {
-      // Explicitly call the service with the user's authentication to ensure roadmap is linked to this user
-      const roadmapId = await roadmapService.initializeRoadmap(level, language);
-      
-      // Reload user roadmaps to include the new one
-      const updatedRoadmaps = await loadUserRoadmaps(language);
-      
-      // Select the newly created roadmap
-      const newRoadmap = updatedRoadmaps.find(r => r.id === roadmapId);
-      if (newRoadmap) {
-        await selectRoadmap(newRoadmap.id);
-      }
-      
-      return roadmapId;
-    } catch (error) {
-      console.error('Error initializing roadmap:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to create roadmap",
-        description: "There was an error creating your roadmap."
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
-      loadingRef.current['initialize'] = false;
-    }
-  }, [loadUserRoadmaps, selectRoadmap]);
-  
-  // Select and load a specific roadmap
+  // Select and load a specific roadmap (moved before initializeRoadmap)
   const selectRoadmap = useCallback(async (roadmapId: string) => {
     // Prevent duplicate selects for the same roadmap
     const cacheKey = `select_roadmap_${roadmapId}`;
@@ -179,6 +142,43 @@ export function useRoadmapData() {
       loadingRef.current[cacheKey] = false;
     }
   }, [userRoadmaps, selectedRoadmap, nodes.length]);
+  
+  // Initialize a new roadmap for the user
+  const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
+    if (loadingRef.current['initialize']) {
+      return '';
+    }
+    
+    loadingRef.current['initialize'] = true;
+    setIsLoading(true);
+    
+    try {
+      // Explicitly call the service with the user's authentication to ensure roadmap is linked to this user
+      const roadmapId = await roadmapService.initializeRoadmap(level, language);
+      
+      // Reload user roadmaps to include the new one
+      const updatedRoadmaps = await loadUserRoadmaps(language);
+      
+      // Select the newly created roadmap
+      const newRoadmap = updatedRoadmaps.find(r => r.id === roadmapId);
+      if (newRoadmap) {
+        await selectRoadmap(newRoadmap.id);
+      }
+      
+      return roadmapId;
+    } catch (error) {
+      console.error('Error initializing roadmap:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to create roadmap",
+        description: "There was an error creating your roadmap."
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+      loadingRef.current['initialize'] = false;
+    }
+  }, [loadUserRoadmaps, selectRoadmap]);
   
   // Get exercise content for a node
   const getNodeExercise = useCallback(async (nodeId: string) => {
@@ -312,3 +312,4 @@ export function useRoadmapData() {
     markNodeWithAccuracy,
   };
 }
+
