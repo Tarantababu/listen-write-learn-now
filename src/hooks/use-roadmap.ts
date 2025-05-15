@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '@/features/roadmap/services/RoadmapService';
 import { RoadmapItem, RoadmapNode, UserRoadmap, ExerciseContent, NodeCompletionResult } from '@/features/roadmap/types';
@@ -8,13 +9,38 @@ import { apiCache } from '@/utils/apiCache';
 import { isAnyPopupOpen } from '@/utils/popupStateManager';
 
 // Constants for data refresh management
-const DATA_REFRESH_INTERVAL = 300000; // 5 minutes interval for data refresh (previously 60000)
-const MAX_REFRESH_INTERVAL = 900000; // 15 minutes maximum interval with backoff (previously 300000)
+const DATA_REFRESH_INTERVAL = 300000; // 5 minutes interval for data refresh
+const MAX_REFRESH_INTERVAL = 900000; // 15 minutes maximum interval with backoff
 const BACKOFF_MULTIPLIER = 2; // Exponential backoff multiplier
 
-// Rename from useRoadmapData to useRoadmap to match imports in other files
+// Function to map property names for backwards compatibility
+const mapToPreviousAPIProps = (data: any) => {
+  const mapped = { ...data };
+  
+  // Map selectedRoadmap to currentRoadmap
+  if (mapped.selectedRoadmap) {
+    mapped.currentRoadmap = mapped.selectedRoadmap;
+  }
+  
+  // Map other properties as needed
+  if (mapped.recordNodeCompletion) {
+    mapped.incrementNodeCompletion = mapped.recordNodeCompletion;
+  }
+  
+  if (mapped.selectRoadmap) {
+    mapped.loadUserRoadmap = mapped.selectRoadmap;
+  }
+  
+  if (mapped.initializeRoadmap) {
+    mapped.initializeUserRoadmap = mapped.initializeRoadmap;
+  }
+  
+  return mapped;
+};
+
 export function useRoadmap() {
   const [isLoading, setIsLoading] = useState(false);
+  const [nodeLoading, setNodeLoading] = useState(false); // Added nodeLoading state
   const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
   const [userRoadmaps, setUserRoadmaps] = useState<UserRoadmap[]>([]);
   const [selectedRoadmap, setSelectedRoadmap] = useState<RoadmapItem | null>(null);
@@ -35,7 +61,6 @@ export function useRoadmap() {
   
   useEffect(() => {
     // Setup activity tracking - but only monitor significant user interactions
-    // Removed mousemove to reduce event firing
     window.addEventListener('click', trackActivity);
     window.addEventListener('keydown', trackActivity);
     
@@ -58,7 +83,6 @@ export function useRoadmap() {
       return;
     }
     
-    // Use our cache util to prevent unnecessary API calls
     try {
       setIsLoading(true);
       loadingRef.current[cacheKey] = true;
@@ -86,9 +110,9 @@ export function useRoadmap() {
   }, []);
   
   // Load user's roadmaps for the selected language
-  const loadUserRoadmaps = useCallback(async (language: Language) => {
+  const loadUserRoadmaps = useCallback(async (language?: Language) => {
     // Add cache key for user roadmaps
-    const cacheKey = `user_roadmaps_${language}`;
+    const cacheKey = language ? `user_roadmaps_${language}` : 'user_roadmaps_all';
     if (loadingRef.current[cacheKey]) {
       return [];
     }
@@ -188,6 +212,9 @@ export function useRoadmap() {
     }
   }, [userRoadmaps, selectedRoadmap, nodes.length]);
   
+  // For compatibility, also provide as loadUserRoadmap
+  const loadUserRoadmap = selectRoadmap;
+  
   // Initialize a new roadmap for the user
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
     if (loadingRef.current['initialize']) {
@@ -228,6 +255,9 @@ export function useRoadmap() {
     }
   }, [loadUserRoadmaps, selectRoadmap]);
   
+  // For compatibility, also provide as initializeUserRoadmap
+  const initializeUserRoadmap = initializeRoadmap;
+  
   // Get exercise content for a node
   const getNodeExercise = useCallback(async (nodeId: string) => {
     const cacheKey = `exercise_${nodeId}`;
@@ -235,6 +265,7 @@ export function useRoadmap() {
       return null;
     }
     
+    setNodeLoading(true);
     loadingRef.current[cacheKey] = true;
     
     try {
@@ -253,6 +284,7 @@ export function useRoadmap() {
       });
       return null;
     } finally {
+      setNodeLoading(false);
       loadingRef.current[cacheKey] = false;
     }
   }, []);
@@ -288,6 +320,9 @@ export function useRoadmap() {
     }
   }, [selectedRoadmap]);
   
+  // For compatibility, also provide as incrementNodeCompletion
+  const incrementNodeCompletion = recordNodeCompletion;
+  
   // Mark a node as completed
   const markNodeAsCompleted = useCallback(async (nodeId: string) => {
     if (loadingRef.current[`mark_complete_${nodeId}`]) {
@@ -320,40 +355,45 @@ export function useRoadmap() {
     }
   }, [selectedRoadmap, selectRoadmap]);
   
-  // Complete a node with a specific accuracy
-  const markNodeWithAccuracy = useCallback(async (nodeId: string, accuracy: number) => {
-    if (loadingRef.current[`mark_accuracy_${nodeId}`]) {
+  // Reset a roadmap's progress
+  const resetProgress = useCallback(async (roadmapId: string) => {
+    if (loadingRef.current[`reset_progress_${roadmapId}`]) {
       return;
     }
     
-    loadingRef.current[`mark_accuracy_${nodeId}`] = true;
+    loadingRef.current[`reset_progress_${roadmapId}`] = true;
     setIsLoading(true);
     
     try {
-      const result = await roadmapService.markNodeAsCompleted(nodeId);
+      await roadmapService.resetRoadmapProgress(roadmapId);
       
       // Invalidate relevant caches
+      apiCache.invalidate(`roadmap_nodes_${roadmapId}`);
       if (selectedRoadmap) {
-        apiCache.invalidate(`roadmap_nodes_${selectedRoadmap.id}`);
         apiCache.invalidate(`user_roadmaps_${selectedRoadmap.language}`);
       }
       
       toast({
-        title: "Progress saved!",
-        description: `You completed this node with ${Math.round(accuracy)}% accuracy.`
+        title: "Progress reset",
+        description: "Your roadmap progress has been reset."
       });
+      
+      // Refresh nodes after reset
+      if (selectedRoadmap && selectedRoadmap.id === roadmapId) {
+        await selectRoadmap(roadmapId);
+      }
     } catch (error) {
-      console.error('Error marking node with accuracy:', error);
+      console.error('Error resetting progress:', error);
       toast({
         variant: "destructive",
-        title: "Failed to save progress",
-        description: "There was an error saving your progress."
+        title: "Failed to reset progress",
+        description: "There was an error resetting your progress."
       });
     } finally {
       setIsLoading(false);
-      loadingRef.current[`mark_accuracy_${nodeId}`] = false;
+      loadingRef.current[`reset_progress_${roadmapId}`] = false;
     }
-  }, [selectedRoadmap]);
+  }, [selectedRoadmap, selectRoadmap]);
   
   // Manual refresh function for user-triggered data refresh
   const refreshData = useCallback(async (language?: Language) => {
@@ -380,9 +420,7 @@ export function useRoadmap() {
       }
       
       // Refresh user roadmaps
-      if (language) {
-        await loadUserRoadmaps(language);
-      }
+      await loadUserRoadmaps(language);
       
       // Refresh selected roadmap's nodes
       if (selectedRoadmap) {
@@ -410,6 +448,7 @@ export function useRoadmap() {
   const currentNode = nodes.find(n => n.id === currentNodeId) || null;
   const completedNodes = nodes.filter(n => n.status === 'completed').map(n => n.id);
   const availableNodes = nodes.filter(n => n.status === 'available').map(n => n.id);
+  const currentRoadmap = selectedRoadmap; // Alias for backward compatibility
   
   // Implement smart polling with backoff
   useEffect(() => {
@@ -456,9 +495,11 @@ export function useRoadmap() {
         window.clearTimeout(timerRef.current);
       }
     };
-  }, [selectedRoadmap, refreshInterval, lastActivity, isLoading]);
+  }, [selectedRoadmap, refreshInterval, lastActivity, isLoading, selectRoadmap]);
   
+  // Return both the new property names and the old ones for backward compatibility
   return {
+    // Original properties
     isLoading,
     roadmaps,
     userRoadmaps,
@@ -475,8 +516,15 @@ export function useRoadmap() {
     getNodeExercise,
     recordNodeCompletion,
     markNodeAsCompleted,
-    markNodeWithAccuracy,
-    refreshData, // Manual refresh function
+    refreshData,
+    
+    // Backward compatibility properties
+    nodeLoading,
+    currentRoadmap,
+    initializeUserRoadmap,
+    loadUserRoadmap,
+    incrementNodeCompletion,
+    resetProgress
   };
 }
 

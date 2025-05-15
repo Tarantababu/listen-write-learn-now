@@ -3,6 +3,7 @@
 // This helps prevent background data refreshes when users are interacting with modals
 
 let openPopupCount = 0;
+const popupStates: Record<string, { isOpen: boolean }> = {};
 
 /**
  * Register a popup as opened
@@ -30,4 +31,25 @@ export function isAnyPopupOpen(): boolean {
  */
 export function resetPopupTracking(): void {
   openPopupCount = 0;
+}
+
+/**
+ * Save the state of a specific popup
+ */
+export function savePopupState(id: string, state: { isOpen: boolean }): void {
+  popupStates[id] = state;
+  
+  // Also update the global counter
+  if (state.isOpen) {
+    registerPopupOpen();
+  } else {
+    registerPopupClose();
+  }
+}
+
+/**
+ * Get the state of a specific popup
+ */
+export function getPopupState(id: string): { isOpen: boolean } {
+  return popupStates[id] || { isOpen: false };
 }
