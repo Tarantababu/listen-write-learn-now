@@ -143,13 +143,14 @@ export interface CurriculumContextType {
   nodeLoading: boolean;
   initializeUserCurriculumPath: (level: LanguageLevel, language: Language) => Promise<void>;
   loadUserCurriculumPath: (userCurriculumPathId?: string) => Promise<void>;
-  loadUserCurriculumPaths: (language?: Language) => Promise<UserCurriculumPath[] | undefined>;
+  loadUserCurriculumPaths: (language?: Language) => Promise<UserCurriculumPath[]>;
   completeNode: (nodeId: string) => Promise<void>;
   resetProgress: () => Promise<void>;
   getNodeExercise: (nodeId: string) => Promise<any>;
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
   incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;
   selectCurriculumPath: (curriculumPathId: string) => Promise<void>;
+  refreshData: () => void; // Add the missing refreshData property
 }
 
 // Legacy Roadmap types that we're phasing out but keeping for compatibility

@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { useUserSettingsContext } from './UserSettingsContext';
 import { 
@@ -11,7 +10,7 @@ import {
   getCurriculumNodes,
   recordExerciseAttempt
 } from '@/services/curriculumService';
-import { CurriculumContextType, LanguageLevel, Language } from '@/types';
+import { CurriculumContextType, LanguageLevel, Language, UserCurriculumPath } from '@/types';
 import { apiCache } from '@/utils/apiCache';
 import { debounce } from '@/utils/debounce';
 
@@ -58,7 +57,7 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Load user's enrolled curricula with debounce
   const loadUserCurriculumPaths = useMemo(() => {
-    const loadFn = async (language?: Language) => {
+    const loadFn = async (language?: Language): Promise<UserCurriculumPath[]> => {
       const cacheKey = `userCurricula:${language || settings.selectedLanguage}`;
       
       try {
