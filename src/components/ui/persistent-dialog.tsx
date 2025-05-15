@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
@@ -8,6 +7,11 @@ import { savePopupState, getPopupState } from "@/utils/popupStateManager";
 // Extend the DialogPrimitive.DialogProps type to include dialogId
 interface PersistentDialogProps extends DialogPrimitive.DialogProps {
   dialogId: string; // Unique id for tracking dialog state
+}
+
+// Define the type for the popup state
+interface PopupState {
+  isOpen: boolean;
 }
 
 const PersistentDialog = React.forwardRef<
@@ -24,9 +28,9 @@ const PersistentDialog = React.forwardRef<
     }
   }, [open, dialogId]);
   
-  // Load state on initial render
+  // Load state on initial render with proper typing
   const initialState = React.useMemo(() => {
-    return getPopupState(dialogId);
+    return getPopupState<PopupState>(dialogId, { isOpen: false });
   }, [dialogId]);
   
   return (
