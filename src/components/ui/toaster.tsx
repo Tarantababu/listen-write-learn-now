@@ -6,15 +6,15 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "@/components/ui/toast"
-import { useToast } from "@/hooks/use-toast"
+} from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 
 export function Toaster() {
-  const { toast } = useToast()
+  const { toasts } = useToast();
 
   return (
     <ToastProvider>
-      {toast.toasts?.map(function ({ id, title, description, action, variant, ...props }) {
+      {toasts.map(function ({ id, title, description, action, variant, ...props }) {
         // Don't auto-dismiss error toasts
         const shouldAutoClose = variant !== 'destructive';
         
@@ -29,9 +29,9 @@ export function Toaster() {
             {action}
             <ToastClose />
           </Toast>
-        )
+        );
       })}
       <ToastViewport />
     </ToastProvider>
-  )
+  );
 }

@@ -53,31 +53,6 @@ const useToast = () => {
   };
 };
 
-// Export the Toaster component
-export function Toaster() {
-  const { toasts } = useToast();
-
-  return (
-    <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
-            {action}
-            <ToastClose />
-          </Toast>
-        )
-      })}
-      <ToastViewport />
-    </ToastProvider>
-  )
-}
-
 // Export individual function to use outside of React components
 export const toast = (props: Omit<ToastProps, "id">) => {
   const { toast: toastFn } = useToast();
