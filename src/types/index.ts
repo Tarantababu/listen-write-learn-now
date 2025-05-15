@@ -178,3 +178,66 @@ export interface RoadmapLanguage {
   language: Language;
   createdAt: Date;
 }
+
+export interface UserRoadmap {
+  id: string;
+  userId: string;
+  roadmapId: string;
+  language: Language;
+  currentNodeId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RoadmapProgress {
+  id: string;
+  userId: string;
+  roadmapId: string;
+  nodeId: string;
+  completed: boolean;
+  completedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RoadmapNodeProgress {
+  id: string;
+  userId: string;
+  roadmapId: string;
+  nodeId: string;
+  language: Language;
+  completionCount: number;
+  isCompleted: boolean;
+  lastPracticedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RoadmapContextType {
+  roadmaps: Roadmap[];
+  userRoadmaps: UserRoadmap[]; 
+  currentRoadmap: UserRoadmap | null;
+  nodes: RoadmapNode[];
+  currentNodeId: string | undefined;
+  completedNodes: string[];
+  availableNodes: string[];
+  nodeProgress: RoadmapNodeProgress[];
+  isLoading: boolean;
+  nodeLoading: boolean;
+  selectedRoadmap?: UserRoadmap | null;
+  currentNode?: RoadmapNode | null;
+  roadmapNodes?: RoadmapNode[];
+  progress?: RoadmapProgress[];
+  loading?: boolean;
+  
+  // Methods
+  initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
+  loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
+  loadUserRoadmaps: (language?: Language) => Promise<UserRoadmap[] | undefined>;
+  completeNode: (nodeId: string) => Promise<void>;
+  resetProgress: () => Promise<void>;
+  getNodeExercise: (nodeId: string) => Promise<any>;
+  markNodeAsCompleted: (nodeId: string) => Promise<void>;
+  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;
+  selectRoadmap: (roadmapId: string) => Promise<void>;
+}
