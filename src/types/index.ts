@@ -73,6 +73,10 @@ export interface CurriculumNode {
   title: string;
   description?: string;
   position: number;
+  sequence_order: number; // Add sequence_order
+  name: string; // Add name
+  min_completion_count: number; // Add min_completion_count
+  min_accuracy_percentage: number; // Add min_accuracy_percentage
   isBonus: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -86,6 +90,10 @@ export interface UserCurriculumPath {
   currentNodeId?: string;
   createdAt: Date;
   updatedAt: Date;
+  status: 'active' | 'completed' | 'abandoned';
+  completion_percentage: number;
+  last_activity_date: string | Date;
+  curriculum?: any; // Add curriculum property
 }
 
 export interface CurriculumProgress {
@@ -106,7 +114,7 @@ export interface CurriculumNodeProgress {
   curriculumPathId: string;
   nodeId: string;
   language: Language;
-  completionCount: number;
+  completedExerciseCount: number; // Changed from completionCount to match component usage
   isCompleted: boolean;
   lastPracticedAt?: Date;
   createdAt: Date;

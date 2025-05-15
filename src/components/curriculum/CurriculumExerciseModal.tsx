@@ -37,8 +37,8 @@ export const CurriculumExerciseModal: React.FC<CurriculumExerciseModalProps> = (
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get node progress for this node
-  const nodeProgressRecord = nodeProgress.find(np => np.node_id === nodeId);
-  const completedCount = nodeProgressRecord?.completed_exercise_count || 0;
+  const nodeProgressRecord = nodeProgress.find(np => np.nodeId === nodeId);
+  const completedCount = nodeProgressRecord?.completedExerciseCount || 0;
   const requiredCount = exercise?.min_completion_count || 3;
   const minAccuracy = exercise?.min_accuracy_percentage || 95;
 

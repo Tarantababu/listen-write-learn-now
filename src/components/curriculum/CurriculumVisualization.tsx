@@ -5,7 +5,7 @@ import { useCurriculum } from '@/hooks/use-curriculum';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Circle, Lock, ArrowRight, Clock } from 'lucide-react';
-import { useMediaQuery } from 'react-use';
+import { useMedia } from 'react-use'; // Changed from useMediaQuery to useMedia which is available
 import LevelBadge from '@/components/LevelBadge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
@@ -23,7 +23,7 @@ export const CurriculumVisualization: React.FC = () => {
   } = useCurriculum();
   
   const { toast } = useToast();
-  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isMobile = useMedia('(max-width: 768px)'); // Changed to useMedia
 
   // Get curriculum data
   const curriculum = useMemo(() => {

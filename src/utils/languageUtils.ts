@@ -1,4 +1,3 @@
-
 import { Language } from '@/types';
 
 export function getLanguageFlag(language: Language): string {
@@ -78,3 +77,6 @@ export function getLanguageStatsPrefix(language: Language): string {
       return language;
   }
 }
+
+// Add the language levels array
+export const languageLevels = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;

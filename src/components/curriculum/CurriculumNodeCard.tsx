@@ -3,7 +3,7 @@ import React from 'react';
 import { CurriculumNode, CurriculumNodeProgress } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useCurriculum } from '@/contexts/CurriculumContext';
+import { useCurriculum } from '@/hooks/use-curriculum';
 import { Lock, CheckCircle, BookOpen, Award, Circle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
@@ -22,7 +22,7 @@ const CurriculumNodeCard: React.FC<CurriculumNodeCardProps> = ({
 }) => {
   const { nodeLoading } = useCurriculum();
   
-  const completionPercentage = progress ? Math.min((progress.completionCount / 3) * 100, 100) : 0;
+  const completionPercentage = progress ? Math.min((progress.completedExerciseCount / 3) * 100, 100) : 0;
   
   // Determine the status and icon
   let statusIcon;
@@ -34,9 +34,9 @@ const CurriculumNodeCard: React.FC<CurriculumNodeCardProps> = ({
   } else if (!isAvailable) {
     statusIcon = <Lock className="h-5 w-5 text-muted-foreground" />;
     statusText = 'Locked';
-  } else if (progress?.completionCount) {
+  } else if (progress?.completedExerciseCount) {
     statusIcon = <BookOpen className="h-5 w-5 text-amber-500" />;
-    statusText = `In Progress (${progress.completionCount}/3)`;
+    statusText = `In Progress (${progress.completedExerciseCount}/3)`;
   } else {
     statusIcon = <Circle className="h-5 w-5 text-muted-foreground" />;
     statusText = 'Not Started';
@@ -46,7 +46,7 @@ const CurriculumNodeCard: React.FC<CurriculumNodeCardProps> = ({
     <Card className={`transition-all ${
       !isAvailable ? 'opacity-70' : 
       progress?.isCompleted ? 'border-green-500/30' : 
-      progress?.completionCount ? 'border-amber-500/30' : ''
+      progress?.completedExerciseCount ? 'border-amber-500/30' : ''
     }`}>
       <CardHeader className="pb-2">
         <div className="flex justify-between items-center">
@@ -68,11 +68,11 @@ const CurriculumNodeCard: React.FC<CurriculumNodeCardProps> = ({
           {node.description || 'Practice this exercise to improve your skills'}
         </div>
         
-        {progress && progress.completionCount > 0 && !progress.isCompleted && (
+        {progress && progress.completedExerciseCount > 0 && !progress.isCompleted && (
           <div className="mt-4">
             <Progress value={completionPercentage} className="h-2" />
             <p className="text-xs text-muted-foreground mt-1 text-right">
-              {progress.completionCount}/3 completions
+              {progress.completedExerciseCount}/3 completions
             </p>
           </div>
         )}
