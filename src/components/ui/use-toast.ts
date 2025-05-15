@@ -1,8 +1,8 @@
 
 // Simply re-export from the hooks file
-import { useToast, toast, showRefreshMessage } from "@/hooks/use-toast";
+import { useToast, toast } from "@/hooks/use-toast";
 
-export { useToast, toast, showRefreshMessage };
+export { useToast, toast };
 
 // Ensure the toast.toasts property is accessible
 if (!toast.toasts) {

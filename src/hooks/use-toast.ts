@@ -8,7 +8,7 @@ export type ToastProps = React.ComponentPropsWithoutRef<typeof ToastPrimitive> &
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: React.ReactNode;
-  variant?: "default" | "destructive" | "success";
+  variant?: "default" | "destructive";
 };
 
 // Create a toast store
@@ -63,11 +63,3 @@ export const toast = (props: Omit<ToastProps, "id">) => {
 
 // Add toasts property to the toast function for compatibility
 toast.toasts = toasts;
-
-// Helper function for showing a refresh message
-export const showRefreshMessage = (message: string) => {
-  toast({
-    title: "Data refreshed",
-    description: message,
-  });
-};
