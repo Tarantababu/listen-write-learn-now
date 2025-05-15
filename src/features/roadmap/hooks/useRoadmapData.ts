@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '../services/RoadmapService';
 import { RoadmapItem, RoadmapNode, UserRoadmap, ExerciseContent, NodeCompletionResult } from '../types';
-import { Language, LanguageLevel, Roadmap } from '@/types';
+import { Language, LanguageLevel } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { asUUID, asFilterParam } from '@/lib/utils/supabaseHelpers';
 
@@ -48,7 +48,7 @@ export function useRoadmapData() {
       setUserRoadmaps(roadmapsList);
       
       if (roadmapsList.length > 0 && !selectedRoadmap) {
-        // Create a properly typed RoadmapItem from UserRoadmap
+        // Convert UserRoadmap to RoadmapItem for compatibility
         const firstRoadmap: RoadmapItem = {
           id: roadmapsList[0].id,
           name: roadmapsList[0].name,
@@ -196,7 +196,7 @@ export function useRoadmapData() {
       });
       throw error;
     }
-  }, [selectedRoadmap, selectRoadmap]);
+  }, [selectedRoadmap]);
   
   // Complete a node with a specific accuracy
   const markNodeWithAccuracy = useCallback(async (nodeId: string, accuracy: number) => {

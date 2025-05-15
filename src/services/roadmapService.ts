@@ -1,8 +1,10 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { 
   RoadmapItem, 
   UserRoadmap,
-  RoadmapNodeProgress 
+  RoadmapNodeProgress,
+  RoadmapProgress
 } from '@/features/roadmap/types';
 import { RoadmapNode, Language, LanguageLevel } from '@/types';
 
@@ -40,7 +42,7 @@ class RoadmapService {
         languages: languagesByRoadmap[roadmap.id] || [],
         createdAt: new Date(roadmap.created_at),
         updatedAt: new Date(roadmap.updated_at),
-        createdBy: roadmap.created_by,
+        createdBy: roadmap.created_by
       }));
     } catch (error) {
       console.error('Error getting roadmaps:', error);
@@ -268,7 +270,7 @@ class RoadmapService {
       }
       
       // Get completed nodes
-      const { data: progress, error: progressError } = await supabase
+      const { data: progressData, error: progressError } = await supabase
         .from('roadmap_progress')
         .select('*')
         .eq('user_id', userData.user.id)
@@ -277,7 +279,7 @@ class RoadmapService {
       if (progressError) throw progressError;
       
       // Get node progress
-      const { data: nodeProgress, error: nodeProgressError } = await supabase
+      const { data: nodeProgressData, error: nodeProgressError } = await supabase
         .from('roadmap_nodes_progress')
         .select('*')
         .eq('user_id', userData.user.id)
@@ -287,7 +289,7 @@ class RoadmapService {
       if (nodeProgressError) throw nodeProgressError;
       
       return {
-        progress: (progress || []).map((p): RoadmapProgress => ({
+        progress: (progressData || []).map((p): RoadmapProgress => ({
           id: p.id,
           userId: p.user_id,
           roadmapId: p.roadmap_id,
@@ -297,7 +299,7 @@ class RoadmapService {
           createdAt: new Date(p.created_at),
           updatedAt: new Date(p.updated_at || p.created_at),
         })),
-        nodeProgress: (nodeProgress || []).map((np): RoadmapNodeProgress => ({
+        nodeProgress: (nodeProgressData || []).map((np): RoadmapNodeProgress => ({
           id: np.id,
           userId: np.user_id,
           roadmapId: np.roadmap_id,
@@ -400,18 +402,21 @@ class RoadmapService {
         });
       
       if (progressError) {
-        // Try update if insert fails
-        const { error: updateError } = await supabase
+        // Try update if insert fails using upsert instead of on_conflict
+        const { error: upsertError } = await supabase
           .from('roadmap_progress')
-          .update({
+          .upsert({
+            user_id: userData.user.id,
+            roadmap_id: node.roadmap_id,
+            node_id: nodeId,
             completed: true,
-            completed_at: new Date().toISOString()
-          })
-          .eq('user_id', userData.user.id)
-          .eq('roadmap_id', node.roadmap_id)
-          .eq('node_id', nodeId);
+            completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, { 
+            onConflict: 'user_id,roadmap_id,node_id' 
+          });
           
-        if (updateError) throw updateError;
+        if (upsertError) throw upsertError;
       }
       
       // Find next node

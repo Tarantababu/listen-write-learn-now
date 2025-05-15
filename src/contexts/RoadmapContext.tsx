@@ -3,14 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language, RoadmapNodeProgress, RoadmapContextType } from '@/types';
+import { RoadmapItem, RoadmapNode, UserRoadmap, LanguageLevel, Language, RoadmapNodeProgress, RoadmapContextType } from '@/types';
+import { RoadmapProgress } from '@/features/roadmap/types';
 
 export const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
 
 export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const { settings } = useUserSettingsContext();
-  const [roadmaps, setRoadmaps] = useState<Roadmap[]>([]);
+  const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
   const [userRoadmaps, setUserRoadmaps] = useState<UserRoadmap[]>([]); // Store all user roadmaps
   const [selectedRoadmap, setSelectedRoadmap] = useState<UserRoadmap | null>(null);
   const [roadmapNodes, setRoadmapNodes] = useState<RoadmapNode[]>([]);
@@ -53,7 +54,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
 
       // Combine roadmaps with their languages
-      const formattedRoadmaps: Roadmap[] = roadmapData.map(roadmap => ({
+      const formattedRoadmaps: RoadmapItem[] = roadmapData.map(roadmap => ({
         id: roadmap.id,
         name: roadmap.name,
         level: roadmap.level as LanguageLevel, // Explicit cast to LanguageLevel
@@ -116,18 +117,21 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
 
       // Format user roadmaps with the required fields
-      const formattedUserRoadmaps: UserRoadmap[] = userRoadmapData.map(roadmap => ({
-        id: roadmap.id,
-        userId: roadmap.user_id,
-        roadmapId: roadmap.roadmap_id,
-        language: roadmap.language as Language,
-        name: roadmap.name || "Learning Path", // Provide a default name
-        level: roadmap.level || "A1" as LanguageLevel, // Provide a default level
-        currentNodeId: roadmap.current_node_id,
-        createdAt: new Date(roadmap.created_at),
-        updatedAt: new Date(roadmap.updated_at),
-        languages: [] // Add empty languages array as it's optional but may be needed
-      }));
+      const formattedUserRoadmaps: UserRoadmap[] = userRoadmapData.map(roadmap => {
+        // Get roadmap details from a separate query or use defaults
+        return {
+          id: roadmap.id,
+          userId: roadmap.user_id,
+          roadmapId: roadmap.roadmap_id,
+          language: roadmap.language as Language,
+          name: roadmap.name || "Learning Path", // Provide a default name
+          level: roadmap.level || "A1" as LanguageLevel, // Provide a default level
+          currentNodeId: roadmap.current_node_id,
+          createdAt: new Date(roadmap.created_at),
+          updatedAt: new Date(roadmap.updated_at),
+          languages: [] // Add empty languages array as it's optional but may be needed
+        };
+      });
 
       setUserRoadmaps(formattedUserRoadmaps);
       
@@ -171,7 +175,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Get user's roadmap
       let query = supabase
         .from('user_roadmaps')
-        .select('*');
+        .select('*, roadmaps(*)');
         
       if (userRoadmapId) {
         query = query.eq('id', userRoadmapId);
@@ -197,14 +201,22 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         return;
       }
 
+      // Get the roadmap details to get name and level
+      const { data: roadmapDetails, error: roadmapError } = await supabase
+        .from('roadmaps')
+        .select('name, level, description')
+        .eq('id', userRoadmapData.roadmap_id)
+        .single();
+
       // Format user roadmap with required fields
       const userRoadmap: UserRoadmap = {
         id: userRoadmapData.id,
         userId: userRoadmapData.user_id,
         roadmapId: userRoadmapData.roadmap_id,
         language: userRoadmapData.language as Language,
-        name: userRoadmapData.name || "Learning Path", // Provide a default name
-        level: userRoadmapData.level || "A1" as LanguageLevel, // Provide a default level
+        name: (roadmapDetails && roadmapDetails.name) || "Learning Path", // Use roadmap name or default
+        level: (roadmapDetails && roadmapDetails.level) || "A1" as LanguageLevel, // Use roadmap level or default
+        description: roadmapDetails && roadmapDetails.description,
         currentNodeId: userRoadmapData.current_node_id,
         createdAt: new Date(userRoadmapData.created_at),
         updatedAt: new Date(userRoadmapData.updated_at),
