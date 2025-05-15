@@ -45,9 +45,12 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     onNodeSelect(node);
   };
 
+  // Find the roadmap name from the roadmaps array
+  const roadmapName = roadmaps.find(r => r.id === currentRoadmap.roadmapId)?.name || 'Learning Path';
+
   return (
     <div>
-      <h2>{currentRoadmap.name}</h2>
+      <h2>{roadmapName}</h2>
       <p>Current Node ID: {currentNodeId}</p>
       <div>
         {nodes.map((node) => (

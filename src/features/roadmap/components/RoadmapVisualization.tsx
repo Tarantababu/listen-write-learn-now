@@ -44,9 +44,12 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     onNodeSelect(node);
   };
 
+  // Find the roadmap name from the roadmaps array
+  const roadmapName = roadmaps.find(r => r.id === currentRoadmap.roadmapId)?.name || 'Learning Path';
+  
   return (
     <div>
-      <h2>{currentRoadmap.name}</h2>
+      <h2>{roadmapName}</h2>
       <p>Current Node ID: {currentNodeId}</p>
       <div>
         {nodes.map((node) => (
@@ -64,6 +67,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
               {node.title}
               {getNodeStatus(node) === 'locked' && <Lock className="inline-block ml-2 h-4 w-4" />}
               {getNodeStatus(node) === 'completed' && <Check className="inline-block ml-2 h-4 w-4" />}
+              {node.isBonus && <Star className="inline-block ml-2 h-4 w-4" />}
             </button>
           </div>
         ))}

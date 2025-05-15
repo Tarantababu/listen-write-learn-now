@@ -1,6 +1,5 @@
 
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -405,12 +404,4 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   );
 };
 
-export const useRoadmap = () => {
-  const context = useContext(RoadmapContext);
-  if (context === undefined) {
-    throw new Error('useRoadmap must be used within a RoadmapProvider');
-  }
-  return context;
-};
-
-export { RoadmapContext };
+export { RoadmapContext, useContext as useRoadmap };
