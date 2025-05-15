@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -36,8 +35,18 @@ const RoadmapPage = () => {
     userRoadmaps,
     resetProgress,
     errorState,
-    tryAlternateLanguage
+    tryAlternateLanguage,
+    setRoadmapPageActive
   } = useRoadmap();
+
+  // Set roadmap page as active when component mounts, inactive when unmounts
+  useEffect(() => {
+    setRoadmapPageActive(true);
+    
+    return () => {
+      setRoadmapPageActive(false);
+    };
+  }, [setRoadmapPageActive]);
 
   // Track dialog open state for preventing background refreshes
   useEffect(() => {
@@ -71,6 +80,14 @@ const RoadmapPage = () => {
     }
   }, [initialLoad, isLoading, currentRoadmap]);
 
+  // Load user's roadmaps ONLY on mount and when language changes, not continuously
+  useEffect(() => {
+    if (user) {
+      // Pass the selectedLanguage parameter to loadUserRoadmaps
+      loadUserRoadmaps(settings.selectedLanguage);
+    }
+  }, [user, settings.selectedLanguage, loadUserRoadmaps]);
+
   const handleStartJourney = async (level: LanguageLevel) => {
     setLoadError(null);
     try {
@@ -99,14 +116,6 @@ const RoadmapPage = () => {
     }
   };
   
-  // Load user's roadmaps on mount
-  useEffect(() => {
-    if (user) {
-      // Pass the selectedLanguage parameter to loadUserRoadmaps
-      loadUserRoadmaps(settings.selectedLanguage);
-    }
-  }, [user, settings.selectedLanguage, loadUserRoadmaps]);
-
   // Function to handle selecting a different roadmap
   const handleSelectRoadmap = async (roadmapId: string) => {
     try {

@@ -1,10 +1,11 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '../services/RoadmapService';
 import { RoadmapItem, RoadmapNode, UserRoadmap, ExerciseContent, NodeCompletionResult } from '../types';
 import { Language, LanguageLevel } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { asUUID, asFilterParam } from '@/lib/utils/supabaseHelpers';
+import { isAnyPopupOpen } from '@/utils/popupStateManager';
+import { apiCache } from '@/utils/apiCache';
 
 // Constants for data refresh management
 const DATA_REFRESH_INTERVAL = 60000; // 1 minute interval for data refresh
@@ -19,16 +20,29 @@ export function useRoadmapData() {
   const [nodes, setNodes] = useState<RoadmapNode[]>([]);
   const [refreshInterval, setRefreshInterval] = useState(DATA_REFRESH_INTERVAL);
   const [lastActivity, setLastActivity] = useState(Date.now());
+  const [languageAvailability, setLanguageAvailability] = useState<Record<string, boolean>>({});
   
   // Use refs to prevent unnecessary renders and track loading states
   const loadingRef = useRef<{[key: string]: boolean}>({});
   const initialLoadedRef = useRef<{[key: string]: boolean}>({});
   const timerRef = useRef<number | null>(null);
+  const isRoadmapPageActive = useRef<boolean>(false);
   
   // Track user activity to implement exponential backoff
   const trackActivity = useCallback(() => {
     setLastActivity(Date.now());
     setRefreshInterval(DATA_REFRESH_INTERVAL); // Reset interval on activity
+  }, []);
+  
+  // Track if we're on the roadmap page
+  const setRoadmapPageActive = useCallback((active: boolean) => {
+    isRoadmapPageActive.current = active;
+    
+    // Clear any existing timers when changing page
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
   }, []);
   
   useEffect(() => {
@@ -49,8 +63,53 @@ export function useRoadmapData() {
     };
   }, [trackActivity]);
   
+  // Error state management
+  const [errorState, setErrorState] = useState<{
+    hasError: boolean;
+    message: string;
+    suggestedLanguage?: string;
+  }>({
+    hasError: false,
+    message: ''
+  });
+  
+  const clearErrorState = useCallback(() => {
+    setErrorState({
+      hasError: false,
+      message: ''
+    });
+  }, []);
+  
+  // Try alternate language when primary language is not available
+  const tryAlternateLanguage = useCallback(async (level: LanguageLevel, originalLanguage: Language) => {
+    try {
+      // Use English as fallback language
+      const fallbackLanguage = 'english' as Language;
+      
+      // Initialize roadmap with fallback language
+      await initializeRoadmap(level, fallbackLanguage);
+      
+      // Update language availability record
+      setLanguageAvailability(prev => ({
+        ...prev,
+        [originalLanguage]: false,
+        [fallbackLanguage]: true
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error('Error trying alternate language:', error);
+      throw error;
+    }
+  }, []);
+  
   // Load all roadmaps available for a language
   const loadRoadmaps = useCallback(async (language: Language) => {
+    // Don't fetch if we're not on the roadmap page
+    if (!isRoadmapPageActive.current) {
+      return;
+    }
+    
     // Prevent duplicate fetches for the same language
     const cacheKey = `roadmaps_${language}`;
     if (loadingRef.current[cacheKey]) {
@@ -62,20 +121,57 @@ export function useRoadmapData() {
       return;
     }
     
+    // Don't fetch if any popup is open
+    if (isAnyPopupOpen()) {
+      return;
+    }
+    
     loadingRef.current[cacheKey] = true;
     setIsLoading(true);
     
     try {
-      const roadmapsData = await roadmapService.getRoadmapsForLanguage(language);
-      setRoadmaps(roadmapsData);
+      // Use API cache to prevent redundant calls
+      const roadmapsData = await apiCache.get(
+        cacheKey,
+        () => roadmapService.getRoadmapsForLanguage(language),
+        { ttl: 300000 } // 5 minutes TTL for roadmap data
+      );
+      
+      // Only update state if we're still active
+      if (isRoadmapPageActive.current) {
+        setRoadmaps(roadmapsData);
+      }
+      
       initialLoadedRef.current[cacheKey] = true;
+      
+      // Update language availability based on roadmap data
+      if (roadmapsData.length === 0) {
+        setLanguageAvailability(prev => ({
+          ...prev,
+          [language]: false
+        }));
+      } else {
+        setLanguageAvailability(prev => ({
+          ...prev,
+          [language]: true
+        }));
+      }
     } catch (error) {
       console.error('Error loading roadmaps:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to load roadmaps",
-        description: "There was an error loading available roadmaps."
-      });
+      
+      // Only show toast if we're still active
+      if (isRoadmapPageActive.current) {
+        toast({
+          variant: "destructive",
+          title: "Failed to load roadmaps",
+          description: "There was an error loading available roadmaps."
+        });
+      }
+      
+      setLanguageAvailability(prev => ({
+        ...prev,
+        [language]: false
+      }));
     } finally {
       setIsLoading(false);
       loadingRef.current[cacheKey] = false;
@@ -412,6 +508,8 @@ export function useRoadmapData() {
     userRoadmaps,
     selectedRoadmap,
     nodes,
+    languageAvailability,
+    setRoadmapPageActive,
     currentNodeId,
     currentNode,
     completedNodes,
