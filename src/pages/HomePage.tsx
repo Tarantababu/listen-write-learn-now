@@ -13,7 +13,7 @@ import { motion } from "framer-motion";
 
 const HomePage = () => {
   const { user } = useAuth();
-  const { selectedLanguage, learningLanguages = [] } = useUserSettings();
+  const { selectedLanguage, learningLanguages } = useUserSettings();
   const { subscriptionStatus, isSubscriptionLoading } = useSubscription();
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const navigate = useNavigate();
@@ -41,7 +41,7 @@ const HomePage = () => {
           {welcomeMessage}, {user?.email?.split('@')[0] || 'User'}
         </h1>
         <p className="text-muted-foreground">
-          Continue your learning journey with {capitalize(selectedLanguage || 'your language')}
+          Continue your learning journey with {capitalize(selectedLanguage)}
         </p>
       </div>
 
@@ -49,58 +49,36 @@ const HomePage = () => {
       <section className="pt-4">
         <h2 className="text-xl font-semibold mb-4">Your Languages</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {learningLanguages && learningLanguages.length > 0 ? (
-            learningLanguages.map((language: Language) => (
-              <motion.div
-                key={language}
-                whileHover={{ y: -5 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Card className={`h-full ${selectedLanguage === language ? 'border-primary' : ''}`}>
-                  <CardHeader>
-                    <CardTitle className="capitalize">{language}</CardTitle>
-                    <CardDescription>
-                      {selectedLanguage === language ? "Currently selected" : "Click to select"}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      Continue practicing and improving your {language} skills.
-                    </p>
-                  </CardContent>
-                  <CardFooter>
-                    <Button
-                      variant={selectedLanguage === language ? "default" : "secondary"}
-                      className="w-full"
-                      onClick={() => navigate('/dashboard/exercises')}
-                    >
-                      Practice Now
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-            ))
-          ) : (
-            <Card className="col-span-1 md:col-span-3">
-              <CardHeader>
-                <CardTitle>No languages selected</CardTitle>
-                <CardDescription>Add a language to get started</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  You haven't selected any languages to learn yet. Visit the settings page to add languages.
-                </p>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={() => navigate('/dashboard/settings')}
-                  className="w-full"
-                >
-                  Go to Settings
-                </Button>
-              </CardFooter>
-            </Card>
-          )}
+          {learningLanguages.map((language: Language) => (
+            <motion.div
+              key={language}
+              whileHover={{ y: -5 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Card className={`h-full ${selectedLanguage === language ? 'border-primary' : ''}`}>
+                <CardHeader>
+                  <CardTitle className="capitalize">{language}</CardTitle>
+                  <CardDescription>
+                    {selectedLanguage === language ? "Currently selected" : "Click to select"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Continue practicing and improving your {language} skills.
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    variant={selectedLanguage === language ? "default" : "secondary"}
+                    className="w-full"
+                    onClick={() => navigate('/dashboard/exercises')}
+                  >
+                    Practice Now
+                  </Button>
+                </CardFooter>
+              </Card>
+            </motion.div>
+          ))}
         </div>
       </section>
 
@@ -113,7 +91,7 @@ const HomePage = () => {
               <CardTitle className="flex items-center">
                 <BookOpen className="mr-2 h-5 w-5" /> New Exercise
               </CardTitle>
-              <CardDescription>Start a new exercise in {selectedLanguage || 'your selected language'}</CardDescription>
+              <CardDescription>Start a new exercise in {selectedLanguage}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">

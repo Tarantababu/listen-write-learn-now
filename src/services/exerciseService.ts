@@ -1,7 +1,8 @@
-
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+// Remove the import that's causing the conflict since we have our own implementation
+// import { ensureAudioBucket } from '@/services/defaultExerciseService';
 
 /**
  * Fetches exercises from Supabase for an authenticated user

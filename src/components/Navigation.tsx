@@ -12,11 +12,11 @@ import {
   ShieldCheck
 } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
-import { useAdmin } from "@/hooks/use-admin";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Navigation = () => {
   const location = useLocation();
-  const { isAdmin } = useAdmin();
+  const { isAdmin } = useAuth();
 
   const navItems = [
     {
