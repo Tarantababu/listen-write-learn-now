@@ -84,30 +84,13 @@ export function useAdminStats() {
     staleTime: 5 * 60 * 1000
   });
 
-  // Modified approach for button clicks - using a safer approach without RPC
+  // For button clicks, we'll use a simple approach that doesn't depend on specific tables
   const { data: buttonClicks } = useQuery({
     queryKey: ['admin-button-clicks', refreshKey],
     queryFn: async () => {
-      try {
-        // Using a generic fetch approach that's safe for TypeScript
-        // This avoids trying to use tables or RPCs that might not exist in the schema
-        const { data: clicksData, error } = await supabase
-          .from('button_clicks')
-          .select('count')
-          .eq('button_name', 'subscribe')
-          .maybeSingle();
-        
-        // If data exists, use it
-        if (!error && clicksData) {
-          return typeof clicksData.count === 'number' ? clicksData.count : 0;
-        }
-        
-        // Fallback: just return 0 if the table doesn't exist or has no data
-        return 0;
-      } catch (e) {
-        console.warn("Button clicks tracking not configured:", e);
-        return 0; // Default value if tracking is not set up
-      }
+      // Since we don't have a guarantee that the button_clicks table exists,
+      // we'll return a default value for the fallback
+      return 0; // Default to 0 clicks if the edge function fails
     },
     enabled: isError,
     staleTime: 5 * 60 * 1000

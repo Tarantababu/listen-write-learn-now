@@ -43,10 +43,11 @@ serve(async (req) => {
     
     // Check if the user is an admin
     const { data: adminData, error: adminError } = await supabaseClient
-      .from('admin_users')
+      .from('user_roles')
       .select('user_id')
       .eq('user_id', user.id)
-      .single();
+      .eq('role', 'admin')
+      .maybeSingle();
     
     if (adminError || !adminData) {
       console.error("Admin check error:", adminError);
@@ -79,35 +80,27 @@ serve(async (req) => {
       throw subscribedUsersError;
     }
     
-    // Get subscribe button clicks (if tracking table exists)
+    // Get subscribe button clicks
+    // For now, we'll return a simulated value until we set up proper tracking
     let subscribeButtonClicks = 0;
+    
+    // First check if the button_clicks table exists by checking for its schema information
     try {
-      // Safely check if the table exists first to avoid errors
-      const { data: tablesResult } = await supabaseClient
-        .from('pg_tables')
-        .select('tablename')
-        .eq('schemaname', 'public')
-        .eq('tablename', 'button_clicks');
-      
-      const tableExists = tablesResult && tablesResult.length > 0;
-      
-      if (tableExists) {
-        // If the button_clicks table exists, query it
-        const { data: clicksData, error: clickError } = await supabaseClient
-          .from('button_clicks')
-          .select('count')
-          .eq('button_name', 'subscribe')
-          .single();
+      const { data: schema } = await supabaseClient
+        .rpc('get_schema_info', { schema_name: 'public', table_name: 'button_clicks' });
         
-        if (!clickError && clicksData) {
-          subscribeButtonClicks = clicksData.count || 0;
+      if (schema && schema.length > 0) {
+        // If table exists, try to get the click count
+        const { data, error } = await supabaseClient.rpc('get_subscribe_clicks');
+        if (!error && data !== null) {
+          subscribeButtonClicks = data;
         }
       } else {
-        console.log("Button clicks table does not exist. Using default value.");
+        console.log("Button clicks table doesn't exist yet");
       }
     } catch (err) {
-      console.warn("Error fetching button clicks:", err);
-      // Continue with 0 clicks
+      console.warn("Error checking button clicks:", err);
+      // Continue with default value of 0
     }
     
     // Return the data
