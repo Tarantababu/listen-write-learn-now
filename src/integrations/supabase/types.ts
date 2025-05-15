@@ -477,6 +477,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_curriculum_node: {
+        Args: {
+          curriculum_path_id_param: string
+          title_param: string
+          description_param: string
+          position_param: number
+          is_bonus_param: boolean
+          default_exercise_id_param: string
+        }
+        Returns: string
+      }
+      add_curriculum_path: {
+        Args: {
+          language_param: string
+          level_param: string
+          description_param: string
+        }
+        Returns: string
+      }
+      delete_curriculum_node: {
+        Args: { node_id_param: string }
+        Returns: undefined
+      }
+      delete_curriculum_path: {
+        Args: { path_id_param: string }
+        Returns: undefined
+      }
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
@@ -507,6 +534,26 @@ export type Database = {
           ip_address: string
         }
         Returns: string
+      }
+      update_curriculum_node: {
+        Args: {
+          node_id_param: string
+          title_param: string
+          description_param: string
+          position_param: number
+          is_bonus_param: boolean
+          default_exercise_id_param: string
+        }
+        Returns: undefined
+      }
+      update_curriculum_path: {
+        Args: {
+          path_id_param: string
+          language_param: string
+          level_param: string
+          description_param: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

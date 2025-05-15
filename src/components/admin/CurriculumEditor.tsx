@@ -28,10 +28,14 @@ import LevelBadge from '@/components/LevelBadge';
 import { 
   fetchCurriculumPathsByLanguage,
   fetchCurriculumNodes,
-  mapCurriculumPathFromDb,
-  mapCurriculumNodeFromDb
+  fetchDefaultExercises,
+  createCurriculumPath,
+  updateCurriculumPath,
+  deleteCurriculumPath,
+  createCurriculumNode,
+  updateCurriculumNode,
+  deleteCurriculumNode
 } from '@/services/curriculumService';
-import { supabase } from '@/integrations/supabase/client';
 
 const languageLevels: LanguageLevel[] = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
@@ -86,7 +90,7 @@ const CurriculumEditor: React.FC = () => {
   // Load curriculum paths and default exercises on mount
   useEffect(() => {
     fetchCurriculumPaths();
-    fetchDefaultExercises();
+    loadDefaultExercises();
   }, []);
   
   // Load nodes when a path is selected
@@ -136,18 +140,17 @@ const CurriculumEditor: React.FC = () => {
     }
   };
   
-  const fetchDefaultExercises = async () => {
+  const loadDefaultExercises = async () => {
     try {
-      const { data, error } = await supabase
-        .from('default_exercises')
-        .select('id, title, language')
-        .order('title');
-        
-      if (error) throw error;
-      
-      setDefaultExercises(data || []);
+      const exercises = await fetchDefaultExercises();
+      setDefaultExercises(exercises);
     } catch (error) {
       console.error('Error fetching default exercises:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load exercises',
+        variant: 'destructive'
+      });
     }
   };
   
@@ -203,32 +206,23 @@ const CurriculumEditor: React.FC = () => {
       setSaving(true);
       
       if (currentOperation === 'add') {
-        const { error } = await supabase
-          .from('curriculum_paths')
-          .insert({
-            language: pathForm.language,
-            level: pathForm.level,
-            description: pathForm.description || null
-          });
-          
-        if (error) throw error;
+        await createCurriculumPath(
+          pathForm.language, 
+          pathForm.level, 
+          pathForm.description
+        );
         
         toast({
           title: 'Path created',
           description: 'Curriculum path has been created successfully'
         });
       } else {
-        const { error } = await supabase
-          .from('curriculum_paths')
-          .update({
-            language: pathForm.language,
-            level: pathForm.level,
-            description: pathForm.description || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', pathForm.id);
-          
-        if (error) throw error;
+        await updateCurriculumPath(
+          pathForm.id!,
+          pathForm.language,
+          pathForm.level,
+          pathForm.description
+        );
         
         toast({
           title: 'Path updated',
@@ -256,38 +250,29 @@ const CurriculumEditor: React.FC = () => {
       setSaving(true);
       
       if (currentOperation === 'add') {
-        const { error } = await supabase
-          .from('curriculum_nodes')
-          .insert({
-            curriculum_path_id: nodeForm.curriculumPathId,
-            title: nodeForm.title,
-            description: nodeForm.description || null,
-            position: nodeForm.position,
-            is_bonus: nodeForm.isBonus,
-            default_exercise_id: nodeForm.defaultExerciseId || null
-          });
+        await createCurriculumNode(
+          nodeForm.curriculumPathId,
+          nodeForm.title,
+          nodeForm.description || null,
+          nodeForm.position,
+          nodeForm.isBonus,
+          nodeForm.defaultExerciseId
+        );
           
-        if (error) throw error;
-        
         toast({
           title: 'Node created',
           description: 'Curriculum node has been created successfully'
         });
       } else {
-        const { error } = await supabase
-          .from('curriculum_nodes')
-          .update({
-            title: nodeForm.title,
-            description: nodeForm.description || null,
-            position: nodeForm.position,
-            is_bonus: nodeForm.isBonus,
-            default_exercise_id: nodeForm.defaultExerciseId || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', nodeForm.id);
+        await updateCurriculumNode(
+          nodeForm.id!,
+          nodeForm.title,
+          nodeForm.description || null,
+          nodeForm.position,
+          nodeForm.isBonus,
+          nodeForm.defaultExerciseId
+        );
           
-        if (error) throw error;
-        
         toast({
           title: 'Node updated',
           description: 'Curriculum node has been updated successfully'
@@ -296,7 +281,8 @@ const CurriculumEditor: React.FC = () => {
       
       // Refresh nodes
       if (selectedPath) {
-        await fetchCurriculumNodes(selectedPath);
+        const updatedNodes = await fetchCurriculumNodes(selectedPath);
+        setNodes(updatedNodes);
       }
       setIsNodeDialogOpen(false);
     } catch (error) {
@@ -319,13 +305,8 @@ const CurriculumEditor: React.FC = () => {
     try {
       setLoading(true);
       
-      const { error } = await supabase
-        .from('curriculum_paths')
-        .delete()
-        .eq('id', pathId);
+      await deleteCurriculumPath(pathId);
         
-      if (error) throw error;
-      
       toast({
         title: 'Path deleted',
         description: 'Curriculum path has been deleted successfully'
@@ -354,13 +335,8 @@ const CurriculumEditor: React.FC = () => {
     try {
       setLoading(true);
       
-      const { error } = await supabase
-        .from('curriculum_nodes')
-        .delete()
-        .eq('id', nodeId);
+      await deleteCurriculumNode(nodeId);
         
-      if (error) throw error;
-      
       toast({
         title: 'Node deleted',
         description: 'Curriculum node has been deleted successfully'
@@ -368,7 +344,8 @@ const CurriculumEditor: React.FC = () => {
       
       // Refresh nodes
       if (selectedPath) {
-        await fetchCurriculumNodes(selectedPath);
+        const updatedNodes = await fetchCurriculumNodes(selectedPath);
+        setNodes(updatedNodes);
       }
     } catch (error) {
       console.error('Error deleting curriculum node:', error);
@@ -436,7 +413,7 @@ const CurriculumEditor: React.FC = () => {
                         <LevelBadge level={path.level} />
                       </TableCell>
                       <TableCell>{path.description || '-'}</TableCell>
-                      <TableCell>{new Date(path.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>{new Date(path.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
                           <Button 
@@ -510,10 +487,10 @@ const CurriculumEditor: React.FC = () => {
                       <TableCell>{node.position}</TableCell>
                       <TableCell>{node.title}</TableCell>
                       <TableCell>{node.description || '-'}</TableCell>
-                      <TableCell>{node.is_bonus ? 'Yes' : 'No'}</TableCell>
+                      <TableCell>{node.isBonus ? 'Yes' : 'No'}</TableCell>
                       <TableCell>
-                        {node.default_exercise_id ? 
-                          defaultExercises.find(ex => ex.id === node.default_exercise_id)?.title || 'Unknown' : 
+                        {node.defaultExerciseId ? 
+                          defaultExercises.find(ex => ex.id === node.defaultExerciseId)?.title || 'Unknown' : 
                           'None'}
                       </TableCell>
                       <TableCell>

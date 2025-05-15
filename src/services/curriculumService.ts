@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { 
   CurriculumPath, 
@@ -10,6 +9,7 @@ import {
   LanguageLevel 
 } from '@/types';
 import { toast } from '@/hooks/use-toast';
+import { asFilterParam } from '@/lib/utils/supabaseHelpers';
 
 /**
  * Maps a curriculum path from database to front-end format
@@ -86,11 +86,9 @@ export const mapCurriculumNodeProgressFromDb = (progress: any): CurriculumNodePr
  * Fetch all curriculum paths for a specific language
  */
 export const fetchCurriculumPathsByLanguage = async (language: Language): Promise<CurriculumPath[]> => {
-  const { data, error } = await supabase
-    .from('curriculum_paths')
-    .select('*')
-    .eq('language', language)
-    .order('level');
+  const { data, error } = await supabase.rpc('get_curriculum_paths_by_language', {
+    language_param: asFilterParam(language)
+  });
 
   if (error) {
     console.error('Error fetching curriculum paths:', error);
@@ -104,11 +102,9 @@ export const fetchCurriculumPathsByLanguage = async (language: Language): Promis
  * Fetch all curriculum nodes for a specific curriculum path
  */
 export const fetchCurriculumNodes = async (curriculumPathId: string): Promise<CurriculumNode[]> => {
-  const { data, error } = await supabase
-    .from('curriculum_nodes')
-    .select('*')
-    .eq('curriculum_path_id', curriculumPathId)
-    .order('position');
+  const { data, error } = await supabase.rpc('get_curriculum_nodes', {
+    path_id_param: asFilterParam(curriculumPathId)
+  });
 
   if (error) {
     console.error('Error fetching curriculum nodes:', error);
@@ -175,31 +171,26 @@ export const initializeUserCurriculumPath = async (
 ): Promise<UserCurriculumPath> => {
   try {
     // First find the curriculum path for the selected language and level
-    const { data: pathData, error: pathError } = await supabase
-      .from('curriculum_paths')
-      .select('*')
-      .eq('language', language)
-      .eq('level', level)
-      .single();
-
+    const { data: pathData, error: pathError } = await supabase.rpc('get_curriculum_path_by_language_level', {
+      language_param: asFilterParam(language),
+      level_param: asFilterParam(level)
+    });
+    
     if (pathError) {
       console.error('Error finding curriculum path:', pathError);
       throw pathError;
     }
 
-    if (!pathData) {
+    if (!pathData || pathData.length === 0) {
       throw new Error(`No curriculum path found for ${language} at level ${level}`);
     }
 
     // Now create the user curriculum path
-    const { data: userPathData, error: userPathError } = await supabase
-      .from('user_curriculum_paths')
-      .insert({
-        user_id: userId,
-        curriculum_path_id: pathData.id,
-      })
-      .select()
-      .single();
+    const pathId = pathData[0].id;
+    const { data: userPathData, error: userPathError } = await supabase.rpc('create_user_curriculum_path', {
+      user_id_param: asFilterParam(userId),
+      curriculum_path_id_param: asFilterParam(pathId)
+    });
 
     if (userPathError) {
       console.error('Error creating user curriculum path:', userPathError);
@@ -207,7 +198,7 @@ export const initializeUserCurriculumPath = async (
     }
 
     return {
-      ...mapUserCurriculumPathFromDb(userPathData),
+      ...mapUserCurriculumPathFromDb(userPathData[0]),
       language,
     };
   } catch (error) {
@@ -371,6 +362,168 @@ export const getNodeExercise = async (nodeId: string): Promise<any> => {
     return exerciseData;
   } catch (error) {
     console.error('Error getting node exercise:', error);
+    throw error;
+  }
+};
+
+/**
+ * Create a curriculum path
+ */
+export const createCurriculumPath = async (
+  language: Language, 
+  level: LanguageLevel, 
+  description?: string
+): Promise<string> => {
+  try {
+    const { data, error } = await supabase.rpc('add_curriculum_path', {
+      language_param: language,
+      level_param: level,
+      description_param: description || null
+    });
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error creating curriculum path:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update a curriculum path
+ */
+export const updateCurriculumPath = async (
+  pathId: string,
+  language: Language, 
+  level: LanguageLevel, 
+  description?: string
+): Promise<void> => {
+  try {
+    const { error } = await supabase.rpc('update_curriculum_path', {
+      path_id_param: pathId,
+      language_param: language,
+      level_param: level,
+      description_param: description || null
+    });
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error updating curriculum path:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a curriculum path
+ */
+export const deleteCurriculumPath = async (pathId: string): Promise<void> => {
+  try {
+    const { error } = await supabase.rpc('delete_curriculum_path', {
+      path_id_param: pathId
+    });
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting curriculum path:', error);
+    throw error;
+  }
+};
+
+/**
+ * Create a curriculum node
+ */
+export const createCurriculumNode = async (
+  curriculumPathId: string,
+  title: string,
+  description: string | null,
+  position: number,
+  isBonus: boolean,
+  defaultExerciseId?: string
+): Promise<string> => {
+  try {
+    const { data, error } = await supabase.rpc('add_curriculum_node', {
+      curriculum_path_id_param: curriculumPathId,
+      title_param: title,
+      description_param: description,
+      position_param: position,
+      is_bonus_param: isBonus,
+      default_exercise_id_param: defaultExerciseId || null
+    });
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error creating curriculum node:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update a curriculum node
+ */
+export const updateCurriculumNode = async (
+  nodeId: string,
+  title: string,
+  description: string | null,
+  position: number,
+  isBonus: boolean,
+  defaultExerciseId?: string
+): Promise<void> => {
+  try {
+    const { error } = await supabase.rpc('update_curriculum_node', {
+      node_id_param: nodeId,
+      title_param: title,
+      description_param: description,
+      position_param: position,
+      is_bonus_param: isBonus,
+      default_exercise_id_param: defaultExerciseId || null
+    });
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error updating curriculum node:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a curriculum node
+ */
+export const deleteCurriculumNode = async (nodeId: string): Promise<void> => {
+  try {
+    const { error } = await supabase.rpc('delete_curriculum_node', {
+      node_id_param: nodeId
+    });
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting curriculum node:', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch default exercises
+ */
+export const fetchDefaultExercises = async (language?: Language): Promise<any[]> => {
+  try {
+    let query = supabase
+      .from('default_exercises')
+      .select('id, title, language');
+      
+    if (language) {
+      query = query.eq('language', language);
+    }
+    
+    query = query.order('title');
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching default exercises:', error);
     throw error;
   }
 };
