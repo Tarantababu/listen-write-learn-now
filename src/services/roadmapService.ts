@@ -352,7 +352,7 @@ class RoadmapService {
         {
           node_id_param: nodeId,
           user_id_param: userData.user.id,
-          language_param: userRoadmap.language as Language,
+          language_param: userRoadmap.language as Language, // Cast string to Language type
           roadmap_id_param: node.roadmap_id
         }
       );
