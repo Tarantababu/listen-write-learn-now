@@ -159,7 +159,7 @@ export interface RoadmapNode {
   id: string;
   roadmapId: string;
   title: string;
-  description?: string;
+  description: string; // Required to match feature/roadmap/types
   position: number;
   isBonus: boolean;
   defaultExerciseId?: string;
@@ -184,6 +184,10 @@ export interface UserRoadmap {
   userId: string;
   roadmapId: string;
   language: Language;
+  name?: string; // Added to match RoadmapItem
+  level?: LanguageLevel; // Added to match RoadmapItem
+  description?: string; // Added to match RoadmapItem
+  languages?: Language[]; // Added to match RoadmapItem
   currentNodeId?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -218,7 +222,7 @@ export interface RoadmapContextType {
   userRoadmaps: UserRoadmap[]; 
   currentRoadmap: UserRoadmap | null;
   nodes: RoadmapNode[];
-  currentNodeId: string | undefined;
+  currentNodeId?: string;
   completedNodes: string[];
   availableNodes: string[];
   nodeProgress: RoadmapNodeProgress[];

@@ -1,216 +1,238 @@
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  CurriculumPath, 
-  CurriculumNode, 
-  UserCurriculumPath, 
-  CurriculumProgress, 
-  CurriculumNodeProgress,
-  Language,
-  LanguageLevel 
-} from '@/types';
-import { toast } from '@/hooks/use-toast';
-import { asFilterParam } from '@/lib/utils/supabaseHelpers';
+import { LanguageLevel, Language, CurriculumPath, CurriculumNode, UserCurriculumPath, CurriculumProgress } from '@/types';
+import { toast } from '@/components/ui/use-toast';
 
-/**
- * Maps a curriculum path from database to front-end format
- */
-export const mapCurriculumPathFromDb = (path: any): CurriculumPath => ({
-  id: path.id,
-  language: path.language,
-  level: path.level,
-  description: path.description,
-  createdAt: new Date(path.created_at),
-  updatedAt: new Date(path.updated_at),
-  createdBy: path.created_by,
-});
-
-/**
- * Maps a curriculum node from database to front-end format
- */
-export const mapCurriculumNodeFromDb = (node: any): CurriculumNode => ({
-  id: node.id,
-  curriculumPathId: node.curriculum_path_id,
-  defaultExerciseId: node.default_exercise_id,
-  title: node.title,
-  description: node.description,
-  position: node.position,
-  isBonus: node.is_bonus,
-  createdAt: new Date(node.created_at),
-  updatedAt: new Date(node.updated_at),
-});
-
-/**
- * Maps a user curriculum path from database to front-end format
- */
-export const mapUserCurriculumPathFromDb = (userPath: any): UserCurriculumPath => ({
-  id: userPath.id,
-  userId: userPath.user_id,
-  curriculumPathId: userPath.curriculum_path_id,
-  language: userPath.language,
-  currentNodeId: userPath.current_node_id,
-  createdAt: new Date(userPath.created_at),
-  updatedAt: new Date(userPath.updated_at || userPath.created_at),
-});
-
-/**
- * Maps a curriculum progress from database to front-end format
- */
-export const mapCurriculumProgressFromDb = (progress: any): CurriculumProgress => ({
-  id: progress.id,
-  userId: progress.user_id,
-  curriculumPathId: progress.curriculum_path_id,
-  nodeId: progress.curriculum_node_id || progress.node_id,
-  completed: progress.completed,
-  completedAt: progress.completed_at ? new Date(progress.completed_at) : undefined,
-  createdAt: new Date(progress.created_at),
-  updatedAt: new Date(progress.updated_at || progress.created_at),
-});
-
-/**
- * Maps a curriculum node progress from database to front-end format
- */
-export const mapCurriculumNodeProgressFromDb = (progress: any): CurriculumNodeProgress => ({
-  id: progress.id,
-  userId: progress.user_id,
-  curriculumPathId: progress.curriculum_path_id,
-  nodeId: progress.node_id,
-  language: progress.language,
-  completionCount: progress.completion_count,
-  isCompleted: progress.is_completed,
-  lastPracticedAt: progress.last_practiced_at ? new Date(progress.last_practiced_at) : undefined,
-  createdAt: new Date(progress.created_at),
-  updatedAt: new Date(progress.updated_at || progress.created_at),
-});
-
-/**
- * Fetch all curriculum paths for a specific language
- */
-export const fetchCurriculumPathsByLanguage = async (language: Language): Promise<CurriculumPath[]> => {
-  const { data, error } = await supabase.rpc('get_curriculum_paths_by_language', {
-    language_param: asFilterParam(language)
-  });
-
-  if (error) {
-    console.error('Error fetching curriculum paths:', error);
-    throw error;
-  }
-
-  return (data || []).map(mapCurriculumPathFromDb);
+// Helper function to handle possible non-array responses
+const ensureArray = (data: any) => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  console.warn('Expected array data but got:', typeof data, data);
+  return [];
 };
 
 /**
- * Fetch all curriculum nodes for a specific curriculum path
+ * Get all curriculum paths for a specific language
  */
-export const fetchCurriculumNodes = async (curriculumPathId: string): Promise<CurriculumNode[]> => {
-  const { data, error } = await supabase.rpc('get_curriculum_nodes', {
-    path_id_param: asFilterParam(curriculumPathId)
-  });
-
-  if (error) {
-    console.error('Error fetching curriculum nodes:', error);
-    throw error;
-  }
-
-  return (data || []).map(mapCurriculumNodeFromDb);
-};
-
-/**
- * Fetch a user's curriculum paths for a specific language
- */
-export const fetchUserCurriculumPaths = async (userId: string, language?: Language): Promise<UserCurriculumPath[]> => {
-  let query = supabase
-    .from('user_curriculum_paths')
-    .select(`
-      *,
-      curriculum_paths!inner(*)
-    `)
-    .eq('user_id', userId);
-    
-  if (language) {
-    query = query.eq('curriculum_paths.language', language);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('Error fetching user curriculum paths:', error);
-    throw error;
-  }
-
-  return (data || []).map((item) => ({
-    ...mapUserCurriculumPathFromDb(item),
-    language: item.curriculum_paths.language,
-  }));
-};
-
-/**
- * Fetch user progress for curriculum nodes
- */
-export const fetchNodeProgress = async (userId: string, curriculumPathId: string): Promise<CurriculumNodeProgress[]> => {
-  const { data, error } = await supabase
-    .from('curriculum_nodes_progress')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('curriculum_path_id', curriculumPathId);
-
-  if (error) {
-    console.error('Error fetching node progress:', error);
-    throw error;
-  }
-
-  return (data || []).map(mapCurriculumNodeProgressFromDb);
-};
-
-/**
- * Initialize a new user curriculum path by selecting a path for a language and level
- */
-export const initializeUserCurriculumPath = async (
-  userId: string, 
-  language: Language, 
-  level: LanguageLevel
-): Promise<UserCurriculumPath> => {
+export async function getCurriculumPaths(language: Language): Promise<CurriculumPath[]> {
   try {
-    // First find the curriculum path for the selected language and level
-    const { data: pathData, error: pathError } = await supabase.rpc('get_curriculum_path_by_language_level', {
-      language_param: asFilterParam(language),
-      level_param: asFilterParam(level)
-    });
-    
-    if (pathError) {
-      console.error('Error finding curriculum path:', pathError);
-      throw pathError;
-    }
+    // Since we don't have a curriculum-specific function yet, use the roadmap function
+    // and adapt the data structure
+    const { data, error } = await supabase
+      .rpc('get_roadmaps_by_language', {
+        requested_language: language
+      });
 
-    if (!pathData || pathData.length === 0) {
-      throw new Error(`No curriculum path found for ${language} at level ${level}`);
-    }
+    if (error) throw error;
 
-    // Now create the user curriculum path
-    const pathId = pathData[0].id;
-    const { data: userPathData, error: userPathError } = await supabase.rpc('create_user_curriculum_path', {
-      user_id_param: asFilterParam(userId),
-      curriculum_path_id_param: asFilterParam(pathId)
-    });
-
-    if (userPathError) {
-      console.error('Error creating user curriculum path:', userPathError);
-      throw userPathError;
-    }
-
-    return {
-      ...mapUserCurriculumPathFromDb(userPathData[0]),
-      language,
-    };
+    // Convert the roadmap data to curriculum path format
+    return ensureArray(data).map(path => ({
+      id: path.id,
+      language: language,
+      level: path.level as LanguageLevel,
+      description: path.description,
+      createdAt: new Date(path.created_at),
+      updatedAt: new Date(path.updated_at),
+      createdBy: path.created_by
+    }));
   } catch (error) {
-    console.error('Error initializing user curriculum path:', error);
-    toast({
-      title: "Failed to start curriculum",
-      description: "Could not initialize the curriculum path. Please try again.",
-      variant: "destructive"
-    });
+    console.error("Error fetching curriculum paths:", error);
     throw error;
   }
-};
+}
+
+/**
+ * Get all nodes for a curriculum path
+ */
+export async function getCurriculumNodes(curriculumPathId: string, language: Language): Promise<CurriculumNode[]> {
+  try {
+    // We'll use the roadmap nodes table until we have a dedicated curriculum table
+    const { data, error } = await supabase
+      .from('roadmap_nodes')
+      .select('*')
+      .eq('roadmap_id', curriculumPathId)
+      .eq('language', language)
+      .order('position');
+
+    if (error) throw error;
+
+    // Convert the roadmap nodes to curriculum node format
+    return ensureArray(data).map(node => ({
+      id: node.id,
+      curriculumPathId: node.roadmap_id,
+      title: node.title,
+      description: node.description || '',
+      position: node.position,
+      isBonus: node.is_bonus,
+      defaultExerciseId: node.default_exercise_id,
+      createdAt: new Date(node.created_at),
+      updatedAt: new Date(node.updated_at),
+    }));
+  } catch (error) {
+    console.error("Error fetching curriculum nodes:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get all user curriculum paths
+ */
+export async function getUserCurriculumPaths(language: Language): Promise<UserCurriculumPath[]> {
+  try {
+    // We'll use the user roadmaps table until we have a dedicated user curriculum paths table
+    const { data, error } = await supabase
+      .rpc('get_user_roadmaps_by_language', {
+        user_id_param: supabase.auth.getUser().then(({ data }) => data.user?.id) || '',
+        requested_language: language
+      });
+
+    if (error) throw error;
+
+    // Convert to user curriculum path format
+    return ensureArray(data).map(path => ({
+      id: path.id,
+      userId: path.user_id,
+      curriculumPathId: path.roadmap_id,
+      language: path.language as Language,
+      currentNodeId: path.current_node_id,
+      createdAt: new Date(path.created_at),
+      updatedAt: new Date(path.updated_at),
+    }));
+  } catch (error) {
+    console.error("Error fetching user curriculum paths:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get curriculum nodes progress
+ */
+export async function getCurriculumNodesProgress(pathId: string, language: Language): Promise<any[]> {
+  try {
+    // We'll use the roadmap nodes progress table
+    const { data, error } = await supabase
+      .from('roadmap_nodes_progress')
+      .select('*')
+      .eq('roadmap_id', pathId)
+      .eq('language', language)
+      .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '');
+
+    if (error) throw error;
+
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching curriculum nodes progress:", error);
+    return [];
+  }
+}
+
+/**
+ * Get curriculum progress
+ */
+export async function getCurriculumProgress(pathId: string): Promise<CurriculumProgress[]> {
+  try {
+    // We'll use the roadmap progress table
+    const { data, error } = await supabase
+      .from('roadmap_progress')
+      .select('*')
+      .eq('roadmap_id', pathId)
+      .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '');
+
+    if (error) throw error;
+
+    // Convert to curriculum progress format
+    return ensureArray(data).map(item => ({
+      id: item.id,
+      userId: item.user_id,
+      curriculumPathId: item.roadmap_id,
+      nodeId: item.node_id,
+      completed: item.completed,
+      completedAt: item.completed_at ? new Date(item.completed_at) : undefined,
+      createdAt: new Date(item.created_at),
+      updatedAt: new Date(item.updated_at),
+    }));
+  } catch (error) {
+    console.error("Error fetching curriculum progress:", error);
+    return [];
+  }
+}
+
+/**
+ * Initialize a curriculum path for the current user
+ */
+export async function initializeUserCurriculumPath(level: LanguageLevel, language: Language): Promise<string | null> {
+  try {
+    // First check if a path exists for this level and language
+    const { data: pathData, error: pathError } = await supabase
+      .rpc('get_roadmaps_by_language', {
+        requested_language: language
+      });
+
+    if (pathError) throw pathError;
+
+    // Find the path that matches the requested level
+    const matchingPath = ensureArray(pathData).find(p => p.level === level);
+
+    if (!matchingPath) {
+      console.error("No curriculum path found for level:", level, "and language:", language);
+      return null;
+    }
+
+    // Check if user already has this path
+    const { data: userPaths, error: userPathsError } = await supabase
+      .from('user_roadmaps')
+      .select('*')
+      .eq('roadmap_id', matchingPath.id)
+      .eq('language', language)
+      .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '');
+
+    if (userPathsError) throw userPathsError;
+
+    if (userPaths && userPaths.length > 0) {
+      // User already has this path
+      console.log("User already has this path:", userPaths[0].id);
+      return userPaths[0].id;
+    }
+
+    // Create a new user curriculum path
+    const { data: newPath, error: createError } = await supabase
+      .from('user_roadmaps')
+      .insert({
+        roadmap_id: matchingPath.id,
+        language: language,
+        user_id: (await supabase.auth.getUser()).data.user?.id
+      })
+      .select()
+      .single();
+
+    if (createError) throw createError;
+
+    // Find first node for this path
+    const { data: nodesData, error: nodesError } = await supabase
+      .from('roadmap_nodes')
+      .select('*')
+      .eq('roadmap_id', matchingPath.id)
+      .eq('language', language)
+      .order('position')
+      .limit(1);
+
+    if (nodesError) throw nodesError;
+
+    if (nodesData && nodesData.length > 0) {
+      // Update path with first node
+      const { error: updateError } = await supabase
+        .from('user_roadmaps')
+        .update({ current_node_id: nodesData[0].id })
+        .eq('id', newPath.id);
+
+      if (updateError) throw updateError;
+    }
+
+    return newPath.id;
+  } catch (error) {
+    console.error("Error initializing user curriculum path:", error);
+    return null;
+  }
+}
 
 /**
  * Increment node completion count for a user

@@ -1,7 +1,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { roadmapService } from '../api/roadmapService';
-import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
+import { roadmapService } from '../services/RoadmapService';
+import { RoadmapItem, RoadmapNode, UserRoadmap, ExerciseContent, NodeCompletionResult } from '../types';
 import { Language, LanguageLevel } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { asUUID, asFilterParam } from '@/lib/utils/supabaseHelpers';
@@ -9,7 +9,7 @@ import { asUUID, asFilterParam } from '@/lib/utils/supabaseHelpers';
 export function useRoadmapData() {
   const [isLoading, setIsLoading] = useState(false);
   const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
-  const [userRoadmaps, setUserRoadmaps] = useState<RoadmapItem[]>([]);
+  const [userRoadmaps, setUserRoadmaps] = useState<UserRoadmap[]>([]);
   const [selectedRoadmap, setSelectedRoadmap] = useState<RoadmapItem | null>(null);
   const [nodes, setNodes] = useState<RoadmapNode[]>([]);
   const loadingRef = useRef<{[key: string]: boolean}>({});

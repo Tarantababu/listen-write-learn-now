@@ -121,7 +121,7 @@ const RoadmapPage: React.FC = () => {
       }
       
       // Reload roadmaps first
-      await loadUserRoadmaps(settings.selectedLanguage);
+      await loadUserRoadmaps();
       console.log("Reloaded roadmaps:", { userRoadmaps });
       
       // If we have a current roadmap, try to reload it

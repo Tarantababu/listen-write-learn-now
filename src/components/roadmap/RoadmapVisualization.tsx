@@ -17,8 +17,8 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     isLoading, 
     roadmaps,
     currentNodeId,
-    availableNodes,
-    nodeProgress
+    availableNodes
+    // Remove reference to nodeProgress as it will be provided by context
   } = useRoadmap();
   
   const getNodeStatus = (node: RoadmapNode): 'completed' | 'available' | 'locked' => {
