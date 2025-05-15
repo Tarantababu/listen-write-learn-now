@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { 
   RoadmapItem, 
@@ -61,7 +62,7 @@ class RoadmapService {
       const { data, error } = await supabase
         .from('user_roadmaps')
         .select('*')
-        .eq('language', language)
+        .eq('language', language as string)
         .eq('user_id', userData.user.id);
         
       if (error) throw error;

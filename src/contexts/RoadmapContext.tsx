@@ -1,10 +1,12 @@
+
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { RoadmapItem, UserRoadmap, RoadmapNode, RoadmapProgress, RoadmapNodeProgress } from '@/features/roadmap/types';
-import { Language, LanguageLevel, RoadmapContextType } from '@/types';
-import { roadmapService } from '../services/RoadmapService';
+import { Language, LanguageLevel } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { roadmapService } from '@/features/roadmap/services/RoadmapService';
 
 // Define the context type
 interface RoadmapContextType {
@@ -76,7 +78,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       // Group languages by roadmap
       const languagesByRoadmap: Record<string, Language[]> = {};
-      languagesData.forEach(lang => {
+      languagesData.forEach((lang: any) => {
         if (!languagesByRoadmap[lang.roadmap_id]) {
           languagesByRoadmap[lang.roadmap_id] = [];
         }
@@ -84,7 +86,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
 
       // Combine roadmaps with their languages
-      const formattedRoadmaps: RoadmapItem[] = roadmapData.map(roadmap => ({
+      const formattedRoadmaps: RoadmapItem[] = roadmapData.map((roadmap: any) => ({
         id: roadmap.id,
         name: roadmap.name,
         level: roadmap.level as LanguageLevel, // Explicit cast to LanguageLevel
