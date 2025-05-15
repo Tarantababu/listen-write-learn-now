@@ -8,9 +8,10 @@ import { apiCache } from '@/utils/apiCache';
 import { isAnyPopupOpen } from '@/utils/popupStateManager';
 
 // Constants for data refresh management
-const DATA_REFRESH_INTERVAL = 300000; // 5 minutes interval for data refresh
+const DATA_REFRESH_INTERVAL = 300000; // 5 minutes interval for data refresh (increased from before)
 const MAX_REFRESH_INTERVAL = 900000; // 15 minutes maximum interval with backoff
 const BACKOFF_MULTIPLIER = 2; // Exponential backoff multiplier
+const ERROR_COOLDOWN_PERIOD = 30000; // 30 seconds cooldown after error
 
 // Function to map property names for backwards compatibility
 const mapToPreviousAPIProps = (data: any) => {
@@ -39,16 +40,26 @@ const mapToPreviousAPIProps = (data: any) => {
 
 export function useRoadmap() {
   const [isLoading, setIsLoading] = useState(false);
-  const [nodeLoading, setNodeLoading] = useState(false); // Added nodeLoading state
+  const [nodeLoading, setNodeLoading] = useState(false);
   const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
   const [userRoadmaps, setUserRoadmaps] = useState<UserRoadmap[]>([]);
   const [selectedRoadmap, setSelectedRoadmap] = useState<RoadmapItem | null>(null);
   const [nodes, setNodes] = useState<RoadmapNode[]>([]);
   const [refreshInterval, setRefreshInterval] = useState(DATA_REFRESH_INTERVAL);
   const [lastActivity, setLastActivity] = useState(Date.now());
+  const [languageAvailability, setLanguageAvailability] = useState<Record<string, boolean>>({});
+  const [hasAutoRefreshed, setHasAutoRefreshed] = useState(false);
+  const [errorState, setErrorState] = useState<{
+    hasError: boolean;
+    message?: string;
+    suggestedLanguage?: string;
+  }>({
+    hasError: false
+  });
   
   // Use refs to prevent unnecessary renders and track loading states
   const loadingRef = useRef<{[key: string]: boolean}>({});
+  const errorTimestampsRef = useRef<{[key: string]: number}>({});
   const initialLoadedRef = useRef<{[key: string]: boolean}>({});
   const timerRef = useRef<number | null>(null);
   
@@ -74,11 +85,31 @@ export function useRoadmap() {
     };
   }, [trackActivity]);
   
+  // Should we retry after an error?
+  const shouldRetryAfterError = useCallback((key: string): boolean => {
+    const errorTimestamp = errorTimestampsRef.current[key];
+    if (!errorTimestamp) return true;
+    
+    // Check if we've waited long enough since the last error
+    const timeSinceError = Date.now() - errorTimestamp;
+    return timeSinceError > ERROR_COOLDOWN_PERIOD;
+  }, []);
+  
+  // Mark an operation as having an error, with timestamp
+  const markOperationError = useCallback((key: string): void => {
+    errorTimestampsRef.current[key] = Date.now();
+  }, []);
+  
   // Load all roadmaps available for a language
   const loadRoadmaps = useCallback(async (language: Language) => {
     // Prevent duplicate fetches for the same language
     const cacheKey = `roadmaps_${language}`;
     if (loadingRef.current[cacheKey]) {
+      return;
+    }
+    
+    // Don't retry too frequently after errors
+    if (!shouldRetryAfterError(cacheKey)) {
       return;
     }
     
@@ -89,30 +120,46 @@ export function useRoadmap() {
       const roadmapsData = await apiCache.get(
         cacheKey,
         () => roadmapService.getRoadmapsForLanguage(language),
-        { allowStale: true }
+        { allowStale: true, ttl: 300000 } // 5 minute TTL
       );
+      
+      // Update language availability map
+      setLanguageAvailability(prev => ({
+        ...prev,
+        [language]: roadmapsData && roadmapsData.length > 0
+      }));
       
       setRoadmaps(roadmapsData);
       initialLoadedRef.current[cacheKey] = true;
       
     } catch (error) {
       console.error('Error loading roadmaps:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to load roadmaps",
-        description: "There was an error loading available roadmaps."
-      });
+      markOperationError(cacheKey);
+      
+      // Only show toast if not an automatic refresh
+      if (!hasAutoRefreshed) {
+        toast({
+          variant: "destructive",
+          title: "Failed to load roadmaps",
+          description: `Couldn't load learning paths for ${language}. Please try again later.`
+        });
+      }
     } finally {
       setIsLoading(false);
       loadingRef.current[cacheKey] = false;
     }
-  }, []);
+  }, [hasAutoRefreshed, shouldRetryAfterError, markOperationError]);
   
   // Load user's roadmaps for the selected language
   const loadUserRoadmaps = useCallback(async (language?: Language) => {
     // Add cache key for user roadmaps
     const cacheKey = language ? `user_roadmaps_${language}` : 'user_roadmaps_all';
     if (loadingRef.current[cacheKey]) {
+      return [];
+    }
+    
+    // Don't retry too frequently after errors
+    if (!shouldRetryAfterError(cacheKey)) {
       return [];
     }
     
@@ -123,7 +170,7 @@ export function useRoadmap() {
       const roadmapsList = await apiCache.get(
         cacheKey,
         () => roadmapService.getUserRoadmaps(language),
-        { allowStale: true }
+        { allowStale: true, ttl: 300000 } // 5 minute TTL
       );
       
       setUserRoadmaps(roadmapsList);
@@ -150,17 +197,22 @@ export function useRoadmap() {
       return roadmapsList;
     } catch (error) {
       console.error('Error loading user roadmaps:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to load roadmaps",
-        description: "There was an error loading your roadmaps."
-      });
+      markOperationError(cacheKey);
+      
+      // Only show toast if not an automatic refresh
+      if (!hasAutoRefreshed) {
+        toast({
+          variant: "destructive",
+          title: "Failed to load your learning paths",
+          description: "There was an error loading your learning paths."
+        });
+      }
       return [];
     } finally {
       setIsLoading(false);
       loadingRef.current[cacheKey] = false;
     }
-  }, [selectedRoadmap]);
+  }, [selectedRoadmap, shouldRetryAfterError, markOperationError, hasAutoRefreshed]);
   
   // Select and load a specific roadmap
   const selectRoadmap = useCallback(async (roadmapId: string) => {
@@ -168,6 +220,11 @@ export function useRoadmap() {
     const cacheKey = `select_roadmap_${roadmapId}`;
     if (loadingRef.current[cacheKey]) {
       return [];
+    }
+    
+    // Don't retry too frequently after errors
+    if (!shouldRetryAfterError(cacheKey)) {
+      return nodes; // Return existing nodes
     }
     
     // Don't re-fetch if we've already selected this roadmap
@@ -191,7 +248,7 @@ export function useRoadmap() {
       const nodesData = await apiCache.get(
         `roadmap_nodes_${roadmapId}`,
         () => roadmapService.getRoadmapNodes(roadmapId),
-        { allowStale: true }
+        { allowStale: true, ttl: 300000 } // 5 minute TTL
       );
       
       setNodes(nodesData);
@@ -199,17 +256,22 @@ export function useRoadmap() {
       return nodesData;
     } catch (error) {
       console.error('Error selecting roadmap:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to load roadmap",
-        description: "There was an error loading the roadmap details."
-      });
+      markOperationError(cacheKey);
+      
+      // Only show toast if not an automatic refresh
+      if (!hasAutoRefreshed) {
+        toast({
+          variant: "destructive",
+          title: "Failed to load roadmap",
+          description: "There was an error loading the roadmap details."
+        });
+      }
       throw error;
     } finally {
       setIsLoading(false);
       loadingRef.current[cacheKey] = false;
     }
-  }, [userRoadmaps, selectedRoadmap, nodes.length]);
+  }, [userRoadmaps, selectedRoadmap, nodes, hasAutoRefreshed, shouldRetryAfterError, markOperationError]);
   
   // For compatibility, also provide as loadUserRoadmap
   const loadUserRoadmap = selectRoadmap;
@@ -222,8 +284,18 @@ export function useRoadmap() {
     
     loadingRef.current['initialize'] = true;
     setIsLoading(true);
+    setErrorState({ hasError: false });
     
     try {
+      // Check if roadmaps are available for this language before proceeding
+      if (languageAvailability[language] === false) {
+        throw {
+          code: 'ROADMAP_NOT_AVAILABLE_FOR_LANGUAGE',
+          message: `No roadmap is available for ${language}. Try English instead.`,
+          suggestedLanguage: 'english'
+        };
+      }
+      
       // Explicitly call the service with the user's authentication to ensure roadmap is linked to this user
       const roadmapId = await roadmapService.initializeRoadmap(level, language);
       
@@ -240,22 +312,75 @@ export function useRoadmap() {
       }
       
       return roadmapId;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error initializing roadmap:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to create roadmap",
-        description: "There was an error creating your roadmap."
-      });
+      
+      // Handle special error code for language availability
+      if (error?.code === 'ROADMAP_NOT_AVAILABLE_FOR_LANGUAGE') {
+        setErrorState({
+          hasError: true,
+          message: error.message,
+          suggestedLanguage: error.suggestedLanguage || 'english'
+        });
+        
+        // Update language availability map
+        setLanguageAvailability(prev => ({
+          ...prev,
+          [language]: false
+        }));
+        
+        toast({
+          variant: "destructive",
+          title: "Language not supported",
+          description: error.message || `No learning paths available for ${language}.`
+        });
+      } else {
+        // Generic error
+        setErrorState({
+          hasError: true,
+          message: error?.message || "Failed to create learning path"
+        });
+        
+        toast({
+          variant: "destructive",
+          title: "Failed to create learning path",
+          description: error?.message || "Please try a different language or level."
+        });
+      }
+      
       throw error;
     } finally {
       setIsLoading(false);
       loadingRef.current['initialize'] = false;
     }
-  }, [loadUserRoadmaps, selectRoadmap]);
+  }, [loadUserRoadmaps, selectRoadmap, languageAvailability]);
   
   // For compatibility, also provide as initializeUserRoadmap
   const initializeUserRoadmap = initializeRoadmap;
+  
+  // Function to try alternate language if current language isn't available
+  const tryAlternateLanguage = useCallback(async (level: LanguageLevel, currentLanguage: Language): Promise<string> => {
+    try {
+      // Default to English as fallback
+      const fallbackLanguage: Language = 'english';
+      
+      // Don't attempt retry with the same language
+      if (currentLanguage === fallbackLanguage) {
+        throw new Error(`No roadmap available for ${currentLanguage}`);
+      }
+      
+      // Try with fallback language
+      toast({
+        title: `Trying with ${fallbackLanguage}`,
+        description: `No roadmap found for ${currentLanguage}, trying ${fallbackLanguage} instead.`
+      });
+      
+      return await initializeRoadmap(level, fallbackLanguage);
+    } catch (error) {
+      console.error('Error with fallback language:', error);
+      throw error;
+    }
+  }, [initializeRoadmap]);
   
   // Get exercise content for a node
   const getNodeExercise = useCallback(async (nodeId: string) => {
@@ -442,6 +567,11 @@ export function useRoadmap() {
     }
   }, [isLoading, loadRoadmaps, loadUserRoadmaps, selectRoadmap, selectedRoadmap, trackActivity]);
   
+  // Add additional helper function to clear error state
+  const clearErrorState = useCallback(() => {
+    setErrorState({ hasError: false });
+  }, []);
+  
   // Helper derived values
   const currentNodeId = selectedRoadmap?.currentNodeId;
   const currentNode = nodes.find(n => n.id === currentNodeId) || null;
@@ -482,8 +612,13 @@ export function useRoadmap() {
     const timerId = window.setTimeout(() => {
       // Only refresh if we're not already loading something and no popup is open
       if (!isLoading && selectedRoadmap?.language && !isAnyPopupOpen()) {
+        setHasAutoRefreshed(true); // Mark this as an auto-refresh
         // Check for updates to the currently selected roadmap, but don't force refresh
-        selectRoadmap(selectedRoadmap.id).catch(console.error);
+        selectRoadmap(selectedRoadmap.id)
+          .catch(() => {}) // Silently handle errors during auto-refresh
+          .finally(() => {
+            setTimeout(() => setHasAutoRefreshed(false), 100); // Reset flag after a brief delay
+          });
       }
     }, currentInterval);
     
@@ -516,6 +651,12 @@ export function useRoadmap() {
     recordNodeCompletion,
     markNodeAsCompleted,
     refreshData,
+    
+    // Additional error state properties
+    errorState,
+    clearErrorState,
+    tryAlternateLanguage,
+    languageAvailability,
     
     // Backward compatibility properties
     nodeLoading,

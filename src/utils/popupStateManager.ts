@@ -1,55 +1,50 @@
 
-// Simple utility to track whether any popups/modals are currently open
-// This helps prevent background data refreshes when users are interacting with modals
-
-let openPopupCount = 0;
-const popupStates: Record<string, { isOpen: boolean }> = {};
+// Track open popups to prevent background refreshes while popups are open
+let openPopups: Record<string, boolean> = {};
 
 /**
- * Register a popup as opened
+ * Register a popup as open
  */
-export function registerPopupOpen(): void {
-  openPopupCount++;
-}
+export const registerOpenPopup = (id: string): void => {
+  openPopups[id] = true;
+};
 
 /**
  * Register a popup as closed
  */
-export function registerPopupClose(): void {
-  openPopupCount = Math.max(0, openPopupCount - 1);
-}
+export const unregisterPopup = (id: string): void => {
+  delete openPopups[id];
+};
 
 /**
  * Check if any popup is currently open
  */
-export function isAnyPopupOpen(): boolean {
-  return openPopupCount > 0;
-}
+export const isAnyPopupOpen = (): boolean => {
+  return Object.keys(openPopups).length > 0;
+};
 
 /**
- * Reset the popup tracking (useful for tests or when changing pages)
+ * Save popup state to localStorage to persist across refreshes
  */
-export function resetPopupTracking(): void {
-  openPopupCount = 0;
-}
-
-/**
- * Save the state of a specific popup
- */
-export function savePopupState(id: string, state: { isOpen: boolean }): void {
-  popupStates[id] = state;
-  
-  // Also update the global counter
-  if (state.isOpen) {
-    registerPopupOpen();
-  } else {
-    registerPopupClose();
+export const savePopupState = (id: string, state: any): void => {
+  try {
+    localStorage.setItem(`popup_state_${id}`, JSON.stringify(state));
+  } catch (e) {
+    console.error('Error saving popup state:', e);
   }
-}
+};
 
 /**
- * Get the state of a specific popup
+ * Get popup state from localStorage
  */
-export function getPopupState(id: string): { isOpen: boolean } {
-  return popupStates[id] || { isOpen: false };
-}
+export const getPopupState = <T>(id: string, defaultState: T): T => {
+  try {
+    const saved = localStorage.getItem(`popup_state_${id}`);
+    if (saved) {
+      return JSON.parse(saved) as T;
+    }
+  } catch (e) {
+    console.error('Error retrieving popup state:', e);
+  }
+  return defaultState;
+};

@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult, UserRoadmap } from '../types';
 import { Language, LanguageLevel } from '@/types';
+import { toast } from '@/components/ui/use-toast';
 
 class RoadmapService {
   /**
@@ -75,25 +76,109 @@ class RoadmapService {
         throw new Error('User must be authenticated to initialize a roadmap');
       }
       
-      const { data, error } = await supabase
-        .rpc('get_roadmaps_by_language', {
-          requested_language: language
-        });
-        
-      if (error) throw error;
+      console.log(`Initializing roadmap for user ${userData.user.id}, level ${level}, language ${language}`);
       
-      if (!data || data.length === 0) {
-        throw new Error(`No roadmap found for language ${language}`);
+      // Find a roadmap that matches the level and supports the language
+      const { data: roadmapsData, error: roadmapsError } = await supabase
+        .from('roadmaps')
+        .select(`
+          id,
+          roadmap_languages!inner(language)
+        `)
+        .eq('level', level)
+        .eq('roadmap_languages.language', language);
+        
+      if (roadmapsError) throw roadmapsError;
+      
+      // Handle the case where no roadmap is found for the specified language
+      if (!roadmapsData || roadmapsData.length === 0) {
+        // Check if we have roadmaps for any languages (to find a fallback)
+        const { data: anyRoadmapsData, error: anyRoadmapsError } = await supabase
+          .from('roadmaps')
+          .select('id, level')
+          .eq('level', level)
+          .limit(1);
+          
+        if (anyRoadmapsError) throw anyRoadmapsError;
+        
+        if (!anyRoadmapsData || anyRoadmapsData.length === 0) {
+          // No roadmaps found at all for this level - throw a more descriptive error
+          const errorMessage = `No roadmap found for level ${level} and language ${language}. Please try a different level or language.`;
+          console.error(errorMessage);
+          throw new Error(errorMessage);
+        }
+        
+        // We found a roadmap for this level but not for this language
+        // Return a special error code that can be handled by the UI
+        throw {
+          code: 'ROADMAP_NOT_AVAILABLE_FOR_LANGUAGE',
+          message: `No roadmap is available for ${language} at level ${level}. Try English instead.`,
+          suggestedLanguage: 'english'
+        };
       }
       
       // Take the first matching roadmap
-      const matchingRoadmap = data.find((r: any) => r.level === level);
-      if (!matchingRoadmap) {
-        throw new Error(`No roadmap found for level ${level} and language ${language}`);
+      const roadmapId = roadmapsData[0].id;
+      
+      // Check if the user already has this roadmap
+      const { data: existingRoadmap, error: existingError } = await supabase
+        .from('user_roadmaps')
+        .select('id')
+        .eq('user_id', userData.user.id)
+        .eq('roadmap_id', roadmapId)
+        .eq('language', language)
+        .maybeSingle();
+        
+      if (existingError) throw existingError;
+      
+      // If the user already has this roadmap, return its ID
+      if (existingRoadmap) {
+        return existingRoadmap.id;
       }
       
-      // Return a placeholder ID
-      return matchingRoadmap.id;
+      // Create a new user roadmap - explicitly associate it with the current authenticated user
+      const { data: userRoadmap, error: userRoadmapError } = await supabase
+        .from('user_roadmaps')
+        .insert({
+          user_id: userData.user.id,
+          roadmap_id: roadmapId,
+          language: language
+        })
+        .select()
+        .single();
+        
+      if (userRoadmapError) throw userRoadmapError;
+      
+      // Find first node of the roadmap to set as current
+      const { data: firstNode, error: firstNodeError } = await supabase
+        .from('roadmap_nodes')
+        .select('id')
+        .eq('roadmap_id', roadmapId)
+        .eq('language', language)
+        .order('position', { ascending: true })
+        .limit(1)
+        .single();
+        
+      if (firstNodeError) {
+        if (firstNodeError.code !== 'PGRST116') { // Not found
+          throw firstNodeError;
+        }
+        // No nodes for this roadmap yet, that's okay
+        return userRoadmap.id;
+      }
+      
+      // Update user roadmap with first node
+      if (firstNode) {
+        const { error: updateError } = await supabase
+          .from('user_roadmaps')
+          .update({ current_node_id: firstNode.id })
+          .eq('id', userRoadmap.id);
+          
+        if (updateError) throw updateError;
+      }
+      
+      console.log(`Created roadmap for user ${userData.user.id}, roadmap ID: ${userRoadmap.id}`);
+      return userRoadmap.id;
     } catch (error) {
       console.error('Error initializing roadmap:', error);
       throw error;
