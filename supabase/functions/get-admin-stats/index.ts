@@ -82,17 +82,20 @@ serve(async (req) => {
     // Get subscribe button clicks (if tracking table exists)
     let subscribeButtonClicks = 0;
     try {
-      const { data: clickData, error: clickError } = await supabaseClient
-        .from('button_clicks')
-        .select('count')
-        .eq('button_name', 'subscribe')
-        .single();
+      // First check if the button_clicks table exists using a metadata query
+      const { data: tableExists, error: tableCheckError } = await supabaseClient
+        .rpc('check_table_exists', { table_name: 'button_clicks' });
       
-      if (!clickError && clickData) {
-        subscribeButtonClicks = clickData.count || 0;
+      if (!tableCheckError && tableExists) {
+        // If table exists, safely query it without causing TypeScript errors
+        const { data: clickData, error: clickError } = await supabaseClient
+          .rpc('get_button_clicks', { button_name: 'subscribe' });
+        
+        if (!clickError && clickData !== null) {
+          subscribeButtonClicks = clickData || 0;
+        }
       } else {
-        // If table doesn't exist or there's an error, we'll just use 0
-        console.log("No button click data available:", clickError);
+        console.log("Button clicks table does not exist. Using default value.");
       }
     } catch (err) {
       console.warn("Error fetching button clicks:", err);
