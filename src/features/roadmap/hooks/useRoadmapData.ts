@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '../services/RoadmapService';
 import { RoadmapItem, RoadmapNode, UserRoadmap, ExerciseContent, NodeCompletionResult } from '../types';
@@ -13,11 +14,19 @@ export function useRoadmapData() {
   const [nodes, setNodes] = useState<RoadmapNode[]>([]);
   const loadingRef = useRef<{[key: string]: boolean}>({});
   
+  // Add this to track if initial loads have been done
+  const initialLoadedRef = useRef<{[key: string]: boolean}>({});
+  
   // Load all roadmaps available for a language
   const loadRoadmaps = useCallback(async (language: Language) => {
     // Prevent duplicate fetches for the same language
     const cacheKey = `roadmaps_${language}`;
     if (loadingRef.current[cacheKey]) {
+      return;
+    }
+    
+    // If we've already loaded this data and have results, don't fetch again
+    if (initialLoadedRef.current[cacheKey] && roadmaps.length > 0) {
       return;
     }
     
@@ -27,6 +36,7 @@ export function useRoadmapData() {
     try {
       const roadmapsData = await roadmapService.getRoadmapsForLanguage(language);
       setRoadmaps(roadmapsData);
+      initialLoadedRef.current[cacheKey] = true;
     } catch (error) {
       console.error('Error loading roadmaps:', error);
       toast({
@@ -38,11 +48,19 @@ export function useRoadmapData() {
       setIsLoading(false);
       loadingRef.current[cacheKey] = false;
     }
-  }, []);
+  }, [roadmaps.length]);
   
   // Load user's roadmaps for the selected language
   const loadUserRoadmaps = useCallback(async (language: Language) => {
+    // Add cache key for user roadmaps
+    const cacheKey = `user_roadmaps_${language}`;
+    if (loadingRef.current[cacheKey]) {
+      return [];
+    }
+    
+    loadingRef.current[cacheKey] = true;
     setIsLoading(true);
+    
     try {
       const roadmapsList = await roadmapService.getUserRoadmaps(language);
       setUserRoadmaps(roadmapsList);
@@ -65,6 +83,7 @@ export function useRoadmapData() {
         setSelectedRoadmap(firstRoadmap);
       }
       
+      initialLoadedRef.current[cacheKey] = true;
       return roadmapsList;
     } catch (error) {
       console.error('Error loading user roadmaps:', error);
@@ -76,12 +95,19 @@ export function useRoadmapData() {
       return [];
     } finally {
       setIsLoading(false);
+      loadingRef.current[cacheKey] = false;
     }
   }, [selectedRoadmap]);
   
   // Initialize a new roadmap for the user
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
+    if (loadingRef.current['initialize']) {
+      return '';
+    }
+    
+    loadingRef.current['initialize'] = true;
     setIsLoading(true);
+    
     try {
       // Explicitly call the service with the user's authentication to ensure roadmap is linked to this user
       const roadmapId = await roadmapService.initializeRoadmap(level, language);
@@ -106,8 +132,9 @@ export function useRoadmapData() {
       throw error;
     } finally {
       setIsLoading(false);
+      loadingRef.current['initialize'] = false;
     }
-  }, [loadUserRoadmaps]);
+  }, [loadUserRoadmaps, selectRoadmap]);
   
   // Select and load a specific roadmap
   const selectRoadmap = useCallback(async (roadmapId: string) => {
@@ -115,6 +142,11 @@ export function useRoadmapData() {
     const cacheKey = `select_roadmap_${roadmapId}`;
     if (loadingRef.current[cacheKey]) {
       return [];
+    }
+    
+    // Don't re-fetch if we've already selected this roadmap
+    if (selectedRoadmap?.id === roadmapId && nodes.length > 0) {
+      return nodes;
     }
     
     loadingRef.current[cacheKey] = true;
@@ -146,12 +178,20 @@ export function useRoadmapData() {
       setIsLoading(false);
       loadingRef.current[cacheKey] = false;
     }
-  }, [userRoadmaps]);
+  }, [userRoadmaps, selectedRoadmap, nodes.length]);
   
   // Get exercise content for a node
   const getNodeExercise = useCallback(async (nodeId: string) => {
+    const cacheKey = `exercise_${nodeId}`;
+    if (loadingRef.current[cacheKey]) {
+      return null;
+    }
+    
+    loadingRef.current[cacheKey] = true;
+    
     try {
-      return await roadmapService.getNodeExerciseContent(nodeId);
+      const result = await roadmapService.getNodeExerciseContent(nodeId);
+      return result;
     } catch (error) {
       console.error('Error getting node exercise:', error);
       toast({
@@ -160,13 +200,22 @@ export function useRoadmapData() {
         description: "There was an error loading the exercise content."
       });
       return null;
+    } finally {
+      loadingRef.current[cacheKey] = false;
     }
   }, []);
   
   // Record completion with accuracy score
   const recordNodeCompletion = useCallback(async (nodeId: string, accuracy: number): Promise<NodeCompletionResult> => {
+    if (loadingRef.current[`complete_${nodeId}`]) {
+      return { isCompleted: false, completionCount: 0 };
+    }
+    
+    loadingRef.current[`complete_${nodeId}`] = true;
+    
     try {
-      return await roadmapService.recordNodeCompletion(nodeId, accuracy);
+      const result = await roadmapService.recordNodeCompletion(nodeId, accuracy);
+      return result;
     } catch (error) {
       console.error('Error recording node completion:', error);
       toast({
@@ -175,11 +224,19 @@ export function useRoadmapData() {
         description: "There was an error saving your progress."
       });
       throw error;
+    } finally {
+      loadingRef.current[`complete_${nodeId}`] = false;
     }
   }, []);
   
   // Mark a node as completed
   const markNodeAsCompleted = useCallback(async (nodeId: string) => {
+    if (loadingRef.current[`mark_complete_${nodeId}`]) {
+      return;
+    }
+    
+    loadingRef.current[`mark_complete_${nodeId}`] = true;
+    
     try {
       await roadmapService.markNodeAsCompleted(nodeId);
       
@@ -195,12 +252,20 @@ export function useRoadmapData() {
         description: "There was an error marking the lesson as completed."
       });
       throw error;
+    } finally {
+      loadingRef.current[`mark_complete_${nodeId}`] = false;
     }
-  }, [selectedRoadmap]);
+  }, [selectedRoadmap, selectRoadmap]);
   
   // Complete a node with a specific accuracy
   const markNodeWithAccuracy = useCallback(async (nodeId: string, accuracy: number) => {
+    if (loadingRef.current[`mark_accuracy_${nodeId}`]) {
+      return;
+    }
+    
+    loadingRef.current[`mark_accuracy_${nodeId}`] = true;
     setIsLoading(true);
+    
     try {
       const result = await roadmapService.markNodeAsCompleted(nodeId);
       // ... handle result
@@ -217,6 +282,7 @@ export function useRoadmapData() {
       });
     } finally {
       setIsLoading(false);
+      loadingRef.current[`mark_accuracy_${nodeId}`] = false;
     }
   }, []);
   

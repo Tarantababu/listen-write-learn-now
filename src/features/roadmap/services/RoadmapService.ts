@@ -132,10 +132,58 @@ class RoadmapService {
    */
   async recordNodeCompletion(nodeId: string, accuracy: number): Promise<NodeCompletionResult> {
     try {
-      // This is a stub implementation
+      // First, we need to get the user's roadmap to get the language
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      
+      const userId = userData.user?.id;
+      if (!userId) throw new Error('User not authenticated');
+      
+      // Get the node to find its roadmap
+      const { data: nodeData, error: nodeError } = await supabase
+        .from('roadmap_nodes')
+        .select('roadmap_id')
+        .eq('id', nodeId)
+        .single();
+        
+      if (nodeError) throw nodeError;
+      
+      // Get the user roadmap
+      const { data: userRoadmap, error: roadmapError } = await supabase
+        .from('user_roadmaps')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('roadmap_id', nodeData.roadmap_id)
+        .single();
+        
+      if (roadmapError) throw roadmapError;
+      
+      // Call the RPC function with the correct parameters
+      // Fix the type error by casting to Language
+      const { error: incrementError } = await supabase
+        .rpc('increment_node_completion', {
+          node_id_param: nodeId,
+          user_id_param: userId,
+          language_param: userRoadmap.language as Language,
+          roadmap_id_param: nodeData.roadmap_id
+        });
+        
+      if (incrementError) throw incrementError;
+      
+      // Get the updated node progress
+      const { data: progressData, error: progressError } = await supabase
+        .from('roadmap_nodes_progress')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('node_id', nodeId)
+        .eq('language', userRoadmap.language)
+        .single();
+        
+      if (progressError) throw progressError;
+      
       return {
-        isCompleted: false,
-        completionCount: 0
+        isCompleted: progressData.is_completed,
+        completionCount: progressData.completion_count
       };
     } catch (error) {
       console.error('Error recording node completion:', error);

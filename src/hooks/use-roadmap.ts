@@ -1,5 +1,5 @@
 
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { RoadmapContext } from '@/features/roadmap/context/RoadmapContext';
 
 /**

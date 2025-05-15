@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -67,12 +67,19 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(settings.selectedLanguage);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [nodeProgress, setNodeProgress] = useState<RoadmapNodeProgress[]>([]);
+  
+  // Add these refs to prevent infinite fetching loops
+  const fetchingRef = useRef<boolean>(false);
+  const initialFetchDone = useRef<boolean>(false);
 
   // Memoized function to fetch roadmaps
   const fetchRoadmaps = useCallback(async () => {
     if (!user) return;
-
+    if (fetchingRef.current) return; // Prevent concurrent fetches
+    
+    fetchingRef.current = true;
     setLoading(true);
+    
     try {
       // Get roadmaps using the roadmapService
       const roadmapList = await roadmapService.getRoadmapsForLanguage(settings.selectedLanguage);
@@ -90,6 +97,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setLoading(false);
       setIsLoading(false);
+      fetchingRef.current = false;
+      initialFetchDone.current = true;
     }
   }, [user, settings.selectedLanguage]);
 
@@ -97,28 +106,24 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     if (settings.selectedLanguage !== selectedLanguage) {
       setSelectedLanguage(settings.selectedLanguage);
+      // Only fetch if we haven't already fetched or if the language changed
+      fetchRoadmaps();
+    } else if (!initialFetchDone.current && user) {
+      // Initial fetch only if not already done
       fetchRoadmaps();
     }
-  }, [settings.selectedLanguage, selectedLanguage, fetchRoadmaps]);
-
-  // Initial fetch
-  useEffect(() => {
-    if (user) {
-      fetchRoadmaps();
-    }
-  }, [user, fetchRoadmaps]);
+  }, [settings.selectedLanguage, selectedLanguage, fetchRoadmaps, user]);
 
   // Load all user roadmaps
   const loadUserRoadmaps = async (language?: Language): Promise<UserRoadmap[]> => {
     if (!user) return [];
-
+    
     try {
       const loadedLanguage = language || settings.selectedLanguage;
       const userRoadmapsList = await roadmapService.getUserRoadmaps(loadedLanguage);
       
       if (!userRoadmapsList || userRoadmapsList.length === 0) {
         setUserRoadmaps([]);
-        setSelectedRoadmap(null);
         return [];
       }
 
@@ -150,6 +155,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // Select a specific roadmap
   const selectRoadmap = async (roadmapId: string) => {
+    if (selectedRoadmap?.id === roadmapId) return; // Prevent reloading same roadmap
+    
     const roadmap = userRoadmaps.find(r => r.id === roadmapId);
     if (roadmap) {
       await loadUserRoadmap(roadmap.id);
@@ -165,8 +172,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Load user's selected roadmap
   const loadUserRoadmap = async (userRoadmapId?: string) => {
     if (!user) return;
-
+    if (fetchingRef.current) return; // Prevent concurrent fetches
+    
+    fetchingRef.current = true;
     setLoading(true);
+    
     try {
       let userRoadmap: UserRoadmap | null = null;
       
@@ -180,8 +190,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
           const refreshedRoadmaps = await loadUserRoadmaps();
           userRoadmap = refreshedRoadmaps.find(r => r.id === userRoadmapId) || null;
         }
+      } else if (userRoadmaps.length > 0) {
+        // Get first user roadmap if none specified
+        userRoadmap = userRoadmaps[0];
       } else {
-        // Get first user roadmap for current language
+        // Try fetching roadmaps if none in memory
         const userRoadmapsList = await roadmapService.getUserRoadmaps(settings.selectedLanguage);
         if (userRoadmapsList.length > 0) {
           // Ensure the user roadmap has required name and level properties
@@ -199,6 +212,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         setCurrentNode(null);
         setCompletedNodeIds([]);
         setAvailableNodeIds([]);
+        fetchingRef.current = false;
         setLoading(false);
         return;
       }
@@ -237,6 +251,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   };
 
@@ -250,6 +265,9 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
       return;
     }
+    
+    if (fetchingRef.current) return; // Prevent concurrent operations
+    fetchingRef.current = true;
 
     try {
       const roadmapId = await roadmapService.initializeRoadmap(level, language);
@@ -269,8 +287,10 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
       
       // Refresh the user roadmap data
-      await loadUserRoadmaps();
-      await loadUserRoadmap(roadmapId);
+      const updatedRoadmaps = await loadUserRoadmaps();
+      if (updatedRoadmaps.length > 0) {
+        await loadUserRoadmap(roadmapId);
+      }
 
     } catch (error) {
       console.error("Error initializing roadmap:", error);
@@ -279,6 +299,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         title: "Initialization failed",
         description: "Failed to start learning journey. Please try again later."
       });
+    } finally {
+      fetchingRef.current = false;
     }
   };
 
