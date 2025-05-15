@@ -70,20 +70,52 @@ function App() {
                                   {/* Protected Routes - Regular User Access */}
                                   <Route element={<ProtectedRoute />}>
                                     <Route path="/dashboard" element={<Layout />}>
-                                      <Route index element={<HomePage />} />
-                                      <Route path="exercises" element={<ExercisesPage />} />
-                                      <Route path="roadmap" element={<RoadmapPage />} />
-                                      <Route path="vocabulary" element={<VocabularyPage />} />
-                                      <Route path="settings" element={<SettingsPage />} />
-                                      <Route path="subscription" element={<SubscriptionPage />} />
-                                      <Route path="tutorial" element={<TutorialPage />} />
+                                      <Route index element={
+                                        <ErrorBoundary>
+                                          <HomePage />
+                                        </ErrorBoundary>
+                                      } />
+                                      <Route path="exercises" element={
+                                        <ErrorBoundary>
+                                          <ExercisesPage />
+                                        </ErrorBoundary>
+                                      } />
+                                      <Route path="roadmap" element={
+                                        <ErrorBoundary>
+                                          <RoadmapPage />
+                                        </ErrorBoundary>
+                                      } />
+                                      <Route path="vocabulary" element={
+                                        <ErrorBoundary>
+                                          <VocabularyPage />
+                                        </ErrorBoundary>
+                                      } />
+                                      <Route path="settings" element={
+                                        <ErrorBoundary>
+                                          <SettingsPage />
+                                        </ErrorBoundary>
+                                      } />
+                                      <Route path="subscription" element={
+                                        <ErrorBoundary>
+                                          <SubscriptionPage />
+                                        </ErrorBoundary>
+                                      } />
+                                      <Route path="tutorial" element={
+                                        <ErrorBoundary>
+                                          <TutorialPage />
+                                        </ErrorBoundary>
+                                      } />
                                     </Route>
                                   </Route>
                                   
                                   {/* Protected Routes - Admin Only */}
                                   <Route element={<ProtectedRoute requireAdmin={true} />}>
                                     <Route path="/dashboard" element={<Layout />}>
-                                      <Route path="admin" element={<AdminPage />} />
+                                      <Route path="admin" element={
+                                        <ErrorBoundary>
+                                          <AdminPage />
+                                        </ErrorBoundary>
+                                      } />
                                     </Route>
                                   </Route>
                                   
@@ -91,7 +123,9 @@ function App() {
                                     path="/dashboard/curriculum"
                                     element={
                                       <ProtectedRoute>
-                                        <CurriculumPage />
+                                        <ErrorBoundary>
+                                          <CurriculumPage />
+                                        </ErrorBoundary>
                                       </ProtectedRoute>
                                     }
                                   />

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { RefreshButton } from '@/components/RefreshButton';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { registerOpenPopup, unregisterPopup } from '@/utils/popupStateManager';
 
 const RoadmapSelection: React.FC = () => {
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>("A1");
@@ -58,6 +60,9 @@ const RoadmapSelection: React.FC = () => {
         return;
       }
       
+      // Register this as an open dialog to prevent background polling during initialization
+      registerOpenPopup('roadmap-initialization');
+      
       await initializeUserRoadmap(selectedLevel, settings.selectedLanguage);
       toast({
         title: "Learning path started",
@@ -95,6 +100,9 @@ const RoadmapSelection: React.FC = () => {
           variant: "destructive",
         });
       }
+    } finally {
+      // Unregister popup when done
+      unregisterPopup('roadmap-initialization');
     }
   };
 

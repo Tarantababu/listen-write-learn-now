@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCcw, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface RefreshButtonProps {
@@ -12,28 +12,30 @@ interface RefreshButtonProps {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
 }
 
-export const RefreshButton: React.FC<RefreshButtonProps> = ({
-  onRefresh,
-  isLoading = false,
+export const RefreshButton: React.FC<RefreshButtonProps> = ({ 
+  onRefresh, 
+  isLoading = false, 
   className,
   size = 'icon',
-  variant = 'ghost',
+  variant = 'ghost'
 }) => {
   return (
     <Button
-      onClick={onRefresh}
-      disabled={isLoading}
-      className={cn("flex items-center", className)}
-      size={size}
       variant={variant}
+      size={size}
+      className={cn("h-8 w-8", className)}
+      onClick={(e) => {
+        e.preventDefault();
+        onRefresh();
+      }}
+      disabled={isLoading}
       aria-label="Refresh data"
     >
-      <RefreshCw 
-        className={cn(
-          "h-4 w-4", 
-          isLoading && "animate-spin"
-        )} 
-      />
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <RefreshCcw className="h-4 w-4" />
+      )}
     </Button>
   );
 };

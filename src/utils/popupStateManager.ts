@@ -1,50 +1,57 @@
 
-// Track open popups to prevent background refreshes while popups are open
-let openPopups: Record<string, boolean> = {};
+/**
+ * Popup State Manager
+ * 
+ * Tracks open popups to prevent background polling while modals are open
+ */
+
+// Store currently open popup IDs
+const openPopups = new Set<string>();
 
 /**
- * Register a popup as open
+ * Register an open popup
+ * @param popupId Unique ID for the popup
  */
-export const registerOpenPopup = (id: string): void => {
-  openPopups[id] = true;
+export const registerOpenPopup = (popupId: string): void => {
+  openPopups.add(popupId);
 };
 
 /**
- * Register a popup as closed
+ * Unregister a closed popup
+ * @param popupId Unique ID for the popup
  */
-export const unregisterPopup = (id: string): void => {
-  delete openPopups[id];
+export const unregisterPopup = (popupId: string): void => {
+  openPopups.delete(popupId);
 };
 
 /**
- * Check if any popup is currently open
+ * Check if any popups are currently open
+ * @returns True if any popups are open
  */
 export const isAnyPopupOpen = (): boolean => {
-  return Object.keys(openPopups).length > 0;
+  return openPopups.size > 0;
 };
 
 /**
- * Save popup state to localStorage to persist across refreshes
+ * Get all currently open popup IDs
+ * @returns Array of open popup IDs
  */
-export const savePopupState = (id: string, state: any): void => {
-  try {
-    localStorage.setItem(`popup_state_${id}`, JSON.stringify(state));
-  } catch (e) {
-    console.error('Error saving popup state:', e);
-  }
+export const getOpenPopups = (): string[] => {
+  return Array.from(openPopups);
 };
 
 /**
- * Get popup state from localStorage
+ * Check if a specific popup is open
+ * @param popupId Popup ID to check
+ * @returns True if the specified popup is open
  */
-export const getPopupState = <T>(id: string, defaultState: T): T => {
-  try {
-    const saved = localStorage.getItem(`popup_state_${id}`);
-    if (saved) {
-      return JSON.parse(saved) as T;
-    }
-  } catch (e) {
-    console.error('Error retrieving popup state:', e);
-  }
-  return defaultState;
+export const isPopupOpen = (popupId: string): boolean => {
+  return openPopups.has(popupId);
+};
+
+/**
+ * Reset all popup tracking state (useful for testing)
+ */
+export const resetPopupState = (): void => {
+  openPopups.clear();
 };

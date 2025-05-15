@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '@/features/roadmap/services/RoadmapService';
 import { RoadmapItem, RoadmapNode, UserRoadmap, ExerciseContent, NodeCompletionResult } from '@/features/roadmap/types';
@@ -319,7 +320,7 @@ export function useRoadmap() {
       if (error?.code === 'ROADMAP_NOT_AVAILABLE_FOR_LANGUAGE') {
         setErrorState({
           hasError: true,
-          message: error.message,
+          message: error.message || `No roadmap is available for ${language}.`,
           suggestedLanguage: error.suggestedLanguage || 'english'
         });
         
