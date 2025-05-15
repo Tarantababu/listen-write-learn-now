@@ -144,7 +144,7 @@ export interface CurriculumContextType {
   selectCurriculumPath: (curriculumPathId: string) => Promise<void>;
 }
 
-export interface RoadmapItem {
+export interface Roadmap {
   id: string;
   name: string;
   level: LanguageLevel;
@@ -153,6 +153,21 @@ export interface RoadmapItem {
   createdAt: Date;
   updatedAt: Date;
   createdBy?: string;
+}
+
+// Ensure UserRoadmap has required name and level properties
+export interface UserRoadmap {
+  id: string;
+  userId: string;
+  roadmapId: string;
+  language: Language;
+  name: string; // Required field
+  level: LanguageLevel; // Required field
+  description?: string;
+  languages?: Language[];
+  currentNodeId?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface RoadmapNode {
@@ -177,20 +192,6 @@ export interface RoadmapLanguage {
   roadmapId: string;
   language: Language;
   createdAt: Date;
-}
-
-export interface UserRoadmap {
-  id: string;
-  userId: string;
-  roadmapId: string;
-  language: Language;
-  name: string; // Required to match RoadmapItem
-  level: LanguageLevel; // Required to match RoadmapItem
-  description?: string;
-  languages?: Language[]; // Required to match RoadmapItem
-  currentNodeId?: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface RoadmapProgress {
@@ -218,7 +219,7 @@ export interface RoadmapNodeProgress {
 }
 
 export interface RoadmapContextType {
-  roadmaps: RoadmapItem[];
+  roadmaps: Roadmap[];
   userRoadmaps: UserRoadmap[]; 
   currentRoadmap: UserRoadmap | null;
   nodes: RoadmapNode[];

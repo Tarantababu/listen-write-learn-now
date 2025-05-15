@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '../services/RoadmapService';
 import { RoadmapItem, RoadmapNode, UserRoadmap, ExerciseContent, NodeCompletionResult } from '../types';
-import { Language, LanguageLevel } from '@/types';
+import { Language, LanguageLevel, Roadmap } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { asUUID, asFilterParam } from '@/lib/utils/supabaseHelpers';
 
@@ -48,13 +48,13 @@ export function useRoadmapData() {
       setUserRoadmaps(roadmapsList);
       
       if (roadmapsList.length > 0 && !selectedRoadmap) {
-        // Convert UserRoadmap to RoadmapItem for compatibility
+        // Create a properly typed RoadmapItem from UserRoadmap
         const firstRoadmap: RoadmapItem = {
           id: roadmapsList[0].id,
           name: roadmapsList[0].name,
           level: roadmapsList[0].level,
           description: roadmapsList[0].description,
-          languages: roadmapsList[0].languages || [],
+          languages: roadmapsList[0].languages || [], // Use empty array if undefined
           createdAt: roadmapsList[0].createdAt,
           updatedAt: roadmapsList[0].updatedAt,
           userId: roadmapsList[0].userId,

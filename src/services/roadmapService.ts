@@ -1,18 +1,14 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  Roadmap, 
-  RoadmapNode, 
-  UserRoadmap, 
-  RoadmapProgress, 
-  LanguageLevel, 
-  Language, 
+  RoadmapItem, 
+  UserRoadmap,
   RoadmapNodeProgress 
-} from '@/types';
+} from '@/features/roadmap/types';
+import { RoadmapNode, Language, LanguageLevel } from '@/types';
 
 class RoadmapService {
   // Get all roadmaps
-  async getRoadmaps(): Promise<Roadmap[]> {
+  async getRoadmaps(): Promise<RoadmapItem[]> {
     try {
       const { data, error } = await supabase
         .from('roadmaps')
@@ -36,7 +32,7 @@ class RoadmapService {
         languagesByRoadmap[langItem.roadmap_id].push(langItem.language as Language);
       });
       
-      return data.map((roadmap: any): Roadmap => ({
+      return data.map((roadmap: any): RoadmapItem => ({
         id: roadmap.id,
         name: roadmap.name,
         level: roadmap.level as LanguageLevel,
@@ -93,14 +89,16 @@ class RoadmapService {
         
         return {
           id: item.id,
+          userId: item.user_id,
           roadmapId: item.roadmap_id,
           name: roadmapDetails.name || 'Unnamed Roadmap',
-          level: roadmapDetails.level || 'A1',
+          level: (roadmapDetails.level || 'A1') as LanguageLevel,
           description: roadmapDetails.description,
-          language: item.language,
+          language: item.language as Language,
           currentNodeId: item.current_node_id,
           createdAt: new Date(item.created_at),
           updatedAt: new Date(item.updated_at || item.created_at),
+          languages: [] // Add empty languages array
         };
       });
     } catch (error) {
@@ -127,9 +125,10 @@ class RoadmapService {
       
       return {
         id: data.id,
+        userId: data.user_id,
         roadmapId: data.roadmap_id,
         name: data.roadmaps?.name || 'Unnamed Roadmap',
-        level: data.roadmaps?.level || 'A1',
+        level: (data.roadmaps?.level || 'A1') as LanguageLevel,
         description: data.roadmaps?.description,
         language: data.language,
         currentNodeId: data.current_node_id,
@@ -303,7 +302,7 @@ class RoadmapService {
           userId: np.user_id,
           roadmapId: np.roadmap_id,
           nodeId: np.node_id,
-          language: np.language,
+          language: np.language as Language,
           completionCount: np.completion_count,
           isCompleted: np.is_completed,
           lastPracticedAt: np.last_practiced_at ? new Date(np.last_practiced_at) : undefined,
@@ -398,11 +397,22 @@ class RoadmapService {
           node_id: nodeId,
           completed: true,
           completed_at: new Date().toISOString()
-        })
-        .on_conflict(['user_id', 'roadmap_id', 'node_id'])
-        .merge();
-        
-      if (progressError) throw progressError;
+        });
+      
+      if (progressError) {
+        // Try update if insert fails
+        const { error: updateError } = await supabase
+          .from('roadmap_progress')
+          .update({
+            completed: true,
+            completed_at: new Date().toISOString()
+          })
+          .eq('user_id', userData.user.id)
+          .eq('roadmap_id', node.roadmap_id)
+          .eq('node_id', nodeId);
+          
+        if (updateError) throw updateError;
+      }
       
       // Find next node
       const { data: nextNode } = await supabase

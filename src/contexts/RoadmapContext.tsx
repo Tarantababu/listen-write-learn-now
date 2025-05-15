@@ -115,15 +115,18 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         return [];
       }
 
-      // Format user roadmaps
+      // Format user roadmaps with the required fields
       const formattedUserRoadmaps: UserRoadmap[] = userRoadmapData.map(roadmap => ({
         id: roadmap.id,
         userId: roadmap.user_id,
         roadmapId: roadmap.roadmap_id,
         language: roadmap.language as Language,
+        name: roadmap.name || "Learning Path", // Provide a default name
+        level: roadmap.level || "A1" as LanguageLevel, // Provide a default level
         currentNodeId: roadmap.current_node_id,
         createdAt: new Date(roadmap.created_at),
         updatedAt: new Date(roadmap.updated_at),
+        languages: [] // Add empty languages array as it's optional but may be needed
       }));
 
       setUserRoadmaps(formattedUserRoadmaps);
@@ -194,15 +197,18 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         return;
       }
 
-      // Format user roadmap
+      // Format user roadmap with required fields
       const userRoadmap: UserRoadmap = {
         id: userRoadmapData.id,
         userId: userRoadmapData.user_id,
         roadmapId: userRoadmapData.roadmap_id,
         language: userRoadmapData.language as Language,
+        name: userRoadmapData.name || "Learning Path", // Provide a default name
+        level: userRoadmapData.level || "A1" as LanguageLevel, // Provide a default level
         currentNodeId: userRoadmapData.current_node_id,
         createdAt: new Date(userRoadmapData.created_at),
         updatedAt: new Date(userRoadmapData.updated_at),
+        languages: [] // Add empty languages array
       };
 
       setSelectedRoadmap(userRoadmap);
@@ -498,21 +504,19 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     await completeNode(nodeId);
   };
 
-  // Complete a node
-  const completeNode = async (nodeId: string): Promise<void> => {
-    if (!user || !selectedRoadmap) return;
+  // Complete a node - update return type to match expected interface
+  const completeNode = async (nodeId: string): Promise<{ nextNodeId?: string }> => {
+    if (!user || !selectedRoadmap) return { nextNodeId: undefined };
 
     setNodeLoading(true);
     try {
-      console.log("Attempting to complete node:", nodeId, "for roadmap:", selectedRoadmap.id);
-      
       // Check if already completed
       const existingProgress = progress.find(p => p.nodeId === nodeId);
       
       if (existingProgress && existingProgress.completed) {
         // Already completed, nothing to do
         console.log("Node already completed, no update needed");
-        return;
+        return { nextNodeId: undefined };
       }
 
       if (existingProgress) {
@@ -556,7 +560,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       // Find next node
       const currentNodeIndex = roadmapNodes.findIndex(n => n.id === nodeId);
       const nextNode = roadmapNodes[currentNodeIndex + 1] || null;
-
+      
       // Update current node if there is a next node
       if (nextNode) {
         console.log("Moving to next node:", nextNode.id);
@@ -585,6 +589,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
           : "Congratulations! You've completed all lessons in this path."
       });
       
+      // Return the expected object with nextNodeId
+      return { nextNodeId: nextNode?.id };
     } catch (error) {
       console.error("Error completing node:", error);
       toast({
@@ -592,6 +598,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         title: "Failed to mark as complete",
         description: "Failed to mark lesson as complete"
       });
+      return { nextNodeId: undefined };
     } finally {
       setNodeLoading(false);
     }

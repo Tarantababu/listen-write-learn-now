@@ -313,46 +313,28 @@ export const resetProgress = async (
   curriculumPathId: string
 ): Promise<void> => {
   try {
-    // Delete from roadmap_progress using rpc or direct operation
-    const { error: deleteProgressError } = await supabase
-      .rpc('reset_roadmap_progress', {
-        user_id_param: userId,
-        roadmap_id_param: curriculumPathId
-      });
-      
-    if (deleteProgressError) {
-      // Fallback to direct delete
-      const { error: directDeleteError } = await supabase
-        .from('roadmap_progress')
-        .delete()
-        .eq('user_id', userId)
-        .eq('roadmap_id', curriculumPathId);
+    // Delete progress directly since RPC function might not exist
+    const { error: directDeleteError } = await supabase
+      .from('roadmap_progress')
+      .delete()
+      .eq('user_id', userId)
+      .eq('roadmap_id', curriculumPathId);
         
-      if (directDeleteError) {
-        console.error('Error deleting roadmap progress:', directDeleteError);
-        throw directDeleteError;
-      }
+    if (directDeleteError) {
+      console.error('Error deleting roadmap progress:', directDeleteError);
+      throw directDeleteError;
     }
     
-    // Also delete from roadmap_nodes_progress
-    const { error: deleteNodeProgressError } = await supabase
-      .rpc('reset_roadmap_nodes_progress', {
-        user_id_param: userId,
-        roadmap_id_param: curriculumPathId
-      });
-      
-    if (deleteNodeProgressError) {
-      // Fallback to direct delete
-      const { error: directDeleteNodeError } = await supabase
-        .from('roadmap_nodes_progress')
-        .delete()
-        .eq('user_id', userId)
-        .eq('roadmap_id', curriculumPathId);
+    // Also delete from roadmap_nodes_progress directly
+    const { error: directDeleteNodeError } = await supabase
+      .from('roadmap_nodes_progress')
+      .delete()
+      .eq('user_id', userId)
+      .eq('roadmap_id', curriculumPathId);
         
-      if (directDeleteNodeError) {
-        console.error('Error deleting node progress:', directDeleteNodeError);
-        throw directDeleteNodeError;
-      }
+    if (directDeleteNodeError) {
+      console.error('Error deleting node progress:', directDeleteNodeError);
+      throw directDeleteNodeError;
     }
   } catch (error) {
     console.error('Error resetting progress:', error);
