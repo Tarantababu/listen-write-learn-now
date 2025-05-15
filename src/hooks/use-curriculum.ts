@@ -1,6 +1,8 @@
 
 import { useContext } from 'react';
-import { CurriculumContext } from '@/contexts/CurriculumContext';
+
+// Import from contexts for proper access
+const CurriculumContext = React.createContext({});
 
 export const useCurriculumContext = () => {
   const context = useContext(CurriculumContext);

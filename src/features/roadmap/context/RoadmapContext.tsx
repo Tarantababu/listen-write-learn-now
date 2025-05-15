@@ -13,8 +13,9 @@ import {
   RoadmapNodeProgress, 
   RoadmapContextType 
 } from '@/types';
-import { roadmapService } from '@/services/roadmapService';
+import { roadmapService } from '../services/RoadmapService';
 
+// Create the context
 const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
 
 export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -73,11 +74,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [user, fetchRoadmaps]);
 
   // Load all user roadmaps
-  const loadUserRoadmaps = useCallback(async () => {
+  const loadUserRoadmaps = useCallback(async (language?: Language): Promise<UserRoadmap[]> => {
     if (!user) return [];
 
     try {
-      const userRoadmapsList = await roadmapService.getUserRoadmaps(settings.selectedLanguage);
+      const userRoadmapsList = await roadmapService.getUserRoadmaps(language || settings.selectedLanguage);
       
       if (!userRoadmapsList || userRoadmapsList.length === 0) {
         setUserRoadmaps([]);
@@ -293,12 +294,13 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // Mark node as completed
   const markNodeAsCompleted = async (nodeId: string) => {
-    return completeNode(nodeId);
+    const result = await completeNode(nodeId);
+    return;
   };
 
   // Complete a node
   const completeNode = async (nodeId: string) => {
-    if (!user || !selectedRoadmap) return;
+    if (!user || !selectedRoadmap) return { nextNodeId: undefined };
 
     setNodeLoading(true);
     try {
@@ -323,7 +325,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         title: "Failed to mark as complete",
         description: "Failed to mark lesson as complete"
       });
-      return {};
+      return { nextNodeId: undefined };
     } finally {
       setNodeLoading(false);
     }
@@ -403,4 +405,4 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   );
 };
 
-export { RoadmapContext, useContext as useRoadmap };
+export { RoadmapContext };
