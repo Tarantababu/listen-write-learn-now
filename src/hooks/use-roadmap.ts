@@ -10,7 +10,8 @@ export function useRoadmap(): RoadmapContextType {
     throw new Error('useRoadmap must be used within a RoadmapProvider');
   }
   
-  return context;
+  // Type assertion to match the expected RoadmapContextType from @/types
+  return context as unknown as RoadmapContextType;
 }
 
 export default useRoadmap;
