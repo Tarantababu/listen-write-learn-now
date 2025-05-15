@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { 
   RoadmapItem, 
@@ -402,7 +401,7 @@ class RoadmapService {
         });
       
       if (progressError) {
-        // Try update if insert fails using upsert instead of on_conflict
+        // Try update if insert fails - use upsert properly
         const { error: upsertError } = await supabase
           .from('roadmap_progress')
           .upsert({

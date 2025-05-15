@@ -12,8 +12,8 @@ export interface RoadmapItem {
   roadmapId?: string;
   currentNodeId?: string;
   language?: Language;
-  userId?: string; // Added to match UserRoadmap type
-  createdBy?: string; // Added to support the roadmapService
+  userId?: string;
+  createdBy?: string;
 }
 
 export interface UserRoadmap {
@@ -21,10 +21,10 @@ export interface UserRoadmap {
   userId: string;
   roadmapId: string;
   language: Language;
-  name: string; // Required field
-  level: LanguageLevel; // Required field
+  name: string;
+  level: LanguageLevel;
   description?: string;
-  languages?: Language[]; // Optional field
+  languages?: Language[];
   currentNodeId?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -34,7 +34,7 @@ export interface RoadmapNode {
   id: string;
   roadmapId: string;
   title: string;
-  description: string; // Made required to match usage
+  description: string;
   position: number;
   isBonus: boolean;
   defaultExerciseId?: string;
