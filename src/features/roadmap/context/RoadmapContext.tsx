@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +8,7 @@ import { roadmapService } from '../services/RoadmapService';
 import { apiCache } from '@/utils/apiCache';
 import { isAnyPopupOpen } from '@/utils/popupStateManager';
 import { RefreshButton } from '@/components/RefreshButton';
+import { useRoadmapData } from '../hooks/useRoadmapData';
 
 // Define the context type
 interface RoadmapContextType {
@@ -37,6 +37,7 @@ interface RoadmapContextType {
   incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;
   selectRoadmap: (roadmapId: string) => Promise<void>;
   refreshData: () => Promise<void>; // New manual refresh function
+  setRoadmapPageActive: (active: boolean) => void; // Add this new property
 }
 
 // Add type for RoadmapNodeProgress that was missing
@@ -568,6 +569,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
   }, [user, selectedRoadmap, lastActivity, loading]);
 
+  // Get the hook implementation
+  const roadmapData = useRoadmapData();
+  
+  // ... keep existing code (other functions and effects)
+
   return (
     <RoadmapContext.Provider value={{
       roadmaps,
@@ -594,7 +600,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       markNodeAsCompleted,
       incrementNodeCompletion,
       selectRoadmap,
-      refreshData
+      refreshData,
+      setRoadmapPageActive: roadmapData.setRoadmapPageActive, // Expose the function
     }}>
       {children}
     </RoadmapContext.Provider>

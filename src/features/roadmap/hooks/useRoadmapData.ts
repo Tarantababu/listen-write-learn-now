@@ -509,7 +509,6 @@ export function useRoadmapData() {
     selectedRoadmap,
     nodes,
     languageAvailability,
-    setRoadmapPageActive,
     currentNodeId,
     currentNode,
     completedNodes,
@@ -522,6 +521,7 @@ export function useRoadmapData() {
     recordNodeCompletion,
     markNodeAsCompleted,
     markNodeWithAccuracy,
-    refreshData, // New manual refresh function
+    refreshData,
+    setRoadmapPageActive, // Add the missing function to the returned object
   };
 }
