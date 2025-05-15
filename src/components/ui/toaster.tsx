@@ -15,11 +15,11 @@ export function Toaster() {
   return (
     <ToastProvider>
       {toasts.map(function ({ id, title, description, action, variant, ...props }) {
-        // Don't auto-dismiss error toasts
-        const shouldAutoClose = variant !== 'destructive';
+        // Give destructive toasts a longer duration (5 seconds) instead of infinite
+        const duration = variant === 'destructive' ? 5000 : 2500;
         
         return (
-          <Toast key={id} variant={variant} {...props} duration={shouldAutoClose ? 2500 : Infinity}>
+          <Toast key={id} variant={variant} {...props} duration={duration}>
             <div className="grid gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && (
