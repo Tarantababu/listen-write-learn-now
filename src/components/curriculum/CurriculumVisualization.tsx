@@ -5,7 +5,7 @@ import { useCurriculum } from '@/hooks/use-curriculum';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Circle, Lock, ArrowRight, Clock } from 'lucide-react';
-import { useMedia } from 'react-use'; // Changed from useMediaQuery to useMedia which is available
+import { useMedia } from 'react-use';
 import LevelBadge from '@/components/LevelBadge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
@@ -23,16 +23,16 @@ export const CurriculumVisualization: React.FC = () => {
   } = useCurriculum();
   
   const { toast } = useToast();
-  const isMobile = useMedia('(max-width: 768px)'); // Changed to useMedia
+  const isMobile = useMedia('(max-width: 768px)');
 
   // Get curriculum data
   const curriculum = useMemo(() => {
     return currentCurriculumPath?.curriculum || null;
   }, [currentCurriculumPath]);
 
-  // Sort nodes by sequence order
+  // Sort nodes by position
   const sortedNodes = useMemo(() => {
-    return [...nodes].sort((a, b) => a.sequence_order - b.sequence_order);
+    return [...nodes].sort((a, b) => a.position - b.position);
   }, [nodes]);
 
   // Handle node click
@@ -158,9 +158,9 @@ export const CurriculumVisualization: React.FC = () => {
                     }`}>
                       <CardContent className="p-4">
                         <h3 className="font-semibold text-lg flex items-center justify-between">
-                          {node.name}
+                          {node.name || node.title}
                           <span className="text-sm font-normal text-muted-foreground">
-                            {node.min_completion_count} completions at {node.min_accuracy_percentage}% accuracy
+                            {node.min_completion_count || 3} completions at {node.min_accuracy_percentage || 95}% accuracy
                           </span>
                         </h3>
                         {node.description && (

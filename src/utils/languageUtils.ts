@@ -1,3 +1,4 @@
+
 import { Language } from '@/types';
 
 export function getLanguageFlag(language: Language): string {

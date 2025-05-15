@@ -64,6 +64,7 @@ export interface CurriculumPath {
   createdAt: Date;
   updatedAt: Date;
   createdBy?: string;
+  name?: string;
 }
 
 export interface CurriculumNode {
@@ -73,10 +74,9 @@ export interface CurriculumNode {
   title: string;
   description?: string;
   position: number;
-  sequence_order: number; // Add sequence_order
-  name: string; // Add name
-  min_completion_count: number; // Add min_completion_count
-  min_accuracy_percentage: number; // Add min_accuracy_percentage
+  name?: string;
+  min_completion_count?: number;
+  min_accuracy_percentage?: number;
   isBonus: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -90,10 +90,10 @@ export interface UserCurriculumPath {
   currentNodeId?: string;
   createdAt: Date;
   updatedAt: Date;
-  status: 'active' | 'completed' | 'abandoned';
-  completion_percentage: number;
-  last_activity_date: string | Date;
-  curriculum?: any; // Add curriculum property
+  status?: 'active' | 'completed' | 'abandoned';
+  completion_percentage?: number;
+  last_activity_date?: string | Date;
+  curriculum?: any;
 }
 
 export interface CurriculumProgress {
@@ -114,7 +114,7 @@ export interface CurriculumNodeProgress {
   curriculumPathId: string;
   nodeId: string;
   language: Language;
-  completedExerciseCount: number; // Changed from completionCount to match component usage
+  completedExerciseCount: number;
   isCompleted: boolean;
   lastPracticedAt?: Date;
   createdAt: Date;
@@ -152,6 +152,8 @@ export interface CurriculumContextType {
   selectCurriculumPath: (curriculumPathId: string) => Promise<void>;
 }
 
+// Legacy Roadmap types that we're phasing out but keeping for compatibility
+// These will be removed in a future update
 export interface Roadmap {
   id: string;
   name: string;
@@ -163,14 +165,13 @@ export interface Roadmap {
   createdBy?: string;
 }
 
-// Ensure UserRoadmap has required name and level properties
 export interface UserRoadmap {
   id: string;
   userId: string;
   roadmapId: string;
   language: Language;
-  name: string; // Required field
-  level: LanguageLevel; // Required field
+  name: string;
+  level: LanguageLevel;
   description?: string;
   languages?: Language[];
   currentNodeId?: string;
@@ -182,15 +183,13 @@ export interface RoadmapNode {
   id: string;
   roadmapId: string;
   title: string;
-  description: string; // Required field to match feature/roadmap/types
+  description: string;
   position: number;
   isBonus: boolean;
   defaultExerciseId?: string;
   language?: Language;
   createdAt: Date;
   updatedAt: Date;
-  
-  // UI state properties
   status?: 'locked' | 'available' | 'completed' | 'current';
   progressCount?: number;
 }
@@ -262,7 +261,7 @@ export interface RoadmapContextType {
   loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
   loadUserRoadmaps: (language?: Language) => Promise<UserRoadmap[]>;
   completeNode: (nodeId: string) => Promise<{ nextNodeId?: string }>;
-  resetProgress: (roadmapId: string) => Promise<void>;  // Updated to include roadmapId parameter
+  resetProgress: (roadmapId: string) => Promise<void>;
   getNodeExercise: (nodeId: string) => Promise<any>;
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
   incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;

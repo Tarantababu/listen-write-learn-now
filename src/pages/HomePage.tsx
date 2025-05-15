@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
@@ -5,14 +6,14 @@ import UserStatistics from '@/components/UserStatistics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import SubscriptionBanner from '@/components/SubscriptionBanner';
 import { ExerciseProvider } from '@/contexts/ExerciseContext';
-import { useRoadmap } from '@/hooks/use-roadmap'; // Use the hook from hooks folder
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Map, ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
 import LevelBadge from '@/components/LevelBadge';
 import { useAdmin } from '@/hooks/use-admin';
 import { RefreshButton } from '@/components/RefreshButton';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useCurriculum } from '@/hooks/use-curriculum';
 
 const HomePage = () => {
   const location = useLocation();
@@ -20,14 +21,13 @@ const HomePage = () => {
   const { isAdmin } = useAdmin();
   const { settings } = useUserSettingsContext();
   const { 
-    currentRoadmap, 
-    currentNodeId, 
-    nodes, 
-    isLoading, 
-    completedNodes, 
-    roadmaps,
-    refreshData 
-  } = useRoadmap();
+    currentCurriculumPath,
+    nodes,
+    isLoading,
+    completedNodes,
+    curriculumPaths,
+    loadUserCurriculumPaths
+  } = useCurriculum();
   
   // React to redirect messages (e.g., access denied)
   React.useEffect(() => {
@@ -43,12 +43,13 @@ const HomePage = () => {
     }
   }, [location]);
 
-  // Calculate roadmap progress percentage
+  // Calculate curriculum progress percentage
   const progressPercentage = nodes.length > 0 
     ? Math.round((completedNodes.length / nodes.length) * 100)
     : 0;
 
   // Get current node information
+  const currentNodeId = currentCurriculumPath?.currentNodeId;
   const currentNode = currentNodeId 
     ? nodes.find(node => node.id === currentNodeId)
     : null;
@@ -62,25 +63,26 @@ const HomePage = () => {
     ? nodes.slice(currentIndex + 1, currentIndex + 3)
     : [];
 
-  // Find the roadmap details
-  const roadmapDetails = currentRoadmap 
-    ? roadmaps.find(r => r.id === currentRoadmap.roadmapId) 
-    : null;
+  // Find the curriculum details
+  const curriculum = currentCurriculumPath?.curriculum || null;
+
+  const handleRefresh = () => {
+    loadUserCurriculumPaths(settings.selectedLanguage);
+  };
 
   return (
     <ExerciseProvider>
       <div className="container pb-8">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold text-center">Dashboard</h1>
-          <RefreshButton onRefresh={() => refreshData(settings.selectedLanguage)} isLoading={isLoading} />
+          <RefreshButton onRefresh={handleRefresh} isLoading={isLoading} />
         </div>
         
-        {/* ... keep existing code for subscription banner & other UI */}
         {subscription && !subscription.isSubscribed && !isAdmin && (
           <SubscriptionBanner />
         )}
         
-        {currentRoadmap && (
+        {currentCurriculumPath && (
           <div className="mb-8">
             <Card className="mb-4">
               <CardHeader className="pb-2">
@@ -88,37 +90,38 @@ const HomePage = () => {
                   <div>
                     <CardTitle className="text-xl flex items-center gap-2">
                       Your Learning Path
-                      {roadmapDetails && roadmapDetails.level && (
-                        <LevelBadge level={roadmapDetails.level} />
+                      {curriculum && curriculum.level && (
+                        <LevelBadge level={curriculum.level} />
                       )}
                     </CardTitle>
                   </div>
                   <RefreshButton 
-                    onRefresh={() => refreshData(settings.selectedLanguage)} 
+                    onRefresh={handleRefresh} 
                     isLoading={isLoading} 
                   />
                 </div>
               </CardHeader>
               
-              {/* ... keep existing code for displaying the current roadmap */}
               <CardContent>
                 {isLoading ? (
                   <div className="flex flex-col items-center justify-center p-4">
                     <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                    <p>Loading roadmap...</p>
+                    <p>Loading curriculum...</p>
                   </div>
-                ) : currentRoadmap ? (
+                ) : currentCurriculumPath ? (
                   <>
                     <div className="mb-4">
-                      <h3 className="text-sm font-medium mb-1">{roadmapDetails?.name || "Learning Path"}</h3>
+                      <h3 className="text-sm font-medium mb-1">{curriculum?.name || "Learning Path"}</h3>
                       <div className="flex justify-between text-sm mb-1">
                         <span className="text-xs text-muted-foreground">Progress</span>
-                        <span className="text-xs font-medium">{progressPercentage}%</span>
+                        <span className="text-xs font-medium">
+                          {currentCurriculumPath.completion_percentage || progressPercentage}%
+                        </span>
                       </div>
                       <div className="h-2 bg-muted rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-primary rounded-full" 
-                          style={{ width: `${progressPercentage}%` }}
+                          style={{ width: `${currentCurriculumPath.completion_percentage || progressPercentage}%` }}
                         ></div>
                       </div>
                     </div>
@@ -152,16 +155,16 @@ const HomePage = () => {
                     )}
 
                     <Button asChild className="w-full mt-2">
-                      <Link to="/dashboard/roadmap">
+                      <Link to="/dashboard/curriculum">
                         Continue Learning <ChevronRight className="h-4 w-4 ml-1" />
                       </Link>
                     </Button>
                   </>
                 ) : (
                   <div className="flex flex-col items-center justify-center text-center p-4">
-                    <p className="text-sm mb-3">You haven't started a learning roadmap yet.</p>
+                    <p className="text-sm mb-3">You haven't started a learning curriculum yet.</p>
                     <Button asChild>
-                      <Link to="/dashboard/roadmap">
+                      <Link to="/dashboard/curriculum">
                         Start Learning Path
                       </Link>
                     </Button>
@@ -169,12 +172,9 @@ const HomePage = () => {
                 )}
               </CardContent>
             </Card>
-            
-            {/* ... keep existing code for the rest of the UI */}
           </div>
         )}
         
-        {/* ... keep existing code for user statistics and other UI */}
         <div className="w-full">
           <ExerciseProvider>
             <UserStatistics />
