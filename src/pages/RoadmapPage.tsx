@@ -39,7 +39,7 @@ const RoadmapPage = () => {
     setRoadmapPageActive
   } = useRoadmap();
 
-  // Set roadmap page as active when component mounts, inactive when unmounts
+  // Track if we're on the roadmap page
   useEffect(() => {
     setRoadmapPageActive(true);
     

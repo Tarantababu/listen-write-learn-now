@@ -218,6 +218,12 @@ export interface RoadmapNodeProgress {
   updatedAt: Date;
 }
 
+export interface RoadmapErrorState {
+  hasError: boolean;
+  message: string;
+  suggestedLanguage?: string;
+}
+
 export interface RoadmapContextType {
   roadmaps: Roadmap[];
   userRoadmaps: UserRoadmap[]; 
@@ -235,6 +241,13 @@ export interface RoadmapContextType {
   progress?: RoadmapProgress[];
   loading?: boolean;
   
+  // Add missing properties
+  errorState: RoadmapErrorState;
+  clearErrorState: () => void;
+  languageAvailability: Record<string, boolean>;
+  tryAlternateLanguage: (level: LanguageLevel, originalLanguage: Language) => Promise<boolean>;
+  setRoadmapPageActive: (active: boolean) => void;
+  
   // Methods
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
   loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
@@ -245,4 +258,5 @@ export interface RoadmapContextType {
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
   incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;
   selectRoadmap: (roadmapId: string) => Promise<void>;
+  refreshData: (language?: Language) => Promise<void>;
 }
