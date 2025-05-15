@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +14,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 const RoadmapSelection: React.FC = () => {
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>("A1");
   const { settings } = useUserSettingsContext();
+  const dataLoaded = useRef(false);
   
   const {
     roadmaps,
@@ -30,12 +30,34 @@ const RoadmapSelection: React.FC = () => {
   } = useRoadmap();
   
   useEffect(() => {
-    // Reload user roadmaps whenever settings change, but don't poll unnecessarily
-    loadUserRoadmaps(settings.selectedLanguage);
-  }, [settings, loadUserRoadmaps]);
+    // Only load roadmaps once when component mounts or when language changes
+    // Using a ref to track if we've already loaded data for this language
+    if (!dataLoaded.current || lastLanguageRef.current !== settings.selectedLanguage) {
+      loadUserRoadmaps(settings.selectedLanguage);
+      lastLanguageRef.current = settings.selectedLanguage;
+      dataLoaded.current = true;
+    }
+    
+    // Cleanup function to prevent state updates after unmounting
+    return () => {
+      // No polling cleanup needed since we're not polling anymore
+    };
+  }, [settings.selectedLanguage, loadUserRoadmaps]);
+  
+  // Track the last language we loaded data for
+  const lastLanguageRef = useRef(settings.selectedLanguage);
 
   const handleStartLearning = async () => {
     try {
+      if (!selectedLevel) {
+        toast({
+          title: "Level selection required",
+          description: "Please select a proficiency level to continue.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       await initializeUserRoadmap(selectedLevel, settings.selectedLanguage);
       toast({
         title: "Learning path started",
@@ -77,11 +99,13 @@ const RoadmapSelection: React.FC = () => {
   };
 
   // Get available levels for the current language
-  const availableLevels = Array.from(new Set(
-    roadmaps
-      .filter(roadmap => roadmap.languages?.includes(settings.selectedLanguage))
-      .map(roadmap => roadmap.level)
-  )).sort() as LanguageLevel[];
+  const availableLevels = React.useMemo(() => {
+    return Array.from(new Set(
+      roadmaps
+        .filter(roadmap => roadmap.languages?.includes(settings.selectedLanguage))
+        .map(roadmap => roadmap.level)
+    )).sort() as LanguageLevel[];
+  }, [roadmaps, settings.selectedLanguage]);
 
   const getCapitalizedLanguage = (lang: string) => {
     return lang.charAt(0).toUpperCase() + lang.slice(1);
@@ -96,13 +120,24 @@ const RoadmapSelection: React.FC = () => {
     }
   }, [availableLevels, selectedLevel]);
 
+  // Prevent unnecessary rerender cycles
+  const isLanguageAvailable = React.useMemo(() => {
+    return languageAvailability[settings.selectedLanguage] !== false;
+  }, [languageAvailability, settings.selectedLanguage]);
+
   return (
     <ErrorBoundary>
       <Card>
         <CardContent className="space-y-4 pt-6">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold">Start a New Learning Path</h2>
-            <RefreshButton onRefresh={() => refreshData(settings.selectedLanguage)} isLoading={isLoading} />
+            <RefreshButton 
+              onRefresh={() => {
+                dataLoaded.current = false; // Reset the ref so we can reload data
+                refreshData(settings.selectedLanguage);
+              }} 
+              isLoading={isLoading} 
+            />
           </div>
           
           <p className="text-muted-foreground">
@@ -175,7 +210,7 @@ const RoadmapSelection: React.FC = () => {
 
           {availableLevels.length === 0 && !isLoading && (
             <p className="text-sm text-muted-foreground text-center">
-              {languageAvailability[settings.selectedLanguage] === false ? 
+              {!isLanguageAvailable ? 
                 `No learning paths available for ${getCapitalizedLanguage(settings.selectedLanguage)}. Try a different language.` : 
                 `Loading available learning paths...`}
             </p>
