@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -107,15 +106,18 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setIsLoading(true);
     try {
       const paths = await getUserCurriculumPaths(language);
-      setUserCurriculumPaths(paths);
+      
+      // Make sure we only set UserCurriculumPath objects, not strings
+      const typedPaths = paths.filter(path => typeof path !== 'string') as UserCurriculumPath[];
+      setUserCurriculumPaths(typedPaths);
       
       // If we have paths and no current path, set the first one as current
-      if (paths.length > 0 && !currentCurriculumPath) {
-        setCurrentCurriculumPath(paths[0]);
+      if (typedPaths.length > 0 && !currentCurriculumPath) {
+        setCurrentCurriculumPath(typedPaths[0]);
       }
       
       setIsLoading(false);
-      return paths;
+      return typedPaths;
     } catch (error) {
       console.error('Error loading user curriculum paths:', error);
       setIsLoading(false);

@@ -157,7 +157,7 @@ export async function getCurriculumProgress(pathId: string): Promise<CurriculumP
 /**
  * Initialize a curriculum path for the current user
  */
-export async function initializeUserCurriculumPath(level: LanguageLevel, language: Language): Promise<string | null> {
+export async function initializeUserCurriculumPath(level: LanguageLevel, language: Language): Promise<string> {
   try {
     // First check if a path exists for this level and language
     const { data: pathData, error: pathError } = await supabase
@@ -172,7 +172,7 @@ export async function initializeUserCurriculumPath(level: LanguageLevel, languag
 
     if (!matchingPath) {
       console.error("No curriculum path found for level:", level, "and language:", language);
-      return null;
+      return "";
     }
 
     // Check if user already has this path
@@ -191,7 +191,7 @@ export async function initializeUserCurriculumPath(level: LanguageLevel, languag
       return userPaths[0].id;
     }
 
-    // Create a new user curriculum path
+    // Create a new user curriculum path using rpc function or direct insert
     const { data: newPath, error: createError } = await supabase
       .from('user_roadmaps')
       .insert({
@@ -228,7 +228,7 @@ export async function initializeUserCurriculumPath(level: LanguageLevel, languag
     return newPath.id;
   } catch (error) {
     console.error("Error initializing user curriculum path:", error);
-    return null;
+    return "";
   }
 }
 
@@ -269,37 +269,35 @@ export const markNodeAsCompleted = async (
   curriculumPathId: string
 ): Promise<void> => {
   try {
+    // Use RPC function to mark node as completed
     const { error } = await supabase
+      .rpc('increment_node_completion', {
+        user_id_param: userId,
+        node_id_param: nodeId,
+        language_param: 'english', // Fallback
+        roadmap_id_param: curriculumPathId
+      });
+
+    if (error) {
+      console.error('Error marking node as completed:', error);
+      throw error;
+    }
+
+    // Also update the roadmap_progress table using rpc or direct operation
+    const { error: progressError } = await supabase
       .from('roadmap_progress')
-      .insert({
+      .upsert({
         user_id: userId,
         node_id: nodeId,
         roadmap_id: curriculumPathId,
         completed: true,
         completed_at: new Date().toISOString()
-      });
-
-    if (error) {
-      // If it's a duplicate entry, try to update instead
-      if (error.code === '23505') { // Unique violation
-        const { error: updateError } = await supabase
-          .from('roadmap_progress')
-          .update({
-            completed: true,
-            completed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId)
-          .eq('node_id', nodeId);
-          
-        if (updateError) {
-          console.error('Error updating roadmap progress:', updateError);
-          throw updateError;
-        }
-      } else {
-        console.error('Error marking node as completed:', error);
-        throw error;
-      }
+      })
+      .select();
+      
+    if (progressError) {
+      console.error('Error updating roadmap progress:', progressError);
+      throw progressError;
     }
   } catch (error) {
     console.error('Error marking node as completed:', error);
@@ -315,28 +313,46 @@ export const resetProgress = async (
   curriculumPathId: string
 ): Promise<void> => {
   try {
-    // Delete from roadmap_progress
+    // Delete from roadmap_progress using rpc or direct operation
     const { error: deleteProgressError } = await supabase
-      .from('roadmap_progress')
-      .delete()
-      .eq('user_id', userId)
-      .eq('roadmap_id', curriculumPathId);
+      .rpc('reset_roadmap_progress', {
+        user_id_param: userId,
+        roadmap_id_param: curriculumPathId
+      });
       
     if (deleteProgressError) {
-      console.error('Error deleting roadmap progress:', deleteProgressError);
-      throw deleteProgressError;
+      // Fallback to direct delete
+      const { error: directDeleteError } = await supabase
+        .from('roadmap_progress')
+        .delete()
+        .eq('user_id', userId)
+        .eq('roadmap_id', curriculumPathId);
+        
+      if (directDeleteError) {
+        console.error('Error deleting roadmap progress:', directDeleteError);
+        throw directDeleteError;
+      }
     }
     
-    // Delete from roadmap_nodes_progress
+    // Also delete from roadmap_nodes_progress
     const { error: deleteNodeProgressError } = await supabase
-      .from('roadmap_nodes_progress')
-      .delete()
-      .eq('user_id', userId)
-      .eq('roadmap_id', curriculumPathId);
+      .rpc('reset_roadmap_nodes_progress', {
+        user_id_param: userId,
+        roadmap_id_param: curriculumPathId
+      });
       
     if (deleteNodeProgressError) {
-      console.error('Error deleting node progress:', deleteNodeProgressError);
-      throw deleteNodeProgressError;
+      // Fallback to direct delete
+      const { error: directDeleteNodeError } = await supabase
+        .from('roadmap_nodes_progress')
+        .delete()
+        .eq('user_id', userId)
+        .eq('roadmap_id', curriculumPathId);
+        
+      if (directDeleteNodeError) {
+        console.error('Error deleting node progress:', directDeleteNodeError);
+        throw directDeleteNodeError;
+      }
     }
   } catch (error) {
     console.error('Error resetting progress:', error);

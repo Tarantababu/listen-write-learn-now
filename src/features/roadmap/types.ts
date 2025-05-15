@@ -20,8 +20,8 @@ export interface UserRoadmap {
   userId: string;
   roadmapId: string;
   language: Language;
-  name?: string; // Added to match expected fields
-  level?: LanguageLevel; // Added to match expected fields
+  name: string; // Changed from optional to required
+  level: LanguageLevel; // Changed from optional to required
   description?: string;
   languages?: Language[]; // Added to match expected fields
   currentNodeId?: string;

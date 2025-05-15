@@ -2,7 +2,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult, UserRoadmap } from '../types';
 import { Language, LanguageLevel } from '@/types';
-import { asUUID, asFilterParam } from '@/lib/utils';
 
 class RoadmapService {
   /**
@@ -17,7 +16,7 @@ class RoadmapService {
         
       if (error) throw error;
       
-      return data.map((item: any): RoadmapItem => ({
+      return (data || []).map((item: any): RoadmapItem => ({
         id: item.id,
         name: item.name,
         level: item.level as LanguageLevel,
@@ -54,9 +53,9 @@ class RoadmapService {
         currentNodeId: item.current_node_id,
         createdAt: new Date(item.created_at),
         updatedAt: new Date(item.updated_at),
-        // Optional fields to match RoadmapItem
-        name: "Learning Path", // Placeholder
-        level: "A1" as LanguageLevel, // Placeholder
+        name: "Learning Path", // Required field
+        level: "A1" as LanguageLevel, // Required field
+        languages: [] // Required field
       }));
     } catch (error) {
       console.error('Error getting user roadmaps:', error);

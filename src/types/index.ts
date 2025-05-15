@@ -1,4 +1,3 @@
-
 export type Language = 
   | 'english' 
   | 'german' 
@@ -238,7 +237,7 @@ export interface RoadmapContextType {
   // Methods
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
   loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
-  loadUserRoadmaps: () => Promise<UserRoadmap[]>;
+  loadUserRoadmaps: (language?: Language) => Promise<UserRoadmap[]>;
   completeNode: (nodeId: string) => Promise<{ nextNodeId?: string }>;
   resetProgress: (roadmapId: string) => Promise<void>;
   getNodeExercise: (nodeId: string) => Promise<any>;

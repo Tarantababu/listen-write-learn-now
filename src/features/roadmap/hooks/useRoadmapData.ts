@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '../services/RoadmapService';
 import { RoadmapItem, RoadmapNode, UserRoadmap, ExerciseContent, NodeCompletionResult } from '../types';
@@ -10,7 +9,7 @@ export function useRoadmapData() {
   const [isLoading, setIsLoading] = useState(false);
   const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
   const [userRoadmaps, setUserRoadmaps] = useState<UserRoadmap[]>([]);
-  const [selectedRoadmap, setSelectedRoadmap] = useState<UserRoadmap | null>(null);
+  const [selectedRoadmap, setSelectedRoadmap] = useState<RoadmapItem | null>(null);
   const [nodes, setNodes] = useState<RoadmapNode[]>([]);
   const loadingRef = useRef<{[key: string]: boolean}>({});
   
@@ -41,35 +40,44 @@ export function useRoadmapData() {
     }
   }, []);
   
-  // Load user's roadmaps for a language
+  // Load user's roadmaps for the selected language
   const loadUserRoadmaps = useCallback(async (language: Language) => {
-    // Prevent duplicate fetches for the same language
-    const cacheKey = `user_roadmaps_${language}`;
-    if (loadingRef.current[cacheKey]) {
-      return [];
-    }
-    
-    loadingRef.current[cacheKey] = true;
     setIsLoading(true);
-    
     try {
-      const userRoadmapsData = await roadmapService.getUserRoadmaps(language);
-      // Make sure to convert user roadmaps to the right type
-      setUserRoadmaps(userRoadmapsData);
-      return userRoadmapsData;
+      const roadmapsList = await roadmapService.getUserRoadmaps(language);
+      setUserRoadmaps(roadmapsList);
+      
+      if (roadmapsList.length > 0 && !selectedRoadmap) {
+        // Convert UserRoadmap to RoadmapItem for compatibility
+        const firstRoadmap: RoadmapItem = {
+          id: roadmapsList[0].id,
+          name: roadmapsList[0].name,
+          level: roadmapsList[0].level,
+          description: roadmapsList[0].description,
+          languages: roadmapsList[0].languages || [],
+          createdAt: roadmapsList[0].createdAt,
+          updatedAt: roadmapsList[0].updatedAt,
+          userId: roadmapsList[0].userId,
+          roadmapId: roadmapsList[0].roadmapId,
+          language: roadmapsList[0].language,
+          currentNodeId: roadmapsList[0].currentNodeId
+        };
+        setSelectedRoadmap(firstRoadmap);
+      }
+      
+      return roadmapsList;
     } catch (error) {
       console.error('Error loading user roadmaps:', error);
       toast({
         variant: "destructive",
-        title: "Failed to load your roadmaps",
+        title: "Failed to load roadmaps",
         description: "There was an error loading your roadmaps."
       });
       return [];
     } finally {
       setIsLoading(false);
-      loadingRef.current[cacheKey] = false;
     }
-  }, []);
+  }, [selectedRoadmap]);
   
   // Initialize a new roadmap for the user
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
@@ -190,6 +198,28 @@ export function useRoadmapData() {
     }
   }, [selectedRoadmap, selectRoadmap]);
   
+  // Complete a node with a specific accuracy
+  const markNodeWithAccuracy = useCallback(async (nodeId: string, accuracy: number) => {
+    setIsLoading(true);
+    try {
+      const result = await roadmapService.markNodeAsCompleted(nodeId);
+      // ... handle result
+      toast({
+        title: "Progress saved!",
+        description: `You completed this node with ${Math.round(accuracy)}% accuracy.`
+      });
+    } catch (error) {
+      console.error('Error marking node with accuracy:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to save progress",
+        description: "There was an error saving your progress."
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+  
   // Helper derived values
   const currentNodeId = selectedRoadmap?.currentNodeId;
   const currentNode = nodes.find(n => n.id === currentNodeId) || null;
@@ -213,5 +243,6 @@ export function useRoadmapData() {
     getNodeExercise,
     recordNodeCompletion,
     markNodeAsCompleted,
+    markNodeWithAccuracy,
   };
 }
