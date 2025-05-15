@@ -107,7 +107,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       toast({
         title: "Great job!",
         description: `${result.accuracy}% accuracy!`,
-        variant: "default"
+        variant: "success"
       });
     } else if (result.accuracy >= 70) {
       toast({

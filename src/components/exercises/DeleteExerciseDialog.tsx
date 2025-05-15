@@ -25,10 +25,10 @@ const DeleteExerciseDialog: React.FC<DeleteExerciseDialogProps> = ({
 }) => {
   const handleConfirm = () => {
     onConfirm();
-    // Use concise success message but with default variant
+    // Use concise success message
     toast({
       title: "Exercise archived",
-      variant: "default",
+      variant: "success",
     });
   };
 

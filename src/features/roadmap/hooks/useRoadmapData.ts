@@ -1,128 +1,23 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { roadmapService } from '../services/RoadmapService';
-import { RoadmapItem, RoadmapNode, UserRoadmap, ExerciseContent, NodeCompletionResult } from '../types';
+import { roadmapService } from '../api/roadmapService';
+import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
 import { Language, LanguageLevel } from '@/types';
 import { toast } from '@/components/ui/use-toast';
-import { asUUID, asFilterParam } from '@/lib/utils/supabaseHelpers';
-import { isAnyPopupOpen } from '@/utils/popupStateManager';
-import { apiCache } from '@/utils/apiCache';
-
-// Constants for data refresh management
-const DATA_REFRESH_INTERVAL = 60000; // 1 minute interval for data refresh
-const MAX_REFRESH_INTERVAL = 300000; // 5 minutes maximum interval with backoff
-const BACKOFF_MULTIPLIER = 2; // Exponential backoff multiplier
 
 export function useRoadmapData() {
   const [isLoading, setIsLoading] = useState(false);
   const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
-  const [userRoadmaps, setUserRoadmaps] = useState<UserRoadmap[]>([]);
+  const [userRoadmaps, setUserRoadmaps] = useState<RoadmapItem[]>([]);
   const [selectedRoadmap, setSelectedRoadmap] = useState<RoadmapItem | null>(null);
   const [nodes, setNodes] = useState<RoadmapNode[]>([]);
-  const [refreshInterval, setRefreshInterval] = useState(DATA_REFRESH_INTERVAL);
-  const [lastActivity, setLastActivity] = useState(Date.now());
-  const [languageAvailability, setLanguageAvailability] = useState<Record<string, boolean>>({});
-  
-  // Use refs to prevent unnecessary renders and track loading states
   const loadingRef = useRef<{[key: string]: boolean}>({});
-  const initialLoadedRef = useRef<{[key: string]: boolean}>({});
-  const timerRef = useRef<number | null>(null);
-  const isRoadmapPageActive = useRef<boolean>(false);
-  
-  // Track user activity to implement exponential backoff
-  const trackActivity = useCallback(() => {
-    setLastActivity(Date.now());
-    setRefreshInterval(DATA_REFRESH_INTERVAL); // Reset interval on activity
-  }, []);
-  
-  // Track if we're on the roadmap page
-  const setRoadmapPageActive = useCallback((active: boolean) => {
-    isRoadmapPageActive.current = active;
-    
-    // Clear any existing timers when changing page
-    if (timerRef.current) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-  
-  useEffect(() => {
-    // Setup activity tracking
-    window.addEventListener('click', trackActivity);
-    window.addEventListener('keydown', trackActivity);
-    window.addEventListener('mousemove', trackActivity);
-    
-    return () => {
-      window.removeEventListener('click', trackActivity);
-      window.removeEventListener('keydown', trackActivity);
-      window.removeEventListener('mousemove', trackActivity);
-      
-      // Clear any timers on unmount
-      if (timerRef.current) {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, [trackActivity]);
-  
-  // Error state management
-  const [errorState, setErrorState] = useState<{
-    hasError: boolean;
-    message: string;
-    suggestedLanguage?: string;
-  }>({
-    hasError: false,
-    message: ''
-  });
-  
-  const clearErrorState = useCallback(() => {
-    setErrorState({
-      hasError: false,
-      message: ''
-    });
-  }, []);
-  
-  // Try alternate language when primary language is not available
-  const tryAlternateLanguage = useCallback(async (level: LanguageLevel, originalLanguage: Language) => {
-    try {
-      // Use English as fallback language
-      const fallbackLanguage = 'english' as Language;
-      
-      // Initialize roadmap with fallback language
-      await initializeRoadmap(level, fallbackLanguage);
-      
-      // Update language availability record
-      setLanguageAvailability(prev => ({
-        ...prev,
-        [originalLanguage]: false,
-        [fallbackLanguage]: true
-      }));
-      
-      return true;
-    } catch (error) {
-      console.error('Error trying alternate language:', error);
-      throw error;
-    }
-  }, []);
   
   // Load all roadmaps available for a language
   const loadRoadmaps = useCallback(async (language: Language) => {
-    // Don't fetch if we're not on the roadmap page
-    if (!isRoadmapPageActive.current) {
-      return;
-    }
-    
     // Prevent duplicate fetches for the same language
     const cacheKey = `roadmaps_${language}`;
     if (loadingRef.current[cacheKey]) {
-      return;
-    }
-    
-    // If we've already loaded this data and have results, don't fetch again
-    if (initialLoadedRef.current[cacheKey] && roadmaps.length > 0) {
-      return;
-    }
-    
-    // Don't fetch if any popup is open
-    if (isAnyPopupOpen()) {
       return;
     }
     
@@ -130,57 +25,24 @@ export function useRoadmapData() {
     setIsLoading(true);
     
     try {
-      // Use API cache to prevent redundant calls
-      const roadmapsData = await apiCache.get(
-        cacheKey,
-        () => roadmapService.getRoadmapsForLanguage(language),
-        { ttl: 300000 } // 5 minutes TTL for roadmap data
-      );
-      
-      // Only update state if we're still active
-      if (isRoadmapPageActive.current) {
-        setRoadmaps(roadmapsData);
-      }
-      
-      initialLoadedRef.current[cacheKey] = true;
-      
-      // Update language availability based on roadmap data
-      if (roadmapsData.length === 0) {
-        setLanguageAvailability(prev => ({
-          ...prev,
-          [language]: false
-        }));
-      } else {
-        setLanguageAvailability(prev => ({
-          ...prev,
-          [language]: true
-        }));
-      }
+      const roadmapsData = await roadmapService.getRoadmapsForLanguage(language);
+      setRoadmaps(roadmapsData);
     } catch (error) {
       console.error('Error loading roadmaps:', error);
-      
-      // Only show toast if we're still active
-      if (isRoadmapPageActive.current) {
-        toast({
-          variant: "destructive",
-          title: "Failed to load roadmaps",
-          description: "There was an error loading available roadmaps."
-        });
-      }
-      
-      setLanguageAvailability(prev => ({
-        ...prev,
-        [language]: false
-      }));
+      toast({
+        variant: "destructive",
+        title: "Failed to load roadmaps",
+        description: "There was an error loading available roadmaps."
+      });
     } finally {
       setIsLoading(false);
       loadingRef.current[cacheKey] = false;
     }
-  }, [roadmaps.length]);
+  }, []);
   
-  // Load user's roadmaps for the selected language
+  // Load user's roadmaps for a language
   const loadUserRoadmaps = useCallback(async (language: Language) => {
-    // Add cache key for user roadmaps
+    // Prevent duplicate fetches for the same language
     const cacheKey = `user_roadmaps_${language}`;
     if (loadingRef.current[cacheKey]) {
       return [];
@@ -190,34 +52,14 @@ export function useRoadmapData() {
     setIsLoading(true);
     
     try {
-      const roadmapsList = await roadmapService.getUserRoadmaps(language);
-      setUserRoadmaps(roadmapsList);
-      
-      if (roadmapsList.length > 0 && !selectedRoadmap) {
-        // Convert UserRoadmap to RoadmapItem for compatibility
-        const firstRoadmap: RoadmapItem = {
-          id: roadmapsList[0].id,
-          name: roadmapsList[0].name,
-          level: roadmapsList[0].level,
-          description: roadmapsList[0].description,
-          languages: roadmapsList[0].languages, // Now languages is required in UserRoadmap
-          createdAt: roadmapsList[0].createdAt,
-          updatedAt: roadmapsList[0].updatedAt,
-          userId: roadmapsList[0].userId,
-          roadmapId: roadmapsList[0].roadmapId,
-          language: roadmapsList[0].language,
-          currentNodeId: roadmapsList[0].currentNodeId
-        };
-        setSelectedRoadmap(firstRoadmap);
-      }
-      
-      initialLoadedRef.current[cacheKey] = true;
-      return roadmapsList;
+      const userRoadmapsData = await roadmapService.getUserRoadmaps(language);
+      setUserRoadmaps(userRoadmapsData);
+      return userRoadmapsData;
     } catch (error) {
       console.error('Error loading user roadmaps:', error);
       toast({
         variant: "destructive",
-        title: "Failed to load roadmaps",
+        title: "Failed to load your roadmaps",
         description: "There was an error loading your roadmaps."
       });
       return [];
@@ -225,19 +67,43 @@ export function useRoadmapData() {
       setIsLoading(false);
       loadingRef.current[cacheKey] = false;
     }
-  }, [selectedRoadmap]);
+  }, []);
   
-  // Select and load a specific roadmap (moved before initializeRoadmap)
+  // Initialize a new roadmap for the user
+  const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
+    setIsLoading(true);
+    try {
+      const roadmapId = await roadmapService.initializeRoadmap(level, language);
+      
+      // Reload user roadmaps to include the new one
+      const updatedRoadmaps = await loadUserRoadmaps(language);
+      
+      // Select the newly created roadmap
+      const newRoadmap = updatedRoadmaps.find(r => r.id === roadmapId);
+      if (newRoadmap) {
+        await selectRoadmap(newRoadmap.id);
+      }
+      
+      return roadmapId;
+    } catch (error) {
+      console.error('Error initializing roadmap:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to create roadmap",
+        description: "There was an error creating your roadmap."
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadUserRoadmaps]);
+  
+  // Select and load a specific roadmap
   const selectRoadmap = useCallback(async (roadmapId: string) => {
     // Prevent duplicate selects for the same roadmap
     const cacheKey = `select_roadmap_${roadmapId}`;
     if (loadingRef.current[cacheKey]) {
       return [];
-    }
-    
-    // Don't re-fetch if we've already selected this roadmap
-    if (selectedRoadmap?.id === roadmapId && nodes.length > 0) {
-      return nodes;
     }
     
     loadingRef.current[cacheKey] = true;
@@ -269,57 +135,12 @@ export function useRoadmapData() {
       setIsLoading(false);
       loadingRef.current[cacheKey] = false;
     }
-  }, [userRoadmaps, selectedRoadmap, nodes.length]);
-  
-  // Initialize a new roadmap for the user
-  const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
-    if (loadingRef.current['initialize']) {
-      return '';
-    }
-    
-    loadingRef.current['initialize'] = true;
-    setIsLoading(true);
-    
-    try {
-      // Explicitly call the service with the user's authentication to ensure roadmap is linked to this user
-      const roadmapId = await roadmapService.initializeRoadmap(level, language);
-      
-      // Reload user roadmaps to include the new one
-      const updatedRoadmaps = await loadUserRoadmaps(language);
-      
-      // Select the newly created roadmap
-      const newRoadmap = updatedRoadmaps.find(r => r.id === roadmapId);
-      if (newRoadmap) {
-        await selectRoadmap(newRoadmap.id);
-      }
-      
-      return roadmapId;
-    } catch (error) {
-      console.error('Error initializing roadmap:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to create roadmap",
-        description: "There was an error creating your roadmap."
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
-      loadingRef.current['initialize'] = false;
-    }
-  }, [loadUserRoadmaps, selectRoadmap]);
+  }, [userRoadmaps]);
   
   // Get exercise content for a node
   const getNodeExercise = useCallback(async (nodeId: string) => {
-    const cacheKey = `exercise_${nodeId}`;
-    if (loadingRef.current[cacheKey]) {
-      return null;
-    }
-    
-    loadingRef.current[cacheKey] = true;
-    
     try {
-      const result = await roadmapService.getNodeExerciseContent(nodeId);
-      return result;
+      return await roadmapService.getNodeExerciseContent(nodeId);
     } catch (error) {
       console.error('Error getting node exercise:', error);
       toast({
@@ -328,22 +149,13 @@ export function useRoadmapData() {
         description: "There was an error loading the exercise content."
       });
       return null;
-    } finally {
-      loadingRef.current[cacheKey] = false;
     }
   }, []);
   
   // Record completion with accuracy score
   const recordNodeCompletion = useCallback(async (nodeId: string, accuracy: number): Promise<NodeCompletionResult> => {
-    if (loadingRef.current[`complete_${nodeId}`]) {
-      return { isCompleted: false, completionCount: 0 };
-    }
-    
-    loadingRef.current[`complete_${nodeId}`] = true;
-    
     try {
-      const result = await roadmapService.recordNodeCompletion(nodeId, accuracy);
-      return result;
+      return await roadmapService.recordNodeCompletion(nodeId, accuracy);
     } catch (error) {
       console.error('Error recording node completion:', error);
       toast({
@@ -352,21 +164,13 @@ export function useRoadmapData() {
         description: "There was an error saving your progress."
       });
       throw error;
-    } finally {
-      loadingRef.current[`complete_${nodeId}`] = false;
     }
   }, []);
   
   // Mark a node as completed
   const markNodeAsCompleted = useCallback(async (nodeId: string) => {
-    if (loadingRef.current[`mark_complete_${nodeId}`]) {
-      return;
-    }
-    
-    loadingRef.current[`mark_complete_${nodeId}`] = true;
-    
     try {
-      await roadmapService.markNodeAsCompleted(nodeId);
+      await roadmapService.markNodeCompleted(nodeId);
       
       // Refresh nodes after completion
       if (selectedRoadmap) {
@@ -380,79 +184,8 @@ export function useRoadmapData() {
         description: "There was an error marking the lesson as completed."
       });
       throw error;
-    } finally {
-      loadingRef.current[`mark_complete_${nodeId}`] = false;
     }
   }, [selectedRoadmap, selectRoadmap]);
-  
-  // Complete a node with a specific accuracy
-  const markNodeWithAccuracy = useCallback(async (nodeId: string, accuracy: number) => {
-    if (loadingRef.current[`mark_accuracy_${nodeId}`]) {
-      return;
-    }
-    
-    loadingRef.current[`mark_accuracy_${nodeId}`] = true;
-    setIsLoading(true);
-    
-    try {
-      const result = await roadmapService.markNodeAsCompleted(nodeId);
-      // ... handle result
-      toast({
-        title: "Progress saved!",
-        description: `You completed this node with ${Math.round(accuracy)}% accuracy.`
-      });
-    } catch (error) {
-      console.error('Error marking node with accuracy:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to save progress",
-        description: "There was an error saving your progress."
-      });
-    } finally {
-      setIsLoading(false);
-      loadingRef.current[`mark_accuracy_${nodeId}`] = false;
-    }
-  }, []);
-  
-  // Manual refresh function for user-triggered data refresh
-  const refreshData = useCallback(async (language?: Language) => {
-    if (isLoading) return;
-    
-    setIsLoading(true);
-    
-    try {
-      trackActivity(); // Track this as user activity
-      
-      // Refresh roadmaps if we have a language
-      if (language) {
-        await loadRoadmaps(language);
-      }
-      
-      // Refresh user roadmaps
-      if (language) {
-        await loadUserRoadmaps(language);
-      }
-      
-      // Refresh selected roadmap's nodes
-      if (selectedRoadmap) {
-        await selectRoadmap(selectedRoadmap.id);
-      }
-      
-      toast({
-        title: "Data refreshed",
-        description: "Your data has been successfully refreshed."
-      });
-    } catch (error) {
-      console.error('Error refreshing data:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to refresh data",
-        description: "There was an error refreshing your data."
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isLoading, loadRoadmaps, loadUserRoadmaps, selectRoadmap, selectedRoadmap, trackActivity]);
   
   // Helper derived values
   const currentNodeId = selectedRoadmap?.currentNodeId;
@@ -460,55 +193,12 @@ export function useRoadmapData() {
   const completedNodes = nodes.filter(n => n.status === 'completed').map(n => n.id);
   const availableNodes = nodes.filter(n => n.status === 'available').map(n => n.id);
   
-  // Implement smart polling with backoff
-  useEffect(() => {
-    // Only set up polling if we have a selectedRoadmap
-    if (!selectedRoadmap) return;
-    
-    // Clear any existing timer
-    if (timerRef.current) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    
-    // Calculate backoff based on inactivity
-    const inactiveTime = Date.now() - lastActivity;
-    let currentInterval = refreshInterval;
-    
-    // Implement exponential backoff if user has been inactive
-    if (inactiveTime > DATA_REFRESH_INTERVAL) {
-      currentInterval = Math.min(
-        refreshInterval * BACKOFF_MULTIPLIER, 
-        MAX_REFRESH_INTERVAL
-      );
-      setRefreshInterval(currentInterval);
-    }
-    
-    // Set the timer for the next refresh
-    const timerId = window.setTimeout(() => {
-      // Only refresh if we're not already loading something
-      if (!isLoading && selectedRoadmap?.language) {
-        // Check for updates to the currently selected roadmap
-        selectRoadmap(selectedRoadmap.id).catch(console.error);
-      }
-    }, currentInterval);
-    
-    timerRef.current = timerId;
-    
-    return () => {
-      if (timerRef.current) {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, [selectedRoadmap, refreshInterval, lastActivity, isLoading]);
-  
   return {
     isLoading,
     roadmaps,
     userRoadmaps,
     selectedRoadmap,
     nodes,
-    languageAvailability,
     currentNodeId,
     currentNode,
     completedNodes,
@@ -520,8 +210,5 @@ export function useRoadmapData() {
     getNodeExercise,
     recordNodeCompletion,
     markNodeAsCompleted,
-    markNodeWithAccuracy,
-    refreshData,
-    setRoadmapPageActive, // Add the missing function to the returned object
   };
 }

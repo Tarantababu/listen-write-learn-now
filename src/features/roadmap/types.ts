@@ -1,50 +1,42 @@
 
 import { Language, LanguageLevel } from '@/types';
 
+// Core roadmap types
 export interface RoadmapItem {
   id: string;
   name: string;
   level: LanguageLevel;
   description?: string;
-  languages: Language[];
+  languages?: Language[];
   createdAt: Date;
   updatedAt: Date;
-  roadmapId?: string;
-  currentNodeId?: string;
-  language?: Language;
-  userId?: string;
   createdBy?: string;
-}
-
-export interface UserRoadmap {
-  id: string;
-  userId: string;
-  roadmapId: string;
-  language: Language;
-  name: string;
-  level: LanguageLevel;
-  description?: string;
-  languages: Language[]; // Changed from optional to required to match RoadmapItem
+  
+  // User-specific properties when this is a user roadmap
   currentNodeId?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  progress?: number;
+  language?: Language; 
+  roadmapId?: string; // Add this for user roadmaps that reference parent roadmap
 }
 
 export interface RoadmapNode {
   id: string;
   roadmapId: string;
   title: string;
-  description: string;
+  description?: string;
   position: number;
   isBonus: boolean;
   defaultExerciseId?: string;
   language?: Language;
   createdAt: Date;
   updatedAt: Date;
+  
+  // UI state properties
   status?: 'locked' | 'available' | 'completed' | 'current';
-  progressCount?: number;
+  progressCount?: number; // Add this for tracking node progress count
 }
 
+// API response for node exercise content
 export interface ExerciseContent {
   id: string;
   title: string;
@@ -54,37 +46,10 @@ export interface ExerciseContent {
   tags?: string[];
 }
 
+// Result of node completion
 export interface NodeCompletionResult {
   isCompleted: boolean;
   completionCount: number;
   nextNodeId?: string;
-}
-
-export interface ServiceResponse<T> {
-  data: T;
-  error: Error | null;
-}
-
-export interface RoadmapNodeProgress {
-  id: string;
-  userId: string;
-  roadmapId: string;
-  nodeId: string;
-  language: Language;
-  completionCount: number;
-  isCompleted: boolean;
-  lastPracticedAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface RoadmapProgress {
-  id: string;
-  userId: string;
-  roadmapId: string;
-  nodeId: string;
-  completed: boolean;
-  completedAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  unlockedNodeIds?: string[];
 }

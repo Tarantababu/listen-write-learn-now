@@ -1,17 +1,16 @@
 
 import { useContext } from 'react';
-import { RoadmapContext } from '@/contexts/RoadmapContext';
-import { RoadmapContextType } from '@/types';
+import { RoadmapContext } from '@/features/roadmap/context/RoadmapContext';
 
-export function useRoadmap(): RoadmapContextType {
+/**
+ * Custom hook to access the roadmap context
+ */
+export const useRoadmap = () => {
   const context = useContext(RoadmapContext);
   
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useRoadmap must be used within a RoadmapProvider');
   }
   
-  // Type assertion to match the expected RoadmapContextType from @/types
-  return context as unknown as RoadmapContextType;
-}
-
-export default useRoadmap;
+  return context;
+};

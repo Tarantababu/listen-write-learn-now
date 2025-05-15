@@ -22,12 +22,11 @@ import {
   Settings, 
   CreditCard,
   Crown,
-  Layout,
+  LayoutDashboard,
   Book,
   Shield,
   HelpCircle,
-  Map,
-  LayoutDashboard
+  Map
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getLanguageFlag } from '@/utils/languageUtils';
@@ -71,39 +70,6 @@ const Header: React.FC = () => {
       toast.error('Failed to switch language');
     }
   };
-
-  const navigationItems = [
-    {
-      name: 'Home',
-      href: '/dashboard',
-      icon: <Layout className="h-4 w-4 mr-2" />,
-      requiresAuth: true
-    },
-    {
-      name: 'Exercises',
-      href: '/dashboard/exercises',
-      icon: <Book className="h-4 w-4 mr-2" />,
-      requiresAuth: true
-    },
-    {
-      name: 'Curriculum',
-      href: '/dashboard/curriculum',
-      icon: <BookOpen className="h-4 w-4 mr-2" />,
-      requiresAuth: true
-    },
-    {
-      name: 'Vocabulary',
-      href: '/dashboard/vocabulary',
-      icon: <BookOpen className="h-4 w-4 mr-2" />,
-      requiresAuth: true
-    },
-    {
-      name: 'Settings',
-      href: '/dashboard/settings',
-      icon: <Settings className="h-4 w-4 mr-2" />,
-      requiresAuth: true
-    }
-  ];
 
   return (
     <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur">

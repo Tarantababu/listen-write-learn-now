@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useRoadmap } from '@/hooks/use-roadmap';
+import { useRoadmap } from '@/contexts/RoadmapContext';
 import { RoadmapNode } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,8 +28,9 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     markNodeAsCompleted, 
     getNodeExercise, 
     nodeLoading, 
-    completedNodes,
-    incrementNodeCompletion
+    completedNodes, 
+    incrementNodeCompletion,
+    nodeProgress 
   } = useRoadmap();
   
   const [exercise, setExercise] = useState<any>(null);
@@ -117,8 +118,13 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     }
   };
 
-  // Get completion information
-  const isNodeCompleted = node ? completedNodes.includes(node.id) : false;
+  // Get the completion count for this node (if it exists)
+  const nodeCompletionInfo = node ? 
+    nodeProgress.find(np => np.nodeId === node.id) : 
+    null;
+  
+  const completionCount = nodeCompletionInfo?.completionCount || 0;
+  const isNodeCompleted = node ? completedNodes.includes(node.id) || nodeCompletionInfo?.isCompleted : false;
 
   if (!node) {
     return null;

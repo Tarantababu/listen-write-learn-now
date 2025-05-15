@@ -1,37 +1,26 @@
 
-import React, { useCallback, useEffect } from 'react';
+import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import UserStatistics from '@/components/UserStatistics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import SubscriptionBanner from '@/components/SubscriptionBanner';
 import { ExerciseProvider } from '@/contexts/ExerciseContext';
+import { useRoadmap } from '@/features/roadmap/context/RoadmapContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, Loader2 } from 'lucide-react';
+import { Map, ChevronRight, Loader2 } from 'lucide-react';
 import LevelBadge from '@/components/LevelBadge';
 import { useAdmin } from '@/hooks/use-admin';
-import { RefreshButton } from '@/components/RefreshButton';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { useCurriculum } from '@/hooks/use-curriculum';
 
 const HomePage = () => {
   const location = useLocation();
   const { subscription } = useSubscription();
   const { isAdmin } = useAdmin();
-  const { settings } = useUserSettingsContext();
-  const { 
-    currentCurriculumPath,
-    nodes,
-    isLoading,
-    completedNodes,
-    curriculumPaths,
-    loadUserCurriculumPaths,
-    refreshData
-  } = useCurriculum();
+  const { currentRoadmap, currentNodeId, nodes, isLoading, completedNodes, roadmaps } = useRoadmap();
   
-  // React to redirect messages (e.g., access denied) - only on mount
-  useEffect(() => {
+  // React to redirect messages (e.g., access denied)
+  React.useEffect(() => {
     const state = location.state as { accessDenied?: boolean; message?: string };
     if (state?.accessDenied) {
       toast({
@@ -40,18 +29,16 @@ const HomePage = () => {
         description: state.message || "You don't have the required permissions"
       });
       
-      // Clear the location state to prevent showing the toast again on re-renders
       window.history.replaceState({}, document.title);
     }
-  }, []); // Empty dependency array ensures this only runs once
+  }, [location]);
 
-  // Calculate curriculum progress percentage
+  // Calculate roadmap progress percentage
   const progressPercentage = nodes.length > 0 
     ? Math.round((completedNodes.length / nodes.length) * 100)
     : 0;
 
   // Get current node information
-  const currentNodeId = currentCurriculumPath?.currentNodeId;
   const currentNode = currentNodeId 
     ? nodes.find(node => node.id === currentNodeId)
     : null;
@@ -65,70 +52,61 @@ const HomePage = () => {
     ? nodes.slice(currentIndex + 1, currentIndex + 3)
     : [];
 
-  // Find the curriculum details
-  const curriculum = currentCurriculumPath?.curriculum || null;
+  // Find the roadmap details
+  const roadmapDetails = currentRoadmap 
+    ? roadmaps.find(r => r.id === currentRoadmap.roadmapId) 
+    : null;
+    
+  const roadmapLevel = roadmapDetails?.level;
+  const roadmapName = roadmapDetails?.name;
 
-  // Memoized refresh handler to prevent recreating on every render
-  const handleRefresh = useCallback(() => {
-    refreshData();
-  }, [refreshData]);
-  
-  // Lazy load user curriculum data on mount, but avoid redundant calls
-  useEffect(() => {
-    // This will use the cached data if available
-    if (!isLoading && !currentCurriculumPath && settings.selectedLanguage) {
-      loadUserCurriculumPaths(settings.selectedLanguage);
-    }
-  }, []);
+  // Don't show subscription banner for admins
+  const shouldShowSubscriptionBanner = !subscription.isSubscribed && !isAdmin;
 
   return (
-    <ExerciseProvider>
-      <div className="container pb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold text-center">Dashboard</h1>
-          <RefreshButton onRefresh={handleRefresh} isLoading={isLoading} />
+    <div className="container mx-auto px-4 py-8">
+      {shouldShowSubscriptionBanner && <SubscriptionBanner />}
+      
+      <div className="flex flex-col gap-6">
+        {/* User Statistics */}
+        <div className="w-full">
+          <ExerciseProvider>
+            <UserStatistics />
+          </ExerciseProvider>
         </div>
         
-        {subscription && !subscription.isSubscribed && !isAdmin && (
-          <SubscriptionBanner />
-        )}
-        
-        {/* Curriculum card section */}
-        <div className="mb-8">
-          <Card className="mb-4">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle className="text-xl flex items-center gap-2">
-                    Your Learning Path
-                    {curriculum && curriculum.level && (
-                      <LevelBadge level={curriculum.level} />
-                    )}
-                  </CardTitle>
+        {/* Learning Roadmap Card */}
+        <div className="w-full">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center justify-between">
+                <div className="flex items-center">
+                  <Map className="h-4 w-4 mr-2" />
+                  Learning Roadmap
                 </div>
-              </div>
+                {roadmapLevel && (
+                  <LevelBadge level={roadmapLevel} />
+                )}
+              </CardTitle>
             </CardHeader>
-            
             <CardContent>
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center p-4">
                   <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                  <p>Loading curriculum...</p>
+                  <p>Loading roadmap...</p>
                 </div>
-              ) : currentCurriculumPath ? (
+              ) : currentRoadmap ? (
                 <>
                   <div className="mb-4">
-                    <h3 className="text-sm font-medium mb-1">{curriculum?.name || "Learning Path"}</h3>
+                    <h3 className="text-sm font-medium mb-1">{roadmapName || "Learning Path"}</h3>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-xs text-muted-foreground">Progress</span>
-                      <span className="text-xs font-medium">
-                        {currentCurriculumPath.completion_percentage || progressPercentage}%
-                      </span>
+                      <span className="text-xs font-medium">{progressPercentage}%</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-primary rounded-full" 
-                        style={{ width: `${currentCurriculumPath.completion_percentage || progressPercentage}%` }}
+                        style={{ width: `${progressPercentage}%` }}
                       ></div>
                     </div>
                   </div>
@@ -162,16 +140,16 @@ const HomePage = () => {
                   )}
 
                   <Button asChild className="w-full mt-2">
-                    <Link to="/dashboard/curriculum">
+                    <Link to="/dashboard/roadmap">
                       Continue Learning <ChevronRight className="h-4 w-4 ml-1" />
                     </Link>
                   </Button>
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center text-center p-4">
-                  <p className="text-sm mb-3">You haven't started a learning curriculum yet.</p>
+                  <p className="text-sm mb-3">You haven't started a learning roadmap yet.</p>
                   <Button asChild>
-                    <Link to="/dashboard/curriculum">
+                    <Link to="/dashboard/roadmap">
                       Start Learning Path
                     </Link>
                   </Button>
@@ -180,15 +158,8 @@ const HomePage = () => {
             </CardContent>
           </Card>
         </div>
-        
-        {/* User Statistics - wrapped in suspense boundary to defer loading */}
-        <div className="w-full">
-          <React.Suspense fallback={<div className="text-center py-8">Loading statistics...</div>}>
-            <UserStatistics />
-          </React.Suspense>
-        </div>
       </div>
-    </ExerciseProvider>
+    </div>
   );
 };
 

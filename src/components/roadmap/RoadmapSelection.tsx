@@ -1,317 +1,288 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { 
+  Card,
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { LanguageLevel } from '@/types';
+import { Loader2, RefreshCw, InfoIcon } from 'lucide-react';
 import LevelBadge from '@/components/LevelBadge';
-import { LanguageLevel, RoadmapContextType, RoadmapErrorState } from '@/types';
-import { toast } from '@/components/ui/use-toast';
-import { Loader2, AlertCircle } from 'lucide-react';
-import { RefreshButton } from '@/components/RefreshButton';
-import ErrorBoundary from '@/components/ErrorBoundary';
-import { registerOpenPopup, unregisterPopup } from '@/utils/popupStateManager';
-
-// Define a type for the error state since it seems to be missing from RoadmapContextType
-type ErrorState = {
-  hasError: boolean;
-  message?: string;
-  suggestedLanguage?: string;
-};
+import LevelInfoTooltip from '@/components/LevelInfoTooltip';
+import { toast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const RoadmapSelection: React.FC = () => {
-  const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>("A1");
+  const { initializeUserRoadmap, roadmaps, isLoading, userRoadmaps, loadUserRoadmaps } = useRoadmap();
   const { settings } = useUserSettingsContext();
-  const dataLoaded = useRef(false);
-  const lastLanguageRef = useRef(settings.selectedLanguage);
-  const [isInitializing, setIsInitializing] = useState(false);
-  
-  // Handle TypeScript errors by safely accessing the context properties
-  const roadmapContext = useRoadmap();
-  const {
-    roadmaps,
-    initializeUserRoadmap,
-    isLoading, 
-    userRoadmaps,
-    loadUserRoadmaps,
-  } = roadmapContext;
-  
-  // Access potentially undefined properties safely
-  // We'll define local state to handle these if they don't exist
-  const [localErrorState, setLocalErrorState] = useState<ErrorState>({
-    hasError: false
-  });
-  
-  // Safely accessing context properties that might not exist in the type
-  const refreshData = (roadmapContext as any).refreshData;
-  const errorState = (roadmapContext as any).errorState || localErrorState;
-  const clearErrorState = (roadmapContext as any).clearErrorState;
-  const tryAlternateLanguage = (roadmapContext as any).tryAlternateLanguage;
-  const languageAvailability = (roadmapContext as any).languageAvailability || {};
-  
-  // Load roadmaps only when component mounts or language changes
+  const [selectedLevel, setSelectedLevel] = useState<LanguageLevel | ''>('');
+  const [initializing, setInitializing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [availableLevels, setAvailableLevels] = useState<LanguageLevel[]>([]);
+  const [existingLevels, setExistingLevels] = useState<LanguageLevel[]>([]);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Filter roadmaps to only show those for the currently selected language
+  const availableRoadmapsForLanguage = roadmaps.filter(roadmap => 
+    roadmap.languages?.includes(settings.selectedLanguage)
+  );
+
+  // Level descriptions mapping
+  const levelDescriptions: Record<LanguageLevel, string> = {
+    'A0': 'Absolute Beginner - Can recognize some basic words and phrases',
+    'A1': 'Beginner - Can understand and use familiar everyday expressions',
+    'A2': 'Elementary - Can communicate in simple and routine tasks',
+    'B1': 'Intermediate - Can deal with most situations likely to arise',
+    'B2': 'Upper Intermediate - Can interact with a degree of fluency',
+    'C1': 'Advanced - Can use language effectively for social, academic and professional purposes',
+    'C2': 'Mastery - Can understand with ease virtually everything heard or read'
+  };
+
+  // Check if the selected level has a roadmap available in the user's language
+  const isLevelAvailable = (level: LanguageLevel): boolean => {
+    return availableRoadmapsForLanguage.some(roadmap => roadmap.level === level);
+  };
+
+  // Check if the user already has a roadmap for this level and language
+  const isLevelAlreadySelected = (level: LanguageLevel): boolean => {
+    return existingLevels.includes(level);
+  };
+
+  // Calculate available and existing levels
   useEffect(() => {
-    if (!dataLoaded.current || lastLanguageRef.current !== settings.selectedLanguage) {
-      // Prevent multiple loading attempts
-      dataLoaded.current = true;
-      lastLanguageRef.current = settings.selectedLanguage;
-      
-      // Use a safe version of loadUserRoadmaps that won't cause additional renders
-      // if the component unmounts during the process
-      let isMounted = true;
-      
-      if (loadUserRoadmaps) {
-        loadUserRoadmaps(settings.selectedLanguage).then(() => {
-          // Only update state if the component is still mounted
-          if (!isMounted) return;
-        }).catch(error => {
-          if (isMounted) {
-            // Handle error locally if the context doesn't provide error handling
-            setLocalErrorState({
-              hasError: true,
-              message: error?.message || "Failed to load roadmaps"
-            });
-          }
-        });
-      }
-      
-      return () => {
-        isMounted = false;
-      };
-    }
-  }, [settings.selectedLanguage, loadUserRoadmaps]);
-  
-  // Get available levels for the current language (memoized)
-  const availableLevels = useMemo(() => {
-    return Array.from(new Set(
-      (roadmaps || [])  // Handle potential undefined roadmaps
-        .filter(roadmap => roadmap.languages?.includes(settings.selectedLanguage))
-        .map(roadmap => roadmap.level)
-    )).sort() as LanguageLevel[];
-  }, [roadmaps, settings.selectedLanguage]);
-
-  // Check if the language has available roadmaps (memoized)
-  const isLanguageAvailable = useMemo(() => {
-    // First check the availability map, then check if we have roadmaps for this language
-    return languageAvailability[settings.selectedLanguage] !== false || 
-      (roadmaps || []).some(roadmap => roadmap.languages?.includes(settings.selectedLanguage));
-  }, [languageAvailability, settings.selectedLanguage, roadmaps]);
-
-  // Update selected level if current selection is not available
-  useEffect(() => {
-    if (availableLevels.length > 0 && !availableLevels.includes(selectedLevel)) {
-      setSelectedLevel(availableLevels[0]);
-    }
-  }, [availableLevels, selectedLevel]);
-
-  const getCapitalizedLanguage = (lang: string) => {
-    return lang.charAt(0).toUpperCase() + lang.slice(1);
-  };
-
-  // Check if user already has roadmaps
-  const hasExistingRoadmap = (userRoadmaps || []).length > 0;
-
-  // Handle the start learning process
-  const handleStartLearning = async () => {
-    // Don't do anything if we're already initializing
-    if (isInitializing) return;
+    // Get existing roadmap levels for the current language
+    const userLevels = userRoadmaps
+      .filter(r => r.language === settings.selectedLanguage)
+      .map(r => {
+        const roadmap = roadmaps.find(rm => rm.id === r.roadmapId);
+        return roadmap?.level;
+      })
+      .filter(Boolean) as LanguageLevel[];
     
-    try {
-      if (!selectedLevel) {
-        toast({
-          title: "Level selection required",
-          description: "Please select a proficiency level to continue.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Track initialization state
-      setIsInitializing(true);
-      
-      // Register this as an open dialog to prevent background polling during initialization
-      registerOpenPopup('roadmap-initialization');
-      
-      // Clear any previous errors
-      if (errorState?.hasError && clearErrorState) {
-        clearErrorState();
-      } else {
-        // Clear local error state if context doesn't provide clearErrorState
-        setLocalErrorState({ hasError: false });
-      }
-      
-      if (initializeUserRoadmap) {
-        await initializeUserRoadmap(selectedLevel, settings.selectedLanguage);
-        toast({
-          title: "Learning path started",
-          description: `You've successfully started a new ${selectedLevel} learning path in ${getCapitalizedLanguage(settings.selectedLanguage)}.`,
-        });
-      } else {
-        throw new Error("Unable to initialize user roadmap");
-      }
-    } catch (error: any) {
-      console.error("Error initializing roadmap:", error);
-      
-      // Handle the special case where language is not available
-      if (error?.code === 'ROADMAP_NOT_AVAILABLE_FOR_LANGUAGE' && error.suggestedLanguage) {
-        // Ask user if they want to try with the suggested language
-        const shouldTryAlternate = window.confirm(
-          `${error.message || `No roadmap is available for ${settings.selectedLanguage}.`} Would you like to try with ${error.suggestedLanguage} instead?`
-        );
-        
-        if (shouldTryAlternate && tryAlternateLanguage) {
-          try {
-            await tryAlternateLanguage(selectedLevel, settings.selectedLanguage);
-            toast({
-              title: "Learning path started",
-              description: `You've successfully started a new ${selectedLevel} learning path in ${getCapitalizedLanguage(error.suggestedLanguage)}.`,
-            });
-          } catch (fallbackError) {
-            toast({
-              title: "Failed to start learning path",
-              description: "Please try again later or try a different level.",
-              variant: "destructive",
-            });
-          }
-        }
-      } else {
-        toast({
-          title: "Failed to start learning path",
-          description: error?.message || "Please try again later.",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      // Always clean up, whether successful or not
-      setIsInitializing(false);
-      unregisterPopup('roadmap-initialization');
-    }
-  };
+    setExistingLevels(userLevels);
 
-  // Handle the refresh button click
-  const handleRefresh = () => {
-    // Reset the data loaded flag to force reload
-    dataLoaded.current = false;
+    // Get all available levels for the current language
+    const levels: LanguageLevel[] = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+    const availableLevels = levels.filter(level => isLevelAvailable(level));
+    setAvailableLevels(availableLevels);
     
-    // Be defensive about the refreshData function existing
-    if (refreshData) {
-      refreshData(settings.selectedLanguage);
-    } else if (loadUserRoadmaps) {
-      // Fallback to loadUserRoadmaps if refreshData doesn't exist
-      loadUserRoadmaps(settings.selectedLanguage);
-    }
-  };
-
-  // Handle alternate language selection
-  const handleTryAlternateLanguage = () => {
-    if (!tryAlternateLanguage || !errorState?.suggestedLanguage) return;
-    
-    tryAlternateLanguage(selectedLevel, settings.selectedLanguage);
-    
-    if (clearErrorState) {
-      clearErrorState();
+    // Set default selected level to first available that isn't already selected
+    if (availableLevels.length > 0) {
+      const unselectedLevel = availableLevels.find(level => !userLevels.includes(level));
+      setSelectedLevel(unselectedLevel || availableLevels[0]);
     } else {
-      // Clear local error state if context doesn't provide clearErrorState
-      setLocalErrorState({ hasError: false });
+      setSelectedLevel('');
+    }
+  }, [roadmaps, userRoadmaps, settings.selectedLanguage, retryCount]);
+
+  const handleInitializeRoadmap = async () => {
+    if (!selectedLevel) return;
+    
+    setInitializing(true);
+    try {
+      await initializeUserRoadmap(selectedLevel, settings.selectedLanguage);
+      
+      toast({
+        title: "Roadmap Initialized",
+        description: `Your ${selectedLevel} level roadmap for ${settings.selectedLanguage} has been created.`,
+      });
+      
+      // Reload user roadmaps to refresh the UI
+      await loadUserRoadmaps(settings.selectedLanguage);
+    } catch (error) {
+      console.error('Error initializing roadmap:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to initialize roadmap",
+        description: "There was an error creating your roadmap. Please try again.",
+      });
+    } finally {
+      setInitializing(false);
     }
   };
+
+  const handleRefreshRoadmaps = async () => {
+    setRefreshing(true);
+    try {
+      await loadUserRoadmaps(settings.selectedLanguage);
+      setRetryCount(count => count + 1); // Force recalculation of available levels
+      
+      toast({
+        title: "Roadmaps Refreshed",
+        description: "Available roadmaps have been refreshed.",
+      });
+    } catch (error) {
+      console.error('Error refreshing roadmaps:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to refresh roadmaps",
+        description: "There was an error refreshing roadmaps. Please try again.",
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Get the currently selected roadmap info
+  const selectedRoadmapInfo = selectedLevel 
+    ? availableRoadmapsForLanguage.find(r => r.level === selectedLevel) 
+    : null;
+
+  // Determine button text
+  const buttonText = existingLevels.length > 0 
+    ? 'Add This Roadmap' 
+    : 'Start Learning Journey';
+
+  if (isLoading) {
+    return (
+      <Card className="w-full max-w-md mx-auto shadow-md">
+        <CardHeader>
+          <Skeleton className="h-8 w-3/4 mb-2" />
+          <Skeleton className="h-4 w-full" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </CardContent>
+        <CardFooter>
+          <Skeleton className="h-10 w-full" />
+        </CardFooter>
+      </Card>
+    );
+  }
 
   return (
-    <ErrorBoundary>
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold">Start a New Learning Path</h2>
-            <RefreshButton 
-              onRefresh={handleRefresh} 
-              isLoading={isLoading || isInitializing} 
-            />
-          </div>
-          
-          <p className="text-muted-foreground">
-            Select your level to begin a new learning path in {getCapitalizedLanguage(settings.selectedLanguage)}.
-          </p>
-          
-          {errorState?.hasError && (
-            <div className="bg-yellow-50 p-3 rounded-md border border-yellow-200 flex items-start space-x-2">
-              <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+    <Card className="w-full max-w-md mx-auto shadow-md">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-xl font-semibold">Choose Your Starting Level</CardTitle>
+          <CardDescription>
+            {existingLevels.length > 0 
+              ? `Add another ${settings.selectedLanguage} roadmap at a different level`
+              : `Select the language level that best matches your current proficiency in ${settings.selectedLanguage}`
+            }
+          </CardDescription>
+        </div>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={handleRefreshRoadmaps}
+          disabled={refreshing}
+          title="Refresh available roadmaps"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {availableLevels.length === 0 ? (
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-md dark:bg-amber-900/20 dark:border-amber-800">
+            <div className="flex items-start">
+              <InfoIcon className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-2 mt-0.5" />
               <div>
-                <p className="text-sm text-yellow-700">{errorState.message}</p>
-                {errorState.suggestedLanguage && (
-                  <Button
-                    variant="link"
-                    className="p-0 h-auto text-sm text-blue-600"
-                    onClick={handleTryAlternateLanguage}
-                  >
-                    Try with {errorState.suggestedLanguage} instead
-                  </Button>
-                )}
+                <h4 className="font-medium text-amber-800 dark:text-amber-400 text-sm">No Roadmaps Available</h4>
+                <p className="text-sm text-amber-700 dark:text-amber-500 mt-1">
+                  There are no roadmaps available for {settings.selectedLanguage} at the moment.
+                  Try refreshing or check back later.
+                </p>
               </div>
             </div>
-          )}
-          
-          <div className="grid gap-2">
-            <Select 
-              value={selectedLevel} 
-              onValueChange={(value: LanguageLevel) => setSelectedLevel(value)}
-              disabled={availableLevels.length === 0 || isLoading || isInitializing}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select your level" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableLevels.length > 0 ? (
-                  availableLevels.map((level) => (
-                    <SelectItem key={level} value={level}>
-                      <div className="flex items-center">
-                        <LevelBadge level={level} className="mr-2" />
-                        {level}
-                      </div>
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="A1" disabled>
-                    <div className="flex items-center">
-                      <LevelBadge level="A1" className="mr-2" />
-                      No levels available
-                    </div>
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
           </div>
-
-          <Button 
-            onClick={handleStartLearning} 
-            disabled={isLoading || isInitializing || hasExistingRoadmap || availableLevels.length === 0}
-            className="w-full"
-          >
-            {isLoading || isInitializing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isInitializing ? 'Starting...' : 'Loading...'}
-              </>
-            ) : (
-              'Start Learning'
+        ) : (
+          <>
+            {existingLevels.length > 0 && (
+              <div className="bg-primary/5 p-4 rounded-md border border-primary/20 mb-4">
+                <h4 className="font-medium text-sm mb-1">Your Current Roadmaps</h4>
+                <div className="flex flex-wrap gap-2">
+                  {existingLevels.map(level => (
+                    <LevelBadge key={level} level={level} />
+                  ))}
+                </div>
+              </div>
             )}
-          </Button>
+        
+            <div className="flex items-center space-x-2 mb-6">
+              <span className="text-sm font-medium">Language Level:</span>
+              <Select 
+                value={selectedLevel} 
+                onValueChange={(value) => setSelectedLevel(value as LanguageLevel)}
+                disabled={availableLevels.length === 0}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select a level" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableLevels.map((level) => {
+                    const isAlreadySelected = isLevelAlreadySelected(level);
+                    return (
+                      <SelectItem 
+                        key={level} 
+                        value={level}
+                        disabled={isAlreadySelected}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <LevelBadge level={level} />
+                          <span>{level}</span>
+                          {isAlreadySelected && <span className="text-xs text-muted-foreground ml-2">(Already selected)</span>}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <LevelInfoTooltip />
+            </div>
 
-          {hasExistingRoadmap && (
-            <p className="text-sm text-muted-foreground text-center">
-              You already have an active learning path.
-            </p>
-          )}
+            {selectedLevel && (
+              <>
+                <div className="p-4 bg-muted/50 rounded-md">
+                  <h3 className="font-medium mb-2 flex items-center">
+                    <LevelBadge level={selectedLevel} className="mr-2" /> 
+                    {selectedLevel} Level
+                  </h3>
+                  <p className="text-sm text-muted-foreground">{levelDescriptions[selectedLevel]}</p>
+                </div>
 
-          {availableLevels.length === 0 && !isLoading && !isInitializing && (
-            <p className="text-sm text-muted-foreground text-center">
-              {!isLanguageAvailable ? 
-                `No learning paths available for ${getCapitalizedLanguage(settings.selectedLanguage)}. Try a different language.` : 
-                `Loading available learning paths...`}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    </ErrorBoundary>
+                <div className="bg-primary/5 p-4 rounded-md border border-primary/20">
+                  <h4 className="font-medium text-sm mb-1">What will you learn?</h4>
+                  <p className="text-sm text-muted-foreground">
+                    The {selectedLevel} roadmap includes {selectedRoadmapInfo?.name || 'exercises'} 
+                    designed to improve your {settings.selectedLanguage} skills through focused listening and writing practice.
+                  </p>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </CardContent>
+      <CardFooter>
+        <Button 
+          onClick={handleInitializeRoadmap} 
+          disabled={
+            initializing || 
+            !selectedLevel || 
+            isLevelAlreadySelected(selectedLevel as LanguageLevel) || 
+            availableLevels.length === 0
+          }
+          className="w-full"
+        >
+          {initializing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          {buttonText}
+        </Button>
+      </CardFooter>
+    </Card>
   );
 };
 

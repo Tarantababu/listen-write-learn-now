@@ -1,438 +1,436 @@
+
 import React, { useState, useEffect } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { useAuth } from '@/contexts/AuthContext';
+import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
+import RoadmapSelection from '@/features/roadmap/components/RoadmapSelection';
+import RoadmapExerciseModal from '@/features/roadmap/components/RoadmapExerciseModal';
+import RoadmapItemCard from '@/features/roadmap/components/RoadmapItemCard';
+import RoadmapProgressDashboard from '@/features/roadmap/components/RoadmapProgressDashboard';
+import { RoadmapNode } from '@/features/roadmap/types';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { ArrowRightIcon, LayoutDashboard, BookOpen, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ListChecks, Undo2, CheckCircle2, LockIcon, ChevronRight, AlertCircle } from 'lucide-react';
-import { RoadmapNode, LanguageLevel } from '@/types';
-import RoadmapExerciseModal from '@/components/roadmap/RoadmapExerciseModal';
-import ErrorBoundary from '@/components/ErrorBoundary';
-import { registerOpenPopup, unregisterPopup } from '@/utils/popupStateManager';
+import { Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useAuth } from '@/contexts/AuthContext';
 
-const RoadmapPage = () => {
+const RoadmapPage: React.FC = () => {
+  const { 
+    currentRoadmap, 
+    isLoading, 
+    roadmaps, 
+    userRoadmaps,
+    loadUserRoadmaps,
+    selectRoadmap,
+    completedNodes,
+    nodes,
+    currentNodeId
+  } = useRoadmap();
+  
+  // Derive hasError from context data
+  const hasError = !isLoading && userRoadmaps.length > 0 && !currentRoadmap;
+  
   const { settings } = useUserSettingsContext();
   const { user } = useAuth();
-  const [initialLoad, setInitialLoad] = useState(true);
-  const [roadmapModal, setRoadmapModal] = useState(false);
-  const [exerciseModal, setExerciseModal] = useState(false);
   const [selectedNode, setSelectedNode] = useState<RoadmapNode | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [exerciseModalOpen, setExerciseModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("active");
+  const [viewMode, setViewMode] = useState<'map' | 'dashboard'>('map');
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const navigate = useNavigate();
 
-  // Get roadmap context
-  const { 
-    initializeUserRoadmap, 
-    loadUserRoadmap, 
-    currentRoadmap, 
-    nodes, 
-    completedNodes, 
-    availableNodes,
-    isLoading,
-    loadUserRoadmaps, 
-    userRoadmaps,
-    resetProgress,
-    errorState,
-    tryAlternateLanguage,
-    setRoadmapPageActive
-  } = useRoadmap();
-
-  // Track if we're on the roadmap page
+  // Set active tab based on whether we have user roadmaps or not
   useEffect(() => {
-    setRoadmapPageActive(true);
-    
-    return () => {
-      setRoadmapPageActive(false);
-    };
-  }, [setRoadmapPageActive]);
-
-  // Track dialog open state for preventing background refreshes
-  useEffect(() => {
-    const modalId = 'roadmap-selection-modal';
-    if (roadmapModal) {
-      registerOpenPopup(modalId);
-    } else {
-      unregisterPopup(modalId);
-    }
-    return () => unregisterPopup(modalId);
-  }, [roadmapModal]);
-
-  // Track exercise modal state
-  useEffect(() => {
-    const modalId = 'exercise-modal';
-    if (exerciseModal) {
-      registerOpenPopup(modalId);
-    } else {
-      unregisterPopup(modalId);
-    }
-    return () => unregisterPopup(modalId);
-  }, [exerciseModal]);
-
-  // Show roadmap selection modal on first load if no roadmap is selected
-  useEffect(() => {
-    if (initialLoad && !isLoading) {
-      if (!currentRoadmap) {
-        setRoadmapModal(true);
-      }
-      setInitialLoad(false);
-    }
-  }, [initialLoad, isLoading, currentRoadmap]);
-
-  // Load user's roadmaps ONLY on mount and when language changes, not continuously
-  useEffect(() => {
-    if (user) {
-      // Pass the selectedLanguage parameter to loadUserRoadmaps
-      loadUserRoadmaps(settings.selectedLanguage);
-    }
-  }, [user, settings.selectedLanguage, loadUserRoadmaps]);
-
-  const handleStartJourney = async (level: LanguageLevel) => {
-    setLoadError(null);
-    try {
-      await initializeUserRoadmap(level, settings.selectedLanguage);
-      setRoadmapModal(false);
-    } catch (error: any) {
-      console.error("Error starting journey:", error);
-      
-      // Special handling for language not available
-      if (error?.code === 'ROADMAP_NOT_AVAILABLE_FOR_LANGUAGE' && error.suggestedLanguage) {
-        setLoadError(`${error.message || `No roadmap is available for ${settings.selectedLanguage}.`} Try with ${error.suggestedLanguage} instead.`);
+    if (!isLoading) {
+      if (userRoadmaps.length === 0) {
+        setActiveTab("new");
       } else {
-        setLoadError(error?.message || "Failed to start learning path. Please try again.");
+        setActiveTab("active");
+      }
+    }
+  }, [isLoading, userRoadmaps]);
+
+  // When a user clicks on "Continue Learning," open the exercise modal with current node
+  useEffect(() => {
+    if (currentRoadmap && currentNodeId && nodes.length > 0) {
+      const currentNode = nodes.find(node => node.id === currentNodeId);
+      if (currentNode && selectedNode?.id === currentNode.id && !exerciseModalOpen) {
+        setExerciseModalOpen(true);
+      }
+    }
+  }, [currentRoadmap, currentNodeId, nodes, selectedNode, exerciseModalOpen]);
+
+  const handleNodeSelect = (node: RoadmapNode) => {
+    setSelectedNode(node);
+    setExerciseModalOpen(true);
+  };
+
+  const handleExploreExercises = () => {
+    navigate('/dashboard/exercises');
+    toast({
+      title: "Exercises",
+      description: "You can find more exercises to practice here",
+    });
+  };
+
+  const handleRoadmapSelect = async (roadmapId: string) => {
+    try {
+      setSelectionError(null);
+      setIsRetrying(false);
+      await selectRoadmap(roadmapId);
+      setViewMode('map'); // Switch to map view when selecting a roadmap
+    } catch (error) {
+      console.error('Error selecting roadmap:', error);
+      setSelectionError('Failed to load the selected roadmap. Please try again.');
+      
+      // After error, try to re-fetch user roadmaps
+      try {
+        const loadedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
+        
+        if (loadedRoadmaps && loadedRoadmaps.length > 0) {
+          // Try selecting the first available roadmap instead
+          try {
+            await selectRoadmap(loadedRoadmaps[0].id);
+            toast({
+              title: "Selected fallback roadmap",
+              description: "We encountered an issue with the selected roadmap and loaded another one instead."
+            });
+          } catch (secondError) {
+            console.error('Error selecting fallback roadmap:', secondError);
+          }
+        }
+      } catch (loadError) {
+        console.error('Error loading fallback roadmaps:', loadError);
       }
     }
   };
-  
-  // Function to try alternate language
-  const handleTryAlternateLanguage = async (level: LanguageLevel) => {
-    try {
-      await tryAlternateLanguage(level, settings.selectedLanguage);
-      setRoadmapModal(false);
-    } catch (error) {
-      console.error("Error with alternate language:", error);
-      setLoadError("Failed to start learning path with alternate language.");
-    }
-  };
-  
-  // Function to handle selecting a different roadmap
-  const handleSelectRoadmap = async (roadmapId: string) => {
-    try {
-      await loadUserRoadmap(roadmapId);
-      setRoadmapModal(false);
-    } catch (error) {
-      console.error("Error selecting roadmap:", error);
-      setLoadError("Failed to load the selected roadmap.");
-    }
-  };
 
-  // Function to handle click on a node
-  const handleNodeClick = (node: RoadmapNode) => {
-    // Check if node is available
-    if (!availableNodes.includes(node.id)) {
-      return; // Node is locked
-    }
-    
-    setSelectedNode(node);
-    setExerciseModal(true);
-  };
-
-  // Get node status
-  const getNodeStatus = (node: RoadmapNode) => {
-    if (completedNodes.includes(node.id)) {
-      return 'completed';
-    } else if (availableNodes.includes(node.id)) {
-      return 'available';
-    } else {
-      return 'locked';
-    }
-  };
-
-  const handleStartOver = async () => {
-    if (!currentRoadmap) return;
-    
+  const handleRetry = async () => {
+    setIsRetrying(true);
     try {
-      // Call reset with the roadmap ID
-      await resetProgress(currentRoadmap.id);
+      setSelectionError(null);
       
-      // Reload roadmap data
-      loadUserRoadmap(currentRoadmap.id);
+      // Check if user is authenticated
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+      
+      // Reload roadmaps first
+      await loadUserRoadmaps(settings.selectedLanguage);
+      console.log("Reloaded roadmaps:", { userRoadmaps });
+      
+      // If we have a current roadmap, try to reload it
+      if (currentRoadmap) {
+        await selectRoadmap(currentRoadmap.id);
+        toast({
+          title: "Roadmap loaded",
+          description: "Successfully reloaded your roadmap."
+        });
+      } else if (userRoadmaps.length > 0) {
+        // Otherwise, select the first available roadmap
+        await selectRoadmap(userRoadmaps[0].id);
+        toast({
+          title: "Roadmap loaded",
+          description: "Successfully loaded a roadmap."
+        });
+      }
     } catch (error) {
-      console.error("Error resetting progress:", error);
-      setLoadError("Failed to reset progress.");
+      console.error('Error retrying roadmap load:', error);
+      setSelectionError('Still having trouble loading the roadmap. Please try refreshing the page.');
+    } finally {
+      setIsRetrying(false);
     }
   };
 
-  // Render node based on its status
-  const renderNode = (node: RoadmapNode, index: number) => {
-    const status = getNodeStatus(node);
-    const isCompleted = status === 'completed';
-    const isAvailable = status === 'available';
-    const isLocked = status === 'locked';
+  const handleContinueLearning = async (roadmapId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     
+    try {
+      setSelectionError(null);
+      
+      // First select the roadmap
+      await selectRoadmap(roadmapId);
+      
+      // Find the current node in this roadmap
+      const selectedRoadmap = userRoadmaps.find(r => r.id === roadmapId);
+      if (selectedRoadmap && selectedRoadmap.currentNodeId) {
+        const currentNode = nodes.find(node => node.id === selectedRoadmap.currentNodeId);
+        if (currentNode) {
+          setSelectedNode(currentNode);
+          setExerciseModalOpen(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error continuing learning:', error);
+      setSelectionError('Failed to load the selected roadmap. Please try again.');
+    }
+  };
+
+  // Get the selected language with proper capitalization
+  const getCapitalizedLanguage = (lang: string) => {
+    return lang.charAt(0).toUpperCase() + lang.slice(1);
+  };
+
+  // Check if there are any available roadmaps in the system
+  const hasAvailableRoadmaps = roadmaps.some(roadmap => 
+    roadmap.languages?.includes(settings.selectedLanguage)
+  );
+
+  // Detailed debug info
+  useEffect(() => {
+    console.log("RoadmapPage state:", {
+      isLoading,
+      hasError,
+      userAuthenticated: !!user,
+      roadmaps: roadmaps.length,
+      userRoadmaps: userRoadmaps.length,
+      hasCurrentRoadmap: !!currentRoadmap,
+      nodes: nodes.length,
+      activeTab,
+      hasAvailableRoadmaps,
+      language: settings.selectedLanguage
+    });
+  }, [
+    isLoading, 
+    hasError, 
+    user, 
+    roadmaps.length, 
+    userRoadmaps.length, 
+    currentRoadmap, 
+    nodes.length, 
+    activeTab,
+    settings.selectedLanguage
+  ]);
+
+  if (!user) {
     return (
-      <div key={node.id} className="mb-4">
-        <Card 
-          className={`
-            border-l-4 
-            ${isCompleted ? 'border-l-green-500' : isAvailable ? 'border-l-blue-500' : 'border-l-gray-300'}
-            ${isAvailable ? 'hover:bg-muted/50 cursor-pointer' : ''}
-            ${isLocked ? 'opacity-60' : ''}
-          `}
-          onClick={() => isAvailable && handleNodeClick(node)}
-        >
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="mr-3 flex-shrink-0">
-                {isCompleted ? (
-                  <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  </div>
-                ) : isAvailable ? (
-                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <span className="text-blue-600 font-medium">{index + 1}</span>
-                  </div>
-                ) : (
-                  <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                    <LockIcon className="h-4 w-4 text-gray-500" />
-                  </div>
-                )}
-              </div>
-              <div>
-                <h3 className="font-medium">{node.title}</h3>
-                <p className="text-sm text-muted-foreground line-clamp-1">{node.description}</p>
-              </div>
-            </div>
-            {isAvailable && (
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            )}
-          </CardContent>
-        </Card>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64 flex-col space-y-4">
+          <p className="text-muted-foreground">Please log in to access your learning paths</p>
+          <Button onClick={() => navigate('/login')}>
+            Go to Login
+          </Button>
+        </div>
       </div>
     );
-  };
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="flex flex-col items-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+            <p className="text-muted-foreground">Loading your learning paths...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <ErrorBoundary>
-      <div className="roadmap-content pt-20 md:pt-24 px-4 md:px-8 pb-24 max-w-[1200px] mx-auto">
-        {isLoading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col space-y-6">
+        <motion.div 
+          className="flex justify-between items-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <h1 className="text-2xl font-bold">
+            Your Learning Paths
+            <span className="ml-2 text-base font-normal text-muted-foreground">
+              ({getCapitalizedLanguage(settings.selectedLanguage)})
+            </span>
+          </h1>
+          
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExploreExercises}
+              className="hidden sm:flex"
+            >
+              <ArrowRightIcon className="h-4 w-4 mr-1" /> Explore More Exercises
+            </Button>
           </div>
-        ) : currentRoadmap ? (
-          <>
-            <div className="flex flex-col md:flex-row justify-between items-start mb-6">
-              <div>
-                <h1 className="text-2xl font-bold mb-2 text-primary">
-                  {currentRoadmap.name}
-                </h1>
-                <p className="text-muted-foreground mb-4">
-                  {currentRoadmap.description || `Level ${currentRoadmap.level} ${currentRoadmap.language} learning path to help you master the language.`}
+        </motion.div>
+
+        {(selectionError || hasError) && (
+          <motion.div 
+            className="bg-destructive/15 border border-destructive rounded-md p-4 mb-2"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex justify-between items-center">
+              <p className="text-destructive font-medium">
+                {selectionError || "Failed to load your roadmaps. Please try again."}
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRetry}
+                disabled={isRetrying}
+                className="ml-2 min-w-[100px]"
+              >
+                {isRetrying ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Retrying...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-1" /> Retry
+                  </>
+                )}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
+        {!hasAvailableRoadmaps && !isLoading && (
+          <motion.div 
+            className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-2 dark:bg-amber-900/20 dark:border-amber-800"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex items-center">
+              <p className="text-amber-800 dark:text-amber-400 font-medium">
+                No roadmaps available for {getCapitalizedLanguage(settings.selectedLanguage)}
+              </p>
+            </div>
+            <p className="text-sm text-amber-700 dark:text-amber-500 mt-1">
+              There are no learning paths available for {getCapitalizedLanguage(settings.selectedLanguage)} yet. 
+              Please check back later or select a different language in your settings.
+            </p>
+          </motion.div>
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="active" disabled={userRoadmaps.length === 0}>
+              My Roadmaps
+            </TabsTrigger>
+            <TabsTrigger value="new">
+              New Roadmap
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="active" className="space-y-6">
+            {userRoadmaps.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  You don't have any roadmaps for {getCapitalizedLanguage(settings.selectedLanguage)} yet. Start a new one to begin your learning journey.
                 </p>
               </div>
-              <div className="flex space-x-2 mt-2 md:mt-0">
-                <Button variant="outline" onClick={() => setRoadmapModal(true)}>
-                  <ListChecks className="h-4 w-4 mr-2" />
-                  Change Path
-                </Button>
-                <Button onClick={handleStartOver} variant="ghost">
-                  <Undo2 className="h-4 w-4 mr-2" />
-                  Start Over
-                </Button>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 gap-4">
-              {nodes.map((node, index) => renderNode(node, index))}
-            </div>
-            
-            {nodes.length === 0 && (
-              <div className="text-center py-10">
-                <p className="text-muted-foreground">No lessons available for this roadmap yet.</p>
-              </div>
+            ) : (
+              <motion.div 
+                className="space-y-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <h2 className="text-xl font-semibold">{getCapitalizedLanguage(settings.selectedLanguage)}</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {userRoadmaps.map(roadmap => (
+                    <motion.div
+                      key={roadmap.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <RoadmapItemCard
+                        roadmap={roadmap}
+                        isActive={currentRoadmap?.id === roadmap.id}
+                        onCardClick={handleRoadmapSelect}
+                        onContinueClick={handleContinueLearning}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
             )}
-          </>
-        ) : (
-          <div className="text-center py-10">
-            <h2 className="text-2xl font-bold mb-4">Start Your Learning Journey</h2>
-            <p className="text-muted-foreground mb-6">
-              Choose your level to begin a structured learning path in {settings.selectedLanguage}.
-            </p>
-            
-            {errorState.hasError && (
-              <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200 mb-6 mx-auto max-w-md">
-                <div className="flex items-start space-x-2">
-                  <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="text-yellow-700">{errorState.message}</p>
-                    {errorState.suggestedLanguage && (
-                      <Button
-                        variant="link"
-                        className="p-0 h-auto text-sm text-blue-600 mt-2"
-                        onClick={() => handleTryAlternateLanguage('A1')}
-                      >
-                        Try with {errorState.suggestedLanguage} instead
-                      </Button>
-                    )}
+          </TabsContent>
+          
+          <TabsContent value="new">
+            <div className="max-w-md mx-auto w-full">
+              <RoadmapSelection />
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {currentRoadmap && activeTab === 'active' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <Card className="border rounded-lg">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">
+                    {roadmaps.find(r => r.id === currentRoadmap.roadmapId)?.name || "Learning Path"} - {getCapitalizedLanguage(currentRoadmap.language)}
+                  </CardTitle>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setViewMode('map')}
+                      className={viewMode === 'map' ? 'bg-muted' : ''}
+                    >
+                      <BookOpen className="h-4 w-4 mr-2" /> 
+                      Map View
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setViewMode('dashboard')}
+                      className={viewMode === 'dashboard' ? 'bg-muted' : ''}
+                    >
+                      <LayoutDashboard className="h-4 w-4 mr-2" /> 
+                      Dashboard
+                    </Button>
                   </div>
                 </div>
-              </div>
-            )}
+                <CardDescription>
+                  Follow this path to improve your {currentRoadmap.language} skills step by step
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pb-8 pt-2">
+                {viewMode === 'map' ? (
+                  <RoadmapVisualization onNodeSelect={handleNodeSelect} />
+                ) : (
+                  <RoadmapProgressDashboard />
+                )}
+              </CardContent>
+            </Card>
             
-            <div className="flex flex-wrap justify-center gap-4">
-              <Button onClick={() => handleStartJourney('A1')}>Beginner (A1)</Button>
-              <Button onClick={() => handleStartJourney('A2')}>Elementary (A2)</Button>
-              <Button onClick={() => handleStartJourney('B1')}>Intermediate (B1)</Button>
-              <Button onClick={() => handleStartJourney('B2')}>Upper Intermediate (B2)</Button>
-            </div>
-          </div>
-        )}
-        
-        {/* Roadmap Selection Modal */}
-        <Dialog open={roadmapModal} onOpenChange={setRoadmapModal}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Choose a Learning Path</DialogTitle>
-              <DialogDescription>
-                Select a learning path that matches your current level in {settings.selectedLanguage}.
-              </DialogDescription>
-            </DialogHeader>
-            
-            {loadError && (
-              <div className="bg-red-50 p-3 rounded-md border border-red-200 my-3">
-                <div className="flex items-start space-x-2">
-                  <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-700">{loadError}</p>
-                </div>
-              </div>
-            )}
-            
-            <div className="py-4">
-              <Tabs defaultValue="my-paths">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="my-paths">My Paths</TabsTrigger>
-                  <TabsTrigger value="available">Available</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="my-paths" className="mt-4 space-y-4">
-                  {userRoadmaps.length > 0 ? (
-                    userRoadmaps.map(roadmap => (
-                      <Card 
-                        key={roadmap.id} 
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleSelectRoadmap(roadmap.id)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <h3 className="font-medium">{roadmap.name || `${roadmap.level} Path`}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                {roadmap.description || `Level ${roadmap.level} in ${roadmap.language}`}
-                              </p>
-                            </div>
-                            <Badge>{roadmap.level}</Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">
-                      You haven't started any learning paths yet.
-                    </p>
-                  )}
-                </TabsContent>
-                
-                <TabsContent value="available" className="mt-4 space-y-4">
-                  <div className="grid grid-cols-1 gap-4">
-                    <Card 
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleStartJourney('A1')}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h3 className="font-medium">Beginner Path</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Start learning {settings.selectedLanguage} from scratch
-                            </p>
-                          </div>
-                          <Badge>A1</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card 
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleStartJourney('A2')}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h3 className="font-medium">Elementary Path</h3>
-                            <p className="text-sm text-muted-foreground">
-                              For those with basic knowledge of {settings.selectedLanguage}
-                            </p>
-                          </div>
-                          <Badge>A2</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card 
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleStartJourney('B1')}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h3 className="font-medium">Intermediate Path</h3>
-                            <p className="text-sm text-muted-foreground">
-                              For those who can communicate in everyday situations
-                            </p>
-                          </div>
-                          <Badge>B1</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card 
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleStartJourney('B2')}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h3 className="font-medium">Upper Intermediate Path</h3>
-                            <p className="text-sm text-muted-foreground">
-                              For those who can express themselves fluently
-                            </p>
-                          </div>
-                          <Badge>B2</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setRoadmapModal(false)}>
-                Cancel
+            <div className="flex justify-center mt-4 sm:hidden">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExploreExercises}
+                className="w-full"
+              >
+                <ArrowRightIcon className="h-4 w-4 mr-1" /> Explore More Exercises
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        
-        {/* Exercise Modal */}
-        <RoadmapExerciseModal
-          node={selectedNode}
-          isOpen={exerciseModal}
-          onOpenChange={setExerciseModal}
-        />
+            </div>
+            
+            <RoadmapExerciseModal
+              node={selectedNode}
+              isOpen={exerciseModalOpen}
+              onOpenChange={setExerciseModalOpen}
+            />
+          </motion.div>
+        )}
       </div>
-    </ErrorBoundary>
+    </div>
   );
 };
 

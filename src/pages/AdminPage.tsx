@@ -1,122 +1,136 @@
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAdmin } from '@/hooks/use-admin';
-import { useNavigate } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Loader2 } from "lucide-react"
+import { VisitorStats } from '@/components/admin/VisitorStats';
 import { AdminStats } from '@/components/admin/AdminStats';
-import DefaultExercisesList from '@/components/admin/DefaultExercisesList';
+import { FeedbackList } from '@/components/admin/FeedbackList';
+import { UserRoleManagement } from '@/components/admin/UserRoleManagement';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import DefaultExerciseForm from '@/components/admin/DefaultExerciseForm';
-import { UserStats } from '@/components/admin/UserStats';
-import UserRoleManagement from '@/components/admin/UserRoleManagement';
-import AdminMessagesList from '@/components/admin/AdminMessagesList';
+import DefaultExercisesList from '@/components/admin/DefaultExercisesList';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AdminMessagesForm from '@/components/admin/AdminMessagesForm';
-import FeedbackList from '@/components/admin/FeedbackList';
-import CurriculumEditor from '@/components/admin/CurriculumEditor';
+import AdminMessagesList from '@/components/admin/AdminMessagesList';
+import RoadmapEditor from '@/components/admin/RoadmapEditor';
 
 const AdminPage: React.FC = () => {
-  const { user } = useAuth();
   const { isAdmin, loading } = useAdmin();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    console.log('AdminPage - User:', user);
-    console.log('AdminPage - Admin status:', isAdmin);
-    console.log('AdminPage - Loading state:', loading);
-    
-    // Wait for admin check to complete
-    if (loading) return;
-    
-    // Set loading state to false when admin check is done
-    setIsLoading(false);
-    
-    // If user is not admin, show error and redirect
-    if (!isAdmin) {
-      toast({
-        title: "Unauthorized",
-        description: "You do not have permission to access this page.",
-        variant: "destructive",
-      });
-      navigate('/dashboard');
-    }
-  }, [user, isAdmin, loading, navigate]);
-
-  if (isLoading || loading) {
+  const [activeTab, setActiveTab] = useState('default-exercises');
+  
+  // Show loading state while checking admin status
+  if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="container mx-auto px-4 py-8 flex justify-center items-center h-[80vh]">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+          <p>Verifying admin access...</p>
         </div>
       </div>
     );
   }
-
+  
+  // If user is not an admin, redirect to home
   if (!isAdmin) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Alert>
-          <AlertDescription>
-            You do not have permission to access this page.
-          </AlertDescription>
-        </Alert>
-        <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Admin Panel</h1>
-        <p className="text-muted-foreground">Manage the application settings and content</p>
+      <div className="flex items-center mb-6">
+        <Button 
+          variant="outline"
+          size="sm"
+          className="mr-2"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
       </div>
       
-      <Tabs defaultValue="stats">
-        <TabsList className="mb-6">
-          <TabsTrigger value="stats">Statistics</TabsTrigger>
-          <TabsTrigger value="exercises">Default Exercises</TabsTrigger>
-          <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
-          <TabsTrigger value="users">User Management</TabsTrigger>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Welcome to the Admin Dashboard</CardTitle>
+          <CardDescription>
+            Here you can monitor visitor statistics and manage your site
+          </CardDescription>
+        </CardHeader>
+      </Card>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
+        <TabsList className="mb-4">
+          <TabsTrigger value="default-exercises">Default Exercises</TabsTrigger>
+          <TabsTrigger value="roadmaps">Roadmaps</TabsTrigger>
           <TabsTrigger value="messages">User Messages</TabsTrigger>
-          <TabsTrigger value="feedback">User Feedback</TabsTrigger>
+          <TabsTrigger value="statistics">Statistics</TabsTrigger>
+          <TabsTrigger value="feedback">Feedback</TabsTrigger>
+          <TabsTrigger value="users">User Roles</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="stats">
-          <AdminStats />
-        </TabsContent>
-        
-        <TabsContent value="exercises">
-          <div className="space-y-6">
+        <TabsContent value="default-exercises" className="space-y-8">
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Create Default Exercise</h2>
+            <Card>
+              <CardContent className="pt-6">
+                <DefaultExerciseForm />
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Default Exercises</h2>
             <DefaultExercisesList />
-            <DefaultExerciseForm />
           </div>
         </TabsContent>
-        
-        <TabsContent value="curriculum">
-          <CurriculumEditor />
-        </TabsContent>
-        
-        <TabsContent value="users">
-          <div className="space-y-8">
-            <UserStats />
-            <UserRoleManagement />
+
+        <TabsContent value="roadmaps" className="space-y-8">
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Roadmap Management</h2>
+            <RoadmapEditor />
           </div>
         </TabsContent>
-        
-        <TabsContent value="messages">
-          <div className="space-y-8">
-            <AdminMessagesList />
+
+        <TabsContent value="messages" className="space-y-8">
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Create New Message</h2>
             <AdminMessagesForm />
+          </div>
+          
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Message History</h2>
+            <AdminMessagesList />
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="statistics">
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">User Statistics</h2>
+            <AdminStats />
+          </div>
+          
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Visitor Analytics</h2>
+            <VisitorStats />
           </div>
         </TabsContent>
         
         <TabsContent value="feedback">
-          <FeedbackList />
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">User Feedback</h2>
+            <FeedbackList />
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="users">
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">User Role Management</h2>
+            <UserRoleManagement />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
