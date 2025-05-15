@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -5,6 +6,9 @@ import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { RoadmapItem, UserRoadmap, RoadmapNode, NodeCompletionResult } from '../types';
 import { Language, LanguageLevel } from '@/types';
 import { roadmapService } from '../services/RoadmapService';
+import { apiCache } from '@/utils/apiCache';
+import { isAnyPopupOpen } from '@/utils/popupStateManager';
+import { RefreshButton } from '@/components/RefreshButton';
 
 // Define the context type
 interface RoadmapContextType {
@@ -53,7 +57,7 @@ interface RoadmapNodeProgress {
 export const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
 
 // Constants for refresh control
-const DATA_REFRESH_INTERVAL = 60000; // 1 minute
+const DATA_REFRESH_INTERVAL = 300000; // 5 minutes (increased from 1 minute)
 
 export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -78,7 +82,6 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   const fetchingRef = useRef<boolean>(false);
   const initialFetchDone = useRef<boolean>(false);
   const timerRef = useRef<number | null>(null);
-  const popupStateRef = useRef<{isOpen: boolean, id?: string}>({ isOpen: false });
   
   // Track user activity to manage refresh behavior
   const trackActivity = useCallback(() => {
@@ -86,15 +89,13 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, []);
   
   useEffect(() => {
-    // Setup activity tracking
+    // Setup activity tracking - only for significant user interactions
     window.addEventListener('click', trackActivity);
     window.addEventListener('keydown', trackActivity);
-    window.addEventListener('mousemove', trackActivity);
     
     return () => {
       window.removeEventListener('click', trackActivity);
       window.removeEventListener('keydown', trackActivity);
-      window.removeEventListener('mousemove', trackActivity);
       
       // Clear any timers on unmount
       if (timerRef.current) {
@@ -112,8 +113,13 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     setLoading(true);
     
     try {
-      // Get roadmaps using the roadmapService
-      const roadmapList = await roadmapService.getRoadmapsForLanguage(settings.selectedLanguage);
+      // Get roadmaps using the cached service
+      const roadmapList = await apiCache.get(
+        `roadmaps_${settings.selectedLanguage}`,
+        () => roadmapService.getRoadmapsForLanguage(settings.selectedLanguage),
+        { allowStale: true }
+      );
+      
       setRoadmaps(roadmapList);
       
       // Load all user roadmaps after fetching available roadmaps
@@ -157,7 +163,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       let userRoadmap: UserRoadmap | null = null;
       
       if (userRoadmapId) {
-        // Find roadmap in existing user roadmaps
+        // Try to use cached data first
         userRoadmap = userRoadmaps.find(r => r.id === userRoadmapId) || null;
         
         // If not found in memory, try to fetch it
@@ -171,7 +177,13 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         userRoadmap = userRoadmaps[0];
       } else {
         // Try fetching roadmaps if none in memory
-        const userRoadmapsList = await roadmapService.getUserRoadmaps(settings.selectedLanguage);
+        const cacheKey = `user_roadmaps_${settings.selectedLanguage}`;
+        const userRoadmapsList = await apiCache.get(
+          cacheKey,
+          () => roadmapService.getUserRoadmaps(settings.selectedLanguage),
+          { allowStale: true }
+        );
+        
         if (userRoadmapsList.length > 0) {
           // Ensure the user roadmap has required name and level properties
           userRoadmap = {
@@ -195,8 +207,12 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       setSelectedRoadmap(userRoadmap);
 
-      // Load roadmap nodes
-      const nodes = await roadmapService.getRoadmapNodes(userRoadmap.id);
+      // Load roadmap nodes from cache if possible
+      const nodes = await apiCache.get(
+        `roadmap_nodes_${userRoadmap.id}`,
+        () => roadmapService.getRoadmapNodes(userRoadmap.id),
+        { allowStale: true }
+      );
       
       // Filter nodes by language
       const filteredNodes = nodes.filter(node => 
@@ -236,6 +252,15 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!user || fetchingRef.current) return;
     
     trackActivity(); // Track this as user activity
+    
+    // Force cache invalidation for manual refresh
+    apiCache.invalidate(`roadmaps_${settings.selectedLanguage}`);
+    apiCache.invalidate(`user_roadmaps_${settings.selectedLanguage}`);
+    
+    if (selectedRoadmap) {
+      apiCache.invalidate(`roadmap_nodes_${selectedRoadmap.id}`);
+    }
+    
     fetchRoadmaps();
     
     if (selectedRoadmap) {
@@ -254,7 +279,13 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     
     try {
       const loadedLanguage = language || settings.selectedLanguage;
-      const userRoadmapsList = await roadmapService.getUserRoadmaps(loadedLanguage);
+      const cacheKey = `user_roadmaps_${loadedLanguage}`;
+      
+      const userRoadmapsList = await apiCache.get(
+        cacheKey,
+        () => roadmapService.getUserRoadmaps(loadedLanguage),
+        { allowStale: true }
+      );
       
       if (!userRoadmapsList || userRoadmapsList.length === 0) {
         setUserRoadmaps([]);
@@ -334,6 +365,9 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         description: "Your learning journey has begun!"
       });
       
+      // Invalidate caches after creating a new roadmap
+      apiCache.invalidate(`user_roadmaps_${language}`);
+      
       // Refresh the user roadmap data
       const updatedRoadmaps = await loadUserRoadmaps();
       if (updatedRoadmaps.length > 0) {
@@ -360,7 +394,12 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
     
     try {
-      return await roadmapService.getNodeExerciseContent(nodeId);
+      // Use cache for exercise content - exercises rarely change
+      return await apiCache.get(
+        `exercise_${nodeId}`, 
+        () => roadmapService.getNodeExerciseContent(nodeId),
+        { ttl: 3600000 } // 1 hour cache for exercises
+      );
     } catch (error) {
       console.error("Error fetching node exercise:", error);
       toast({
@@ -370,15 +409,6 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
       return null;
     }
-  };
-
-  // Methods for popup state persistence
-  const savePopupState = (isOpen: boolean, id?: string) => {
-    popupStateRef.current = { isOpen, id };
-  };
-  
-  const getPopupState = () => {
-    return {...popupStateRef.current};
   };
 
   // Increment node completion count when dictation is completed with good accuracy
@@ -392,6 +422,9 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       // Update completion count through service
       const result = await roadmapService.recordNodeCompletion(nodeId, accuracy);
+      
+      // Invalidate related caches
+      apiCache.invalidate(`roadmap_nodes_${selectedRoadmap.id}`);
       
       // Reload roadmap data to get updated progress
       await loadUserRoadmap(selectedRoadmap.id);
@@ -427,6 +460,12 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   const markNodeAsCompleted = async (nodeId: string) => {
     try {
       await roadmapService.markNodeAsCompleted(nodeId);
+      
+      // Invalidate caches
+      if (selectedRoadmap) {
+        apiCache.invalidate(`roadmap_nodes_${selectedRoadmap.id}`);
+      }
+      
       const result = await completeNode(nodeId);
       return;
     } catch (error) {
@@ -473,6 +512,13 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     try {
       await roadmapService.resetProgress(roadmapId);
+      
+      // Invalidate caches
+      apiCache.invalidate(`roadmap_nodes_${roadmapId}`);
+      if (selectedRoadmap.language) {
+        apiCache.invalidate(`user_roadmaps_${selectedRoadmap.language}`);
+      }
+      
       toast({
         title: "Progress reset",
         description: "Progress reset successfully"
@@ -493,11 +539,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
   
-  // Use this effect for smart polling with backoff
+  // Use this effect for smart polling with backoff - with optimizations
   useEffect(() => {
     // Only set up periodic refresh if we have a user and a selectedRoadmap 
     // and no popup is currently open
-    if (!user || !selectedRoadmap || popupStateRef.current.isOpen) return;
+    if (!user || !selectedRoadmap || isAnyPopupOpen()) return;
     
     // Clear any existing timer
     if (timerRef.current) {
@@ -508,7 +554,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Set the timer for periodic refresh with a reasonable interval
     const timerId = window.setTimeout(() => {
       // Only refresh if we're not already loading something and not focused on a popup
-      if (!fetchingRef.current && !loading && !popupStateRef.current.isOpen) {
+      if (!fetchingRef.current && !loading && !isAnyPopupOpen()) {
         loadUserRoadmap(selectedRoadmap.id).catch(console.error);
       }
     }, DATA_REFRESH_INTERVAL);

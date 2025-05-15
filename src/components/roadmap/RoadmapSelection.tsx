@@ -9,6 +9,7 @@ import LevelBadge from '@/components/LevelBadge';
 import { LanguageLevel } from '@/types';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
+import { RefreshButton } from '@/components/RefreshButton';
 
 const RoadmapSelection: React.FC = () => {
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>("A1");
@@ -19,11 +20,12 @@ const RoadmapSelection: React.FC = () => {
     initializeUserRoadmap,
     isLoading, 
     userRoadmaps,
-    loadUserRoadmaps
+    loadUserRoadmaps,
+    refreshData
   } = useRoadmap();
   
   useEffect(() => {
-    // Reload user roadmaps whenever settings change
+    // Reload user roadmaps whenever settings change, but don't poll unnecessarily
     loadUserRoadmaps();
   }, [settings, loadUserRoadmaps]);
 
@@ -67,7 +69,11 @@ const RoadmapSelection: React.FC = () => {
   return (
     <Card>
       <CardContent className="space-y-4 pt-6">
-        <h2 className="text-lg font-semibold">Start a New Learning Path</h2>
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Start a New Learning Path</h2>
+          <RefreshButton onRefresh={() => refreshData(settings.selectedLanguage)} isLoading={isLoading} />
+        </div>
+        
         <p className="text-muted-foreground">
           Select your level to begin a new learning path in {getCapitalizedLanguage(settings.selectedLanguage)}.
         </p>
