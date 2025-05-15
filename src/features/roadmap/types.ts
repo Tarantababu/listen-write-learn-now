@@ -1,4 +1,3 @@
-
 import { Language, LanguageLevel } from '@/types';
 
 export interface RoadmapItem {
@@ -24,7 +23,7 @@ export interface UserRoadmap {
   name: string;
   level: LanguageLevel;
   description?: string;
-  languages?: Language[];
+  languages: Language[]; // Changed from optional to required to match RoadmapItem
   currentNodeId?: string;
   createdAt: Date;
   updatedAt: Date;

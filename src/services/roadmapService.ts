@@ -61,7 +61,7 @@ class RoadmapService {
       const { data, error } = await supabase
         .from('user_roadmaps')
         .select('*')
-        .eq('language', language)
+        .eq('language', language as string)
         .eq('user_id', userData.user.id);
         
       if (error) throw error;
@@ -158,7 +158,7 @@ class RoadmapService {
           roadmap_languages!inner(language)
         `)
         .eq('level', level)
-        .eq('roadmap_languages.language', language);
+        .eq('roadmap_languages.language', language as string);
         
       if (roadmapsError) throw roadmapsError;
       
