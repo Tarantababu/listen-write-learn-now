@@ -1,109 +1,196 @@
 
-import React from 'react';
-import { useCurriculum } from '@/contexts/CurriculumContext';
-import { CurriculumNode } from '@/types';
-import CurriculumNodeCard from './CurriculumNodeCard';
-import { Separator } from '@/components/ui/separator';
-import { Loader2 } from 'lucide-react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useCurriculum } from '@/hooks/use-curriculum';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { CheckCircle, Circle, Lock, ArrowRight, Clock } from 'lucide-react';
+import { useMediaQuery } from 'react-use';
+import LevelBadge from '@/components/LevelBadge';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/components/ui/use-toast';
+import { LanguageLevel } from '@/types';
 
-interface CurriculumVisualizationProps {
-  onNodeSelect: (node: CurriculumNode) => void;
-}
-
-const CurriculumVisualization: React.FC<CurriculumVisualizationProps> = ({ onNodeSelect }) => {
+export const CurriculumVisualization: React.FC = () => {
   const { 
+    currentCurriculumPath, 
     nodes, 
-    isLoading, 
-    nodeProgress, 
-    availableNodes
+    completedNodes, 
+    availableNodes, 
+    currentNodeId,
+    nodeLoading,
+    getNodeExercise
   } = useCurriculum();
   
-  if (isLoading) {
+  const { toast } = useToast();
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  // Get curriculum data
+  const curriculum = useMemo(() => {
+    return currentCurriculumPath?.curriculum || null;
+  }, [currentCurriculumPath]);
+
+  // Sort nodes by sequence order
+  const sortedNodes = useMemo(() => {
+    return [...nodes].sort((a, b) => a.sequence_order - b.sequence_order);
+  }, [nodes]);
+
+  // Handle node click
+  const handleNodeClick = async (nodeId: string, isAvailable: boolean) => {
+    if (!isAvailable) {
+      toast({
+        title: "Node Locked",
+        description: "Complete previous nodes to unlock this one.",
+        variant: "default",
+      });
+      return;
+    }
+
+    try {
+      const exercise = await getNodeExercise(nodeId);
+      if (exercise) {
+        // Here you would open the exercise modal or navigate to it
+        console.log('Opening exercise:', exercise);
+        // You'd implement your exercise modal/page opening logic here
+      } else {
+        toast({
+          title: "No Exercise Found",
+          description: "This node has no exercises attached.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error getting node exercise:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load the exercise for this node.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Get node status
+  const getNodeStatus = (nodeId: string) => {
+    if (completedNodes.includes(nodeId)) return 'completed';
+    if (availableNodes.includes(nodeId)) return 'available';
+    if (currentNodeId === nodeId) return 'current';
+    return 'locked';
+  };
+
+  // Get node status icon
+  const getNodeStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="h-6 w-6 text-green-500" />;
+      case 'available':
+      case 'current':
+        return <Circle className="h-6 w-6 text-blue-500" />;
+      case 'locked':
+        return <Lock className="h-6 w-6 text-gray-400" />;
+      default:
+        return <Clock className="h-6 w-6 text-yellow-500" />;
+    }
+  };
+
+  if (!curriculum || sortedNodes.length === 0) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="flex flex-col items-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-muted-foreground">Loading curriculum...</p>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="pt-6 text-center">
+          <p className="text-muted-foreground">No curriculum data available.</p>
+        </CardContent>
+      </Card>
     );
   }
-  
-  if (nodes.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">
-          No exercises found in this curriculum. Please try another one.
-        </p>
-      </div>
-    );
-  }
-  
-  // Group nodes by whether they are bonus content or not
-  const regularNodes = nodes.filter(node => !node.isBonus);
-  const bonusNodes = nodes.filter(node => node.isBonus);
-  
+
   return (
-    <div className="space-y-8">
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Core Curriculum</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {regularNodes.map((node, index) => {
-            const nodeProgressItem = nodeProgress.find(p => p.nodeId === node.id);
-            const isAvailable = availableNodes.includes(node.id);
-            
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+          <div>
+            <h2 className="text-2xl font-bold">{curriculum.name}</h2>
+            <div className="flex items-center mt-1">
+              <p className="text-muted-foreground capitalize">{curriculum.language}</p>
+              <span className="mx-2 text-muted-foreground">•</span>
+              <LevelBadge level={curriculum.level as LanguageLevel} />
+            </div>
+          </div>
+          <div className="mt-2 md:mt-0">
+            <p className="text-sm text-muted-foreground">
+              Progress: {currentCurriculumPath?.completion_percentage || 0}% Complete
+            </p>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-1">
+              <div 
+                className="bg-primary h-2.5 rounded-full transition-all duration-500" 
+                style={{ width: `${currentCurriculumPath?.completion_percentage || 0}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        {curriculum.description && (
+          <p className="text-muted-foreground mb-6">{curriculum.description}</p>
+        )}
+
+        <Separator className="my-6" />
+
+        <div className={`flex ${isMobile ? 'flex-col space-y-4' : 'flex-col space-y-8'}`}>
+          {sortedNodes.map((node, index) => {
+            const nodeStatus = getNodeStatus(node.id);
+            const isLastNode = index === sortedNodes.length - 1;
+
             return (
-              <motion.div 
-                key={node.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-              >
-                <CurriculumNodeCard 
-                  node={node} 
-                  progress={nodeProgressItem} 
-                  isAvailable={isAvailable}
-                  onClick={onNodeSelect}
-                />
-              </motion.div>
+              <div key={node.id} className="flex flex-col">
+                <div className="flex items-start">
+                  <div className="mr-4">
+                    {getNodeStatusIcon(nodeStatus)}
+                  </div>
+                  <motion.div 
+                    className="flex-1"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <Card className={`border ${
+                      nodeStatus === 'completed' ? 'border-green-200 bg-green-50' : 
+                      nodeStatus === 'current' ? 'border-blue-200 bg-blue-50' :
+                      nodeStatus === 'available' ? 'border-blue-100' :
+                      'border-gray-200 bg-gray-50'
+                    }`}>
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold text-lg flex items-center justify-between">
+                          {node.name}
+                          <span className="text-sm font-normal text-muted-foreground">
+                            {node.min_completion_count} completions at {node.min_accuracy_percentage}% accuracy
+                          </span>
+                        </h3>
+                        {node.description && (
+                          <p className="text-sm text-muted-foreground mt-1">{node.description}</p>
+                        )}
+                      </CardContent>
+                      <CardFooter className="p-4 pt-0">
+                        <Button 
+                          onClick={() => handleNodeClick(node.id, ['available', 'completed', 'current'].includes(nodeStatus))}
+                          disabled={nodeStatus === 'locked' || nodeLoading}
+                          variant={nodeStatus === 'completed' ? 'outline' : 'default'}
+                          className="w-full sm:w-auto"
+                        >
+                          {nodeStatus === 'completed' ? 'Practice Again' : 'Start Exercise'}
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </motion.div>
+                </div>
+                
+                {!isLastNode && !isMobile && (
+                  <div className="ml-7 my-2 border-l-2 border-dashed h-4 border-gray-300"></div>
+                )}
+              </div>
             );
           })}
         </div>
-      </div>
-      
-      {bonusNodes.length > 0 && (
-        <>
-          <Separator />
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Bonus Content</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {bonusNodes.map((node, index) => {
-                const nodeProgressItem = nodeProgress.find(p => p.nodeId === node.id);
-                // Bonus nodes are always available
-                const isAvailable = true;
-                
-                return (
-                  <motion.div 
-                    key={node.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                  >
-                    <CurriculumNodeCard 
-                      node={node} 
-                      progress={nodeProgressItem} 
-                      isAvailable={isAvailable}
-                      onClick={onNodeSelect}
-                    />
-                  </motion.div>
-                );
-              })}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

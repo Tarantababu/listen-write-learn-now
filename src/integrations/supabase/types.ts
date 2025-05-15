@@ -74,6 +74,86 @@ export type Database = {
           },
         ]
       }
+      curricula: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          language: string
+          level: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          language: string
+          level: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          language?: string
+          level?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      curriculum_nodes: {
+        Row: {
+          created_at: string
+          curriculum_id: string
+          description: string | null
+          id: string
+          min_accuracy_percentage: number
+          min_completion_count: number
+          name: string
+          sequence_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          curriculum_id: string
+          description?: string | null
+          id?: string
+          min_accuracy_percentage?: number
+          min_completion_count?: number
+          name: string
+          sequence_order: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          curriculum_id?: string
+          description?: string | null
+          id?: string
+          min_accuracy_percentage?: number
+          min_completion_count?: number
+          name?: string
+          sequence_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_nodes_curriculum_id_fkey"
+            columns: ["curriculum_id"]
+            isOneToOne: false
+            referencedRelation: "curricula"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       default_exercises: {
         Row: {
           audio_url: string | null
@@ -234,6 +314,48 @@ export type Database = {
           read?: boolean | null
         }
         Relationships: []
+      }
+      node_exercises: {
+        Row: {
+          created_at: string
+          exercise_id: string
+          id: string
+          node_id: string
+          sequence_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exercise_id: string
+          id?: string
+          node_id: string
+          sequence_order: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string
+          id?: string
+          node_id?: string
+          sequence_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "default_exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "node_exercises_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -551,6 +673,118 @@ export type Database = {
         }
         Relationships: []
       }
+      user_curricula: {
+        Row: {
+          completion_percentage: number
+          created_at: string
+          current_node_id: string | null
+          curriculum_id: string
+          enrollment_date: string
+          id: string
+          last_activity_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completion_percentage?: number
+          created_at?: string
+          current_node_id?: string | null
+          curriculum_id: string
+          enrollment_date?: string
+          id?: string
+          last_activity_date?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completion_percentage?: number
+          created_at?: string
+          current_node_id?: string | null
+          curriculum_id?: string
+          enrollment_date?: string
+          id?: string
+          last_activity_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_curricula_current_node_id_fkey"
+            columns: ["current_node_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_curricula_curriculum_id_fkey"
+            columns: ["curriculum_id"]
+            isOneToOne: false
+            referencedRelation: "curricula"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_exercise_attempts: {
+        Row: {
+          accuracy_percentage: number
+          attempt_date: string
+          completion_time: number | null
+          created_at: string
+          curriculum_id: string | null
+          exercise_id: string
+          id: string
+          node_id: string | null
+          user_id: string
+        }
+        Insert: {
+          accuracy_percentage: number
+          attempt_date?: string
+          completion_time?: number | null
+          created_at?: string
+          curriculum_id?: string | null
+          exercise_id: string
+          id?: string
+          node_id?: string | null
+          user_id: string
+        }
+        Update: {
+          accuracy_percentage?: number
+          attempt_date?: string
+          completion_time?: number | null
+          created_at?: string
+          curriculum_id?: string | null
+          exercise_id?: string
+          id?: string
+          node_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_exercise_attempts_curriculum_id_fkey"
+            columns: ["curriculum_id"]
+            isOneToOne: false
+            referencedRelation: "curricula"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_exercise_attempts_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "default_exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_exercise_attempts_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_messages: {
         Row: {
           created_at: string
@@ -585,6 +819,63 @@ export type Database = {
             columns: ["message_id"]
             isOneToOne: false
             referencedRelation: "admin_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_node_progress: {
+        Row: {
+          completed_exercise_count: number
+          completion_date: string | null
+          created_at: string
+          curriculum_id: string
+          highest_accuracy_achieved: number
+          id: string
+          node_id: string
+          start_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_exercise_count?: number
+          completion_date?: string | null
+          created_at?: string
+          curriculum_id: string
+          highest_accuracy_achieved?: number
+          id?: string
+          node_id: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_exercise_count?: number
+          completion_date?: string | null
+          created_at?: string
+          curriculum_id?: string
+          highest_accuracy_achieved?: number
+          id?: string
+          node_id?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_node_progress_curriculum_id_fkey"
+            columns: ["curriculum_id"]
+            isOneToOne: false
+            referencedRelation: "curricula"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_node_progress_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_nodes"
             referencedColumns: ["id"]
           },
         ]
@@ -764,6 +1055,20 @@ export type Database = {
         Args: { path_id_param: string }
         Returns: undefined
       }
+      enroll_in_curriculum: {
+        Args: { user_id_param: string; curriculum_id_param: string }
+        Returns: string
+      }
+      get_available_curriculum_nodes: {
+        Args: { user_id_param: string; curriculum_id_param: string }
+        Returns: {
+          id: string
+          name: string
+          description: string
+          sequence_order: number
+          status: string
+        }[]
+      }
       get_roadmaps_by_language: {
         Args: { requested_language: string }
         Returns: {
@@ -813,6 +1118,17 @@ export type Database = {
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      record_curriculum_exercise_attempt: {
+        Args: {
+          user_id_param: string
+          exercise_id_param: string
+          node_id_param: string
+          curriculum_id_param: string
+          accuracy_param: number
+          completion_time_param: number
+        }
+        Returns: undefined
       }
       set_admin_email: {
         Args: Record<PropertyKey, never> | { email: string }

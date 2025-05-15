@@ -1,202 +1,250 @@
 
 import React, { useState, useEffect } from 'react';
-import { useCurriculum } from '@/contexts/CurriculumContext';
-import { CurriculumNode } from '@/types';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, CheckCircle, XCircle, Repeat } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { toast } from '@/components/ui/use-toast';
+import { useCurriculum } from '@/hooks/use-curriculum';
+import AudioPlayer from '@/components/AudioPlayer';
 
 interface CurriculumExerciseModalProps {
-  node: CurriculumNode | null;
   isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose: () => void;
+  nodeId: string;
+  curriculumId: string;
 }
 
-interface ExerciseState {
-  exercise: any | null;
-  loading: boolean;
-  error: string | null;
-  completed: boolean;
-  accuracy: number | null;
-}
-
-const CurriculumExerciseModal: React.FC<CurriculumExerciseModalProps> = ({ 
-  node,
+export const CurriculumExerciseModal: React.FC<CurriculumExerciseModalProps> = ({
   isOpen,
-  onOpenChange
+  onClose,
+  nodeId,
+  curriculumId,
 }) => {
-  const { user } = useAuth();
-  const { getNodeExercise, incrementNodeCompletion, nodeLoading } = useCurriculum();
-  const [exerciseState, setExerciseState] = useState<ExerciseState>({
-    exercise: null,
-    loading: false,
-    error: null,
-    completed: false,
-    accuracy: null
-  });
+  const { getNodeExercise, incrementNodeCompletion, nodeProgress } = useCurriculum();
   
-  // Load the exercise when the modal is opened
+  const [exercise, setExercise] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userInput, setUserInput] = useState('');
+  const [result, setResult] = useState<{ accuracy: number; correct: boolean } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Get node progress for this node
+  const nodeProgressRecord = nodeProgress.find(np => np.node_id === nodeId);
+  const completedCount = nodeProgressRecord?.completed_exercise_count || 0;
+  const requiredCount = exercise?.min_completion_count || 3;
+  const minAccuracy = exercise?.min_accuracy_percentage || 95;
+
+  // Load exercise data
   useEffect(() => {
-    if (isOpen && node && user) {
-      setExerciseState(prev => ({ ...prev, loading: true, error: null, completed: false }));
-      
-      getNodeExercise(node.id)
-        .then(exercise => {
-          setExerciseState(prev => ({
-            ...prev,
-            exercise,
-            loading: false
-          }));
-        })
-        .catch(error => {
+    const loadExercise = async () => {
+      if (isOpen && nodeId) {
+        try {
+          setIsLoading(true);
+          const exerciseData = await getNodeExercise(nodeId);
+          setExercise(exerciseData);
+        } catch (error) {
           console.error('Error loading exercise:', error);
-          setExerciseState(prev => ({
-            ...prev,
-            loading: false,
-            error: 'Failed to load exercise. Please try again.'
-          }));
-        });
-    } else {
-      // Reset state when modal is closed
-      setExerciseState({
-        exercise: null,
-        loading: false,
-        error: null,
-        completed: false,
-        accuracy: null
-      });
+          toast({
+            title: 'Error',
+            description: 'Failed to load exercise',
+            variant: 'destructive',
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadExercise();
+  }, [isOpen, nodeId, getNodeExercise]);
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setUserInput('');
+      setResult(null);
     }
-  }, [isOpen, node, user]);
-  
-  const handleCompleteExercise = async (accuracy: number) => {
-    if (!node) return;
+  }, [isOpen]);
+
+  // Simple function to calculate accuracy
+  const calculateAccuracy = (original: string, input: string): number => {
+    if (!input) return 0;
+    
+    const originalWords = original.trim().toLowerCase().split(/\s+/);
+    const inputWords = input.trim().toLowerCase().split(/\s+/);
+    
+    let correctWords = 0;
+    
+    for (let i = 0; i < Math.min(originalWords.length, inputWords.length); i++) {
+      if (originalWords[i] === inputWords[i]) {
+        correctWords++;
+      }
+    }
+    
+    return Math.round((correctWords / originalWords.length) * 100);
+  };
+
+  // Handle submit
+  const handleSubmit = async () => {
+    if (!exercise || !userInput.trim()) return;
     
     try {
-      await incrementNodeCompletion(node.id, accuracy);
-      setExerciseState(prev => ({
-        ...prev,
-        completed: true,
-        accuracy
-      }));
+      setIsSubmitting(true);
       
-      // Show appropriate toast based on accuracy
-      if (accuracy >= 0.9) {
-        toast({
-          title: "Excellent!",
-          description: "You've mastered this exercise!",
-        });
-      } else if (accuracy >= 0.7) {
-        toast({
-          title: "Good job!",
-          description: "You're making great progress.",
-        });
-      } else {
-        toast({
-          title: "Keep practicing!",
-          description: "You'll improve with more practice.",
-        });
+      // Calculate accuracy
+      const accuracy = calculateAccuracy(exercise.text, userInput);
+      
+      // Record result
+      setResult({
+        accuracy,
+        correct: accuracy >= minAccuracy,
+      });
+      
+      // Record completion if accuracy is sufficient
+      if (accuracy >= minAccuracy) {
+        await incrementNodeCompletion(nodeId, accuracy);
       }
     } catch (error) {
-      console.error('Error completing exercise:', error);
+      console.error('Error submitting exercise:', error);
       toast({
-        title: "Error",
-        description: "Failed to record your progress.",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to submit exercise',
+        variant: 'destructive',
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  
-  // Simple exercise completion for demo purposes
-  const simulateExerciseCompletion = () => {
-    const randomAccuracy = Math.random() * 0.4 + 0.6; // Random between 0.6 and 1.0
-    handleCompleteExercise(randomAccuracy);
+
+  // Try again
+  const handleTryAgain = () => {
+    setUserInput('');
+    setResult(null);
   };
-  
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{node?.title || 'Exercise'}</DialogTitle>
-          <DialogDescription>
-            {node?.description || 'Complete this exercise to improve your skills'}
-          </DialogDescription>
-        </DialogHeader>
-        
-        {exerciseState.loading || !exerciseState.exercise ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="flex flex-col items-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-muted-foreground">Loading exercise...</p>
-            </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+        {isLoading ? (
+          <div className="flex justify-center items-center h-40">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : exerciseState.error ? (
-          <div className="text-center py-12">
-            <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <p className="text-muted-foreground">{exerciseState.error}</p>
-            <Button onClick={() => onOpenChange(false)} className="mt-4">Close</Button>
-          </div>
-        ) : exerciseState.completed ? (
-          <div className="text-center py-12">
-            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Exercise Completed!</h3>
-            <p className="text-muted-foreground mb-4">
-              You completed this exercise with {Math.round((exerciseState.accuracy || 0) * 100)}% accuracy.
-            </p>
-            <Button onClick={() => onOpenChange(false)}>Close</Button>
-          </div>
-        ) : (
+        ) : exercise ? (
           <>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Badge variant="secondary">{exerciseState.exercise.language}</Badge>
-                <div className="flex gap-1">
-                  {exerciseState.exercise.tags?.map((tag: string) => (
-                    <Badge key={tag} variant="outline">{tag}</Badge>
-                  ))}
+            <DialogHeader>
+              <DialogTitle>{exercise.title}</DialogTitle>
+              <DialogDescription>
+                {completedCount > 0 && (
+                  <div className="mt-2">
+                    <p className="text-sm text-muted-foreground">
+                      Completed {completedCount} of {requiredCount} times
+                    </p>
+                    <Progress 
+                      value={(completedCount / requiredCount) * 100} 
+                      className="h-1.5 mt-1"
+                    />
+                  </div>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-2">
+              {exercise.audio_url && (
+                <div className="mb-4">
+                  <AudioPlayer audioUrl={exercise.audio_url} />
                 </div>
+              )}
+
+              <div className="bg-muted p-4 rounded-md">
+                <p className="whitespace-pre-wrap">{exercise.text}</p>
               </div>
-              
-              <Separator />
-              
-              <div className="p-4 border rounded-md bg-muted/30">
-                <h3 className="font-medium mb-2">Instructions</h3>
-                <p className="text-sm">Read the text below and practice pronouncing it. When you're ready, click "Complete Exercise" to record your progress.</p>
-              </div>
-              
-              <div className="p-4 border rounded-md">
-                <h3 className="font-medium mb-2">{exerciseState.exercise.title}</h3>
-                <p className="whitespace-pre-line">{exerciseState.exercise.text}</p>
-              </div>
-              
-              {exerciseState.exercise.audio_url && (
-                <div className="flex justify-center">
-                  <audio controls src={exerciseState.exercise.audio_url} className="w-full">
-                    Your browser does not support the audio element.
-                  </audio>
+
+              {!result ? (
+                <>
+                  <Textarea
+                    placeholder="Write your answer here..."
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    rows={5}
+                    className="resize-none"
+                    disabled={isSubmitting}
+                  />
+                  
+                  <Button 
+                    onClick={handleSubmit} 
+                    disabled={isSubmitting || !userInput.trim()} 
+                    className="w-full"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Checking...
+                      </>
+                    ) : (
+                      'Submit Answer'
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div 
+                    className={`p-4 rounded-md ${
+                      result.correct ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                    }`}
+                  >
+                    <div className="flex items-center mb-2">
+                      {result.correct ? (
+                        <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-red-500 mr-2" />
+                      )}
+                      <h4 className="font-medium">
+                        {result.correct ? 'Correct!' : 'Try Again'}
+                      </h4>
+                    </div>
+                    <p className="text-sm">
+                      {result.correct ? (
+                        `Great job! You achieved ${result.accuracy}% accuracy (minimum required: ${minAccuracy}%).`
+                      ) : (
+                        `Your answer was ${result.accuracy}% accurate. You need at least ${minAccuracy}% to complete this exercise.`
+                      )}
+                    </p>
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <Button 
+                      onClick={handleTryAgain} 
+                      variant="outline" 
+                      className="w-full"
+                    >
+                      <Repeat className="mr-2 h-4 w-4" />
+                      Try Again
+                    </Button>
+                    
+                    <Button 
+                      onClick={onClose} 
+                      variant={result.correct ? 'default' : 'ghost'} 
+                      className="w-full"
+                    >
+                      {result.correct ? 'Continue' : 'Close'}
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
-            
-            <div className="flex justify-between mt-4">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Close
-              </Button>
-              <Button onClick={simulateExerciseCompletion} disabled={nodeLoading}>
-                {nodeLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>Complete Exercise</>
-                )}
-              </Button>
-            </div>
           </>
+        ) : (
+          <div className="text-center py-6">
+            <p className="text-muted-foreground">No exercise found for this node.</p>
+          </div>
         )}
       </DialogContent>
     </Dialog>

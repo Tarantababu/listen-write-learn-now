@@ -1,175 +1,128 @@
 
 import React from 'react';
-import { useCurriculum } from '@/contexts/CurriculumContext';
+import { useCurriculum } from '@/hooks/use-curriculum';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Loader2, BarChart, BookOpen, CheckSquare, Award } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
+import { CheckCircle, AlertCircle, Clock, ArrowRightCircle } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import LevelBadge from '@/components/LevelBadge';
+import { LanguageLevel } from '@/types';
 
-const CurriculumProgressDashboard: React.FC = () => {
+export const CurriculumProgressDashboard: React.FC = () => {
   const { 
-    nodes, 
-    nodeProgress, 
-    completedNodes, 
-    isLoading, 
-    currentCurriculumPath 
+    userCurriculumPaths, 
+    selectCurriculumPath,
+    isLoading
   } = useCurriculum();
-  
+  const { toast } = useToast();
+
+  const handleSelectCurriculum = async (id: string) => {
+    try {
+      await selectCurriculumPath(id);
+    } catch (error) {
+      console.error('Error selecting curriculum:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to select curriculum',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="flex flex-col items-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-muted-foreground">Loading dashboard...</p>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="pt-6 text-center py-8">
+          <p className="text-muted-foreground">Loading your curricula...</p>
+        </CardContent>
+      </Card>
     );
   }
-  
-  const totalNodes = nodes.length;
-  const completedNodeCount = completedNodes.length;
-  const completionPercentage = totalNodes > 0 ? (completedNodeCount / totalNodes) * 100 : 0;
-  
-  const regularNodes = nodes.filter(n => !n.isBonus);
-  const bonusNodes = nodes.filter(n => n.isBonus);
-  
-  const completedRegularNodes = nodes
-    .filter(n => !n.isBonus && completedNodes.includes(n.id))
-    .length;
-  
-  const completedBonusNodes = nodes
-    .filter(n => n.isBonus && completedNodes.includes(n.id))
-    .length;
-    
-  const totalPracticeCount = nodeProgress.reduce((sum, curr) => sum + curr.completionCount, 0);
-  
-  // Calculate practice count in the last 7 days
-  const lastWeekPractices = nodeProgress.filter(p => {
-    if (!p.lastPracticedAt) return false;
-    const practiceDate = new Date(p.lastPracticedAt);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - practiceDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 7;
-  }).length;
-  
+
+  if (userCurriculumPaths.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-center py-8">
+          <p className="text-muted-foreground">You haven't enrolled in any curricula yet.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Your Progress</h3>
-        <p className="text-sm text-muted-foreground">
-          Track your progress in {currentCurriculumPath?.language} curriculum
-        </p>
-      </div>
-      
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span>Overall completion</span>
-          <span className="font-medium">{completedNodeCount}/{totalNodes} exercises</span>
-        </div>
-        <Progress value={completionPercentage} className="h-2" />
-      </div>
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold mb-4">Your Learning Progress</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <BookOpen className="h-4 w-4 mr-2" />
-                Core Content
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {completedRegularNodes}/{regularNodes.length}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Core exercises completed
-              </p>
-              <Progress 
-                value={(completedRegularNodes / Math.max(regularNodes.length, 1)) * 100} 
-                className="h-1 mt-2" 
-              />
-            </CardContent>
-          </Card>
-        </motion.div>
-        
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <Award className="h-4 w-4 mr-2" />
-                Bonus Content
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {completedBonusNodes}/{bonusNodes.length}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Bonus exercises completed
-              </p>
-              <Progress 
-                value={(completedBonusNodes / Math.max(bonusNodes.length, 1)) * 100} 
-                className="h-1 mt-2" 
-              />
-            </CardContent>
-          </Card>
-        </motion.div>
-        
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <CheckSquare className="h-4 w-4 mr-2" />
-                Total Practice
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {totalPracticeCount}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Total exercises practiced
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
-        
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
-        >
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <BarChart className="h-4 w-4 mr-2" />
-                Recent Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {lastWeekPractices}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Exercises practiced in the last 7 days
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
+        {userCurriculumPaths.map((path) => {
+          const curriculum = path.curriculum;
+          if (!curriculum) return null;
+          
+          const lastActivity = path.last_activity_date 
+            ? formatDistanceToNow(new Date(path.last_activity_date), { addSuffix: true })
+            : 'Never';
+
+          return (
+            <Card key={path.id} className="overflow-hidden">
+              <div 
+                className="h-1.5 bg-gray-200 w-full"
+                style={{
+                  background: `linear-gradient(to right, 
+                    var(--primary) ${path.completion_percentage}%, 
+                    var(--muted) ${path.completion_percentage}%)`
+                }}
+              ></div>
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                  <CardTitle className="text-lg">
+                    {curriculum.name}
+                  </CardTitle>
+                  <div className="flex space-x-1 items-center">
+                    <LevelBadge level={curriculum.level as LanguageLevel} />
+                    <span className="capitalize text-xs text-muted-foreground">
+                      {curriculum.language}
+                    </span>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center text-sm">
+                    <div className="flex items-center">
+                      {path.status === 'completed' ? (
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                      ) : path.status === 'abandoned' ? (
+                        <AlertCircle className="h-4 w-4 text-amber-500 mr-2" />
+                      ) : (
+                        <Clock className="h-4 w-4 text-blue-500 mr-2" />
+                      )}
+                      <span className="capitalize">
+                        {path.status === 'completed' 
+                          ? 'Completed' 
+                          : path.status === 'abandoned'
+                          ? 'Abandoned'
+                          : `In progress (${path.completion_percentage}%)`}
+                      </span>
+                    </div>
+                    <span className="text-muted-foreground">
+                      Last activity: {lastActivity}
+                    </span>
+                  </div>
+
+                  <Button
+                    onClick={() => handleSelectCurriculum(path.id)}
+                    variant={path.status === 'completed' ? 'outline' : 'default'}
+                    className="w-full"
+                  >
+                    {path.status === 'completed' ? 'Review' : 'Continue Learning'}
+                    <ArrowRightCircle className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

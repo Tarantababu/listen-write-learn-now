@@ -1,375 +1,230 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { 
-  CurriculumContextType, 
-  CurriculumPath, 
-  CurriculumNode, 
-  UserCurriculumPath, 
-  CurriculumNodeProgress, 
-  Language,
-  LanguageLevel 
-} from '@/types';
-import {
-  getCurriculumPaths,
-  getCurriculumNodes,
-  getUserCurriculumPaths,
-  getCurriculumNodesProgress as getNodeProgress,
-  initializeUserCurriculumPath as initPath,
-  resetProgress as resetPathProgress,
-  incrementNodeCompletion,
-  markNodeAsCompleted as markCompleted,
-  getNodeExercise as getExercise
-} from '@/services/curriculumService';
-import { toast } from '@/hooks/use-toast';
 
-// Create the context and export it
+import React, { createContext, useEffect, useState, useCallback } from 'react';
+import { useUserSettingsContext } from './UserSettingsContext';
+import { 
+  getAllCurricula, 
+  getUserEnrolledCurricula, 
+  enrollInCurriculum, 
+  getAvailableNodes, 
+  getUserCurriculumProgress, 
+  getNodeExercises,
+  getCurriculumNodes,
+  recordExerciseAttempt
+} from '@/services/curriculumService';
+import { CurriculumContextType, LanguageLevel, Language } from '@/types';
+
+// Create the context with a default value
 export const CurriculumContext = createContext<CurriculumContextType | undefined>(undefined);
 
 export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
   const { settings } = useUserSettingsContext();
-  
-  const [curriculumPaths, setCurriculumPaths] = useState<CurriculumPath[]>([]);
-  const [userCurriculumPaths, setUserCurriculumPaths] = useState<UserCurriculumPath[]>([]);
-  const [currentCurriculumPath, setCurrentCurriculumPath] = useState<UserCurriculumPath | null>(null);
-  const [nodes, setNodes] = useState<CurriculumNode[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [nodeLoading, setNodeLoading] = useState(false);
-  const [nodeProgress, setNodeProgress] = useState<CurriculumNodeProgress[]>([]);
-  
-  // Computed properties
-  const currentNodeId = currentCurriculumPath?.currentNodeId;
-  const completedNodes = nodeProgress
-    .filter(progress => progress.isCompleted)
-    .map(progress => progress.nodeId);
-  
-  const availableNodes = nodes
-    .filter(node => {
-      // First node is always available
-      if (node.position === 1) return true;
-      
-      // For other nodes, check if previous node is completed
-      const previousNode = nodes.find(n => n.position === node.position - 1);
-      return previousNode && completedNodes.includes(previousNode.id);
-    })
-    .map(node => node.id);
+  const [availableCurricula, setAvailableCurricula] = useState<any[]>([]);
+  const [userCurricula, setUserCurricula] = useState<any[]>([]);
+  const [currentCurriculum, setCurrentCurriculum] = useState<any | null>(null);
+  const [nodes, setNodes] = useState<any[]>([]);
+  const [availableNodes, setAvailableNodes] = useState<string[]>([]);
+  const [completedNodes, setCompletedNodes] = useState<string[]>([]);
+  const [nodeProgress, setNodeProgress] = useState<any[]>([]);
+  const [currentNodeId, setCurrentNodeId] = useState<string | undefined>(undefined);
 
-  // Load the user's curriculum paths when the selected language changes
-  useEffect(() => {
-    if (user && settings.selectedLanguage) {
-      loadUserCurriculumPaths(settings.selectedLanguage)
-        .catch(error => {
-          console.error('Error loading user curriculum paths:', error);
-        });
+  // Load available curricula based on language
+  const loadAvailableCurricula = useCallback(async (language: Language) => {
+    try {
+      setIsLoading(true);
+      const curricula = await getAllCurricula(language);
+      setAvailableCurricula(curricula);
+      return curricula;
+    } catch (error) {
+      console.error("Error loading available curricula:", error);
+      return [];
+    } finally {
+      setIsLoading(false);
     }
-  }, [user, settings.selectedLanguage]);
+  }, []);
 
-  // Load curriculum paths for the selected language
-  useEffect(() => {
-    if (settings.selectedLanguage) {
-      getCurriculumPaths(settings.selectedLanguage)
-        .then(paths => {
-          setCurriculumPaths(paths);
-        })
-        .catch(error => {
-          console.error('Error fetching curriculum paths:', error);
-        });
+  // Load user's enrolled curricula
+  const loadUserCurriculumPaths = useCallback(async (language?: Language) => {
+    try {
+      setIsLoading(true);
+      const userCurrs = await getUserEnrolledCurricula(language || settings.selectedLanguage);
+      setUserCurricula(userCurrs);
+      return userCurrs;
+    } catch (error) {
+      console.error("Error loading user curriculum paths:", error);
+      return [];
+    } finally {
+      setIsLoading(false);
     }
   }, [settings.selectedLanguage]);
 
-  // Load nodes and progress when current curriculum path changes
+  // Initialize user curriculum path
+  const initializeUserCurriculumPath = useCallback(async (level: LanguageLevel, language: Language) => {
+    try {
+      setIsLoading(true);
+      
+      // Find curriculum for this level and language
+      const curricula = await getAllCurricula(language);
+      const matchingCurriculum = curricula.find(c => c.level === level && c.language === language);
+      
+      if (!matchingCurriculum) {
+        throw new Error(`No curriculum found for ${level} level in ${language}`);
+      }
+      
+      // Enroll the user
+      await enrollInCurriculum(matchingCurriculum.id);
+      
+      // Refresh user curricula
+      await loadUserCurriculumPaths(language);
+    } catch (error) {
+      console.error("Error initializing user curriculum path:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadUserCurriculumPaths]);
+
+  // Load a specific user curriculum path
+  const loadUserCurriculumPath = useCallback(async (userCurriculumPathId?: string) => {
+    try {
+      setIsLoading(true);
+      
+      if (!userCurriculumPathId && userCurricula.length > 0) {
+        // Load the first curriculum if no ID is provided
+        const firstCurr = userCurricula[0];
+        setCurrentCurriculum(firstCurr);
+        setCurrentNodeId(firstCurr.current_node_id);
+        
+        // Load curriculum nodes
+        const allNodes = await getCurriculumNodes(firstCurr.curriculum_id);
+        setNodes(allNodes);
+        
+        // Load user progress
+        const progress = await getUserCurriculumProgress(firstCurr.curriculum_id);
+        setNodeProgress(progress);
+        
+        // Get available and completed nodes
+        const availNodes = await getAvailableNodes(firstCurr.curriculum_id);
+        setAvailableNodes(availNodes.filter(n => n.status === 'available').map(n => n.id));
+        setCompletedNodes(availNodes.filter(n => n.status === 'completed').map(n => n.id));
+      } else if (userCurriculumPathId) {
+        // Find the specified curriculum
+        const curr = userCurricula.find(c => c.id === userCurriculumPathId);
+        if (curr) {
+          setCurrentCurriculum(curr);
+          setCurrentNodeId(curr.current_node_id);
+          
+          // Load curriculum nodes
+          const allNodes = await getCurriculumNodes(curr.curriculum_id);
+          setNodes(allNodes);
+          
+          // Load user progress
+          const progress = await getUserCurriculumProgress(curr.curriculum_id);
+          setNodeProgress(progress);
+          
+          // Get available and completed nodes
+          const availNodes = await getAvailableNodes(curr.curriculum_id);
+          setAvailableNodes(availNodes.filter(n => n.status === 'available').map(n => n.id));
+          setCompletedNodes(availNodes.filter(n => n.status === 'completed').map(n => n.id));
+        }
+      }
+    } catch (error) {
+      console.error("Error loading user curriculum path:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userCurricula]);
+
+  // Complete a node in the curriculum
+  const completeNode = useCallback(async (nodeId: string) => {
+    try {
+      if (!currentCurriculum) return;
+      
+      // Mark the node as completed
+      await markNodeAsCompleted(nodeId);
+      
+      // Refresh the curriculum path
+      await loadUserCurriculumPath(currentCurriculum.id);
+    } catch (error) {
+      console.error("Error completing node:", error);
+    }
+  }, [currentCurriculum, loadUserCurriculumPath]);
+
+  // Reset progress for the current curriculum
+  const resetProgress = useCallback(async () => {
+    try {
+      if (!currentCurriculum) return;
+      
+      // We would need to add a function to reset progress in the database
+      // For now, let's just reload the curriculum
+      await loadUserCurriculumPath(currentCurriculum.id);
+    } catch (error) {
+      console.error("Error resetting progress:", error);
+    }
+  }, [currentCurriculum, loadUserCurriculumPath]);
+
+  // Get exercises for a node
+  const getNodeExercise = useCallback(async (nodeId: string) => {
+    try {
+      setNodeLoading(true);
+      const exercises = await getNodeExercises(nodeId);
+      return exercises.length > 0 ? exercises[0].exercise : null;
+    } catch (error) {
+      console.error("Error getting node exercise:", error);
+      return null;
+    } finally {
+      setNodeLoading(false);
+    }
+  }, []);
+
+  // Mark a node as completed
+  const markNodeAsCompleted = useCallback(async (nodeId: string) => {
+    try {
+      if (!currentCurriculum) return;
+      
+      // This is a simplified version, ideally we'd mark the node as completed in the database
+      setCompletedNodes(prev => [...prev, nodeId]);
+    } catch (error) {
+      console.error("Error marking node as completed:", error);
+    }
+  }, [currentCurriculum]);
+
+  // Increment node completion counter
+  const incrementNodeCompletion = useCallback(async (nodeId: string, accuracy: number) => {
+    try {
+      if (!currentCurriculum || !nodeId) return;
+      
+      await recordExerciseAttempt({
+        exercise_id: '', // This would need to be provided
+        node_id: nodeId,
+        curriculum_id: currentCurriculum.curriculum_id,
+        accuracy_percentage: accuracy
+      });
+      
+      // Refresh the curriculum to update progress
+      await loadUserCurriculumPath(currentCurriculum.id);
+    } catch (error) {
+      console.error("Error incrementing node completion:", error);
+    }
+  }, [currentCurriculum, loadUserCurriculumPath]);
+
+  // Select a curriculum path
+  const selectCurriculumPath = useCallback(async (curriculumPathId: string) => {
+    await loadUserCurriculumPath(curriculumPathId);
+  }, [loadUserCurriculumPath]);
+
+  // Load curricula when the selected language changes
   useEffect(() => {
-    if (currentCurriculumPath) {
-      Promise.all([
-        getCurriculumNodes(currentCurriculumPath.curriculumPathId),
-        getNodeProgress(user!.id, currentCurriculumPath.curriculumPathId)
-      ])
-        .then(([nodesData, progressData]) => {
-          setNodes(nodesData);
-          setNodeProgress(progressData);
-          setIsLoading(false);
-        })
-        .catch(error => {
-          console.error('Error loading curriculum data:', error);
-          setIsLoading(false);
-        });
-    }
-  }, [currentCurriculumPath, user]);
+    loadAvailableCurricula(settings.selectedLanguage);
+    loadUserCurriculumPaths(settings.selectedLanguage);
+  }, [settings.selectedLanguage, loadAvailableCurricula, loadUserCurriculumPaths]);
 
-  /**
-   * Load user curriculum paths for a specific language
-   */
-  const loadUserCurriculumPaths = async (language?: Language): Promise<UserCurriculumPath[] | undefined> => {
-    if (!user) return undefined;
-    
-    setIsLoading(true);
-    try {
-      const paths = await getUserCurriculumPaths(language);
-      
-      // Make sure we only set UserCurriculumPath objects, not strings
-      const typedPaths = paths.filter(path => typeof path !== 'string') as UserCurriculumPath[];
-      setUserCurriculumPaths(typedPaths);
-      
-      // If we have paths and no current path, set the first one as current
-      if (typedPaths.length > 0 && !currentCurriculumPath) {
-        setCurrentCurriculumPath(typedPaths[0]);
-      }
-      
-      setIsLoading(false);
-      return typedPaths;
-    } catch (error) {
-      console.error('Error loading user curriculum paths:', error);
-      setIsLoading(false);
-      throw error;
-    }
-  };
-
-  /**
-   * Initialize a new user curriculum path
-   */
-  const initializeUserCurriculumPath = async (level: LanguageLevel, language: Language): Promise<void> => {
-    if (!user) {
-      toast({
-        title: "Not authenticated",
-        description: "Please sign in to start a curriculum path",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsLoading(true);
-    try {
-      const newPathId = await initPath(level, language);
-      if (!newPathId) {
-        throw new Error('Failed to initialize curriculum path');
-      }
-      
-      // Load the paths again to get the new path
-      const updatedPaths = await loadUserCurriculumPaths(language);
-      if (!updatedPaths) {
-        throw new Error('Failed to load updated paths');
-      }
-      
-      // Find the new path in the updated paths
-      const newPath = updatedPaths.find(p => p.id === newPathId);
-      if (!newPath) {
-        throw new Error('New path not found in updated paths');
-      }
-      
-      // Set it as the current path
-      setCurrentCurriculumPath(newPath);
-      
-      toast({
-        title: "Curriculum started",
-        description: `You have started the ${level} curriculum for ${language}`,
-      });
-      
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error initializing curriculum path:', error);
-      setIsLoading(false);
-      
-      toast({
-        title: "Failed to start curriculum",
-        description: "There was an error starting the curriculum. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  /**
-   * Load a specific user curriculum path
-   */
-  const loadUserCurriculumPath = async (userCurriculumPathId?: string): Promise<void> => {
-    if (!user) return;
-    
-    setIsLoading(true);
-    try {
-      // If no ID provided, try to load the first one for the selected language
-      if (!userCurriculumPathId) {
-        const paths = await loadUserCurriculumPaths(settings.selectedLanguage);
-        if (paths && paths.length > 0) {
-          setCurrentCurriculumPath(paths[0]);
-        }
-      } else {
-        // Find the path in the current list
-        const path = userCurriculumPaths.find(p => p.id === userCurriculumPathId);
-        if (path) {
-          setCurrentCurriculumPath(path);
-        } else {
-          // If not found, reload all paths and try to find it
-          const paths = await loadUserCurriculumPaths();
-          const path = paths?.find(p => p.id === userCurriculumPathId);
-          if (path) {
-            setCurrentCurriculumPath(path);
-          }
-        }
-      }
-      
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error loading user curriculum path:', error);
-      setIsLoading(false);
-    }
-  };
-
-  /**
-   * Mark a node as completed
-   */
-  const completeNode = async (nodeId: string): Promise<void> => {
-    if (!user || !currentCurriculumPath) return;
-    
-    setNodeLoading(true);
-    try {
-      await markCompleted(user.id, nodeId, currentCurriculumPath.curriculumPathId);
-      
-      // Update the progress list
-      setNodeProgress(prev => [
-        ...prev.filter(p => p.nodeId !== nodeId),
-        {
-          id: `temp-${Date.now()}`, // Temporary ID until refresh
-          userId: user.id,
-          curriculumPathId: currentCurriculumPath.curriculumPathId,
-          nodeId,
-          language: currentCurriculumPath.language,
-          completionCount: 3, // Directly completed
-          isCompleted: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      ]);
-      
-      setNodeLoading(false);
-      
-      toast({
-        title: "Node completed",
-        description: "You have completed this exercise",
-      });
-    } catch (error) {
-      console.error('Error completing node:', error);
-      setNodeLoading(false);
-      
-      toast({
-        title: "Error",
-        description: "Failed to mark exercise as completed",
-        variant: "destructive"
-      });
-    }
-  };
-
-  /**
-   * Reset all progress for the current curriculum path
-   */
-  const resetProgress = async (): Promise<void> => {
-    if (!user || !currentCurriculumPath) return;
-    
-    setNodeLoading(true);
-    try {
-      await resetPathProgress(user.id, currentCurriculumPath.curriculumPathId);
-      
-      // Clear the progress list
-      setNodeProgress([]);
-      
-      setNodeLoading(false);
-      
-      toast({
-        title: "Progress reset",
-        description: "Your progress has been reset",
-      });
-    } catch (error) {
-      console.error('Error resetting progress:', error);
-      setNodeLoading(false);
-      
-      toast({
-        title: "Error",
-        description: "Failed to reset progress",
-        variant: "destructive"
-      });
-    }
-  };
-
-  /**
-   * Get the exercise for a node
-   */
-  const getNodeExercise = async (nodeId: string): Promise<any> => {
-    setNodeLoading(true);
-    try {
-      const exercise = await getExercise(nodeId);
-      setNodeLoading(false);
-      return exercise;
-    } catch (error) {
-      console.error('Error getting node exercise:', error);
-      setNodeLoading(false);
-      
-      toast({
-        title: "Error",
-        description: "Failed to load exercise",
-        variant: "destructive"
-      });
-      
-      throw error;
-    }
-  };
-
-  /**
-   * Mark node as completed
-   */
-  const markNodeAsCompleted = async (nodeId: string): Promise<void> => {
-    if (!user || !currentCurriculumPath) return;
-    await completeNode(nodeId);
-  };
-
-  /**
-   * Increment node completion count
-   */
-  const incrementNodeCompletionHandler = async (nodeId: string, accuracy: number): Promise<void> => {
-    if (!user || !currentCurriculumPath) return;
-    
-    setNodeLoading(true);
-    try {
-      await incrementNodeCompletion(
-        user.id,
-        nodeId,
-        currentCurriculumPath.curriculumPathId,
-        currentCurriculumPath.language
-      );
-      
-      // Refetch the node progress to get the updated counts
-      const updatedProgress = await getNodeProgress(user.id, currentCurriculumPath.curriculumPathId);
-      setNodeProgress(updatedProgress);
-      
-      setNodeLoading(false);
-      
-      // Notify if accuracy was high enough
-      if (accuracy >= 0.8) {
-        toast({
-          title: "Great job!",
-          description: "You're making excellent progress",
-        });
-      }
-    } catch (error) {
-      console.error('Error incrementing node completion:', error);
-      setNodeLoading(false);
-    }
-  };
-
-  /**
-   * Select a curriculum path
-   */
-  const selectCurriculumPath = async (curriculumPathId: string): Promise<void> => {
-    const path = userCurriculumPaths.find(p => p.id === curriculumPathId);
-    if (path) {
-      setCurrentCurriculumPath(path);
-    } else {
-      throw new Error('Curriculum path not found');
-    }
-  };
-
+  // The context value that will be provided to consumers
   const contextValue: CurriculumContextType = {
-    curriculumPaths,
-    userCurriculumPaths,
-    currentCurriculumPath,
+    curriculumPaths: availableCurricula,
+    userCurriculumPaths: userCurricula,
+    currentCurriculumPath: currentCurriculum,
     nodes,
     currentNodeId,
     completedNodes,
@@ -384,7 +239,7 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     resetProgress,
     getNodeExercise,
     markNodeAsCompleted,
-    incrementNodeCompletion: incrementNodeCompletionHandler,
+    incrementNodeCompletion,
     selectCurriculumPath
   };
 
@@ -393,13 +248,4 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       {children}
     </CurriculumContext.Provider>
   );
-};
-
-// Custom hook for using the curriculum context
-export const useCurriculum = (): CurriculumContextType => {
-  const context = useContext(CurriculumContext);
-  if (context === undefined) {
-    throw new Error('useCurriculum must be used within a CurriculumProvider');
-  }
-  return context;
 };

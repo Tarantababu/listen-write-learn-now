@@ -1,152 +1,176 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCurriculum } from '@/hooks/use-curriculum';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { LanguageLevel } from '@/types';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Loader2 } from 'lucide-react';
 import LevelBadge from '@/components/LevelBadge';
-import { motion } from 'framer-motion';
+import { LanguageLevel } from '@/types';
 import { toast } from '@/components/ui/use-toast';
+import { Loader2 } from 'lucide-react';
+import { RefreshButton } from '@/components/RefreshButton';
 
-const levels: { level: LanguageLevel; title: string; description: string }[] = [
-  { 
-    level: 'A0', 
-    title: 'Absolute Beginner', 
-    description: 'Start learning the very basics of the language' 
-  },
-  { 
-    level: 'A1', 
-    title: 'Beginner', 
-    description: 'Simple phrases and everyday expressions' 
-  },
-  { 
-    level: 'A2', 
-    title: 'Elementary', 
-    description: 'Basic communication for routine tasks' 
-  },
-  { 
-    level: 'B1', 
-    title: 'Intermediate', 
-    description: 'Main points on familiar matters regularly encountered' 
-  },
-  { 
-    level: 'B2', 
-    title: 'Upper Intermediate', 
-    description: 'Interact with a degree of fluency with native speakers' 
-  },
-  { 
-    level: 'C1', 
-    title: 'Advanced', 
-    description: 'Express ideas fluently and spontaneously' 
-  },
-  { 
-    level: 'C2', 
-    title: 'Proficient', 
-    description: 'Understand with ease virtually everything heard or read' 
-  },
-];
-
-const CurriculumSelection: React.FC = () => {
-  // Using the curriculum service directly since context is not fully set up
+export const CurriculumSelection: React.FC = () => {
+  const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>("A1");
   const { settings } = useUserSettingsContext();
-  const [selectedLevel, setSelectedLevel] = useState<LanguageLevel | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const dataLoaded = useRef(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   
-  const handleSelection = (level: LanguageLevel) => {
-    setSelectedLevel(level);
+  const { 
+    curriculumPaths, 
+    userCurriculumPaths, 
+    initializeUserCurriculumPath, 
+    loadUserCurriculumPaths, 
+    isLoading 
+  } = useCurriculum();
+
+  // Get available levels for the current language
+  const availableLevels = React.useMemo(() => {
+    return Array.from(new Set(
+      curriculumPaths
+        .filter(path => path.language === settings.selectedLanguage)
+        .map(path => path.level)
+    )).sort() as LanguageLevel[];
+  }, [curriculumPaths, settings.selectedLanguage]);
+
+  // Load curricula when component mounts or language changes
+  useEffect(() => {
+    if (!dataLoaded.current) {
+      dataLoaded.current = true;
+      loadUserCurriculumPaths(settings.selectedLanguage);
+    }
+  }, [settings.selectedLanguage, loadUserCurriculumPaths]);
+
+  // Update selected level if current selection is not available
+  useEffect(() => {
+    if (availableLevels.length > 0 && !availableLevels.includes(selectedLevel)) {
+      setSelectedLevel(availableLevels[0]);
+    }
+  }, [availableLevels, selectedLevel]);
+
+  const getCapitalizedLanguage = (lang: string) => {
+    return lang.charAt(0).toUpperCase() + lang.slice(1);
   };
-  
-  const handleStartCurriculum = async () => {
-    if (!selectedLevel) return;
+
+  // Check if user already has curricula
+  const hasExistingCurriculum = userCurriculumPaths.length > 0;
+
+  // Handle the start learning process
+  const handleStartLearning = async () => {
+    if (isInitializing) return;
     
-    setIsLoading(true);
     try {
-      // Use the service directly instead of context
-      // This is a temporary solution until the context is properly set up
-      toast({
-        title: "Starting curriculum",
-        description: "Setting up your learning path for " + settings.selectedLanguage
-      });
+      if (!selectedLevel) {
+        toast({
+          title: "Level selection required",
+          description: "Please select a proficiency level to continue.",
+          variant: "destructive",
+        });
+        return;
+      }
       
-      // Wait a moment to simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      setIsInitializing(true);
+      
+      await initializeUserCurriculumPath(selectedLevel, settings.selectedLanguage);
       
       toast({
-        title: "Learning path ready!",
-        description: "Your " + selectedLevel + " level curriculum is ready."
+        title: "Learning path started",
+        description: `You've successfully started a new ${selectedLevel} learning path in ${getCapitalizedLanguage(settings.selectedLanguage)}.`,
       });
-    } catch (error) {
-      console.error("Error initializing curriculum path:", error);
+    } catch (error: any) {
+      console.error("Error initializing curriculum:", error);
+      
       toast({
+        title: "Failed to start learning path",
+        description: error?.message || "Please try again later.",
         variant: "destructive",
-        title: "Failed to set up curriculum",
-        description: "There was an error setting up your learning path. Please try again."
       });
     } finally {
-      setIsLoading(false);
+      setIsInitializing(false);
     }
   };
-  
+
+  // Handle the refresh button click
+  const handleRefresh = () => {
+    dataLoaded.current = false;
+    loadUserCurriculumPaths(settings.selectedLanguage);
+  };
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-medium">Select your level for {settings.selectedLanguage}</h2>
-      <p className="text-sm text-muted-foreground">
-        Choose the level that best matches your current knowledge of {settings.selectedLanguage}
-      </p>
-      
-      <div className="grid gap-4">
-        {levels.map((level, index) => (
-          <motion.div 
-            key={level.level}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, delay: index * 0.05 }}
+    <Card>
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Start a New Learning Path</h2>
+          <RefreshButton 
+            onRefresh={handleRefresh} 
+            isLoading={isLoading || isInitializing} 
+          />
+        </div>
+        
+        <p className="text-muted-foreground">
+          Select your level to begin a new learning path in {getCapitalizedLanguage(settings.selectedLanguage)}.
+        </p>
+        
+        <div className="grid gap-2">
+          <Select 
+            value={selectedLevel} 
+            onValueChange={(value: LanguageLevel) => setSelectedLevel(value)}
+            disabled={availableLevels.length === 0 || isLoading || isInitializing}
           >
-            <Card 
-              className={`cursor-pointer transition-all ${
-                selectedLevel === level.level 
-                  ? 'border-primary shadow-md' 
-                  : 'hover:border-muted-foreground/20'
-              }`}
-              onClick={() => handleSelection(level.level)}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-base">
-                    {level.title}
-                  </CardTitle>
-                  <LevelBadge level={level.level} />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>{level.description}</CardDescription>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-      
-      <Separator className="my-4" />
-      
-      <div className="flex justify-end">
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select your level" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableLevels.length > 0 ? (
+                availableLevels.map((level) => (
+                  <SelectItem key={level} value={level}>
+                    <div className="flex items-center">
+                      <LevelBadge level={level} className="mr-2" />
+                      {level}
+                    </div>
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="A1" disabled>
+                  <div className="flex items-center">
+                    <LevelBadge level="A1" className="mr-2" />
+                    No levels available
+                  </div>
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+
         <Button 
-          onClick={handleStartCurriculum} 
-          disabled={!selectedLevel || isLoading}
+          onClick={handleStartLearning} 
+          disabled={isLoading || isInitializing || hasExistingCurriculum || availableLevels.length === 0}
+          className="w-full"
         >
-          {isLoading ? (
+          {isLoading || isInitializing ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Starting...
+              {isInitializing ? 'Starting...' : 'Loading...'}
             </>
           ) : (
-            <>Start Learning</>
+            'Start Learning'
           )}
         </Button>
-      </div>
-    </div>
+
+        {hasExistingCurriculum && (
+          <p className="text-sm text-muted-foreground text-center">
+            You already have an active learning path.
+          </p>
+        )}
+
+        {availableLevels.length === 0 && !isLoading && !isInitializing && (
+          <p className="text-sm text-muted-foreground text-center">
+            No learning paths available for {getCapitalizedLanguage(settings.selectedLanguage)}. Try a different language.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
