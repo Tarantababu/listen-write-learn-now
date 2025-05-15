@@ -6,5 +6,5 @@ export * from './UserService';
 export * from './BaseService';
 export * from './OfflineStorageService';
 
-// Export hook for convenience
+// Export hook directly instead of through context
 export { useRoadmap } from '@/hooks/use-roadmap';

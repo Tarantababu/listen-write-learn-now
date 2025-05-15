@@ -1,7 +1,10 @@
 
 import { useContext } from 'react';
+import React from 'react';
 
 // Import from contexts for proper access
+// Since CurriculumContext doesn't exist, we'll create a placeholder
+// This should be replaced with the actual context when it's implemented
 const CurriculumContext = React.createContext({});
 
 export const useCurriculumContext = () => {
@@ -13,5 +16,3 @@ export const useCurriculumContext = () => {
   
   return context;
 };
-
-export default useCurriculumContext;
