@@ -55,35 +55,35 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, []);
 
-  // Load user's enrolled curricula with debounce
-  const loadUserCurriculumPaths = useMemo(() => {
-    const loadFn = async (language?: Language): Promise<UserCurriculumPath[]> => {
-      const cacheKey = `userCurricula:${language || settings.selectedLanguage}`;
-      
-      try {
-        // Only set loading state if not using cached data
-        if (!apiCache.hasData(cacheKey)) {
-          setIsLoading(true);
-        }
-        
-        const userCurrs = await apiCache.get(cacheKey, 
-          () => getUserEnrolledCurricula(language || settings.selectedLanguage),
-          { ttl: 60 * 1000 } // 1 minute cache
-        );
-        
-        setUserCurricula(userCurrs);
-        return userCurrs;
-      } catch (error) {
-        console.error("Error loading user curriculum paths:", error);
-        return [];
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Fix the nested Promise issue with loadUserCurriculumPaths
+  const loadUserCurriculumPaths = useCallback(async (language?: Language): Promise<UserCurriculumPath[]> => {
+    const cacheKey = `userCurricula:${language || settings.selectedLanguage}`;
     
-    // Return debounced function to prevent rapid successive calls
-    return debounce(loadFn, 300);
+    try {
+      // Only set loading state if not using cached data
+      if (!apiCache.hasData(cacheKey)) {
+        setIsLoading(true);
+      }
+      
+      const userCurrs = await apiCache.get(cacheKey, 
+        () => getUserEnrolledCurricula(language || settings.selectedLanguage),
+        { ttl: 60 * 1000 } // 1 minute cache
+      );
+      
+      setUserCurricula(userCurrs);
+      return userCurrs;
+    } catch (error) {
+      console.error("Error loading user curriculum paths:", error);
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
   }, [settings.selectedLanguage]); // Only recreate when selectedLanguage changes
+  
+  // Debounced version for use in UI components
+  const debouncedLoadUserCurriculumPaths = useMemo(() => {
+    return debounce(loadUserCurriculumPaths, 300);
+  }, [loadUserCurriculumPaths]);
 
   // Initialize user curriculum path
   const initializeUserCurriculumPath = useCallback(async (level: LanguageLevel, language: Language) => {
@@ -293,7 +293,7 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       
       // Then load user curricula after a small delay
       const timeoutId = setTimeout(() => {
-        loadUserCurriculumPaths(settings.selectedLanguage);
+        debouncedLoadUserCurriculumPaths(settings.selectedLanguage);
       }, 100);
       
       return () => clearTimeout(timeoutId);
