@@ -1,5 +1,5 @@
 
-import React, { createContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { useUserSettingsContext } from './UserSettingsContext';
 import { 
   getAllCurricula, 
@@ -12,6 +12,8 @@ import {
   recordExerciseAttempt
 } from '@/services/curriculumService';
 import { CurriculumContextType, LanguageLevel, Language } from '@/types';
+import { apiCache } from '@/utils/apiCache';
+import { debounce } from '@/utils/debounce';
 
 // Create the context with a default value
 export const CurriculumContext = createContext<CurriculumContextType | undefined>(undefined);
@@ -28,12 +30,22 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [completedNodes, setCompletedNodes] = useState<string[]>([]);
   const [nodeProgress, setNodeProgress] = useState<any[]>([]);
   const [currentNodeId, setCurrentNodeId] = useState<string | undefined>(undefined);
+  const [loadingAttempt, setLoadingAttempt] = useState(0);
 
   // Load available curricula based on language
   const loadAvailableCurricula = useCallback(async (language: Language) => {
+    const cacheKey = `curricula:${language}`;
+    
     try {
-      setIsLoading(true);
-      const curricula = await getAllCurricula(language);
+      // Only set loading state if not using cached data
+      if (!apiCache.hasData(cacheKey)) {
+        setIsLoading(true);
+      }
+      
+      const curricula = await apiCache.get(cacheKey, () => getAllCurricula(language), {
+        ttl: 5 * 60 * 1000 // 5 minutes cache
+      });
+      
       setAvailableCurricula(curricula);
       return curricula;
     } catch (error) {
@@ -44,20 +56,35 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, []);
 
-  // Load user's enrolled curricula
-  const loadUserCurriculumPaths = useCallback(async (language?: Language) => {
-    try {
-      setIsLoading(true);
-      const userCurrs = await getUserEnrolledCurricula(language || settings.selectedLanguage);
-      setUserCurricula(userCurrs);
-      return userCurrs;
-    } catch (error) {
-      console.error("Error loading user curriculum paths:", error);
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  }, [settings.selectedLanguage]);
+  // Load user's enrolled curricula with debounce
+  const loadUserCurriculumPaths = useMemo(() => {
+    const loadFn = async (language?: Language) => {
+      const cacheKey = `userCurricula:${language || settings.selectedLanguage}`;
+      
+      try {
+        // Only set loading state if not using cached data
+        if (!apiCache.hasData(cacheKey)) {
+          setIsLoading(true);
+        }
+        
+        const userCurrs = await apiCache.get(cacheKey, 
+          () => getUserEnrolledCurricula(language || settings.selectedLanguage),
+          { ttl: 60 * 1000 } // 1 minute cache
+        );
+        
+        setUserCurricula(userCurrs);
+        return userCurrs;
+      } catch (error) {
+        console.error("Error loading user curriculum paths:", error);
+        return [];
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    // Return debounced function to prevent rapid successive calls
+    return debounce(loadFn, 300);
+  }, [settings.selectedLanguage]); // Only recreate when selectedLanguage changes
 
   // Initialize user curriculum path
   const initializeUserCurriculumPath = useCallback(async (level: LanguageLevel, language: Language) => {
@@ -65,7 +92,11 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setIsLoading(true);
       
       // Find curriculum for this level and language
-      const curricula = await getAllCurricula(language);
+      const curricula = await apiCache.get(
+        `curricula:${language}:${level}`, 
+        () => getAllCurricula(language)
+      );
+      
       const matchingCurriculum = curricula.find(c => c.level === level && c.language === language);
       
       if (!matchingCurriculum) {
@@ -75,7 +106,8 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // Enroll the user
       await enrollInCurriculum(matchingCurriculum.id);
       
-      // Refresh user curricula
+      // Invalidate user curricula cache and refresh data
+      apiCache.invalidate(`userCurricula:${language}`);
       await loadUserCurriculumPaths(language);
     } catch (error) {
       console.error("Error initializing user curriculum path:", error);
@@ -96,16 +128,28 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setCurrentCurriculum(firstCurr);
         setCurrentNodeId(firstCurr.current_node_id);
         
-        // Load curriculum nodes
-        const allNodes = await getCurriculumNodes(firstCurr.curriculum_id);
+        // Load curriculum nodes with caching
+        const cacheKey = `curriculumNodes:${firstCurr.curriculum_id}`;
+        const allNodes = await apiCache.get(cacheKey, 
+          () => getCurriculumNodes(firstCurr.curriculum_id),
+          { ttl: 5 * 60 * 1000 } // 5 minutes cache
+        );
         setNodes(allNodes);
         
-        // Load user progress
-        const progress = await getUserCurriculumProgress(firstCurr.curriculum_id);
+        // Load user progress with caching
+        const progressCacheKey = `progress:${firstCurr.curriculum_id}`;
+        const progress = await apiCache.get(progressCacheKey, 
+          () => getUserCurriculumProgress(firstCurr.curriculum_id),
+          { ttl: 60 * 1000 } // 1 minute cache
+        );
         setNodeProgress(progress);
         
-        // Get available and completed nodes
-        const availNodes = await getAvailableNodes(firstCurr.curriculum_id);
+        // Get available and completed nodes with caching
+        const availNodesCacheKey = `availableNodes:${firstCurr.curriculum_id}`;
+        const availNodes = await apiCache.get(availNodesCacheKey, 
+          () => getAvailableNodes(firstCurr.curriculum_id),
+          { ttl: 60 * 1000 } // 1 minute cache
+        );
         setAvailableNodes(availNodes.filter(n => n.status === 'available').map(n => n.id));
         setCompletedNodes(availNodes.filter(n => n.status === 'completed').map(n => n.id));
       } else if (userCurriculumPathId) {
@@ -115,16 +159,26 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           setCurrentCurriculum(curr);
           setCurrentNodeId(curr.current_node_id);
           
-          // Load curriculum nodes
-          const allNodes = await getCurriculumNodes(curr.curriculum_id);
+          // Use the same caching pattern as above
+          const cacheKey = `curriculumNodes:${curr.curriculum_id}`;
+          const allNodes = await apiCache.get(cacheKey, 
+            () => getCurriculumNodes(curr.curriculum_id),
+            { ttl: 5 * 60 * 1000 }
+          );
           setNodes(allNodes);
           
-          // Load user progress
-          const progress = await getUserCurriculumProgress(curr.curriculum_id);
+          const progressCacheKey = `progress:${curr.curriculum_id}`;
+          const progress = await apiCache.get(progressCacheKey, 
+            () => getUserCurriculumProgress(curr.curriculum_id),
+            { ttl: 60 * 1000 }
+          );
           setNodeProgress(progress);
           
-          // Get available and completed nodes
-          const availNodes = await getAvailableNodes(curr.curriculum_id);
+          const availNodesCacheKey = `availableNodes:${curr.curriculum_id}`;
+          const availNodes = await apiCache.get(availNodesCacheKey, 
+            () => getAvailableNodes(curr.curriculum_id),
+            { ttl: 60 * 1000 }
+          );
           setAvailableNodes(availNodes.filter(n => n.status === 'available').map(n => n.id));
           setCompletedNodes(availNodes.filter(n => n.status === 'completed').map(n => n.id));
         }
@@ -144,6 +198,10 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // Mark the node as completed
       await markNodeAsCompleted(nodeId);
       
+      // Invalidate relevant caches
+      apiCache.invalidate(`availableNodes:${currentCurriculum.curriculum_id}`);
+      apiCache.invalidate(`progress:${currentCurriculum.curriculum_id}`);
+      
       // Refresh the curriculum path
       await loadUserCurriculumPath(currentCurriculum.id);
     } catch (error) {
@@ -157,18 +215,27 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (!currentCurriculum) return;
       
       // We would need to add a function to reset progress in the database
-      // For now, let's just reload the curriculum
+      // For now, let's just reload the curriculum after invalidating caches
+      apiCache.invalidate(`availableNodes:${currentCurriculum.curriculum_id}`);
+      apiCache.invalidate(`progress:${currentCurriculum.curriculum_id}`);
+      
       await loadUserCurriculumPath(currentCurriculum.id);
     } catch (error) {
       console.error("Error resetting progress:", error);
     }
   }, [currentCurriculum, loadUserCurriculumPath]);
 
-  // Get exercises for a node
+  // Get exercises for a node with caching
   const getNodeExercise = useCallback(async (nodeId: string) => {
     try {
       setNodeLoading(true);
-      const exercises = await getNodeExercises(nodeId);
+      const cacheKey = `nodeExercises:${nodeId}`;
+      
+      const exercises = await apiCache.get(cacheKey, 
+        () => getNodeExercises(nodeId),
+        { ttl: 5 * 60 * 1000 } // 5 minutes cache
+      );
+      
       return exercises.length > 0 ? exercises[0].exercise : null;
     } catch (error) {
       console.error("Error getting node exercise:", error);
@@ -190,7 +257,7 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [currentCurriculum]);
 
-  // Increment node completion counter
+  // Increment node completion counter with cache invalidation
   const incrementNodeCompletion = useCallback(async (nodeId: string, accuracy: number) => {
     try {
       if (!currentCurriculum || !nodeId) return;
@@ -201,6 +268,10 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         curriculum_id: currentCurriculum.curriculum_id,
         accuracy_percentage: accuracy
       });
+      
+      // Invalidate the progress cache for this curriculum
+      apiCache.invalidate(`progress:${currentCurriculum.curriculum_id}`);
+      apiCache.invalidate(`availableNodes:${currentCurriculum.curriculum_id}`);
       
       // Refresh the curriculum to update progress
       await loadUserCurriculumPath(currentCurriculum.id);
@@ -214,11 +285,31 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     await loadUserCurriculumPath(curriculumPathId);
   }, [loadUserCurriculumPath]);
 
-  // Load curricula when the selected language changes
+  // Load curricula when the selected language changes, but avoid doing it on every render
   useEffect(() => {
-    loadAvailableCurricula(settings.selectedLanguage);
-    loadUserCurriculumPaths(settings.selectedLanguage);
-  }, [settings.selectedLanguage, loadAvailableCurricula, loadUserCurriculumPaths]);
+    // Only load if not already loading, to prevent loops
+    if (!isLoading) {
+      // First load available curricula
+      loadAvailableCurricula(settings.selectedLanguage);
+      
+      // Then load user curricula after a small delay
+      const timeoutId = setTimeout(() => {
+        loadUserCurriculumPaths(settings.selectedLanguage);
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [settings.selectedLanguage, loadingAttempt]); // Not adding the functions to deps to avoid loops
+  
+  // Function to manually trigger data refresh
+  const refreshData = useCallback(() => {
+    // Invalidate relevant caches
+    apiCache.invalidate(`curricula:${settings.selectedLanguage}`);
+    apiCache.invalidate(`userCurricula:${settings.selectedLanguage}`);
+    
+    // Trigger a re-fetch by updating loadingAttempt
+    setLoadingAttempt(prev => prev + 1);
+  }, [settings.selectedLanguage]);
 
   // The context value that will be provided to consumers
   const contextValue: CurriculumContextType = {
@@ -240,7 +331,8 @@ export const CurriculumProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     getNodeExercise,
     markNodeAsCompleted,
     incrementNodeCompletion,
-    selectCurriculumPath
+    selectCurriculumPath,
+    refreshData
   };
 
   return (

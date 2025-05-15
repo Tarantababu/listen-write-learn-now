@@ -1,5 +1,6 @@
+
 /**
- * Simple in-memory API cache with TTL support
+ * Enhanced in-memory API cache with TTL support
  * Helps reduce the number of API calls and prevents excessive polling
  */
 
@@ -7,6 +8,7 @@ interface CacheItem<T> {
   data: T;
   timestamp: number;
   ttl: number;
+  promise?: Promise<T>; // Added to track in-flight promises
 }
 
 interface CacheOptions {
@@ -17,6 +19,13 @@ interface CacheOptions {
 class ApiCache {
   private cache: Record<string, CacheItem<any>> = {};
   private pendingPromises: Record<string, Promise<any>> = {};
+  
+  /**
+   * Check if data exists in cache for a key
+   */
+  hasData<T>(key: string): boolean {
+    return !!this.cache[key];
+  }
   
   /**
    * Get data from cache or fetch from API
@@ -90,6 +99,24 @@ class ApiCache {
       // Clean up pending promise
       delete this.pendingPromises[key];
     }
+  }
+  
+  /**
+   * Get age of cache item in milliseconds
+   */
+  getCacheAge(key: string): number | null {
+    const cachedItem = this.cache[key];
+    if (!cachedItem) return null;
+    return Date.now() - cachedItem.timestamp;
+  }
+  
+  /**
+   * Check if a cache key is stale
+   */
+  isStale(key: string): boolean {
+    const cachedItem = this.cache[key];
+    if (!cachedItem) return true;
+    return Date.now() - cachedItem.timestamp >= cachedItem.ttl;
   }
 }
 

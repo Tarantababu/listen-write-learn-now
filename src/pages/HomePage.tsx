@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import UserStatistics from '@/components/UserStatistics';
@@ -26,11 +26,12 @@ const HomePage = () => {
     isLoading,
     completedNodes,
     curriculumPaths,
-    loadUserCurriculumPaths
+    loadUserCurriculumPaths,
+    refreshData
   } = useCurriculum();
   
-  // React to redirect messages (e.g., access denied)
-  React.useEffect(() => {
+  // React to redirect messages (e.g., access denied) - only on mount
+  useEffect(() => {
     const state = location.state as { accessDenied?: boolean; message?: string };
     if (state?.accessDenied) {
       toast({
@@ -39,9 +40,10 @@ const HomePage = () => {
         description: state.message || "You don't have the required permissions"
       });
       
+      // Clear the location state to prevent showing the toast again on re-renders
       window.history.replaceState({}, document.title);
     }
-  }, [location]);
+  }, []); // Empty dependency array ensures this only runs once
 
   // Calculate curriculum progress percentage
   const progressPercentage = nodes.length > 0 
@@ -66,9 +68,18 @@ const HomePage = () => {
   // Find the curriculum details
   const curriculum = currentCurriculumPath?.curriculum || null;
 
-  const handleRefresh = () => {
-    loadUserCurriculumPaths(settings.selectedLanguage);
-  };
+  // Memoized refresh handler to prevent recreating on every render
+  const handleRefresh = useCallback(() => {
+    refreshData();
+  }, [refreshData]);
+  
+  // Lazy load user curriculum data on mount, but avoid redundant calls
+  useEffect(() => {
+    // This will use the cached data if available
+    if (!isLoading && !currentCurriculumPath && settings.selectedLanguage) {
+      loadUserCurriculumPaths(settings.selectedLanguage);
+    }
+  }, []);
 
   return (
     <ExerciseProvider>
@@ -82,103 +93,99 @@ const HomePage = () => {
           <SubscriptionBanner />
         )}
         
-        {currentCurriculumPath && (
-          <div className="mb-8">
-            <Card className="mb-4">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle className="text-xl flex items-center gap-2">
-                      Your Learning Path
-                      {curriculum && curriculum.level && (
-                        <LevelBadge level={curriculum.level} />
-                      )}
-                    </CardTitle>
-                  </div>
-                  <RefreshButton 
-                    onRefresh={handleRefresh} 
-                    isLoading={isLoading} 
-                  />
+        {/* Curriculum card section */}
+        <div className="mb-8">
+          <Card className="mb-4">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    Your Learning Path
+                    {curriculum && curriculum.level && (
+                      <LevelBadge level={curriculum.level} />
+                    )}
+                  </CardTitle>
                 </div>
-              </CardHeader>
-              
-              <CardContent>
-                {isLoading ? (
-                  <div className="flex flex-col items-center justify-center p-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                    <p>Loading curriculum...</p>
-                  </div>
-                ) : currentCurriculumPath ? (
-                  <>
-                    <div className="mb-4">
-                      <h3 className="text-sm font-medium mb-1">{curriculum?.name || "Learning Path"}</h3>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-xs text-muted-foreground">Progress</span>
-                        <span className="text-xs font-medium">
-                          {currentCurriculumPath.completion_percentage || progressPercentage}%
-                        </span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary rounded-full" 
-                          style={{ width: `${currentCurriculumPath.completion_percentage || progressPercentage}%` }}
-                        ></div>
-                      </div>
+              </div>
+            </CardHeader>
+            
+            <CardContent>
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center p-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+                  <p>Loading curriculum...</p>
+                </div>
+              ) : currentCurriculumPath ? (
+                <>
+                  <div className="mb-4">
+                    <h3 className="text-sm font-medium mb-1">{curriculum?.name || "Learning Path"}</h3>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-xs text-muted-foreground">Progress</span>
+                      <span className="text-xs font-medium">
+                        {currentCurriculumPath.completion_percentage || progressPercentage}%
+                      </span>
                     </div>
-
-                    {currentNode && (
-                      <div className="mb-4 p-3 bg-secondary/20 rounded-md border border-secondary/30">
-                        <h4 className="text-sm font-medium">Current Exercise:</h4>
-                        <p className="text-sm mt-1">{currentNode.title}</p>
-                      </div>
-                    )}
-
-                    {nextNodes.length > 0 && (
-                      <div className="mb-4">
-                        <h4 className="text-xs uppercase text-muted-foreground mb-2">Coming up next:</h4>
-                        <ul className="space-y-2">
-                          {nextNodes.map((node) => (
-                            <li 
-                              key={node.id} 
-                              className="text-xs flex items-center justify-between p-2 bg-muted/50 rounded-md"
-                            >
-                              <span>{node.title}</span>
-                              {node.isBonus && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 border-amber-500/40 text-amber-700">
-                                  Bonus
-                                </span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    <Button asChild className="w-full mt-2">
-                      <Link to="/dashboard/curriculum">
-                        Continue Learning <ChevronRight className="h-4 w-4 ml-1" />
-                      </Link>
-                    </Button>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center text-center p-4">
-                    <p className="text-sm mb-3">You haven't started a learning curriculum yet.</p>
-                    <Button asChild>
-                      <Link to="/dashboard/curriculum">
-                        Start Learning Path
-                      </Link>
-                    </Button>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary rounded-full" 
+                        style={{ width: `${currentCurriculumPath.completion_percentage || progressPercentage}%` }}
+                      ></div>
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+
+                  {currentNode && (
+                    <div className="mb-4 p-3 bg-secondary/20 rounded-md border border-secondary/30">
+                      <h4 className="text-sm font-medium">Current Exercise:</h4>
+                      <p className="text-sm mt-1">{currentNode.title}</p>
+                    </div>
+                  )}
+
+                  {nextNodes.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-xs uppercase text-muted-foreground mb-2">Coming up next:</h4>
+                      <ul className="space-y-2">
+                        {nextNodes.map((node) => (
+                          <li 
+                            key={node.id} 
+                            className="text-xs flex items-center justify-between p-2 bg-muted/50 rounded-md"
+                          >
+                            <span>{node.title}</span>
+                            {node.isBonus && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 border-amber-500/40 text-amber-700">
+                                Bonus
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <Button asChild className="w-full mt-2">
+                    <Link to="/dashboard/curriculum">
+                      Continue Learning <ChevronRight className="h-4 w-4 ml-1" />
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-center p-4">
+                  <p className="text-sm mb-3">You haven't started a learning curriculum yet.</p>
+                  <Button asChild>
+                    <Link to="/dashboard/curriculum">
+                      Start Learning Path
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
         
+        {/* User Statistics - wrapped in suspense boundary to defer loading */}
         <div className="w-full">
-          <ExerciseProvider>
+          <React.Suspense fallback={<div className="text-center py-8">Loading statistics...</div>}>
             <UserStatistics />
-          </ExerciseProvider>
+          </React.Suspense>
         </div>
       </div>
     </ExerciseProvider>
