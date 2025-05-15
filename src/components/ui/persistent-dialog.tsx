@@ -2,7 +2,7 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { savePopupState, getPopupState } from "@/utils/popupStateManager";
+import { savePopupState, getPopupState, registerOpenPopup, unregisterPopup } from "@/utils/popupStateManager";
 
 // Extend the DialogPrimitive.DialogProps type to include dialogId
 interface PersistentDialogProps extends DialogPrimitive.DialogProps {
@@ -25,6 +25,13 @@ const PersistentDialog = React.forwardRef<
   React.useEffect(() => {
     if (open !== undefined) {
       savePopupState(dialogId, { isOpen: open });
+      
+      // Register popup as open when open is true
+      if (open) {
+        registerOpenPopup(dialogId);
+      } else {
+        unregisterPopup(dialogId);
+      }
     }
   }, [open, dialogId]);
   
@@ -38,6 +45,14 @@ const PersistentDialog = React.forwardRef<
       open={open !== undefined ? open : initialState.isOpen}
       onOpenChange={(newOpen) => {
         savePopupState(dialogId, { isOpen: newOpen });
+        
+        // Register popup as open when newOpen is true
+        if (newOpen) {
+          registerOpenPopup(dialogId);
+        } else {
+          unregisterPopup(dialogId);
+        }
+        
         if (onOpenChange) {
           onOpenChange(newOpen);
         }

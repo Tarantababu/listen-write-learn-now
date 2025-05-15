@@ -8,6 +8,9 @@
 // Store currently open popup IDs
 const openPopups = new Set<string>();
 
+// Store popup states
+const popupStates = new Map<string, unknown>();
+
 /**
  * Register an open popup
  * @param popupId Unique ID for the popup
@@ -54,4 +57,25 @@ export const isPopupOpen = (popupId: string): boolean => {
  */
 export const resetPopupState = (): void => {
   openPopups.clear();
+  popupStates.clear();
+};
+
+/**
+ * Save state for a specific popup
+ * @param popupId Unique ID for the popup
+ * @param state State to save
+ */
+export const savePopupState = <T>(popupId: string, state: T): void => {
+  popupStates.set(popupId, state);
+};
+
+/**
+ * Get saved state for a specific popup
+ * @param popupId Unique ID for the popup
+ * @param defaultState Default state to return if no state is found
+ * @returns The saved state or the default state
+ */
+export const getPopupState = <T>(popupId: string, defaultState: T): T => {
+  const state = popupStates.get(popupId);
+  return (state as T) || defaultState;
 };
