@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { useMediaQuery } from 'react-use'; // Changed from usehooks-ts to react-use
+import { useMedia } from 'react-use'; // Changed from useMediaQuery to useMedia which is the correct hook name
 import { 
   BookOpen, 
   Library, 
@@ -24,7 +23,7 @@ import { useAdmin } from '@/hooks/use-admin';
 const Layout = () => {
   const { signOut } = useAuth();
   const location = useLocation();
-  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isMobile = useMedia('(max-width: 768px)'); // Changed from useMediaQuery to useMedia
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isAdmin } = useAdmin();
   const { subscription } = useSubscription();
