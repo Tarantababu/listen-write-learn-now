@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +12,8 @@ import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import { RoadmapProvider } from './features/roadmap/context/RoadmapContext';
 import { HelmetProvider } from 'react-helmet-async';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { CurriculumProvider } from './contexts/CurriculumContext';
+import CurriculumPage from './pages/CurriculumPage';
 
 import Layout from "@/components/Layout";
 import Index from "@/pages/Index";
@@ -84,6 +85,15 @@ function App() {
                                       <Route path="admin" element={<AdminPage />} />
                                     </Route>
                                   </Route>
+                                  
+                                  <Route
+                                    path="/dashboard/curriculum"
+                                    element={
+                                      <ProtectedRoute>
+                                        <CurriculumPage />
+                                      </ProtectedRoute>
+                                    }
+                                  />
                                   
                                   <Route path="*" element={<NotFound />} />
                                 </Routes>

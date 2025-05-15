@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,7 @@ import {
   Settings, 
   CreditCard,
   Crown,
-  LayoutDashboard,
+  Layout,
   Book,
   Shield,
   HelpCircle,
@@ -70,6 +69,39 @@ const Header: React.FC = () => {
       toast.error('Failed to switch language');
     }
   };
+
+  const navigationItems = [
+    {
+      name: 'Home',
+      href: '/dashboard',
+      icon: <Layout className="h-4 w-4 mr-2" />,
+      requiresAuth: true
+    },
+    {
+      name: 'Exercises',
+      href: '/dashboard/exercises',
+      icon: <Book className="h-4 w-4 mr-2" />,
+      requiresAuth: true
+    },
+    {
+      name: 'Curriculum',
+      href: '/dashboard/curriculum',
+      icon: <BookOpen className="h-4 w-4 mr-2" />,
+      requiresAuth: true
+    },
+    {
+      name: 'Vocabulary',
+      href: '/dashboard/vocabulary',
+      icon: <BookOpen className="h-4 w-4 mr-2" />,
+      requiresAuth: true
+    },
+    {
+      name: 'Settings',
+      href: '/dashboard/settings',
+      icon: <Settings className="h-4 w-4 mr-2" />,
+      requiresAuth: true
+    }
+  ];
 
   return (
     <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur">
