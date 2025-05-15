@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '@/features/roadmap/services/RoadmapService';
 import { RoadmapItem, RoadmapNode, UserRoadmap, ExerciseContent, NodeCompletionResult } from '@/features/roadmap/types';
@@ -365,7 +364,7 @@ export function useRoadmap() {
     setIsLoading(true);
     
     try {
-      await roadmapService.resetRoadmapProgress(roadmapId);
+      await roadmapService.resetProgress(roadmapId);
       
       // Invalidate relevant caches
       apiCache.invalidate(`roadmap_nodes_${roadmapId}`);

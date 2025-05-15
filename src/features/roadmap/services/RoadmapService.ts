@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult, UserRoadmap } from '../types';
 import { Language, LanguageLevel } from '@/types';
@@ -209,8 +208,53 @@ class RoadmapService {
    */
   async resetProgress(roadmapId: string): Promise<void> {
     try {
+      // First check if the user is authenticated
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      
+      if (!userData.user) {
+        throw new Error('User must be authenticated to reset roadmap progress');
+      }
+      
       console.log('Resetting progress for roadmap:', roadmapId);
-      // This is a stub implementation
+      
+      // Delete all progress for this user and roadmap
+      const { error: progressError } = await supabase
+        .from('roadmap_progress')
+        .delete()
+        .eq('user_id', userData.user.id)
+        .eq('roadmap_id', roadmapId);
+        
+      if (progressError) throw progressError;
+      
+      // Also delete node progress
+      const { error: nodeProgressError } = await supabase
+        .from('roadmap_nodes_progress')
+        .delete()
+        .eq('user_id', userData.user.id)
+        .eq('roadmap_id', roadmapId);
+        
+      if (nodeProgressError) throw nodeProgressError;
+      
+      // Get first node of roadmap
+      const { data: firstNode, error: nodeError } = await supabase
+        .from('roadmap_nodes')
+        .select('id')
+        .eq('roadmap_id', roadmapId)
+        .order('position', { ascending: true })
+        .limit(1)
+        .single();
+        
+      if (nodeError) throw nodeError;
+      
+      // Update user roadmap to set current node to first node
+      const { error: updateError } = await supabase
+        .from('user_roadmaps')
+        .update({ current_node_id: firstNode.id })
+        .eq('roadmap_id', roadmapId)
+        .eq('user_id', userData.user.id);
+        
+      if (updateError) throw updateError;
     } catch (error) {
       console.error('Error resetting progress:', error);
       throw error;

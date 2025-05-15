@@ -51,10 +51,10 @@ const RoadmapPage = () => {
   // Load user's roadmaps on mount
   useEffect(() => {
     if (user) {
-      // Load roadmaps without passing a parameter
-      loadUserRoadmaps();
+      // Pass the selectedLanguage parameter to loadUserRoadmaps
+      loadUserRoadmaps(settings.selectedLanguage);
     }
-  }, [user, settings.selectedLanguage]);
+  }, [user, settings.selectedLanguage, loadUserRoadmaps]);
 
   // Function to handle selecting a different roadmap
   const handleSelectRoadmap = async (roadmapId: string) => {
@@ -91,7 +91,7 @@ const RoadmapPage = () => {
     await resetProgress(currentRoadmap.id);
     
     // Reload roadmap data
-    loadUserRoadmap();
+    loadUserRoadmap(currentRoadmap.id);
   };
 
   // Render node based on its status
