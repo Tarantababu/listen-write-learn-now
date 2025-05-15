@@ -19,7 +19,7 @@ export function Toaster() {
         const shouldAutoClose = variant !== 'destructive';
         
         return (
-          <Toast key={id} variant={variant} {...props} duration={shouldAutoClose ? 5000 : Infinity}>
+          <Toast key={id} variant={variant} {...props} duration={shouldAutoClose ? 2500 : Infinity}>
             <div className="grid gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && (
