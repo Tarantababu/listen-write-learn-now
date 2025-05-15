@@ -14,7 +14,7 @@ import { UserStats } from '@/components/admin/UserStats';
 import UserRoleManagement from '@/components/admin/UserRoleManagement';
 import AdminMessagesList from '@/components/admin/AdminMessagesList';
 import AdminMessagesForm from '@/components/admin/AdminMessagesForm';
-import FeedbackList from '@/components/admin/FeedbackList';
+import FeedbackList from '@/components/admin/FeedbackList'; // This import is now correct
 import CurriculumEditor from '@/components/admin/CurriculumEditor';
 
 const AdminPage: React.FC = () => {

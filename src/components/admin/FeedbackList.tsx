@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +19,8 @@ interface Feedback {
   read: boolean;
 }
 
-export function FeedbackList() {
+// Change the export to default export
+export default function FeedbackList() {
   // Fetch feedback from database
   const { data: feedback, isLoading, error, refetch } = useQuery({
     queryKey: ['admin-feedback'],
