@@ -674,7 +674,6 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentRoadmap: selectedRoadmap,
       currentNodeId: selectedRoadmap?.currentNodeId,
       nodes: roadmapNodes,
-      progress,
       nodeProgress,
       loading,
       nodeLoading,

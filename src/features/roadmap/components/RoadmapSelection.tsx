@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,23 +17,14 @@ const RoadmapSelection: React.FC = () => {
     initializeUserRoadmap,
     roadmaps = [], // Provide default empty array to prevent filter of undefined
     isLoading, 
-    userRoadmaps = [] // Provide default empty array
+    userRoadmaps = [], // Provide default empty array
+    loadUserRoadmaps
   } = useRoadmap();
   
-  // Safely filter roadmaps with a null check
-  const availableRoadmaps = roadmaps?.filter(roadmap =>
-    roadmap.languages?.includes(settings.selectedLanguage) && roadmap.level === selectedLevel
-  ) || [];
-
-  // Check if there are any available roadmaps for the selected language
-  const hasAvailableRoadmaps = roadmaps?.some(roadmap =>
-    roadmap.languages?.includes(settings.selectedLanguage)
-  ) || false;
-
-  // Get the selected language with proper capitalization
-  const getCapitalizedLanguage = (lang: string) => {
-    return lang.charAt(0).toUpperCase() + lang.slice(1);
-  };
+  useEffect(() => {
+    // Reload user roadmaps whenever settings change
+    loadUserRoadmaps();
+  }, [settings, loadUserRoadmaps]);
 
   const handleStartLearning = async () => {
     try {
@@ -41,98 +32,72 @@ const RoadmapSelection: React.FC = () => {
     } catch (error) {
       console.error("Error initializing roadmap:", error);
       toast({
-        variant: "destructive",
         title: "Failed to start learning path",
-        description: "Please try again later."
+        description: "Please try again later.",
+        variant: "destructive",
       });
     }
   };
 
-  // Disable the "Start Learning" button if there are no available roadmaps
-  const isStartLearningDisabled = availableRoadmaps.length === 0;
-  
-  // Check if the user already has an active roadmap
-  const hasExistingRoadmap = userRoadmaps.length > 0;
+  // Safely filter by providing default empty arrays
+  const availableLevels = Array.from(new Set(
+    (roadmaps || [])
+      .filter(roadmap => roadmap.languages?.includes(settings.selectedLanguage))
+      .map(roadmap => roadmap.level)
+  )) as LanguageLevel[];
+
+  const getCapitalizedLanguage = (lang: string) => {
+    return lang.charAt(0).toUpperCase() + lang.slice(1);
+  };
+
+  const hasExistingRoadmap = (userRoadmaps || []).length > 0;
 
   return (
     <Card>
       <CardContent className="space-y-4">
         <h2 className="text-lg font-semibold">Start a New Learning Path</h2>
+        <p className="text-muted-foreground">
+          Select your level to begin a new learning path in {getCapitalizedLanguage(settings.selectedLanguage)}.
+        </p>
         
-        {!hasAvailableRoadmaps && !isLoading && (
-          <div className="text-center py-4">
-            <p className="text-muted-foreground">
-              No roadmaps available for {getCapitalizedLanguage(settings.selectedLanguage)} yet.
-            </p>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium">Select Level</h3>
+        <div className="grid gap-2">
           <Select 
             value={selectedLevel} 
             onValueChange={(value: LanguageLevel) => setSelectedLevel(value)}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a level" />
+              <SelectValue placeholder="Select your level" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="A0">
-                <div className="flex items-center">
-                  Beginner <LevelBadge level="A0" className="ml-2" />
-                </div>
-              </SelectItem>
-              <SelectItem value="A1">
-                <div className="flex items-center">
-                  Beginner <LevelBadge level="A1" className="ml-2" />
-                </div>
-              </SelectItem>
-              <SelectItem value="A2">
-                <div className="flex items-center">
-                  Elementary <LevelBadge level="A2" className="ml-2" />
-                </div>
-              </SelectItem>
-              <SelectItem value="B1">
-                <div className="flex items-center">
-                  Intermediate <LevelBadge level="B1" className="ml-2" />
-                </div>
-              </SelectItem>
-              <SelectItem value="B2">
-                <div className="flex items-center">
-                  Upper Intermediate <LevelBadge level="B2" className="ml-2" />
-                </div>
-              </SelectItem>
-              <SelectItem value="C1">
-                <div className="flex items-center">
-                  Advanced <LevelBadge level="C1" className="ml-2" />
-                </div>
-              </SelectItem>
-              <SelectItem value="C2">
-                <div className="flex items-center">
-                  Proficient <LevelBadge level="C2" className="ml-2" />
-                </div>
-              </SelectItem>
+              {availableLevels.map((level) => (
+                <SelectItem key={level} value={level}>
+                  <div className="flex items-center">
+                    <LevelBadge level={level} className="mr-2" />
+                    {level}
+                  </div>
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
         <Button 
-          className="w-full" 
-          onClick={handleStartLearning}
-          disabled={isLoading || isStartLearningDisabled || hasExistingRoadmap}
+          onClick={handleStartLearning} 
+          disabled={isLoading || hasExistingRoadmap || availableLevels.length === 0}
+          className="w-full"
         >
           {isLoading ? 'Loading...' : 'Start Learning'}
         </Button>
-        
-        {isStartLearningDisabled && !hasExistingRoadmap && (
-          <p className="text-sm text-muted-foreground mt-2 text-center">
-            No roadmaps available for the selected level.
+
+        {hasExistingRoadmap && (
+          <p className="text-sm text-muted-foreground text-center">
+            You already have an active learning path.
           </p>
         )}
 
-        {hasExistingRoadmap && (
-          <p className="text-sm text-muted-foreground mt-2 text-center">
-            You already have an active learning path.
+        {availableLevels.length === 0 && !isLoading && (
+          <p className="text-sm text-muted-foreground text-center">
+            No learning paths available for {getCapitalizedLanguage(settings.selectedLanguage)} at the moment.
           </p>
         )}
       </CardContent>
