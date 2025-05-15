@@ -101,6 +101,7 @@ class RoadmapService {
           name: roadmapDetails.name || 'Unnamed Roadmap',
           level: roadmapDetails.level as LanguageLevel || 'A1',
           description: roadmapDetails.description,
+          languages: [], // Adding the required empty array for languages
           language: item.language as Language,
           currentNodeId: item.current_node_id,
           createdAt: new Date(item.created_at),

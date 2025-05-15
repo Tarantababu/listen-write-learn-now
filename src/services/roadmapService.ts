@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { 
   RoadmapItem, 
@@ -99,7 +100,7 @@ class RoadmapService {
           currentNodeId: item.current_node_id,
           createdAt: new Date(item.created_at),
           updatedAt: new Date(item.updated_at || item.created_at),
-          languages: [] // Add empty languages array
+          languages: [] // Add empty languages array to satisfy the type requirement
         };
       });
     } catch (error) {
