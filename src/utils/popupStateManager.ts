@@ -1,104 +1,33 @@
 
-// A simple utility to manage popup state persistence across refreshes
+// Simple utility to track whether any popups/modals are currently open
+// This helps prevent background data refreshes when users are interacting with modals
 
-interface PopupState {
-  isOpen: boolean;
-  id?: string;
-  data?: any;
-  lastUpdated: number;
-}
-
-// Use module-level variables to maintain state across renders
-let popupStates: Record<string, PopupState> = {};
-
-// Event listeners for popup state coordination
-const listeners: Record<string, Set<Function>> = {};
+let openPopupCount = 0;
 
 /**
- * Save popup state to keep modals from closing during data refreshes
- * @param key Unique identifier for the popup
- * @param state State of the popup
+ * Register a popup as opened
  */
-export function savePopupState(key: string, state: Omit<PopupState, 'lastUpdated'>): void {
-  const newState = { 
-    ...state, 
-    lastUpdated: Date.now() 
-  };
-  
-  popupStates[key] = newState;
-  
-  // Notify listeners of state change
-  if (listeners[key]) {
-    listeners[key].forEach(listener => listener(newState));
-  }
+export function registerPopupOpen(): void {
+  openPopupCount++;
 }
 
 /**
- * Get saved popup state
- * @param key Unique identifier for the popup
- * @returns The saved popup state, or default closed state if none exists
+ * Register a popup as closed
  */
-export function getPopupState(key: string): PopupState {
-  return popupStates[key] || { isOpen: false, lastUpdated: 0 };
-}
-
-/**
- * Clear a specific popup state
- * @param key Unique identifier for the popup
- */
-export function clearPopupState(key: string): void {
-  delete popupStates[key];
-  
-  // Notify listeners of state clear
-  if (listeners[key]) {
-    listeners[key].forEach(listener => 
-      listener({ isOpen: false, lastUpdated: Date.now() })
-    );
-  }
-}
-
-/**
- * Clear all popup states
- */
-export function clearAllPopupStates(): void {
-  popupStates = {};
-  
-  // Notify all listeners
-  Object.keys(listeners).forEach(key => {
-    listeners[key].forEach(listener => 
-      listener({ isOpen: false, lastUpdated: Date.now() })
-    );
-  });
-}
-
-/**
- * Subscribe to popup state changes
- * @param key Unique identifier for the popup
- * @param callback Function to call when state changes
- * @returns Unsubscribe function
- */
-export function subscribeToPopupState(key: string, callback: (state: PopupState) => void): () => void {
-  if (!listeners[key]) {
-    listeners[key] = new Set();
-  }
-  
-  listeners[key].add(callback);
-  
-  // Return unsubscribe function
-  return () => {
-    if (listeners[key]) {
-      listeners[key].delete(callback);
-      if (listeners[key].size === 0) {
-        delete listeners[key];
-      }
-    }
-  };
+export function registerPopupClose(): void {
+  openPopupCount = Math.max(0, openPopupCount - 1);
 }
 
 /**
  * Check if any popup is currently open
- * @returns boolean indicating if any popup is open
  */
 export function isAnyPopupOpen(): boolean {
-  return Object.values(popupStates).some(state => state.isOpen);
+  return openPopupCount > 0;
+}
+
+/**
+ * Reset the popup tracking (useful for tests or when changing pages)
+ */
+export function resetPopupTracking(): void {
+  openPopupCount = 0;
 }

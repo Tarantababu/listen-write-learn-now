@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '@/features/roadmap/services/RoadmapService';
 import { RoadmapItem, RoadmapNode, UserRoadmap, ExerciseContent, NodeCompletionResult } from '@/features/roadmap/types';
@@ -13,7 +12,8 @@ const DATA_REFRESH_INTERVAL = 300000; // 5 minutes interval for data refresh (pr
 const MAX_REFRESH_INTERVAL = 900000; // 15 minutes maximum interval with backoff (previously 300000)
 const BACKOFF_MULTIPLIER = 2; // Exponential backoff multiplier
 
-export function useRoadmapData() {
+// Rename from useRoadmapData to useRoadmap to match imports in other files
+export function useRoadmap() {
   const [isLoading, setIsLoading] = useState(false);
   const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
   const [userRoadmaps, setUserRoadmaps] = useState<UserRoadmap[]>([]);
@@ -479,3 +479,6 @@ export function useRoadmapData() {
     refreshData, // Manual refresh function
   };
 }
+
+// For backward compatibility, also export the same function as useRoadmapData
+export { useRoadmap as useRoadmapData };

@@ -1,126 +1,110 @@
-/**
- * Simple cache utility to prevent redundant API calls
- */
 
-interface CacheItem<T> {
-  data: T;
-  timestamp: number;
-  stale: boolean;
+interface CacheOptions {
+  ttl?: number;      // Time to live in milliseconds
+  allowStale?: boolean; // Allow serving stale data while refreshing
 }
 
-interface CacheConfig {
-  defaultTTL: number;  // Time to live in milliseconds
-  staleTTL: number;    // Time after which data is considered stale but still usable
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  isStale: boolean;
 }
 
 class ApiCache {
-  private cache: Record<string, CacheItem<any>> = {};
-  private config: CacheConfig = {
-    defaultTTL: 5 * 60 * 1000, // 5 minutes
-    staleTTL: 30 * 60 * 1000   // 30 minutes
-  };
-
-  constructor(config?: Partial<CacheConfig>) {
-    if (config) {
-      this.config = { ...this.config, ...config };
-    }
-  }
-
+  private cache: Record<string, CacheEntry<any>> = {};
+  private DEFAULT_TTL = 60000; // 1 minute default
+  
   /**
-   * Get data from cache or fetch it with the provided function
+   * Get data from cache or fetch it if not available/expired
    */
   async get<T>(
     key: string, 
     fetchFn: () => Promise<T>,
-    options?: { 
-      ttl?: number;
-      forceRefresh?: boolean;
-      allowStale?: boolean;
-    }
+    options?: CacheOptions
   ): Promise<T> {
+    const ttl = options?.ttl || this.DEFAULT_TTL;
+    const allowStale = options?.allowStale || false;
+    const entry = this.cache[key];
     const now = Date.now();
-    const ttl = options?.ttl || this.config.defaultTTL;
-    const allowStale = options?.allowStale !== false;
     
-    // Check if we have valid cache
-    const cacheItem = this.cache[key];
-    const hasValidCache = cacheItem && (now - cacheItem.timestamp < ttl);
-    const hasStaleCache = allowStale && cacheItem && (now - cacheItem.timestamp < this.config.staleTTL);
-    
-    // Use cache if valid and not forced to refresh
-    if (!options?.forceRefresh && (hasValidCache || hasStaleCache)) {
-      // Mark data as stale if it's past TTL but within staleTTL
-      if (!hasValidCache && hasStaleCache) {
-        cacheItem.stale = true;
-      }
-      return cacheItem.data;
+    // If we have a valid cache entry that's not expired
+    if (entry && (now - entry.timestamp < ttl)) {
+      return entry.data;
     }
-
-    try {
-      // Fetch fresh data
-      const data = await fetchFn();
-      
-      // Store in cache
+    
+    // If we allow stale data and have a stale entry
+    if (allowStale && entry) {
+      // Mark as stale and refresh in background
       this.cache[key] = {
-        data,
-        timestamp: now,
-        stale: false
+        ...entry,
+        isStale: true
       };
       
+      // Fetch new data in background without blocking
+      this.refreshInBackground(key, fetchFn, ttl);
+      
+      // Return stale data immediately
+      return entry.data;
+    }
+    
+    // No cache or expired and we don't allow stale - fetch new data
+    return this.fetchAndCache(key, fetchFn, ttl);
+  }
+  
+  /**
+   * Fetch and cache data
+   */
+  private async fetchAndCache<T>(
+    key: string,
+    fetchFn: () => Promise<T>,
+    ttl: number
+  ): Promise<T> {
+    try {
+      const data = await fetchFn();
+      this.cache[key] = {
+        data,
+        timestamp: Date.now(),
+        isStale: false
+      };
       return data;
     } catch (error) {
-      // If we have stale data, return it on error
-      if (cacheItem && allowStale) {
-        console.warn(`Error fetching fresh data for ${key}, using stale data:`, error);
-        cacheItem.stale = true;
-        return cacheItem.data;
+      // If fetch fails and we have stale data, return that as fallback
+      if (this.cache[key]) {
+        console.warn(`Failed to fetch fresh data for ${key}, using stale data`);
+        return this.cache[key].data;
       }
-      
-      // Otherwise, propagate the error
       throw error;
     }
   }
-
+  
   /**
-   * Manually set data in the cache
+   * Refresh data in background without blocking
    */
-  set<T>(key: string, data: T): void {
-    this.cache[key] = {
-      data,
-      timestamp: Date.now(),
-      stale: false
-    };
+  private refreshInBackground<T>(
+    key: string,
+    fetchFn: () => Promise<T>,
+    ttl: number
+  ): void {
+    // Use setTimeout to avoid blocking the main thread
+    setTimeout(() => {
+      this.fetchAndCache(key, fetchFn, ttl)
+        .catch(err => console.error(`Background refresh failed for ${key}:`, err));
+    }, 0);
   }
-
+  
   /**
-   * Check if data is cached and fresh
-   */
-  isFresh(key: string): boolean {
-    const cacheItem = this.cache[key];
-    return cacheItem && (Date.now() - cacheItem.timestamp < this.config.defaultTTL);
-  }
-
-  /**
-   * Check if data exists in cache (fresh or stale)
-   */
-  has(key: string): boolean {
-    return !!this.cache[key];
-  }
-
-  /**
-   * Invalidate a specific cache entry
+   * Invalidate a cache entry
    */
   invalidate(key: string): void {
     delete this.cache[key];
   }
-
+  
   /**
-   * Clear all cache
+   * Clear all cache entries
    */
   clear(): void {
     this.cache = {};
   }
 }
 
-// Create a singleton instance
 export const apiCache = new ApiCache();
