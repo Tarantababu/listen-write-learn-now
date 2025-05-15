@@ -82,17 +82,25 @@ serve(async (req) => {
     // Get subscribe button clicks (if tracking table exists)
     let subscribeButtonClicks = 0;
     try {
-      // First check if the button_clicks table exists using a metadata query
-      const { data: tableExists, error: tableCheckError } = await supabaseClient
-        .rpc('check_table_exists', { table_name: 'button_clicks' });
+      // Safely check if the table exists first to avoid errors
+      const { data: tablesResult } = await supabaseClient
+        .from('pg_tables')
+        .select('tablename')
+        .eq('schemaname', 'public')
+        .eq('tablename', 'button_clicks');
       
-      if (!tableCheckError && tableExists) {
-        // If table exists, safely query it without causing TypeScript errors
-        const { data: clickData, error: clickError } = await supabaseClient
-          .rpc('get_button_clicks', { button_name: 'subscribe' });
+      const tableExists = tablesResult && tablesResult.length > 0;
+      
+      if (tableExists) {
+        // If the button_clicks table exists, query it
+        const { data: clicksData, error: clickError } = await supabaseClient
+          .from('button_clicks')
+          .select('count')
+          .eq('button_name', 'subscribe')
+          .single();
         
-        if (!clickError && clickData !== null) {
-          subscribeButtonClicks = clickData || 0;
+        if (!clickError && clicksData) {
+          subscribeButtonClicks = clicksData.count || 0;
         }
       } else {
         console.log("Button clicks table does not exist. Using default value.");
