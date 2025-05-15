@@ -95,7 +95,7 @@ class RoadmapService {
           name: roadmapDetails.name || 'Unnamed Roadmap',
           level: (roadmapDetails.level || 'A1') as LanguageLevel,
           description: roadmapDetails.description,
-          language: item.language as Language,
+          language: item.language as Language, // Cast string to Language type
           currentNodeId: item.current_node_id,
           createdAt: new Date(item.created_at),
           updatedAt: new Date(item.updated_at || item.created_at),
