@@ -57,6 +57,7 @@ export interface UserSettings {
 // Language level types
 export type LanguageLevel = 'A0' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 
+// Curriculum Path types (formerly Roadmap)
 export interface CurriculumPath {
   id: string;
   name: string;
@@ -67,6 +68,9 @@ export interface CurriculumPath {
   createdBy?: string;
   languages?: Language[];
 }
+
+// For backward compatibility
+export interface Roadmap extends CurriculumPath {}
 
 export interface CurriculumNode {
   id: string;
@@ -81,11 +85,21 @@ export interface CurriculumNode {
   updatedAt: Date;
 }
 
+// For backward compatibility
+export interface RoadmapNode extends CurriculumNode {
+  roadmapId: string;
+}
+
 export interface CurriculumPathLanguage {
   id: string;
   curriculumPathId: string;
   language: Language;
   createdAt: Date;
+}
+
+// For backward compatibility
+export interface RoadmapLanguage extends CurriculumPathLanguage {
+  roadmapId: string;
 }
 
 export interface UserCurriculumPath {
@@ -98,9 +112,16 @@ export interface UserCurriculumPath {
   updatedAt: Date;
 }
 
-export interface CurriculumPathItem extends UserCurriculumPath {
-  name: string;
-  level: LanguageLevel;
+// For backward compatibility
+export interface UserRoadmap extends UserCurriculumPath {
+  roadmapId: string;
+}
+
+export interface CurriculumPathItem extends CurriculumPath {
+  language?: Language;
+  currentNodeId?: string;
+  curriculumPathId?: string;
+  progress?: number;
 }
 
 export interface CurriculumProgress {
@@ -112,6 +133,11 @@ export interface CurriculumProgress {
   completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// For backward compatibility
+export interface RoadmapProgress extends CurriculumProgress {
+  roadmapId: string;
 }
 
 // Node progress tracking
@@ -126,6 +152,11 @@ export interface CurriculumNodeProgress {
   lastPracticedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// For backward compatibility
+export interface RoadmapNodeProgress extends CurriculumNodeProgress {
+  roadmapId: string;
 }
 
 // Add Json type for compatibility with Supabase
@@ -157,4 +188,12 @@ export interface CurriculumContextType {
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
   incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;
   selectCurriculumPath: (curriculumPathId: string) => Promise<void>;
+}
+
+// For backward compatibility
+export interface RoadmapContextType extends CurriculumContextType {
+  roadmaps: Roadmap[];
+  userRoadmaps: UserRoadmap[];
+  currentRoadmap: UserRoadmap | null;
+  nodes: RoadmapNode[];
 }

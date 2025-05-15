@@ -9,8 +9,9 @@ class CurriculumPathService {
    */
   async getCurriculumPathsForLanguage(language: Language): Promise<CurriculumPathItem[]> {
     try {
+      // Use the roadmaps function for now until the database types are updated
       const { data, error } = await supabase
-        .rpc('get_curriculum_paths_by_language', {
+        .rpc('get_roadmaps_by_language', {
           requested_language: asFilterParam(language)
         });
         
@@ -18,19 +19,26 @@ class CurriculumPathService {
       
       // Get all curriculum path languages to associate with the paths
       const { data: languagesData, error: languagesError } = await supabase
-        .from('curriculum_path_languages')
+        .from('roadmap_languages')
         .select('curriculum_path_id, language');
         
       if (languagesError) throw languagesError;
       
       // Group languages by curriculum path ID
       const languagesByCurriculumPath: Record<string, Language[]> = {};
-      languagesData.forEach((langItem: any) => {
-        if (!languagesByCurriculumPath[langItem.curriculum_path_id]) {
-          languagesByCurriculumPath[langItem.curriculum_path_id] = [];
-        }
-        languagesByCurriculumPath[langItem.curriculum_path_id].push(langItem.language as Language);
-      });
+      if (Array.isArray(languagesData)) {
+        languagesData.forEach((langItem: any) => {
+          const pathId = langItem.curriculum_path_id || langItem.roadmap_id;
+          if (!languagesByCurriculumPath[pathId]) {
+            languagesByCurriculumPath[pathId] = [];
+          }
+          languagesByCurriculumPath[pathId].push(langItem.language as Language);
+        });
+      }
+      
+      if (!Array.isArray(data)) {
+        return [];
+      }
       
       return data.map((item: any): CurriculumPathItem => ({
         id: item.id,
@@ -61,8 +69,9 @@ class CurriculumPathService {
         throw new Error('User must be authenticated to access user curriculum paths');
       }
       
+      // Use the roadmaps function for now until the database types are updated
       const { data, error } = await supabase
-        .rpc('get_user_curriculum_paths_by_language', {
+        .rpc('get_user_roadmaps_by_language', {
           user_id_param: asUUID(userData.user.id),
           requested_language: asFilterParam(language)
         });
@@ -70,15 +79,17 @@ class CurriculumPathService {
       if (error) throw error;
       
       // If no user curriculum paths, return empty array
-      if (!data || data.length === 0) {
+      if (!data || !Array.isArray(data) || data.length === 0) {
         return [];
       }
       
       // Get detailed curriculum path information for each user curriculum path
-      const pathIds = data.map((item: any) => item.curriculum_path_id);
+      const pathIds = Array.isArray(data) 
+        ? data.map((item: any) => item.curriculum_path_id || item.roadmap_id) 
+        : [];
       
       const { data: pathsData, error: pathsError } = await supabase
-        .from('curriculum_paths')
+        .from('roadmaps')
         .select('*')
         .in('id', pathIds);
         
@@ -86,17 +97,20 @@ class CurriculumPathService {
       
       // Create a map of curriculum path data for easy lookup
       const pathMap: Record<string, any> = {};
-      pathsData.forEach(path => {
-        pathMap[path.id] = path;
-      });
+      if (Array.isArray(pathsData)) {
+        pathsData.forEach(path => {
+          pathMap[path.id] = path;
+        });
+      }
       
       // Format the user curriculum path data
-      return data.map((item: any): CurriculumPathItem => {
-        const pathDetails = pathMap[item.curriculum_path_id] || {};
+      return Array.isArray(data) ? data.map((item: any): CurriculumPathItem => {
+        const pathId = item.curriculum_path_id || item.roadmap_id;
+        const pathDetails = pathMap[pathId] || {};
         
         return {
           id: item.id,
-          curriculumPathId: item.curriculum_path_id,
+          curriculumPathId: pathId,
           name: pathDetails.name || 'Unnamed Path',
           level: pathDetails.level as LanguageLevel || 'A1',
           description: pathDetails.description,
@@ -105,7 +119,7 @@ class CurriculumPathService {
           createdAt: new Date(item.created_at),
           updatedAt: new Date(item.updated_at),
         };
-      });
+      }) : [];
     } catch (error) {
       console.error('Error getting user curriculum paths:', error);
       throw error;
@@ -129,7 +143,7 @@ class CurriculumPathService {
       
       // Find a curriculum path that matches the level and supports the language
       const { data: pathsData, error: pathsError } = await supabase
-        .from('curriculum_paths')
+        .from('roadmaps')
         .select(`
           id,
           curriculum_path_languages!inner(language)
@@ -139,7 +153,7 @@ class CurriculumPathService {
         
       if (pathsError) throw pathsError;
       
-      if (!pathsData || pathsData.length === 0) {
+      if (!pathsData || !Array.isArray(pathsData) || pathsData.length === 0) {
         throw new Error(`No curriculum path found for level ${level} and language ${language}`);
       }
       
@@ -254,25 +268,29 @@ class CurriculumPathService {
         
       if (nodeProgressError) throw nodeProgressError;
       
+      const nodeArray = Array.isArray(nodes) ? nodes : [];
+      const progressArray = Array.isArray(progress) ? progress : [];
+      const nodeProgressArray = Array.isArray(nodeProgress) ? nodeProgress : [];
+      
       // Create a map of node progress
       const nodeProgressMap: Record<string, any> = {};
-      if (nodeProgress) {
-        nodeProgress.forEach(item => {
+      if (nodeProgressArray.length > 0) {
+        nodeProgressArray.forEach(item => {
           nodeProgressMap[item.node_id] = item;
         });
       }
       
       // Create a set of completed node IDs
       const completedNodeIds = new Set<string>();
-      if (progress) {
-        progress
+      if (progressArray.length > 0) {
+        progressArray
           .filter(item => item.completed)
           .forEach(item => completedNodeIds.add(item.node_id));
       }
       
       // Mark nodes as completed from node_progress table as well
-      if (nodeProgress) {
-        nodeProgress
+      if (nodeProgressArray.length > 0) {
+        nodeProgressArray
           .filter(item => item.is_completed)
           .forEach(item => completedNodeIds.add(item.node_id));
       }
@@ -282,13 +300,13 @@ class CurriculumPathService {
       const availableNodeIds = new Set<string>();
       
       // Format and return the nodes with status information
-      const formattedNodes: CurriculumNode[] = nodes.map((node, index) => {
+      const formattedNodes: CurriculumNode[] = nodeArray.map((node, index) => {
         // First node is always available
         if (index === 0) {
           availableNodeIds.add(node.id);
         } 
         // Other nodes are available if previous node is completed
-        else if (index > 0 && completedNodeIds.has(nodes[index - 1].id)) {
+        else if (index > 0 && completedNodeIds.has(nodeArray[index - 1].id)) {
           availableNodeIds.add(node.id);
         }
         

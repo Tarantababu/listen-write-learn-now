@@ -1,46 +1,46 @@
 
 import React from 'react';
-import { Badge } from "@/components/ui/badge";
-import { getUserLevel } from "@/utils/levelSystem";
 import { LanguageLevel } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface LevelBadgeProps {
-  masteredWords?: number;
-  level?: LanguageLevel;
+  level: LanguageLevel;
   className?: string;
 }
 
-const LevelBadge: React.FC<LevelBadgeProps> = ({ masteredWords, level, className = "" }) => {
-  if (masteredWords !== undefined) {
-    const userLevel = getUserLevel(masteredWords);
-    return (
-      <Badge className={`${userLevel.color} font-semibold ${className}`}>
-        {userLevel.level}
-      </Badge>
-    );
-  }
-  
-  if (level !== undefined) {
-    // Use direct level value for CEFR levels
-    const levelColors: Record<LanguageLevel, string> = {
-      'A0': 'bg-slate-400',
-      'A1': 'bg-green-400',
-      'A2': 'bg-blue-400',
-      'B1': 'bg-indigo-500',
-      'B2': 'bg-purple-500',
-      'C1': 'bg-amber-500',
-      'C2': 'bg-rose-500'
-    };
-    
-    return (
-      <Badge className={`${levelColors[level]} font-semibold ${className}`}>
-        {level}
-      </Badge>
-    );
-  }
-  
-  // Fallback
-  return <Badge className={className}>A0</Badge>;
+const LevelBadge: React.FC<LevelBadgeProps> = ({ level, className }) => {
+  const getColorForLevel = () => {
+    switch (level) {
+      case 'A0':
+        return 'bg-slate-200 text-slate-800';
+      case 'A1':
+        return 'bg-green-200 text-green-800';
+      case 'A2':
+        return 'bg-green-300 text-green-800';
+      case 'B1':
+        return 'bg-blue-200 text-blue-800';
+      case 'B2':
+        return 'bg-blue-300 text-blue-800';
+      case 'C1':
+        return 'bg-purple-200 text-purple-800';
+      case 'C2':
+        return 'bg-purple-300 text-purple-800';
+      default:
+        return 'bg-gray-200 text-gray-800';
+    }
+  };
+
+  return (
+    <span 
+      className={cn(
+        'inline-block px-2 py-1 text-xs font-semibold rounded', 
+        getColorForLevel(),
+        className
+      )}
+    >
+      {level}
+    </span>
+  );
 };
 
 export default LevelBadge;

@@ -1,7 +1,7 @@
 
 import React, { createContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { curriculumPathService } from '@/features/roadmap/api/curriculumPathService';
-import { CurriculumContextType, Language, LanguageLevel, UserCurriculumPath, CurriculumPath, CurriculumNode, CurriculumNodeProgress } from '@/types';
+import { CurriculumContextType, Language, LanguageLevel, UserCurriculumPath, CurriculumPath, CurriculumNode, CurriculumNodeProgress, CurriculumPathItem } from '@/types';
 import { useUserSettingsContext } from './UserSettingsContext';
 import { toast } from '@/components/ui/use-toast';
 
@@ -44,11 +44,23 @@ export const CurriculumPathProvider: React.FC<CurriculumPathProviderProps> = ({ 
   }, []);
 
   // Load user's curriculum paths for the current language
-  const loadUserCurriculumPaths = useCallback(async (language?: Language) => {
+  const loadUserCurriculumPaths = useCallback(async (language?: Language): Promise<UserCurriculumPath[]> => {
     try {
       setIsLoading(true);
       const userLanguage = language || settings.selectedLanguage;
-      const userPaths = await curriculumPathService.getUserCurriculumPaths(userLanguage);
+      const userPathItems = await curriculumPathService.getUserCurriculumPaths(userLanguage);
+      
+      // Convert CurriculumPathItems to UserCurriculumPaths
+      const userPaths: UserCurriculumPath[] = userPathItems.map(item => ({
+        id: item.id,
+        userId: "", // This will be filled in by the backend
+        curriculumPathId: item.curriculumPathId || item.id,
+        language: item.language || userLanguage,
+        currentNodeId: item.currentNodeId,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt
+      }));
+      
       setUserCurriculumPaths(userPaths);
       
       // If there's a curriculum path, select the first one by default
@@ -312,4 +324,13 @@ export const CurriculumPathProvider: React.FC<CurriculumPathProviderProps> = ({ 
       {children}
     </CurriculumPathContext.Provider>
   );
+};
+
+// Hook to use the curriculum path context
+export const useCurriculumPath = () => {
+  const context = React.useContext(CurriculumPathContext);
+  if (context === undefined) {
+    throw new Error('useCurriculumPath must be used within a CurriculumPathProvider');
+  }
+  return context;
 };
