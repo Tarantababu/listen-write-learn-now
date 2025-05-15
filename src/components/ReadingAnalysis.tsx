@@ -1,13 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Exercise, Json } from '@/types';
+import { Exercise } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, AlertTriangle } from 'lucide-react';
+
+// Import Json type from vite-env.d.ts
+type Json = import('../vite-env').Json;
 
 interface ReadingAnalysisProps {
   exercise: Exercise;

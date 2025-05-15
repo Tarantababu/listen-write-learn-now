@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -152,14 +153,15 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
         });
         toast.success('Exercise updated successfully');
       } else {
-        // Add new exercise
+        // Add new exercise - pass only the properties recognized by the Exercise type
         await addExercise({
           title,
           text,
-          language, // Keep using the language from settings for database association
+          language,
           tags,
           directoryId,
-          ...(audioUrl && { audioUrl })
+          audioUrl: audioUrl || undefined, // Only include if we have it
+          // Note: userId and updatedAt are added by the backend
         });
         toast.success('Exercise created successfully');
       }
