@@ -132,10 +132,11 @@ class RoadmapService {
         name: data.roadmaps?.name || 'Unnamed Roadmap',
         level: (data.roadmaps?.level || 'A1') as LanguageLevel,
         description: data.roadmaps?.description,
-        language: data.language,
+        language: data.language as Language,
         currentNodeId: data.current_node_id,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at || data.created_at),
+        languages: [] // Add empty languages array to satisfy the type requirement
       };
     } catch (error) {
       console.error('Error getting user roadmap:', error);
@@ -176,7 +177,7 @@ class RoadmapService {
         .select('id')
         .eq('user_id', userData.user.id)
         .eq('roadmap_id', roadmapId)
-        .eq('language', language)
+        .eq('language', language as string)
         .maybeSingle();
         
       if (existingRoadmap) {
@@ -189,7 +190,7 @@ class RoadmapService {
         .insert({
           user_id: userData.user.id,
           roadmap_id: roadmapId,
-          language: language
+          language: language as string
         })
         .select()
         .single();
@@ -628,3 +629,4 @@ class RoadmapService {
 }
 
 export const roadmapService = new RoadmapService();
+
