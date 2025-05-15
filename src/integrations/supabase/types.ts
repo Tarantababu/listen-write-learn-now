@@ -765,15 +765,6 @@ export type Database = {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
       }
-      increment_curriculum_node_completion: {
-        Args: {
-          node_id_param: string
-          user_id_param: string
-          language_param: string
-          curriculum_path_id_param: string
-        }
-        Returns: undefined
-      }
       increment_node_completion: {
         Args: {
           node_id_param: string

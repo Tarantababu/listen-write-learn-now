@@ -2,16 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useCurriculumPath } from '@/hooks/use-curriculum-path';
-import { CurriculumNode } from '@/types';
+import { useRoadmap } from '@/contexts/RoadmapContext';
+import { RoadmapNode } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import DictationPractice from '@/components/DictationPractice';
 import { Search, Headphones } from 'lucide-react';
 
-interface CurriculumExerciseModalProps {
-  node: CurriculumNode | null;
+interface RoadmapExerciseModalProps {
+  node: RoadmapNode | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -23,7 +23,7 @@ enum PracticeStage {
   DICTATION, // Dictation Practice mode
 }
 
-const CurriculumExerciseModal: React.FC<CurriculumExerciseModalProps> = ({ node, isOpen, onOpenChange }) => {
+const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpen, onOpenChange }) => {
   const { 
     markNodeAsCompleted, 
     getNodeExercise, 
@@ -31,7 +31,7 @@ const CurriculumExerciseModal: React.FC<CurriculumExerciseModalProps> = ({ node,
     completedNodes, 
     incrementNodeCompletion,
     nodeProgress 
-  } = useCurriculumPath();
+  } = useRoadmap();
   
   const [exercise, setExercise] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -205,7 +205,7 @@ const CurriculumExerciseModal: React.FC<CurriculumExerciseModalProps> = ({ node,
         {practiceStage === PracticeStage.DICTATION && exercise && (
           <DictationPractice
             exercise={{
-              id: `curriculum-${node.id}`,
+              id: `roadmap-${node.id}`,
               title: exercise.title || node.title,
               text: exercise.text || "",
               language: node.language || 'english',
@@ -240,4 +240,4 @@ const CurriculumExerciseModal: React.FC<CurriculumExerciseModalProps> = ({ node,
   );
 };
 
-export default CurriculumExerciseModal;
+export default RoadmapExerciseModal;

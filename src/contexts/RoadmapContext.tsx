@@ -1,11 +1,38 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language, RoadmapNodeProgress, RoadmapContextType } from '@/types';
+import { useAuth } from './AuthContext';
+import { useUserSettingsContext } from './UserSettingsContext';
+import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language, RoadmapNodeProgress } from '@/types';
 
-export const RoadmapContext = createContext<RoadmapContextType>({} as RoadmapContextType);
+interface RoadmapContextType {
+  roadmaps: Roadmap[];
+  userRoadmaps: UserRoadmap[]; // New property to store all user's roadmaps
+  selectedRoadmap: UserRoadmap | null;
+  currentNode: RoadmapNode | null;
+  roadmapNodes: RoadmapNode[];
+  progress: RoadmapProgress[];
+  nodeProgress: RoadmapNodeProgress[]; // New property to store detailed node progress
+  loading: boolean;
+  nodeLoading: boolean;
+  // Property names used in other components
+  currentRoadmap: UserRoadmap | null; 
+  nodes: RoadmapNode[];
+  currentNodeId: string | undefined;
+  completedNodes: string[];
+  availableNodes: string[];
+  initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
+  loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
+  loadUserRoadmaps: () => Promise<void>; // New method to load all user roadmaps
+  completeNode: (nodeId: string) => Promise<void>;
+  resetProgress: () => Promise<void>;
+  getNodeExercise: (nodeId: string) => Promise<any>;
+  markNodeAsCompleted: (nodeId: string) => Promise<void>;
+  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>; // New method for incrementing completion count
+  selectRoadmap: (roadmapId: string) => Promise<void>; // New method to switch between roadmaps
+}
+
+const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
 
 export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -20,7 +47,6 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [loading, setLoading] = useState<boolean>(true);
   const [nodeLoading, setNodeLoading] = useState<boolean>(false);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(settings.selectedLanguage);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Memoized function to fetch roadmaps
   const fetchRoadmaps = useCallback(async () => {
@@ -76,7 +102,6 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
     } finally {
       setLoading(false);
-      setIsLoading(false);
     }
   }, [user, settings.selectedLanguage]);
 
@@ -96,15 +121,15 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [user]);
 
   // Load all user roadmaps
-  const loadUserRoadmaps = useCallback(async (language?: Language): Promise<UserRoadmap[] | undefined> => {
-    if (!user) return [];
+  const loadUserRoadmaps = useCallback(async () => {
+    if (!user) return;
 
     try {
       // Use our custom function to get user roadmaps filtered by the current language
       const { data: userRoadmapData, error: userRoadmapError } = await supabase
         .rpc('get_user_roadmaps_by_language', {
           user_id_param: user.id,
-          requested_language: language || settings.selectedLanguage
+          requested_language: settings.selectedLanguage
         });
 
       if (userRoadmapError) throw userRoadmapError;
@@ -112,7 +137,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (!userRoadmapData || userRoadmapData.length === 0) {
         setUserRoadmaps([]);
         setSelectedRoadmap(null);
-        return [];
+        return;
       }
 
       // Format user roadmaps
@@ -132,8 +157,6 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (!selectedRoadmap && formattedUserRoadmaps.length > 0) {
         await loadUserRoadmap(formattedUserRoadmaps[0].id);
       }
-      
-      return formattedUserRoadmaps;
     } catch (error) {
       console.error("Error loading user roadmaps:", error);
       toast({
@@ -141,7 +164,6 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         title: "Failed to load your learning paths",
         description: "There was an error loading your learning paths."
       });
-      return [];
     }
   }, [user, settings.selectedLanguage, selectedRoadmap]);
 
@@ -671,13 +693,17 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     <RoadmapContext.Provider value={{
       roadmaps,
       userRoadmaps,
-      currentRoadmap: selectedRoadmap,
-      currentNodeId: selectedRoadmap?.currentNodeId,
-      nodes: roadmapNodes,
+      selectedRoadmap,
+      currentNode,
+      roadmapNodes,
+      progress,
       nodeProgress,
       loading,
       nodeLoading,
-      isLoading,
+      // Alias properties to match what other components are using
+      currentRoadmap: selectedRoadmap,
+      nodes: roadmapNodes,
+      currentNodeId: selectedRoadmap?.currentNodeId,
       completedNodes,
       availableNodes,
       initializeUserRoadmap,

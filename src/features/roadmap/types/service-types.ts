@@ -1,6 +1,6 @@
 
 import { Language, LanguageLevel } from '@/types';
-import { CurriculumPathItem, CurriculumNode, ExerciseContent, NodeCompletionResult } from '../types';
+import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
 
 // Base response type for all service methods
 export interface ServiceResponse<T> {
@@ -12,20 +12,20 @@ export interface ServiceResponse<T> {
 // Common service method types
 export type ServiceResult<T> = Promise<ServiceResponse<T>>;
 
-// CurriculumPathService types
-export interface CurriculumPathServiceInterface {
-  getCurriculumPathsByLanguage(language: Language): ServiceResult<CurriculumPathItem[]>;
-  getUserCurriculumPaths(language: Language): ServiceResult<CurriculumPathItem[]>;
-  getCurriculumNodes(userCurriculumPathId: string): ServiceResult<CurriculumNode[]>;
-  initializeCurriculumPath(level: LanguageLevel, language: Language): ServiceResult<string>;
+// RoadmapService types
+export interface RoadmapServiceInterface {
+  getRoadmapsByLanguage(language: Language): ServiceResult<RoadmapItem[]>;
+  getUserRoadmaps(language: Language): ServiceResult<RoadmapItem[]>;
+  getRoadmapNodes(userRoadmapId: string): ServiceResult<RoadmapNode[]>;
+  initializeRoadmap(level: LanguageLevel, language: Language): ServiceResult<string>;
 }
 
 // ProgressService types
 export interface ProgressServiceInterface {
-  getCurriculumPathProgress(curriculumPathId: string): ServiceResult<CurriculumPathProgressDetails>;
+  getRoadmapProgress(roadmapId: string): ServiceResult<RoadmapProgressDetails>;
   recordNodeCompletion(nodeId: string, accuracy: number): ServiceResult<NodeCompletionResult>;
   markNodeAsCompleted(nodeId: string): ServiceResult<void>;
-  resetProgress(curriculumPathId: string): ServiceResult<void>;
+  resetProgress(roadmapId: string): ServiceResult<void>;
   getNodeProgress(nodeId: string): ServiceResult<NodeProgressDetails>;
 }
 
@@ -44,7 +44,7 @@ export interface UserServiceInterface {
 }
 
 // Additional types used by services
-export interface CurriculumPathProgressDetails {
+export interface RoadmapProgressDetails {
   totalNodes: number;
   completedNodes: number;
   availableNodes: number;
@@ -83,7 +83,7 @@ export interface UserPreferences {
 export interface UserLearningStats {
   totalExercisesCompleted: number;
   totalNodesCompleted: number;
-  totalCurriculumPathsCompleted: number;
+  totalRoadmapsCompleted: number;
   averageAccuracy: number;
   streakDays: number;
   lastActiveDate?: Date;
@@ -93,7 +93,7 @@ export interface UserLearningStats {
 export interface LanguageStats {
   exercisesCompleted: number;
   nodesCompleted: number;
-  curriculumPathsCompleted: number;
+  roadmapsCompleted: number;
   averageAccuracy: number;
   level: LanguageLevel;
 }

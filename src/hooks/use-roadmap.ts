@@ -1,12 +1,11 @@
 
 import { useContext } from 'react';
-import { RoadmapContext } from '@/contexts/RoadmapContext';
-import type { RoadmapContextType } from '@/types';
+import { RoadmapContext } from '@/features/roadmap/context/RoadmapContext';
 
 /**
  * Custom hook to access the roadmap context
  */
-export const useRoadmap = (): RoadmapContextType => {
+export const useRoadmap = () => {
   const context = useContext(RoadmapContext);
   
   if (context === undefined) {
