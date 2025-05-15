@@ -26,7 +26,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [roadmapNodes, setRoadmapNodes] = useState<RoadmapNode[]>([]);
   const [currentNode, setCurrentNode] = useState<RoadmapNode | null>(null);
   const [progress, setProgress] = useState<RoadmapProgress[]>([]);
-  const [nodeProgress, setNodeProgress] = useState<RoadmapNodeProgress[]>([]); 
+  const [nodeProgress, setNodeProgress] = useState<RoadmapNodeProgress[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [nodeLoading, setNodeLoading] = useState<boolean>(false);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(settings.selectedLanguage);
@@ -70,11 +70,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (user) {
       fetchRoadmaps();
     }
-  }, [user]);
+  }, [user, fetchRoadmaps]);
 
   // Load all user roadmaps
   const loadUserRoadmaps = useCallback(async () => {
-    if (!user) return;
+    if (!user) return [];
 
     try {
       const userRoadmapsList = await roadmapService.getUserRoadmaps(settings.selectedLanguage);
@@ -128,10 +128,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       
       if (userRoadmapId) {
         // Get specific user roadmap by ID
-        const roadmap = await roadmapService.getUserRoadmap(userRoadmapId);
-        if (roadmap) {
-          userRoadmap = roadmap;
-        }
+        userRoadmap = await roadmapService.getUserRoadmap(userRoadmapId);
       } else {
         // Get first user roadmap for current language
         const userRoadmaps = await roadmapService.getUserRoadmaps(settings.selectedLanguage);
@@ -318,6 +315,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
           : "Congratulations! You've completed all lessons in this path."
       });
       
+      return result;
     } catch (error) {
       console.error("Error completing node:", error);
       toast({
@@ -325,6 +323,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         title: "Failed to mark as complete",
         description: "Failed to mark lesson as complete"
       });
+      return {};
     } finally {
       setNodeLoading(false);
     }

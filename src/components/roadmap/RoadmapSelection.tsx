@@ -8,14 +8,15 @@ import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import LevelBadge from '@/components/LevelBadge';
 import { LanguageLevel } from '@/types';
 import { toast } from '@/components/ui/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const RoadmapSelection: React.FC = () => {
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel>("A1");
   const { settings } = useUserSettingsContext();
   
   const {
-    initializeUserRoadmap,
     roadmaps,
+    initializeUserRoadmap,
     isLoading, 
     userRoadmaps,
     loadUserRoadmaps
@@ -53,7 +54,7 @@ const RoadmapSelection: React.FC = () => {
 
   return (
     <Card>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pt-6">
         <h2 className="text-lg font-semibold">Start a New Learning Path</h2>
         <p className="text-muted-foreground">
           Select your level to begin a new learning path in {getCapitalizedLanguage(settings.selectedLanguage)}.
@@ -85,7 +86,14 @@ const RoadmapSelection: React.FC = () => {
           disabled={isLoading || hasExistingRoadmap || availableLevels.length === 0}
           className="w-full"
         >
-          {isLoading ? 'Loading...' : 'Start Learning'}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading...
+            </>
+          ) : (
+            'Start Learning'
+          )}
         </Button>
 
         {hasExistingRoadmap && (
