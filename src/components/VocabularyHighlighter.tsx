@@ -1,229 +1,210 @@
 
+// Create a fixed version of VocabularyHighlighter
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/contexts/AuthContext';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
-import { Exercise, VocabularyItem, Json } from '@/types';
+import { Exercise, VocabularyItem, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 interface VocabularyHighlighterProps {
   exercise: Exercise;
 }
 
 const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise }) => {
-  const { addVocabularyItem, vocabulary } = useVocabularyContext();
-  const [selectedText, setSelectedText] = useState<string>('');
+  const { user } = useAuth();
+  const { vocabularyItems, addVocabularyItem } = useVocabularyContext();
+
+  const [selectedWord, setSelectedWord] = useState<string>('');
+  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
+  const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [definition, setDefinition] = useState<string>('');
-  const [exampleSentence, setExampleSentence] = useState<string>('');
-  const [isGeneratingAI, setIsGeneratingAI] = useState<boolean>(false);
-  const [showForm, setShowForm] = useState<boolean>(false);
+  const [example, setExample] = useState<string>('');
+  const [sentence, setSentence] = useState<string>('');
 
+  // Reset the form when the dialog closes
   useEffect(() => {
-    // Reset form when exercise changes
-    setSelectedText('');
-    setDefinition('');
-    setExampleSentence('');
-    setShowForm(false);
-  }, [exercise]);
+    if (!isDialogOpen) {
+      setDefinition('');
+      setExample('');
+      setShowAddForm(false);
+    }
+  }, [isDialogOpen]);
 
-  // Helper to get the sentence containing the selected text
-  const getSentenceFromText = (text: string, selectedWord: string): string => {
-    if (!text || !selectedWord) return '';
-    
-    const sentences = text.split(/(?<=[.!?;:])\s+/);
-    const sentence = sentences.find(s => s.includes(selectedWord));
-    return sentence || '';
-  };
-
-  // Handle text selection
   const handleTextSelection = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.toString().trim() === '') return;
-
-    const selectedText = selection.toString().trim();
-    if (selectedText.length > 50) {
-      toast.warning('Please select a shorter phrase (max 50 characters)');
-      return;
-    }
-
-    setSelectedText(selectedText);
+    const selectedText = window.getSelection()?.toString().trim();
     
-    // Get the sentence containing the selected word
-    const extractedSentence = getSentenceFromText(exercise.text, selectedText);
-    setExampleSentence(extractedSentence);
-    
-    // Show the form
-    setShowForm(true);
-  };
-
-  // Generate AI definition
-  const generateDefinition = async () => {
-    if (!selectedText) return;
-
-    setIsGeneratingAI(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
-        body: { 
-          word: selectedText,
-          context: exercise.text,
-          language: exercise.language
-        }
-      });
-
-      if (error) throw error;
+    if (selectedText && selectedText.length > 0) {
+      // Get the sentence context
+      const fullText = exercise.text;
+      const wordIndex = fullText.indexOf(selectedText);
       
-      if (data && data.definition) {
-        setDefinition(data.definition);
-        if (data.example && !exampleSentence) {
-          setExampleSentence(data.example);
-        }
-        toast.success('Definition generated');
-      } else {
-        toast.error('Could not generate definition');
+      if (wordIndex !== -1) {
+        // Extract a reasonable context (up to 100 chars before and after)
+        const sentenceStart = Math.max(0, wordIndex - 100);
+        const sentenceEnd = Math.min(fullText.length, wordIndex + selectedText.length + 100);
+        const extractedSentence = fullText.substring(sentenceStart, sentenceEnd);
+        
+        setSelectedWord(selectedText);
+        setSentence(extractedSentence);
+        setIsDialogOpen(true);
       }
-    } catch (error) {
-      console.error('Error generating definition:', error);
-      toast.error('Failed to generate definition');
-    } finally {
-      setIsGeneratingAI(false);
     }
   };
 
-  // Save vocabulary item
-  const saveVocabularyItem = async () => {
-    if (!selectedText || !definition || !exampleSentence) {
-      toast.warning('Please fill in all fields');
-      return;
-    }
+  const handleAddVocabulary = async () => {
+    if (!user) return;
 
     try {
-      // Make sure we're using the correct property names
+      // Create vocabulary item
       await addVocabularyItem({
-        word: selectedText,
-        definition,
-        exampleSentence,
+        word: selectedWord,
+        definition: definition,
+        exampleSentence: example || sentence,
         language: exercise.language,
-        userId: exercise.userId,
-        exercise_id: exercise.id,
-        createdAt: new Date().toISOString() // Add the required createdAt field
+        userId: user.id,
+        createdAt: new Date().toISOString(),
+        exercise_id: exercise.id
       });
-      
-      toast.success('Vocabulary item saved');
+
+      setIsDialogOpen(false);
+      setShowAddForm(false);
       
       // Reset form
-      setSelectedText('');
       setDefinition('');
-      setExampleSentence('');
-      setShowForm(false);
+      setExample('');
     } catch (error) {
-      console.error('Error saving vocabulary item:', error);
-      toast.error('Failed to save vocabulary item');
+      console.error('Error adding vocabulary:', error);
     }
   };
 
-  // Check if word is already in vocabulary
-  const isWordInVocabulary = (word: string): boolean => {
-    return vocabulary.some(item => 
-      item.word.toLowerCase() === word.toLowerCase() && 
-      item.language === exercise.language
-    );
-  };
-
-  // Close the form
-  const handleCloseForm = () => {
-    setShowForm(false);
-    setSelectedText('');
-    setDefinition('');
-    setExampleSentence('');
-  };
+  // Get existing vocabulary for this word in this exercise
+  const existingVocabulary = vocabularyItems?.filter(
+    (item) => item.word.toLowerCase() === selectedWord.toLowerCase() && 
+              item.language === exercise.language
+  );
 
   return (
-    <div>
-      <div 
-        className="text-muted-foreground mb-4"
-        onMouseUp={handleTextSelection} 
+    <div className="mt-4">
+      <div
+        className="prose max-w-none dark:prose-invert cursor-text"
+        onClick={handleTextSelection}
       >
-        Select any word or phrase to add to your vocabulary list.
+        <p>{exercise.text}</p>
       </div>
-      
-      {showForm && (
-        <div className="bg-muted/30 p-4 rounded-lg border mb-4">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-medium">Add to Vocabulary</h3>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleCloseForm}
-            >
-              ×
-            </Button>
-          </div>
-          
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="selected-word">Selected Word/Phrase</Label>
-              <Input 
-                id="selected-word" 
-                value={selectedText} 
-                onChange={(e) => setSelectedText(e.target.value)} 
-                className="mt-1"
-              />
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center">
-                <Label htmlFor="definition">Definition</Label>
-                <Button 
-                  type="button" 
-                  size="sm" 
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedWord ? `"${selectedWord}"` : 'Selected Word'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-4">
+            {existingVocabulary && existingVocabulary.length > 0 ? (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-medium">Already in your vocabulary:</h3>
+                  {existingVocabulary.map((item) => (
+                    <div key={item.id} className="mt-2 p-3 border rounded-md">
+                      <p className="font-medium">{item.word}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.definition}
+                      </p>
+                      <p className="text-xs italic mt-2">{item.exampleSentence}</p>
+                    </div>
+                  ))}
+                </div>
+                <Button
                   variant="outline"
-                  onClick={generateDefinition}
-                  disabled={isGeneratingAI}
+                  className="w-full"
+                  onClick={() => setShowAddForm(true)}
                 >
-                  {isGeneratingAI ? 'Generating...' : 'Generate AI Definition'}
+                  Add a new definition
                 </Button>
               </div>
-              <Textarea 
-                id="definition" 
-                value={definition} 
-                onChange={(e) => setDefinition(e.target.value)} 
-                className="mt-1"
-                rows={3}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="example">Example Sentence</Label>
-              <Textarea 
-                id="example" 
-                value={exampleSentence} 
-                onChange={(e) => setExampleSentence(e.target.value)} 
-                className="mt-1"
-                rows={2}
-              />
-            </div>
-            
-            <div className="flex justify-end gap-2">
-              <Button 
-                type="button" 
-                onClick={handleCloseForm}
-                variant="outline"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={saveVocabularyItem} 
-                disabled={!selectedText || !definition || !exampleSentence || isWordInVocabulary(selectedText)}
-              >
-                {isWordInVocabulary(selectedText) ? 'Already in Vocabulary' : 'Add to Vocabulary'}
-              </Button>
-            </div>
+            ) : (
+              <div className="space-y-4">
+                <p>
+                  Add <strong>{selectedWord}</strong> to your vocabulary:
+                </p>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Definition:
+                  </label>
+                  <Textarea
+                    value={definition}
+                    onChange={(e) => setDefinition(e.target.value)}
+                    placeholder="Enter the definition"
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Example sentence:
+                  </label>
+                  <Textarea
+                    value={example}
+                    onChange={(e) => setExample(e.target.value)}
+                    placeholder={sentence}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    You can use the context or write your own example
+                  </p>
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddVocabulary} disabled={!definition.trim()}>
+                    Add to Vocabulary
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {showAddForm && (
+              <div className="space-y-4 mt-4 pt-4 border-t">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    New Definition:
+                  </label>
+                  <Textarea
+                    value={definition}
+                    onChange={(e) => setDefinition(e.target.value)}
+                    placeholder="Enter another definition"
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Example sentence:
+                  </label>
+                  <Textarea
+                    value={example}
+                    onChange={(e) => setExample(e.target.value)}
+                    placeholder={sentence}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setShowAddForm(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddVocabulary} disabled={!definition.trim()}>
+                    Add to Vocabulary
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

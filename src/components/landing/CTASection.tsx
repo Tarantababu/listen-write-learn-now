@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
-import { SampleDictationModal } from './SampleDictationModal';
+import SampleDictationModal from './SampleDictationModal';
 
 export function CTASection() {
   const [sampleModalOpen, setSampleModalOpen] = useState(false);

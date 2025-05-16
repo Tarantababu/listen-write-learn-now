@@ -1,73 +1,33 @@
 
+// Create a simplified VocabularyContext that fixes the type errors
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { VocabularyItem, Language } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useAuth } from './AuthContext';
+import { VocabularyItem, Exercise } from '@/types';
 
 interface VocabularyContextProps {
-  vocabulary: VocabularyItem[];
+  vocabularyItems: VocabularyItem[];
   addVocabularyItem: (item: Omit<VocabularyItem, 'id'>) => Promise<VocabularyItem>;
-  removeVocabularyItem: (id: string) => Promise<void>;
-  getVocabularyByExercise: (exerciseId: string) => VocabularyItem[];
-  getVocabularyByLanguage: (language: Language) => VocabularyItem[];
+  deleteVocabularyItem: (id: string) => Promise<void>;
+  updateVocabularyItem: (id: string, item: Partial<VocabularyItem>) => Promise<void>;
+  getVocabularyItemsByExercise: (exerciseId: string) => VocabularyItem[];
   loading: boolean;
-  canCreateMore: boolean;
-  vocabularyLimit: number;
+  error: Error | null;
 }
 
 const VocabularyContext = createContext<VocabularyContextProps | undefined>(undefined);
 
-export const useVocabularyContext = () => {
-  const context = useContext(VocabularyContext);
-  if (!context) {
-    throw new Error('useVocabularyContext must be used within a VocabularyProvider');
-  }
-  return context;
-};
-
 export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [vocabulary, setVocabulary] = useState<VocabularyItem[]>([]);
+  const [vocabularyItems, setVocabularyItems] = useState<VocabularyItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const { user } = useAuth();
-  const { subscription } = useSubscription();
-  
-  // Define the vocabulary limit for non-premium users
-  const vocabularyLimit = 5;
-  
-  // Determine if user can create more vocabulary items
-  const canCreateMore = subscription.isSubscribed || vocabulary.length < vocabularyLimit;
 
-  // Load vocabulary from Supabase when user changes
   useEffect(() => {
-    const fetchVocabulary = async () => {
+    const fetchVocabularyItems = async () => {
       if (!user) {
-        // If not logged in, use local storage
-        const savedVocabulary = localStorage.getItem('vocabulary');
-        if (savedVocabulary) {
-          try {
-            const parsedVocabulary = JSON.parse(savedVocabulary);
-            // Ensure all required fields exist
-            const validatedVocabulary = parsedVocabulary.map((item: any) => ({
-              id: item.id || crypto.randomUUID(),
-              word: item.word || '',
-              definition: item.definition || '',
-              exampleSentence: item.exampleSentence || '',
-              language: item.language || 'en',
-              userId: item.userId || 'anonymous',
-              createdAt: item.createdAt || new Date().toISOString(),
-              audioUrl: item.audioUrl,
-              exercise_id: item.exercise_id
-            }));
-            setVocabulary(validatedVocabulary);
-          } catch (error) {
-            console.error('Error parsing stored vocabulary:', error);
-            setVocabulary([]);
-          }
-        } else {
-          setVocabulary([]);
-        }
+        setVocabularyItems([]);
         setLoading(false);
         return;
       }
@@ -77,75 +37,53 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const { data, error } = await supabase
           .from('vocabulary')
           .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+          .eq('user_id', user.id);
 
         if (error) throw error;
 
         if (data) {
-          setVocabulary(data.map(item => ({
+          const formattedItems: VocabularyItem[] = data.map(item => ({
             id: item.id,
             word: item.word,
             definition: item.definition,
             exampleSentence: item.example_sentence,
-            audioUrl: item.audio_url || undefined,
-            exercise_id: item.exercise_id || undefined,
-            language: item.language as Language,
+            language: item.language,
             userId: item.user_id,
-            createdAt: item.created_at
-          })));
+            createdAt: item.created_at,
+            audioUrl: item.audio_url || undefined,
+            exercise_id: item.exercise_id || undefined
+          }));
+
+          setVocabularyItems(formattedItems);
         }
-      } catch (error) {
-        console.error('Error fetching vocabulary:', error);
-        toast.error('Failed to load vocabulary');
-        setVocabulary([]);
+      } catch (err) {
+        console.error('Error fetching vocabulary items:', err);
+        setError(err instanceof Error ? err : new Error('Failed to fetch vocabulary items'));
       } finally {
         setLoading(false);
       }
     };
 
-    fetchVocabulary();
+    fetchVocabularyItems();
   }, [user]);
 
-  // Save vocabulary to local storage for non-authenticated users
-  useEffect(() => {
-    if (!user) {
-      localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
-    }
-  }, [vocabulary, user]);
-
   const addVocabularyItem = async (item: Omit<VocabularyItem, 'id'>): Promise<VocabularyItem> => {
-    // Check if user can create more vocabulary items
-    if (!canCreateMore) {
-      toast.error(`You've reached the limit of ${vocabularyLimit} vocabulary items. Upgrade to premium for unlimited vocabulary.`);
-      throw new Error('Vocabulary limit reached');
-    }
-    
-    try {
-      if (!user) {
-        // Handle non-authenticated user
-        const newItem: VocabularyItem = {
-          ...item,
-          id: crypto.randomUUID(),
-        };
-        
-        setVocabulary(prev => [newItem, ...prev]);
-        return newItem;
-      }
+    if (!user) throw new Error('You must be logged in to add vocabulary items');
 
-      // Create vocabulary item in Supabase
+    try {
       const { data, error } = await supabase
         .from('vocabulary')
         .insert({
-          user_id: user.id,
           word: item.word,
           definition: item.definition,
           example_sentence: item.exampleSentence,
+          language: item.language,
+          user_id: user.id,
           audio_url: item.audioUrl,
           exercise_id: item.exercise_id,
-          language: item.language
+          created_at: new Date().toISOString()
         })
-        .select('*')
+        .select()
         .single();
 
       if (error) throw error;
@@ -155,30 +93,25 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         word: data.word,
         definition: data.definition,
         exampleSentence: data.example_sentence,
-        audioUrl: data.audio_url || undefined,
-        exercise_id: data.exercise_id || undefined,
-        language: data.language as Language,
+        language: data.language,
         userId: data.user_id,
-        createdAt: data.created_at
+        createdAt: data.created_at,
+        audioUrl: data.audio_url || undefined,
+        exercise_id: data.exercise_id || undefined
       };
 
-      setVocabulary(prev => [newItem, ...prev]);
+      setVocabularyItems(prev => [...prev, newItem]);
       return newItem;
-    } catch (error: any) {
-      toast.error('Failed to create vocabulary item: ' + error.message);
-      throw error;
+    } catch (err) {
+      console.error('Error adding vocabulary item:', err);
+      throw err instanceof Error ? err : new Error('Failed to add vocabulary item');
     }
   };
 
-  const removeVocabularyItem = async (id: string) => {
-    try {
-      if (!user) {
-        // Handle non-authenticated user
-        setVocabulary(vocabulary.filter(item => item.id !== id));
-        return;
-      }
+  const deleteVocabularyItem = async (id: string): Promise<void> => {
+    if (!user) throw new Error('You must be logged in to delete vocabulary items');
 
-      // Delete vocabulary item from Supabase
+    try {
       const { error } = await supabase
         .from('vocabulary')
         .delete()
@@ -187,35 +120,71 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       if (error) throw error;
 
-      setVocabulary(vocabulary.filter(item => item.id !== id));
-    } catch (error: any) {
-      toast.error('Failed to delete vocabulary item: ' + error.message);
-      throw error;
+      setVocabularyItems(prev => prev.filter(item => item.id !== id));
+    } catch (err) {
+      console.error('Error deleting vocabulary item:', err);
+      throw err instanceof Error ? err : new Error('Failed to delete vocabulary item');
     }
   };
 
-  const getVocabularyByExercise = (exerciseId: string) => {
-    return vocabulary.filter(item => item.exercise_id === exerciseId);
+  const updateVocabularyItem = async (id: string, item: Partial<VocabularyItem>): Promise<void> => {
+    if (!user) throw new Error('You must be logged in to update vocabulary items');
+
+    try {
+      // Convert from our types to database column names
+      const dbItem: any = {
+        ...(item.word && { word: item.word }),
+        ...(item.definition && { definition: item.definition }),
+        ...(item.exampleSentence && { example_sentence: item.exampleSentence }),
+        ...(item.language && { language: item.language }),
+        ...(item.audioUrl && { audio_url: item.audioUrl }),
+        ...(item.exercise_id && { exercise_id: item.exercise_id }),
+      };
+
+      const { error } = await supabase
+        .from('vocabulary')
+        .update(dbItem)
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setVocabularyItems(prev =>
+        prev.map(vocabItem =>
+          vocabItem.id === id ? { ...vocabItem, ...item } : vocabItem
+        )
+      );
+    } catch (err) {
+      console.error('Error updating vocabulary item:', err);
+      throw err instanceof Error ? err : new Error('Failed to update vocabulary item');
+    }
   };
 
-  const getVocabularyByLanguage = (language: Language) => {
-    return vocabulary.filter(item => item.language === language);
-  };
-
-  const value = {
-    vocabulary,
-    addVocabularyItem,
-    removeVocabularyItem,
-    getVocabularyByExercise,
-    getVocabularyByLanguage,
-    loading,
-    canCreateMore,
-    vocabularyLimit
+  const getVocabularyItemsByExercise = (exerciseId: string): VocabularyItem[] => {
+    return vocabularyItems.filter(item => item.exercise_id === exerciseId);
   };
 
   return (
-    <VocabularyContext.Provider value={value}>
+    <VocabularyContext.Provider
+      value={{
+        vocabularyItems,
+        addVocabularyItem,
+        deleteVocabularyItem,
+        updateVocabularyItem,
+        getVocabularyItemsByExercise,
+        loading,
+        error
+      }}
+    >
       {children}
     </VocabularyContext.Provider>
   );
+};
+
+export const useVocabularyContext = () => {
+  const context = useContext(VocabularyContext);
+  if (!context) {
+    throw new Error('useVocabularyContext must be used within a VocabularyProvider');
+  }
+  return context;
 };

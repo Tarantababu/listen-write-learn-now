@@ -56,6 +56,7 @@ export interface Roadmap {
   languageId: string;
 }
 
+// Update RoadmapNode to match features/roadmap/types
 export interface RoadmapNode {
   id: string;
   name: string;
@@ -65,7 +66,7 @@ export interface RoadmapNode {
   position: number;
   exerciseCount: number;
   isCompleted?: boolean;
-  title?: string;
+  title: string; // Make title required to match the other implementation
   isBonus?: boolean;
   language?: Language;
   updatedAt?: string;

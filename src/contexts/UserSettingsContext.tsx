@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { Language } from '@/types';
 import { toast } from 'sonner';
+import { convertToLanguageCode } from '@/utils/languageConverter';
 
 export type UserSettings = {
   selectedLanguage: Language;
@@ -45,8 +46,10 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
           if (data) {
             setSettings({
-              selectedLanguage: convertToLanguageType(data.selected_language || 'en'),
-              learningLanguages: convertToLanguageArray(data.learning_languages || ['en']),
+              selectedLanguage: convertToLanguageCode(data.selected_language || 'english'),
+              learningLanguages: (data.learning_languages || ['english']).map(
+                (lang: string) => convertToLanguageCode(lang)
+              ),
               avatarUrl: data.avatar_url || '',
             });
           }
@@ -58,20 +61,6 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     fetchUserSettings();
   }, [user]);
-
-  // Helper function to ensure string is a valid Language type
-  const convertToLanguageType = (lang: string): Language => {
-    const validLanguages: Language[] = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko', 'zh'];
-    return validLanguages.includes(lang as Language) ? lang as Language : 'en';
-  };
-
-  // Helper function to ensure string array contains only valid Language types
-  const convertToLanguageArray = (langs: string[]): Language[] => {
-    const validLanguages: Language[] = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko', 'zh'];
-    return langs.map(lang => 
-      validLanguages.includes(lang as Language) ? lang as Language : 'en'
-    );
-  };
 
   const updateSettings = async (newSettings: Partial<UserSettings>) => {
     if (user) {

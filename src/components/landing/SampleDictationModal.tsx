@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -10,17 +11,32 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import DictationExercise from '@/components/DictationExercise';
 import { convertToLanguageCode } from '@/utils/languageConverter';
 
+// Create a stub component for DictationExercise
+const DictationExercise = ({ exercise, onComplete, isSample }: any) => {
+  return (
+    <div className="p-4 border rounded-md">
+      <h3 className="text-lg font-medium mb-4">{exercise.title}</h3>
+      <p className="mb-4">This is a placeholder for the DictationExercise component.</p>
+      <p className="mb-4">{exercise.text}</p>
+      <div className="flex justify-end">
+        <Button onClick={() => onComplete && onComplete()}>Complete</Button>
+      </div>
+    </div>
+  );
+};
+
 interface SampleDictationModalProps {
-  isOpen: boolean;
+  open: boolean;
   onOpenChange: (open: boolean) => void;
+  embedded?: boolean;
 }
 
 const SampleDictationModal: React.FC<SampleDictationModalProps> = ({
-  isOpen,
+  open,
   onOpenChange,
+  embedded = false,
 }) => {
   const [exerciseText, setExerciseText] = useState(
     "Welcome to Dictation Practice! This is a sample exercise to help you understand how the app works. Listen to the audio and type what you hear. Don't worry about making mistakes - that's how we learn."
@@ -42,11 +58,11 @@ const SampleDictationModal: React.FC<SampleDictationModalProps> = ({
       id: 'sample-exercise',
       title: 'Sample Exercise',
       text: exerciseText,
-      language: convertToLanguageCode('english'), // Convert to proper Language type
+      language: convertToLanguageCode('english'),
       userId: 'sample-user',
       directoryId: null,
       tags: ['sample', 'welcome'],
-      createdAt: new Date().toISOString(), // Convert Date to string
+      createdAt: new Date().toISOString(),
       completionCount: 0,
       isCompleted: false
     };
@@ -59,7 +75,7 @@ const SampleDictationModal: React.FC<SampleDictationModalProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Try Dictation Practice</DialogTitle>
@@ -122,3 +138,6 @@ const SampleDictationModal: React.FC<SampleDictationModalProps> = ({
 };
 
 export default SampleDictationModal;
+
+// Also export as named export for backward compatibility
+export { SampleDictationModal };

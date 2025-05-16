@@ -1,7 +1,4 @@
 
-// Add the necessary imports and update the component to handle Date vs string conversions
-// This is a partial update focused on fixing the type errors
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
@@ -16,6 +13,11 @@ interface DirectoryContextType {
   deleteDirectory: (id: string) => Promise<void>;
   loading: boolean;
   error: Error | null;
+  // Add these missing methods
+  getRootDirectories: () => Directory[];
+  getChildDirectories: (parentId: string) => Directory[];
+  getDirectoryPath: (directoryId: string) => Directory[];
+  addDirectory: (name: string, parentId: string | null) => Promise<Directory>;
 }
 
 const DirectoryContext = createContext<DirectoryContextType | undefined>(undefined);
@@ -58,7 +60,7 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             id: dir.id,
             name: dir.name,
             parentId: dir.parent_id,
-            userId: dir.user_id, // Ensure userId is included
+            userId: dir.user_id,
             createdAt: dateToString(dir.created_at)
           }));
 
@@ -167,6 +169,33 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  // Implement the missing methods
+  const getRootDirectories = (): Directory[] => {
+    return directories.filter(dir => dir.parentId === null);
+  };
+
+  const getChildDirectories = (parentId: string): Directory[] => {
+    return directories.filter(dir => dir.parentId === parentId);
+  };
+
+  const getDirectoryPath = (directoryId: string): Directory[] => {
+    const path: Directory[] = [];
+    let currentDir = directories.find(dir => dir.id === directoryId);
+    
+    while (currentDir) {
+      path.unshift(currentDir);
+      currentDir = currentDir.parentId 
+        ? directories.find(dir => dir.id === currentDir?.parentId)
+        : null;
+    }
+    
+    return path;
+  };
+
+  const addDirectory = async (name: string, parentId: string | null): Promise<Directory> => {
+    return createDirectory(name, parentId);
+  };
+
   return (
     <DirectoryContext.Provider
       value={{
@@ -177,7 +206,12 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         updateDirectory,
         deleteDirectory,
         loading,
-        error
+        error,
+        // Add the new methods to the context value
+        getRootDirectories,
+        getChildDirectories,
+        getDirectoryPath,
+        addDirectory
       }}
     >
       {children}
