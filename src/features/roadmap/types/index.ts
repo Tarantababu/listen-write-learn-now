@@ -38,7 +38,7 @@ export interface RoadmapNode {
 export interface NodeCompletionResult {
   completionCount: number;
   isCompleted: boolean;
-  lastPracticedAt: Date; // Added to match service-types
+  lastPracticedAt: Date; // Added to be consistent with service-types
 }
 
 export interface ExerciseContent {
@@ -46,7 +46,7 @@ export interface ExerciseContent {
   title: string;
   text: string;
   language: Language;
-  audio_url?: string;
+  audioUrl?: string; // Changed from audio_url to audioUrl for consistency
   tags?: string[];
 }
 

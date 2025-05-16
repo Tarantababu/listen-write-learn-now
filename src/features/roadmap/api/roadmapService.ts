@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Language, LanguageLevel } from '@/types';
 import { RoadmapItem, RoadmapNode, NodeCompletionResult, ExerciseContent } from '../types';
@@ -68,7 +67,7 @@ export async function getUserRoadmaps(language: Language): Promise<RoadmapItem[]
   }
 }
 
-// Fix recordNodeCompletion to include lastPracticedAt
+// Fix recordNodeCompletion to use lastPracticedAt properly
 export async function recordNodeCompletion(nodeId: string, accuracy: number): Promise<NodeCompletionResult> {
   try {
     const { data: userData } = await supabase.auth.getUser();
@@ -148,7 +147,7 @@ export async function recordNodeCompletion(nodeId: string, accuracy: number): Pr
   }
 }
 
-// Add getNodeExerciseContent function
+// Update getNodeExerciseContent function to use audioUrl instead of audio_url
 export async function getNodeExerciseContent(nodeId: string): Promise<ExerciseContent | null> {
   try {
     // First check if the node has a default exercise
@@ -176,7 +175,7 @@ export async function getNodeExerciseContent(nodeId: string): Promise<ExerciseCo
           title: exerciseData.title,
           text: exerciseData.text,
           language: exerciseData.language as Language,
-          audio_url: exerciseData.audio_url,
+          audioUrl: exerciseData.audio_url, // Changed to audioUrl (camelCase)
           tags: exerciseData.tags || []
         };
       }

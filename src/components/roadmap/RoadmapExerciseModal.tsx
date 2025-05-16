@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -27,9 +26,9 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   const { 
     markNodeAsCompleted, 
     getNodeExercise, 
-    nodeLoading, 
+    nodeLoading, // Now properly defined in the context
     completedNodes, 
-    incrementNodeCompletion,
+    incrementNodeCompletion, // Now properly defined in the context
     nodeProgress 
   } = useRoadmap();
   

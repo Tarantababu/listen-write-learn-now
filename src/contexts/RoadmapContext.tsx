@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useRoadmapData } from '../features/roadmap/hooks/useRoadmapData';
@@ -19,6 +18,7 @@ interface RoadmapContextType {
   availableNodes: string[];
   nodeProgress: NodeProgressDetails[];
   isLoading: boolean;
+  nodeLoading: boolean; // Added property
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<string>;
   loadUserRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
   loadRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
@@ -27,6 +27,7 @@ interface RoadmapContextType {
   getNodeExercise: (nodeId: string) => Promise<any>;
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
   recordNodeCompletion: (nodeId: string, accuracy: number) => Promise<any>;
+  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<any>; // Added method
 }
 
 export const RoadmapContext = createContext<RoadmapContextType | null>(null);
@@ -50,6 +51,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     getNodeExercise,
     markNodeAsCompleted,
     recordNodeCompletion,
+    nodeLoading, // Added property from useRoadmapData
   } = useRoadmapData();
   
   const [nodeProgress, setNodeProgress] = useState<NodeProgressDetails[]>([]);
@@ -61,6 +63,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   
   const loadUserRoadmaps = async (language: Language): Promise<RoadmapItem[]> => {
     return await loadUserRoadmapsData(language);
+  };
+
+  // Add incrementNodeCompletion method
+  const incrementNodeCompletion = async (nodeId: string, accuracy: number) => {
+    return await recordNodeCompletion(nodeId, accuracy);
   };
   
   // Load all roadmaps and user roadmaps when the selected language changes
@@ -144,6 +151,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     availableNodes,
     nodeProgress,
     isLoading,
+    nodeLoading, // Added property
     initializeUserRoadmap,
     loadUserRoadmaps,
     loadRoadmaps,
@@ -152,6 +160,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     getNodeExercise,
     markNodeAsCompleted,
     recordNodeCompletion,
+    incrementNodeCompletion, // Added method
   };
 
   return (

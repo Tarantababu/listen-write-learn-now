@@ -27,9 +27,9 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   const { 
     markNodeAsCompleted, 
     getNodeExercise, 
-    nodeLoading, 
+    nodeLoading, // Now properly defined in the context
     completedNodes, 
-    incrementNodeCompletion,
+    incrementNodeCompletion, // Now properly defined in the context
     nodeProgress 
   } = useRoadmap();
   
