@@ -1,171 +1,229 @@
 
-import React, { createContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Language, LanguageLevel, Roadmap, RoadmapNode, UserRoadmap, RoadmapNodeProgress } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { useRoadmapData } from '../features/roadmap/hooks/useRoadmapData';
-import { RoadmapItem, RoadmapNode } from '../features/roadmap/types';
-import { Language, LanguageLevel } from '@/types';
-import { NodeProgressDetails } from '../features/roadmap/types/service-types';
-import { roadmapService } from '../features/roadmap/api/roadmapService';
-import { ProgressService } from '../features/roadmap/services';
+import { toast } from 'sonner';
 
 interface RoadmapContextType {
-  roadmaps: RoadmapItem[];
-  userRoadmaps: RoadmapItem[];
-  currentRoadmap: RoadmapItem | null;
+  currentRoadmap: any;
   nodes: RoadmapNode[];
-  currentNodeId: string | undefined;
-  currentNode: RoadmapNode | null;
+  currentNodeId: string;
   completedNodes: string[];
   availableNodes: string[];
-  nodeProgress: NodeProgressDetails[];
+  nodeProgress: any[];
   isLoading: boolean;
-  nodeLoading: boolean; // Added property
-  initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<string>;
-  loadUserRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
-  loadRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
-  selectRoadmap: (roadmapId: string) => Promise<RoadmapNode[]>;
-  resetProgress: (roadmapId: string) => Promise<void>;
-  getNodeExercise: (nodeId: string) => Promise<any>;
-  markNodeAsCompleted: (nodeId: string) => Promise<void>;
-  recordNodeCompletion: (nodeId: string, accuracy: number) => Promise<any>;
-  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<any>; // Added method
+  roadmaps: Roadmap[];
+  userRoadmaps: UserRoadmap[];
+  initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
+  loadUserRoadmaps: (language: Language) => Promise<void>;
+  loadRoadmaps: (language: Language) => Promise<void>;
+  nodeLoading: boolean;
 }
 
-export const RoadmapContext = createContext<RoadmapContextType | null>(null);
+const RoadmapContext = createContext<RoadmapContextType | null>(null);
 
-export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const useRoadmap = () => {
+  const context = useContext(RoadmapContext);
+  if (!context) {
+    throw new Error('useRoadmap must be used within a RoadmapProvider');
+  }
+  return context;
+};
+
+export const RoadmapProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const { settings } = useUserSettingsContext();
-  const {
-    isLoading,
-    roadmaps,
-    userRoadmaps,
-    selectedRoadmap,
-    nodes,
-    currentNodeId,
-    currentNode,
-    completedNodes,
-    availableNodes,
-    loadRoadmaps: loadRoadmapsData,
-    loadUserRoadmaps: loadUserRoadmapsData,
-    initializeRoadmap,
-    selectRoadmap,
-    getNodeExercise,
-    markNodeAsCompleted,
-    recordNodeCompletion,
-    nodeLoading, // Include nodeLoading from useRoadmapData
-  } = useRoadmapData();
   
-  const [nodeProgress, setNodeProgress] = useState<NodeProgressDetails[]>([]);
+  const [currentRoadmap, setCurrentRoadmap] = useState<any>(null);
+  const [nodes, setNodes] = useState<RoadmapNode[]>([]);
+  const [currentNodeId, setCurrentNodeId] = useState<string>('');
+  const [completedNodes, setCompletedNodes] = useState<string[]>([]);
+  const [availableNodes, setAvailableNodes] = useState<string[]>([]);
+  const [nodeProgress, setNodeProgress] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [roadmaps, setRoadmaps] = useState<Roadmap[]>([]);
+  const [userRoadmaps, setUserRoadmaps] = useState<UserRoadmap[]>([]);
+  const [nodeLoading, setNodeLoading] = useState(false);
 
-  // Define these functions before they're referenced
-  const loadRoadmaps = async (language: Language): Promise<RoadmapItem[]> => {
-    return await loadRoadmapsData(language);
-  };
-  
-  const loadUserRoadmaps = async (language: Language): Promise<RoadmapItem[]> => {
-    return await loadUserRoadmapsData(language);
-  };
-
-  // Add incrementNodeCompletion method
-  const incrementNodeCompletion = async (nodeId: string, accuracy: number) => {
-    return await recordNodeCompletion(nodeId, accuracy);
-  };
-  
-  // Load all roadmaps and user roadmaps when the selected language changes
-  useEffect(() => {
-    const loadData = async () => {
-      console.log(`Loading roadmap data for language: ${settings.selectedLanguage}`);
-      await loadRoadmaps(settings.selectedLanguage);
-      await loadUserRoadmaps(settings.selectedLanguage);
-    };
-    
-    loadData();
-  }, [settings.selectedLanguage]);
-  
-  // Auto-select first user roadmap if none is selected
-  useEffect(() => {
-    const autoSelectRoadmap = async () => {
-      if (!selectedRoadmap && userRoadmaps.length > 0 && !isLoading) {
-        console.log(`Auto-selecting first user roadmap: ${userRoadmaps[0].id}`);
-        try {
-          await selectRoadmap(userRoadmaps[0].id);
-        } catch (error) {
-          console.error('Error auto-selecting roadmap:', error);
-        }
-      }
-    };
-    
-    autoSelectRoadmap();
-  }, [userRoadmaps, selectedRoadmap, selectRoadmap, isLoading]);
-  
-  // Load node progress whenever selected roadmap changes
-  useEffect(() => {
-    const loadNodeProgress = async () => {
-      if (selectedRoadmap) {
-        try {
-          console.log(`Loading node progress for roadmap: ${selectedRoadmap.id}`);
-          const progressService = new ProgressService();
-          const { data } = await progressService.getRoadmapProgress(selectedRoadmap.id);
-          if (data && data.nodeProgress) {
-            // Convert from record to array
-            const progressArray: NodeProgressDetails[] = Object.values(data.nodeProgress);
-            console.log(`Loaded progress for ${progressArray.length} nodes`);
-            setNodeProgress(progressArray);
-          }
-        } catch (error) {
-          console.error('Error loading node progress:', error);
-        }
-      }
-    };
-    
-    loadNodeProgress();
-  }, [selectedRoadmap]);
-  
-  const resetProgress = useCallback(async (roadmapId: string) => {
+  // Load roadmaps for the selected language
+  const loadRoadmaps = async (language: Language) => {
     try {
-      const progressService = new ProgressService();
-      await progressService.resetProgress(roadmapId);
+      setIsLoading(true);
       
-      // Reload the roadmap to reflect the reset
-      if (selectedRoadmap && selectedRoadmap.id === roadmapId) {
-        await selectRoadmap(roadmapId);
-      }
+      const { data, error } = await supabase
+        .from('roadmaps')
+        .select(`
+          id,
+          name,
+          level,
+          description,
+          created_at,
+          updated_at,
+          created_by,
+          roadmap_languages(language)
+        `)
+        .order('level', { ascending: true });
+      
+      if (error) throw error;
+      
+      // Transform the data to match our Roadmap type
+      const processedRoadmaps = data.map(roadmap => ({
+        id: roadmap.id,
+        name: roadmap.name,
+        level: roadmap.level as LanguageLevel,
+        description: roadmap.description || '',
+        createdAt: new Date(roadmap.created_at),
+        updatedAt: new Date(roadmap.updated_at),
+        createdBy: roadmap.created_by,
+        languages: roadmap.roadmap_languages?.map((rl: any) => rl.language as Language) || []
+      }));
+      
+      setRoadmaps(processedRoadmaps);
     } catch (error) {
-      console.error('Error resetting roadmap progress:', error);
+      console.error('Error loading roadmaps:', error);
+      toast.error('Failed to load roadmaps');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load user's roadmaps
+  const loadUserRoadmaps = async (language: Language) => {
+    if (!user) {
+      setUserRoadmaps([]);
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase
+        .from('user_roadmaps')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Transform the data to match our UserRoadmap type
+      const processedUserRoadmaps = data.map(roadmap => ({
+        id: roadmap.id,
+        userId: roadmap.user_id,
+        roadmapId: roadmap.roadmap_id,
+        language: roadmap.language as Language,
+        currentNodeId: roadmap.current_node_id,
+        createdAt: new Date(roadmap.created_at),
+        updatedAt: new Date(roadmap.updated_at)
+      }));
+      
+      setUserRoadmaps(processedUserRoadmaps);
+    } catch (error) {
+      console.error('Error loading user roadmaps:', error);
+      toast.error('Failed to load your roadmaps');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initialize a new roadmap for the user
+  const initializeUserRoadmap = async (level: LanguageLevel, language: Language) => {
+    if (!user) {
+      toast.error('You must be logged in to start a roadmap');
+      throw new Error('User not authenticated');
+    }
+    
+    try {
+      // Find the roadmap with the specified level that supports the specified language
+      const roadmap = roadmaps.find(r => 
+        r.level === level && r.languages?.some(l => l.toLowerCase() === language.toLowerCase())
+      );
+      
+      if (!roadmap) {
+        throw new Error(`No roadmap found for level ${level} and language ${language}`);
+      }
+      
+      // Check if the user already has this roadmap for this language
+      const existingRoadmap = userRoadmaps.find(ur => 
+        ur.roadmapId === roadmap.id && ur.language.toLowerCase() === language.toLowerCase()
+      );
+      
+      if (existingRoadmap) {
+        throw new Error('You have already started this roadmap');
+      }
+      
+      // Get the first node of the roadmap
+      const { data: nodeData, error: nodeError } = await supabase
+        .from('roadmap_nodes')
+        .select('id')
+        .eq('roadmap_id', roadmap.id)
+        .order('position', { ascending: true })
+        .limit(1);
+      
+      if (nodeError) throw nodeError;
+      
+      if (!nodeData || nodeData.length === 0) {
+        throw new Error('This roadmap has no nodes');
+      }
+      
+      const firstNodeId = nodeData[0].id;
+      
+      // Create the user roadmap
+      const { data, error } = await supabase
+        .from('user_roadmaps')
+        .insert({
+          user_id: user.id,
+          roadmap_id: roadmap.id,
+          language: language,
+          current_node_id: firstNodeId
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Mark the roadmap as initialized successfully
+      toast.success(`${level} ${language} roadmap initialized successfully!`);
+      
+      // Update the state
+      const newUserRoadmap = {
+        id: data.id,
+        userId: data.user_id,
+        roadmapId: data.roadmap_id,
+        language: data.language as Language,
+        currentNodeId: data.current_node_id,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at)
+      };
+      
+      setUserRoadmaps(prev => [...prev, newUserRoadmap]);
+    } catch (error: any) {
+      console.error('Error initializing roadmap:', error);
+      toast.error(error.message || 'Failed to initialize roadmap');
       throw error;
     }
-  }, [selectRoadmap, selectedRoadmap]);
-  
-  const initializeUserRoadmap = useCallback(async (level: LanguageLevel, language: Language): Promise<string> => {
-    return await initializeRoadmap(level, language);
-  }, [initializeRoadmap]);
+  };
 
-  // Context value
-  const contextValue: RoadmapContextType = {
-    roadmaps,
-    userRoadmaps,
-    currentRoadmap: selectedRoadmap,
+  // Value object for the context provider
+  const value: RoadmapContextType = {
+    currentRoadmap,
     nodes,
     currentNodeId,
-    currentNode,
     completedNodes,
     availableNodes,
     nodeProgress,
     isLoading,
-    nodeLoading, // Include property in context value
-    initializeUserRoadmap: initializeRoadmap,
+    roadmaps,
+    userRoadmaps,
+    initializeUserRoadmap,
     loadUserRoadmaps,
     loadRoadmaps,
-    selectRoadmap,
-    resetProgress,
-    getNodeExercise,
-    markNodeAsCompleted,
-    recordNodeCompletion,
-    incrementNodeCompletion, // Added method
+    nodeLoading
   };
 
   return (
-    <RoadmapContext.Provider value={contextValue}>
+    <RoadmapContext.Provider value={value}>
       {children}
     </RoadmapContext.Provider>
   );
