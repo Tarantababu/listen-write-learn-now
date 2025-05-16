@@ -133,10 +133,10 @@ const RoadmapPage: React.FC = () => {
             description: "Successfully reloaded your roadmap."
           });
         }
-      } else if (userRoadmaps.length > 0) {
+      } else if (loadedRoadmaps && loadedRoadmaps.length > 0) {
         // Otherwise, select the first available roadmap
         if (selectRoadmap) {
-          await selectRoadmap(userRoadmaps[0].id);
+          await selectRoadmap(loadedRoadmaps[0].id);
           toast({
             title: "Roadmap loaded",
             description: "Successfully loaded a roadmap."

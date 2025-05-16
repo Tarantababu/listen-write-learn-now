@@ -1,4 +1,3 @@
-
 import React, {
   createContext,
   useState,
@@ -17,10 +16,10 @@ import {
 } from '@/features/roadmap/api/roadmapService';
 import { Language, LanguageLevel } from '@/types';
 import { useUserSettingsContext } from './UserSettingsContext';
+import { NodeProgressDetails } from '@/features/roadmap/types/service-types';
 
-// Define NodeProgressDetails interface as it's missing from imported types
-interface NodeProgressDetails {
-  nodeId: string;
+// Define NodeCompletionResult interface as it might be missing 
+interface NodeCompletionResult {
   completionCount: number;
   isCompleted: boolean;
   lastPracticedAt?: Date;
@@ -35,22 +34,22 @@ interface RoadmapContextProps {
   nodes: RoadmapNode[];
   nodeProgress: NodeProgressDetails[];
   isLoading: boolean;
-  nodeLoading?: boolean; // Added nodeLoading property
+  nodeLoading?: boolean;
   error: string | null;
   loadRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
-  loadUserRoadmaps: (language: Language) => Promise<void>;
+  loadUserRoadmaps: (language: Language) => Promise<RoadmapItem[]>; // Changed return type from void to RoadmapItem[]
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
   loadRoadmapNodes: (userRoadmapId: string) => Promise<void>;
   getNodeContent: (nodeId: string) => Promise<any>;
-  recordCompletion: (nodeId: string, accuracy: number) => Promise<void>;
+  recordCompletion: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>; // Updated return type
   markNodeCompleted: (nodeId: string) => Promise<void>;
-  completedNodes: string[]; // Add completedNodes property
-  availableNodes?: string[]; // Add availableNodes property
+  completedNodes: string[];
+  availableNodes?: string[];
   // Add aliases for the methods used in components
   markNodeAsCompleted?: (nodeId: string) => Promise<void>;
   getNodeExercise?: (nodeId: string) => Promise<any>;
-  incrementNodeCompletion?: (nodeId: string, accuracy: number) => Promise<any>;
-  selectRoadmap?: (roadmapId: string) => Promise<any>;
+  incrementNodeCompletion?: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>; // Updated return type
+  selectRoadmap?: (roadmapId: string) => Promise<RoadmapNode[]>; // Added proper return type
 }
 
 const defaultContext: RoadmapContextProps = {
@@ -63,14 +62,14 @@ const defaultContext: RoadmapContextProps = {
   isLoading: false,
   error: null,
   loadRoadmaps: async () => [],
-  loadUserRoadmaps: async () => {},
+  loadUserRoadmaps: async () => [], // Updated default return value
   initializeUserRoadmap: async () => {},
   loadRoadmapNodes: async () => {},
   getNodeContent: async () => {},
-  recordCompletion: async () => {},
+  recordCompletion: async () => ({ completionCount: 0, isCompleted: false }), // Updated default return value
   markNodeCompleted: async () => {},
-  completedNodes: [], // Initialize completedNodes as empty array
-};
+  completedNodes: [],
+}; 
 
 export const RoadmapContext = createContext<RoadmapContextProps>(defaultContext);
 
@@ -106,7 +105,7 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
   }, []);
 
   // Load user-specific roadmaps
-  const loadUserRoadmaps = useCallback(async (language: Language) => {
+  const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
     setIsLoading(true);
     try {
       const userRoadmapsData = await getUserRoadmaps(language);
@@ -122,9 +121,12 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
         setCurrentNodeId(null);
         setNodes([]);
       }
+      
+      return userRoadmapsData; // Return the data
     } catch (error) {
       console.error('Error loading user roadmaps:', error);
       setError('Failed to load user roadmaps');
+      return []; // Return empty array on error
     } finally {
       setIsLoading(false);
     }
@@ -199,7 +201,7 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
     }
   }, []);
 
-  const recordCompletion = useCallback(async (nodeId: string, accuracy: number) => {
+  const recordCompletion = useCallback(async (nodeId: string, accuracy: number): Promise<NodeCompletionResult> => {
     try {
       const result = await recordNodeCompletion(nodeId, accuracy);
       
@@ -221,6 +223,7 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
     } catch (error) {
       console.error('Error recording node completion:', error);
       setError('Failed to record node completion');
+      return { completionCount: 0, isCompleted: false }; // Return a default result on error
     }
   }, []);
 
