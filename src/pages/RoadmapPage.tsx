@@ -18,16 +18,15 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 
 const RoadmapPage: React.FC = () => {
-  // Use context without triggering re-renders unnecessarily
   const { 
     currentRoadmap, 
     isLoading, 
-    roadmaps = [], 
-    userRoadmaps = [],
+    roadmaps, 
+    userRoadmaps,
     loadUserRoadmaps,
     selectRoadmap,
-    completedNodes = [],
-    nodes = [],
+    completedNodes,
+    nodes,
     currentNodeId
   } = useRoadmap();
   
@@ -43,27 +42,23 @@ const RoadmapPage: React.FC = () => {
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const navigate = useNavigate();
-  const [hasInitialized, setHasInitialized] = useState(false);
 
   // Set active tab based on whether we have user roadmaps or not
-  // Only run this effect when userRoadmaps changes or when loading completes
   useEffect(() => {
     if (!isLoading) {
       if (userRoadmaps.length === 0) {
         setActiveTab("new");
-      } else if (!hasInitialized) {
+      } else {
         setActiveTab("active");
-        setHasInitialized(true);
       }
     }
-  }, [isLoading, userRoadmaps.length, hasInitialized]);
+  }, [isLoading, userRoadmaps]);
 
   // When a user clicks on "Continue Learning," open the exercise modal with current node
-  // Only run this when relevant dependencies change
   useEffect(() => {
-    if (currentRoadmap && currentNodeId && nodes.length > 0 && selectedNode) {
+    if (currentRoadmap && currentNodeId && nodes.length > 0) {
       const currentNode = nodes.find(node => node.id === currentNodeId);
-      if (currentNode && selectedNode.id === currentNode.id && !exerciseModalOpen) {
+      if (currentNode && selectedNode?.id === currentNode.id && !exerciseModalOpen) {
         setExerciseModalOpen(true);
       }
     }
@@ -86,11 +81,31 @@ const RoadmapPage: React.FC = () => {
     try {
       setSelectionError(null);
       setIsRetrying(false);
-      await selectRoadmap?.(roadmapId);
+      await selectRoadmap(roadmapId);
       setViewMode('map'); // Switch to map view when selecting a roadmap
     } catch (error) {
       console.error('Error selecting roadmap:', error);
       setSelectionError('Failed to load the selected roadmap. Please try again.');
+      
+      // After error, try to re-fetch user roadmaps
+      try {
+        const loadedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
+        
+        if (loadedRoadmaps && loadedRoadmaps.length > 0) {
+          // Try selecting the first available roadmap instead
+          try {
+            await selectRoadmap(loadedRoadmaps[0].id);
+            toast({
+              title: "Selected fallback roadmap",
+              description: "We encountered an issue with the selected roadmap and loaded another one instead."
+            });
+          } catch (secondError) {
+            console.error('Error selecting fallback roadmap:', secondError);
+          }
+        }
+      } catch (loadError) {
+        console.error('Error loading fallback roadmaps:', loadError);
+      }
     }
   };
 
@@ -105,14 +120,18 @@ const RoadmapPage: React.FC = () => {
         return;
       }
       
+      // Reload roadmaps first
+      await loadUserRoadmaps(settings.selectedLanguage);
+      console.log("Reloaded roadmaps:", { userRoadmaps });
+      
       // If we have a current roadmap, try to reload it
-      if (currentRoadmap && selectRoadmap) {
+      if (currentRoadmap) {
         await selectRoadmap(currentRoadmap.id);
         toast({
           title: "Roadmap loaded",
           description: "Successfully reloaded your roadmap."
         });
-      } else if (userRoadmaps.length > 0 && selectRoadmap) {
+      } else if (userRoadmaps.length > 0) {
         // Otherwise, select the first available roadmap
         await selectRoadmap(userRoadmaps[0].id);
         toast({
@@ -135,17 +154,15 @@ const RoadmapPage: React.FC = () => {
       setSelectionError(null);
       
       // First select the roadmap
-      if (selectRoadmap) {
-        await selectRoadmap(roadmapId);
+      await selectRoadmap(roadmapId);
       
-        // Find the current node in this roadmap
-        const selectedRoadmap = userRoadmaps.find(r => r.id === roadmapId);
-        if (selectedRoadmap && selectedRoadmap.currentNodeId) {
-          const currentNode = nodes.find(node => node.id === selectedRoadmap.currentNodeId);
-          if (currentNode) {
-            setSelectedNode(currentNode);
-            setExerciseModalOpen(true);
-          }
+      // Find the current node in this roadmap
+      const selectedRoadmap = userRoadmaps.find(r => r.id === roadmapId);
+      if (selectedRoadmap && selectedRoadmap.currentNodeId) {
+        const currentNode = nodes.find(node => node.id === selectedRoadmap.currentNodeId);
+        if (currentNode) {
+          setSelectedNode(currentNode);
+          setExerciseModalOpen(true);
         }
       }
     } catch (error) {
@@ -164,14 +181,31 @@ const RoadmapPage: React.FC = () => {
     roadmap.languages?.includes(settings.selectedLanguage)
   );
 
-  // Simplified debug info - doesn't cause renders on every change  
+  // Detailed debug info
   useEffect(() => {
-    console.log("RoadmapPage mounted");
-    
-    return () => {
-      console.log("RoadmapPage unmounted");
-    };
-  }, []);
+    console.log("RoadmapPage state:", {
+      isLoading,
+      hasError,
+      userAuthenticated: !!user,
+      roadmaps: roadmaps.length,
+      userRoadmaps: userRoadmaps.length,
+      hasCurrentRoadmap: !!currentRoadmap,
+      nodes: nodes.length,
+      activeTab,
+      hasAvailableRoadmaps,
+      language: settings.selectedLanguage
+    });
+  }, [
+    isLoading, 
+    hasError, 
+    user, 
+    roadmaps.length, 
+    userRoadmaps.length, 
+    currentRoadmap, 
+    nodes.length, 
+    activeTab,
+    settings.selectedLanguage
+  ]);
 
   if (!user) {
     return (

@@ -1,6 +1,4 @@
 
-// If this file doesn't exist or is missing the NodeProgressDetails interface, 
-// we need to create/update it
 export interface NodeProgressDetails {
   nodeId: string;
   completionCount: number;

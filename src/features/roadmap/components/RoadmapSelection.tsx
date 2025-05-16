@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -18,7 +19,7 @@ import {
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { LanguageLevel } from '@/types';
-import { Loader2, RefreshCw, InfoIcon, AlertTriangle } from 'lucide-react';
+import { Loader2, RefreshCw, InfoIcon } from 'lucide-react';
 import LevelBadge from '@/components/LevelBadge';
 import LevelInfoTooltip from '@/components/LevelInfoTooltip';
 import { toast } from '@/hooks/use-toast';
@@ -47,36 +48,10 @@ const RoadmapSelection: React.FC = () => {
   // Normalize language for case-insensitive comparison
   const normalizedSelectedLanguage = settings.selectedLanguage.toLowerCase();
   
-  // Filter roadmaps to only show those for the currently selected language
-  // Use multiple ways to check for language match to be robust against data format changes
-  const availableRoadmapsForLanguage = roadmaps.filter(roadmap => {
-    // Check direct language property (case insensitive)
-    if (roadmap.language && roadmap.language.toLowerCase() === normalizedSelectedLanguage) {
-      return true;
-    }
-    
-    // Check languages array if available (case insensitive)
-    if (roadmap.languages && Array.isArray(roadmap.languages)) {
-      return roadmap.languages.some(lang => 
-        typeof lang === 'string' && lang.toLowerCase() === normalizedSelectedLanguage
-      );
-    }
-    
-    return false;
-  });
-
-  console.log('Roadmap data:', {
-    normalizedLanguage: normalizedSelectedLanguage,
-    roadmapsCount: roadmaps.length,
-    availableRoadmapsCount: availableRoadmapsForLanguage.length,
-    roadmaps: roadmaps.map(r => ({
-      id: r.id,
-      name: r.name,
-      level: r.level,
-      language: r.language,
-      languages: r.languages
-    }))
-  });
+  // Filter roadmaps to only show those for the currently selected language (case-insensitive)
+  const availableRoadmapsForLanguage = roadmaps.filter(roadmap => 
+    roadmap.languages?.some(lang => lang.toLowerCase() === normalizedSelectedLanguage)
+  );
 
   // Level descriptions mapping
   const levelDescriptions: Record<LanguageLevel, string> = {
@@ -103,8 +78,6 @@ const RoadmapSelection: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        console.log('Loading roadmap data for language:', settings.selectedLanguage);
-        
         // First load available roadmaps for the language
         await loadRoadmaps(settings.selectedLanguage);
         // Then load user roadmaps for the language
@@ -257,49 +230,24 @@ const RoadmapSelection: React.FC = () => {
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
-        {availableRoadmapsForLanguage.length === 0 ? (
-          <div className="bg-amber-50 border border-amber-200 p-6 rounded-md dark:bg-amber-900/20 dark:border-amber-800 text-center">
-            <div className="flex flex-col items-center">
-              <AlertTriangle className="h-12 w-12 text-amber-600 dark:text-amber-400 mb-4" />
-              <h4 className="font-medium text-amber-800 dark:text-amber-400 text-base mb-2">No Roadmaps Available</h4>
-              <p className="text-amber-700 dark:text-amber-500 mb-4">
-                There are currently no learning paths available for <strong>{settings.selectedLanguage}</strong>.
-              </p>
-              <div className="text-sm space-y-2 text-left bg-amber-100/50 dark:bg-amber-900/40 p-3 rounded-md w-full">
-                <p className="flex items-start">
-                  <span className="mr-2">•</span>
-                  Try refreshing using the button above
-                </p>
-                <p className="flex items-start">
-                  <span className="mr-2">•</span>
-                  Check back later as new content is added regularly
-                </p>
-                <p className="flex items-start">
-                  <span className="mr-2">•</span>
-                  Try selecting a different language in your settings
+        {availableLevels.length === 0 ? (
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-md dark:bg-amber-900/20 dark:border-amber-800">
+            <div className="flex items-start">
+              <InfoIcon className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-2 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-amber-800 dark:text-amber-400 text-sm">No Roadmaps Available</h4>
+                <p className="text-sm text-amber-700 dark:text-amber-500 mt-1">
+                  There are no roadmaps available for {settings.selectedLanguage} at the moment.
+                  Try refreshing or check back later.
                 </p>
               </div>
-              {process.env.NODE_ENV === 'development' && (
-                <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-md w-full text-left overflow-auto">
-                  <h5 className="font-semibold text-sm mb-1">Debug Information:</h5>
-                  <pre className="text-xs overflow-auto max-h-40">
-                    {JSON.stringify({
-                      language: settings.selectedLanguage,
-                      normalizedLanguage: normalizedSelectedLanguage,
-                      roadmapsCount: roadmaps.length,
-                      availableForLanguage: availableRoadmapsForLanguage.length,
-                      roadmaps: roadmaps.map(r => ({
-                        id: r.id,
-                        name: r.name,
-                        level: r.level,
-                        language: r.language, 
-                        languages: r.languages
-                      }))
-                    }, null, 2)}
-                  </pre>
-                </div>
-              )}
             </div>
+            
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-3 bg-gray-800 text-gray-300 p-3 rounded text-xs overflow-auto max-h-40">
+                <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -375,7 +323,7 @@ const RoadmapSelection: React.FC = () => {
             initializing || 
             !selectedLevel || 
             isLevelAlreadySelected(selectedLevel as LanguageLevel) || 
-            availableRoadmapsForLanguage.length === 0
+            availableLevels.length === 0
           }
           className="w-full"
         >
