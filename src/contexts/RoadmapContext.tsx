@@ -51,7 +51,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     getNodeExercise,
     markNodeAsCompleted,
     recordNodeCompletion,
-    nodeLoading, // Added property from useRoadmapData
+    nodeLoading, // Ensure we destructure this from useRoadmapData
   } = useRoadmapData();
   
   const [nodeProgress, setNodeProgress] = useState<NodeProgressDetails[]>([]);
@@ -151,7 +151,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     availableNodes,
     nodeProgress,
     isLoading,
-    nodeLoading, // Added property
+    nodeLoading, // Include property in context value
     initializeUserRoadmap,
     loadUserRoadmaps,
     loadRoadmaps,

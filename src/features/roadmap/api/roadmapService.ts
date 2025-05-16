@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Language, LanguageLevel } from '@/types';
 import { RoadmapItem, RoadmapNode, NodeCompletionResult, ExerciseContent } from '../types';
@@ -175,7 +176,7 @@ export async function getNodeExerciseContent(nodeId: string): Promise<ExerciseCo
           title: exerciseData.title,
           text: exerciseData.text,
           language: exerciseData.language as Language,
-          audioUrl: exerciseData.audio_url, // Changed to audioUrl (camelCase)
+          audioUrl: exerciseData.audio_url, // Use audioUrl property name in return value
           tags: exerciseData.tags || []
         };
       }
