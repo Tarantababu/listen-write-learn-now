@@ -1,15 +1,22 @@
-import React, { useMemo } from 'react';
+
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
-import { format, startOfMonth, endOfMonth, isWithinInterval, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, isSameDay, addMonths, startOfWeek, parseISO } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CalendarDays, BookOpen } from 'lucide-react';
+import { CalendarDays, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface ActivityData {
   date: Date;
@@ -24,9 +31,8 @@ interface StatsHeatmapProps {
 const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
   activityData
 }) => {
-  const today = new Date();
-  const currentMonthStart = startOfMonth(today);
-  const currentMonthEnd = endOfMonth(today);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [timeRange, setTimeRange] = useState('month');
   const navigate = useNavigate();
   const { exercises } = useExerciseContext();
   const { settings } = useUserSettingsContext();
@@ -43,15 +49,59 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
     .slice(0, 5); // Limit to 5 exercises
   }, [exercises, settings.selectedLanguage]);
 
-  // Filter activity data to only show the current month
+  // Get start and end dates based on the time range
+  const { startDate, endDate } = useMemo(() => {
+    if (timeRange === 'month') {
+      return {
+        startDate: startOfMonth(currentDate),
+        endDate: endOfMonth(currentDate)
+      };
+    } else if (timeRange === '3months') {
+      return {
+        startDate: startOfMonth(subMonths(currentDate, 2)),
+        endDate: endOfMonth(currentDate)
+      };
+    } else { // year
+      return {
+        startDate: startOfMonth(subMonths(currentDate, 11)),
+        endDate: endOfMonth(currentDate)
+      };
+    }
+  }, [currentDate, timeRange]);
+
+  // Filter activity data to show only the current time range
   const filteredActivityData = useMemo(() => {
     return activityData.filter(activity => 
       isWithinInterval(activity.date, {
-        start: currentMonthStart,
-        end: currentMonthEnd
+        start: startDate,
+        end: endDate
       })
     );
-  }, [activityData, currentMonthStart, currentMonthEnd]);
+  }, [activityData, startDate, endDate]);
+
+  // Navigate to next/previous period
+  const handlePrevious = () => {
+    if (timeRange === 'month') {
+      setCurrentDate(subMonths(currentDate, 1));
+    } else if (timeRange === '3months') {
+      setCurrentDate(subMonths(currentDate, 3));
+    } else { // year
+      setCurrentDate(subMonths(currentDate, 12));
+    }
+  };
+
+  const handleNext = () => {
+    const nextDate = timeRange === 'month' 
+      ? addMonths(currentDate, 1)
+      : timeRange === '3months' 
+        ? addMonths(currentDate, 3) 
+        : addMonths(currentDate, 12);
+        
+    // Don't allow navigating to the future
+    if (nextDate <= new Date()) {
+      setCurrentDate(nextDate);
+    }
+  };
 
   // Create explicit day modifiers for each activity day with its corresponding class
   const activityModifiers = useMemo(() => {
@@ -73,7 +123,7 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
         intensityLevels.medium.push(activity.date);
       } else if (masteredCount > 50) {
         intensityLevels.low.push(activity.date);
-      } else if (masteredCount > 0) {
+      } else if (masteredCount > 0 || activity.count > 0) {
         intensityLevels.minimal.push(activity.date);
       }
     });
@@ -88,15 +138,16 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
   }, [filteredActivityData]);
 
   // Get mastered words count for a specific date
-  const getMasteredWordsForDate = (date: Date): number => {
-    const activity = filteredActivityData.find(a => isSameDay(a.date, date));
-    return activity?.masteredWords || 0;
+  const getActivityForDate = (date: Date) => {
+    return filteredActivityData.find(a => isSameDay(a.date, date));
   };
 
   // Custom day renderer with tooltip - FIXED to show mastered words count clearly
   const renderDay = (day: Date) => {
-    const masteredCount = getMasteredWordsForDate(day);
-    const hasActivity = masteredCount > 0;
+    const activity = getActivityForDate(day);
+    const masteredCount = activity?.masteredWords || 0;
+    const exercisesCount = activity?.count || 0;
+    const hasActivity = masteredCount > 0 || exercisesCount > 0;
     
     // Determine the appropriate styles based on mastered count
     let textColorClass = "text-foreground";
@@ -135,6 +186,9 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
             <TooltipContent className="p-2 text-xs bg-background border border-border">
               <p><strong>{format(day, 'MMMM d, yyyy')}</strong></p>
               <p>{masteredCount} mastered word{masteredCount !== 1 ? 's' : ''}</p>
+              {exercisesCount > 0 && (
+                <p>{exercisesCount} exercise{exercisesCount !== 1 ? 's' : ''} completed</p>
+              )}
             </TooltipContent>
           )}
         </Tooltip>
@@ -142,8 +196,8 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
     );
   };
 
-  // Calculate total unique mastered words for the current month
-  const totalMasteredWordsThisMonth = useMemo(() => {
+  // Calculate total unique mastered words for the current time range
+  const totalMasteredWordsInRange = useMemo(() => {
     // Find the maximum count from any day - assuming this represents the total unique words
     const maxCount = filteredActivityData.reduce((max, activity) => {
       return Math.max(max, activity.masteredWords || 0);
@@ -151,6 +205,17 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
     
     return maxCount;
   }, [filteredActivityData]);
+
+  // Get the date range description
+  const dateRangeDescription = useMemo(() => {
+    if (timeRange === 'month') {
+      return format(currentDate, 'MMMM yyyy');
+    } else if (timeRange === '3months') {
+      return `${format(startDate, 'MMM')} - ${format(endDate, 'MMM yyyy')}`;
+    } else { // year
+      return `${format(startDate, 'MMM yyyy')} - ${format(endDate, 'MMM yyyy')}`;
+    }
+  }, [currentDate, startDate, endDate, timeRange]);
 
   // Handle click on exercise to navigate to practice
   const handleExerciseClick = (exerciseId: string) => {
@@ -165,20 +230,63 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
             <CalendarDays className="h-5 w-5 text-purple-500" />
             <CardTitle className="text-base font-medium">Activity Calendar</CardTitle>
           </div>
-          <span className="text-xs bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 px-2 py-1 rounded-full font-medium">
-            {totalMasteredWordsThisMonth} words this month
-          </span>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-xs bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 px-2 py-1 rounded-full font-medium">
+              {totalMasteredWordsInRange} words
+            </span>
+            
+            <Select
+              value={timeRange}
+              onValueChange={setTimeRange}
+            >
+              <SelectTrigger className="w-[100px] h-8 text-xs">
+                <SelectValue placeholder="Time Range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">Month</SelectItem>
+                <SelectItem value="3months">3 Months</SelectItem>
+                <SelectItem value="year">Year</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left column: Calendar and legend */}
           <div className="space-y-4 w-full">
+            <div className="flex items-center justify-between mb-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handlePrevious}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <span className="text-sm font-medium">
+                {dateRangeDescription}
+              </span>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleNext}
+                className="h-8 w-8 p-0"
+                disabled={addMonths(currentDate, 1) > new Date()}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            
             <div className="overflow-x-auto rounded-md border border-border p-1 bg-slate-50 dark:bg-slate-900/30 w-full">
               <Calendar
                 mode="default"
-                numberOfMonths={1}
-                defaultMonth={today}
+                numberOfMonths={timeRange === 'month' ? 1 : timeRange === '3months' ? 3 : 12}
+                month={startDate}
+                showOutsideDays={false}
                 className="w-full max-w-none"
                 classNames={{
                   day_today: "border-2 border-purple-500 dark:border-purple-400",
@@ -210,7 +318,6 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
                 }}
                 ISOWeek
                 fixedWeeks
-                showOutsideDays
               />
             </div>
             <div className="flex justify-end gap-3">

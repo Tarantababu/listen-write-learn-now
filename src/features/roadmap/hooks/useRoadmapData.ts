@@ -3,7 +3,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '../api/roadmapService';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
 import { Language, LanguageLevel } from '@/types';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useRoadmapData() {
   const [isLoading, setIsLoading] = useState(false);
@@ -155,7 +156,34 @@ export function useRoadmapData() {
   // Record completion with accuracy score
   const recordNodeCompletion = useCallback(async (nodeId: string, accuracy: number): Promise<NodeCompletionResult> => {
     try {
-      return await roadmapService.recordNodeCompletion(nodeId, accuracy);
+      const result = await roadmapService.recordNodeCompletion(nodeId, accuracy);
+      
+      // If accuracy is high enough (95%+) and node is in the current language,
+      // record this in the user_daily_activities table
+      if (accuracy >= 95 && selectedRoadmap?.language) {
+        try {
+          // Get the user ID
+          const userId = (await supabase.auth.getUser()).data.user?.id;
+          if (userId) {
+            // Use our new record_language_activity function to update streaks
+            await supabase.rpc(
+              'record_language_activity',
+              {
+                user_id_param: userId,
+                language_param: selectedRoadmap.language,
+                activity_date_param: new Date().toISOString().split('T')[0],
+                exercises_completed_param: 1,
+                words_mastered_param: 0 // Words mastered is calculated separately
+              }
+            );
+          }
+        } catch (error) {
+          console.error('Error recording daily activity for roadmap node:', error);
+          // Non-critical error, don't fail the whole operation
+        }
+      }
+      
+      return result;
     } catch (error) {
       console.error('Error recording node completion:', error);
       toast({
@@ -165,12 +193,36 @@ export function useRoadmapData() {
       });
       throw error;
     }
-  }, []);
+  }, [selectedRoadmap]);
   
   // Mark a node as completed
   const markNodeAsCompleted = useCallback(async (nodeId: string) => {
     try {
       await roadmapService.markNodeCompleted(nodeId);
+      
+      // Record this completion in the user_daily_activities table
+      if (selectedRoadmap?.language) {
+        try {
+          // Get the user ID
+          const userId = (await supabase.auth.getUser()).data.user?.id;
+          if (userId) {
+            // Use our new record_language_activity function to update streaks
+            await supabase.rpc(
+              'record_language_activity',
+              {
+                user_id_param: userId,
+                language_param: selectedRoadmap.language,
+                activity_date_param: new Date().toISOString().split('T')[0],
+                exercises_completed_param: 1,
+                words_mastered_param: 0 // Words mastered is calculated separately
+              }
+            );
+          }
+        } catch (error) {
+          console.error('Error recording daily activity for completed node:', error);
+          // Non-critical error, don't fail the whole operation
+        }
+      }
       
       // Refresh nodes after completion
       if (selectedRoadmap) {

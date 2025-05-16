@@ -6,7 +6,7 @@ import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Trophy, BookOpen, CalendarDays } from 'lucide-react';
+import { Trophy, BookOpen, CalendarDays, Star } from 'lucide-react';
 import StatsCard from './StatsCard';
 import StatsHeatmap from './StatsHeatmap';
 import { getUserLevel, getLevelProgress } from '@/utils/levelSystem';
@@ -20,12 +20,24 @@ interface CompletionData {
   words: number;
 }
 
+interface StreakData {
+  currentStreak: number;
+  longestStreak: number;
+  lastActivityDate: Date | null;
+}
+
 const UserStatistics: React.FC = () => {
   const { user } = useAuth();
   const { exercises } = useExerciseContext();
   const { vocabulary } = useVocabularyContext();
   const { settings } = useUserSettingsContext();
   const [completions, setCompletions] = useState<CompletionData[]>([]);
+  const [streakData, setStreakData] = useState<StreakData>({
+    currentStreak: 0,
+    longestStreak: 0,
+    lastActivityDate: null
+  });
+  const [dailyActivities, setDailyActivities] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Helper function to normalize text (reused from textComparison.ts)
@@ -37,9 +49,9 @@ const UserStatistics: React.FC = () => {
       .trim();
   };
 
-  // Fetch completion data from Supabase
+  // Fetch completion and streak data from Supabase
   useEffect(() => {
-    const fetchCompletionData = async () => {
+    const fetchUserData = async () => {
       if (!user) {
         setCompletions([]);
         setIsLoading(false);
@@ -47,38 +59,86 @@ const UserStatistics: React.FC = () => {
       }
 
       try {
-        const { data, error } = await supabase
+        setIsLoading(true);
+        
+        // Fetch user's streak data for current language
+        const { data: streakData, error: streakError } = await supabase
+          .from('user_language_streaks')
+          .select('current_streak, longest_streak, last_activity_date')
+          .eq('user_id', user.id)
+          .eq('language', settings.selectedLanguage)
+          .single();
+
+        if (streakError && streakError.code !== 'PGRST116') { // Not "No rows returned" error
+          console.error('Error fetching streak data:', streakError);
+        }
+        
+        if (streakData) {
+          setStreakData({
+            currentStreak: streakData.current_streak,
+            longestStreak: streakData.longest_streak,
+            lastActivityDate: streakData.last_activity_date ? new Date(streakData.last_activity_date) : null
+          });
+        }
+
+        // Fetch user's daily activity data
+        const threeMonthsAgo = format(subMonths(new Date(), 3), 'yyyy-MM-dd');
+        const { data: activityData, error: activityError } = await supabase
+          .from('user_daily_activities')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('language', settings.selectedLanguage)
+          .gte('activity_date', threeMonthsAgo)
+          .order('activity_date', { ascending: false });
+
+        if (activityError) {
+          console.error('Error fetching daily activity data:', activityError);
+        }
+        
+        if (activityData) {
+          setDailyActivities(activityData.map(item => ({
+            date: new Date(item.activity_date),
+            count: item.activity_count,
+            exercises: item.exercises_completed,
+            masteredWords: item.words_mastered
+          })));
+        }
+
+        // Also fetch completion data for backward compatibility
+        const { data: completionData, error: completionError } = await supabase
           .from('completions')
           .select('exercise_id, created_at, accuracy')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (completionError) {
+          console.error('Error fetching completion data:', completionError);
+        } else {
+          const exerciseTexts = exercises.reduce((acc: Record<string, string>, ex) => {
+            acc[ex.id] = ex.text;
+            return acc;
+          }, {});
 
-        const exerciseTexts = exercises.reduce((acc: Record<string, string>, ex) => {
-          acc[ex.id] = ex.text;
-          return acc;
-        }, {});
+          const completionItems = completionData.map(completion => ({
+            date: new Date(completion.created_at),
+            exerciseId: completion.exercise_id,
+            accuracy: completion.accuracy,
+            words: exerciseTexts[completion.exercise_id]
+              ? normalizeText(exerciseTexts[completion.exercise_id]).split(' ').length
+              : 0,
+          }));
 
-        const completionData: CompletionData[] = data.map(completion => ({
-          date: new Date(completion.created_at),
-          exerciseId: completion.exercise_id,
-          accuracy: completion.accuracy,
-          words: exerciseTexts[completion.exercise_id]
-            ? normalizeText(exerciseTexts[completion.exercise_id]).split(' ').length
-            : 0,
-        }));
-
-        setCompletions(completionData);
+          setCompletions(completionItems);
+        }
       } catch (error) {
-        console.error('Error fetching completion data:', error);
+        console.error('Error fetching user data:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchCompletionData();
-  }, [user, exercises]);
+    fetchUserData();
+  }, [user, exercises, settings.selectedLanguage]);
 
   // Current language filter
   const currentLanguage = settings.selectedLanguage;
@@ -119,84 +179,42 @@ const UserStatistics: React.FC = () => {
     return masteredWordsSet;
   }, [completions, exercises, currentLanguage]);
 
-  // Learning streak (only count days with high accuracy completions for current language)
-  const calculateStreak = (): number => {
-    // Filter completions for current language and high accuracy
-    const relevantCompletions = completions.filter(completion => {
-      const exercise = exercises.find(ex => ex.id === completion.exerciseId);
-      return exercise && exercise.language === currentLanguage && completion.accuracy >= 95;
-    });
-    
-    // Group by day - count a day as active if there's at least one relevant completion
-    const activeCompletionsByDay = relevantCompletions.reduce((acc: Record<string, boolean>, completion) => {
-      const dateStr = format(completion.date, 'yyyy-MM-dd');
-      acc[dateStr] = true;
-      return acc;
-    }, {});
-    
-    const activeDates = Object.keys(activeCompletionsByDay)
-      .map(dateStr => new Date(dateStr))
-      .sort((a, b) => b.getTime() - a.getTime()); // Sort desc
-      
-    if (activeDates.length === 0) return 0;
+  // Note: We're now using the streak data directly from the database
+  const streak = streakData.currentStreak;
 
-    let streak = 1; // Start with at least 1 day if there's activity
-    const today = startOfDay(new Date());
-    
-    // Check if the most recent activity was today or yesterday
-    const mostRecent = startOfDay(activeDates[0]);
-    const daysSinceLastActivity = differenceInDays(today, mostRecent);
-    
-    // Break streak if no activity today or yesterday
-    if (daysSinceLastActivity > 1) return 0;
-    
-    // Count consecutive days backwards
-    for (let i = 1; i < activeDates.length; i++) {
-      const current = startOfDay(activeDates[i]);
-      const prev = startOfDay(activeDates[i - 1]);
-      const gap = differenceInDays(prev, current);
-      
-      if (gap === 1) {
-        // Consecutive day
-        streak++;
-      } else {
-        // Break in the streak
-        break;
-      }
+  // Heatmap data from daily activities
+  const activityHeatmap = useMemo(() => {
+    // If we have the new daily activities data, use that
+    if (dailyActivities.length > 0) {
+      return dailyActivities.map(activity => ({
+        date: activity.date,
+        count: activity.exercises || 0,
+        masteredWords: activity.masteredWords || 0
+      }));
     }
     
-    return streak;
-  };
-
-  const streak = calculateStreak();
-
-  // Heatmap data - make sure mastered words are properly calculated per day
-  const activityHeatmap = useMemo(() => {
-    // Filter completions for current language only
-    const relevantCompletions = completions.filter(completion => {
-      const exercise = exercises.find(ex => ex.id === completion.exerciseId);
-      return exercise && exercise.language === currentLanguage;
-    });
-    
+    // Fallback to the old method if no daily activities data
     // Group completions by day
-    const completionsByDay = relevantCompletions.reduce((acc: Record<string, CompletionData[]>, completion) => {
-      const dateStr = format(completion.date, 'yyyy-MM-dd');
-      if (!acc[dateStr]) acc[dateStr] = [];
-      acc[dateStr].push(completion);
-      return acc;
-    }, {});
+    const completionsByDay = completions
+      .filter(completion => {
+        const exercise = exercises.find(ex => ex.id === completion.exerciseId);
+        return exercise && exercise.language === currentLanguage;
+      })
+      .reduce((acc: Record<string, CompletionData[]>, completion) => {
+        const dateStr = format(completion.date, 'yyyy-MM-dd');
+        if (!acc[dateStr]) acc[dateStr] = [];
+        acc[dateStr].push(completion);
+        return acc;
+      }, {});
     
     // For each day, calculate the mastered words count
     return Object.entries(completionsByDay).map(([dateStr, dailyCompletions]) => {
-      // For each date, get a snapshot of mastered words up to and including this date
       const dateCutoff = new Date(dateStr);
       dateCutoff.setHours(23, 59, 59);
       
       // Count completions by exercise ID up to this date
       const exerciseCompletionCounts = new Map<string, number>();
       
-      // Include all completions up to and including this date,
-      // but only count high accuracy completions (>=95%)
       completions
         .filter(c => {
           const exercise = exercises.find(ex => ex.id === c.exerciseId);
@@ -220,7 +238,6 @@ const UserStatistics: React.FC = () => {
         const completionCount = exerciseCompletionCounts.get(exercise.id) || 0;
         
         if (completionCount >= 3) {
-          // This exercise is considered mastered - add all its words
           const words = normalizeText(exercise.text).split(' ');
           words.forEach(word => masteredWordsSet.add(word));
         }
@@ -232,7 +249,7 @@ const UserStatistics: React.FC = () => {
         masteredWords: masteredWordsSet.size
       };
     });
-  }, [completions, exercises, currentLanguage]);
+  }, [dailyActivities, completions, exercises, currentLanguage]);
 
   // Calculate vocabulary trend for today vs yesterday
   const vocabTrend = (() => {

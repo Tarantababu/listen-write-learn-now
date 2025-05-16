@@ -1,3 +1,4 @@
+
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -157,17 +158,54 @@ export const deleteExercise = async (userId: string, id: string) => {
  * Records a completion attempt for an exercise
  */
 export const recordCompletion = async (userId: string, exerciseId: string, accuracy: number, isCompleted: boolean) => {
-  const { error: completionError } = await supabase
-    .from('completions')
-    .insert({
-      user_id: userId,
-      exercise_id: exerciseId,
-      accuracy: accuracy,
-      completed: isCompleted
-    });
+  try {
+    // Record completion in the completions table
+    const { error: completionError } = await supabase
+      .from('completions')
+      .insert({
+        user_id: userId,
+        exercise_id: exerciseId,
+        accuracy: accuracy,
+        completed: isCompleted
+      });
 
-  if (completionError) {
-    console.error('Error saving completion record:', completionError);
+    if (completionError) {
+      console.error('Error saving completion record:', completionError);
+      throw completionError;
+    }
+
+    // Get the exercise language to record activity
+    const { data: exerciseData, error: exerciseError } = await supabase
+      .from('exercises')
+      .select('language')
+      .eq('id', exerciseId)
+      .single();
+
+    if (exerciseError) {
+      console.error('Error fetching exercise language:', exerciseError);
+      return;
+    }
+
+    // Only record high accuracy completions (95%+) in the activity system
+    if (accuracy >= 95 && exerciseData.language) {
+      // Use our new record_language_activity function to update streaks
+      const { error: activityError } = await supabase.rpc(
+        'record_language_activity',
+        {
+          user_id_param: userId,
+          language_param: exerciseData.language,
+          activity_date_param: new Date().toISOString().split('T')[0],
+          exercises_completed_param: 1,
+          words_mastered_param: 0 // Words mastered is calculated separately
+        }
+      );
+
+      if (activityError) {
+        console.error('Error recording language activity:', activityError);
+      }
+    }
+  } catch (error) {
+    console.error('Error in recordCompletion:', error);
   }
 };
 

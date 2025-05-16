@@ -727,6 +727,42 @@ export type Database = {
           },
         ]
       }
+      user_daily_activities: {
+        Row: {
+          activity_count: number
+          activity_date: string
+          created_at: string
+          exercises_completed: number
+          id: string
+          language: string
+          updated_at: string
+          user_id: string
+          words_mastered: number
+        }
+        Insert: {
+          activity_count?: number
+          activity_date: string
+          created_at?: string
+          exercises_completed?: number
+          id?: string
+          language: string
+          updated_at?: string
+          user_id: string
+          words_mastered?: number
+        }
+        Update: {
+          activity_count?: number
+          activity_date?: string
+          created_at?: string
+          exercises_completed?: number
+          id?: string
+          language?: string
+          updated_at?: string
+          user_id?: string
+          words_mastered?: number
+        }
+        Relationships: []
+      }
       user_exercise_attempts: {
         Row: {
           accuracy_percentage: number
@@ -784,6 +820,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_language_streaks: {
+        Row: {
+          created_at: string
+          current_streak: number
+          id: string
+          language: string
+          last_activity_date: string | null
+          longest_streak: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          language: string
+          last_activity_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          language?: string
+          last_activity_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_messages: {
         Row: {
@@ -1127,6 +1196,16 @@ export type Database = {
           curriculum_id_param: string
           accuracy_param: number
           completion_time_param: number
+        }
+        Returns: undefined
+      }
+      record_language_activity: {
+        Args: {
+          user_id_param: string
+          language_param: string
+          activity_date_param: string
+          exercises_completed_param?: number
+          words_mastered_param?: number
         }
         Returns: undefined
       }

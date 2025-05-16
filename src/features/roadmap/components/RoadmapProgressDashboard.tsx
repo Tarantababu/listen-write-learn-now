@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useRoadmap } from '../context/RoadmapContext';
-import { Check, Calendar, Award, Clock } from 'lucide-react';
+import { Check, Calendar, Award, Clock, Flame } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -15,15 +15,26 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import LevelBadge from '@/components/LevelBadge';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface RoadmapProgressDashboardProps {
   className?: string;
 }
 
+interface StreakData {
+  currentStreak: number;
+  longestStreak: number;
+  lastActivityDate: string | null;
+}
+
 const RoadmapProgressDashboard: React.FC<RoadmapProgressDashboardProps> = ({ className }) => {
   const { currentRoadmap, nodes, completedNodes, roadmaps } = useRoadmap();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('summary');
   const [timeframe, setTimeframe] = useState('all');
+  const [streakData, setStreakData] = useState<StreakData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const completedCount = completedNodes.length;
   const totalCount = nodes.length;
@@ -33,9 +44,41 @@ const RoadmapProgressDashboard: React.FC<RoadmapProgressDashboardProps> = ({ cla
   const roadmapDetails = currentRoadmap?.roadmapId ? 
     roadmaps.find(r => r.id === currentRoadmap.roadmapId) : null;
 
+  // Get streak data for the current language
+  useEffect(() => {
+    const fetchStreakData = async () => {
+      if (!user || !currentRoadmap?.language) return;
+
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('user_language_streaks')
+          .select('current_streak, longest_streak, last_activity_date')
+          .eq('user_id', user.id)
+          .eq('language', currentRoadmap.language)
+          .single();
+
+        if (error && error.code !== 'PGRST116') { // Not "No rows returned" error
+          console.error('Error fetching streak data:', error);
+        }
+
+        if (data) {
+          setStreakData(data);
+        }
+      } catch (error) {
+        console.error('Error in fetchStreakData:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStreakData();
+  }, [user, currentRoadmap]);
+
   // Mock data for the dashboard
-  const streak = 5; // Mock streak - days in a row with activity
-  const lastPracticed = new Date(); // Today
+  const streak = streakData?.currentStreak || 0;
+  const longestStreak = streakData?.longestStreak || 0;
+  const lastPracticed = streakData?.lastActivityDate ? new Date(streakData.lastActivityDate) : new Date();
   const totalTime = 720; // Mock total time in minutes
 
   // Format minutes into hours and minutes
@@ -115,10 +158,10 @@ const RoadmapProgressDashboard: React.FC<RoadmapProgressDashboardProps> = ({ cla
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center">
-                    <div className="bg-purple-100 dark:bg-purple-900/20 p-1.5 rounded-md mr-2">
-                      <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    <div className="bg-amber-100 dark:bg-amber-900/20 p-1.5 rounded-md mr-2">
+                      <Flame className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                     </div>
-                    Learning Activity
+                    Learning Streak
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -139,8 +182,13 @@ const RoadmapProgressDashboard: React.FC<RoadmapProgressDashboardProps> = ({ cla
                     
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
+                        <span className="text-muted-foreground">Longest streak</span>
+                        <span className="font-medium">{longestStreak} days</span>
+                      </div>
+                    
+                      <div className="flex justify-between">
                         <span className="text-muted-foreground">Last practiced</span>
-                        <span className="font-medium">{format(lastPracticed, 'MMM d, yyyy')}</span>
+                        <span className="font-medium">{lastPracticed ? format(lastPracticed, 'MMM d, yyyy') : 'Never'}</span>
                       </div>
                       
                       <div className="flex justify-between">
