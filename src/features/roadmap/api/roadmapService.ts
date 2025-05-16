@@ -1,4 +1,3 @@
-
 import { RoadmapServiceInterface, NodeCompletionResult } from '../types/service-types';
 import { RoadmapItem, RoadmapNode, ExerciseContent } from '../types';
 import { Language, LanguageLevel } from '@/types';
@@ -98,7 +97,7 @@ export class RoadmapService implements RoadmapServiceInterface {
     }
   }
 
-  // Implement the initializeRoadmap method
+  // Fix the initializeRoadmap method
   async initializeRoadmap(level: LanguageLevel, language: Language): Promise<string> {
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -126,7 +125,6 @@ export class RoadmapService implements RoadmapServiceInterface {
     }
   }
 
-  // Implement the getRoadmapNodes method
   async getRoadmapNodes(userRoadmapId: string): Promise<RoadmapNode[]> {
     try {
       const { data, error } = await supabase
@@ -154,6 +152,48 @@ export class RoadmapService implements RoadmapServiceInterface {
     } catch (error) {
       console.error('Error fetching roadmap nodes:', error);
       return [];
+    }
+  }
+
+  // Update getNodeExerciseContent function to use audioUrl instead of audio_url
+  async getNodeExerciseContent(nodeId: string): Promise<ExerciseContent | null> {
+    try {
+      // First check if the node has a default exercise
+      const { data: nodeData, error: nodeError } = await supabase
+        .from('roadmap_nodes')
+        .select('default_exercise_id, language')
+        .eq('id', nodeId)
+        .single();
+      
+      if (nodeError) throw nodeError;
+      
+      // If node has a default exercise, fetch that
+      if (nodeData.default_exercise_id) {
+        const { data: exerciseData, error: exerciseError } = await supabase
+          .from('default_exercises')
+          .select('*')
+          .eq('id', nodeData.default_exercise_id)
+          .single();
+        
+        if (exerciseError) throw exerciseError;
+        
+        if (exerciseData) {
+          return {
+            id: exerciseData.id,
+            title: exerciseData.title,
+            text: exerciseData.text,
+            language: exerciseData.language as Language,
+            audioUrl: exerciseData.audio_url, // Use audioUrl property name in return value
+            tags: exerciseData.tags || []
+          };
+        }
+      }
+      
+      // If no default exercise, return null
+      return null;
+    } catch (error) {
+      console.error('Error getting node exercise:', error);
+      return null;
     }
   }
 
@@ -369,7 +409,6 @@ export class RoadmapService implements RoadmapServiceInterface {
     }
   }
 
-  // Implement the markNodeCompleted method
   async markNodeCompleted(nodeId: string): Promise<void> {
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -392,48 +431,6 @@ export class RoadmapService implements RoadmapServiceInterface {
     } catch (error) {
       console.error('Error marking node as completed:', error);
       throw error;
-    }
-  }
-
-  // Update getNodeExerciseContent function to use audioUrl instead of audio_url
-  async getNodeExerciseContent(nodeId: string): Promise<ExerciseContent | null> {
-    try {
-      // First check if the node has a default exercise
-      const { data: nodeData, error: nodeError } = await supabase
-        .from('roadmap_nodes')
-        .select('default_exercise_id, language')
-        .eq('id', nodeId)
-        .single();
-      
-      if (nodeError) throw nodeError;
-      
-      // If node has a default exercise, fetch that
-      if (nodeData.default_exercise_id) {
-        const { data: exerciseData, error: exerciseError } = await supabase
-          .from('default_exercises')
-          .select('*')
-          .eq('id', nodeData.default_exercise_id)
-          .single();
-        
-        if (exerciseError) throw exerciseError;
-        
-        if (exerciseData) {
-          return {
-            id: exerciseData.id,
-            title: exerciseData.title,
-            text: exerciseData.text,
-            language: exerciseData.language as Language,
-            audioUrl: exerciseData.audio_url, // Use audioUrl property name in return value
-            tags: exerciseData.tags || []
-          };
-        }
-      }
-      
-      // If no default exercise, return null
-      return null;
-    } catch (error) {
-      console.error('Error getting node exercise:', error);
-      return null;
     }
   }
 }
