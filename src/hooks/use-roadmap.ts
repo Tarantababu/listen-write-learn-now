@@ -6,15 +6,7 @@ import { RoadmapContext, useRoadmap as useRoadmapFromContext } from '@/features/
  * Custom hook to access the curriculum context
  * Note: This was previously called "roadmap" but refers to the same feature
  */
-export const useRoadmap = () => {
-  const context = useContext(RoadmapContext);
-  
-  if (context === undefined) {
-    throw new Error('useRoadmap must be used within a RoadmapProvider');
-  }
-  
-  return context;
-};
+export const useRoadmap = useRoadmapFromContext;
 
 /**
  * Alias for useRoadmap to support new terminology

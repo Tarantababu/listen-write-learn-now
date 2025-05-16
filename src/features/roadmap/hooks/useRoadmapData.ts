@@ -12,18 +12,48 @@ export function useRoadmapData() {
   const [userRoadmaps, setUserRoadmaps] = useState<RoadmapItem[]>([]);
   const [selectedRoadmap, setSelectedRoadmap] = useState<RoadmapItem | null>(null);
   const [nodes, setNodes] = useState<RoadmapNode[]>([]);
+  
+  // Refs for request tracking and caching
   const loadingRef = useRef<{[key: string]: boolean}>({});
+  const cacheRef = useRef<{
+    roadmaps: {[language: string]: RoadmapItem[]},
+    userRoadmaps: {[language: string]: RoadmapItem[]},
+    nodes: {[roadmapId: string]: RoadmapNode[]}
+  }>({
+    roadmaps: {},
+    userRoadmaps: {},
+    nodes: {}
+  });
+  const requestTimestampsRef = useRef<{[key: string]: number}>({});
+  
+  // Cache expiration time in milliseconds (5 minutes)
+  const CACHE_EXPIRATION = 5 * 60 * 1000;
+  
+  // Check if cache is valid
+  const isCacheValid = (cacheKey: string) => {
+    const timestamp = requestTimestampsRef.current[cacheKey];
+    if (!timestamp) return false;
+    return (Date.now() - timestamp) < CACHE_EXPIRATION;
+  };
   
   // Load all roadmaps available for a language
   const loadRoadmaps = useCallback(async (language: Language) => {
     // Normalize language to lowercase for consistent comparison
     const normalizedLanguage = language.toLowerCase() as Language;
     
-    // Prevent duplicate fetches for the same language
+    // Cache key for this specific request
     const cacheKey = `roadmaps_${normalizedLanguage}`;
+    
+    // Return cached data if available and not expired
+    if (cacheRef.current.roadmaps[normalizedLanguage] && isCacheValid(cacheKey)) {
+      console.log(`Using cached roadmaps for ${normalizedLanguage}`);
+      return cacheRef.current.roadmaps[normalizedLanguage];
+    }
+    
+    // Prevent duplicate fetches for the same language
     if (loadingRef.current[cacheKey]) {
       console.log(`Already loading roadmaps for ${normalizedLanguage}, skipping duplicate request`);
-      return [];
+      return cacheRef.current.roadmaps[normalizedLanguage] || [];
     }
     
     loadingRef.current[cacheKey] = true;
@@ -33,8 +63,13 @@ export function useRoadmapData() {
     
     try {
       const roadmapsData = await roadmapService.getRoadmapsForLanguage(normalizedLanguage);
-      console.log(`Loaded ${roadmapsData.length} roadmaps for ${normalizedLanguage}:`, roadmapsData);
+      console.log(`Loaded ${roadmapsData.length} roadmaps for ${normalizedLanguage}`);
+      
+      // Update state and cache
       setRoadmaps(roadmapsData);
+      cacheRef.current.roadmaps[normalizedLanguage] = roadmapsData;
+      requestTimestampsRef.current[cacheKey] = Date.now();
+      
       return roadmapsData;
     } catch (error) {
       console.error(`Error loading roadmaps for ${normalizedLanguage}:`, error);
@@ -55,11 +90,19 @@ export function useRoadmapData() {
     // Normalize language to lowercase for consistent comparison
     const normalizedLanguage = language.toLowerCase() as Language;
     
-    // Prevent duplicate fetches for the same language
+    // Cache key for this specific request
     const cacheKey = `user_roadmaps_${normalizedLanguage}`;
+    
+    // Return cached data if available and not expired
+    if (cacheRef.current.userRoadmaps[normalizedLanguage] && isCacheValid(cacheKey)) {
+      console.log(`Using cached user roadmaps for ${normalizedLanguage}`);
+      return cacheRef.current.userRoadmaps[normalizedLanguage];
+    }
+    
+    // Prevent duplicate fetches for the same language
     if (loadingRef.current[cacheKey]) {
       console.log(`Already loading user roadmaps for ${normalizedLanguage}, skipping duplicate request`);
-      return [];
+      return cacheRef.current.userRoadmaps[normalizedLanguage] || [];
     }
     
     loadingRef.current[cacheKey] = true;
@@ -69,8 +112,13 @@ export function useRoadmapData() {
     
     try {
       const userRoadmapsData = await roadmapService.getUserRoadmaps(normalizedLanguage);
-      console.log(`Loaded ${userRoadmapsData.length} user roadmaps for ${normalizedLanguage}:`, userRoadmapsData);
+      console.log(`Loaded ${userRoadmapsData.length} user roadmaps for ${normalizedLanguage}`);
+      
+      // Update state and cache
       setUserRoadmaps(userRoadmapsData);
+      cacheRef.current.userRoadmaps[normalizedLanguage] = userRoadmapsData;
+      requestTimestampsRef.current[cacheKey] = Date.now();
+      
       return userRoadmapsData;
     } catch (error) {
       console.error(`Error loading user roadmaps for ${normalizedLanguage}:`, error);
@@ -98,6 +146,9 @@ export function useRoadmapData() {
       const roadmapId = await roadmapService.initializeRoadmap(level, normalizedLanguage);
       console.log(`Roadmap initialized with ID: ${roadmapId}`);
       
+      // Invalidate user roadmaps cache to force reload
+      delete cacheRef.current.userRoadmaps[normalizedLanguage];
+      
       // Reload user roadmaps to include the new one
       const updatedRoadmaps = await loadUserRoadmaps(normalizedLanguage);
       
@@ -123,11 +174,24 @@ export function useRoadmapData() {
   
   // Select and load a specific roadmap
   const selectRoadmap = useCallback(async (roadmapId: string) => {
-    // Prevent duplicate selects for the same roadmap
+    // Cache key for this specific request
     const cacheKey = `select_roadmap_${roadmapId}`;
+    
+    // Return cached data if available and valid
+    if (cacheRef.current.nodes[roadmapId] && isCacheValid(cacheKey)) {
+      console.log(`Using cached nodes for roadmap ${roadmapId}`);
+      const roadmap = userRoadmaps.find(r => r.id === roadmapId);
+      if (roadmap) {
+        setSelectedRoadmap(roadmap);
+        setNodes(cacheRef.current.nodes[roadmapId]);
+        return cacheRef.current.nodes[roadmapId];
+      }
+    }
+    
+    // Prevent duplicate selects for the same roadmap
     if (loadingRef.current[cacheKey]) {
       console.log(`Already selecting roadmap ${roadmapId}, skipping duplicate request`);
-      return [];
+      return cacheRef.current.nodes[roadmapId] || [];
     }
     
     loadingRef.current[cacheKey] = true;
@@ -149,7 +213,11 @@ export function useRoadmapData() {
       // Load the nodes for this roadmap
       const nodesData = await roadmapService.getRoadmapNodes(roadmapId);
       console.log(`Loaded ${nodesData.length} nodes for roadmap ${roadmapId}`);
+      
+      // Update state and cache
       setNodes(nodesData);
+      cacheRef.current.nodes[roadmapId] = nodesData;
+      requestTimestampsRef.current[cacheKey] = Date.now();
       
       return nodesData;
     } catch (error) {
@@ -252,8 +320,9 @@ export function useRoadmapData() {
         }
       }
       
-      // Refresh nodes after completion
+      // Invalidate cache for this roadmap's nodes
       if (selectedRoadmap) {
+        delete cacheRef.current.nodes[selectedRoadmap.id];
         await selectRoadmap(selectedRoadmap.id);
       }
     } catch (error) {
