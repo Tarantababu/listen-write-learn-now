@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { nodeAccessService } from '../services/NodeAccessService';
 import { Progress } from '@/components/ui/progress';
+import { NodeProgressDetails } from '../types/service-types'; // Import the type from service-types
 
 interface RoadmapVisualizationProps {
   onNodeSelect: (node: RoadmapNode) => void;
