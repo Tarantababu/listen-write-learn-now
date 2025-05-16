@@ -263,10 +263,19 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
         
         {practiceStage === PracticeStage.READING && exercise && (
           <ReadingAnalysis
-            text={exercise.text || ""}
-            language={node.language || 'english'}
-            onClose={() => setPracticeStage(PracticeStage.PROMPT)}
-            onProceedToDictation={handleStartDictation}
+            exercise={{
+              id: `roadmap-${node.id}`,
+              title: exercise.title || node.title,
+              text: exercise.text || "",
+              language: node.language || 'english',
+              audioUrl: exercise.audioUrl,
+              tags: [],
+              directoryId: null,
+              createdAt: new Date(),
+              completionCount: 0,
+              isCompleted: false
+            }}
+            onComplete={handleStartDictation}
           />
         )}
 
