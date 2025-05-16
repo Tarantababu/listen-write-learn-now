@@ -1,4 +1,3 @@
-
 import { Language, LanguageLevel } from '@/types';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
 
@@ -57,7 +56,7 @@ export interface NodeProgressDetails {
   nodeId: string;
   completionCount: number;
   isCompleted: boolean;
-  lastPracticedAt?: Date;
+  lastPracticedAt?: Date;  // Adding this property to fix the type error
 }
 
 export interface ExerciseSubmission {
