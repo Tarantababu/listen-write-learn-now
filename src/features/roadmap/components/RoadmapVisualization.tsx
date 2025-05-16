@@ -77,7 +77,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     });
   }, [nodes, completedNodes, currentNodeId, nodeProgress]);
 
-  const handleNodeClick = (node: RoadmapNode) => {
+  const handleNodeClick = (node: any) => {
     // Only allow clicking on available nodes
     if (node.status === 'locked') return;
     onNodeSelect(node);
@@ -96,7 +96,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     <div className="pb-6">
       <div className="flex flex-col gap-3 md:gap-4 w-full max-w-3xl mx-auto">
         {nodesWithStatus.map((node, index) => {
-          // Style based on node status
+          // Make sure we're using the augmented node with status
           const isCompleted = node.status === 'completed';
           const isLocked = node.status === 'locked';
           const isCurrent = node.status === 'current';
