@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
-import { RoadmapNode } from '@/types';
+import { RoadmapNode } from '@/features/roadmap/types';
 import { Check, Lock, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,27 +14,35 @@ import {
 } from '@/components/ui/tooltip';
 import LevelBadge from '@/components/LevelBadge';
 import { Loader2 } from 'lucide-react';
+import NewRoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
 
-// Import the actual visualization from feature/roadmap
-// This ensures we're using the right types
-import FeatureRoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
-
-// Use our internal type to avoid conflicts
-interface InternalRoadmapNodeProps {
+interface RoadmapNodeProps {
   node: RoadmapNode;
   status: 'completed' | 'current' | 'locked' | 'available';
   progress?: number; // Add progress (completion count)
   onNodeClick: (node: RoadmapNode) => void;
 }
 
-const RoadmapNodeComponent: React.FC<InternalRoadmapNodeProps> = ({ 
-  node, 
-  status, 
-  progress = 0, 
-  onNodeClick 
-}) => {
-  // ... keep existing code (RoadmapNodeComponent implementation)
-  
+const RoadmapNodeComponent: React.FC<RoadmapNodeProps> = ({ node, status, progress = 0, onNodeClick }) => {
+  const getNodeColor = () => {
+    switch (status) {
+      case 'completed': return 'bg-primary text-primary-foreground border-primary';
+      case 'current': return 'bg-secondary text-secondary-foreground border-secondary animated-pulse';
+      case 'available': return 'bg-background text-foreground border-muted-foreground';
+      default: return 'bg-muted text-muted-foreground border-muted opacity-70';
+    }
+  };
+
+  const getNodeIcon = () => {
+    if (status === 'completed') return <Check className="h-5 w-5" />;
+    if (status === 'locked') return <Lock className="h-4 w-4" />;
+    if (node.isBonus) return <Star className="h-4 w-4 text-amber-500" />;
+    return null;
+  };
+
+  // Display progress badge if there is progress but not completed
+  const showProgressBadge = progress > 0 && status !== 'completed';
+
   return (
     <TooltipProvider>
       <Tooltip>
@@ -89,51 +98,13 @@ const RoadmapNodeComponent: React.FC<InternalRoadmapNodeProps> = ({
       </Tooltip>
     </TooltipProvider>
   );
-  
-  function getNodeColor() {
-    switch (status) {
-      case 'completed': return 'bg-primary text-primary-foreground border-primary';
-      case 'current': return 'bg-secondary text-secondary-foreground border-secondary animated-pulse';
-      case 'available': return 'bg-background text-foreground border-muted-foreground';
-      default: return 'bg-muted text-muted-foreground border-muted opacity-70';
-    }
-  }
-
-  function getNodeIcon() {
-    if (status === 'completed') return <Check className="h-5 w-5" />;
-    if (status === 'locked') return <Lock className="h-4 w-4" />;
-    if (node.isBonus) return <Star className="h-4 w-4 text-amber-500" />;
-    return null;
-  }
 };
 
 interface RoadmapVisualizationProps {
   onNodeSelect: (node: RoadmapNode) => void;
 }
 
-// Create a compatibility wrapper that converts between roadmap node types
 const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelect }) => {
-  // Check if we can use the new implementation
-  try {
-    // Try to use the new implementation first
-    return <FeatureRoadmapVisualization onNodeSelect={(featNode: any) => {
-      // Convert feature roadmap node to our type if needed
-      const node: RoadmapNode = {
-        ...featNode,
-        title: featNode.title || featNode.name || '',
-        createdAt: featNode.createdAt || new Date().toISOString()
-      };
-      onNodeSelect(node);
-    }} />;
-  } catch (error) {
-    // Fall back to our legacy implementation
-    console.log("Using legacy roadmap visualization");
-    return <LegacyRoadmapVisualization onNodeSelect={onNodeSelect} />;
-  }
-};
-
-// Keep the existing implementation as a backup
-const LegacyRoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelect }) => {
   const { 
     currentRoadmap, 
     nodes, 
@@ -144,7 +115,7 @@ const LegacyRoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNod
     isLoading,
     roadmaps 
   } = useRoadmap();
-  
+
   console.log("Legacy RoadmapVisualization rendered with:", {
     hasCurrentRoadmap: !!currentRoadmap,
     nodesCount: nodes?.length || 0,

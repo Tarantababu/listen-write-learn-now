@@ -1,295 +1,300 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { 
-  Form, 
-  FormControl, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
-} from '@/components/ui/form';
+
+import React, { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Language } from '@/types';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
+import { createDefaultExercise } from '@/services/defaultExerciseService';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
-import { Language, LanguageLevel } from '@/types';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from '@/components/ui/select';
+import PopoverHint from '@/components/PopoverHint';
 
-// Create a mapping between our system Language type and the form values
-const languageMapping: Record<string, Language> = {
-  'english': 'en',
-  'spanish': 'es',
-  'french': 'fr',
-  'german': 'de',
-  'italian': 'it',
-  'portuguese': 'pt'
+const languages: Language[] = [
+  'english',
+  'german',
+  'spanish',
+  'french',
+  'portuguese',
+  'italian',
+  'turkish',
+  'swedish',
+  'dutch',
+  'norwegian',
+  'russian',
+  'polish',
+  'chinese',
+  'japanese',
+  'korean',
+  'arabic'
+];
+
+// Language display names
+const languageDisplayNames: Record<Language, string> = {
+  'english': 'English',
+  'german': 'German (Deutsch)',
+  'french': 'French (Français)',
+  'spanish': 'Spanish (Español)',
+  'portuguese': 'Portuguese (Português)',
+  'italian': 'Italian (Italiano)',
+  'dutch': 'Dutch (Nederlands)',
+  'turkish': 'Turkish (Türkçe)',
+  'swedish': 'Swedish (Svenska)',
+  'norwegian': 'Norwegian (Norsk)',
+  'russian': 'Russian (Русский)',
+  'polish': 'Polish (Polski)',
+  'chinese': 'Chinese (中文)',
+  'japanese': 'Japanese (日本語)',
+  'korean': 'Korean (한국어)',
+  'arabic': 'Arabic (العربية)'
 };
 
-const formSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  text: z.string().min(1, 'Text is required'),
-  language: z.enum(['english', 'spanish', 'french', 'german', 'italian', 'portuguese']),
-  level: z.enum(['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']),
-  audio_url: z.string().optional(),
-  tags: z.string().optional(),
-});
+const DefaultExerciseForm: React.FC = () => {
+  const { user } = useAuth();
+  const [title, setTitle] = useState('');
+  const [text, setText] = useState('');
+  const [language, setLanguage] = useState<Language>('english');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
 
-type FormValues = z.infer<typeof formSchema>;
-
-interface DefaultExerciseFormProps {
-  exerciseToEdit?: {
-    id: string;
-    title: string;
-    text: string;
-    language: Language;
-    level?: LanguageLevel;
-    audio_url?: string;
-    tags?: string[];
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!title.trim()) {
+      newErrors.title = 'Title is required';
+    }
+    
+    if (!text.trim()) {
+      newErrors.text = 'Text is required';
+    } else if (text.trim().length < 10) {
+      newErrors.text = 'Text must be at least 10 characters';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
-  onSuccess?: () => void;
-}
 
-const DefaultExerciseForm: React.FC<DefaultExerciseFormProps> = ({ exerciseToEdit, onSuccess }) => {
-  // Convert Language type to form language value
-  const getFormLanguage = (lang: Language): 'english' | 'spanish' | 'french' | 'german' | 'italian' | 'portuguese' => {
-    switch(lang) {
-      case 'en': return 'english';
-      case 'es': return 'spanish';
-      case 'fr': return 'french';
-      case 'de': return 'german';
-      case 'it': return 'italian';
-      case 'pt': return 'portuguese';
-      default: return 'english';
+  const handleAddTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput('');
     }
   };
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      title: exerciseToEdit?.title || '',
-      text: exerciseToEdit?.text || '',
-      language: exerciseToEdit?.language ? getFormLanguage(exerciseToEdit.language) : 'english',
-      level: exerciseToEdit?.level || 'A1',
-      audio_url: exerciseToEdit?.audio_url || '',
-      tags: exerciseToEdit?.tags ? exerciseToEdit.tags.join(', ') : '',
-    }
-  });
-  
-  const isEditMode = !!exerciseToEdit;
-  
-  const onSubmit = async (data: FormValues) => {
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  const generateAudio = async (text: string, language: Language): Promise<string | null> => {
     try {
-      // Convert form language to our system language type
-      const systemLanguage = languageMapping[data.language] || 'en';
-      
-      const formattedData = {
-        title: data.title,
-        text: data.text,
-        language: systemLanguage,
-        level: data.level,
-        tags: data.tags ? data.tags.split(',').map(tag => tag.trim()) : [],
-        audio_url: data.audio_url
-      };
-      
-      let result;
-      
-      if (isEditMode) {
-        result = await supabase
-          .from('default_exercises')
-          .update(formattedData)
-          .eq('id', exerciseToEdit.id);
-      } else {
-        result = await supabase
-          .from('default_exercises')
-          .insert(formattedData);
-      }
-      
-      if (result.error) {
-        throw result.error;
-      }
-      
-      toast({
-        title: isEditMode ? 'Exercise Updated' : 'Exercise Created',
-        description: isEditMode 
-          ? 'The exercise has been successfully updated.' 
-          : 'The exercise has been successfully created.',
+      setIsGeneratingAudio(true);
+      toast.info(`Generating audio file...`);
+
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: { text, language }
       });
-      
-      form.reset({
-        title: '',
-        text: '',
-        language: 'english',
-        level: 'A1',
-        audio_url: '',
-        tags: '',
-      });
-      
-      if (onSuccess) {
-        onSuccess();
+
+      if (error) {
+        console.error('Error invoking text-to-speech function:', error);
+        throw error;
       }
+
+      if (!data || !data.audioContent) {
+        throw new Error('No audio content received');
+      }
+
+      const audioContent = data.audioContent;
+      const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
+      
+      const fileName = `default_exercise_${Date.now()}.mp3`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('audio')
+        .upload(fileName, blob, {
+          contentType: 'audio/mp3'
+        });
+
+      if (uploadError) {
+        console.error('Error uploading audio:', uploadError);
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('audio')
+        .getPublicUrl(fileName);
+
+      toast.success(`Audio file generated successfully`);
+      return publicUrl;
     } catch (error) {
-      console.error('Error saving exercise:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save the exercise. Please try again.',
-        variant: 'destructive',
+      console.error('Error generating audio:', error);
+      toast.error(`Failed to generate audio for the exercise`);
+      return null;
+    } finally {
+      setIsGeneratingAudio(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm() || !user) return;
+
+    try {
+      setIsLoading(true);
+
+      // Generate audio - passing the selected language for database association
+      // but TTS function will use English voice regardless
+      const audioUrl = await generateAudio(text, language);
+      
+      await createDefaultExercise(user.id, {
+        title,
+        text,
+        language,
+        tags,
+        audioUrl
       });
+      
+      toast.success('Default exercise created successfully');
+      
+      // Reset form
+      setTitle('');
+      setText('');
+      setLanguage('english');
+      setTags([]);
+      setTagInput('');
+    } catch (error: any) {
+      console.error('Error creating default exercise:', error);
+      toast.error('Failed to create default exercise: ' + error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Title</FormLabel>
-              <FormControl>
-                <Input placeholder="Exercise title" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="title">Exercise Title</Label>
+        <Input
+          id="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Enter a title for the default exercise"
+          className={errors.title ? "border-destructive" : ""}
+          disabled={isLoading || isGeneratingAudio}
         />
-        
-        <FormField
-          control={form.control}
-          name="text"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Text Content</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Exercise text content" 
-                  className="min-h-[150px]" 
-                  {...field} 
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+        {errors.title && (
+          <p className="text-xs text-destructive mt-1">{errors.title}</p>
+        )}
+      </div>
+      
+      <div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="language">Language</Label>
+          <PopoverHint side="top" align="start" className="w-80">
+            <p className="text-sm">
+              Select the language for this exercise. The audio will be generated using English voices for optimal quality,
+              but the exercise will be categorized under the selected language.
+            </p>
+          </PopoverHint>
+        </div>
+        <Select
+          value={language}
+          onValueChange={(value) => setLanguage(value as Language)}
+          disabled={isLoading || isGeneratingAudio}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a language" />
+          </SelectTrigger>
+          <SelectContent>
+            {languages.map((lang) => (
+              <SelectItem key={lang} value={lang}>
+                {languageDisplayNames[lang] || lang.charAt(0).toUpperCase() + lang.slice(1)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div>
+        <Label htmlFor="text">Exercise Text</Label>
+        <Textarea
+          id="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Enter the text for dictation practice"
+          className={`min-h-32 ${errors.text ? "border-destructive" : ""}`}
+          disabled={isLoading || isGeneratingAudio}
         />
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="language"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Language</FormLabel>
-                <FormControl>
-                  <RadioGroup 
-                    className="flex flex-wrap gap-4" 
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value="english" />
-                      </FormControl>
-                      <FormLabel className="font-normal">English</FormLabel>
-                    </FormItem>
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value="spanish" />
-                      </FormControl>
-                      <FormLabel className="font-normal">Spanish</FormLabel>
-                    </FormItem>
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value="french" />
-                      </FormControl>
-                      <FormLabel className="font-normal">French</FormLabel>
-                    </FormItem>
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value="german" />
-                      </FormControl>
-                      <FormLabel className="font-normal">German</FormLabel>
-                    </FormItem>
-                  </RadioGroup>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+        {errors.text && (
+          <p className="text-xs text-destructive mt-1">{errors.text}</p>
+        )}
+      </div>
+      
+      <div>
+        <Label htmlFor="tags">Tags</Label>
+        <div className="flex gap-2">
+          <Input
+            id="tags"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            placeholder="Add tags (e.g., beginner, grammar)"
+            disabled={isLoading || isGeneratingAudio}
           />
-
-          <FormField
-            control={form.control}
-            name="level"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Language Level</FormLabel>
-                <Select 
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a level" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="A0">A0 - Absolute Beginner</SelectItem>
-                    <SelectItem value="A1">A1 - Beginner</SelectItem>
-                    <SelectItem value="A2">A2 - Elementary</SelectItem>
-                    <SelectItem value="B1">B1 - Intermediate</SelectItem>
-                    <SelectItem value="B2">B2 - Upper Intermediate</SelectItem>
-                    <SelectItem value="C1">C1 - Advanced</SelectItem>
-                    <SelectItem value="C2">C2 - Mastery</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleAddTag}
+            disabled={isLoading || isGeneratingAudio}
+          >
+            Add
+          </Button>
         </div>
         
-        <FormField
-          control={form.control}
-          name="audio_url"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Audio URL (Optional)</FormLabel>
-              <FormControl>
-                <Input placeholder="URL to audio file" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="tags"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tags (Optional, comma-separated)</FormLabel>
-              <FormControl>
-                <Input placeholder="grammar, vocabulary, beginner" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <Button type="submit" className="w-full">
-          {isEditMode ? 'Update Exercise' : 'Create Exercise'}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {tags.map(tag => (
+              <div
+                key={tag}
+                className="bg-muted px-2 py-1 rounded-md text-xs flex items-center gap-1"
+              >
+                <span>{tag}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveTag(tag)}
+                  className="text-muted-foreground hover:text-destructive"
+                  disabled={isLoading || isGeneratingAudio}
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      <div className="flex justify-end">
+        <Button type="submit" disabled={isLoading || isGeneratingAudio}>
+          {(isLoading || isGeneratingAudio) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isGeneratingAudio 
+            ? 'Generating Audio...' 
+            : isLoading 
+              ? 'Creating...' 
+              : 'Create Default Exercise'
+          }
         </Button>
-      </form>
-    </Form>
+      </div>
+    </form>
   );
 };
 

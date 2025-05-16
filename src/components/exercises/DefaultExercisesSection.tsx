@@ -40,10 +40,8 @@ const DefaultExercisesSection: React.FC = () => {
     // Sort by creation date in ascending order (oldest first)
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   
-  // Check which default exercises the user already has by checking default_exercise_id
-  const userDefaultExerciseIds = exercises
-    .filter(ex => ex.default_exercise_id) // Only consider exercises with default_exercise_id
-    .map(ex => ex.default_exercise_id) as string[]; // TypeScript needs explicit assertion
+  // Check which default exercises the user already has
+  const userDefaultExerciseIds = exercises.map(ex => ex.default_exercise_id).filter(Boolean);
   
   // Group exercises by tag
   const exercisesByTag = useMemo(() => {

@@ -1,74 +1,85 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './AuthContext';
 import { Directory } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
-interface DirectoryContextType {
+interface DirectoryContextProps {
   directories: Directory[];
   currentDirectoryId: string | null;
-  setCurrentDirectoryId: React.Dispatch<React.SetStateAction<string | null>>;
-  createDirectory: (name: string, parentId?: string | null) => Promise<Directory>;
+  setCurrentDirectoryId: (id: string | null) => void;
+  addDirectory: (name: string, parentId?: string | null) => Promise<Directory>;
   updateDirectory: (id: string, name: string) => Promise<void>;
   deleteDirectory: (id: string) => Promise<void>;
   loading: boolean;
-  error: Error | null;
-  // Add these missing methods
   getRootDirectories: () => Directory[];
   getChildDirectories: (parentId: string) => Directory[];
   getDirectoryPath: (directoryId: string) => Directory[];
-  addDirectory: (name: string, parentId: string | null) => Promise<Directory>;
 }
 
-const DirectoryContext = createContext<DirectoryContextType | undefined>(undefined);
+const DirectoryContext = createContext<DirectoryContextProps | undefined>(undefined);
+
+export const useDirectoryContext = () => {
+  const context = useContext(DirectoryContext);
+  if (!context) {
+    throw new Error('useDirectoryContext must be used within a DirectoryProvider');
+  }
+  return context;
+};
 
 export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [directories, setDirectories] = useState<Directory[]>([]);
   const [currentDirectoryId, setCurrentDirectoryId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const { user } = useAuth();
 
-  // Convert Date objects to ISO strings for consistency
-  const dateToString = (date: Date | string): string => {
-    if (typeof date === 'string') return date;
-    return date.toISOString();
-  };
-
-  // Load directories when user changes
+  // Load directories from Supabase when user changes
   useEffect(() => {
     const fetchDirectories = async () => {
       if (!user) {
-        setDirectories([]);
+        // If not logged in, use local storage
+        const savedDirectories = localStorage.getItem('directories');
+        if (savedDirectories) {
+          try {
+            setDirectories(JSON.parse(savedDirectories).map((dir: any) => ({
+              ...dir,
+              createdAt: new Date(dir.createdAt)
+            })));
+          } catch (error) {
+            console.error('Error parsing stored directories:', error);
+            setDirectories([]);
+          }
+        } else {
+          setDirectories([]);
+        }
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
+        // Now the directories table exists in Supabase
         const { data, error } = await supabase
           .from('directories')
           .select('*')
           .eq('user_id', user.id)
-          .order('name');
+          .order('created_at', { ascending: true });
 
         if (error) throw error;
 
         if (data) {
-          // Convert any Date objects to strings and ensure userId is present
-          const formattedDirectories = data.map(dir => ({
+          setDirectories(data.map(dir => ({
             id: dir.id,
             name: dir.name,
             parentId: dir.parent_id,
-            userId: dir.user_id,
-            createdAt: dateToString(dir.created_at)
-          }));
-
-          setDirectories(formattedDirectories);
+            createdAt: new Date(dir.created_at)
+          })));
         }
-      } catch (err) {
-        console.error('Error fetching directories:', err);
-        setError(err instanceof Error ? err : new Error('Failed to fetch directories'));
+      } catch (error) {
+        console.error('Error fetching directories:', error);
+        toast.error('Failed to load directories');
+        setDirectories([]);
       } finally {
         setLoading(false);
       }
@@ -77,18 +88,37 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     fetchDirectories();
   }, [user]);
 
-  const createDirectory = async (name: string, parentId: string | null = null): Promise<Directory> => {
-    if (!user) throw new Error('You must be logged in to create directories');
+  // Save directories to local storage for non-authenticated users
+  useEffect(() => {
+    if (!user) {
+      localStorage.setItem('directories', JSON.stringify(directories));
+    }
+  }, [directories, user]);
 
+  const addDirectory = async (name: string, parentId?: string | null): Promise<Directory> => {
     try {
+      if (!user) {
+        // Handle non-authenticated user
+        const newDirectory: Directory = {
+          id: crypto.randomUUID(),
+          name,
+          parentId: parentId || null,
+          createdAt: new Date()
+        };
+        
+        setDirectories(prev => [...prev, newDirectory]);
+        return newDirectory;
+      }
+
+      // Create directory in Supabase
       const { data, error } = await supabase
         .from('directories')
         .insert({
+          user_id: user.id,
           name,
-          parent_id: parentId,
-          user_id: user.id
+          parent_id: parentId
         })
-        .select()
+        .select('*')
         .single();
 
       if (error) throw error;
@@ -97,22 +127,28 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         id: data.id,
         name: data.name,
         parentId: data.parent_id,
-        userId: data.user_id,
-        createdAt: dateToString(data.created_at)
+        createdAt: new Date(data.created_at)
       };
 
       setDirectories(prev => [...prev, newDirectory]);
       return newDirectory;
-    } catch (err) {
-      console.error('Error creating directory:', err);
-      throw err instanceof Error ? err : new Error('Failed to create directory');
+    } catch (error: any) {
+      toast.error('Failed to create directory: ' + error.message);
+      throw error;
     }
   };
 
-  const updateDirectory = async (id: string, name: string): Promise<void> => {
-    if (!user) throw new Error('You must be logged in to update directories');
-
+  const updateDirectory = async (id: string, name: string) => {
     try {
+      if (!user) {
+        // Handle non-authenticated user
+        setDirectories(directories.map(dir => 
+          dir.id === id ? { ...dir, name } : dir
+        ));
+        return;
+      }
+
+      // Update directory in Supabase
       const { error } = await supabase
         .from('directories')
         .update({ name })
@@ -121,19 +157,24 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       if (error) throw error;
 
-      setDirectories(prev =>
-        prev.map(dir => (dir.id === id ? { ...dir, name } : dir))
-      );
-    } catch (err) {
-      console.error('Error updating directory:', err);
-      throw err instanceof Error ? err : new Error('Failed to update directory');
+      setDirectories(directories.map(dir => 
+        dir.id === id ? { ...dir, name } : dir
+      ));
+    } catch (error: any) {
+      toast.error('Failed to update directory: ' + error.message);
+      throw error;
     }
   };
 
-  const deleteDirectory = async (id: string): Promise<void> => {
-    if (!user) throw new Error('You must be logged in to delete directories');
-
+  const deleteDirectory = async (id: string) => {
     try {
+      if (!user) {
+        // Handle non-authenticated user
+        setDirectories(directories.filter(dir => dir.id !== id));
+        return;
+      }
+
+      // Delete directory from Supabase
       const { error } = await supabase
         .from('directories')
         .delete()
@@ -142,39 +183,18 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       if (error) throw error;
 
-      // Remove this directory and any that have it as a parent
-      const removeChildDirectories = (parentId: string): Directory[] => {
-        const remainingDirectories = directories.filter(dir => dir.id !== parentId && dir.parentId !== parentId);
-        
-        // Recursively remove children of children
-        const directChildrenIds = directories
-          .filter(dir => dir.parentId === parentId)
-          .map(dir => dir.id);
-        
-        return directChildrenIds.length
-          ? directChildrenIds.reduce((acc, childId) => removeChildDirectories(childId), remainingDirectories)
-          : remainingDirectories;
-      };
-
-      setDirectories(removeChildDirectories(id));
-      
-      // Reset current directory if we're deleting it
-      if (currentDirectoryId === id) {
-        const parent = directories.find(dir => dir.id === id)?.parentId;
-        setCurrentDirectoryId(parent);
-      }
-    } catch (err) {
-      console.error('Error deleting directory:', err);
-      throw err instanceof Error ? err : new Error('Failed to delete directory');
+      setDirectories(directories.filter(dir => dir.id !== id));
+    } catch (error: any) {
+      toast.error('Failed to delete directory: ' + error.message);
+      throw error;
     }
   };
 
-  // Implement the missing methods
-  const getRootDirectories = (): Directory[] => {
-    return directories.filter(dir => dir.parentId === null);
+  const getRootDirectories = () => {
+    return directories.filter(dir => !dir.parentId);
   };
 
-  const getChildDirectories = (parentId: string): Directory[] => {
+  const getChildDirectories = (parentId: string) => {
     return directories.filter(dir => dir.parentId === parentId);
   };
 
@@ -184,45 +204,29 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     
     while (currentDir) {
       path.unshift(currentDir);
-      currentDir = currentDir.parentId 
-        ? directories.find(dir => dir.id === currentDir?.parentId)
-        : null;
+      if (!currentDir.parentId) break;
+      currentDir = directories.find(dir => dir.id === currentDir!.parentId);
     }
     
     return path;
   };
 
-  const addDirectory = async (name: string, parentId: string | null): Promise<Directory> => {
-    return createDirectory(name, parentId);
+  const value = {
+    directories,
+    currentDirectoryId,
+    setCurrentDirectoryId,
+    addDirectory,
+    updateDirectory,
+    deleteDirectory,
+    loading,
+    getRootDirectories,
+    getChildDirectories,
+    getDirectoryPath
   };
 
   return (
-    <DirectoryContext.Provider
-      value={{
-        directories,
-        currentDirectoryId,
-        setCurrentDirectoryId,
-        createDirectory,
-        updateDirectory,
-        deleteDirectory,
-        loading,
-        error,
-        // Add the new methods to the context value
-        getRootDirectories,
-        getChildDirectories,
-        getDirectoryPath,
-        addDirectory
-      }}
-    >
+    <DirectoryContext.Provider value={value}>
       {children}
     </DirectoryContext.Provider>
   );
-};
-
-export const useDirectoryContext = () => {
-  const context = useContext(DirectoryContext);
-  if (!context) {
-    throw new Error('useDirectoryContext must be used within a DirectoryProvider');
-  }
-  return context;
 };

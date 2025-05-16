@@ -1,9 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
-import { useAuth } from '@/contexts/AuthContext'; // Add this import
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -33,7 +31,6 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   const { settings } = useUserSettingsContext();
   const { addExercise, updateExercise } = useExerciseContext();
   const { directories, currentDirectoryId } = useDirectoryContext();
-  const { user } = useAuth(); // Get the authenticated user
   
   const [title, setTitle] = useState(initialValues?.title || '');
   const [text, setText] = useState(initialValues?.text || '');
@@ -66,10 +63,6 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       newErrors.text = 'Text is required';
     } else if (text.trim().length < 10) {
       newErrors.text = 'Text must be at least 10 characters';
-    }
-
-    if (!user) {
-      newErrors.user = 'You must be logged in to create exercises';
     }
     
     setErrors(newErrors);
@@ -139,10 +132,6 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     e.preventDefault();
     
     if (!validateForm()) return;
-    if (!user) {
-      toast.error('You must be logged in to create an exercise');
-      return;
-    }
 
     try {
       setIsSaving(true);
@@ -159,7 +148,6 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           language, // Keep using the language from settings for database association
           tags,
           directoryId,
-          userId: user.id, // Add the user ID
           ...(audioUrl && { audioUrl })
         });
         toast.success('Exercise updated successfully');
@@ -171,7 +159,6 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           language, // Keep using the language from settings for database association
           tags,
           directoryId,
-          userId: user.id, // Add the user ID
           ...(audioUrl && { audioUrl })
         });
         toast.success('Exercise created successfully');
@@ -206,17 +193,24 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     return path.join(" / ") || "Root";
   };
 
-  // Language display names mapping
+  // Language display names - keeping this for reference even though we don't show the dropdown anymore
   const languageDisplayNames: Record<Language, string> = {
-    'en': 'English',
-    'es': 'Spanish (Español)',
-    'fr': 'French (Français)',
-    'de': 'German (Deutsch)',
-    'it': 'Italian (Italiano)',
-    'pt': 'Portuguese (Português)',
-    'ja': 'Japanese (日本語)',
-    'ko': 'Korean (한국어)',
-    'zh': 'Chinese (中文)'
+    'english': 'English',
+    'german': 'German (Deutsch)',
+    'french': 'French (Français)',
+    'spanish': 'Spanish (Español)',
+    'portuguese': 'Portuguese (Português)',
+    'italian': 'Italian (Italiano)',
+    'dutch': 'Dutch (Nederlands)',
+    'turkish': 'Turkish (Türkçe)',
+    'swedish': 'Swedish (Svenska)',
+    'norwegian': 'Norwegian (Norsk)',
+    'russian': 'Russian (Русский)',
+    'polish': 'Polish (Polski)',
+    'chinese': 'Chinese (中文)',
+    'japanese': 'Japanese (日本語)',
+    'korean': 'Korean (한국어)',
+    'arabic': 'Arabic (العربية)'
   };
 
   return (

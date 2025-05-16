@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import SampleDictationModal from './SampleDictationModal';
+import { SampleDictationModal } from './SampleDictationModal';
 import { Check } from 'lucide-react';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 

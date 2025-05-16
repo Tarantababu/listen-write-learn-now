@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
-import SampleDictationModal from './SampleDictationModal';
-
+import { SampleDictationModal } from './SampleDictationModal';
 const transitionVariants = {
   item: {
     hidden: {
@@ -24,14 +23,11 @@ const transitionVariants = {
     }
   }
 };
-
 export function Hero() {
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
-  
   const handleOpenSample = () => {
     setSampleModalOpen(true);
   };
-  
   return <section className="relative pt-24 md:pt-36">
       <div aria-hidden className="z-[2] absolute inset-0 pointer-events-none isolate opacity-50 contain-strict hidden lg:block">
         <div className="w-[35rem] h-[80rem] -translate-y-[350px] absolute left-0 top-0 -rotate-45 rounded-full bg-[radial-gradient(68.54%_68.72%_at_55.02%_31.46%,hsla(0,0%,85%,.08)_0,hsla(0,0%,55%,.02)_50%,hsla(0,0%,45%,0)_80%)]" />
