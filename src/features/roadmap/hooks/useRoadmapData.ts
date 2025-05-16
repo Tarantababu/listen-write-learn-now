@@ -23,7 +23,7 @@ export function useRoadmapData() {
     const cacheKey = `roadmaps_${normalizedLanguage}`;
     if (loadingRef.current[cacheKey]) {
       console.log(`Already loading roadmaps for ${normalizedLanguage}, skipping duplicate request`);
-      return;
+      return [];
     }
     
     loadingRef.current[cacheKey] = true;

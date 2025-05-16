@@ -1,6 +1,6 @@
 
 import { useContext } from 'react';
-import { RoadmapContext } from '@/features/roadmap/context/RoadmapContext';
+import { RoadmapContext, useRoadmap as useRoadmapFromContext } from '@/features/roadmap/context/RoadmapContext';
 
 /**
  * Custom hook to access the curriculum context

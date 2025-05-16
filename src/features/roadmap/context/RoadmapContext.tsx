@@ -6,7 +6,7 @@ import { RoadmapItem, RoadmapNode } from '../types';
 import { Language, LanguageLevel } from '@/types';
 import { NodeProgressDetails } from '../types/service-types';
 import { roadmapService } from '../api/roadmapService';
-import { roadmapProgressService } from '../services';
+import { ProgressService } from '../services';
 
 interface RoadmapContextType {
   roadmaps: RoadmapItem[];
@@ -24,6 +24,8 @@ interface RoadmapContextType {
   loadRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
   selectRoadmap: (roadmapId: string) => Promise<RoadmapNode[]>;
   resetProgress: (roadmapId: string) => Promise<void>;
+  getNodeExercise: (nodeId: string) => Promise<any>;
+  markNodeAsCompleted: (nodeId: string) => Promise<void>;
 }
 
 export const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
@@ -44,6 +46,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     loadUserRoadmaps,
     initializeRoadmap,
     selectRoadmap,
+    getNodeExercise,
+    markNodeAsCompleted,
   } = useRoadmapData();
   
   const [nodeProgress, setNodeProgress] = useState<NodeProgressDetails[]>([]);
@@ -81,7 +85,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (selectedRoadmap) {
         try {
           console.log(`Loading node progress for roadmap: ${selectedRoadmap.id}`);
-          const { data } = await roadmapProgressService.getRoadmapProgress(selectedRoadmap.id);
+          const progressService = new ProgressService();
+          const { data } = await progressService.getRoadmapProgress(selectedRoadmap.id);
           if (data && data.nodeProgress) {
             // Convert from record to array
             const progressArray: NodeProgressDetails[] = Object.values(data.nodeProgress);
@@ -99,7 +104,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   
   const resetProgress = useCallback(async (roadmapId: string) => {
     try {
-      await roadmapProgressService.resetProgress(roadmapId);
+      const progressService = new ProgressService();
+      await progressService.resetProgress(roadmapId);
       
       // Reload the roadmap to reflect the reset
       if (selectedRoadmap && selectedRoadmap.id === roadmapId) {
@@ -112,7 +118,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [selectRoadmap, selectedRoadmap]);
 
   // Context value
-  const contextValue = {
+  const contextValue: RoadmapContextType = {
     roadmaps,
     userRoadmaps,
     currentRoadmap: selectedRoadmap,
@@ -128,6 +134,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     loadRoadmaps,
     selectRoadmap,
     resetProgress,
+    getNodeExercise,
+    markNodeAsCompleted,
   };
 
   return (
@@ -135,4 +143,13 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       {children}
     </RoadmapContext.Provider>
   );
+};
+
+// Create a hook to use the roadmap context
+export const useRoadmap = () => {
+  const context = React.useContext(RoadmapContext);
+  if (context === undefined) {
+    throw new Error('useRoadmap must be used within a RoadmapProvider');
+  }
+  return context;
 };
