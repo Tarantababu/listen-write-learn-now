@@ -33,6 +33,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   const { settings } = useUserSettingsContext();
   const { addExercise, updateExercise } = useExerciseContext();
   const { directories, currentDirectoryId } = useDirectoryContext();
+  const { user } = useAuth(); // Get the authenticated user
   
   const [title, setTitle] = useState(initialValues?.title || '');
   const [text, setText] = useState(initialValues?.text || '');
@@ -65,6 +66,10 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       newErrors.text = 'Text is required';
     } else if (text.trim().length < 10) {
       newErrors.text = 'Text must be at least 10 characters';
+    }
+
+    if (!user) {
+      newErrors.user = 'You must be logged in to create exercises';
     }
     
     setErrors(newErrors);
@@ -134,6 +139,10 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     e.preventDefault();
     
     if (!validateForm()) return;
+    if (!user) {
+      toast.error('You must be logged in to create an exercise');
+      return;
+    }
 
     try {
       setIsSaving(true);
@@ -150,6 +159,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           language, // Keep using the language from settings for database association
           tags,
           directoryId,
+          userId: user.id, // Add the user ID
           ...(audioUrl && { audioUrl })
         });
         toast.success('Exercise updated successfully');
@@ -161,6 +171,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           language, // Keep using the language from settings for database association
           tags,
           directoryId,
+          userId: user.id, // Add the user ID
           ...(audioUrl && { audioUrl })
         });
         toast.success('Exercise created successfully');

@@ -1,9 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { Exercise, VocabularyItem, Json } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface VocabularyHighlighterProps {
@@ -11,7 +14,7 @@ interface VocabularyHighlighterProps {
 }
 
 const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise }) => {
-  const { addVocabularyItem, vocabularyItems } = useVocabularyContext();
+  const { addVocabularyItem, vocabulary } = useVocabularyContext();
   const [selectedText, setSelectedText] = useState<string>('');
   const [definition, setDefinition] = useState<string>('');
   const [exampleSentence, setExampleSentence] = useState<string>('');
@@ -97,14 +100,15 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
     }
 
     try {
-      // Make sure we're using the correct property name (userId) that matches VocabularyItem type
+      // Make sure we're using the correct property names
       await addVocabularyItem({
         word: selectedText,
         definition,
         exampleSentence,
         language: exercise.language,
         userId: exercise.userId,
-        exercise_id: exercise.id, // Use exercise_id instead of exerciseId
+        exercise_id: exercise.id,
+        createdAt: new Date().toISOString() // Add the required createdAt field
       });
       
       toast.success('Vocabulary item saved');
@@ -122,7 +126,7 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
 
   // Check if word is already in vocabulary
   const isWordInVocabulary = (word: string): boolean => {
-    return vocabularyItems.some(item => 
+    return vocabulary.some(item => 
       item.word.toLowerCase() === word.toLowerCase() && 
       item.language === exercise.language
     );

@@ -1,239 +1,210 @@
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useRoadmap } from '@/hooks/use-roadmap';
-import { RoadmapNode } from '@/types';
+import { ExerciseContent, RoadmapNode } from '@/features/roadmap/types';
+import { useToast } from '@/hooks/use-toast';
+import { useSpeechToText } from '@/hooks/use-speech-to-text';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { toast } from '@/components/ui/use-toast';
-import DictationPractice from '@/components/DictationPractice';
-import { Search, Headphones } from 'lucide-react';
+import { convertToLanguageCode } from '@/utils/languageConverter';
 
 interface RoadmapExerciseModalProps {
-  node: RoadmapNode | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  node: RoadmapNode;
+  exerciseContent: ExerciseContent | null;
+  onComplete: (transcript: string) => Promise<void>;
+  isLoading: boolean;
 }
 
-// Practice stage enum
-enum PracticeStage {
-  PROMPT,    // Ask user if they want Reading Analysis
-  READING,   // Reading Analysis mode
-  DICTATION, // Dictation Practice mode
-}
+const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({
+  isOpen,
+  onOpenChange,
+  node,
+  exerciseContent,
+  onComplete,
+  isLoading
+}) => {
+  const { toast } = useToast();
+  const { settings } = useUserSettingsContext();
+  const { user } = useAuth();
+  const [exerciseText, setExerciseText] = useState('');
+  const [isTextVisible, setIsTextVisible] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpen, onOpenChange }) => {
-  const { 
-    markNodeAsCompleted, 
-    getNodeExercise, 
-    nodeLoading, // Now properly defined in the context
-    completedNodes, 
-    incrementNodeCompletion, // Now properly defined in the context
-    nodeProgress 
-  } = useRoadmap();
-  
-  const [exercise, setExercise] = useState<any>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [practiceStage, setPracticeStage] = useState<PracticeStage>(PracticeStage.PROMPT);
-  
-  // Load exercise when modal is opened with a node
+  const {
+    isListening,
+    startListening,
+    stopListening,
+    resetTranscript,
+    browserSupportsSpeechRecognition
+  } = useSpeechToText();
+
   useEffect(() => {
-    if (node && isOpen) {
-      loadExercise(node.id);
-      // Always start at prompt stage when modal opens
-      setPracticeStage(PracticeStage.PROMPT);
-    } else if (!isOpen) {
-      // Reset states when modal is completely closed
-      setExercise(null);
+    if (exerciseContent) {
+      setExerciseText(exerciseContent.text);
     }
-  }, [node, isOpen]);
+  }, [exerciseContent]);
 
-  const loadExercise = async (nodeId: string) => {
-    try {
-      setLoading(true);
-      const exerciseData = await getNodeExercise(nodeId);
-      setExercise(exerciseData);
-    } catch (error) {
-      console.error("Error loading exercise:", error);
+  useEffect(() => {
+    if (transcript && exerciseText) {
+      const correct = transcript.trim() === exerciseText.trim();
+      setIsCorrect(correct);
+      setShowFeedback(true);
+      setFeedback(correct ? 'Great job!' : 'Not quite, try again.');
+    }
+  }, [transcript, exerciseText]);
+
+  const handleSubmit = async (transcript: string) => {
+    if (!user) {
       toast({
-        title: "Failed to load exercise",
-        description: "Please try again later",
-        variant: "destructive",
+        title: 'You must be logged in to complete this exercise.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Fix the language conversion
+      const currentLanguage = node.language || 'en';
+
+      // Fix the date conversion
+      const nodeUpdatedAt = node.updatedAt 
+        ? new Date(node.updatedAt).toISOString() 
+        : new Date().toISOString();
+
+      await onComplete(transcript);
+      toast({
+        title: 'Exercise completed!',
+        description: 'Great job, keep going!',
+      });
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error completing exercise:', error);
+      toast({
+        title: 'Something went wrong.',
+        description: 'Please try again.',
+        variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleStartReadingAnalysis = () => {
-    setPracticeStage(PracticeStage.READING);
+  const handleStartListening = () => {
+    resetTranscript();
+    startListening();
+    setIsCorrect(false);
+    setShowFeedback(false);
+    setFeedback('');
   };
 
-  const handleStartDictation = () => {
-    setPracticeStage(PracticeStage.DICTATION);
+  const handleStopListening = () => {
+    stopListening();
+    setTranscript(textareaRef.current?.value || '');
   };
-
-  const handlePracticeComplete = (accuracy: number) => {
-    if (!node) return;
-
-    // Save the practice result and increment completion count if accuracy is high enough
-    incrementNodeCompletion(node.id, accuracy);
-    
-    // Show feedback based on accuracy
-    if (accuracy >= 95) {
-      toast({
-        title: "Great job!",
-        description: `You scored ${Math.round(accuracy)}%. Your progress has been saved.`,
-      });
-    } else {
-      toast({
-        title: "Keep practicing!",
-        description: `You scored ${Math.round(accuracy)}%. Try to get above 95% for it to count toward completion.`,
-      });
-    }
-  };
-
-  const handleTryAgain = () => {
-    setPracticeStage(PracticeStage.PROMPT);
-  };
-
-  const handleMarkCompleted = async () => {
-    if (!node) return;
-    
-    try {
-      await markNodeAsCompleted(node.id);
-      toast({
-        title: "Progress saved!",
-        description: "You've completed this exercise",
-      });
-      onOpenChange(false); // Close the modal after marking as completed
-    } catch (error) {
-      console.error("Error marking node as completed:", error);
-      toast({
-        title: "Failed to save progress",
-        description: "Please try again later",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Get the completion count for this node (if it exists)
-  const nodeCompletionInfo = node ? 
-    nodeProgress.find(np => np.nodeId === node.id) : 
-    null;
-  
-  const completionCount = nodeCompletionInfo?.completionCount || 0;
-  const isNodeCompleted = node ? completedNodes.includes(node.id) || nodeCompletionInfo?.isCompleted : false;
-
-  if (!node) {
-    return null;
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-w-[95vw] p-0 overflow-hidden">
-        <DialogHeader className="p-6">
-          <DialogTitle className="text-xl">{node.title}</DialogTitle>
-          <DialogDescription className="text-base mt-2">
-            {node.description}
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{node.title}</DialogTitle>
+          <DialogDescription>
+            Practice dictation to improve your listening skills.
           </DialogDescription>
         </DialogHeader>
         
-        {practiceStage === PracticeStage.PROMPT && (
-          <div className="px-6 pt-0 pb-6 space-y-6">
-            <div className="mb-6">
-              <p className="text-lg font-medium mb-2">Boost Your Understanding Before You Start</p>
-              <p className="text-muted-foreground">Dive into a Reading Analysis to see how words and grammar work — or skip straight to dictation.</p>
+        {exerciseContent ? (
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="exercise-text">Exercise Text</Label>
+              <Textarea
+                id="exercise-text"
+                value={exerciseText}
+                disabled
+                className="min-h-[100px]"
+              />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              <Card className="border-muted overflow-hidden hover:bg-muted/5 transition-colors dark:hover:bg-muted/10">
-                <CardContent className="p-0">
-                  <Button onClick={handleStartReadingAnalysis} variant="ghost" className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent">
-                    <div className="flex flex-col items-center text-center space-y-3">
-                      <div className="flex items-center justify-center bg-primary/10 w-12 h-12 rounded-full">
-                        <Search className="h-6 w-6 text-primary" />
-                      </div>
-                      <div className="font-semibold text-lg">
-                        🔍 Start with Reading Analysis
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Explore vocabulary and grammar with AI explanations
-                      </p>
-                    </div>
-                  </Button>
-                </CardContent>
-              </Card>
-              
-              <Card className="overflow-hidden border border-muted hover:bg-muted/5 transition-all dark:hover:bg-muted/10">
-                <CardContent className="p-0">
-                  <Button onClick={handleStartDictation} variant="ghost" className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent">
-                    <div className="flex flex-col items-center text-center space-y-3">
-                      <div className="flex items-center justify-center bg-muted/40 w-12 h-12 rounded-full">
-                        <Headphones className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                      <div className="font-semibold text-lg">🎧 Start Dictation Now</div>
-                      <p className="text-sm text-muted-foreground">
-                        Practice listening and transcription skills with audio
-                      </p>
-                    </div>
-                  </Button>
-                </CardContent>
-              </Card>
+            <div className="space-y-2">
+              <Label htmlFor="transcript">Your Transcript</Label>
+              <Textarea
+                id="transcript"
+                placeholder="Start listening and your transcript will appear here."
+                className="min-h-[100px]"
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                ref={textareaRef}
+              />
             </div>
-            
-            {!exercise && !loading && (
-              <div className="mt-6 flex justify-center">
-                <Button onClick={handleMarkCompleted} variant="outline">
-                  Mark as Completed
-                </Button>
+
+            {showFeedback && (
+              <div className="space-y-2">
+                <Label htmlFor="feedback">Feedback</Label>
+                <Badge variant={isCorrect ? 'success' : 'destructive'}>
+                  {feedback}
+                </Badge>
               </div>
             )}
           </div>
-        )}
-        
-        {practiceStage === PracticeStage.READING && (
-          <div className="text-center py-6">
-            <p>Reading Analysis functionality is not implemented yet.</p>
-            <Button onClick={handleStartDictation} className="mt-4">
-              Proceed to Dictation
-            </Button>
-          </div>
-        )}
-        
-        {practiceStage === PracticeStage.DICTATION && exercise && (
-          <DictationPractice
-            exercise={{
-              id: `roadmap-${node.id}`,
-              title: exercise.title || node.title,
-              text: exercise.text || "",
-              language: node.language || 'english',
-              audioUrl: exercise.audio_url,
-              tags: [],
-              directoryId: null,
-              createdAt: new Date(),
-              completionCount: 0,
-              isCompleted: false
-            }}
-            onTryAgain={handleTryAgain}
-            onComplete={handlePracticeComplete}
-          />
-        )}
-        
-        {practiceStage === PracticeStage.DICTATION && !exercise && (
-          <div className="text-center py-6">
-            {loading ? (
-              <p>Loading exercise...</p>
+        ) : (
+          <div className="flex items-center justify-center h-32">
+            {isLoading ? (
+              <p>Loading exercise content...</p>
             ) : (
-              <>
-                <p>No exercise content available.</p>
-                <Button onClick={handleTryAgain} className="mt-4">
-                  Go Back
-                </Button>
-              </>
+              <p>No exercise content available.</p>
             )}
           </div>
         )}
+
+        <DialogFooter>
+          <Button 
+            type="button"
+            variant="secondary"
+            onClick={() => setIsTextVisible(!isTextVisible)}
+          >
+            {isTextVisible ? 'Hide Text' : 'Show Text'}
+          </Button>
+          
+          {browserSupportsSpeechRecognition ? (
+            <>
+              <Button
+                type="button"
+                variant={isListening ? 'destructive' : 'outline'}
+                onClick={isListening ? handleStopListening : handleStartListening}
+                disabled={isLoading}
+              >
+                {isListening ? 'Stop Listening' : 'Start Listening'}
+              </Button>
+              <Button 
+                type="button" 
+                onClick={() => handleSubmit(transcript)} 
+                disabled={!transcript || isLoading || isSubmitting}
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit'}
+              </Button>
+            </>
+          ) : (
+            <p>Speech recognition not supported in this browser.</p>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -47,7 +47,20 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const savedVocabulary = localStorage.getItem('vocabulary');
         if (savedVocabulary) {
           try {
-            setVocabulary(JSON.parse(savedVocabulary));
+            const parsedVocabulary = JSON.parse(savedVocabulary);
+            // Ensure all required fields exist
+            const validatedVocabulary = parsedVocabulary.map((item: any) => ({
+              id: item.id || crypto.randomUUID(),
+              word: item.word || '',
+              definition: item.definition || '',
+              exampleSentence: item.exampleSentence || '',
+              language: item.language || 'en',
+              userId: item.userId || 'anonymous',
+              createdAt: item.createdAt || new Date().toISOString(),
+              audioUrl: item.audioUrl,
+              exercise_id: item.exercise_id
+            }));
+            setVocabulary(validatedVocabulary);
           } catch (error) {
             console.error('Error parsing stored vocabulary:', error);
             setVocabulary([]);
@@ -75,9 +88,11 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             word: item.word,
             definition: item.definition,
             exampleSentence: item.example_sentence,
-            audioUrl: item.audio_url,
-            exerciseId: item.exercise_id || '',
-            language: item.language as Language
+            audioUrl: item.audio_url || undefined,
+            exercise_id: item.exercise_id || undefined,
+            language: item.language as Language,
+            userId: item.user_id,
+            createdAt: item.created_at
           })));
         }
       } catch (error) {
@@ -127,7 +142,7 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           definition: item.definition,
           example_sentence: item.exampleSentence,
           audio_url: item.audioUrl,
-          exercise_id: item.exerciseId,
+          exercise_id: item.exercise_id,
           language: item.language
         })
         .select('*')
@@ -140,9 +155,11 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         word: data.word,
         definition: data.definition,
         exampleSentence: data.example_sentence,
-        audioUrl: data.audio_url,
-        exerciseId: data.exercise_id || '',
-        language: data.language as Language
+        audioUrl: data.audio_url || undefined,
+        exercise_id: data.exercise_id || undefined,
+        language: data.language as Language,
+        userId: data.user_id,
+        createdAt: data.created_at
       };
 
       setVocabulary(prev => [newItem, ...prev]);
@@ -178,7 +195,7 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const getVocabularyByExercise = (exerciseId: string) => {
-    return vocabulary.filter(item => item.exerciseId === exerciseId);
+    return vocabulary.filter(item => item.exercise_id === exerciseId);
   };
 
   const getVocabularyByLanguage = (language: Language) => {

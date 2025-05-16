@@ -45,8 +45,8 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
           if (data) {
             setSettings({
-              selectedLanguage: data.selected_language || 'en',
-              learningLanguages: data.learning_languages || ['en'],
+              selectedLanguage: convertToLanguageType(data.selected_language || 'en'),
+              learningLanguages: convertToLanguageArray(data.learning_languages || ['en']),
               avatarUrl: data.avatar_url || '',
             });
           }
@@ -58,6 +58,20 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     fetchUserSettings();
   }, [user]);
+
+  // Helper function to ensure string is a valid Language type
+  const convertToLanguageType = (lang: string): Language => {
+    const validLanguages: Language[] = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko', 'zh'];
+    return validLanguages.includes(lang as Language) ? lang as Language : 'en';
+  };
+
+  // Helper function to ensure string array contains only valid Language types
+  const convertToLanguageArray = (langs: string[]): Language[] => {
+    const validLanguages: Language[] = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'ko', 'zh'];
+    return langs.map(lang => 
+      validLanguages.includes(lang as Language) ? lang as Language : 'en'
+    );
+  };
 
   const updateSettings = async (newSettings: Partial<UserSettings>) => {
     if (user) {

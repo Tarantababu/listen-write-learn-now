@@ -18,7 +18,7 @@ export interface Exercise {
   isCompleted?: boolean;
   completionCount: number;
   audioUrl?: string;
-  default_exercise_id?: string; // Add this field to match references in code
+  default_exercise_id?: string;
 }
 
 // Add Directory type definition
@@ -40,13 +40,13 @@ export interface VocabularyItem {
   userId: string;
   createdAt: string;
   audioUrl?: string;
-  exercise_id?: string; // Add this to match references in VocabularyHighlighter
+  exercise_id?: string;
 }
 
 // Add Json type definition
 export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 
-// Add Roadmap and related types (needed for compatibility with existing code)
+// Add Roadmap and related types
 export interface Roadmap {
   id: string;
   name: string;
@@ -65,10 +65,11 @@ export interface RoadmapNode {
   position: number;
   exerciseCount: number;
   isCompleted?: boolean;
-  title?: string; // Add this to fix references
-  isBonus?: boolean; // Add this to fix references
-  language?: Language; // Add this to fix references
-  updatedAt?: string; // Add this to fix references
+  title?: string;
+  isBonus?: boolean;
+  language?: Language;
+  updatedAt?: string;
+  createdAt: string; // Added to match the feature/roadmap/types definition
 }
 
 export interface RoadmapLanguage {
