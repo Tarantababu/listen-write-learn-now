@@ -121,23 +121,27 @@ const RoadmapPage: React.FC = () => {
       }
       
       // Reload roadmaps first
-      await loadUserRoadmaps(settings.selectedLanguage);
+      const loadedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
       console.log("Reloaded roadmaps:", { userRoadmaps });
       
       // If we have a current roadmap, try to reload it
       if (currentRoadmap) {
-        await selectRoadmap(currentRoadmap.id);
-        toast({
-          title: "Roadmap loaded",
-          description: "Successfully reloaded your roadmap."
-        });
+        if (selectRoadmap) {
+          await selectRoadmap(currentRoadmap.id);
+          toast({
+            title: "Roadmap loaded",
+            description: "Successfully reloaded your roadmap."
+          });
+        }
       } else if (userRoadmaps.length > 0) {
         // Otherwise, select the first available roadmap
-        await selectRoadmap(userRoadmaps[0].id);
-        toast({
-          title: "Roadmap loaded",
-          description: "Successfully loaded a roadmap."
-        });
+        if (selectRoadmap) {
+          await selectRoadmap(userRoadmaps[0].id);
+          toast({
+            title: "Roadmap loaded",
+            description: "Successfully loaded a roadmap."
+          });
+        }
       }
     } catch (error) {
       console.error('Error retrying roadmap load:', error);
@@ -154,15 +158,17 @@ const RoadmapPage: React.FC = () => {
       setSelectionError(null);
       
       // First select the roadmap
-      await selectRoadmap(roadmapId);
+      if (selectRoadmap) {
+        await selectRoadmap(roadmapId);
       
-      // Find the current node in this roadmap
-      const selectedRoadmap = userRoadmaps.find(r => r.id === roadmapId);
-      if (selectedRoadmap && selectedRoadmap.currentNodeId) {
-        const currentNode = nodes.find(node => node.id === selectedRoadmap.currentNodeId);
-        if (currentNode) {
-          setSelectedNode(currentNode);
-          setExerciseModalOpen(true);
+        // Find the current node in this roadmap
+        const selectedRoadmap = userRoadmaps.find(r => r.id === roadmapId);
+        if (selectedRoadmap && selectedRoadmap.currentNodeId) {
+          const currentNode = nodes.find(node => node.id === selectedRoadmap.currentNodeId);
+          if (currentNode) {
+            setSelectedNode(currentNode);
+            setExerciseModalOpen(true);
+          }
         }
       }
     } catch (error) {
