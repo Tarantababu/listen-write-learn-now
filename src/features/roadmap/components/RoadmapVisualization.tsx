@@ -1,267 +1,188 @@
-import React, { useEffect, useState } from 'react';
+
+import React, { useMemo } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
-import { RoadmapNode } from '../types';
-import { Loader2, CheckCircle2, Circle, CircleDashed } from 'lucide-react';
-import RoadmapPath from './RoadmapPath';
-import LevelBadge from '@/components/LevelBadge';
-import { Button } from '@/components/ui/button';
-import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
-import { nodeAccessService } from '../services/NodeAccessService';
-import { Progress } from '@/components/ui/progress';
-import { NodeProgressDetails } from '../types/service-types';
+import { RoadmapNode } from '@/types';
+import { Card } from '@/components/ui/card';
+import { Check, Lock, Play, ChevronRight } from 'lucide-react';
 
 interface RoadmapVisualizationProps {
   onNodeSelect: (node: RoadmapNode) => void;
-  className?: string;
 }
 
-const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ 
-  onNodeSelect,
-  className
-}) => {
+const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelect }) => {
   const { 
-    currentRoadmap, 
     nodes, 
     completedNodes,
-    isLoading,
-    roadmaps,
-    currentNodeId,
-    selectRoadmap,
-    nodeProgress
+    nodeProgress,
+    currentRoadmap,
+    currentNodeId
   } = useRoadmap();
-  
-  const [accessibleNodeIds, setAccessibleNodeIds] = useState<string[]>([]);
-  const [isAccessLoading, setIsAccessLoading] = useState(false);
-  
-  // Load accessible nodes
-  useEffect(() => {
-    const loadAccessibleNodes = async () => {
-      if (!currentRoadmap) return;
-      
-      setIsAccessLoading(true);
-      try {
-        // Call the service method directly
-        const accessibleNodes = await nodeAccessService.getAccessibleNodes(
-          nodes,
-          completedNodes
-        );
-        
-        setAccessibleNodeIds(accessibleNodes.map(node => node.id));
-      } catch (err) {
-        console.error("Failed to load accessible nodes:", err);
-      } finally {
-        setIsAccessLoading(false);
-      }
-    };
+
+  // Calculate which nodes are available based on position and completion status
+  const nodesWithStatus = useMemo(() => {
+    // Sort nodes by position to ensure correct order
+    const sortedNodes = [...nodes].sort((a, b) => a.position - b.position);
     
-    loadAccessibleNodes();
-  }, [currentRoadmap, completedNodes, nodes]);
-  
-  // Handle node click - check access before selection
-  const handleNodeClick = async (node: RoadmapNode) => {
-    // If node is marked as completed or is the current node, allow access
-    if (completedNodes.includes(node.id) || node.id === currentNodeId) {
-      onNodeSelect(node);
-      return;
-    }
+    // Track completed node positions
+    const completedPositions = new Set(
+      sortedNodes
+        .filter(node => completedNodes.includes(node.id))
+        .map(node => node.position)
+    );
     
-    // For other nodes, check access using the service
-    try {
-      const hasAccess = nodeAccessService.canAccessNode(node, completedNodes, nodes);
-      
-      if (hasAccess) {
-        onNodeSelect(node);
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Lesson locked",
-          description: "You need to complete previous lessons first"
-        });
+    // Add nodes with completion status from nodeProgress
+    for (const progress of nodeProgress) {
+      const node = sortedNodes.find(n => n.id === progress.nodeId);
+      if (node && progress.isCompleted) {
+        completedPositions.add(node.position);
       }
-    } catch (err) {
-      console.error("Error checking node access:", err);
-      toast({
-        variant: "destructive",
-        title: "Access error",
-        description: "An error occurred while checking lesson access"
-      });
     }
-  };
-  
-  useEffect(() => {
-    console.log("RoadmapVisualization rendered with:", { 
-      currentRoadmap,
-      nodes: nodes?.length || 0,
-      currentNodeId,
-      accessibleNodeIds,
-      nodeProgress
+
+    // Build the nodes with status
+    return sortedNodes.map((node, index) => {
+      // A node is completed if it's in completedNodes or marked as completed in nodeProgress
+      const isCompleted = completedNodes.includes(node.id) || 
+                         nodeProgress.some(np => np.nodeId === node.id && np.isCompleted);
+      
+      // A node is current if it matches the currentNodeId
+      const isCurrent = node.id === currentNodeId;
+      
+      // A node is available if:
+      // 1. It's the first node (position 0 or 1), OR
+      // 2. The previous node is completed, OR
+      // 3. It's already completed (you can review it)
+      const previousPosition = node.position - 1;
+      const isFirstNode = node.position === 0 || node.position === 1;
+      const isPreviousNodeCompleted = completedPositions.has(previousPosition);
+      
+      const isAvailable = isFirstNode || isPreviousNodeCompleted || isCompleted;
+      
+      // Determine the status for styling and accessibility
+      let status: 'locked' | 'available' | 'completed' | 'current' = 'locked';
+      
+      if (isCompleted) status = 'completed';
+      else if (isCurrent) status = 'current';
+      else if (isAvailable) status = 'available';
+      
+      // Get completion count if available
+      const progressInfo = nodeProgress.find(np => np.nodeId === node.id);
+      const completionCount = progressInfo?.completionCount || 0;
+      
+      return {
+        ...node,
+        status,
+        progressCount: completionCount,
+        isCompleted
+      };
     });
-    
-    if (currentRoadmap && (!nodes || nodes.length === 0)) {
-      console.log("No nodes found for current roadmap, attempting to reload");
-      // Attempt to reload the current roadmap if no nodes are found
-      selectRoadmap?.(currentRoadmap.id).catch(err => {
-        console.error("Failed to reload roadmap:", err);
-        toast({
-          variant: "destructive",
-          title: "Failed to load curriculum content",
-          description: "Please try refreshing the page"
-        });
-      });
-    }
-  }, [currentRoadmap, nodes, currentNodeId, selectRoadmap, accessibleNodeIds, nodeProgress]);
+  }, [nodes, completedNodes, currentNodeId, nodeProgress]);
 
-  // Loading state
-  if (isLoading || isAccessLoading) {
+  const handleNodeClick = (node: RoadmapNode) => {
+    // Only allow clicking on available nodes
+    if (node.status === 'locked') return;
+    onNodeSelect(node);
+  };
+
+  // If there are no nodes yet, show a placeholder
+  if (nodesWithStatus.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-        <p>Loading your curriculum...</p>
+      <div className="flex justify-center items-center h-40">
+        <p className="text-muted-foreground">No lessons available yet</p>
       </div>
     );
   }
-
-  // No roadmap selected
-  if (!currentRoadmap) {
-    return (
-      <div className="text-center p-8">
-        <p className="text-muted-foreground">No curriculum selected</p>
-      </div>
-    );
-  }
-
-  // Find the roadmap details using the roadmapId from currentRoadmap
-  const roadmapDetails = roadmaps?.find(r => r.id === currentRoadmap.roadmapId);
-  const roadmapName = roadmapDetails?.name || "Curriculum";
-  const roadmapLevel = roadmapDetails?.level;
-  
-  // Find current node
-  const currentNode = nodes?.find(n => n.id === currentNodeId);
-  
-  // Enrich nodes with accessibility information
-  const enrichedNodes = nodes?.map(node => {
-    // Determine node status
-    let status: 'locked' | 'available' | 'completed' | 'current' = 'locked';
-    
-    if (completedNodes.includes(node.id)) {
-      status = 'completed';
-    } else if (node.id === currentNodeId) {
-      status = 'current';
-    } else if (accessibleNodeIds.includes(node.id)) {
-      status = 'available';
-    }
-    
-    // Get the node progress information
-    const nodeProgressInfo: Partial<NodeProgressDetails> | undefined = nodeProgress?.find(np => np.nodeId === node.id);
-    const completionCount = nodeProgressInfo?.completionCount || 0;
-    const isCompleted = nodeProgressInfo?.isCompleted || false;
-    
-    // Only try to access lastPracticedAt if nodeProgressInfo exists
-    const lastPracticedAt = nodeProgressInfo?.lastPracticedAt;
-    
-    return {
-      ...node,
-      status,
-      completionCount,
-      isCompleted,
-      lastPracticedAt
-    };
-  });
-
-  // No nodes available
-  if (!nodes || nodes.length === 0) {
-    return (
-      <div className={cn("space-y-6", className)}>
-        <motion.div 
-          className="flex items-center justify-between"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <div>
-            <h2 className="text-xl font-bold">{roadmapName}</h2>
-            <div className="flex items-center mt-1">
-              {roadmapLevel && <LevelBadge level={roadmapLevel} className="mr-2" />}
-            </div>
-          </div>
-        </motion.div>
-        
-        <div className="p-8 text-center rounded-lg border border-dashed border-muted-foreground/50">
-          <h3 className="font-medium text-muted-foreground">No content available</h3>
-          <p className="text-sm text-muted-foreground mt-2">
-            This curriculum doesn't have any lessons yet. Please check back later or select a different curriculum.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const totalNodes = nodes.length;
-  const completedCount = completedNodes.length;
-  const progressPercentage = Math.round((completedCount / totalNodes) * 100);
 
   return (
-    <div className={cn("space-y-6", className)}>
-      <motion.div 
-        className="flex flex-col space-y-4"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold">{roadmapName}</h2>
-            <div className="flex items-center mt-1">
-              {roadmapLevel && <LevelBadge level={roadmapLevel} className="mr-2" />}
-              <span className="text-sm text-muted-foreground">
-                {completedCount} of {totalNodes} lessons completed
-              </span>
-            </div>
-          </div>
+    <div className="pb-6">
+      <div className="flex flex-col gap-3 md:gap-4 w-full max-w-3xl mx-auto">
+        {nodesWithStatus.map((node, index) => {
+          // Style based on node status
+          const isCompleted = node.status === 'completed';
+          const isLocked = node.status === 'locked';
+          const isCurrent = node.status === 'current';
+          const isAvailable = node.status === 'available' || isCurrent;
           
-          {currentNode && (
-            <Button 
-              onClick={() => handleNodeClick(currentNode)}
-              className="bg-primary hover:bg-primary/80"
-            >
-              Continue Learning
-            </Button>
-          )}
-        </div>
-        
-        <div className="w-full">
-          <Progress value={progressPercentage} className="h-2" />
-          <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-            <span>{progressPercentage}% complete</span>
-            <span>{completedCount}/{totalNodes} lessons</span>
-          </div>
-        </div>
-      </motion.div>
-      
-      <RoadmapPath 
-        nodes={enrichedNodes} 
-        onNodeSelect={handleNodeClick} 
-      />
-      
-      <div className="flex items-center justify-around mt-4 pt-4 border-t">
-        <div className="flex items-center">
-          <CheckCircle2 className="h-4 w-4 text-primary mr-2" />
-          <span className="text-xs">Completed</span>
-        </div>
-        <div className="flex items-center">
-          <Circle className="h-4 w-4 text-secondary fill-secondary mr-2" />
-          <span className="text-xs">Current</span>
-        </div>
-        <div className="flex items-center">
-          <Circle className="h-4 w-4 text-foreground mr-2" />
-          <span className="text-xs">Available</span>
-        </div>
-        <div className="flex items-center">
-          <CircleDashed className="h-4 w-4 text-muted-foreground mr-2" />
-          <span className="text-xs">Locked</span>
-        </div>
+          // Progress info
+          const progressInfo = nodeProgress.find(np => np.nodeId === node.id);
+          const completionCount = progressInfo?.completionCount || 0;
+          const isFullyCompleted = isCompleted || (progressInfo?.isCompleted === true);
+          const progressPercent = Math.min(completionCount / 3 * 100, 100);
+          
+          return (
+            <div key={node.id} className="relative">
+              {/* Connector line */}
+              {index > 0 && (
+                <div
+                  className={`absolute left-6 -top-3 h-3 w-[2px] ${
+                    isAvailable || isCompleted ? 'bg-primary' : 'bg-muted-foreground/30'
+                  }`}
+                />
+              )}
+              
+              <Card
+                onClick={() => handleNodeClick(node)}
+                className={`flex items-center gap-4 p-4 cursor-pointer transition-all border ${
+                  isLocked
+                    ? 'bg-muted/40 border-muted cursor-not-allowed opacity-70'
+                    : isCompleted || isFullyCompleted
+                      ? 'bg-green-50 border-green-200 hover:border-green-300 dark:bg-green-950/20 dark:border-green-800 dark:hover:border-green-700'
+                      : isCurrent
+                        ? 'bg-blue-50 border-blue-200 hover:border-blue-300 dark:bg-blue-950/20 dark:border-blue-800 dark:hover:border-blue-700'
+                        : 'hover:border-primary/50'
+                }`}
+              >
+                {/* Status icon */}
+                <div
+                  className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    isLocked
+                      ? 'bg-muted border border-muted-foreground/30 text-muted-foreground/50'
+                      : isCompleted || isFullyCompleted
+                        ? 'bg-green-100 border border-green-200 text-green-600 dark:bg-green-900/30 dark:border-green-700 dark:text-green-400'
+                        : isCurrent
+                          ? 'bg-blue-100 border border-blue-200 text-blue-600 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-400'
+                          : 'bg-primary/10 border border-primary/20 text-primary'
+                  }`}
+                >
+                  {isLocked && <Lock className="w-5 h-5" />}
+                  {(isCompleted || isFullyCompleted) && <Check className="w-5 h-5" />}
+                  {isCurrent && <Play className="w-5 h-5" />}
+                  {isAvailable && !isCurrent && !isCompleted && !isFullyCompleted && (
+                    <ChevronRight className="w-5 h-5" />
+                  )}
+                </div>
+                
+                {/* Content */}
+                <div className="flex-1">
+                  <h3
+                    className={`font-medium ${
+                      isLocked
+                        ? 'text-muted-foreground/70'
+                        : ''
+                    }`}
+                  >
+                    {node.title}
+                  </h3>
+                  
+                  {/* Progress indicator */}
+                  {completionCount > 0 && !isLocked && (
+                    <div className="flex items-center mt-1 text-sm">
+                      <div className="flex-1 h-1 bg-muted rounded-full mr-2">
+                        <div 
+                          className={`h-1 rounded-full ${isFullyCompleted ? 'bg-green-500' : 'bg-blue-500'}`}
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                      <span className="text-muted-foreground text-xs">
+                        {completionCount}/3 
+                        {isFullyCompleted && <span className="ml-1 text-green-600 dark:text-green-400">(Mastered)</span>}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

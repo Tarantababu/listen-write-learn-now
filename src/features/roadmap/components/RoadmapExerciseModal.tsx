@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import DictationPractice from '@/components/DictationPractice';
-import { Search, Headphones } from 'lucide-react';
+import { Search, Headphones, CheckCircle, X } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 interface RoadmapExerciseModalProps {
   node: RoadmapNode | null;
@@ -27,9 +28,9 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   const { 
     markNodeAsCompleted, 
     getNodeExercise, 
-    nodeLoading, // Now properly defined in the context
+    nodeLoading,
     completedNodes, 
-    incrementNodeCompletion, // Now properly defined in the context
+    incrementNodeCompletion,
     nodeProgress 
   } = useRoadmap();
   
@@ -77,23 +78,43 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   const handlePracticeComplete = (accuracy: number) => {
     if (!node) return;
 
-    // Save the practice result and increment completion count if accuracy is high enough
-    incrementNodeCompletion(node.id, accuracy);
-    
-    // Show feedback based on accuracy
-    if (accuracy >= 95) {
-      toast({
-        title: "Great job!",
-        description: `You scored ${Math.round(accuracy)}%. Your progress has been saved.`,
-        variant: "default", // Use a valid variant
+    // Save the practice result and increment completion count
+    incrementNodeCompletion(node.id, accuracy)
+      .then(result => {
+        console.log("Node completion result:", result);
+        
+        // Show feedback based on accuracy
+        if (accuracy >= 95) {
+          toast({
+            title: "Great job!",
+            description: `You scored ${Math.round(accuracy)}%. Your progress has been saved.`,
+            variant: "default", 
+          });
+          
+          // If node is now fully completed (3 times with 95%)
+          if (result && result.isCompleted) {
+            toast({
+              title: "Node completed!",
+              description: `You've mastered this exercise. The next lesson is now available.`,
+              variant: "default",
+            });
+          }
+        } else {
+          toast({
+            title: "Keep practicing!",
+            description: `You scored ${Math.round(accuracy)}%. Try to get above 95% for it to count toward full completion.`,
+            variant: "default",
+          });
+        }
+      })
+      .catch(error => {
+        console.error("Error updating node completion:", error);
+        toast({
+          title: "Error saving progress",
+          description: "Please try again later",
+          variant: "destructive",
+        });
       });
-    } else {
-      toast({
-        title: "Keep practicing!",
-        description: `You scored ${Math.round(accuracy)}%. Try to get above 95% for it to count toward completion.`,
-        variant: "default", // Use a valid variant
-      });
-    }
   };
 
   const handleTryAgain = () => {
@@ -108,6 +129,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
       toast({
         title: "Progress saved!",
         description: "You've completed this exercise",
+        variant: "default",
       });
       onOpenChange(false); // Close the modal after marking as completed
     } catch (error) {
@@ -120,13 +142,19 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     }
   };
 
-  // Get the completion count for this node (if it exists)
+  // Get the completion info for this node (if it exists)
   const nodeCompletionInfo = node ? 
     nodeProgress.find(np => np.nodeId === node.id) : 
     null;
   
   const completionCount = nodeCompletionInfo?.completionCount || 0;
-  const isNodeCompleted = node ? completedNodes.includes(node.id) || nodeCompletionInfo?.isCompleted : false;
+  const isNodeCompleted = node ? 
+    completedNodes.includes(node.id) || 
+    (nodeCompletionInfo?.isCompleted === true) : 
+    false;
+    
+  // Calculate progress percentage (out of 3 completions)
+  const progressPercentage = Math.min(completionCount / 3 * 100, 100);
 
   if (!node) {
     return null;
@@ -136,9 +164,31 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-w-[95vw] p-0 overflow-hidden">
         <DialogHeader className="p-6">
-          <DialogTitle className="text-xl">{node.title}</DialogTitle>
-          <DialogDescription className="text-base mt-2">
-            {node.description}
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-xl">{node.title}</DialogTitle>
+            {isNodeCompleted && (
+              <Badge className="bg-green-500 text-white flex gap-1 items-center">
+                <CheckCircle className="w-3 h-3" /> Completed
+              </Badge>
+            )}
+          </div>
+          <DialogDescription className="text-base mt-2 space-y-2">
+            <p>{node.description}</p>
+            
+            {completionCount > 0 && (
+              <div className="pt-2">
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Completion progress: {completionCount}/3</span>
+                  <span>{isNodeCompleted ? '100%' : `${Math.round(progressPercentage)}%`}</span>
+                </div>
+                <Progress value={progressPercentage} className="h-2" />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isNodeCompleted 
+                    ? "Mastered! You've completed this exercise." 
+                    : "Complete this exercise 3 times with at least 95% accuracy to master it."}
+                </p>
+              </div>
+            )}
           </DialogDescription>
         </DialogHeader>
         
@@ -211,7 +261,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
               title: exercise.title || node.title,
               text: exercise.text || "",
               language: node.language || 'english',
-              audioUrl: exercise.audio_url,
+              audioUrl: exercise.audioUrl,
               tags: [],
               directoryId: null,
               createdAt: new Date(),
@@ -225,7 +275,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
         
         {practiceStage === PracticeStage.DICTATION && !exercise && (
           <div className="text-center py-6">
-            {loading ? (
+            {loading || nodeLoading ? (
               <p>Loading exercise...</p>
             ) : (
               <>

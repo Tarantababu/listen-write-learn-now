@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Language, LanguageLevel } from '@/types';
 import { RoadmapItem, RoadmapNode, NodeCompletionResult, ExerciseContent } from '../types';
@@ -68,7 +67,7 @@ export async function getUserRoadmaps(language: Language): Promise<RoadmapItem[]
   }
 }
 
-// Fix recordNodeCompletion to use lastPracticedAt properly
+// Update recordNodeCompletion to properly track completion based on accuracy and count
 export async function recordNodeCompletion(nodeId: string, accuracy: number): Promise<NodeCompletionResult> {
   try {
     const { data: userData } = await supabase.auth.getUser();
@@ -92,10 +91,14 @@ export async function recordNodeCompletion(nodeId: string, accuracy: number): Pr
       .single();
 
     const now = new Date();
-
+    
+    // Check if completion is being tracked already
     if (!existingError && existingProgress) {
       // Update existing progress
       const newCompletionCount = existingProgress.completion_count + 1;
+      // Only mark as completed if either:
+      // 1. Completion count reaches 3 OR
+      // 2. Accuracy is 95% or higher
       const isComplete = newCompletionCount >= 3 || accuracy >= 95;
 
       const { data, error } = await supabase
@@ -112,6 +115,14 @@ export async function recordNodeCompletion(nodeId: string, accuracy: number): Pr
 
       if (error) throw error;
 
+      // If this completes the node, also update the roadmap_progress table
+      if (isComplete && !existingProgress.is_completed) {
+        await updateRoadmapNodeProgress(userData.user.id, nodeData.roadmap_id, nodeId, true, now);
+        
+        // Update current_node_id in user_roadmaps if needed
+        await updateCurrentNodeInUserRoadmap(userData.user.id, nodeData.roadmap_id, nodeId, nodeData.language);
+      }
+
       return {
         completionCount: newCompletionCount,
         isCompleted: isComplete,
@@ -121,7 +132,7 @@ export async function recordNodeCompletion(nodeId: string, accuracy: number): Pr
       // Create new progress record
       const isComplete = accuracy >= 95;
 
-      const { error: insertError } = await supabase
+      const { data, error: insertError } = await supabase
         .from('roadmap_nodes_progress')
         .insert({
           user_id: userData.user.id,
@@ -132,9 +143,18 @@ export async function recordNodeCompletion(nodeId: string, accuracy: number): Pr
           is_completed: isComplete,
           last_practiced_at: now.toISOString()
         })
-        .select();
+        .select()
+        .single();
 
       if (insertError) throw insertError;
+
+      // If accuracy >= 95%, also create a record in roadmap_progress
+      if (isComplete) {
+        await updateRoadmapNodeProgress(userData.user.id, nodeData.roadmap_id, nodeId, true, now);
+        
+        // Update current_node_id in user_roadmaps if needed
+        await updateCurrentNodeInUserRoadmap(userData.user.id, nodeData.roadmap_id, nodeId, nodeData.language);
+      }
 
       return {
         completionCount: 1,
@@ -145,6 +165,117 @@ export async function recordNodeCompletion(nodeId: string, accuracy: number): Pr
   } catch (error) {
     console.error('Error recording node completion:', error);
     throw error;
+  }
+}
+
+// Helper function to update roadmap_progress table
+async function updateRoadmapNodeProgress(
+  userId: string, 
+  roadmapId: string, 
+  nodeId: string, 
+  completed: boolean,
+  completedAt: Date
+) {
+  try {
+    // First check if a record already exists
+    const { data: existingRecord, error: queryError } = await supabase
+      .from('roadmap_progress')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('roadmap_id', roadmapId)
+      .eq('node_id', nodeId)
+      .maybeSingle();
+    
+    if (queryError) throw queryError;
+    
+    // If record exists, update it
+    if (existingRecord) {
+      const { error } = await supabase
+        .from('roadmap_progress')
+        .update({
+          completed,
+          completed_at: completedAt.toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingRecord.id);
+      
+      if (error) throw error;
+    } else {
+      // Otherwise insert a new record
+      const { error } = await supabase
+        .from('roadmap_progress')
+        .insert({
+          user_id: userId,
+          roadmap_id: roadmapId,
+          node_id: nodeId,
+          completed,
+          completed_at: completed ? completedAt.toISOString() : null
+        });
+      
+      if (error) throw error;
+    }
+  } catch (error) {
+    console.error('Error updating roadmap progress:', error);
+  }
+}
+
+// Helper function to update the current_node_id in user_roadmaps when a node is completed
+async function updateCurrentNodeInUserRoadmap(
+  userId: string,
+  roadmapId: string,
+  completedNodeId: string,
+  language: string
+) {
+  try {
+    // Get the completed node's position
+    const { data: completedNode, error: nodeError } = await supabase
+      .from('roadmap_nodes')
+      .select('position')
+      .eq('id', completedNodeId)
+      .single();
+    
+    if (nodeError) throw nodeError;
+    
+    // Find the next node in the roadmap based on position
+    const { data: nextNodes, error: nextNodeError } = await supabase
+      .from('roadmap_nodes')
+      .select('id, position')
+      .eq('roadmap_id', roadmapId)
+      .eq('language', language)
+      .gt('position', completedNode.position)
+      .order('position', { ascending: true })
+      .limit(1);
+    
+    if (nextNodeError) throw nextNodeError;
+    
+    if (nextNodes && nextNodes.length > 0) {
+      // There is a next node, update user_roadmaps
+      const nextNodeId = nextNodes[0].id;
+      
+      // Find the user_roadmap that needs to be updated
+      const { data: userRoadmaps, error: roadmapError } = await supabase
+        .from('user_roadmaps')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('roadmap_id', roadmapId)
+        .eq('language', language);
+      
+      if (roadmapError) throw roadmapError;
+      
+      if (userRoadmaps && userRoadmaps.length > 0) {
+        // Update each user roadmap that matches
+        for (const userRoadmap of userRoadmaps) {
+          const { error: updateError } = await supabase
+            .from('user_roadmaps')
+            .update({ current_node_id: nextNodeId })
+            .eq('id', userRoadmap.id);
+          
+          if (updateError) throw updateError;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error updating current node in user roadmap:', error);
   }
 }
 
