@@ -148,8 +148,51 @@ export async function recordNodeCompletion(nodeId: string, accuracy: number): Pr
   }
 }
 
+// Add getNodeExerciseContent function
+export async function getNodeExerciseContent(nodeId: string): Promise<ExerciseContent | null> {
+  try {
+    // First check if the node has a default exercise
+    const { data: nodeData, error: nodeError } = await supabase
+      .from('roadmap_nodes')
+      .select('default_exercise_id, language')
+      .eq('id', nodeId)
+      .single();
+      
+    if (nodeError) throw nodeError;
+    
+    // If node has a default exercise, fetch that
+    if (nodeData.default_exercise_id) {
+      const { data: exerciseData, error: exerciseError } = await supabase
+        .from('default_exercises')
+        .select('*')
+        .eq('id', nodeData.default_exercise_id)
+        .single();
+        
+      if (exerciseError) throw exerciseError;
+      
+      if (exerciseData) {
+        return {
+          id: exerciseData.id,
+          title: exerciseData.title,
+          text: exerciseData.text,
+          language: exerciseData.language as Language,
+          audio_url: exerciseData.audio_url,
+          tags: exerciseData.tags || []
+        };
+      }
+    }
+    
+    // If no default exercise, return null
+    return null;
+  } catch (error) {
+    console.error('Error getting node exercise:', error);
+    return null;
+  }
+}
+
 export const roadmapService = {
   getRoadmapsForLanguage,
   getUserRoadmaps,
   recordNodeCompletion,
+  getNodeExerciseContent,
 };

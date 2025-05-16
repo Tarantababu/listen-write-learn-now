@@ -1,4 +1,3 @@
-
 import { Language, LanguageLevel } from '@/types';
 import { BaseService } from './BaseService';
 import { 
@@ -6,13 +5,13 @@ import {
   ServiceResult,
   NodeCompletionResult as ServiceNodeCompletionResult
 } from '../types/service-types';
-import { RoadmapItem, RoadmapNode } from '../types';
+import { RoadmapItem, RoadmapNode, NodeCompletionResult } from '../types';
 
 export class RoadmapService extends BaseService implements RoadmapServiceInterface {
   /**
    * Get all available roadmaps for a specific language
    */
-  public async getRoadmapsByLanguage(language: Language): Promise<ServiceResult<RoadmapItem[]>> {
+  public async getRoadmapsForLanguage(language: Language): Promise<RoadmapItem[]> {
     try {
       // Normalize language to lowercase for consistent comparison
       const normalizedLanguage = language.toLowerCase();
@@ -35,7 +34,7 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
       // If no roadmaps found, return empty array
       if (!data || data.length === 0) {
         console.log(`No roadmaps found for language: ${normalizedLanguage}`);
-        return this.success([]);
+        return [];
       }
       
       // Get all roadmap languages to associate with the roadmaps
@@ -50,32 +49,24 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
       
       console.log(`Received ${languagesData?.length || 0} language mappings from database`);
       
-      // Group languages by roadmap ID
-      const languagesByRoadmap: Record<string, Language[]> = {};
-      languagesData.forEach((langItem: any) => {
-        if (!languagesByRoadmap[langItem.roadmap_id]) {
-          languagesByRoadmap[langItem.roadmap_id] = [];
-        }
-        // Store language in lowercase for consistent comparison
-        languagesByRoadmap[langItem.roadmap_id].push(langItem.language.toLowerCase() as Language);
+      // Format and return roadmaps
+      const formattedRoadmaps = data.map((item: any): RoadmapItem => {
+        return {
+          id: item.id,
+          name: item.name,
+          level: item.level as LanguageLevel,
+          description: item.description,
+          language: language,
+          nodeCount: item.node_count,
+          createdAt: new Date(item.created_at),
+          updatedAt: new Date(item.updated_at || item.created_at)
+        };
       });
       
-      const formattedRoadmaps = data.map((item: any): RoadmapItem => ({
-        id: item.id,
-        name: item.name,
-        level: item.level as LanguageLevel,
-        description: item.description,
-        languages: languagesByRoadmap[item.id] || [],
-        createdAt: new Date(item.created_at),
-        updatedAt: new Date(item.updated_at),
-        createdBy: item.created_by,
-      }));
-      
-      console.log(`Formatted ${formattedRoadmaps.length} roadmaps for ${normalizedLanguage}`);
-      return this.success(formattedRoadmaps);
+      return formattedRoadmaps;
     } catch (error) {
-      console.error(`Error in getRoadmapsByLanguage for ${language}:`, error);
-      return this.handleError(error);
+      console.error(`Error in getRoadmapsForLanguage for ${language}:`, error);
+      return [];
     }
   }
   
@@ -434,7 +425,51 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
       throw error;
     }
   }
-
+  
+  /**
+   * Get exercise content for a node
+   */
+  public async getNodeExerciseContent(nodeId: string): Promise<any> {
+    try {
+      // First check if the node has a default exercise
+      const { data: nodeData, error: nodeError } = await this.supabase
+        .from('roadmap_nodes')
+        .select('default_exercise_id, language')
+        .eq('id', nodeId)
+        .single();
+        
+      if (nodeError) throw nodeError;
+      
+      // If node has a default exercise, fetch that
+      if (nodeData.default_exercise_id) {
+        const { data: exerciseData, error: exerciseError } = await this.supabase
+          .from('default_exercises')
+          .select('*')
+          .eq('id', nodeData.default_exercise_id)
+          .single();
+          
+        if (exerciseError) throw exerciseError;
+        
+        if (exerciseData) {
+          return {
+            id: exerciseData.id,
+            title: exerciseData.title,
+            text: exerciseData.text,
+            language: exerciseData.language,
+            audio_url: exerciseData.audio_url,
+            tags: exerciseData.tags || []
+          };
+        }
+      }
+      
+      // If no default exercise, return null
+      return null;
+    } catch (error) {
+      console.error('Error getting node exercise:', error);
+      return null;
+    }
+  }
+  
   /**
    * Record node completion with accuracy
    */
