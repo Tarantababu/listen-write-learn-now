@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useCallback,
   useRef,
+  useMemo,
 } from 'react';
 import {
   RoadmapItem,
@@ -85,9 +86,10 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
   const loadingRef = useRef<{[key: string]: boolean}>({});
   const requestTimeoutRef = useRef<{[key: string]: ReturnType<typeof setTimeout>}>({});
   const previousLanguageRef = useRef<Language | null>(null);
-
-  // Memoize the language to prevent unnecessary renders
-  const currentLanguage = settings.selectedLanguage;
+  const initialLoadDoneRef = useRef<boolean>(false);
+  
+  // Memoize the language to prevent unnecessary rerenders
+  const currentLanguage = useMemo(() => settings.selectedLanguage, [settings.selectedLanguage]);
   
   // Function to cancel a pending timeout for a specific key
   const cancelPendingRequest = useCallback((key: string) => {
@@ -97,21 +99,27 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
     }
   }, []);
 
-  // Debounced function to make API requests
-  const debouncedRequest = useCallback(<T,>(key: string, fn: () => Promise<T>, delay = 300): Promise<T> => {
+  // Debounced function to make API requests with longer delay
+  const debouncedRequest = useCallback(<T,>(key: string, fn: () => Promise<T>, delay = 500): Promise<T> => {
     return new Promise((resolve, reject) => {
       // Cancel any pending request for this key
       cancelPendingRequest(key);
       
-      // Set new timeout
+      // Set new timeout with longer delay to prevent rapid successive calls
       requestTimeoutRef.current[key] = setTimeout(async () => {
         try {
+          // Set loading state for this specific request
+          loadingRef.current[key] = true;
+          
+          console.log(`Executing debounced request for ${key}`);
           const result = await fn();
           resolve(result);
         } catch (error) {
+          console.error(`Error in debounced request for ${key}:`, error);
           reject(error);
         } finally {
           delete requestTimeoutRef.current[key];
+          loadingRef.current[key] = false;
         }
       }, delay);
     });
@@ -163,7 +171,7 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
   }, [debouncedRequest]);
 
   // Load language-specific roadmaps with debouncing and caching
-  const loadRoadmaps = useCallback(async (language: Language) => {
+  const loadRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
     // Skip if already loading this language
     const cacheKey = `loadRoadmaps_${language}`;
     
@@ -177,7 +185,7 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
       setIsLoading(true);
       console.log('Loading roadmaps for language:', language);
       
-      const roadmapsData = await debouncedRequest(cacheKey, () => getRoadmapsForLanguage(language));
+      const roadmapsData = await getRoadmapsForLanguage(language);
       console.log('Roadmaps loaded:', roadmapsData);
       setRoadmaps(roadmapsData);
       return roadmapsData;
@@ -188,7 +196,7 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
       setIsLoading(false);
       loadingRef.current[cacheKey] = false;
     }
-  }, [debouncedRequest]);
+  }, []);
 
   // Load user-specific roadmaps with debouncing and loading state management
   const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
@@ -204,7 +212,8 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
       loadingRef.current[cacheKey] = true;
       setIsLoading(true);
       
-      const userRoadmapsData = await debouncedRequest(cacheKey, () => getUserRoadmaps(language));
+      const userRoadmapsData = await getUserRoadmaps(language);
+      console.log('User roadmaps loaded:', userRoadmapsData);
       setUserRoadmaps(userRoadmapsData);
 
       // Only set the current roadmap if we don't already have one
@@ -301,7 +310,7 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
   }, []);
   
   // Implementation for selectRoadmap method with loading state management
-  const selectRoadmap = useCallback(async (roadmapId: string) => {
+  const selectRoadmap = useCallback(async (roadmapId: string): Promise<RoadmapNode[]> => {
     const cacheKey = `selectRoadmap_${roadmapId}`;
     
     if (loadingRef.current[cacheKey]) {
@@ -334,21 +343,38 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
   }, [userRoadmaps, loadRoadmapNodes, nodes]);
 
   // Ensure roadmaps are loaded only when the language actually changes
+  // Use a strict comparison and avoid unnecessary API calls
   useEffect(() => {
-    // Skip the effect if the language hasn't changed
-    if (previousLanguageRef.current === currentLanguage) {
-      return;
+    // Check if initial load has been done to prevent unnecessary API calls on mount
+    if (initialLoadDoneRef.current) {
+      // Strict equality check to prevent unnecessary API calls
+      if (previousLanguageRef.current === currentLanguage) {
+        return;
+      }
+      
+      console.log('Language changed from', previousLanguageRef.current, 'to', currentLanguage);
+    } else {
+      console.log('Initial load for language:', currentLanguage);
+      initialLoadDoneRef.current = true;
     }
     
+    // Update the ref for next comparison
+    previousLanguageRef.current = currentLanguage;
+    
     if (currentLanguage) {
-      console.log('Language changed from', previousLanguageRef.current, 'to', currentLanguage);
+      // Use separate timeouts for each API call to prevent race conditions
+      const loadRoadmapsTimeout = setTimeout(() => {
+        loadRoadmaps(currentLanguage);
+      }, 100);
       
-      // Update the ref for next comparison
-      previousLanguageRef.current = currentLanguage;
+      const loadUserRoadmapsTimeout = setTimeout(() => {
+        loadUserRoadmaps(currentLanguage);
+      }, 300);
       
-      // Load roadmaps for the new language
-      loadRoadmaps(currentLanguage);
-      loadUserRoadmaps(currentLanguage);
+      return () => {
+        clearTimeout(loadRoadmapsTimeout);
+        clearTimeout(loadUserRoadmapsTimeout);
+      };
     }
   }, [currentLanguage, loadRoadmaps, loadUserRoadmaps]);
 
