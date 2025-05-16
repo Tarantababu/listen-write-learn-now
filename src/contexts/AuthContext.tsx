@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 interface AuthContextProps {
@@ -28,6 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // First set up auth state listener to avoid missing auth events
@@ -42,15 +44,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             initializeUserProfile(session!.user.id);
           }, 0);
           
-          // Instead of navigate, use window.location for redirects
-          if (!window.location.pathname.includes('/dashboard')) {
-            window.location.href = '/dashboard';
-          }
+          // Redirect to dashboard on sign in
+          navigate('/dashboard');
         }
         
         if (event === 'SIGNED_OUT') {
-          // Instead of navigate, use window.location for redirects
-          window.location.href = '/login';
+          // Ensure we redirect on sign out event
+          navigate('/login');
         }
       }
     );
@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   // Initialize user profile if it doesn't exist
   const initializeUserProfile = async (userId: string) => {
@@ -111,6 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       toast.success('Signed in successfully');
+      navigate('/dashboard');
     } catch (error: any) {
       toast.error(error.message || 'Failed to sign in');
       throw error;

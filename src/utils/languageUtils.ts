@@ -2,7 +2,7 @@
 import { Language } from '@/types';
 
 export function getLanguageFlag(language: Language): string {
-  switch (language.toLowerCase()) {
+  switch (language) {
     case 'english':
       return '🇬🇧';
     case 'german':
@@ -41,10 +41,7 @@ export function getLanguageFlag(language: Language): string {
 }
 
 export function getLanguageStatsPrefix(language: Language): string {
-  // Case-insensitive mapping by first converting to lowercase
-  const normalizedLanguage = language.toLowerCase() as Language;
-  
-  switch (normalizedLanguage) {
+  switch (language) {
     case 'english':
       return 'English';
     case 'german':
@@ -80,9 +77,4 @@ export function getLanguageStatsPrefix(language: Language): string {
     default:
       return language;
   }
-}
-
-// New utility function for normalizing language values
-export function normalizeLanguage(language: string): Language {
-  return language.toLowerCase() as Language;
 }

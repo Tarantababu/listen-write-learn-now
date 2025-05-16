@@ -35,7 +35,7 @@ interface DailyActivity {
 const UserStatistics: React.FC = () => {
   const { user } = useAuth();
   const { exercises } = useExerciseContext();
-  const { vocabulary = [] } = useVocabularyContext ? useVocabularyContext() : { vocabulary: [] };
+  const { vocabulary } = useVocabularyContext();
   const { settings } = useUserSettingsContext();
   const [completions, setCompletions] = useState<CompletionData[]>([]);
   const [streakData, setStreakData] = useState<StreakData>({
