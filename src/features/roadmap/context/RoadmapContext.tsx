@@ -19,6 +19,7 @@ interface RoadmapContextType {
   availableNodes: string[];
   nodeProgress: NodeProgressDetails[];
   isLoading: boolean;
+  nodeLoading: boolean; // Added nodeLoading property
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<string>;
   loadUserRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
   loadRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
@@ -27,6 +28,7 @@ interface RoadmapContextType {
   getNodeExercise: (nodeId: string) => Promise<any>;
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
   recordNodeCompletion: (nodeId: string, accuracy: number) => Promise<any>;
+  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<any>; // Added this method
 }
 
 export const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
@@ -50,6 +52,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     getNodeExercise,
     markNodeAsCompleted,
     recordNodeCompletion,
+    nodeLoading, // Include nodeLoading from useRoadmapData
   } = useRoadmapData();
   
   const [nodeProgress, setNodeProgress] = useState<NodeProgressDetails[]>([]);
@@ -118,6 +121,11 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       throw error;
     }
   }, [selectRoadmap, selectedRoadmap]);
+  
+  // Add incrementNodeCompletion method
+  const incrementNodeCompletion = async (nodeId: string, accuracy: number) => {
+    return await recordNodeCompletion(nodeId, accuracy);
+  };
 
   // Context value
   const contextValue: RoadmapContextType = {
@@ -131,6 +139,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     availableNodes,
     nodeProgress,
     isLoading,
+    nodeLoading, // Include nodeLoading in context value
     initializeUserRoadmap: initializeRoadmap,
     loadUserRoadmaps,
     loadRoadmaps,
@@ -139,6 +148,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     getNodeExercise,
     markNodeAsCompleted,
     recordNodeCompletion,
+    incrementNodeCompletion, // Added method to context
   };
 
   return (

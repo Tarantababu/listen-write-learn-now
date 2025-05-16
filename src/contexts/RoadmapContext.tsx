@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useRoadmapData } from '../features/roadmap/hooks/useRoadmapData';
@@ -51,7 +52,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     getNodeExercise,
     markNodeAsCompleted,
     recordNodeCompletion,
-    nodeLoading, // Ensure we destructure this from useRoadmapData
+    nodeLoading, // Include nodeLoading from useRoadmapData
   } = useRoadmapData();
   
   const [nodeProgress, setNodeProgress] = useState<NodeProgressDetails[]>([]);

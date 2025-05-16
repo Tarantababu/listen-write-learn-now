@@ -176,6 +176,7 @@ export function useRoadmapData() {
   const { settings } = useUserSettingsContext();
   
   const [isLoading, setIsLoading] = useState(false);
+  const [nodeLoading, setNodeLoading] = useState(false); // Added state for node loading
   const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
   const [userRoadmaps, setUserRoadmaps] = useState<RoadmapItem[]>([]);
   const [selectedRoadmap, setSelectedRoadmap] = useState<RoadmapItem | null>(null);
@@ -424,10 +425,13 @@ export function useRoadmapData() {
   // Get exercise content for a node
   const getNodeExercise = useCallback(async (nodeId: string) => {
     try {
-      return extendedRoadmapService.getNodeExerciseContent(nodeId);
+      setNodeLoading(true); // Set node loading state to true
+      return await extendedRoadmapService.getNodeExerciseContent(nodeId);
     } catch (error) {
       console.error('Error getting node exercise:', error);
       return null;
+    } finally {
+      setNodeLoading(false); // Set node loading state to false when done
     }
   }, []);
   
@@ -535,6 +539,7 @@ export function useRoadmapData() {
   
   return {
     isLoading,
+    nodeLoading, // Added nodeLoading to return object
     roadmaps,
     userRoadmaps,
     selectedRoadmap,
