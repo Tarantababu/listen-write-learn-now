@@ -19,10 +19,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin 
   // Notify user when they're redirected due to authentication
   useEffect(() => {
     if (!loading && !user) {
-      toast({
-        title: "Authentication Required",
+      toast("Authentication Required", {
         description: "Please log in to access this page",
-        variant: "default"
       });
     }
   }, [loading, user]);

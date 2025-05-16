@@ -25,9 +25,7 @@ const DeleteExerciseDialog: React.FC<DeleteExerciseDialogProps> = ({
 }) => {
   const handleConfirm = () => {
     onConfirm();
-    toast({
-      title: "Exercise archived",
-    });
+    toast("Exercise archived");
   };
 
   return (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Loader, Pause, Play } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -107,8 +107,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   const initSpeechRecognition = () => {
     // Check if browser supports speech recognition
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      toast({
-        title: "Speech Recognition Not Supported",
+      toast("Speech Recognition Not Supported", {
         description: "Your browser doesn't support speech recognition. Try using a modern browser like Chrome.",
         variant: "destructive",
       });
@@ -223,15 +222,13 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
         recognitionInstance.start();
       }
       
-      toast({
-        title: "Recording started",
+      toast("Recording started", {
         description: "Speak clearly into your microphone",
         duration: 2000,
       });
     } catch (error) {
       console.error('Error accessing microphone:', error);
-      toast({
-        title: "Microphone access error",
+      toast("Microphone access error", {
         description: "Please allow microphone access to use this feature",
         variant: "destructive",
       });
@@ -248,8 +245,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       // Pause animation when recording is paused
       setIsAnimating(false);
       
-      toast({
-        title: "Recording paused",
+      toast("Recording paused", {
         description: "Press resume when you're ready to continue",
         duration: 2000,
       });
@@ -266,8 +262,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       // Resume animation when recording resumes
       setIsAnimating(true);
       
-      toast({
-        title: "Recording resumed",
+      toast("Recording resumed", {
         description: "Continue speaking into your microphone",
         duration: 2000,
       });
@@ -307,8 +302,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
     // Return to the initial text
     onTextReceived(initialText);
     
-    toast({
-      title: "Recording cancelled",
+    toast("Recording cancelled", {
       duration: 2000,
     });
   };
@@ -355,15 +349,13 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
             // Send the completed text to parent
             onTextReceived(completedText);
             
-            toast({
-              title: "Transcription complete",
+            toast("Transcription complete", {
               description: "Your speech has been converted to text",
               duration: 2000,
             });
           } else {
             console.error('No text in response:', data);
-            toast({
-              title: "Transcription error",
+            toast("Transcription error", {
               description: "No text was recognized. Please try again.",
               variant: "destructive",
             });
@@ -374,8 +366,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
       reader.readAsDataURL(audioBlob);
     } catch (error) {
       console.error('Error processing audio:', error);
-      toast({
-        title: "Transcription failed",
+      toast("Transcription failed", {
         description: "An error occurred while processing your speech",
         variant: "destructive",
       });
