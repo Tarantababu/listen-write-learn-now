@@ -168,9 +168,10 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
     }
     
     // Get the node progress information
-    const nodeProgressInfo = nodeProgress?.find(np => np.nodeId === node.id);
+    const nodeProgressInfo: Partial<NodeProgressDetails> | undefined = nodeProgress?.find(np => np.nodeId === node.id);
     const completionCount = nodeProgressInfo?.completionCount || 0;
     const isCompleted = nodeProgressInfo?.isCompleted || false;
+    
     // Only try to access lastPracticedAt if nodeProgressInfo exists
     const lastPracticedAt = nodeProgressInfo?.lastPracticedAt;
     
