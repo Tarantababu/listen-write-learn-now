@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -66,11 +65,11 @@ export function VisitorStats() {
         setUniqueVisitors(uniqueIds.size);
         
         // Get today's visitor count
-        const today = format(new Date(), 'yyyy-MM-dd');
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
         const { count: todayCount, error: todayError } = await supabase
           .from('visitors')
           .select('*', { count: 'exact', head: true })
-          .gte('created_at', today);
+          .gte('created_at', todayStr);
         
         if (todayError) throw todayError;
         setTodayVisitors(todayCount || 0);
@@ -104,11 +103,11 @@ export function VisitorStats() {
         const dailyCounts: Record<string, number> = {};
         
         // Initialize all days in the last 30 days with 0
-        const today = new Date();
+        const currentDate = new Date();
         const dailyCountsArray: VisitorCount[] = [];
         
         for (let i = 30; i >= 0; i--) {
-          const date = subDays(today, i);
+          const date = subDays(currentDate, i);
           const dateStr = format(date, 'yyyy-MM-dd');
           const formattedDate = format(date, 'MMM dd');
           dailyCounts[dateStr] = 0;
@@ -214,10 +213,10 @@ export function VisitorStats() {
   const calculateVisitorTrend = () => {
     if (visitorCounts.length < 2) return { value: 0, label: 'No previous data' };
     
-    const today = new Date();
-    const yesterday = subDays(today, 1);
+    const currentDate = new Date();
+    const yesterday = subDays(currentDate, 1);
     
-    const todayStr = format(today, 'MMM dd');
+    const todayStr = format(currentDate, 'MMM dd');
     const yesterdayStr = format(yesterday, 'MMM dd');
     
     const todayData = visitorCounts.find(item => item.date === todayStr);
