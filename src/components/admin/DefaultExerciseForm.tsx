@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,6 +25,16 @@ import {
   SelectValue
 } from '@/components/ui/select';
 
+// Create a mapping between our system Language type and the form values
+const languageMapping: Record<string, Language> = {
+  'english': 'en',
+  'spanish': 'es',
+  'french': 'fr',
+  'german': 'de',
+  'italian': 'it',
+  'portuguese': 'pt'
+};
+
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   text: z.string().min(1, 'Text is required'),
@@ -51,12 +60,25 @@ interface DefaultExerciseFormProps {
 }
 
 const DefaultExerciseForm: React.FC<DefaultExerciseFormProps> = ({ exerciseToEdit, onSuccess }) => {
+  // Convert Language type to form language value
+  const getFormLanguage = (lang: Language): 'english' | 'spanish' | 'french' | 'german' | 'italian' | 'portuguese' => {
+    switch(lang) {
+      case 'en': return 'english';
+      case 'es': return 'spanish';
+      case 'fr': return 'french';
+      case 'de': return 'german';
+      case 'it': return 'italian';
+      case 'pt': return 'portuguese';
+      default: return 'english';
+    }
+  };
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: exerciseToEdit?.title || '',
       text: exerciseToEdit?.text || '',
-      language: exerciseToEdit?.language || 'english',
+      language: exerciseToEdit?.language ? getFormLanguage(exerciseToEdit.language) : 'english',
       level: exerciseToEdit?.level || 'A1',
       audio_url: exerciseToEdit?.audio_url || '',
       tags: exerciseToEdit?.tags ? exerciseToEdit.tags.join(', ') : '',
@@ -67,9 +89,16 @@ const DefaultExerciseForm: React.FC<DefaultExerciseFormProps> = ({ exerciseToEdi
   
   const onSubmit = async (data: FormValues) => {
     try {
+      // Convert form language to our system language type
+      const systemLanguage = languageMapping[data.language] || 'en';
+      
       const formattedData = {
-        ...data,
+        title: data.title,
+        text: data.text,
+        language: systemLanguage,
+        level: data.level,
         tags: data.tags ? data.tags.split(',').map(tag => tag.trim()) : [],
+        audio_url: data.audio_url
       };
       
       let result;

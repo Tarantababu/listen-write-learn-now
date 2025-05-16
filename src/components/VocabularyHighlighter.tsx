@@ -1,342 +1,225 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
-import { Exercise, Language } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
-import { Book, Loader2, Volume2 } from 'lucide-react';
+import { Exercise, VocabularyItem, Json } from '@/types';
+import { toast } from 'sonner';
 
 interface VocabularyHighlighterProps {
   exercise: Exercise;
 }
 
 const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise }) => {
-  const { addVocabularyItem } = useVocabularyContext();
-  const [selectedWord, setSelectedWord] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isGeneratingInfo, setIsGeneratingInfo] = useState(false);
-  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [generatedInfo, setGeneratedInfo] = useState<{
-    definition: string;
-    exampleSentence: string;
-    audioUrl?: string;
-  } | null>(null);
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const { addVocabularyItem, vocabularyItems } = useVocabularyContext();
+  const [selectedText, setSelectedText] = useState<string>('');
+  const [definition, setDefinition] = useState<string>('');
+  const [exampleSentence, setExampleSentence] = useState<string>('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState<boolean>(false);
+  const [showForm, setShowForm] = useState<boolean>(false);
 
-  // Function to handle text selection
+  useEffect(() => {
+    // Reset form when exercise changes
+    setSelectedText('');
+    setDefinition('');
+    setExampleSentence('');
+    setShowForm(false);
+  }, [exercise]);
+
+  // Helper to get the sentence containing the selected text
+  const getSentenceFromText = (text: string, selectedWord: string): string => {
+    if (!text || !selectedWord) return '';
+    
+    const sentences = text.split(/(?<=[.!?;:])\s+/);
+    const sentence = sentences.find(s => s.includes(selectedWord));
+    return sentence || '';
+  };
+
+  // Handle text selection
   const handleTextSelection = () => {
     const selection = window.getSelection();
-    if (selection && selection.toString().trim().length > 0) {
-      setSelectedWord(selection.toString().trim());
+    if (!selection || selection.toString().trim() === '') return;
+
+    const selectedText = selection.toString().trim();
+    if (selectedText.length > 50) {
+      toast.warning('Please select a shorter phrase (max 50 characters)');
+      return;
+    }
+
+    setSelectedText(selectedText);
+    
+    // Get the sentence containing the selected word
+    const extractedSentence = getSentenceFromText(exercise.text, selectedText);
+    setExampleSentence(extractedSentence);
+    
+    // Show the form
+    setShowForm(true);
+  };
+
+  // Generate AI definition
+  const generateDefinition = async () => {
+    if (!selectedText) return;
+
+    setIsGeneratingAI(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
+        body: { 
+          word: selectedText,
+          context: exercise.text,
+          language: exercise.language
+        }
+      });
+
+      if (error) throw error;
+      
+      if (data && data.definition) {
+        setDefinition(data.definition);
+        if (data.example && !exampleSentence) {
+          setExampleSentence(data.example);
+        }
+        toast.success('Definition generated');
+      } else {
+        toast.error('Could not generate definition');
+      }
+    } catch (error) {
+      console.error('Error generating definition:', error);
+      toast.error('Failed to generate definition');
+    } finally {
+      setIsGeneratingAI(false);
     }
   };
 
-  // Function to generate vocabulary item info using OpenAI
-  const generateVocabularyInfo = async (word: string, language: Language) => {
-    setIsGeneratingInfo(true);
+  // Save vocabulary item
+  const saveVocabularyItem = async () => {
+    if (!selectedText || !definition || !exampleSentence) {
+      toast.warning('Please fill in all fields');
+      return;
+    }
+
     try {
-      toast("Generating Info", {
-        description: "Generating vocabulary information..."
-      });
-      
-      // Using the dedicated vocabulary generation function
-      const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
-        body: { text: word, language }
-      });
-
-      if (error) {
-        console.error('Error invoking generate-vocabulary-info function:', error);
-        throw error;
-      }
-      
-      console.log('Response from vocabulary info function:', data);
-      
-      if (!data) {
-        throw new Error('No data received from generate-vocabulary-info function');
-      }
-      
-      // Extract the definition and example sentence from the response
-      const definition = data.definition;
-      const exampleSentence = data.exampleSentence;
-      
-      if (!definition || !exampleSentence) {
-        console.error('Invalid response format:', data);
-        throw new Error('Invalid response from generate-vocabulary-info function');
-      }
-
-      // After successfully getting definition and example, generate audio
-      toast("Generating Audio", {
-        description: "Generating audio for example sentence..."
-      });
-      setIsGeneratingAudio(true);
-      
-      const audioUrl = await generateExampleAudio(exampleSentence, language);
-      
-      return {
+      // Make sure we're using the correct property name (userId) that matches VocabularyItem type
+      await addVocabularyItem({
+        word: selectedText,
         definition,
         exampleSentence,
-        audioUrl
-      };
-    } catch (error) {
-      console.error('Error generating vocabulary info:', error);
-      toast("Error", {
-        description: "Failed to generate vocabulary information",
-        variant: "destructive"
-      });
-      return null;
-    } finally {
-      setIsGeneratingInfo(false);
-    }
-  };
-
-  // Generate audio for example sentence
-  const generateExampleAudio = async (text: string, language: Language): Promise<string | undefined> => {
-    try {
-      const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: { text, language }
-      });
-
-      if (error) {
-        console.error('Error invoking text-to-speech function:', error);
-        throw error;
-      }
-
-      if (!data || !data.audioContent) {
-        throw new Error('No audio content received');
-      }
-
-      const audioContent = data.audioContent;
-      const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
-      
-      const fileName = `vocab_${Date.now()}.mp3`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('audio')
-        .upload(fileName, blob, {
-          contentType: 'audio/mp3'
-        });
-
-      if (uploadError) {
-        console.error('Error uploading audio:', uploadError);
-        throw uploadError;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('audio')
-        .getPublicUrl(fileName);
-
-      toast("Success", {
-        description: "Audio generated successfully"
-      });
-      return publicUrl;
-    } catch (error) {
-      console.error('Error generating audio:', error);
-      toast("Error", {
-        description: "Failed to generate audio for example sentence",
-        variant: "destructive"
-      });
-      return undefined;
-    } finally {
-      setIsGeneratingAudio(false);
-    }
-  };
-
-  const handleAddToVocabulary = async () => {
-    if (!selectedWord) return;
-    
-    setIsDialogOpen(true);
-    const info = await generateVocabularyInfo(selectedWord, exercise.language);
-    
-    if (info) {
-      setGeneratedInfo(info);
-      
-      // Create audio element if URL is available
-      if (info.audioUrl) {
-        const audio = new Audio(info.audioUrl);
-        setAudioElement(audio);
-        
-        // Add event listeners to track playing state
-        audio.addEventListener('play', () => setIsPlaying(true));
-        audio.addEventListener('pause', () => setIsPlaying(false));
-        audio.addEventListener('ended', () => setIsPlaying(false));
-      }
-    }
-  };
-
-  const handlePlayAudio = () => {
-    if (audioElement) {
-      if (isPlaying) {
-        audioElement.pause();
-      } else {
-        audioElement.play().catch(error => {
-          console.error('Error playing audio:', error);
-          toast("Error", {
-            description: "Failed to play audio",
-            variant: "destructive"
-          });
-        });
-      }
-    }
-  };
-
-  const handleSaveVocabularyItem = async () => {
-    if (!generatedInfo) return;
-    
-    setIsSaving(true);
-    try {
-      await addVocabularyItem({
-        word: selectedWord,
-        definition: generatedInfo.definition,
-        exampleSentence: generatedInfo.exampleSentence,
-        audioUrl: generatedInfo.audioUrl,
-        exerciseId: exercise.id,
-        language: exercise.language
+        language: exercise.language,
+        userId: exercise.userId,
+        exercise_id: exercise.id, // Use exercise_id instead of exerciseId
       });
       
-      toast("Success", {
-        description: "Word added to your vocabulary!"
-      });
+      toast.success('Vocabulary item saved');
       
-      // Clean up
-      setIsDialogOpen(false);
-      setSelectedWord('');
-      setGeneratedInfo(null);
-      setAudioElement(null);
+      // Reset form
+      setSelectedText('');
+      setDefinition('');
+      setExampleSentence('');
+      setShowForm(false);
     } catch (error) {
       console.error('Error saving vocabulary item:', error);
-      toast("Error", {
-        description: "Failed to add word to vocabulary",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSaving(false);
+      toast.error('Failed to save vocabulary item');
     }
   };
 
-  const handleDialogClose = () => {
-    // Clean up audio
-    if (audioElement) {
-      audioElement.pause();
-      setAudioElement(null);
-    }
-    setIsDialogOpen(false);
+  // Check if word is already in vocabulary
+  const isWordInVocabulary = (word: string): boolean => {
+    return vocabularyItems.some(item => 
+      item.word.toLowerCase() === word.toLowerCase() && 
+      item.language === exercise.language
+    );
+  };
+
+  // Close the form
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setSelectedText('');
+    setDefinition('');
+    setExampleSentence('');
   };
 
   return (
-    <div className="mt-12 border-t pt-8 max-w-4xl mx-auto">
-      <div className="bg-gradient-to-r from-background to-accent/5 p-6 rounded-xl shadow-sm border border-border/50">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="bg-primary/10 p-2 rounded-full">
-            <Book className="h-5 w-5 text-primary" />
-          </div>
-          <h3 className="font-medium text-lg">Vocabulary Building</h3>
-        </div>
-        
-        <div className="bg-muted/80 p-5 rounded-lg mb-5">
-          <p className="text-sm mb-3 text-muted-foreground">Select any word or phrase from the text to add it to your vocabulary:</p>
-          <div 
-            className="p-4 bg-background rounded-md border text-sm cursor-text whitespace-pre-wrap animate-fade-in hover:border-primary/30 transition-colors"
-            onMouseUp={handleTextSelection}
-          >
-            {exercise.text}
-          </div>
-        </div>
-        
-        <div className="flex gap-3 max-w-2xl mx-auto">
-          <Input 
-            value={selectedWord} 
-            onChange={e => setSelectedWord(e.target.value)} 
-            placeholder="Selected word or phrase"
-            className="flex-grow"
-          />
-          <Button
-            onClick={handleAddToVocabulary}
-            disabled={!selectedWord.trim() || isGeneratingInfo}
-            className="hover-glow"
-          >
-            {isGeneratingInfo ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              'Add to Vocabulary'
-            )}
-          </Button>
-        </div>
+    <div>
+      <div 
+        className="text-muted-foreground mb-4"
+        onMouseUp={handleTextSelection} 
+      >
+        Select any word or phrase to add to your vocabulary list.
       </div>
       
-      <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add to Vocabulary</DialogTitle>
-            <DialogDescription>
-              Adding "{selectedWord}" to your vocabulary list
-            </DialogDescription>
-          </DialogHeader>
+      {showForm && (
+        <div className="bg-muted/30 p-4 rounded-lg border mb-4">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-medium">Add to Vocabulary</h3>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleCloseForm}
+            >
+              ×
+            </Button>
+          </div>
           
-          {isGeneratingInfo || isGeneratingAudio ? (
-            <div className="flex flex-col items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <p className="mt-2 text-sm text-muted-foreground">
-                {isGeneratingInfo 
-                  ? 'Generating vocabulary information...' 
-                  : 'Creating audio for example sentence...'}
-              </p>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="selected-word">Selected Word/Phrase</Label>
+              <Input 
+                id="selected-word" 
+                value={selectedText} 
+                onChange={(e) => setSelectedText(e.target.value)} 
+                className="mt-1"
+              />
             </div>
-          ) : generatedInfo ? (
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium mb-1">Definition:</h4>
-                <p className="text-sm">{generatedInfo.definition}</p>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium mb-1">Example:</h4>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm italic flex-grow">{generatedInfo.exampleSentence}</p>
-                  {generatedInfo.audioUrl && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handlePlayAudio}
-                      className="flex-shrink-0"
-                    >
-                      <Volume2 className={`h-4 w-4 ${isPlaying ? 'text-primary' : ''}`} />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={handleDialogClose}>
-                  Cancel
-                </Button>
+            
+            <div>
+              <div className="flex justify-between items-center">
+                <Label htmlFor="definition">Definition</Label>
                 <Button 
-                  onClick={handleSaveVocabularyItem} 
-                  disabled={isSaving}
+                  type="button" 
+                  size="sm" 
+                  variant="outline"
+                  onClick={generateDefinition}
+                  disabled={isGeneratingAI}
                 >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save to Vocabulary'
-                  )}
+                  {isGeneratingAI ? 'Generating...' : 'Generate AI Definition'}
                 </Button>
               </div>
+              <Textarea 
+                id="definition" 
+                value={definition} 
+                onChange={(e) => setDefinition(e.target.value)} 
+                className="mt-1"
+                rows={3}
+              />
             </div>
-          ) : (
-            <div className="py-6 text-center text-muted-foreground">
-              Failed to generate information
+            
+            <div>
+              <Label htmlFor="example">Example Sentence</Label>
+              <Textarea 
+                id="example" 
+                value={exampleSentence} 
+                onChange={(e) => setExampleSentence(e.target.value)} 
+                className="mt-1"
+                rows={2}
+              />
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                onClick={handleCloseForm}
+                variant="outline"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={saveVocabularyItem} 
+                disabled={!selectedText || !definition || !exampleSentence || isWordInVocabulary(selectedText)}
+              >
+                {isWordInVocabulary(selectedText) ? 'Already in Vocabulary' : 'Add to Vocabulary'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

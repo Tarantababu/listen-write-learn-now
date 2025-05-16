@@ -32,10 +32,11 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const fetchUserSettings = async () => {
       if (user) {
         try {
+          // Using 'profiles' table instead of 'user_settings'
           const { data, error } = await supabase
-            .from('user_settings')
+            .from('profiles')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('id', user.id)
             .single();
 
           if (error) {
@@ -62,15 +63,15 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (user) {
       try {
         const { error } = await supabase
-          .from('user_settings')
+          .from('profiles')
           .upsert(
             {
-              user_id: user.id,
+              id: user.id,
               selected_language: newSettings.selectedLanguage ?? settings.selectedLanguage,
               learning_languages: newSettings.learningLanguages ?? settings.learningLanguages,
               avatar_url: newSettings.avatarUrl ?? settings.avatarUrl,
             },
-            { onConflict: 'user_id' }
+            { onConflict: 'id' }
           );
 
         if (error) {

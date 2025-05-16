@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
+import { useAuth } from '@/contexts/AuthContext'; // Add this import
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';

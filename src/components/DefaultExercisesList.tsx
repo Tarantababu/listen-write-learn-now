@@ -23,7 +23,7 @@ import LevelBadge from '@/components/LevelBadge';
 import { useDefaultExercises, DefaultExercise } from '@/hooks/use-default-exercises';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Language, LanguageLevel, BadgeVariant } from '@/types';
+import { Language, LanguageLevel } from '@/types';
 
 const DefaultExercisesList: React.FC = () => {
   const { defaultExercises, isLoading, fetchDefaultExercises, addToMyExercises } = useDefaultExercises();
@@ -129,7 +129,7 @@ const DefaultExercisesList: React.FC = () => {
                     <div className="flex justify-between items-start">
                       <CardTitle className="text-lg">{exercise.title}</CardTitle>
                       {exercise.isCompleted && (
-                        <Badge variant="success" className="flex items-center gap-1">
+                        <Badge variant="outline" className="flex items-center gap-1">
                           <CheckCircle className="h-3 w-3" />
                           Completed
                         </Badge>

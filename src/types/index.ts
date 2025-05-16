@@ -18,6 +18,7 @@ export interface Exercise {
   isCompleted?: boolean;
   completionCount: number;
   audioUrl?: string;
+  default_exercise_id?: string; // Add this field to match references in code
 }
 
 // Add Directory type definition
@@ -39,6 +40,7 @@ export interface VocabularyItem {
   userId: string;
   createdAt: string;
   audioUrl?: string;
+  exercise_id?: string; // Add this to match references in VocabularyHighlighter
 }
 
 // Add Json type definition
@@ -63,6 +65,10 @@ export interface RoadmapNode {
   position: number;
   exerciseCount: number;
   isCompleted?: boolean;
+  title?: string; // Add this to fix references
+  isBonus?: boolean; // Add this to fix references
+  language?: Language; // Add this to fix references
+  updatedAt?: string; // Add this to fix references
 }
 
 export interface RoadmapLanguage {
