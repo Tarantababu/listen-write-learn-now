@@ -1,16 +1,20 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { format, subDays, parseISO } from 'date-fns';
+import { format, subDays, parseISO, isBefore, startOfDay } from 'date-fns';
 import StatsCard from '@/components/StatsCard';
-import { Activity, Users, Globe } from 'lucide-react';
+import { Activity, Users, Globe, Info } from 'lucide-react';
 import { calculateTrend, compareWithPreviousDay } from '@/utils/trendUtils';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type VisitorCount = {
   date: string;
+  fullDate: Date;
   count: number;
+  hasData: boolean;
 };
 
 type PageCount = {
@@ -32,6 +36,7 @@ export function VisitorStats() {
   const [totalVisitors, setTotalVisitors] = useState<number>(0);
   const [uniqueVisitors, setUniqueVisitors] = useState<number>(0);
   const [todayVisitors, setTodayVisitors] = useState<number>(0);
+  const [dataStartDate, setDataStartDate] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,13 +85,44 @@ export function VisitorStats() {
         
         if (dailyError) throw dailyError;
         
+        // Find the earliest data collection date to mark pre-data-collection dates
+        let earliestDate: Date | null = null;
+        
+        if (dailyData && dailyData.length > 0) {
+          // Find the earliest date in our dataset
+          const allDates = dailyData
+            .map(visitor => visitor.created_at ? parseISO(visitor.created_at) : null)
+            .filter(date => date !== null) as Date[];
+            
+          if (allDates.length > 0) {
+            earliestDate = new Date(Math.min(...allDates.map(date => date.getTime())));
+            setDataStartDate(format(earliestDate, 'MMMM d, yyyy'));
+          }
+        }
+        
         // Process data to count visitors per day
         const dailyCounts: Record<string, number> = {};
         
         // Initialize all days in the last 30 days with 0
+        const today = new Date();
+        const dailyCountsArray: VisitorCount[] = [];
+        
         for (let i = 30; i >= 0; i--) {
-          const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
-          dailyCounts[date] = 0;
+          const date = subDays(today, i);
+          const dateStr = format(date, 'yyyy-MM-dd');
+          const formattedDate = format(date, 'MMM dd');
+          dailyCounts[dateStr] = 0;
+          
+          const hasData = earliestDate ? 
+            !isBefore(startOfDay(date), startOfDay(earliestDate)) : 
+            true;
+            
+          dailyCountsArray.push({
+            date: formattedDate, 
+            fullDate: date,
+            count: 0,
+            hasData
+          });
         }
         
         // Fill in actual counts
@@ -99,11 +135,16 @@ export function VisitorStats() {
           });
         }
         
-        // Convert to array format for chart
-        const dailyCountsArray = Object.entries(dailyCounts).map(([date, count]) => ({
-          date: format(parseISO(date), 'MMM dd'),
-          count
-        }));
+        // Update counts in the array
+        dailyCountsArray.forEach(item => {
+          const dateStr = format(item.fullDate, 'yyyy-MM-dd');
+          if (dailyCounts[dateStr]) {
+            item.count = dailyCounts[dateStr];
+          }
+        });
+        
+        // Sort by date to ensure chronological order (earliest to latest)
+        dailyCountsArray.sort((a, b) => a.fullDate.getTime() - b.fullDate.getTime());
         
         setVisitorCounts(dailyCountsArray);
         
@@ -223,6 +264,9 @@ export function VisitorStats() {
     visitors: { 
       color: '#8884d8' // Using direct color instead of CSS variable
     },
+    inactive: {
+      color: '#e5e5e5' // Light gray for dates before data collection
+    },
     pages: { 
       color: '#82ca9d' // Using direct color instead of CSS variable
     },
@@ -232,6 +276,17 @@ export function VisitorStats() {
   for (let i = 0; i < referrerCounts.length; i++) {
     chartConfig.sources[`source${i}`] = { color: COLORS[i % COLORS.length] };
   }
+
+  const customBarProps = (entry: any) => {
+    return entry.hasData ? {
+      fill: chartConfig.visitors.color
+    } : {
+      fill: chartConfig.inactive.color,
+      fillOpacity: 0.5,
+      stroke: '#ccc',
+      strokeDasharray: '4 2'
+    };
+  };
 
   return (
     <div className="space-y-6">
@@ -261,6 +316,12 @@ export function VisitorStats() {
       <Card>
         <CardHeader>
           <CardTitle>Daily Visitors (Last 30 Days)</CardTitle>
+          {dataStartDate && (
+            <CardDescription className="flex items-center gap-1 text-amber-600">
+              <Info size={14} />
+              Data collection began on {dataStartDate}. Earlier dates are shown with lighter bars.
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent>
           <div className="h-80">
@@ -281,12 +342,19 @@ export function VisitorStats() {
                       dataKey="date"
                       angle={-45}
                       textAnchor="end"
-                      height={70} 
+                      height={70}
                     />
                     <YAxis />
                     <ChartTooltip 
                       content={
                         <ChartTooltipContent 
+                          formatter={(value, name, props) => {
+                            const entry = props.payload;
+                            if (!entry.hasData) {
+                              return ["No data collected yet", "Visitors"];
+                            }
+                            return [value, "Visitors"];
+                          }}
                           labelFormatter={(label) => `Date: ${label}`}
                         />
                       } 
@@ -294,7 +362,14 @@ export function VisitorStats() {
                     <Bar 
                       dataKey="count" 
                       name="Visitors" 
-                      fill={chartConfig.visitors.color} // Use direct color reference
+                      // Use custom bar props based on hasData flag
+                      shape={(props) => {
+                        const { fill, x, y, width, height, hasData } = props;
+                        const customProps = props.payload?.hasData ? 
+                          { fill: chartConfig.visitors.color } : 
+                          { fill: chartConfig.inactive.color, fillOpacity: 0.5 };
+                        return <rect x={x} y={y} width={width} height={height} {...customProps} />;
+                      }}
                     />
                   </BarChart>
                 </ResponsiveContainer>
