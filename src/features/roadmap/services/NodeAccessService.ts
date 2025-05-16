@@ -69,6 +69,72 @@ class NodeAccessService {
       return { data: false, error };
     }
   }
+
+  /**
+   * Get all accessible nodes for a roadmap
+   */
+  async getAccessibleNodes(roadmapId: string, language: string) {
+    try {
+      // Get the current user
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+
+      // Get all nodes in the roadmap
+      const { data: roadmapNodes, error: nodesError } = await supabase
+        .from('roadmap_nodes')
+        .select('id, position')
+        .eq('roadmap_id', roadmapId)
+        .eq('language', language)
+        .order('position');
+
+      if (nodesError) throw nodesError;
+      if (!roadmapNodes || roadmapNodes.length === 0) {
+        return { data: [], error: null };
+      }
+
+      // Get all completed nodes for this roadmap
+      const { data: completedNodes, error: completedError } = await supabase
+        .from('roadmap_progress')
+        .select('node_id')
+        .eq('user_id', userData.user.id)
+        .eq('roadmap_id', roadmapId)
+        .eq('completed', true);
+
+      if (completedError) throw completedError;
+
+      const completedNodeIds = completedNodes?.map(node => node.node_id) || [];
+
+      // First node is always accessible
+      const accessibleNodeIds = new Set<string>();
+      
+      // Add the first node
+      const firstNode = roadmapNodes.find(node => node.position === 1);
+      if (firstNode) {
+        accessibleNodeIds.add(firstNode.id);
+      }
+
+      // Add all completed nodes
+      completedNodeIds.forEach(nodeId => {
+        accessibleNodeIds.add(nodeId);
+      });
+
+      // For each completed node, make the next node accessible
+      for (const completedNodeId of completedNodeIds) {
+        const completedNode = roadmapNodes.find(node => node.id === completedNodeId);
+        if (completedNode) {
+          const nextNode = roadmapNodes.find(node => node.position === completedNode.position + 1);
+          if (nextNode) {
+            accessibleNodeIds.add(nextNode.id);
+          }
+        }
+      }
+
+      return { data: Array.from(accessibleNodeIds), error: null };
+    } catch (error) {
+      console.error('Error getting accessible nodes:', error);
+      return { data: [], error };
+    }
+  }
 }
 
 export const nodeAccessService = new NodeAccessService();

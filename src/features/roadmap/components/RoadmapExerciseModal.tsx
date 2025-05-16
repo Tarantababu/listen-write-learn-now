@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -213,7 +212,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
               
               {completionCount > 0 && (
                 <div className="mt-3 flex items-center">
-                  <Badge variant={isNodeCompleted ? "success" : "secondary"} className="mr-2">
+                  <Badge variant={isNodeCompleted ? "secondary" : "secondary"} className={`mr-2 ${isNodeCompleted ? "bg-green-100 text-green-800 hover:bg-green-200" : ""}`}>
                     {completionCount}/3 completions
                   </Badge>
                   {isNodeCompleted && (

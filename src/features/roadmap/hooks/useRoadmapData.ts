@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { roadmapService } from '../api/roadmapService';
 import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
@@ -146,11 +145,11 @@ export function useRoadmapData() {
     
     try {
       // Show loading toast
-      loadingToastId = toast({
+      const loadingToast = toast({
         title: "Creating your roadmap...",
         description: "Please wait while we prepare your learning path.",
         duration: 5000,
-      }).id;
+      });
       
       const roadmapId = await roadmapService.initializeRoadmap(level, normalizedLanguage);
       console.log(`Roadmap initialized with ID: ${roadmapId}`);
@@ -161,21 +160,12 @@ export function useRoadmapData() {
       // Reload user roadmaps to include the new one
       const updatedRoadmaps = await loadUserRoadmaps(normalizedLanguage);
       
-      // Dismiss loading toast if it exists
-      if (loadingToastId) {
-        toast({
-          id: loadingToastId,
-          title: "Roadmap created successfully!",
-          description: "Your new learning path is ready.",
-          variant: "success",
-        });
-      } else {
-        toast({
-          title: "Roadmap created successfully!",
-          description: "Your new learning path is ready.",
-          variant: "success",
-        });
-      }
+      // Toast success
+      toast({
+        title: "Roadmap created successfully!",
+        description: "Your new learning path is ready.",
+        variant: "default",
+      });
       
       // Select the newly created roadmap
       const newRoadmap = updatedRoadmaps.find(r => r.id === roadmapId);
@@ -187,21 +177,12 @@ export function useRoadmapData() {
     } catch (error) {
       console.error('Error initializing roadmap:', error);
       
-      // Dismiss loading toast and show error
-      if (loadingToastId) {
-        toast({
-          id: loadingToastId,
-          variant: "destructive",
-          title: "Failed to create roadmap",
-          description: "There was an error creating your roadmap. Please try again."
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Failed to create roadmap",
-          description: "There was an error creating your roadmap. Please try again."
-        });
-      }
+      // Show error
+      toast({
+        variant: "destructive",
+        title: "Failed to create roadmap",
+        description: "There was an error creating your roadmap. Please try again."
+      });
       
       throw error;
     } finally {

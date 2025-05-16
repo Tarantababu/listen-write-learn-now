@@ -1,15 +1,13 @@
-
 import { Language, LanguageLevel } from '@/types';
 import { BaseService } from './BaseService';
 import { 
-  ExerciseServiceInterface,
   ServiceResult,
   ExerciseSubmission,
   ExerciseResult
 } from '../types/service-types';
 import { ExerciseContent } from '../types';
 
-export class ExerciseService extends BaseService implements ExerciseServiceInterface {
+export class ExerciseService extends BaseService implements Record<string, any> {
   /**
    * Get exercise content for a roadmap node
    */

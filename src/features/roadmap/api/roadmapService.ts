@@ -326,7 +326,7 @@ class RoadmapService {
         throw new Error("Accuracy must be between 0 and 100");
       }
       
-      const userId = (await supabase.auth.getUser()).data.user!.id;
+      const userId = (await supabase.auth.getUser()).data.user?.id;
       
       // Get node info to find roadmap_id
       const { data: nodeData, error: nodeError } = await supabase
@@ -360,7 +360,6 @@ class RoadmapService {
       if (progressError) throw progressError;
       
       return {
-        success: true,
         completionCount: progressData.completion_count,
         isCompleted: progressData.is_completed,
         lastPracticedAt: new Date(progressData.last_practiced_at)
@@ -378,7 +377,7 @@ class RoadmapService {
     console.log(`Marking node ${nodeId} as completed`);
     
     try {
-      const userId = (await supabase.auth.getUser()).data.user!.id;
+      const userId = (await supabase.auth.getUser()).data.user?.id;
       
       // Get node info to find roadmap_id
       const { data: nodeData, error: nodeError } = await supabase
@@ -399,8 +398,7 @@ class RoadmapService {
           completed: true,
           completed_at: new Date().toISOString()
         })
-        .onConflict(['user_id', 'roadmap_id', 'node_id'])
-        .merge();
+        .match({ user_id: userId, roadmap_id: nodeData.roadmap_id, node_id: nodeId });
       
       if (progressError) throw progressError;
       
@@ -416,8 +414,7 @@ class RoadmapService {
           is_completed: true,
           last_practiced_at: new Date().toISOString()
         })
-        .onConflict(['user_id', 'node_id', 'language'])
-        .merge();
+        .match({ user_id: userId, node_id: nodeId, language: nodeData.language });
       
       if (nodesProgressError) throw nodesProgressError;
       
