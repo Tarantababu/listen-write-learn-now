@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Exercise } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -79,26 +78,61 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
-  // Handle audio autoplay when component mounts
+  // Handle audio autoplay when component mounts with recovery attempts
   useEffect(() => {
     if (audioRef.current && autoPlay && !internalShowResults) {
       // We need to catch any autoplay errors to handle browser restrictions
-      const playPromise = audioRef.current.play();
+      const attemptPlay = () => {
+        if (!audioRef.current) return;
+        
+        const playPromise = audioRef.current.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setIsPlaying(true);
+              setAutoplayBlocked(false);
+            })
+            .catch(error => {
+              console.log('Autoplay prevented:', error);
+              setIsPlaying(false);
+              setAutoplayBlocked(true);
+            });
+        }
+      };
       
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            setIsPlaying(true);
-            setAutoplayBlocked(false);
-          })
-          .catch(error => {
-            console.log('Autoplay prevented:', error);
-            setIsPlaying(false);
-            setAutoplayBlocked(true);
-          });
-      }
+      // Make initial attempt
+      attemptPlay();
+      
+      // Add a user interaction listener to automatically retry playing once user interacts
+      const handleUserInteraction = () => {
+        if (audioRef.current && autoplayBlocked) {
+          attemptPlay();
+          // Remove event listeners after successful play attempt
+          if (!autoplayBlocked) {
+            removeInteractionListeners();
+          }
+        }
+      };
+      
+      // Add listeners for common user interactions
+      const interactionEvents = ['click', 'touchstart', 'keydown'];
+      interactionEvents.forEach(event => {
+        document.addEventListener(event, handleUserInteraction, { once: true });
+      });
+      
+      // Cleanup function to remove listeners
+      const removeInteractionListeners = () => {
+        interactionEvents.forEach(event => {
+          document.removeEventListener(event, handleUserInteraction);
+        });
+      };
+      
+      return () => {
+        removeInteractionListeners();
+      };
     }
-  }, [audioRef.current, autoPlay, internalShowResults]);
+  }, [audioRef.current, autoPlay, internalShowResults, autoplayBlocked]);
   
   const handleSubmit = () => {
     if (!userInput.trim()) return;
@@ -240,6 +274,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     }
   }, [internalShowResults]);
 
+  // Modified handleTryAgain to respect keepResultsVisible
   const handleTryAgain = () => {
     // Only reset if not instructed to keep results visible
     if (!keepResultsVisible) {

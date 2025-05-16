@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
@@ -52,7 +53,7 @@ const RoadmapPage: React.FC = () => {
     normalizeLanguage(roadmap.language) === normalizedSelectedLanguage
   );
   
-  // Set active tab based on whether we have user roadmaps or not
+  // Set active tab based on whether we have user roadmaps for the current language
   useEffect(() => {
     if (!isLoading) {
       if (filteredUserRoadmaps.length === 0) {
@@ -191,10 +192,11 @@ const RoadmapPage: React.FC = () => {
     return lang.charAt(0).toUpperCase() + lang.slice(1);
   };
 
-  // Check if there are any available roadmaps in the system
-  const hasAvailableRoadmaps = roadmaps.some(roadmap => 
-    roadmap.languages?.includes(settings.selectedLanguage)
-  );
+  // Check if there are any available roadmaps in the system for the current language
+  const hasAvailableRoadmaps = roadmaps.some(roadmap => {
+    if (!roadmap.languages) return false;
+    return roadmap.languages.some(lang => normalizeLanguage(lang) === normalizedSelectedLanguage);
+  });
 
   // Detailed debug info
   useEffect(() => {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -33,12 +34,16 @@ export function useSession(options: UseSessionOptions = {}) {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [warningTimeout, setWarningTimeout] = useState<NodeJS.Timeout | null>(null);
   const [sessionTimeout, setSessionTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [sessionActive, setSessionActive] = useState<boolean>(true);
 
   // Reset timers and record new activity
   const recordActivity = useCallback(() => {
+    if (!sessionActive) return; // Skip if session is intentionally ended
+    
     const now = Date.now();
     
     // Only update if a significant amount of time has passed (prevents constant resets)
+    // Or if warning is currently showing (to dismiss it)
     if (now - lastActivity > ACTIVITY_RESET_THRESHOLD || showWarning) {
       setLastActivity(now);
       setShowWarning(false);
@@ -60,10 +65,12 @@ export function useSession(options: UseSessionOptions = {}) {
       setWarningTimeout(newWarningTimeout);
       setSessionTimeout(newSessionTimeout);
     }
-  }, [lastActivity, showWarning, warningTimeout, sessionTimeout, timeout, warningTime]);
+  }, [lastActivity, showWarning, warningTimeout, sessionTimeout, timeout, warningTime, sessionActive]);
 
   // Handle session timeout
   const handleSessionTimeout = useCallback(() => {
+    setSessionActive(false);
+    
     if (onTimeout) {
       onTimeout();
     }
@@ -77,7 +84,7 @@ export function useSession(options: UseSessionOptions = {}) {
       
       // Log user out and redirect to login
       signOut();
-      navigate('/login');
+      navigate('/login', { replace: true });
     }
   }, [onTimeout, navigate, signOut, disableAutoRedirect]);
 
@@ -112,6 +119,7 @@ export function useSession(options: UseSessionOptions = {}) {
     
     // Initialize with current time
     setLastActivity(Date.now());
+    setSessionActive(true);
     
     // Add event listeners for user activity
     const activityEvents = [
@@ -168,13 +176,23 @@ export function useSession(options: UseSessionOptions = {}) {
 
   // Extend session manually
   const extendSession = () => {
+    setSessionActive(true);
     recordActivity();
+  };
+
+  // Manually end session
+  const endSession = () => {
+    setSessionActive(false);
+    if (warningTimeout) clearTimeout(warningTimeout);
+    if (sessionTimeout) clearTimeout(sessionTimeout);
   };
 
   return {
     showWarning,
     timeLeftFormatted: formatTimeLeft(timeLeft),
     timeLeftMs: timeLeft,
-    extendSession
+    extendSession,
+    endSession,
+    sessionActive
   };
 }
