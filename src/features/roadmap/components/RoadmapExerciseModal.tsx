@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import DictationPractice from '@/components/DictationPractice';
-import ReadingAnalysis from '@/components/ReadingAnalysis';
 import { Search, Headphones, CheckCircle, X } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
@@ -40,8 +39,6 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   const [loading, setLoading] = useState<boolean>(false);
   const [practiceStage, setPracticeStage] = useState<PracticeStage>(PracticeStage.PROMPT);
   const [exerciseResults, setExerciseResults] = useState<{accuracy: number} | null>(null);
-  const [recentAccuracy, setRecentAccuracy] = useState<number | null>(null);
-  const [processingCompletion, setProcessingCompletion] = useState(false);
   
   // Load exercise when modal is opened with a node
   useEffect(() => {
@@ -51,11 +48,9 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
       setPracticeStage(PracticeStage.PROMPT);
       // Reset exercise results
       setExerciseResults(null);
-      setRecentAccuracy(null);
     } else if (!isOpen) {
       // Reset states when modal is completely closed
       setExercise(null);
-      setProcessingCompletion(false);
     }
   }, [node, isOpen]);
 
@@ -84,56 +79,55 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     setPracticeStage(PracticeStage.DICTATION);
   };
 
-  const handlePracticeComplete = async (accuracy: number) => {
+  const handlePracticeComplete = (accuracy: number) => {
     if (!node) return;
-    
-    setRecentAccuracy(accuracy);
-    setExerciseResults({ accuracy });
-    setProcessingCompletion(true);
-    
-    try {
-      // Always increment completion count, but only count it toward mastery if accuracy is at least 95%
-      const result = await incrementNodeCompletion(node.id, accuracy);
-      console.log("Node completion result:", result);
-      
-      // Show feedback based on accuracy
-      if (accuracy >= 95) {
-        toast({
-          title: "Great job!",
-          description: `You scored ${Math.round(accuracy)}%. Your progress has been saved.`,
-          variant: "default", 
-        });
+
+    // Save the practice result and increment completion count
+    incrementNodeCompletion(node.id, accuracy)
+      .then(result => {
+        console.log("Node completion result:", result);
         
-        // If node is now fully completed (3 times with 95%)
-        if (result && result.isCompleted) {
+        // Store the exercise results
+        setExerciseResults({ accuracy });
+        
+        // Show feedback based on accuracy
+        if (accuracy >= 95) {
           toast({
-            title: "Node completed!",
-            description: `You've mastered this exercise. The next lesson is now available.`,
+            title: "Great job!",
+            description: `You scored ${Math.round(accuracy)}%. Your progress has been saved.`,
+            variant: "default", 
+          });
+          
+          // If node is now fully completed (3 times with 95%)
+          if (result && result.isCompleted) {
+            toast({
+              title: "Node completed!",
+              description: `You've mastered this exercise. The next lesson is now available.`,
+              variant: "default",
+            });
+          }
+        } else {
+          toast({
+            title: "Keep practicing!",
+            description: `You scored ${Math.round(accuracy)}%. Try to get above 95% for it to count toward full completion.`,
             variant: "default",
           });
         }
-      } else {
+        
+        // Do not close modal or change stage - results will be shown within DictationPractice
+      })
+      .catch(error => {
+        console.error("Error updating node completion:", error);
         toast({
-          title: "Keep practicing!",
-          description: `You scored ${Math.round(accuracy)}%. Try to get above 95% for it to count toward full completion.`,
-          variant: "default",
+          title: "Error saving progress",
+          description: "Please try again later",
+          variant: "destructive",
         });
-      }
-    } catch (error) {
-      console.error("Error updating node completion:", error);
-      toast({
-        title: "Error saving progress",
-        description: "Please try again later",
-        variant: "destructive",
       });
-    } finally {
-      setProcessingCompletion(false);
-    }
   };
 
   const handleTryAgain = () => {
     setExerciseResults(null);
-    setRecentAccuracy(null);
     setPracticeStage(PracticeStage.PROMPT);
   };
 
@@ -172,19 +166,12 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   // Calculate progress percentage (out of 3 completions)
   const progressPercentage = Math.min(completionCount / 3 * 100, 100);
 
-  // Calculate how many more successful attempts (95%+ accuracy) are needed
-  const attemptsRemaining = nodeCompletionInfo ? Math.max(0, 3 - nodeCompletionInfo.completionCount) : 3;
-
   if (!node) {
     return null;
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      // Prevent closing the dialog while completion is being processed
-      if (processingCompletion && !open) return;
-      onOpenChange(open);
-    }}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-w-[95vw] p-0 overflow-hidden">
         <DialogHeader className="p-6 flex flex-row justify-between items-start">
           <div className="flex-1">
@@ -209,7 +196,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
                   <p className="text-xs text-muted-foreground mt-1">
                     {isNodeCompleted 
                       ? "Mastered! You've completed this exercise." 
-                      : `Complete this exercise ${attemptsRemaining} more time${attemptsRemaining !== 1 ? 's' : ''} with at least 95% accuracy to master it.`}
+                      : "Complete this exercise 3 times with at least 95% accuracy to master it."}
                   </p>
                 </div>
               )}
@@ -273,36 +260,12 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
           </div>
         )}
         
-        {practiceStage === PracticeStage.READING && exercise && (
-          <ReadingAnalysis
-            exercise={{
-              id: `roadmap-${node.id}`,
-              title: exercise.title || node.title,
-              text: exercise.text || "",
-              language: node.language || 'english',
-              audioUrl: exercise.audioUrl,
-              tags: [],
-              directoryId: null,
-              createdAt: new Date(),
-              completionCount: 0,
-              isCompleted: false
-            }}
-            onComplete={handleStartDictation}
-          />
-        )}
-
-        {practiceStage === PracticeStage.READING && !exercise && (
+        {practiceStage === PracticeStage.READING && (
           <div className="text-center py-6">
-            {loading || nodeLoading ? (
-              <p>Loading exercise...</p>
-            ) : (
-              <>
-                <p>No exercise content available for reading analysis.</p>
-                <Button onClick={handleTryAgain} className="mt-4">
-                  Go Back
-                </Button>
-              </>
-            )}
+            <p>Reading Analysis functionality is not implemented yet.</p>
+            <Button onClick={handleStartDictation} className="mt-4">
+              Proceed to Dictation
+            </Button>
           </div>
         )}
         
@@ -322,10 +285,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
             }}
             onTryAgain={handleTryAgain}
             onComplete={handlePracticeComplete}
-            keepResultsVisible={true} // Keep results visible by default
-            autoPlay={true} // Enable autoplay for audio
-            hasReadingAnalysis={true} // Show reading analysis button
-            onViewReadingAnalysis={handleStartReadingAnalysis} // Add handler for reading analysis button
+            keepResultsVisible={true} // Added prop to prevent immediate results closure
           />
         )}
         

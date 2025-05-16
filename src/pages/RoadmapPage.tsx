@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
@@ -17,7 +16,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
-import { normalizeLanguage } from '@/utils/languageUtils';
 
 const RoadmapPage: React.FC = () => {
   const { 
@@ -45,24 +43,16 @@ const RoadmapPage: React.FC = () => {
   const [isRetrying, setIsRetrying] = useState(false);
   const navigate = useNavigate();
 
-  // Normalize language for case-insensitive comparison
-  const normalizedSelectedLanguage = normalizeLanguage(settings.selectedLanguage);
-
-  // Filter userRoadmaps to only show those for the currently selected language
-  const filteredUserRoadmaps = userRoadmaps.filter(roadmap => 
-    normalizeLanguage(roadmap.language) === normalizedSelectedLanguage
-  );
-  
-  // Set active tab based on whether we have user roadmaps for the current language
+  // Set active tab based on whether we have user roadmaps or not
   useEffect(() => {
     if (!isLoading) {
-      if (filteredUserRoadmaps.length === 0) {
+      if (userRoadmaps.length === 0) {
         setActiveTab("new");
       } else {
         setActiveTab("active");
       }
     }
-  }, [isLoading, filteredUserRoadmaps]);
+  }, [isLoading, userRoadmaps]);
 
   // When a user clicks on "Continue Learning," open the exercise modal with current node
   useEffect(() => {
@@ -102,21 +92,15 @@ const RoadmapPage: React.FC = () => {
         const loadedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
         
         if (loadedRoadmaps && loadedRoadmaps.length > 0) {
-          // Try selecting the first available roadmap for the current language
-          const matchingRoadmap = loadedRoadmaps.find(r => 
-            normalizeLanguage(r.language) === normalizedSelectedLanguage
-          );
-          
-          if (matchingRoadmap) {
-            try {
-              await selectRoadmap(matchingRoadmap.id);
-              toast({
-                title: "Selected fallback roadmap",
-                description: "We encountered an issue with the selected roadmap and loaded another one instead."
-              });
-            } catch (secondError) {
-              console.error('Error selecting fallback roadmap:', secondError);
-            }
+          // Try selecting the first available roadmap instead
+          try {
+            await selectRoadmap(loadedRoadmaps[0].id);
+            toast({
+              title: "Selected fallback roadmap",
+              description: "We encountered an issue with the selected roadmap and loaded another one instead."
+            });
+          } catch (secondError) {
+            console.error('Error selecting fallback roadmap:', secondError);
           }
         }
       } catch (loadError) {
@@ -147,9 +131,9 @@ const RoadmapPage: React.FC = () => {
           title: "Roadmap loaded",
           description: "Successfully reloaded your roadmap."
         });
-      } else if (filteredUserRoadmaps.length > 0) {
-        // Otherwise, select the first available roadmap for the current language
-        await selectRoadmap(filteredUserRoadmaps[0].id);
+      } else if (userRoadmaps.length > 0) {
+        // Otherwise, select the first available roadmap
+        await selectRoadmap(userRoadmaps[0].id);
         toast({
           title: "Roadmap loaded",
           description: "Successfully loaded a roadmap."
@@ -192,11 +176,10 @@ const RoadmapPage: React.FC = () => {
     return lang.charAt(0).toUpperCase() + lang.slice(1);
   };
 
-  // Check if there are any available roadmaps in the system for the current language
-  const hasAvailableRoadmaps = roadmaps.some(roadmap => {
-    if (!roadmap.languages) return false;
-    return roadmap.languages.some(lang => normalizeLanguage(lang) === normalizedSelectedLanguage);
-  });
+  // Check if there are any available roadmaps in the system
+  const hasAvailableRoadmaps = roadmaps.some(roadmap => 
+    roadmap.languages?.includes(settings.selectedLanguage)
+  );
 
   // Detailed debug info
   useEffect(() => {
@@ -206,13 +189,11 @@ const RoadmapPage: React.FC = () => {
       userAuthenticated: !!user,
       roadmaps: roadmaps.length,
       userRoadmaps: userRoadmaps.length,
-      filteredUserRoadmaps: filteredUserRoadmaps.length,
       hasCurrentRoadmap: !!currentRoadmap,
       nodes: nodes.length,
       activeTab,
       hasAvailableRoadmaps,
-      language: settings.selectedLanguage,
-      normalizedSelectedLanguage
+      language: settings.selectedLanguage
     });
   }, [
     isLoading, 
@@ -220,12 +201,10 @@ const RoadmapPage: React.FC = () => {
     user, 
     roadmaps.length, 
     userRoadmaps.length, 
-    filteredUserRoadmaps.length,
     currentRoadmap, 
     nodes.length, 
     activeTab,
-    settings.selectedLanguage,
-    normalizedSelectedLanguage
+    settings.selectedLanguage
   ]);
 
   if (!user) {
@@ -342,7 +321,7 @@ const RoadmapPage: React.FC = () => {
           </TabsList>
           
           <TabsContent value="active" className="space-y-6">
-            {filteredUserRoadmaps.length === 0 ? (
+            {userRoadmaps.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
                   You don't have any roadmaps for {getCapitalizedLanguage(settings.selectedLanguage)} yet. Start a new one to begin your learning journey.
@@ -358,7 +337,7 @@ const RoadmapPage: React.FC = () => {
                 <h2 className="text-xl font-semibold">{getCapitalizedLanguage(settings.selectedLanguage)}</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredUserRoadmaps.map(roadmap => {
+                  {userRoadmaps.map(roadmap => {
                     // Find the corresponding roadmap details
                     const details = roadmaps.find(r => r.id === roadmap.roadmapId);
                     return (

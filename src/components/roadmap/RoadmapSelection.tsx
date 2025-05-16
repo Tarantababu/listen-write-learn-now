@@ -24,10 +24,9 @@ import LevelBadge from '@/components/LevelBadge';
 import LevelInfoTooltip from '@/components/LevelInfoTooltip';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { normalizeLanguage, getLanguageFlag } from '@/utils/languageUtils';
 
 const RoadmapSelection: React.FC = () => {
-  const { initializeUserRoadmap, roadmaps, isLoading, userRoadmaps, loadUserRoadmaps, loadRoadmaps } = useRoadmap();
+  const { initializeUserRoadmap, roadmaps, isLoading, userRoadmaps, loadUserRoadmaps } = useRoadmap();
   const { settings } = useUserSettingsContext();
   const [selectedLevel, setSelectedLevel] = useState<LanguageLevel | ''>('');
   const [initializing, setInitializing] = useState(false);
@@ -35,27 +34,16 @@ const RoadmapSelection: React.FC = () => {
   const [availableLevels, setAvailableLevels] = useState<LanguageLevel[]>([]);
   const [existingLevels, setExistingLevels] = useState<LanguageLevel[]>([]);
   const [retryCount, setRetryCount] = useState(0);
-  const [debugInfo, setDebugInfo] = useState<any>({});
 
-  // Normalize language for case-insensitive comparison
-  const normalizedSelectedLanguage = normalizeLanguage(settings.selectedLanguage);
+  // Filter roadmaps to only show those for the currently selected language
+  const availableRoadmapsForLanguage = roadmaps.filter(roadmap => 
+    roadmap.languages?.includes(settings.selectedLanguage)
+  );
 
-  // Filter roadmaps to only show those for the currently selected language (case-insensitive)
-  const availableRoadmapsForLanguage = roadmaps.filter(roadmap => {
-    // Debug output of roadmap languages
-    if (roadmap.languages) {
-      console.log(`Roadmap ${roadmap.id} languages:`, roadmap.languages);
-      return roadmap.languages.some(lang => normalizeLanguage(lang) === normalizedSelectedLanguage);
-    }
-    return false;
-  });
-
-  console.log("RoadmapSelection - Roadmap data:", {
-    normalizedLanguage: normalizedSelectedLanguage,
+  console.log("Roadmap data:", {
+    normalizedLanguage: settings.selectedLanguage,
     roadmapsCount: roadmaps.length,
     availableRoadmapsCount: availableRoadmapsForLanguage.length,
-    roadmapLanguages: roadmaps.map(r => r.languages),
-    allRoadmaps: roadmaps,
   });
 
   // Level descriptions mapping
@@ -79,29 +67,11 @@ const RoadmapSelection: React.FC = () => {
     return existingLevels.includes(level);
   };
 
-  // Force reload roadmaps on component mount and when language changes
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        console.log(`RoadmapSelection - Loading data for language: ${settings.selectedLanguage} (normalized: ${normalizedSelectedLanguage})`);
-        
-        // First load available roadmaps for the language
-        await loadRoadmaps(settings.selectedLanguage);
-        // Then load user roadmaps for the language
-        await loadUserRoadmaps(settings.selectedLanguage);
-      } catch (error) {
-        console.error('Error loading roadmap data:', error);
-      }
-    };
-    
-    loadData();
-  }, [settings.selectedLanguage, loadRoadmaps, loadUserRoadmaps, normalizedSelectedLanguage]);
-
   // Calculate available and existing levels
   useEffect(() => {
     // Get existing roadmap levels for the current language
     const userLevels = userRoadmaps
-      .filter(r => normalizeLanguage(r.language) === normalizedSelectedLanguage)
+      .filter(r => r.language === settings.selectedLanguage)
       .map(r => {
         const roadmap = roadmaps.find(rm => rm.id === r.roadmapId);
         return roadmap?.level;
@@ -122,19 +92,7 @@ const RoadmapSelection: React.FC = () => {
     } else {
       setSelectedLevel('');
     }
-    
-    // Update debug info
-    setDebugInfo({
-      normalizedLanguage: normalizedSelectedLanguage,
-      roadmapsCount: roadmaps.length,
-      availableRoadmapsCount: availableRoadmapsForLanguage.length,
-      roadmapLanguages: roadmaps.map(r => r.languages),
-      availableLevels,
-      userLevels,
-      allRoadmaps: roadmaps,
-    });
-    
-  }, [roadmaps, userRoadmaps, normalizedSelectedLanguage, retryCount, availableRoadmapsForLanguage]);
+  }, [roadmaps, userRoadmaps, settings.selectedLanguage, retryCount]);
 
   const handleInitializeRoadmap = async () => {
     if (!selectedLevel) return;
@@ -165,11 +123,7 @@ const RoadmapSelection: React.FC = () => {
   const handleRefreshRoadmaps = async () => {
     setRefreshing(true);
     try {
-      // First reload available roadmaps
-      await loadRoadmaps(settings.selectedLanguage);
-      // Then reload user roadmaps
       await loadUserRoadmaps(settings.selectedLanguage);
-      
       setRetryCount(count => count + 1); // Force recalculation of available levels
       
       toast({
@@ -198,25 +152,6 @@ const RoadmapSelection: React.FC = () => {
     ? 'Add This Roadmap' 
     : 'Start Learning Journey';
 
-  // These are debug buttons during development
-  const debugButtons = process.env.NODE_ENV === 'development' && (
-    <div className="mt-2 space-x-2">
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={() => console.log('Debug Info:', {
-          normalizedSelectedLanguage,
-          roadmaps,
-          userRoadmaps,
-          availableRoadmapsForLanguage,
-          selectedLevel,
-          availableLevels
-        })}>
-        Log Debug Info
-      </Button>
-    </div>
-  );
-
   if (isLoading) {
     return (
       <Card className="w-full max-w-md mx-auto shadow-md">
@@ -242,7 +177,6 @@ const RoadmapSelection: React.FC = () => {
         <div>
           <CardTitle className="text-xl font-semibold">Choose Your Starting Level</CardTitle>
           <CardDescription>
-            <span className="mr-2">{getLanguageFlag(settings.selectedLanguage)}</span>
             {existingLevels.length > 0 
               ? `Add another ${settings.selectedLanguage} roadmap at a different level`
               : `Select the language level that best matches your current proficiency in ${settings.selectedLanguage}`
@@ -283,14 +217,6 @@ const RoadmapSelection: React.FC = () => {
                 </p>
               </div>
             </div>
-            
-            {/* Always show debug info in development */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mt-3 bg-gray-800 text-gray-300 p-3 rounded text-xs overflow-auto max-h-80">
-                <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-                {debugButtons}
-              </div>
-            )}
           </div>
         ) : (
           <>
@@ -355,14 +281,6 @@ const RoadmapSelection: React.FC = () => {
                   </p>
                 </div>
               </>
-            )}
-            
-            {/* Always show debug info in development */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mt-3 bg-gray-800 text-gray-300 p-3 rounded text-xs overflow-auto max-h-60">
-                <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-                {debugButtons}
-              </div>
             )}
           </>
         )}
