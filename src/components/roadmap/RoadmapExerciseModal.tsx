@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Dialog,
@@ -8,10 +9,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RoadmapNode } from '@/types';
+import { RoadmapNode, BadgeVariant } from '@/types';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import useSpeechToText from '@/hooks/use-speech-to-text';
-import { BadgeVariant } from '@/types';
 
 interface RoadmapExerciseModalProps {
   node: RoadmapNode | null;

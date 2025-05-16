@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { format, subDays, isSameDay, subMonths } from 'date-fns';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -35,7 +36,7 @@ interface DailyActivity {
 const UserStatistics: React.FC = () => {
   const { user } = useAuth();
   const { exercises } = useExerciseContext();
-  const { vocabulary } = useVocabularyContext();
+  const { vocabularyItems } = useVocabularyContext();
   const { settings } = useUserSettingsContext();
   const [completions, setCompletions] = useState<CompletionData[]>([]);
   const [streakData, setStreakData] = useState<StreakData>({
@@ -207,7 +208,7 @@ const UserStatistics: React.FC = () => {
 
   // Calculate vocabulary trend for today vs yesterday
   const vocabTrend = (() => {
-    const vocabularyByDay = vocabulary
+    const vocabularyByDay = vocabularyItems
       .filter(item => item.language === currentLanguage)
       .reduce((acc: Record<string, number>, item) => {
         // Use creation date as timestamp
@@ -226,8 +227,8 @@ const UserStatistics: React.FC = () => {
     const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
     
     return compareWithPreviousDay({
-      [today]: masteredWords.size,
-      [yesterday]: Math.max(0, masteredWords.size - Math.floor(masteredWords.size * 0.02))
+      [format(new Date(), 'yyyy-MM-dd')]: masteredWords.size,
+      [format(subDays(new Date(), 1), 'yyyy-MM-dd')]: Math.max(0, masteredWords.size - Math.floor(masteredWords.size * 0.02))
     });
   })();
 
@@ -272,7 +273,7 @@ const UserStatistics: React.FC = () => {
 
         <StatsCard
           title="Vocabulary Items"
-          value={vocabulary.filter(item => item.language === currentLanguage).length}
+          value={vocabularyItems.filter(item => item.language === currentLanguage).length}
           icon={<BookOpen className="text-purple-500" />}
           description="Words saved to your vocabulary list"
           trend={vocabTrend}

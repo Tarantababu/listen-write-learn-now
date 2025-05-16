@@ -1,10 +1,8 @@
 
-// Create a simplified VocabularyContext that fixes the type errors
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
-import { VocabularyItem, Exercise } from '@/types';
+import { VocabularyItem, Language } from '@/types';
 
 interface VocabularyContextProps {
   vocabularyItems: VocabularyItem[];
@@ -12,11 +10,17 @@ interface VocabularyContextProps {
   deleteVocabularyItem: (id: string) => Promise<void>;
   updateVocabularyItem: (id: string, item: Partial<VocabularyItem>) => Promise<void>;
   getVocabularyItemsByExercise: (exerciseId: string) => VocabularyItem[];
+  getVocabularyByLanguage: (language: Language) => VocabularyItem[];
+  vocabularyLimit: number;
+  removeVocabularyItem: (id: string) => Promise<void>;
   loading: boolean;
   error: Error | null;
 }
 
 const VocabularyContext = createContext<VocabularyContextProps | undefined>(undefined);
+
+// Default vocabulary limit for free users
+const DEFAULT_VOCABULARY_LIMIT = 50;
 
 export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [vocabularyItems, setVocabularyItems] = useState<VocabularyItem[]>([]);
@@ -47,7 +51,7 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             word: item.word,
             definition: item.definition,
             exampleSentence: item.example_sentence,
-            language: item.language,
+            language: item.language as Language, // Cast to Language type
             userId: item.user_id,
             createdAt: item.created_at,
             audioUrl: item.audio_url || undefined,
@@ -93,7 +97,7 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         word: data.word,
         definition: data.definition,
         exampleSentence: data.example_sentence,
-        language: data.language,
+        language: data.language as Language, // Cast to Language type
         userId: data.user_id,
         createdAt: data.created_at,
         audioUrl: data.audio_url || undefined,
@@ -163,6 +167,14 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const getVocabularyItemsByExercise = (exerciseId: string): VocabularyItem[] => {
     return vocabularyItems.filter(item => item.exercise_id === exerciseId);
   };
+  
+  // Add the missing method to filter vocabulary by language
+  const getVocabularyByLanguage = (language: Language): VocabularyItem[] => {
+    return vocabularyItems.filter(item => item.language === language);
+  };
+  
+  // Alias for deleteVocabularyItem to match the expected interface
+  const removeVocabularyItem = deleteVocabularyItem;
 
   return (
     <VocabularyContext.Provider
@@ -172,6 +184,9 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         deleteVocabularyItem,
         updateVocabularyItem,
         getVocabularyItemsByExercise,
+        getVocabularyByLanguage,
+        removeVocabularyItem,
+        vocabularyLimit: DEFAULT_VOCABULARY_LIMIT,
         loading,
         error
       }}
