@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import DictationPractice from '@/components/DictationPractice';
+import ReadingAnalysis from '@/components/ReadingAnalysis';
 import { Search, Headphones, CheckCircle, X } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
@@ -82,16 +83,17 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   const handlePracticeComplete = (accuracy: number) => {
     if (!node) return;
 
-    // Save the practice result and increment completion count
-    incrementNodeCompletion(node.id, accuracy)
-      .then(result => {
-        console.log("Node completion result:", result);
-        
-        // Store the exercise results
-        setExerciseResults({ accuracy });
-        
-        // Show feedback based on accuracy
-        if (accuracy >= 95) {
+    // Store the exercise results
+    setExerciseResults({ accuracy });
+    
+    // Only increment completion count if accuracy is at least 95%
+    if (accuracy >= 95) {
+      // Save the practice result and increment completion count
+      incrementNodeCompletion(node.id, accuracy)
+        .then(result => {
+          console.log("Node completion result:", result);
+          
+          // Show feedback based on accuracy
           toast({
             title: "Great job!",
             description: `You scored ${Math.round(accuracy)}%. Your progress has been saved.`,
@@ -106,24 +108,23 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
               variant: "default",
             });
           }
-        } else {
+        })
+        .catch(error => {
+          console.error("Error updating node completion:", error);
           toast({
-            title: "Keep practicing!",
-            description: `You scored ${Math.round(accuracy)}%. Try to get above 95% for it to count toward full completion.`,
-            variant: "default",
+            title: "Error saving progress",
+            description: "Please try again later",
+            variant: "destructive",
           });
-        }
-        
-        // Do not close modal or change stage - results will be shown within DictationPractice
-      })
-      .catch(error => {
-        console.error("Error updating node completion:", error);
-        toast({
-          title: "Error saving progress",
-          description: "Please try again later",
-          variant: "destructive",
         });
+    } else {
+      // Show feedback for lower accuracy
+      toast({
+        title: "Keep practicing!",
+        description: `You scored ${Math.round(accuracy)}%. Try to get above 95% for it to count toward full completion.`,
+        variant: "default",
       });
+    }
   };
 
   const handleTryAgain = () => {
@@ -260,12 +261,27 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
           </div>
         )}
         
-        {practiceStage === PracticeStage.READING && (
+        {practiceStage === PracticeStage.READING && exercise && (
+          <ReadingAnalysis
+            text={exercise.text || ""}
+            language={node.language || 'english'}
+            onClose={() => setPracticeStage(PracticeStage.PROMPT)}
+            onProceedToDictation={handleStartDictation}
+          />
+        )}
+
+        {practiceStage === PracticeStage.READING && !exercise && (
           <div className="text-center py-6">
-            <p>Reading Analysis functionality is not implemented yet.</p>
-            <Button onClick={handleStartDictation} className="mt-4">
-              Proceed to Dictation
-            </Button>
+            {loading || nodeLoading ? (
+              <p>Loading exercise...</p>
+            ) : (
+              <>
+                <p>No exercise content available for reading analysis.</p>
+                <Button onClick={handleTryAgain} className="mt-4">
+                  Go Back
+                </Button>
+              </>
+            )}
           </div>
         )}
         
@@ -285,7 +301,10 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
             }}
             onTryAgain={handleTryAgain}
             onComplete={handlePracticeComplete}
-            keepResultsVisible={true} // Added prop to prevent immediate results closure
+            keepResultsVisible={true} // Keep results visible by default
+            autoPlay={true} // Enable autoplay for audio
+            hasReadingAnalysis={true} // Show reading analysis button
+            onViewReadingAnalysis={handleStartReadingAnalysis} // Add handler for reading analysis button
           />
         )}
         
