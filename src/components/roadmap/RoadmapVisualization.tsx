@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '@/types';
@@ -155,6 +154,12 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   const roadmapLevel = roadmapDetails?.level;
 
   const getNodeStatus = (node: RoadmapNode): 'completed' | 'current' | 'locked' | 'available' => {
+    // Use the node.status property if available
+    if (node.status) {
+      return node.status as 'completed' | 'current' | 'locked' | 'available';
+    }
+    
+    // Otherwise, calculate it from the available information
     if (completedNodes.includes(node.id)) return 'completed';
     
     // Check if node is completed in the detailed progress

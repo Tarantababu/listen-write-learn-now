@@ -1,11 +1,178 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { roadmapService } from '../api/roadmapService';
-import { RoadmapItem, RoadmapNode, ExerciseContent, NodeCompletionResult } from '../types';
-import { Language, LanguageLevel } from '@/types';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { roadmapService } from '../api/roadmapService';
+import { RoadmapItem, RoadmapNode } from '../types';
+import { Language, LanguageLevel } from '@/types';
+import { nodeAccessService } from '../services/NodeAccessService';
+
+// Extend the roadmapService with missing methods for our hook
+const extendedRoadmapService = {
+  ...roadmapService,
+  
+  // Add initializeRoadmap functionality
+  initializeRoadmap: async (level: LanguageLevel, language: Language): Promise<string> => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        throw new Error('User not authenticated');
+      }
+      
+      // Find matching roadmap for the level and language
+      const roadmaps = await roadmapService.getRoadmapsForLanguage(language);
+      const matchingRoadmap = roadmaps.find(r => r.level === level);
+      
+      if (!matchingRoadmap) {
+        throw new Error(`No roadmap found for level ${level} and language ${language}`);
+      }
+      
+      // Check if user already has this roadmap
+      const userRoadmaps = await roadmapService.getUserRoadmaps(language);
+      const existingRoadmap = userRoadmaps.find(r => r.roadmapId === matchingRoadmap.id);
+      
+      if (existingRoadmap) {
+        return existingRoadmap.id;
+      }
+      
+      // Create a new user roadmap
+      const { data, error } = await supabase
+        .from('user_roadmaps')
+        .insert({
+          user_id: userData.user.id,
+          roadmap_id: matchingRoadmap.id,
+          language
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      return data.id;
+    } catch (error) {
+      console.error('Error initializing roadmap:', error);
+      throw error;
+    }
+  },
+  
+  // Add getRoadmapNodes functionality
+  getRoadmapNodes: async (userRoadmapId: string): Promise<RoadmapNode[]> => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        return [];
+      }
+      
+      // Get the user roadmap
+      const { data: userRoadmap, error: roadmapError } = await supabase
+        .from('user_roadmaps')
+        .select('*')
+        .eq('id', userRoadmapId)
+        .single();
+        
+      if (roadmapError) throw roadmapError;
+      
+      // Get all nodes
+      const { data: nodes, error: nodesError } = await supabase
+        .from('roadmap_nodes')
+        .select('*')
+        .eq('roadmap_id', userRoadmap.roadmap_id)
+        .eq('language', userRoadmap.language)
+        .order('position');
+        
+      if (nodesError) throw nodesError;
+      
+      // Format nodes
+      return nodes.map(node => ({
+        id: node.id,
+        roadmapId: node.roadmap_id,
+        title: node.title,
+        description: node.description || '',
+        position: node.position,
+        isBonus: node.is_bonus,
+        language: node.language,
+        defaultExerciseId: node.default_exercise_id,
+        createdAt: new Date(node.created_at),
+        updatedAt: node.updated_at ? new Date(node.updated_at) : undefined
+      }));
+    } catch (error) {
+      console.error('Error getting roadmap nodes:', error);
+      return [];
+    }
+  },
+  
+  // Add getNodeExerciseContent functionality
+  getNodeExerciseContent: async (nodeId: string) => {
+    try {
+      // Get the node
+      const { data: node, error: nodeError } = await supabase
+        .from('roadmap_nodes')
+        .select('default_exercise_id')
+        .eq('id', nodeId)
+        .single();
+        
+      if (nodeError || !node.default_exercise_id) {
+        return null;
+      }
+      
+      // Get exercise content
+      const { data: exercise, error: exerciseError } = await supabase
+        .from('default_exercises')
+        .select('*')
+        .eq('id', node.default_exercise_id)
+        .single();
+        
+      if (exerciseError) throw exerciseError;
+      
+      return exercise;
+    } catch (error) {
+      console.error('Error getting node exercise:', error);
+      return null;
+    }
+  },
+  
+  // Add markNodeCompleted functionality
+  markNodeCompleted: async (nodeId: string): Promise<void> => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        throw new Error('User not authenticated');
+      }
+      
+      // Get node info
+      const { data: node, error: nodeError } = await supabase
+        .from('roadmap_nodes')
+        .select('roadmap_id, language')
+        .eq('id', nodeId)
+        .single();
+        
+      if (nodeError) throw nodeError;
+      
+      // Mark as completed
+      const { error } = await supabase
+        .from('roadmap_progress')
+        .insert({
+          user_id: userData.user.id,
+          roadmap_id: node.roadmap_id,
+          node_id: nodeId,
+          completed: true,
+          completed_at: new Date().toISOString()
+        })
+        .match({ user_id: userData.user.id, roadmap_id: node.roadmap_id, node_id: nodeId });
+        
+      if (error && error.code !== '23505') throw error; // Ignore conflict errors
+    } catch (error) {
+      console.error('Error marking node as completed:', error);
+      throw error;
+    }
+  }
+};
+
+// Import supabase client for the extended service
 import { supabase } from '@/integrations/supabase/client';
 
 export function useRoadmapData() {
+  const { selectedLanguage } = useAuth();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
   const [userRoadmaps, setUserRoadmaps] = useState<RoadmapItem[]>([]);
@@ -134,7 +301,7 @@ export function useRoadmapData() {
   }, []);
   
   // Initialize a new roadmap for the user
-  const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
+  const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language): Promise<string> => {
     // Normalize language to lowercase for consistent comparison
     const normalizedLanguage = language.toLowerCase() as Language;
     
@@ -151,7 +318,7 @@ export function useRoadmapData() {
         duration: 5000,
       });
       
-      const roadmapId = await roadmapService.initializeRoadmap(level, normalizedLanguage);
+      const roadmapId = await service.initializeRoadmap(level, normalizedLanguage);
       console.log(`Roadmap initialized with ID: ${roadmapId}`);
       
       // Invalidate user roadmaps cache to force reload
@@ -188,7 +355,7 @@ export function useRoadmapData() {
     } finally {
       setIsLoading(false);
     }
-  }, [loadUserRoadmaps]);
+  }, [loadUserRoadmaps, service]);
   
   // Select and load a specific roadmap
   const selectRoadmap = useCallback(async (roadmapId: string) => {
@@ -229,7 +396,7 @@ export function useRoadmapData() {
       setSelectedRoadmap(roadmap);
       
       // Load the nodes for this roadmap
-      const nodesData = await roadmapService.getRoadmapNodes(roadmapId);
+      const nodesData = await service.getRoadmapNodes(roadmapId);
       console.log(`Loaded ${nodesData.length} nodes for roadmap ${roadmapId}`);
       
       // Update state and cache
@@ -255,14 +422,9 @@ export function useRoadmapData() {
   // Get exercise content for a node
   const getNodeExercise = useCallback(async (nodeId: string) => {
     try {
-      return await roadmapService.getNodeExerciseContent(nodeId);
+      return service.getNodeExerciseContent(nodeId);
     } catch (error) {
       console.error('Error getting node exercise:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to load exercise",
-        description: "There was an error loading the exercise content."
-      });
       return null;
     }
   }, []);
@@ -270,7 +432,7 @@ export function useRoadmapData() {
   // Record completion with accuracy score
   const recordNodeCompletion = useCallback(async (nodeId: string, accuracy: number): Promise<NodeCompletionResult> => {
     try {
-      const result = await roadmapService.recordNodeCompletion(nodeId, accuracy);
+      const result = await service.recordNodeCompletion(nodeId, accuracy);
       
       // If accuracy is high enough (95%+) and node is in the current language,
       // record this in the user_daily_activities table
@@ -321,7 +483,7 @@ export function useRoadmapData() {
   // Mark a node as completed
   const markNodeAsCompleted = useCallback(async (nodeId: string) => {
     try {
-      await roadmapService.markNodeCompleted(nodeId);
+      await service.markNodeCompleted(nodeId);
       
       // Record this completion in the user_daily_activities table
       if (selectedRoadmap?.language) {

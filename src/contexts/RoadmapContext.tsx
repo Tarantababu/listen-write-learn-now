@@ -52,16 +52,16 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [nodeLoading, setNodeLoading] = useState<boolean>(false);
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(settings.selectedLanguage);
 
-  // Memoized function to fetch roadmaps
-  const fetchRoadmaps = useCallback(async () => {
-    if (!user) return;
+  // Memoized function to fetch roadmaps with proper return type
+  const fetchRoadmaps = useCallback(async (language: Language): Promise<Roadmap[]> => {
+    if (!user) return [];
 
     setLoading(true);
     try {
       // Use our custom function to get roadmaps filtered by the current language
       const { data: roadmapData, error: roadmapError } = await supabase
         .rpc('get_roadmaps_by_language', {
-          requested_language: settings.selectedLanguage
+          requested_language: language
         });
 
       if (roadmapError) throw roadmapError;
@@ -96,7 +96,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       setRoadmaps(formattedRoadmaps);
       
       // Load all user roadmaps after fetching available roadmaps
-      await loadUserRoadmaps();
+      await loadUserRoadmaps(language);
+      return formattedRoadmaps;
     } catch (error) {
       console.error("Error fetching roadmaps:", error);
       toast({
@@ -104,36 +105,37 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         title: "Failed to load learning roadmaps",
         description: "There was an error loading your roadmaps."
       });
+      return [];
     } finally {
       setLoading(false);
     }
-  }, [user, settings.selectedLanguage]);
+  }, [user, loadUserRoadmaps]);
 
   // Effect to fetch roadmaps only when language changes
   useEffect(() => {
     if (settings.selectedLanguage !== selectedLanguage) {
       setSelectedLanguage(settings.selectedLanguage);
-      fetchRoadmaps();
+      fetchRoadmaps(settings.selectedLanguage);
     }
   }, [settings.selectedLanguage, selectedLanguage, fetchRoadmaps]);
 
   // Initial fetch
   useEffect(() => {
     if (user) {
-      fetchRoadmaps();
+      fetchRoadmaps(settings.selectedLanguage);
     }
   }, [user]);
 
   // Load all user roadmaps
-  const loadUserRoadmaps = useCallback(async () => {
-    if (!user) return;
+  const loadUserRoadmaps = useCallback(async (language?: Language): Promise<UserRoadmap[]> => {
+    if (!user) return [];
 
     try {
       // Use our custom function to get user roadmaps filtered by the current language
       const { data: userRoadmapData, error: userRoadmapError } = await supabase
         .rpc('get_user_roadmaps_by_language', {
           user_id_param: user.id,
-          requested_language: settings.selectedLanguage
+          requested_language: language || settings.selectedLanguage
         });
 
       if (userRoadmapError) throw userRoadmapError;
@@ -141,7 +143,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (!userRoadmapData || userRoadmapData.length === 0) {
         setUserRoadmaps([]);
         setSelectedRoadmap(null);
-        return;
+        return [];
       }
 
       // Format user roadmaps
@@ -161,6 +163,8 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (!selectedRoadmap && formattedUserRoadmaps.length > 0) {
         await loadUserRoadmap(formattedUserRoadmaps[0].id);
       }
+      
+      return formattedUserRoadmaps;
     } catch (error) {
       console.error("Error loading user roadmaps:", error);
       toast({
@@ -168,6 +172,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
         title: "Failed to load your learning paths",
         description: "There was an error loading your learning paths."
       });
+      return [];
     }
   }, [user, settings.selectedLanguage, selectedRoadmap]);
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import RoadmapVisualization from '@/features/roadmap/components/RoadmapVisualization';
@@ -338,21 +337,30 @@ const RoadmapPage: React.FC = () => {
                 <h2 className="text-xl font-semibold">{getCapitalizedLanguage(settings.selectedLanguage)}</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {userRoadmaps.map(roadmap => (
-                    <motion.div
-                      key={roadmap.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <RoadmapItemCard
-                        roadmap={roadmap}
-                        isActive={currentRoadmap?.id === roadmap.id}
-                        onCardClick={handleRoadmapSelect}
-                        onContinueClick={handleContinueLearning}
-                      />
-                    </motion.div>
-                  ))}
+                  {userRoadmaps.map(roadmap => {
+                    // Find the corresponding roadmap details
+                    const details = roadmaps.find(r => r.id === roadmap.roadmapId);
+                    return (
+                      <motion.div
+                        key={roadmap.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <RoadmapItemCard
+                          roadmap={{
+                            ...roadmap,
+                            // Add missing required properties from details
+                            name: details?.name || "Untitled Roadmap",
+                            level: details?.level || "A1",
+                          }}
+                          isActive={currentRoadmap?.id === roadmap.id}
+                          onCardClick={handleRoadmapSelect}
+                          onContinueClick={handleContinueLearning}
+                        />
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </motion.div>
             )}

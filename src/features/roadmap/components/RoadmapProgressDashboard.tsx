@@ -1,69 +1,79 @@
 
 import React from 'react';
+import { useRoadmap } from '@/hooks/use-roadmap';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { useRoadmap } from '@/hooks/use-roadmap'; // This is the correct import path
-import { CheckCircle, Circle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { RoadmapItem } from '../types';
 
-interface RoadmapProgressDashboardProps {
-  className?: string;
-}
-
-const RoadmapProgressDashboard: React.FC<RoadmapProgressDashboardProps> = ({ className }) => {
-  const { currentRoadmap, nodes, completedNodes } = useRoadmap();
-
+export const RoadmapProgressDashboard = () => {
+  const { currentRoadmap, nodes, completedNodes, roadmaps } = useRoadmap();
+  
   if (!currentRoadmap) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>Curriculum Progress</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center">
-          <p className="text-muted-foreground">No curriculum selected.</p>
-        </CardContent>
-      </Card>
+      <div className="flex justify-center items-center h-24">
+        <p className="text-muted-foreground">No roadmap selected</p>
+      </div>
     );
   }
-
+  
+  if (!nodes || nodes.length === 0) {
+    return (
+      <div className="flex justify-center items-center h-24">
+        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+        <p>Loading nodes...</p>
+      </div>
+    );
+  }
+  
+  // Find the roadmap details from the roadmaps array
+  const roadmapDetails = roadmaps.find(r => r.id === currentRoadmap.roadmapId);
+  const roadmapName = roadmapDetails?.name || "Learning Path";
+  
   const totalNodes = nodes.length;
   const completedCount = completedNodes.length;
-  const progressPercentage = totalNodes > 0 ? Math.round((completedCount / totalNodes) * 100) : 0;
-
+  const completionPercentage = Math.round((completedCount / totalNodes) * 100);
+  
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle>Curriculum Progress</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h3 className="text-lg font-semibold">{currentRoadmap.name}</h3>
-            <p className="text-sm text-muted-foreground">
-              {completedCount} of {totalNodes} lessons completed
-            </p>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Overall Progress</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Progress value={completionPercentage} className="h-2" />
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>{completionPercentage}% Complete</span>
+              <span>{completedCount} of {totalNodes} lessons</span>
+            </div>
           </div>
-        </div>
-        <Progress value={progressPercentage} />
-        <div className="flex justify-between text-sm text-muted-foreground">
-          <span>{progressPercentage}%</span>
-          <span>{completedCount}/{totalNodes} Lessons</span>
-        </div>
-        <div className="mt-2 flex items-center justify-around">
-          <div className="flex items-center">
-            <CheckCircle className="h-4 w-4 text-primary mr-2" />
-            <span className="text-xs">Completed</span>
-          </div>
-          <div className="flex items-center">
-            <Circle className="h-4 w-4 text-secondary fill-secondary mr-2" />
-            <span className="text-xs">Current</span>
-          </div>
-          <div className="flex items-center">
-            <Circle className="h-4 w-4 text-foreground mr-2" />
-            <span className="text-xs">Available</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Individual Nodes Progress */}
+        {nodes.map((node) => {
+          const isCompleted = completedNodes.includes(node.id);
+          return (
+            <Card key={node.id} className={isCompleted ? "border-green-500/50" : ""}>
+              <CardHeader className="p-4">
+                <CardTitle className="text-base flex items-center">
+                  <span className="mr-2">{node.position + 1}.</span>
+                  {node.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{isCompleted ? 'Completed' : 'Not completed'}</span>
+                  {node.isBonus && <span className="text-amber-500">Bonus</span>}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
   );
 };
 
