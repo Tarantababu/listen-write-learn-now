@@ -7,9 +7,9 @@ import { useAdmin } from '@/hooks/use-admin';
 
 const UserManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState('roles');
-  const { isAdmin, isLoading } = useAdmin();
+  const { isAdmin, loading } = useAdmin();
 
-  if (isLoading) {
+  if (loading) {
     return (
       <Card>
         <CardHeader>
