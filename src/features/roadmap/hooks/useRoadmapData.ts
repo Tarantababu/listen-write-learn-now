@@ -16,25 +16,34 @@ export function useRoadmapData() {
   
   // Load all roadmaps available for a language
   const loadRoadmaps = useCallback(async (language: Language) => {
+    // Normalize language to lowercase for consistent comparison
+    const normalizedLanguage = language.toLowerCase() as Language;
+    
     // Prevent duplicate fetches for the same language
-    const cacheKey = `roadmaps_${language}`;
+    const cacheKey = `roadmaps_${normalizedLanguage}`;
     if (loadingRef.current[cacheKey]) {
+      console.log(`Already loading roadmaps for ${normalizedLanguage}, skipping duplicate request`);
       return;
     }
     
     loadingRef.current[cacheKey] = true;
     setIsLoading(true);
     
+    console.log(`Loading all roadmaps for language: ${normalizedLanguage}`);
+    
     try {
-      const roadmapsData = await roadmapService.getRoadmapsForLanguage(language);
+      const roadmapsData = await roadmapService.getRoadmapsForLanguage(normalizedLanguage);
+      console.log(`Loaded ${roadmapsData.length} roadmaps for ${normalizedLanguage}:`, roadmapsData);
       setRoadmaps(roadmapsData);
+      return roadmapsData;
     } catch (error) {
-      console.error('Error loading roadmaps:', error);
+      console.error(`Error loading roadmaps for ${normalizedLanguage}:`, error);
       toast({
         variant: "destructive",
         title: "Failed to load roadmaps",
         description: "There was an error loading available roadmaps."
       });
+      return [];
     } finally {
       setIsLoading(false);
       loadingRef.current[cacheKey] = false;
@@ -43,21 +52,28 @@ export function useRoadmapData() {
   
   // Load user's roadmaps for a language
   const loadUserRoadmaps = useCallback(async (language: Language) => {
+    // Normalize language to lowercase for consistent comparison
+    const normalizedLanguage = language.toLowerCase() as Language;
+    
     // Prevent duplicate fetches for the same language
-    const cacheKey = `user_roadmaps_${language}`;
+    const cacheKey = `user_roadmaps_${normalizedLanguage}`;
     if (loadingRef.current[cacheKey]) {
+      console.log(`Already loading user roadmaps for ${normalizedLanguage}, skipping duplicate request`);
       return [];
     }
     
     loadingRef.current[cacheKey] = true;
     setIsLoading(true);
     
+    console.log(`Loading user roadmaps for language: ${normalizedLanguage}`);
+    
     try {
-      const userRoadmapsData = await roadmapService.getUserRoadmaps(language);
+      const userRoadmapsData = await roadmapService.getUserRoadmaps(normalizedLanguage);
+      console.log(`Loaded ${userRoadmapsData.length} user roadmaps for ${normalizedLanguage}:`, userRoadmapsData);
       setUserRoadmaps(userRoadmapsData);
       return userRoadmapsData;
     } catch (error) {
-      console.error('Error loading user roadmaps:', error);
+      console.error(`Error loading user roadmaps for ${normalizedLanguage}:`, error);
       toast({
         variant: "destructive",
         title: "Failed to load your roadmaps",
@@ -72,12 +88,18 @@ export function useRoadmapData() {
   
   // Initialize a new roadmap for the user
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
+    // Normalize language to lowercase for consistent comparison
+    const normalizedLanguage = language.toLowerCase() as Language;
+    
     setIsLoading(true);
+    console.log(`Initializing roadmap for level ${level} and language ${normalizedLanguage}`);
+    
     try {
-      const roadmapId = await roadmapService.initializeRoadmap(level, language);
+      const roadmapId = await roadmapService.initializeRoadmap(level, normalizedLanguage);
+      console.log(`Roadmap initialized with ID: ${roadmapId}`);
       
       // Reload user roadmaps to include the new one
-      const updatedRoadmaps = await loadUserRoadmaps(language);
+      const updatedRoadmaps = await loadUserRoadmaps(normalizedLanguage);
       
       // Select the newly created roadmap
       const newRoadmap = updatedRoadmaps.find(r => r.id === roadmapId);
@@ -104,28 +126,34 @@ export function useRoadmapData() {
     // Prevent duplicate selects for the same roadmap
     const cacheKey = `select_roadmap_${roadmapId}`;
     if (loadingRef.current[cacheKey]) {
+      console.log(`Already selecting roadmap ${roadmapId}, skipping duplicate request`);
       return [];
     }
     
     loadingRef.current[cacheKey] = true;
     setIsLoading(true);
     
+    console.log(`Selecting roadmap with ID: ${roadmapId}`);
+    
     try {
       // Find the roadmap in the list of user roadmaps
       const roadmap = userRoadmaps.find(r => r.id === roadmapId);
       if (!roadmap) {
+        console.error(`Roadmap with ID ${roadmapId} not found in user roadmaps`);
         throw new Error('Roadmap not found');
       }
       
+      console.log(`Found roadmap: ${roadmap.name || roadmap.roadmapId} (${roadmap.language})`);
       setSelectedRoadmap(roadmap);
       
       // Load the nodes for this roadmap
       const nodesData = await roadmapService.getRoadmapNodes(roadmapId);
+      console.log(`Loaded ${nodesData.length} nodes for roadmap ${roadmapId}`);
       setNodes(nodesData);
       
       return nodesData;
     } catch (error) {
-      console.error('Error selecting roadmap:', error);
+      console.error(`Error selecting roadmap ${roadmapId}:`, error);
       toast({
         variant: "destructive",
         title: "Failed to load roadmap",
@@ -170,7 +198,7 @@ export function useRoadmapData() {
               'record_language_activity',
               {
                 user_id_param: userId,
-                language_param: selectedRoadmap.language,
+                language_param: selectedRoadmap.language.toLowerCase(),
                 activity_date_param: new Date().toISOString().split('T')[0],
                 exercises_completed_param: 1,
                 words_mastered_param: 0 // Words mastered is calculated separately
@@ -211,7 +239,7 @@ export function useRoadmapData() {
               'record_language_activity',
               {
                 user_id_param: userId,
-                language_param: selectedRoadmap.language,
+                language_param: selectedRoadmap.language.toLowerCase(),
                 activity_date_param: new Date().toISOString().split('T')[0],
                 exercises_completed_param: 1,
                 words_mastered_param: 0 // Words mastered is calculated separately
