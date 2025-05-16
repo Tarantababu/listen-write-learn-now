@@ -1,6 +1,7 @@
 
-import { useSubscription as useContextSubscription } from '../contexts/SubscriptionContext';
+import { useState } from 'react';
 
 export const useSubscription = () => {
-  return useContextSubscription();
+  const [subscription, setSubscription] = useState(null);
+  return { subscription, setSubscription };
 };
