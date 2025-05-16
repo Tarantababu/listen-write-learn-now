@@ -11,10 +11,18 @@ import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <RouterProvider router={router} />
-      <Toaster />
-    </ThemeProvider>
+    <AuthProvider>
+      <UserSettingsProvider>
+        <SubscriptionProvider>
+          <ExerciseProvider>
+            <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+              <RouterProvider router={router} />
+              <Toaster />
+            </ThemeProvider>
+          </ExerciseProvider>
+        </SubscriptionProvider>
+      </UserSettingsProvider>
+    </AuthProvider>
   );
 }
 
