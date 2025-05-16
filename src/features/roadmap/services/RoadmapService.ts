@@ -1,10 +1,12 @@
+
 import { Language, LanguageLevel } from '@/types';
 import { BaseService } from './BaseService';
 import { 
   RoadmapServiceInterface,
-  ServiceResult
+  ServiceResult,
+  NodeCompletionResult as ServiceNodeCompletionResult
 } from '../types/service-types';
-import { RoadmapItem, RoadmapNode, NodeCompletionResult } from '../types';
+import { RoadmapItem, RoadmapNode } from '../types';
 
 export class RoadmapService extends BaseService implements RoadmapServiceInterface {
   /**
@@ -436,7 +438,7 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
   /**
    * Record node completion with accuracy
    */
-  public async recordNodeCompletion(nodeId: string, accuracy: number): Promise<NodeCompletionResult> {
+  public async recordNodeCompletion(nodeId: string, accuracy: number): Promise<ServiceNodeCompletionResult> {
     try {
       if (accuracy < 0 || accuracy > 100) {
         throw new Error("Accuracy must be between 0 and 100");

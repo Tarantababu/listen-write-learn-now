@@ -2,19 +2,12 @@
 import { useContext } from 'react';
 import { RoadmapContext } from '@/contexts/RoadmapContext';
 
-/**
- * Custom hook to access the roadmap context
- * Note: This was previously called "roadmap" but refers to the same feature
- */
-export const useRoadmap = () => {
+export function useRoadmap() {
   const context = useContext(RoadmapContext);
-  if (context === undefined) {
+  
+  if (!context) {
     throw new Error('useRoadmap must be used within a RoadmapProvider');
   }
+  
   return context;
-};
-
-/**
- * Alias for useRoadmap to support new terminology
- */
-export const useCurriculum = useRoadmap;
+}

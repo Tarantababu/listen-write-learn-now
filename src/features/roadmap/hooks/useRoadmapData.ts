@@ -1,12 +1,16 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { roadmapService } from '../api/roadmapService';
-import { RoadmapItem, RoadmapNode } from '../types';
+import { RoadmapItem, RoadmapNode, NodeCompletionResult } from '../types';
 import { Language, LanguageLevel } from '@/types';
 import { nodeAccessService } from '../services/NodeAccessService';
+import { supabase } from '@/integrations/supabase/client';
+import { NodeProgressDetails } from '../types/service-types';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
-// Extend the roadmapService with missing methods for our hook
+// Create extended roadmap service with additional methods
 const extendedRoadmapService = {
   ...roadmapService,
   
@@ -89,10 +93,11 @@ const extendedRoadmapService = {
         description: node.description || '',
         position: node.position,
         isBonus: node.is_bonus,
-        language: node.language,
+        language: node.language as Language,
         defaultExerciseId: node.default_exercise_id,
         createdAt: new Date(node.created_at),
-        updatedAt: node.updated_at ? new Date(node.updated_at) : undefined
+        updatedAt: node.updated_at ? new Date(node.updated_at) : undefined,
+        status: 'locked' // Default status, will be updated later
       }));
     } catch (error) {
       console.error('Error getting roadmap nodes:', error);
@@ -167,11 +172,8 @@ const extendedRoadmapService = {
   }
 };
 
-// Import supabase client for the extended service
-import { supabase } from '@/integrations/supabase/client';
-
 export function useRoadmapData() {
-  const { selectedLanguage } = useAuth();
+  const { settings } = useUserSettingsContext();
   
   const [isLoading, setIsLoading] = useState(false);
   const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
@@ -318,7 +320,7 @@ export function useRoadmapData() {
         duration: 5000,
       });
       
-      const roadmapId = await service.initializeRoadmap(level, normalizedLanguage);
+      const roadmapId = await extendedRoadmapService.initializeRoadmap(level, normalizedLanguage);
       console.log(`Roadmap initialized with ID: ${roadmapId}`);
       
       // Invalidate user roadmaps cache to force reload
@@ -355,7 +357,7 @@ export function useRoadmapData() {
     } finally {
       setIsLoading(false);
     }
-  }, [loadUserRoadmaps, service]);
+  }, [loadUserRoadmaps]);
   
   // Select and load a specific roadmap
   const selectRoadmap = useCallback(async (roadmapId: string) => {
@@ -396,7 +398,7 @@ export function useRoadmapData() {
       setSelectedRoadmap(roadmap);
       
       // Load the nodes for this roadmap
-      const nodesData = await service.getRoadmapNodes(roadmapId);
+      const nodesData = await extendedRoadmapService.getRoadmapNodes(roadmapId);
       console.log(`Loaded ${nodesData.length} nodes for roadmap ${roadmapId}`);
       
       // Update state and cache
@@ -422,7 +424,7 @@ export function useRoadmapData() {
   // Get exercise content for a node
   const getNodeExercise = useCallback(async (nodeId: string) => {
     try {
-      return service.getNodeExerciseContent(nodeId);
+      return extendedRoadmapService.getNodeExerciseContent(nodeId);
     } catch (error) {
       console.error('Error getting node exercise:', error);
       return null;
@@ -432,7 +434,7 @@ export function useRoadmapData() {
   // Record completion with accuracy score
   const recordNodeCompletion = useCallback(async (nodeId: string, accuracy: number): Promise<NodeCompletionResult> => {
     try {
-      const result = await service.recordNodeCompletion(nodeId, accuracy);
+      const result = await roadmapService.recordNodeCompletion(nodeId, accuracy);
       
       // If accuracy is high enough (95%+) and node is in the current language,
       // record this in the user_daily_activities table
@@ -483,7 +485,7 @@ export function useRoadmapData() {
   // Mark a node as completed
   const markNodeAsCompleted = useCallback(async (nodeId: string) => {
     try {
-      await service.markNodeCompleted(nodeId);
+      await extendedRoadmapService.markNodeCompleted(nodeId);
       
       // Record this completion in the user_daily_activities table
       if (selectedRoadmap?.language) {

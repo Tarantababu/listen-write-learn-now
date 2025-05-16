@@ -11,6 +11,10 @@ export interface RoadmapItem {
   createdAt: Date;
   nodeCount?: number;
   completedCount?: number;
+  roadmapId?: string; // Added for user roadmaps that reference parent roadmap
+  currentNodeId?: string; // For tracking current node in user roadmaps
+  completedNodes?: string[]; // For tracking completed nodes
+  totalNodes?: number; // For tracking total nodes
 }
 
 export interface RoadmapNode {
@@ -28,12 +32,13 @@ export interface RoadmapNode {
   defaultExerciseId?: string;
   createdAt: Date;
   updatedAt?: Date;
+  progressCount?: number; // Add this for tracking node progress count
 }
 
 export interface NodeCompletionResult {
   completionCount: number;
   isCompleted: boolean;
-  lastPracticedAt: Date;
+  lastPracticedAt: Date; // Added to match service-types
 }
 
 export interface ExerciseContent {

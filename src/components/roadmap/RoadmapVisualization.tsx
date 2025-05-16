@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
-import { RoadmapNode } from '@/types';
+import { RoadmapNode } from '@/features/roadmap/types';
 import { Check, Lock, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -122,8 +123,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   });
 
   // First try to use the new implementation if data is available
-  if (currentRoadmap && nodes && Array.isArray(nodes) && nodes.length > 0 && 
-      nodes[0] && typeof nodes[0].status === 'string') {
+  if (currentRoadmap && nodes && Array.isArray(nodes) && nodes.length > 0) {
     console.log("Using new RoadmapVisualization implementation");
     return <NewRoadmapVisualization onNodeSelect={onNodeSelect} />;
   }
@@ -153,13 +153,8 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
   const roadmapName = roadmapDetails?.name || "Learning Path";
   const roadmapLevel = roadmapDetails?.level;
 
+  // Calculate node status based on available information since status may not be in the type
   const getNodeStatus = (node: RoadmapNode): 'completed' | 'current' | 'locked' | 'available' => {
-    // Use the node.status property if available
-    if (node.status) {
-      return node.status as 'completed' | 'current' | 'locked' | 'available';
-    }
-    
-    // Otherwise, calculate it from the available information
     if (completedNodes.includes(node.id)) return 'completed';
     
     // Check if node is completed in the detailed progress
