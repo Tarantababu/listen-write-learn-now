@@ -312,7 +312,7 @@ const RoadmapPage: React.FC = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-4">
-            <TabsTrigger value="active" disabled={userRoadmaps.length === 0}>
+            <TabsTrigger value="active">
               My Roadmaps
             </TabsTrigger>
             <TabsTrigger value="new">

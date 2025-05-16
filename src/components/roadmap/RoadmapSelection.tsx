@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -18,7 +19,7 @@ import {
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { LanguageLevel } from '@/types';
-import { Loader2, RefreshCw, InfoIcon } from 'lucide-react';
+import { Loader2, RefreshCw, InfoIcon, AlertTriangle } from 'lucide-react';
 import LevelBadge from '@/components/LevelBadge';
 import LevelInfoTooltip from '@/components/LevelInfoTooltip';
 import { toast } from '@/hooks/use-toast';
@@ -38,6 +39,12 @@ const RoadmapSelection: React.FC = () => {
   const availableRoadmapsForLanguage = roadmaps.filter(roadmap => 
     roadmap.languages?.includes(settings.selectedLanguage)
   );
+
+  console.log("Roadmap data:", {
+    normalizedLanguage: settings.selectedLanguage,
+    roadmapsCount: roadmaps.length,
+    availableRoadmapsCount: availableRoadmapsForLanguage.length,
+  });
 
   // Level descriptions mapping
   const levelDescriptions: Record<LanguageLevel, string> = {
@@ -188,14 +195,25 @@ const RoadmapSelection: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         {availableLevels.length === 0 ? (
-          <div className="bg-amber-50 border border-amber-200 p-4 rounded-md dark:bg-amber-900/20 dark:border-amber-800">
-            <div className="flex items-start">
-              <InfoIcon className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-2 mt-0.5" />
-              <div>
-                <h4 className="font-medium text-amber-800 dark:text-amber-400 text-sm">No Roadmaps Available</h4>
-                <p className="text-sm text-amber-700 dark:text-amber-500 mt-1">
-                  There are no roadmaps available for {settings.selectedLanguage} at the moment.
-                  Try refreshing or check back later.
+          <div className="bg-amber-50 border border-amber-200 p-6 rounded-md dark:bg-amber-900/20 dark:border-amber-800 text-center">
+            <div className="flex flex-col items-center">
+              <AlertTriangle className="h-12 w-12 text-amber-600 dark:text-amber-400 mb-4" />
+              <h4 className="font-medium text-amber-800 dark:text-amber-400 text-base mb-2">No Roadmaps Available</h4>
+              <p className="text-amber-700 dark:text-amber-500 mb-4">
+                There are currently no learning paths available for <strong>{settings.selectedLanguage}</strong>.
+              </p>
+              <div className="text-sm space-y-2 text-left bg-amber-100/50 dark:bg-amber-900/40 p-3 rounded-md w-full">
+                <p className="flex items-start">
+                  <span className="mr-2">•</span>
+                  Try refreshing using the button above
+                </p>
+                <p className="flex items-start">
+                  <span className="mr-2">•</span>
+                  Check back later as new content is added regularly
+                </p>
+                <p className="flex items-start">
+                  <span className="mr-2">•</span>
+                  Try selecting a different language in your settings
                 </p>
               </div>
             </div>

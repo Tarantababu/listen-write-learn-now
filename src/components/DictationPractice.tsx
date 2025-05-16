@@ -25,6 +25,7 @@ interface DictationPracticeProps {
   hideVocabularyTab?: boolean;
   onViewReadingAnalysis?: () => void;
   hasReadingAnalysis?: boolean;
+  keepResultsVisible?: boolean; // Added prop to control result visibility
 }
 
 const DictationPractice: React.FC<DictationPracticeProps> = ({
@@ -34,7 +35,8 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   onTryAgain,
   hideVocabularyTab = false,
   onViewReadingAnalysis,
-  hasReadingAnalysis = false
+  hasReadingAnalysis = false,
+  keepResultsVisible = false // Default to false for backward compatibility
 }) => {
   const [userInput, setUserInput] = useState('');
   const [accuracy, setAccuracy] = useState<number | null>(null);
@@ -90,7 +92,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       extra: result.extra
     });
     
-    // Set internal results state
+    // Set internal results state - show results
     setInternalShowResults(true);
     
     // Calculate new progress value if accuracy is sufficient (>= 95%)
@@ -105,16 +107,16 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
 
     if (result.accuracy >= 95) {
       toast("Great job!", {
-        description: `${result.accuracy}% accuracy!`,
+        description: `${Math.round(result.accuracy)}% accuracy!`,
         variant: "success"
       });
     } else if (result.accuracy >= 70) {
       toast("Good effort!", {
-        description: `${result.accuracy}% accuracy. Keep practicing!`
+        description: `${Math.round(result.accuracy)}% accuracy. Keep practicing!`
       });
     } else {
       toast("Keep practicing", {
-        description: `You scored ${result.accuracy}%. Try listening again carefully.`,
+        description: `You scored ${Math.round(result.accuracy)}%. Try listening again carefully.`,
         variant: "destructive"
       });
     }
@@ -203,18 +205,23 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   }, [internalShowResults]);
 
   const handleTryAgain = () => {
-    setUserInput('');
+    // Only reset if not instructed to keep results visible
+    if (!keepResultsVisible) {
+      setUserInput('');
+      setInternalShowResults(false);
+      
+      // Focus on textarea after resetting
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+        }
+      }, 0);
+    }
+    
+    // Always call the parent's onTryAgain if provided
     if (onTryAgain) {
       onTryAgain();
     }
-    setInternalShowResults(false);
-    
-    // Focus on textarea after resetting
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-      }
-    }, 0);
   };
   
   // Handle dictation result
@@ -402,7 +409,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
                         accuracy && accuracy >= 70 ? "text-amber-500" :
                         "text-destructive"
                       )}>
-                        {accuracy}%
+                        {accuracy ? Math.round(accuracy) : 0}%
                       </div>
                       
                       {accuracy && accuracy >= 95 ? (

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '@/types';
@@ -22,6 +22,7 @@ enum PracticeStage {
   PROMPT,    // Ask user if they want Reading Analysis
   READING,   // Reading Analysis mode
   DICTATION, // Dictation Practice mode
+  RESULTS,   // Results display mode
 }
 
 const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpen, onOpenChange }) => {
@@ -37,6 +38,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   const [exercise, setExercise] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [practiceStage, setPracticeStage] = useState<PracticeStage>(PracticeStage.PROMPT);
+  const [exerciseResults, setExerciseResults] = useState<{accuracy: number} | null>(null);
   
   // Load exercise when modal is opened with a node
   useEffect(() => {
@@ -44,6 +46,8 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
       loadExercise(node.id);
       // Always start at prompt stage when modal opens
       setPracticeStage(PracticeStage.PROMPT);
+      // Reset exercise results
+      setExerciseResults(null);
     } else if (!isOpen) {
       // Reset states when modal is completely closed
       setExercise(null);
@@ -83,6 +87,9 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
       .then(result => {
         console.log("Node completion result:", result);
         
+        // Store the exercise results
+        setExerciseResults({ accuracy });
+        
         // Show feedback based on accuracy
         if (accuracy >= 95) {
           toast({
@@ -106,6 +113,8 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
             variant: "default",
           });
         }
+        
+        // Do not close modal or change stage - results will be shown within DictationPractice
       })
       .catch(error => {
         console.error("Error updating node completion:", error);
@@ -118,6 +127,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   };
 
   const handleTryAgain = () => {
+    setExerciseResults(null);
     setPracticeStage(PracticeStage.PROMPT);
   };
 
@@ -163,33 +173,38 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-w-[95vw] p-0 overflow-hidden">
-        <DialogHeader className="p-6">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl">{node.title}</DialogTitle>
-            {isNodeCompleted && (
-              <Badge className="bg-green-500 text-white flex gap-1 items-center">
-                <CheckCircle className="w-3 h-3" /> Completed
-              </Badge>
-            )}
-          </div>
-          <DialogDescription className="text-base mt-2 space-y-2">
-            <p>{node.description}</p>
-            
-            {completionCount > 0 && (
-              <div className="pt-2">
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Completion progress: {completionCount}/3</span>
-                  <span>{isNodeCompleted ? '100%' : `${Math.round(progressPercentage)}%`}</span>
+        <DialogHeader className="p-6 flex flex-row justify-between items-start">
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl">{node.title}</DialogTitle>
+              {isNodeCompleted && (
+                <Badge className="bg-green-500 text-white flex gap-1 items-center">
+                  <CheckCircle className="w-3 h-3" /> Completed
+                </Badge>
+              )}
+            </div>
+            <DialogDescription className="text-base mt-2 space-y-2">
+              <p>{node.description}</p>
+              
+              {completionCount > 0 && (
+                <div className="pt-2">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Completion progress: {completionCount}/3</span>
+                    <span>{isNodeCompleted ? '100%' : `${Math.round(progressPercentage)}%`}</span>
+                  </div>
+                  <Progress value={progressPercentage} className="h-2" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {isNodeCompleted 
+                      ? "Mastered! You've completed this exercise." 
+                      : "Complete this exercise 3 times with at least 95% accuracy to master it."}
+                  </p>
                 </div>
-                <Progress value={progressPercentage} className="h-2" />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {isNodeCompleted 
-                    ? "Mastered! You've completed this exercise." 
-                    : "Complete this exercise 3 times with at least 95% accuracy to master it."}
-                </p>
-              </div>
-            )}
-          </DialogDescription>
+              )}
+            </DialogDescription>
+          </div>
+          <DialogClose className="h-8 w-8 rounded-md flex items-center justify-center hover:bg-muted transition-colors" aria-label="Close">
+            <X className="h-4 w-4" />
+          </DialogClose>
         </DialogHeader>
         
         {practiceStage === PracticeStage.PROMPT && (
@@ -270,6 +285,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
             }}
             onTryAgain={handleTryAgain}
             onComplete={handlePracticeComplete}
+            keepResultsVisible={true} // Added prop to prevent immediate results closure
           />
         )}
         

@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '@/types';
 import { Card } from '@/components/ui/card';
-import { Check, Lock, Play, ChevronRight } from 'lucide-react';
+import { Check, Lock, Play, ChevronRight, Award } from 'lucide-react';
 
 interface RoadmapVisualizationProps {
   onNodeSelect: (node: RoadmapNode) => void;
@@ -67,12 +67,14 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
       // Get completion count if available
       const progressInfo = nodeProgress.find(np => np.nodeId === node.id);
       const completionCount = progressInfo?.completionCount || 0;
+      const isFullyCompleted = progressInfo?.isCompleted === true;
       
       return {
         ...node,
         status,
         progressCount: completionCount,
-        isCompleted
+        isCompleted,
+        isFullyCompleted
       };
     });
   }, [nodes, completedNodes, currentNodeId, nodeProgress]);
@@ -105,7 +107,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
           // Progress info
           const progressInfo = nodeProgress.find(np => np.nodeId === node.id);
           const completionCount = progressInfo?.completionCount || 0;
-          const isFullyCompleted = isCompleted || (progressInfo?.isCompleted === true);
+          const isFullyCompleted = node.isFullyCompleted || (progressInfo?.isCompleted === true);
           const progressPercent = Math.min(completionCount / 3 * 100, 100);
           
           return (
@@ -161,6 +163,12 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
                     }`}
                   >
                     {node.title}
+                    {isFullyCompleted && (
+                      <span className="ml-2 inline-flex items-center text-green-600 dark:text-green-400">
+                        <Award className="w-4 h-4 mr-1" />
+                        <span className="text-sm">Mastered</span>
+                      </span>
+                    )}
                   </h3>
                   
                   {/* Progress indicator */}
@@ -174,7 +182,9 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
                       </div>
                       <span className="text-muted-foreground text-xs">
                         {completionCount}/3 
-                        {isFullyCompleted && <span className="ml-1 text-green-600 dark:text-green-400">(Mastered)</span>}
+                        {isFullyCompleted ? 
+                          <span className="ml-1 text-green-600 dark:text-green-400">(Mastered)</span> : 
+                          <span className="ml-1 text-blue-600 dark:text-blue-400">(In progress)</span>}
                       </span>
                     </div>
                   )}
@@ -183,6 +193,28 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
             </div>
           );
         })}
+      </div>
+      
+      {/* Legend */}
+      <div className="mt-6 pt-6 border-t border-muted">
+        <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-green-500"></div>
+            <span>Completed</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-blue-500"></div>
+            <span>Current</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-primary/30 border border-primary/20"></div>
+            <span>Available</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-muted border border-muted-foreground/30"></div>
+            <span>Locked</span>
+          </div>
+        </div>
       </div>
     </div>
   );
