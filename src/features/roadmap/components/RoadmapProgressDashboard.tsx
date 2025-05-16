@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { useRoadmap } from '@/hooks/use-roadmap'; // Fixed import path
+import { useRoadmap } from '@/hooks/use-roadmap'; // Updated import path
 import { CheckCircle, Circle } from 'lucide-react';
 
 interface RoadmapProgressDashboardProps {

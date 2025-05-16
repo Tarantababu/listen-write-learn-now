@@ -70,6 +70,9 @@ export interface UserPreferences {
   learningLanguages: Language[];
   theme?: 'light' | 'dark' | 'system';
   avatarUrl?: string;
+  level?: LanguageLevel;
+  dailyGoal?: number;
+  notificationsEnabled?: boolean;
 }
 
 export interface UserLearningStats {
@@ -78,6 +81,14 @@ export interface UserLearningStats {
   streak: number;
   lastActivity?: Date;
   byLanguage: Record<Language, LanguageStats>;
+  // Additional fields for backward compatibility
+  totalExercisesCompleted?: number;
+  totalNodesCompleted?: number;
+  totalRoadmapsCompleted?: number;
+  averageAccuracy?: number;
+  streakDays?: number;
+  lastActiveDate?: Date;
+  languageStats?: Record<Language, LanguageStats>;
 }
 
 export interface LanguageStats {
@@ -86,9 +97,13 @@ export interface LanguageStats {
   streak: number;
   lastActivity?: Date;
   level?: LanguageLevel;
+  // Additional fields for backward compatibility
+  nodesCompleted?: number;
+  roadmapsCompleted?: number;
+  averageAccuracy?: number;
 }
 
-// Add NodeCompletionResult type without 'success' property
+// Update NodeCompletionResult type to include lastPracticedAt
 export interface NodeCompletionResult {
   completionCount: number;
   isCompleted: boolean;

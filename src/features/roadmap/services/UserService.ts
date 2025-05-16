@@ -13,7 +13,7 @@ export class UserService extends BaseService implements UserServiceInterface {
   /**
    * Get user preferences
    */
-  public async getUserPreferences(): ServiceResult<UserPreferences> {
+  public async getUserPreferences(): Promise<ServiceResult<UserPreferences>> {
     try {
       const auth = await this.ensureAuthenticated();
       if (!auth) {
@@ -33,9 +33,7 @@ export class UserService extends BaseService implements UserServiceInterface {
       return this.success({
         selectedLanguage: profile.selected_language as Language,
         learningLanguages: profile.learning_languages as Language[],
-        level: 'A1', // Default to A1 if not specified
-        dailyGoal: 5, // Default daily goal
-        notificationsEnabled: true // Default to true
+        theme: 'system' // Default
       });
     } catch (error) {
       return this.handleError(error);
@@ -45,7 +43,7 @@ export class UserService extends BaseService implements UserServiceInterface {
   /**
    * Update user preferences
    */
-  public async updateUserPreferences(preferences: Partial<UserPreferences>): ServiceResult<UserPreferences> {
+  public async updateUserPreferences(preferences: Partial<UserPreferences>): Promise<ServiceResult<UserPreferences>> {
     try {
       const auth = await this.ensureAuthenticated();
       if (!auth) {
@@ -84,9 +82,7 @@ export class UserService extends BaseService implements UserServiceInterface {
       return this.success({
         selectedLanguage: updatedProfile.selected_language as Language,
         learningLanguages: updatedProfile.learning_languages as Language[],
-        level: preferences.level || 'A1',
-        dailyGoal: preferences.dailyGoal || 5,
-        notificationsEnabled: preferences.notificationsEnabled || true
+        theme: preferences.theme || 'system'
       });
     } catch (error) {
       return this.handleError(error);
@@ -96,7 +92,7 @@ export class UserService extends BaseService implements UserServiceInterface {
   /**
    * Get user learning statistics
    */
-  public async getUserLearningStats(language?: Language): ServiceResult<UserLearningStats> {
+  public async getUserLearningStats(language?: Language): Promise<ServiceResult<UserLearningStats>> {
     try {
       const auth = await this.ensureAuthenticated();
       if (!auth) {
@@ -147,10 +143,8 @@ export class UserService extends BaseService implements UserServiceInterface {
       // Initialize the language stats with default values for all languages
       const defaultLanguageStats: LanguageStats = {
         exercisesCompleted: 0,
-        nodesCompleted: 0,
-        roadmapsCompleted: 0,
-        averageAccuracy: 0,
-        level: 'A1'
+        accuracy: 0,
+        streak: 0
       };
       
       // Create a record with all language keys initialized to default values
@@ -173,14 +167,19 @@ export class UserService extends BaseService implements UserServiceInterface {
         
         if (lang in languageStats) {
           if (progress.is_completed) {
-            languageStats[lang].nodesCompleted++;
+            // Use the nodesCompleted property that we added to LanguageStats
+            if (!languageStats[lang].nodesCompleted) {
+              languageStats[lang].nodesCompleted = 1;
+            } else {
+              languageStats[lang].nodesCompleted++;
+            }
           }
           
           // You might want to update the level based on completed nodes
           // This is a simple example - you might have more complex logic
-          if (languageStats[lang].nodesCompleted > 10) {
+          if (languageStats[lang].nodesCompleted && languageStats[lang].nodesCompleted > 10) {
             languageStats[lang].level = 'A2';
-          } else if (languageStats[lang].nodesCompleted > 20) {
+          } else if (languageStats[lang].nodesCompleted && languageStats[lang].nodesCompleted > 20) {
             languageStats[lang].level = 'B1';
           }
         }
@@ -199,17 +198,51 @@ export class UserService extends BaseService implements UserServiceInterface {
       
       if (selectedLanguage && selectedLanguage in languageStats) {
         languageStats[selectedLanguage].exercisesCompleted = completedExercises;
+        // Use the averageAccuracy property that we added to LanguageStats
         languageStats[selectedLanguage].averageAccuracy = averageAccuracy;
       }
       
-      return this.success({
+      // Create result that matches the UserLearningStats interface
+      const result: UserLearningStats = {
+        exercisesCompleted: completedExercises,
+        accuracy: averageAccuracy,
+        streak: 0,
+        byLanguage: languageStats,
+        // Include additional fields for backward compatibility
         totalExercisesCompleted: completedExercises,
         totalNodesCompleted: completedNodes,
-        totalRoadmapsCompleted: 0, // TODO: calculate from completed roadmaps
-        averageAccuracy,
-        streakDays: 0, // TODO: implement streak calculation
+        totalRoadmapsCompleted: 0,
+        averageAccuracy: averageAccuracy,
+        streakDays: 0,
         lastActiveDate: new Date(),
-        languageStats
+        languageStats: languageStats
+      };
+      
+      return this.success(result);
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  /**
+   * Get language-specific statistics
+   */
+  public async getLanguageStats(language: Language): Promise<ServiceResult<LanguageStats>> {
+    try {
+      const allStats = await this.getUserLearningStats(language);
+      
+      if (allStats.error) {
+        return this.error(allStats.error);
+      }
+      
+      if (allStats.data && allStats.data.byLanguage[language]) {
+        return this.success(allStats.data.byLanguage[language]);
+      }
+      
+      return this.success({
+        exercisesCompleted: 0,
+        accuracy: 0,
+        streak: 0
       });
     } catch (error) {
       return this.handleError(error);

@@ -1,17 +1,19 @@
+
 import { Language, LanguageLevel } from '@/types';
 import { BaseService } from './BaseService';
 import { 
   ServiceResult,
   ExerciseSubmission,
-  ExerciseResult
+  ExerciseResult,
+  ExerciseServiceInterface
 } from '../types/service-types';
 import { ExerciseContent } from '../types';
 
-export class ExerciseService extends BaseService implements Record<string, any> {
+export class ExerciseService extends BaseService implements ExerciseServiceInterface {
   /**
    * Get exercise content for a roadmap node
    */
-  public async getNodeExercise(nodeId: string): ServiceResult<ExerciseContent | null> {
+  public async getNodeExercise(nodeId: string): Promise<ServiceResult<ExerciseContent | null>> {
     try {
       // First get the node to get the default exercise ID
       const { data: node, error: nodeError } = await this.supabase
@@ -54,7 +56,7 @@ export class ExerciseService extends BaseService implements Record<string, any> 
   public async submitExerciseResult(
     exerciseId: string, 
     result: ExerciseSubmission
-  ): ServiceResult<ExerciseResult> {
+  ): Promise<ServiceResult<ExerciseResult>> {
     try {
       const auth = await this.ensureAuthenticated();
       if (!auth) {
@@ -106,7 +108,7 @@ export class ExerciseService extends BaseService implements Record<string, any> 
     language: Language, 
     level: LanguageLevel, 
     topic?: string
-  ): ServiceResult<ExerciseContent> {
+  ): Promise<ServiceResult<ExerciseContent>> {
     try {
       // In a real implementation, this would call an AI service
       // For now, we'll find a default exercise that matches the criteria

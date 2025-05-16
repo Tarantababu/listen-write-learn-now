@@ -391,7 +391,7 @@ class RoadmapService {
       // Mark as completed in roadmap_progress
       const { error: progressError } = await supabase
         .from('roadmap_progress')
-        .insert({
+        .upsert({
           user_id: userId,
           roadmap_id: nodeData.roadmap_id,
           node_id: nodeId,
@@ -405,7 +405,7 @@ class RoadmapService {
       // Mark as fully completed in the nodes_progress table too
       const { error: nodesProgressError } = await supabase
         .from('roadmap_nodes_progress')
-        .insert({
+        .upsert({
           user_id: userId,
           roadmap_id: nodeData.roadmap_id,
           node_id: nodeId,

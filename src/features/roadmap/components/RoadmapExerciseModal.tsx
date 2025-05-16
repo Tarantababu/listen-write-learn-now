@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useRoadmap } from '@/hooks/use-roadmap';
-import { RoadmapNode } from '../types';
+import { useRoadmap } from '@/contexts/RoadmapContext';
+import { RoadmapNode } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 import DictationPractice from '@/components/DictationPractice';
-import { Search, Headphones, Loader2, Lock } from 'lucide-react';
-import { nodeAccessService } from '../services/NodeAccessService';
+import { Search, Headphones } from 'lucide-react';
 
 interface RoadmapExerciseModalProps {
   node: RoadmapNode | null;
@@ -25,22 +24,22 @@ enum PracticeStage {
 
 const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpen, onOpenChange }) => {
   const { 
-    getNodeExercise, 
     markNodeAsCompleted, 
-    recordNodeCompletion,
+    getNodeExercise, 
+    nodeLoading, 
+    completedNodes, 
+    incrementNodeCompletion,
     nodeProgress 
   } = useRoadmap();
   
-  const [loading, setLoading] = useState<boolean>(true);
   const [exercise, setExercise] = useState<any>(null);
+  const [loading, setLoading] = useState<boolean>(false);
   const [practiceStage, setPracticeStage] = useState<PracticeStage>(PracticeStage.PROMPT);
-  const [accessChecking, setAccessChecking] = useState(false);
-  const [hasAccess, setHasAccess] = useState(false);
   
   // Load exercise when modal is opened with a node
   useEffect(() => {
     if (node && isOpen) {
-      loadExercise();
+      loadExercise(node.id);
       // Always start at prompt stage when modal opens
       setPracticeStage(PracticeStage.PROMPT);
     } else if (!isOpen) {
@@ -49,55 +48,17 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     }
   }, [node, isOpen]);
 
-  const loadExercise = async () => {
-    if (!node) return;
-    
-    setLoading(true);
-    setAccessChecking(true);
-    
+  const loadExercise = async (nodeId: string) => {
     try {
-      // Verify node access first (server-side validation)
-      const { data: canAccess, error: accessError } = await nodeAccessService.canAccessNode(node.id);
-      
-      if (accessError) {
-        console.error("Error checking node access:", accessError);
-        toast({
-          variant: "destructive",
-          title: "Access error",
-          description: "Unable to verify access to this content"
-        });
-        setHasAccess(false);
-        setAccessChecking(false);
-        setLoading(false);
-        return;
-      }
-      
-      if (!canAccess) {
-        console.log("Node access denied:", node.id);
-        toast({
-          variant: "destructive",
-          title: "Access denied",
-          description: "You need to complete previous lessons first"
-        });
-        setHasAccess(false);
-        setAccessChecking(false);
-        setLoading(false);
-        return;
-      }
-      
-      // User has access, load the exercise
-      setHasAccess(true);
-      setAccessChecking(false);
-      
-      // Load exercise content
-      const exerciseData = await getNodeExercise(node.id);
+      setLoading(true);
+      const exerciseData = await getNodeExercise(nodeId);
       setExercise(exerciseData);
     } catch (error) {
       console.error("Error loading exercise:", error);
       toast({
+        title: "Failed to load exercise",
+        description: "Please try again later",
         variant: "destructive",
-        title: "Loading error",
-        description: "Failed to load exercise content"
       });
     } finally {
       setLoading(false);
@@ -116,29 +77,21 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     if (!node) return;
 
     // Save the practice result and increment completion count if accuracy is high enough
-    recordNodeCompletion(node.id, accuracy)
-      .then(() => {
-        // Show feedback based on accuracy
-        if (accuracy >= 95) {
-          toast({
-            title: "Great job!",
-            description: `You scored ${Math.round(accuracy)}%. Your progress has been saved.`,
-          });
-        } else {
-          toast({
-            title: "Keep practicing!",
-            description: `You scored ${Math.round(accuracy)}%. Try to get above 95% for it to count toward completion.`,
-          });
-        }
-      })
-      .catch(error => {
-        console.error("Error recording node completion:", error);
-        toast({
-          variant: "destructive",
-          title: "Error saving progress",
-          description: "There was a problem saving your progress."
-        });
+    incrementNodeCompletion(node.id, accuracy);
+    
+    // Show feedback based on accuracy
+    if (accuracy >= 95) {
+      toast({
+        title: "Great job!",
+        description: `You scored ${Math.round(accuracy)}%. Your progress has been saved.`,
+        variant: "default", // Changed from "success" to "default" since "success" is not a valid variant
       });
+    } else {
+      toast({
+        title: "Keep practicing!",
+        description: `You scored ${Math.round(accuracy)}%. Try to get above 95% for it to count toward completion.`,
+      });
+    }
   };
 
   const handleTryAgain = () => {
@@ -171,7 +124,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
     null;
   
   const completionCount = nodeCompletionInfo?.completionCount || 0;
-  const isNodeCompleted = nodeCompletionInfo?.isCompleted || false;
+  const isNodeCompleted = node ? completedNodes.includes(node.id) || nodeCompletionInfo?.isCompleted : false;
 
   if (!node) {
     return null;
@@ -187,39 +140,11 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
           </DialogDescription>
         </DialogHeader>
         
-        {accessChecking ? (
-          <div className="flex flex-col items-center justify-center h-40">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">Checking access...</p>
-          </div>
-        ) : !hasAccess ? (
-          <Card className="p-6 flex flex-col items-center text-center">
-            <Lock className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">Lesson Locked</h3>
-            <p className="text-muted-foreground mb-4">
-              You need to complete previous lessons before accessing this one.
-              Follow the learning path in order to unlock this content.
-            </p>
-            <Button onClick={() => onOpenChange(false)}>
-              Return to Roadmap
-            </Button>
-          </Card>
-        ) : practiceStage === PracticeStage.PROMPT && (
+        {practiceStage === PracticeStage.PROMPT && (
           <div className="px-6 pt-0 pb-6 space-y-6">
             <div className="mb-6">
               <p className="text-lg font-medium mb-2">Boost Your Understanding Before You Start</p>
               <p className="text-muted-foreground">Dive into a Reading Analysis to see how words and grammar work — or skip straight to dictation.</p>
-              
-              {completionCount > 0 && (
-                <div className="mt-3 flex items-center">
-                  <Badge variant={isNodeCompleted ? "secondary" : "secondary"} className={`mr-2 ${isNodeCompleted ? "bg-green-100 text-green-800 hover:bg-green-200" : ""}`}>
-                    {completionCount}/3 completions
-                  </Badge>
-                  {isNodeCompleted && (
-                    <span className="text-xs text-green-600 font-medium">Completed!</span>
-                  )}
-                </div>
-              )}
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
@@ -258,18 +183,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
               </Card>
             </div>
             
-            {!loading && isNodeCompleted && (
-              <div className="mt-6 text-center">
-                <p className="text-green-600 mb-2">
-                  You've already completed this lesson!
-                </p>
-                <Button onClick={() => onOpenChange(false)} variant="outline">
-                  Return to Roadmap
-                </Button>
-              </div>
-            )}
-            
-            {!exercise && !loading && !isNodeCompleted && (
+            {!exercise && !loading && (
               <div className="mt-6 flex justify-center">
                 <Button onClick={handleMarkCompleted} variant="outline">
                   Mark as Completed
@@ -299,8 +213,8 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
               tags: [],
               directoryId: null,
               createdAt: new Date(),
-              completionCount: completionCount,
-              isCompleted: isNodeCompleted
+              completionCount: 0,
+              isCompleted: false
             }}
             onTryAgain={handleTryAgain}
             onComplete={handlePracticeComplete}
@@ -310,10 +224,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
         {practiceStage === PracticeStage.DICTATION && !exercise && (
           <div className="text-center py-6">
             {loading ? (
-              <div className="flex flex-col items-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                <p>Loading exercise...</p>
-              </div>
+              <p>Loading exercise...</p>
             ) : (
               <>
                 <p>No exercise content available.</p>
