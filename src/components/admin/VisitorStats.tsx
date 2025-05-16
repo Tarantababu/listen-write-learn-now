@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { format, subDays, parseISO, isBefore, startOfDay } from 'date-fns';
+import { format, subDays, parseISO, isBefore, startOfDay, isAfter, endOfDay } from 'date-fns';
 import StatsCard from '@/components/StatsCard';
 import { Activity, Users, Globe, Info } from 'lucide-react';
 import { calculateTrend, compareWithPreviousDay } from '@/utils/trendUtils';
@@ -79,13 +80,13 @@ export function VisitorStats() {
         
         const { data: dailyData, error: dailyError } = await supabase
           .from('visitors')
-          .select('created_at')
-          .gte('created_at', thirtyDaysAgo);
+          .select('created_at');
         
         if (dailyError) throw dailyError;
         
         // Find the earliest data collection date to mark pre-data-collection dates
         let earliestDate: Date | null = null;
+        let latestDate: Date | null = null;
         
         if (dailyData && dailyData.length > 0) {
           // Find the earliest date in our dataset
@@ -95,6 +96,7 @@ export function VisitorStats() {
             
           if (allDates.length > 0) {
             earliestDate = new Date(Math.min(...allDates.map(date => date.getTime())));
+            latestDate = new Date(Math.max(...allDates.map(date => date.getTime())));
             setDataStartDate(format(earliestDate, 'MMMM d, yyyy'));
           }
         }
