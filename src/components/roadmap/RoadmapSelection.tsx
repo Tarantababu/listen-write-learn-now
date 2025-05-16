@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -204,7 +205,7 @@ const RoadmapSelection: React.FC = () => {
         variant="outline" 
         size="sm" 
         onClick={() => console.log('Debug Info:', {
-          normalizedLanguage,
+          normalizedSelectedLanguage,
           roadmaps,
           userRoadmaps,
           availableRoadmapsForLanguage,
