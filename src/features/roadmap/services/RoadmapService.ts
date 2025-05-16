@@ -68,13 +68,15 @@ export class RoadmapService implements RoadmapServiceInterface {
     }
   }
 
+  // Fix the initializeRoadmap method
   async initializeRoadmap(level: LanguageLevel, language: Language): Promise<string> {
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData?.user) throw new Error('User not authenticated');
 
+      // Using the correct function name for Supabase RPC
       const { data, error } = await supabase
-        .rpc('initialize_user_roadmap', {
+        .rpc('initialize_roadmap', {
           user_id_param: userData.user.id,
           language_param: language,
           level_param: level
@@ -82,7 +84,8 @@ export class RoadmapService implements RoadmapServiceInterface {
 
       if (error) throw error;
 
-      return data;
+      // Make sure we return a string as the function signature requires
+      return data as string;
     } catch (error) {
       console.error('Error initializing roadmap:', error);
       throw error;
