@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './routes';
@@ -10,8 +11,6 @@ import { UserSettingsProvider } from './contexts/UserSettingsContext';
 import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
-  const { subscription } = useSubscription();
-
   return (
     <AuthProvider>
       <UserSettingsProvider>
