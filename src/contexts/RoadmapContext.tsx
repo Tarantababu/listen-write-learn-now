@@ -1,8 +1,10 @@
+
 import React, {
   createContext,
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from 'react';
 import {
   RoadmapItem,
@@ -16,15 +18,7 @@ import {
 } from '@/features/roadmap/api/roadmapService';
 import { Language, LanguageLevel } from '@/types';
 import { useUserSettingsContext } from './UserSettingsContext';
-import { NodeProgressDetails } from '@/features/roadmap/types/service-types';
-
-// Define NodeCompletionResult interface as it might be missing 
-interface NodeCompletionResult {
-  completionCount: number;
-  isCompleted: boolean;
-  lastPracticedAt?: Date;
-  accuracyHistory?: number[];
-}
+import { NodeProgressDetails, NodeCompletionResult } from '@/features/roadmap/types/service-types';
 
 interface RoadmapContextProps {
   roadmaps: RoadmapItem[];
@@ -37,19 +31,19 @@ interface RoadmapContextProps {
   nodeLoading?: boolean;
   error: string | null;
   loadRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
-  loadUserRoadmaps: (language: Language) => Promise<RoadmapItem[]>; // Changed return type from void to RoadmapItem[]
+  loadUserRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
   loadRoadmapNodes: (userRoadmapId: string) => Promise<void>;
   getNodeContent: (nodeId: string) => Promise<any>;
-  recordCompletion: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>; // Updated return type
+  recordCompletion: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>;
   markNodeCompleted: (nodeId: string) => Promise<void>;
   completedNodes: string[];
   availableNodes?: string[];
   // Add aliases for the methods used in components
   markNodeAsCompleted?: (nodeId: string) => Promise<void>;
   getNodeExercise?: (nodeId: string) => Promise<any>;
-  incrementNodeCompletion?: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>; // Updated return type
-  selectRoadmap?: (roadmapId: string) => Promise<RoadmapNode[]>; // Added proper return type
+  incrementNodeCompletion?: (nodeId: string, accuracy: number) => Promise<NodeCompletionResult>;
+  selectRoadmap?: (roadmapId: string) => Promise<RoadmapNode[]>;
 }
 
 const defaultContext: RoadmapContextProps = {
@@ -62,14 +56,14 @@ const defaultContext: RoadmapContextProps = {
   isLoading: false,
   error: null,
   loadRoadmaps: async () => [],
-  loadUserRoadmaps: async () => [], // Updated default return value
+  loadUserRoadmaps: async () => [],
   initializeUserRoadmap: async () => {},
   loadRoadmapNodes: async () => {},
   getNodeContent: async () => {},
-  recordCompletion: async () => ({ completionCount: 0, isCompleted: false }), // Updated default return value
+  recordCompletion: async () => ({ completionCount: 0, isCompleted: false }),
   markNodeCompleted: async () => {},
   completedNodes: [],
-}; 
+};
 
 export const RoadmapContext = createContext<RoadmapContextProps>(defaultContext);
 
@@ -86,13 +80,59 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
   const [error, setError] = useState<string | null>(null);
   const [completedNodes, setCompletedNodes] = useState<string[]>([]);
   const [availableNodes, setAvailableNodes] = useState<string[]>([]);
+  
+  // Add refs to track request status and debounce API calls
+  const loadingRef = useRef<{[key: string]: boolean}>({});
+  const requestTimeoutRef = useRef<{[key: string]: ReturnType<typeof setTimeout>}>({});
+  const previousLanguageRef = useRef<Language | null>(null);
 
-  // Load language-specific roadmaps
+  // Memoize the language to prevent unnecessary renders
+  const currentLanguage = settings.selectedLanguage;
+  
+  // Function to cancel a pending timeout for a specific key
+  const cancelPendingRequest = useCallback((key: string) => {
+    if (requestTimeoutRef.current[key]) {
+      clearTimeout(requestTimeoutRef.current[key]);
+      delete requestTimeoutRef.current[key];
+    }
+  }, []);
+
+  // Debounced function to make API requests
+  const debouncedRequest = useCallback(<T,>(key: string, fn: () => Promise<T>, delay = 300): Promise<T> => {
+    return new Promise((resolve, reject) => {
+      // Cancel any pending request for this key
+      cancelPendingRequest(key);
+      
+      // Set new timeout
+      requestTimeoutRef.current[key] = setTimeout(async () => {
+        try {
+          const result = await fn();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        } finally {
+          delete requestTimeoutRef.current[key];
+        }
+      }, delay);
+    });
+  }, [cancelPendingRequest]);
+
+  // Load language-specific roadmaps with debouncing and caching
   const loadRoadmaps = useCallback(async (language: Language) => {
+    // Skip if already loading this language
+    const cacheKey = `loadRoadmaps_${language}`;
+    
+    if (loadingRef.current[cacheKey]) {
+      console.log(`Already loading roadmaps for ${language}, skipping duplicate request`);
+      return roadmaps;
+    }
+    
     try {
+      loadingRef.current[cacheKey] = true;
       setIsLoading(true);
       console.log('Loading roadmaps for language:', language);
-      const roadmapsData = await getRoadmapsForLanguage(language);
+      
+      const roadmapsData = await debouncedRequest(cacheKey, () => getRoadmapsForLanguage(language));
       console.log('Roadmaps loaded:', roadmapsData);
       setRoadmaps(roadmapsData);
       return roadmapsData;
@@ -101,36 +141,53 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
       return [];
     } finally {
       setIsLoading(false);
+      loadingRef.current[cacheKey] = false;
     }
-  }, []);
+  }, [debouncedRequest]);
 
-  // Load user-specific roadmaps
+  // Load user-specific roadmaps with debouncing and loading state management
   const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
-    setIsLoading(true);
+    // Skip if already loading this language
+    const cacheKey = `loadUserRoadmaps_${language}`;
+    
+    if (loadingRef.current[cacheKey]) {
+      console.log(`Already loading user roadmaps for ${language}, skipping duplicate request`);
+      return userRoadmaps;
+    }
+    
     try {
-      const userRoadmapsData = await getUserRoadmaps(language);
+      loadingRef.current[cacheKey] = true;
+      setIsLoading(true);
+      
+      const userRoadmapsData = await debouncedRequest(cacheKey, () => getUserRoadmaps(language));
       setUserRoadmaps(userRoadmapsData);
 
-      // Set the current roadmap to the first one if available
-      if (userRoadmapsData.length > 0) {
-        setCurrentRoadmap(userRoadmapsData[0]);
-        setCurrentNodeId(userRoadmapsData[0].currentNodeId || null);
-        await loadRoadmapNodes(userRoadmapsData[0].id);
-      } else {
+      // Only set the current roadmap if we don't already have one
+      // or if the current language has changed
+      if ((!currentRoadmap && userRoadmapsData.length > 0) || 
+          (currentRoadmap && currentRoadmap.language !== language)) {
+        setCurrentRoadmap(userRoadmapsData[0] || null);
+        setCurrentNodeId(userRoadmapsData[0]?.currentNodeId || null);
+        if (userRoadmapsData[0]) {
+          await loadRoadmapNodes(userRoadmapsData[0].id);
+        }
+      } else if (userRoadmapsData.length === 0) {
+        // Clear state when we have no roadmaps for this language
         setCurrentRoadmap(null);
         setCurrentNodeId(null);
         setNodes([]);
       }
       
-      return userRoadmapsData; // Return the data
+      return userRoadmapsData;
     } catch (error) {
       console.error('Error loading user roadmaps:', error);
       setError('Failed to load user roadmaps');
-      return []; // Return empty array on error
+      return [];
     } finally {
       setIsLoading(false);
+      loadingRef.current[cacheKey] = false;
     }
-  }, []);
+  }, [currentRoadmap, loadRoadmapNodes]);
 
   // Initialize a user roadmap
   const initializeUserRoadmap = useCallback(async (level: LanguageLevel, language: Language) => {
@@ -150,10 +207,18 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
     }
   }, [loadUserRoadmaps]);
 
-  // Load roadmap nodes
+  // Load roadmap nodes with optimized loading state
   const loadRoadmapNodes = useCallback(async (userRoadmapId: string) => {
-    setIsLoading(true);
+    const cacheKey = `loadRoadmapNodes_${userRoadmapId}`;
+    
+    if (loadingRef.current[cacheKey]) {
+      console.log(`Already loading nodes for roadmap ${userRoadmapId}, skipping duplicate request`);
+      return;
+    }
+    
     try {
+      loadingRef.current[cacheKey] = true;
+      
       // TODO: Implement the actual logic to fetch roadmap nodes
       // For now, let's just simulate fetching some nodes
       console.log(`Loading roadmap nodes for roadmap ID ${userRoadmapId}`);
@@ -163,7 +228,7 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
         return [] as RoadmapNode[]; // Return empty array for now
       };
       
-      const roadmapNodes = await mockGetRoadmapNodes(userRoadmapId);
+      const roadmapNodes = await debouncedRequest(cacheKey, () => mockGetRoadmapNodes(userRoadmapId));
       setNodes(roadmapNodes);
       
       // Mock completed and available nodes
@@ -183,9 +248,9 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
       console.error('Error loading roadmap nodes:', error);
       setError('Failed to load roadmap nodes');
     } finally {
-      setIsLoading(false);
+      loadingRef.current[cacheKey] = false;
     }
-  }, []);
+  }, [debouncedRequest]);
 
   const getNodeContent = useCallback(async (nodeId: string) => {
     setNodeLoading(true);
@@ -223,7 +288,7 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
     } catch (error) {
       console.error('Error recording node completion:', error);
       setError('Failed to record node completion');
-      return { completionCount: 0, isCompleted: false }; // Return a default result on error
+      return { completionCount: 0, isCompleted: false, lastPracticedAt: new Date() };
     }
   }, []);
 
@@ -235,11 +300,20 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
     setCompletedNodes(prev => [...prev, nodeId]);
   }, []);
   
-  // Implementation for selectRoadmap method
+  // Implementation for selectRoadmap method with loading state management
   const selectRoadmap = useCallback(async (roadmapId: string) => {
-    setIsLoading(true);
-    console.log(`Selecting roadmap ${roadmapId}`);
+    const cacheKey = `selectRoadmap_${roadmapId}`;
+    
+    if (loadingRef.current[cacheKey]) {
+      console.log(`Already selecting roadmap ${roadmapId}, skipping duplicate request`);
+      return nodes;
+    }
+    
     try {
+      loadingRef.current[cacheKey] = true;
+      setIsLoading(true);
+      console.log(`Selecting roadmap ${roadmapId}`);
+      
       // Find the selected roadmap
       const selectedRoadmap = userRoadmaps.find(r => r.id === roadmapId);
       if (selectedRoadmap) {
@@ -255,17 +329,37 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
       return [];
     } finally {
       setIsLoading(false);
+      loadingRef.current[cacheKey] = false;
     }
   }, [userRoadmaps, loadRoadmapNodes, nodes]);
 
-  // Ensure roadmaps are loaded whenever the selected language changes
+  // Ensure roadmaps are loaded only when the language actually changes
   useEffect(() => {
-    if (settings.selectedLanguage) {
-      console.log('Language changed, loading roadmaps for:', settings.selectedLanguage);
-      loadRoadmaps(settings.selectedLanguage);
-      loadUserRoadmaps(settings.selectedLanguage);
+    // Skip the effect if the language hasn't changed
+    if (previousLanguageRef.current === currentLanguage) {
+      return;
     }
-  }, [settings.selectedLanguage, loadRoadmaps, loadUserRoadmaps]);
+    
+    if (currentLanguage) {
+      console.log('Language changed from', previousLanguageRef.current, 'to', currentLanguage);
+      
+      // Update the ref for next comparison
+      previousLanguageRef.current = currentLanguage;
+      
+      // Load roadmaps for the new language
+      loadRoadmaps(currentLanguage);
+      loadUserRoadmaps(currentLanguage);
+    }
+  }, [currentLanguage, loadRoadmaps, loadUserRoadmaps]);
+
+  // Cleanup all pending timeouts when unmounting
+  useEffect(() => {
+    return () => {
+      Object.keys(requestTimeoutRef.current).forEach(key => {
+        clearTimeout(requestTimeoutRef.current[key]);
+      });
+    };
+  }, []);
 
   return (
     <RoadmapContext.Provider

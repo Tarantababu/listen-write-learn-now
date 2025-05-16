@@ -18,15 +18,16 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 
 const RoadmapPage: React.FC = () => {
+  // Use context without triggering re-renders unnecessarily
   const { 
     currentRoadmap, 
     isLoading, 
-    roadmaps, 
-    userRoadmaps,
+    roadmaps = [], 
+    userRoadmaps = [],
     loadUserRoadmaps,
     selectRoadmap,
-    completedNodes,
-    nodes,
+    completedNodes = [],
+    nodes = [],
     currentNodeId
   } = useRoadmap();
   
@@ -81,7 +82,7 @@ const RoadmapPage: React.FC = () => {
     try {
       setSelectionError(null);
       setIsRetrying(false);
-      await selectRoadmap(roadmapId);
+      await selectRoadmap?.(roadmapId);
       setViewMode('map'); // Switch to map view when selecting a roadmap
     } catch (error) {
       console.error('Error selecting roadmap:', error);
@@ -89,18 +90,22 @@ const RoadmapPage: React.FC = () => {
       
       // After error, try to re-fetch user roadmaps
       try {
-        const loadedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
-        
-        if (loadedRoadmaps && loadedRoadmaps.length > 0) {
-          // Try selecting the first available roadmap instead
-          try {
-            await selectRoadmap(loadedRoadmaps[0].id);
-            toast({
-              title: "Selected fallback roadmap",
-              description: "We encountered an issue with the selected roadmap and loaded another one instead."
-            });
-          } catch (secondError) {
-            console.error('Error selecting fallback roadmap:', secondError);
+        if (loadUserRoadmaps) {
+          const loadedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
+          
+          if (loadedRoadmaps && loadedRoadmaps.length > 0) {
+            // Try selecting the first available roadmap instead
+            try {
+              if (selectRoadmap) {
+                await selectRoadmap(loadedRoadmaps[0].id);
+                toast({
+                  title: "Selected fallback roadmap",
+                  description: "We encountered an issue with the selected roadmap and loaded another one instead."
+                });
+              }
+            } catch (secondError) {
+              console.error('Error selecting fallback roadmap:', secondError);
+            }
           }
         }
       } catch (loadError) {
@@ -121,26 +126,28 @@ const RoadmapPage: React.FC = () => {
       }
       
       // Reload roadmaps first
-      const loadedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
-      console.log("Reloaded roadmaps:", { userRoadmaps });
-      
-      // If we have a current roadmap, try to reload it
-      if (currentRoadmap) {
-        if (selectRoadmap) {
-          await selectRoadmap(currentRoadmap.id);
-          toast({
-            title: "Roadmap loaded",
-            description: "Successfully reloaded your roadmap."
-          });
-        }
-      } else if (loadedRoadmaps && loadedRoadmaps.length > 0) {
-        // Otherwise, select the first available roadmap
-        if (selectRoadmap) {
-          await selectRoadmap(loadedRoadmaps[0].id);
-          toast({
-            title: "Roadmap loaded",
-            description: "Successfully loaded a roadmap."
-          });
+      if (loadUserRoadmaps) {
+        const loadedRoadmaps = await loadUserRoadmaps(settings.selectedLanguage);
+        console.log("Reloaded roadmaps:", { userRoadmaps });
+        
+        // If we have a current roadmap, try to reload it
+        if (currentRoadmap) {
+          if (selectRoadmap) {
+            await selectRoadmap(currentRoadmap.id);
+            toast({
+              title: "Roadmap loaded",
+              description: "Successfully reloaded your roadmap."
+            });
+          }
+        } else if (loadedRoadmaps && loadedRoadmaps.length > 0) {
+          // Otherwise, select the first available roadmap
+          if (selectRoadmap) {
+            await selectRoadmap(loadedRoadmaps[0].id);
+            toast({
+              title: "Roadmap loaded",
+              description: "Successfully loaded a roadmap."
+            });
+          }
         }
       }
     } catch (error) {
@@ -187,7 +194,7 @@ const RoadmapPage: React.FC = () => {
     roadmap.languages?.includes(settings.selectedLanguage)
   );
 
-  // Detailed debug info
+  // Detailed debug info - only log when dependencies actually change to avoid console spam
   useEffect(() => {
     console.log("RoadmapPage state:", {
       isLoading,
@@ -210,7 +217,8 @@ const RoadmapPage: React.FC = () => {
     currentRoadmap, 
     nodes.length, 
     activeTab,
-    settings.selectedLanguage
+    settings.selectedLanguage,
+    hasAvailableRoadmaps
   ]);
 
   if (!user) {
