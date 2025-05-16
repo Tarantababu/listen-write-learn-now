@@ -65,7 +65,7 @@ const AdminPage: React.FC = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
         <TabsList className="mb-4">
           <TabsTrigger value="default-exercises">Default Exercises</TabsTrigger>
-          <TabsTrigger value="roadmaps">Roadmaps</TabsTrigger>
+          <TabsTrigger value="roadmaps">Curriculum</TabsTrigger>
           <TabsTrigger value="messages">User Messages</TabsTrigger>
           <TabsTrigger value="statistics">Statistics</TabsTrigger>
           <TabsTrigger value="feedback">Feedback</TabsTrigger>
@@ -90,7 +90,7 @@ const AdminPage: React.FC = () => {
 
         <TabsContent value="roadmaps" className="space-y-8">
           <div>
-            <h2 className="text-xl font-semibold mb-4">Roadmap Management</h2>
+            <h2 className="text-xl font-semibold mb-4">Curriculum Management</h2>
             <RoadmapEditor />
           </div>
         </TabsContent>

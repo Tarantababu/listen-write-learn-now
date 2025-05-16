@@ -1,3 +1,4 @@
+
 import { Language, LanguageLevel } from '@/types';
 import { BaseService } from './BaseService';
 import { 
@@ -131,7 +132,7 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
       console.log('Getting nodes for user roadmap:', userRoadmapId);
       const auth = await this.ensureAuthenticated();
       if (!auth) {
-        return this.error('User must be authenticated to access roadmap nodes');
+        return this.error('User must be authenticated to access curriculum nodes');
       }
       
       // First get the user roadmap to get the roadmap ID and language
@@ -221,8 +222,9 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
           availableNodeIds.add(node.id);
         }
         
-        // Get node progress count
+        // Get node progress count and include it in the return object
         const progressCount = nodeProgressMap[node.id]?.completion_count || 0;
+        const lastPracticedAt = nodeProgressMap[node.id]?.last_practiced_at || null;
         
         // Determine node status
         let status: 'locked' | 'available' | 'completed' | 'current' = 'locked';
@@ -247,7 +249,8 @@ export class RoadmapService extends BaseService implements RoadmapServiceInterfa
           createdAt: new Date(node.created_at),
           updatedAt: new Date(node.updated_at),
           status,
-          progressCount
+          progressCount,
+          lastPracticedAt: lastPracticedAt ? new Date(lastPracticedAt) : undefined
         };
       });
       

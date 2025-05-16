@@ -2,8 +2,6 @@
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-// Remove the import that's causing the conflict since we have our own implementation
-// import { ensureAudioBucket } from '@/services/defaultExerciseService';
 
 /**
  * Fetches exercises from Supabase for an authenticated user
@@ -207,6 +205,29 @@ export const recordCompletion = async (userId: string, exerciseId: string, accur
 
       if (activityError) {
         console.error('Error recording language activity:', activityError);
+      }
+
+      // Update completion count and completion status in exercise
+      const { data: completions, error: countError } = await supabase
+        .from('completions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('exercise_id', exerciseId)
+        .gte('accuracy', 95);
+
+      if (!countError && completions) {
+        const completionCount = completions.length;
+        const isNowCompleted = completionCount >= 3;
+          
+        // Update the exercise completion count and status
+        await updateExercise(userId, exerciseId, { 
+          completionCount,
+          isCompleted: isNowCompleted 
+        });
+        
+        if (isNowCompleted) {
+          toast.success("Exercise mastered! You've completed this exercise 3 times with high accuracy.");
+        }
       }
     }
   } catch (error) {

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo } from 'react';
 import { format, subDays, isSameDay, subMonths } from 'date-fns';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -177,7 +176,22 @@ const UserStatistics: React.FC = () => {
     }
     
     // Fallback to the old method if no daily activities data
-    // ... keep existing code (fallback logic)
+    const today = new Date();
+    const last90Days = Array.from({ length: 90 }, (_, i) => subDays(today, i));
+
+    const completionCounts: { [key: string]: number } = completions
+      .filter(completion => completion && exercises.find(ex => ex.id === completion.exerciseId)?.language === currentLanguage)
+      .reduce((acc: { [key: string]: number }, completion) => {
+        const dateKey = format(completion.date, 'yyyy-MM-dd');
+        acc[dateKey] = (acc[dateKey] || 0) + 1;
+        return acc;
+      }, {});
+
+    return last90Days.map(date => ({
+      date,
+      count: completionCounts[format(date, 'yyyy-MM-dd')] || 0,
+      masteredWords: 0
+    }));
     
     return [];
   }, [dailyActivities, completions, exercises, currentLanguage]);

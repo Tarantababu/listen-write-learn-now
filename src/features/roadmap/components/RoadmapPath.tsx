@@ -1,10 +1,16 @@
-
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { RoadmapNode } from '../types';
-import RoadmapNodeCard from './RoadmapNodeCard';
-import { cn } from '@/lib/utils';
-import { Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { CheckCircle2, Circle, CircleDashed, Star } from 'lucide-react';
 
 interface RoadmapPathProps {
   nodes: RoadmapNode[];
@@ -12,121 +18,152 @@ interface RoadmapPathProps {
 }
 
 const RoadmapPath: React.FC<RoadmapPathProps> = ({ nodes, onNodeSelect }) => {
-  // Sort nodes by position
-  const sortedNodes = [...nodes].sort((a, b) => a.position - b.position);
-  
-  console.log("RoadmapPath rendering with nodes:", sortedNodes);
-  
-  // Group nodes by "rows" of 5 for display
-  const nodeRows: RoadmapNode[][] = [];
-  for (let i = 0; i < sortedNodes.length; i += 5) {
-    nodeRows.push(sortedNodes.slice(i, i + 5));
+  // Group nodes by rows of 5 for display
+  const rows: RoadmapNode[][] = [];
+  for (let i = 0; i < nodes.length; i += 5) {
+    rows.push(nodes.slice(i, i + 5));
   }
-
-  // Reference to path container for animations
-  const pathRef = useRef<HTMLDivElement>(null);
-  const completedCount = nodes.filter(n => n.status === 'completed').length;
   
-  // Calculate progress percentage
-  const progressPercent = nodes.length > 0 ? (completedCount / nodes.length) * 100 : 0;
-
-  // Handle empty nodes case
-  if (nodes.length === 0) {
-    return (
-      <div className="p-8 text-center rounded-lg border border-dashed border-muted-foreground/50">
-        <h3 className="font-medium text-muted-foreground">No roadmap nodes found</h3>
-        <p className="text-sm text-muted-foreground mt-2">
-          This roadmap doesn't have any nodes yet. Please check back later or select a different roadmap.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-10">
-      <div className="h-2 w-full bg-muted rounded-full mb-6 overflow-hidden">
-        <motion.div 
-          className="h-full bg-primary"
-          initial={{ width: 0 }}
-          animate={{ width: `${progressPercent}%` }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-        />
-      </div>
-      
-      {nodeRows.map((row, rowIndex) => (
-        <motion.div 
-          key={`row-${rowIndex}`} 
+    <div className="space-y-10 py-4">
+      {rows.map((row, rowIndex) => (
+        <motion.div
+          key={`row-${rowIndex}`}
           className={cn(
-            "flex items-center justify-between gap-6 relative",
+            "flex items-center gap-6 relative",
             rowIndex % 2 === 1 && "flex-row-reverse"
           )}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: rowIndex * 0.1 }}
-          ref={rowIndex === 0 ? pathRef : undefined}
         >
-          {/* Connection lines with gradient for better visualization */}
-          <div 
-            className={cn(
-              "absolute h-2 top-1/2 left-8 right-8 -translate-y-1/2 -z-10 rounded-full overflow-hidden",
-              rowIndex % 2 === 1 ? "bg-gradient-to-l from-muted-foreground/30 to-primary/30" :
-                                  "bg-gradient-to-r from-muted-foreground/30 to-primary/30"
-            )}
-          />
+          {/* Connection line between nodes */}
+          <div className="absolute h-1 bg-muted-foreground/30 top-1/2 left-8 right-8 -translate-y-1/2 -z-10"></div>
           
           {row.map((node, nodeIndex) => (
-            <motion.div
-              key={node.id}
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ 
-                duration: 0.3, 
-                delay: (rowIndex * 0.2) + (nodeIndex * 0.1),
-                type: "spring",
-                stiffness: 300
-              }}
-            >
-              <RoadmapNodeCard
-                key={node.id}
-                node={node}
-                onNodeClick={onNodeSelect}
-              />
-            </motion.div>
+            <NodeItem 
+              key={node.id} 
+              node={node}
+              onClick={() => onNodeSelect(node)}
+            />
           ))}
           
-          {/* Filler nodes to maintain spacing */}
-          {Array.from({ length: 5 - row.length }).map((_, i) => (
-            <div key={`filler-${i}`} className="h-16 w-16" />
+          {/* Add placeholder elements to keep consistent spacing */}
+          {Array.from({ length: Math.max(0, 5 - row.length) }).map((_, i) => (
+            <div key={`placeholder-${i}`} className="w-16 h-16" />
           ))}
         </motion.div>
       ))}
-      
-      <motion.div 
-        className="flex items-center justify-around mt-8 pt-4 border-t"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-      >
-        <div className="flex items-center">
-          <div className="h-4 w-4 rounded-full bg-primary mr-2"></div>
-          <span className="text-xs">Completed</span>
-        </div>
-        <div className="flex items-center">
-          <div className="h-4 w-4 rounded-full bg-secondary mr-2"></div>
-          <span className="text-xs">Current</span>
-        </div>
-        <div className="flex items-center">
-          <div className="h-4 w-4 rounded-full bg-background border border-muted-foreground mr-2"></div>
-          <span className="text-xs">Available</span>
-        </div>
-        <div className="flex items-center">
-          <div className="h-4 w-4 rounded-full bg-muted text-muted-foreground mr-2 flex items-center justify-center">
-            <Lock className="h-2 w-2" />
-          </div>
-          <span className="text-xs">Locked</span>
-        </div>
-      </motion.div>
     </div>
+  );
+};
+
+interface NodeItemProps {
+  node: RoadmapNode & { 
+    status?: 'locked' | 'available' | 'completed' | 'current',
+    completionCount?: number,
+    isCompleted?: boolean,
+    lastPracticedAt?: Date
+  };
+  onClick: () => void;
+}
+
+const NodeItem: React.FC<NodeItemProps> = ({ node, onClick }) => {
+  const status = node.status || 'locked';
+  const completionCount = node.completionCount || 0;
+  const isCompleted = node.isCompleted || false;
+  
+  const getNodeColor = () => {
+    switch (status) {
+      case 'completed': return 'bg-primary border-primary text-primary-foreground';
+      case 'current': return 'bg-secondary border-secondary text-secondary-foreground ring-2 ring-offset-2 ring-secondary';
+      case 'available': return 'bg-background border-foreground text-foreground';
+      default: return 'bg-muted border-muted-foreground text-muted-foreground opacity-60';
+    }
+  };
+  
+  const getNodeIcon = () => {
+    if (status === 'completed') return <CheckCircle2 className="h-5 w-5" />;
+    if (status === 'current') return <Circle className="h-5 w-5 fill-secondary" />;
+    if (status === 'available') return <Circle className="h-5 w-5" />;
+    return <CircleDashed className="h-5 w-5" />;
+  };
+  
+  // Progress is only shown if not completed and has at least one completion
+  const showProgress = !isCompleted && completionCount > 0;
+  
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="relative">
+            <motion.div
+              className={cn(
+                "w-16 h-16 rounded-full border-2 flex flex-col items-center justify-center cursor-pointer transition-all",
+                getNodeColor(),
+                status === 'locked' && 'cursor-not-allowed'
+              )}
+              onClick={onClick}
+              whileHover={status !== 'locked' ? { scale: 1.05 } : {}}
+              whileTap={status !== 'locked' ? { scale: 0.95 } : {}}
+            >
+              <div className="flex flex-col items-center">
+                {node.isBonus && <Star className="h-3 w-3 text-amber-500 absolute top-1" />}
+                {getNodeIcon()}
+                <span className="text-xs font-bold mt-1">{node.position + 1}</span>
+              </div>
+            </motion.div>
+            
+            {/* Badge showing completion progress */}
+            {showProgress && (
+              <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold border border-white">
+                {completionCount}
+              </div>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="p-0">
+          <div className="p-3 space-y-1.5 max-w-[250px]">
+            <div className="flex items-center justify-between">
+              <div className="font-medium">{node.title}</div>
+              {node.isBonus && (
+                <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 font-medium ml-1">
+                  BONUS
+                </Badge>
+              )}
+            </div>
+            
+            {node.description && (
+              <p className="text-sm text-muted-foreground">{node.description}</p>
+            )}
+            
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t">
+              <div>
+                {status === 'completed' ? 'Completed' : 
+                 status === 'current' ? 'Current lesson' : 
+                 status === 'available' ? 'Available' : 'Locked'}
+              </div>
+              
+              {/* Show progress stats */}
+              <div className="font-medium">
+                {isCompleted ? (
+                  <span className="text-primary">Mastered</span>
+                ) : (
+                  <span>Progress: {completionCount}/3</span>
+                )}
+              </div>
+            </div>
+            
+            {/* Show last practiced time if available */}
+            {node.lastPracticedAt && (
+              <div className="text-xs text-muted-foreground">
+                Last practiced: {format(node.lastPracticedAt, 'MMM d, yyyy')}
+              </div>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 

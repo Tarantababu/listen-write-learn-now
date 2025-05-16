@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '../types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Circle, CircleDashed } from 'lucide-react';
 import RoadmapPath from './RoadmapPath';
 import LevelBadge from '@/components/LevelBadge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { nodeAccessService } from '../services/NodeAccessService';
+import { Progress } from '@/components/ui/progress';
 
 interface RoadmapVisualizationProps {
   onNodeSelect: (node: RoadmapNode) => void;
@@ -27,7 +28,8 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
     isLoading,
     roadmaps,
     currentNodeId,
-    selectRoadmap
+    selectRoadmap,
+    nodeProgress
   } = useRoadmap();
   
   const [accessibleNodeIds, setAccessibleNodeIds] = useState<string[]>([]);
@@ -106,7 +108,8 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
       currentRoadmap,
       nodes: nodes?.length || 0,
       currentNodeId,
-      accessibleNodeIds
+      accessibleNodeIds,
+      nodeProgress
     });
     
     if (currentRoadmap && (!nodes || nodes.length === 0)) {
@@ -116,19 +119,19 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
         console.error("Failed to reload roadmap:", err);
         toast({
           variant: "destructive",
-          title: "Failed to load roadmap content",
+          title: "Failed to load curriculum content",
           description: "Please try refreshing the page"
         });
       });
     }
-  }, [currentRoadmap, nodes, currentNodeId, selectRoadmap, accessibleNodeIds]);
+  }, [currentRoadmap, nodes, currentNodeId, selectRoadmap, accessibleNodeIds, nodeProgress]);
 
   // Loading state
   if (isLoading || isAccessLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-        <p>Loading your learning path...</p>
+        <p>Loading your curriculum...</p>
       </div>
     );
   }
@@ -137,14 +140,14 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
   if (!currentRoadmap) {
     return (
       <div className="text-center p-8">
-        <p className="text-muted-foreground">No learning path selected</p>
+        <p className="text-muted-foreground">No curriculum selected</p>
       </div>
     );
   }
 
   // Find the roadmap details using the roadmapId from currentRoadmap
   const roadmapDetails = roadmaps?.find(r => r.id === currentRoadmap.roadmapId);
-  const roadmapName = roadmapDetails?.name || "Learning Path";
+  const roadmapName = roadmapDetails?.name || "Curriculum";
   const roadmapLevel = roadmapDetails?.level;
   
   // Find current node
@@ -163,9 +166,18 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
       status = 'available';
     }
     
+    // Get the node progress information
+    const nodeProgressInfo = nodeProgress?.find(np => np.nodeId === node.id);
+    const completionCount = nodeProgressInfo?.completionCount || 0;
+    const isCompleted = nodeProgressInfo?.isCompleted || false;
+    const lastPracticedAt = nodeProgressInfo?.lastPracticedAt;
+    
     return {
       ...node,
-      status
+      status,
+      completionCount,
+      isCompleted,
+      lastPracticedAt
     };
   });
 
@@ -190,45 +202,78 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
         <div className="p-8 text-center rounded-lg border border-dashed border-muted-foreground/50">
           <h3 className="font-medium text-muted-foreground">No content available</h3>
           <p className="text-sm text-muted-foreground mt-2">
-            This roadmap doesn't have any nodes yet. Please check back later or select a different roadmap.
+            This curriculum doesn't have any lessons yet. Please check back later or select a different curriculum.
           </p>
         </div>
       </div>
     );
   }
 
+  const totalNodes = nodes.length;
+  const completedCount = completedNodes.length;
+  const progressPercentage = Math.round((completedCount / totalNodes) * 100);
+
   return (
     <div className={cn("space-y-6", className)}>
       <motion.div 
-        className="flex items-center justify-between"
+        className="flex flex-col space-y-4"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <div>
-          <h2 className="text-xl font-bold">{roadmapName}</h2>
-          <div className="flex items-center mt-1">
-            {roadmapLevel && <LevelBadge level={roadmapLevel} className="mr-2" />}
-            <span className="text-sm text-muted-foreground">
-              {completedNodes?.length || 0} of {nodes.length} completed
-            </span>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">{roadmapName}</h2>
+            <div className="flex items-center mt-1">
+              {roadmapLevel && <LevelBadge level={roadmapLevel} className="mr-2" />}
+              <span className="text-sm text-muted-foreground">
+                {completedCount} of {totalNodes} lessons completed
+              </span>
+            </div>
           </div>
+          
+          {currentNode && (
+            <Button 
+              onClick={() => handleNodeClick(currentNode)}
+              className="bg-primary hover:bg-primary/80"
+            >
+              Continue Learning
+            </Button>
+          )}
         </div>
         
-        {currentNode && (
-          <Button 
-            onClick={() => handleNodeClick(currentNode)}
-            className="bg-secondary hover:bg-secondary/80"
-          >
-            Continue Learning
-          </Button>
-        )}
+        <div className="w-full">
+          <Progress value={progressPercentage} className="h-2" />
+          <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+            <span>{progressPercentage}% complete</span>
+            <span>{completedCount}/{totalNodes} lessons</span>
+          </div>
+        </div>
       </motion.div>
       
       <RoadmapPath 
         nodes={enrichedNodes} 
         onNodeSelect={handleNodeClick} 
       />
+      
+      <div className="flex items-center justify-around mt-4 pt-4 border-t">
+        <div className="flex items-center">
+          <CheckCircle2 className="h-4 w-4 text-primary mr-2" />
+          <span className="text-xs">Completed</span>
+        </div>
+        <div className="flex items-center">
+          <Circle className="h-4 w-4 text-secondary fill-secondary mr-2" />
+          <span className="text-xs">Current</span>
+        </div>
+        <div className="flex items-center">
+          <Circle className="h-4 w-4 text-foreground mr-2" />
+          <span className="text-xs">Available</span>
+        </div>
+        <div className="flex items-center">
+          <CircleDashed className="h-4 w-4 text-muted-foreground mr-2" />
+          <span className="text-xs">Locked</span>
+        </div>
+      </div>
     </div>
   );
 };
