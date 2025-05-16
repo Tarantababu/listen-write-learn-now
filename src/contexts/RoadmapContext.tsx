@@ -60,7 +60,7 @@ const defaultContext: RoadmapContextProps = {
   initializeUserRoadmap: async () => {},
   loadRoadmapNodes: async () => {},
   getNodeContent: async () => {},
-  recordCompletion: async () => ({ completionCount: 0, isCompleted: false }),
+  recordCompletion: async () => ({ completionCount: 0, isCompleted: false, lastPracticedAt: new Date() }),
   markNodeCompleted: async () => {},
   completedNodes: [],
 };
@@ -116,6 +116,51 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
       }, delay);
     });
   }, [cancelPendingRequest]);
+
+  // Define loadRoadmapNodes first since it's used in loadUserRoadmaps
+  const loadRoadmapNodes = useCallback(async (userRoadmapId: string) => {
+    const cacheKey = `loadRoadmapNodes_${userRoadmapId}`;
+    
+    if (loadingRef.current[cacheKey]) {
+      console.log(`Already loading nodes for roadmap ${userRoadmapId}, skipping duplicate request`);
+      return;
+    }
+    
+    try {
+      loadingRef.current[cacheKey] = true;
+      
+      // TODO: Implement the actual logic to fetch roadmap nodes
+      // For now, let's just simulate fetching some nodes
+      console.log(`Loading roadmap nodes for roadmap ID ${userRoadmapId}`);
+      
+      // Mock function for getting roadmap nodes - this will be replaced with a real implementation
+      const mockGetRoadmapNodes = async (id: string) => {
+        return [] as RoadmapNode[]; // Return empty array for now
+      };
+      
+      const roadmapNodes = await debouncedRequest(cacheKey, () => mockGetRoadmapNodes(userRoadmapId));
+      setNodes(roadmapNodes);
+      
+      // Mock completed and available nodes
+      setCompletedNodes([]);
+      setAvailableNodes([]);
+      
+      // Load node progress
+      const initialProgress = roadmapNodes.map(node => ({
+        nodeId: node.id,
+        completionCount: 0,
+        isCompleted: false,
+        lastPracticedAt: undefined,
+        accuracyHistory: [],
+      }));
+      setNodeProgress(initialProgress);
+    } catch (error) {
+      console.error('Error loading roadmap nodes:', error);
+      setError('Failed to load roadmap nodes');
+    } finally {
+      loadingRef.current[cacheKey] = false;
+    }
+  }, [debouncedRequest]);
 
   // Load language-specific roadmaps with debouncing and caching
   const loadRoadmaps = useCallback(async (language: Language) => {
@@ -206,51 +251,6 @@ export const RoadmapProvider = ({ children }: { children: React.ReactNode }) => 
       setIsLoading(false);
     }
   }, [loadUserRoadmaps]);
-
-  // Load roadmap nodes with optimized loading state
-  const loadRoadmapNodes = useCallback(async (userRoadmapId: string) => {
-    const cacheKey = `loadRoadmapNodes_${userRoadmapId}`;
-    
-    if (loadingRef.current[cacheKey]) {
-      console.log(`Already loading nodes for roadmap ${userRoadmapId}, skipping duplicate request`);
-      return;
-    }
-    
-    try {
-      loadingRef.current[cacheKey] = true;
-      
-      // TODO: Implement the actual logic to fetch roadmap nodes
-      // For now, let's just simulate fetching some nodes
-      console.log(`Loading roadmap nodes for roadmap ID ${userRoadmapId}`);
-      
-      // Mock function for getting roadmap nodes - this will be replaced with a real implementation
-      const mockGetRoadmapNodes = async (id: string) => {
-        return [] as RoadmapNode[]; // Return empty array for now
-      };
-      
-      const roadmapNodes = await debouncedRequest(cacheKey, () => mockGetRoadmapNodes(userRoadmapId));
-      setNodes(roadmapNodes);
-      
-      // Mock completed and available nodes
-      setCompletedNodes([]);
-      setAvailableNodes([]);
-      
-      // Load node progress
-      const initialProgress = roadmapNodes.map(node => ({
-        nodeId: node.id,
-        completionCount: 0,
-        isCompleted: false,
-        lastPracticedAt: undefined,
-        accuracyHistory: [],
-      }));
-      setNodeProgress(initialProgress);
-    } catch (error) {
-      console.error('Error loading roadmap nodes:', error);
-      setError('Failed to load roadmap nodes');
-    } finally {
-      loadingRef.current[cacheKey] = false;
-    }
-  }, [debouncedRequest]);
 
   const getNodeContent = useCallback(async (nodeId: string) => {
     setNodeLoading(true);
