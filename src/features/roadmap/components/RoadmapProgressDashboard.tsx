@@ -28,12 +28,18 @@ interface StreakData {
   lastActivityDate: string | null;
 }
 
+interface ActivityData {
+  exercises_completed: number;
+  words_mastered: number;
+}
+
 const RoadmapProgressDashboard: React.FC<RoadmapProgressDashboardProps> = ({ className }) => {
   const { currentRoadmap, nodes, completedNodes, roadmaps } = useRoadmap();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('summary');
   const [timeframe, setTimeframe] = useState('all');
   const [streakData, setStreakData] = useState<StreakData | null>(null);
+  const [totalMasteredWords, setTotalMasteredWords] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
 
   const completedCount = completedNodes.length;
@@ -44,41 +50,61 @@ const RoadmapProgressDashboard: React.FC<RoadmapProgressDashboardProps> = ({ cla
   const roadmapDetails = currentRoadmap?.roadmapId ? 
     roadmaps.find(r => r.id === currentRoadmap.roadmapId) : null;
 
-  // Get streak data for the current language
+  // Get streak data and total mastered words for the current language
   useEffect(() => {
-    const fetchStreakData = async () => {
+    const fetchUserData = async () => {
       if (!user || !currentRoadmap?.language) return;
 
       setIsLoading(true);
       try {
-        const { data, error } = await supabase
+        // Fetch streak data
+        const { data: streakData, error: streakError } = await supabase
           .from('user_language_streaks')
           .select('current_streak, longest_streak, last_activity_date')
           .eq('user_id', user.id)
           .eq('language', currentRoadmap.language)
           .single();
 
-        if (error && error.code !== 'PGRST116') { // Not "No rows returned" error
-          console.error('Error fetching streak data:', error);
+        if (streakError && streakError.code !== 'PGRST116') { // Not "No rows returned" error
+          console.error('Error fetching streak data:', streakError);
         }
 
-        if (data) {
+        if (streakData) {
           // Transform from database column names to our interface properties
           const formattedData: StreakData = {
-            currentStreak: data.current_streak,
-            longestStreak: data.longest_streak,
-            lastActivityDate: data.last_activity_date
+            currentStreak: streakData.current_streak,
+            longestStreak: streakData.longest_streak,
+            lastActivityDate: streakData.last_activity_date
           };
           setStreakData(formattedData);
         }
+        
+        // Fetch total mastered words count for this language
+        const { data: activityData, error: activityError } = await supabase
+          .from('user_daily_activities')
+          .select('activity_date, words_mastered')
+          .eq('user_id', user.id)
+          .eq('language', currentRoadmap.language)
+          .order('activity_date', { ascending: false });
+          
+        if (activityError) {
+          console.error('Error fetching activity data:', activityError);
+        }
+        
+        if (activityData && activityData.length > 0) {
+          // Get the latest activity entry which should have the cumulative words mastered
+          const latestEntry = activityData[0];
+          setTotalMasteredWords(latestEntry.words_mastered || 0);
+        }
+        
       } catch (error) {
-        console.error('Error in fetchStreakData:', error);
+        console.error('Error in fetchUserData:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchStreakData();
+    fetchUserData();
   }, [user, currentRoadmap]);
 
   // Mock data for the dashboard
@@ -143,6 +169,11 @@ const RoadmapProgressDashboard: React.FC<RoadmapProgressDashboardProps> = ({ cla
                     <div className="flex justify-between text-sm mt-2">
                       <span className="text-muted-foreground">Lessons completed</span>
                       <span className="font-medium">{completedCount} / {totalCount}</span>
+                    </div>
+                    
+                    <div className="flex justify-between text-sm mt-2">
+                      <span className="text-muted-foreground">Words mastered</span>
+                      <span className="font-medium">{totalMasteredWords}</span>
                     </div>
                     
                     {roadmapDetails && (

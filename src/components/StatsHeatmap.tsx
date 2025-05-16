@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
-import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, isSameDay, addMonths, startOfWeek, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, isSameDay, addMonths } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CalendarDays, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -142,7 +142,7 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
     return filteredActivityData.find(a => isSameDay(a.date, date));
   };
 
-  // Custom day renderer with tooltip - FIXED to show mastered words count clearly
+  // Custom day renderer with tooltip - Updated to correctly display mastered words count
   const renderDay = (day: Date) => {
     const activity = getActivityForDate(day);
     const masteredCount = activity?.masteredWords || 0;

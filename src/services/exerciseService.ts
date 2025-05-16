@@ -174,10 +174,10 @@ export const recordCompletion = async (userId: string, exerciseId: string, accur
       throw completionError;
     }
 
-    // Get the exercise language to record activity
+    // Get the exercise language and text to calculate words
     const { data: exerciseData, error: exerciseError } = await supabase
       .from('exercises')
-      .select('language')
+      .select('language, text')
       .eq('id', exerciseId)
       .single();
 
@@ -185,10 +185,15 @@ export const recordCompletion = async (userId: string, exerciseId: string, accur
       console.error('Error fetching exercise language:', exerciseError);
       return;
     }
-
-    // Only record high accuracy completions (95%+) in the activity system
+    
+    // Only proceed with high accuracy completions (95%+) in the activity system
     if (accuracy >= 95 && exerciseData.language) {
-      // Use our new record_language_activity function to update streaks
+      // Calculate if this exercise is newly mastered
+      const masteredWordsCount = await calculateMasteredWords(userId, exerciseId, exerciseData.text);
+      
+      console.log(`Recording language activity with ${masteredWordsCount} mastered words`);
+      
+      // Use our record_language_activity function to update streaks and include mastered words
       const { error: activityError } = await supabase.rpc(
         'record_language_activity',
         {
@@ -196,7 +201,7 @@ export const recordCompletion = async (userId: string, exerciseId: string, accur
           language_param: exerciseData.language,
           activity_date_param: new Date().toISOString().split('T')[0],
           exercises_completed_param: 1,
-          words_mastered_param: 0 // Words mastered is calculated separately
+          words_mastered_param: masteredWordsCount // Now passing the actual mastered words count
         }
       );
 
@@ -207,6 +212,53 @@ export const recordCompletion = async (userId: string, exerciseId: string, accur
   } catch (error) {
     console.error('Error in recordCompletion:', error);
   }
+};
+
+/**
+ * Calculates if an exercise has been newly mastered and returns the word count
+ * An exercise is considered mastered when completed with high accuracy 3+ times
+ */
+const calculateMasteredWords = async (userId: string, exerciseId: string, exerciseText: string): Promise<number> => {
+  try {
+    // Get completion count with high accuracy for this exercise
+    const { data: completions, error } = await supabase
+      .from('completions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('exercise_id', exerciseId)
+      .gte('accuracy', 95);
+    
+    if (error) {
+      console.error('Error fetching completion records:', error);
+      return 0;
+    }
+    
+    // If this is exactly the 3rd completion with high accuracy, the exercise is newly mastered
+    if (completions && completions.length === 3) {
+      // Calculate word count from normalized text
+      const normalizedText = normalizeText(exerciseText);
+      const wordCount = normalizedText.split(' ').length;
+      console.log(`Exercise ${exerciseId} newly mastered with ${wordCount} words`);
+      return wordCount;
+    }
+    
+    // If not newly mastered, return 0 (no new mastered words)
+    return 0;
+  } catch (error) {
+    console.error('Error calculating mastered words:', error);
+    return 0;
+  }
+};
+
+/**
+ * Normalizes text by removing punctuation and extra spaces
+ */
+const normalizeText = (text: string): string => {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
 /**
