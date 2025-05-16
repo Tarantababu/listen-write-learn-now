@@ -19,7 +19,7 @@ interface RoadmapContextType {
   availableNodes: string[];
   nodeProgress: NodeProgressDetails[];
   isLoading: boolean;
-  nodeLoading: boolean; // Added property
+  nodeLoading: boolean;
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<string>;
   loadUserRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
   loadRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
@@ -28,10 +28,13 @@ interface RoadmapContextType {
   getNodeExercise: (nodeId: string) => Promise<any>;
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
   recordNodeCompletion: (nodeId: string, accuracy: number) => Promise<any>;
-  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<any>; // Added method
+  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<any>;
 }
 
 export const RoadmapContext = createContext<RoadmapContextType | null>(null);
+
+// Track initial load to prevent duplicate API calls
+let initialLoadComplete = false;
 
 export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { settings } = useUserSettingsContext();
@@ -52,19 +55,21 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     getNodeExercise,
     markNodeAsCompleted,
     recordNodeCompletion,
-    nodeLoading, // Include nodeLoading from useRoadmapData
+    nodeLoading,
   } = useRoadmapData();
   
   const [nodeProgress, setNodeProgress] = useState<NodeProgressDetails[]>([]);
-
-  // Define these functions before they're referenced
-  const loadRoadmaps = async (language: Language): Promise<RoadmapItem[]> => {
-    return await loadRoadmapsData(language);
-  };
+  const [prevLanguage, setPrevLanguage] = useState<string>(settings.selectedLanguage);
+  const [loadingTriggered, setLoadingTriggered] = useState<boolean>(false);
   
-  const loadUserRoadmaps = async (language: Language): Promise<RoadmapItem[]> => {
+  // Define these functions before they're referenced
+  const loadRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
+    return await loadRoadmapsData(language);
+  }, [loadRoadmapsData]);
+  
+  const loadUserRoadmaps = useCallback(async (language: Language): Promise<RoadmapItem[]> => {
     return await loadUserRoadmapsData(language);
-  };
+  }, [loadUserRoadmapsData]);
 
   // Add incrementNodeCompletion method
   const incrementNodeCompletion = async (nodeId: string, accuracy: number) => {
@@ -73,30 +78,53 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   
   // Load all roadmaps and user roadmaps when the selected language changes
   useEffect(() => {
+    // Skip if we're already loading or if the language hasn't changed
+    if (loadingTriggered && prevLanguage === settings.selectedLanguage) {
+      return;
+    }
+
     const loadData = async () => {
       console.log(`Loading roadmap data for language: ${settings.selectedLanguage}`);
-      await loadRoadmaps(settings.selectedLanguage);
-      await loadUserRoadmaps(settings.selectedLanguage);
-    };
-    
-    loadData();
-  }, [settings.selectedLanguage]);
-  
-  // Auto-select first user roadmap if none is selected
-  useEffect(() => {
-    const autoSelectRoadmap = async () => {
-      if (!selectedRoadmap && userRoadmaps.length > 0 && !isLoading) {
-        console.log(`Auto-selecting first user roadmap: ${userRoadmaps[0].id}`);
-        try {
-          await selectRoadmap(userRoadmaps[0].id);
-        } catch (error) {
-          console.error('Error auto-selecting roadmap:', error);
-        }
+      // Set loading triggered flag to prevent duplicate calls
+      setLoadingTriggered(true);
+      
+      try {
+        // First load all roadmaps
+        await loadRoadmaps(settings.selectedLanguage);
+        // Then load user roadmaps
+        await loadUserRoadmaps(settings.selectedLanguage);
+      } catch (error) {
+        console.error(`Error loading roadmap data: ${error}`);
+      } finally {
+        // Update the previous language
+        setPrevLanguage(settings.selectedLanguage);
+        // Set initial load complete
+        initialLoadComplete = true;
       }
     };
     
-    autoSelectRoadmap();
-  }, [userRoadmaps, selectedRoadmap, selectRoadmap, isLoading]);
+    loadData();
+  }, [settings.selectedLanguage, loadRoadmaps, loadUserRoadmaps, loadingTriggered, prevLanguage]);
+  
+  // Auto-select first user roadmap if none is selected
+  useEffect(() => {
+    // Only run this if we have user roadmaps and no selected roadmap and we're not loading
+    if (!selectedRoadmap && userRoadmaps.length > 0 && !isLoading && initialLoadComplete) {
+      console.log(`Auto-selecting first user roadmap: ${userRoadmaps[0].id}`);
+      try {
+        // Check if the roadmap is for the current language
+        const roadmapToSelect = userRoadmaps.find(
+          roadmap => roadmap.language.toLowerCase() === settings.selectedLanguage.toLowerCase()
+        );
+        
+        if (roadmapToSelect) {
+          selectRoadmap(roadmapToSelect.id);
+        }
+      } catch (error) {
+        console.error('Error auto-selecting roadmap:', error);
+      }
+    }
+  }, [userRoadmaps, selectedRoadmap, selectRoadmap, isLoading, settings.selectedLanguage]);
   
   // Load node progress whenever selected roadmap changes
   useEffect(() => {
@@ -152,7 +180,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     availableNodes,
     nodeProgress,
     isLoading,
-    nodeLoading, // Include property in context value
+    nodeLoading,
     initializeUserRoadmap: initializeRoadmap,
     loadUserRoadmaps,
     loadRoadmaps,
@@ -161,7 +189,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     getNodeExercise,
     markNodeAsCompleted,
     recordNodeCompletion,
-    incrementNodeCompletion, // Added method
+    incrementNodeCompletion,
   };
 
   return (
