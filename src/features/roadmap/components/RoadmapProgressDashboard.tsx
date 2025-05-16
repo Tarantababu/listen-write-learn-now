@@ -63,7 +63,13 @@ const RoadmapProgressDashboard: React.FC<RoadmapProgressDashboardProps> = ({ cla
         }
 
         if (data) {
-          setStreakData(data);
+          // Transform from database column names to our interface properties
+          const formattedData: StreakData = {
+            currentStreak: data.current_streak,
+            longestStreak: data.longest_streak,
+            lastActivityDate: data.last_activity_date
+          };
+          setStreakData(formattedData);
         }
       } catch (error) {
         console.error('Error in fetchStreakData:', error);
