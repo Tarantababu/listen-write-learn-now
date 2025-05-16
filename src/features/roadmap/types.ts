@@ -50,6 +50,7 @@ export interface ExerciseContent {
 export interface NodeCompletionResult {
   isCompleted: boolean;
   completionCount: number;
+  lastPracticedAt: Date; // Added lastPracticedAt property
   nextNodeId?: string;
   unlockedNodeIds?: string[];
 }
