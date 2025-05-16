@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Language, LanguageLevel } from '@/types';
 import { RoadmapItem, RoadmapNode, NodeCompletionResult, ExerciseContent } from '../types';
@@ -19,11 +20,13 @@ export async function getRoadmapsForLanguage(language: Language): Promise<Roadma
       description: roadmap.description,
       level: roadmap.level,
       language: language as Language,
+      languages: [language], // Add this property to ensure compatibility with the component
       nodeCount: roadmap.node_count,
       createdAt: new Date(roadmap.created_at),
       updatedAt: new Date(roadmap.updated_at || roadmap.created_at) // Ensure updatedAt is present
     }));
 
+    console.log('Roadmaps returned from API:', roadmaps);
     return roadmaps;
   } catch (error) {
     console.error('Error fetching roadmaps:', error);
