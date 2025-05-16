@@ -84,7 +84,7 @@ const RoadmapExerciseModal: React.FC<RoadmapExerciseModalProps> = ({ node, isOpe
       toast({
         title: "Great job!",
         description: `You scored ${Math.round(accuracy)}%. Your progress has been saved.`,
-        variant: "default", // Changed from "success" to "default" since "success" is not a valid variant
+        variant: "default", // Changed from "success" to "default"
       });
     } else {
       toast({

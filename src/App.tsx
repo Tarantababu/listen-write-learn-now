@@ -9,7 +9,7 @@ import { UserSettingsProvider } from './contexts/UserSettingsContext';
 import { VocabularyProvider } from './contexts/VocabularyContext';
 import { DirectoryProvider } from './contexts/DirectoryContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
-import { RoadmapProvider } from './features/roadmap/context/RoadmapContext';
+import { RoadmapProvider } from './contexts/RoadmapContext'; // Use the provider from contexts folder
 import { HelmetProvider } from 'react-helmet-async';
 import { ThemeProvider } from './contexts/ThemeContext';
 

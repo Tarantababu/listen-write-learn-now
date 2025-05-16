@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { useRoadmap } from '@/hooks/use-roadmap'; // Updated import path
+import { useRoadmap } from '@/hooks/use-roadmap'; // This is the correct import path
 import { CheckCircle, Circle } from 'lucide-react';
 
 interface RoadmapProgressDashboardProps {
@@ -10,7 +10,7 @@ interface RoadmapProgressDashboardProps {
 }
 
 const RoadmapProgressDashboard: React.FC<RoadmapProgressDashboardProps> = ({ className }) => {
-  const { roadmaps, userRoadmaps, currentRoadmap, nodes, completedNodes } = useRoadmap();
+  const { currentRoadmap, nodes, completedNodes } = useRoadmap();
 
   if (!currentRoadmap) {
     return (
