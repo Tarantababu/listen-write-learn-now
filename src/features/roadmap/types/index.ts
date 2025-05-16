@@ -38,7 +38,7 @@ export interface RoadmapNode {
 export interface NodeCompletionResult {
   completionCount: number;
   isCompleted: boolean;
-  lastPracticedAt: Date; // Added to match what's returned by API
+  lastPracticedAt: Date; // Added lastPracticedAt property to match what's returned by API
 }
 
 export interface ExerciseContent {

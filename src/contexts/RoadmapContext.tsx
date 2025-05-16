@@ -152,7 +152,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     nodeProgress,
     isLoading,
     nodeLoading, // Include property in context value
-    initializeUserRoadmap,
+    initializeUserRoadmap: initializeRoadmap,
     loadUserRoadmaps,
     loadRoadmaps,
     selectRoadmap,
