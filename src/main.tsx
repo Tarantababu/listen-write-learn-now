@@ -7,6 +7,7 @@ import { SubscriptionProvider } from './contexts/SubscriptionContext'
 import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { VocabularyProvider } from './contexts/VocabularyContext'
+import { DirectoryProvider } from './contexts/DirectoryContext'
 
 createRoot(document.getElementById("root")!).render(
   <BrowserRouter>
@@ -14,7 +15,9 @@ createRoot(document.getElementById("root")!).render(
       <SubscriptionProvider>
         <ThemeProvider>
           <VocabularyProvider>
-            <App />
+            <DirectoryProvider>
+              <App />
+            </DirectoryProvider>
           </VocabularyProvider>
         </ThemeProvider>
       </SubscriptionProvider>
