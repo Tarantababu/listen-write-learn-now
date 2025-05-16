@@ -142,7 +142,16 @@ export function useRoadmapData() {
     setIsLoading(true);
     console.log(`Initializing roadmap for level ${level} and language ${normalizedLanguage}`);
     
+    let loadingToastId: string | undefined;
+    
     try {
+      // Show loading toast
+      loadingToastId = toast({
+        title: "Creating your roadmap...",
+        description: "Please wait while we prepare your learning path.",
+        duration: 5000,
+      }).id;
+      
       const roadmapId = await roadmapService.initializeRoadmap(level, normalizedLanguage);
       console.log(`Roadmap initialized with ID: ${roadmapId}`);
       
@@ -151,6 +160,22 @@ export function useRoadmapData() {
       
       // Reload user roadmaps to include the new one
       const updatedRoadmaps = await loadUserRoadmaps(normalizedLanguage);
+      
+      // Dismiss loading toast if it exists
+      if (loadingToastId) {
+        toast({
+          id: loadingToastId,
+          title: "Roadmap created successfully!",
+          description: "Your new learning path is ready.",
+          variant: "success",
+        });
+      } else {
+        toast({
+          title: "Roadmap created successfully!",
+          description: "Your new learning path is ready.",
+          variant: "success",
+        });
+      }
       
       // Select the newly created roadmap
       const newRoadmap = updatedRoadmaps.find(r => r.id === roadmapId);
@@ -161,11 +186,23 @@ export function useRoadmapData() {
       return roadmapId;
     } catch (error) {
       console.error('Error initializing roadmap:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to create roadmap",
-        description: "There was an error creating your roadmap."
-      });
+      
+      // Dismiss loading toast and show error
+      if (loadingToastId) {
+        toast({
+          id: loadingToastId,
+          variant: "destructive",
+          title: "Failed to create roadmap",
+          description: "There was an error creating your roadmap. Please try again."
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Failed to create roadmap",
+          description: "There was an error creating your roadmap. Please try again."
+        });
+      }
+      
       throw error;
     } finally {
       setIsLoading(false);
@@ -279,6 +316,15 @@ export function useRoadmapData() {
         }
       }
       
+      // If selected roadmap exists, invalidate the cache to force reload of node data
+      if (selectedRoadmap) {
+        delete cacheRef.current.nodes[selectedRoadmap.id];
+        // We won't await this to avoid blocking the UI
+        selectRoadmap(selectedRoadmap.id).catch(err => {
+          console.error('Error refreshing roadmap data after recording completion:', err);
+        });
+      }
+      
       return result;
     } catch (error) {
       console.error('Error recording node completion:', error);
@@ -289,7 +335,7 @@ export function useRoadmapData() {
       });
       throw error;
     }
-  }, [selectedRoadmap]);
+  }, [selectedRoadmap, selectRoadmap]);
   
   // Mark a node as completed
   const markNodeAsCompleted = useCallback(async (nodeId: string) => {

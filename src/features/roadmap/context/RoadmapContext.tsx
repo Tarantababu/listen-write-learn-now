@@ -26,6 +26,7 @@ interface RoadmapContextType {
   resetProgress: (roadmapId: string) => Promise<void>;
   getNodeExercise: (nodeId: string) => Promise<any>;
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
+  recordNodeCompletion: (nodeId: string, accuracy: number) => Promise<any>;
 }
 
 export const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
@@ -48,6 +49,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     selectRoadmap,
     getNodeExercise,
     markNodeAsCompleted,
+    recordNodeCompletion,
   } = useRoadmapData();
   
   const [nodeProgress, setNodeProgress] = useState<NodeProgressDetails[]>([]);
@@ -136,6 +138,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     resetProgress,
     getNodeExercise,
     markNodeAsCompleted,
+    recordNodeCompletion,
   };
 
   return (
@@ -143,13 +146,4 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
       {children}
     </RoadmapContext.Provider>
   );
-};
-
-// Create a hook to use the roadmap context
-export const useRoadmap = () => {
-  const context = React.useContext(RoadmapContext);
-  if (context === undefined) {
-    throw new Error('useRoadmap must be used within a RoadmapProvider');
-  }
-  return context;
 };
