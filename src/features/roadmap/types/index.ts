@@ -1,18 +1,15 @@
-
 import { Language, LanguageLevel } from '@/types';
 
 export interface RoadmapItem {
   id: string;
   name: string;
   description?: string;
-  level?: string;
-  createdAt: Date;
+  level: LanguageLevel;
+  language: Language;
   updatedAt: Date;
-  language?: Language;
-  languages?: Language[];
-  roadmapId?: string; // For user roadmaps
-  currentNodeId?: string; // For user roadmaps
-  userId?: string; // For user roadmaps
+  createdAt: Date;
+  nodeCount?: number;
+  completedCount?: number;
 }
 
 export interface RoadmapNode {
@@ -21,28 +18,30 @@ export interface RoadmapNode {
   title: string;
   description: string;
   position: number;
-  status?: 'locked' | 'available' | 'completed';
-  isBonus: boolean;
-  defaultExerciseId?: string;
-  language?: string;
+  isBonus?: boolean;
+  language?: Language;
+  status?: 'locked' | 'available' | 'completed' | 'current';
+  completionCount?: number;
   isCompleted?: boolean;
+  lastPracticedAt?: Date;
+  defaultExerciseId?: string;
   createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface ExerciseContent {
-  id: string;
-  title: string;
-  text: string;
-  audio_url?: string;
-  language?: string;
+  updatedAt?: Date;
 }
 
 export interface NodeCompletionResult {
-  success: boolean;
   completionCount: number;
   isCompleted: boolean;
   lastPracticedAt: Date;
+}
+
+export interface ExerciseContent {
+  id?: string;
+  title: string;
+  text: string;
+  language: Language;
+  audio_url?: string;
+  tags?: string[];
 }
 
 export interface RoadmapProgress {

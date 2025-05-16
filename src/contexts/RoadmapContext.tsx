@@ -5,34 +5,38 @@ import { useAuth } from './AuthContext';
 import { useUserSettingsContext } from './UserSettingsContext';
 import { Roadmap, RoadmapNode, UserRoadmap, RoadmapProgress, LanguageLevel, Language, RoadmapNodeProgress } from '@/types';
 
+// Ensure this interface matches all properties accessed in components
 interface RoadmapContextType {
   roadmaps: Roadmap[];
-  userRoadmaps: UserRoadmap[]; // New property to store all user's roadmaps
+  userRoadmaps: UserRoadmap[]; 
   selectedRoadmap: UserRoadmap | null;
   currentNode: RoadmapNode | null;
   roadmapNodes: RoadmapNode[];
   progress: RoadmapProgress[];
-  nodeProgress: RoadmapNodeProgress[]; // New property to store detailed node progress
+  nodeProgress: RoadmapNodeProgress[];
   loading: boolean;
   nodeLoading: boolean;
-  // Property names used in other components
+  // Property aliases used in other components
   currentRoadmap: UserRoadmap | null; 
   nodes: RoadmapNode[];
   currentNodeId: string | undefined;
   completedNodes: string[];
   availableNodes: string[];
+  isLoading: boolean;
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<void>;
   loadUserRoadmap: (userRoadmapId?: string) => Promise<void>;
-  loadUserRoadmaps: () => Promise<void>; // New method to load all user roadmaps
+  loadUserRoadmaps: (language?: Language) => Promise<UserRoadmap[]>;
+  loadRoadmaps: (language: Language) => Promise<Roadmap[]>;
   completeNode: (nodeId: string) => Promise<void>;
   resetProgress: () => Promise<void>;
   getNodeExercise: (nodeId: string) => Promise<any>;
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
-  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>; // New method for incrementing completion count
-  selectRoadmap: (roadmapId: string) => Promise<void>; // New method to switch between roadmaps
+  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<void>;
+  selectRoadmap: (roadmapId: string) => Promise<void>;
 }
 
-const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
+// Export the context so it can be imported in the hook
+export const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
 
 export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -678,7 +682,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
   const completedNodes = progress.filter(p => p.completed).map(p => p.nodeId);
   
   // Calculate available nodes
-  const availableNodes = roadmapNodes
+  const availableNodeIds = roadmapNodes
     .filter((node, index, array) => {
       // First node is always available
       if (index === 0) return true;
@@ -689,33 +693,37 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     })
     .map(node => node.id);
 
+  // Create the context value
+  const contextValue: RoadmapContextType = {
+    roadmaps,
+    userRoadmaps,
+    selectedRoadmap,
+    currentRoadmap: selectedRoadmap, // Alias
+    nodes: roadmapNodes, // Alias
+    currentNode,
+    roadmapNodes,
+    progress,
+    nodeProgress,
+    loading,
+    isLoading: loading, // Alias
+    nodeLoading,
+    currentNodeId: currentNode?.id || selectedRoadmap?.currentNodeId,
+    completedNodes: progress.filter(p => p.completed).map(p => p.nodeId),
+    availableNodes: availableNodeIds,
+    initializeUserRoadmap,
+    loadUserRoadmap,
+    loadUserRoadmaps,
+    loadRoadmaps: fetchRoadmaps,
+    completeNode,
+    resetProgress,
+    getNodeExercise,
+    markNodeAsCompleted,
+    incrementNodeCompletion,
+    selectRoadmap,
+  };
+
   return (
-    <RoadmapContext.Provider value={{
-      roadmaps,
-      userRoadmaps,
-      selectedRoadmap,
-      currentNode,
-      roadmapNodes,
-      progress,
-      nodeProgress,
-      loading,
-      nodeLoading,
-      // Alias properties to match what other components are using
-      currentRoadmap: selectedRoadmap,
-      nodes: roadmapNodes,
-      currentNodeId: selectedRoadmap?.currentNodeId,
-      completedNodes,
-      availableNodes,
-      initializeUserRoadmap,
-      loadUserRoadmap,
-      loadUserRoadmaps,
-      completeNode,
-      resetProgress,
-      getNodeExercise,
-      markNodeAsCompleted,
-      incrementNodeCompletion,
-      selectRoadmap
-    }}>
+    <RoadmapContext.Provider value={contextValue}>
       {children}
     </RoadmapContext.Provider>
   );

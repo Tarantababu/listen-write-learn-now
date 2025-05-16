@@ -1,42 +1,54 @@
 
-import { RoadmapNode } from "../types";
+import { RoadmapNode } from '../types';
 
-class NodeAccessService {
+// Simple service to check node accessibility based on roadmap progression
+export class NodeAccessService {
   /**
-   * Determine if a node can be accessed based on its position and other nodes' completion status
+   * Checks if a specific node can be accessed based on completed nodes
+   * @param node The node to check access for
+   * @param completedNodeIds Array of completed node IDs
+   * @param allNodes All nodes in the roadmap
+   * @returns Boolean indicating if the node can be accessed
    */
   canAccessNode(node: RoadmapNode, completedNodeIds: string[], allNodes: RoadmapNode[]): boolean {
-    // First node is always accessible
-    if (node.position === 1) return true;
+    // Current position
+    const position = node.position;
 
-    // Any completed node is accessible
-    if (completedNodeIds.includes(node.id)) return true;
+    // Bonus nodes can always be accessed
+    if (node.isBonus) {
+      return true;
+    }
 
-    // Find the previous node in sequence
-    const previousNodes = allNodes.filter(n => n.position < node.position)
-      .sort((a, b) => b.position - a.position);
+    // If it's the first node (position 0), it's always accessible
+    if (position === 0) {
+      return true;
+    }
+
+    // Check if all nodes with lower positions are completed
+    const previousNodes = allNodes.filter(n => n.position < position && !n.isBonus);
     
-    // If there's no previous node, this node is accessible
-    if (previousNodes.length === 0) return true;
+    // All previous nodes must be completed to access this node
+    // If there are no previous nodes, then this node is accessible
+    if (previousNodes.length === 0) {
+      return true;
+    }
 
-    // The previous node must be completed
-    const previousNode = previousNodes[0];
-    return completedNodeIds.includes(previousNode.id);
+    // Check if all previous nodes are completed
+    return previousNodes.every(prevNode => completedNodeIds.includes(prevNode.id));
   }
-
+  
   /**
-   * Get all nodes that can be accessed based on the current completion state
+   * Get all nodes that can be accessed based on completed nodes
+   * @param allNodes All nodes in the roadmap
+   * @param completedNodeIds Array of completed node IDs
+   * @returns Array of accessible nodes
    */
-  getAccessibleNodes(nodes: RoadmapNode[], completedNodeIds: string[]): RoadmapNode[] {
-    if (!nodes || nodes.length === 0) return [];
+  getAccessibleNodes(allNodes: RoadmapNode[], completedNodeIds: string[]): RoadmapNode[] {
+    if (!allNodes || allNodes.length === 0) return [];
     
-    // Sort nodes by position to ensure correct sequence
-    const sortedNodes = [...nodes].sort((a, b) => a.position - b.position);
-    
-    // Return all nodes that can be accessed
-    return sortedNodes.filter(node => this.canAccessNode(node, completedNodeIds, sortedNodes));
+    return allNodes.filter(node => this.canAccessNode(node, completedNodeIds, allNodes));
   }
 }
 
-// Create and export singleton instance
+// Export a singleton instance
 export const nodeAccessService = new NodeAccessService();

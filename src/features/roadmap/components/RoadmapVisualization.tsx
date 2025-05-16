@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { RoadmapNode } from '../types';
@@ -11,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { nodeAccessService } from '../services/NodeAccessService';
 import { Progress } from '@/components/ui/progress';
-import { NodeProgressDetails } from '../types/service-types'; // Import the type from service-types
+import { NodeProgressDetails } from '../types/service-types';
 
 interface RoadmapVisualizationProps {
   onNodeSelect: (node: RoadmapNode) => void;
@@ -43,17 +42,13 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
       
       setIsAccessLoading(true);
       try {
-        const { data, error } = await nodeAccessService.getAccessibleNodes(
-          currentRoadmap.roadmapId, 
-          currentRoadmap.language
+        // Call the service method directly
+        const accessibleNodes = await nodeAccessService.getAccessibleNodes(
+          nodes,
+          completedNodes
         );
         
-        if (error) {
-          console.error("Error loading accessible nodes:", error);
-          return;
-        }
-        
-        setAccessibleNodeIds(data || []);
+        setAccessibleNodeIds(accessibleNodes.map(node => node.id));
       } catch (err) {
         console.error("Failed to load accessible nodes:", err);
       } finally {
@@ -62,7 +57,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
     };
     
     loadAccessibleNodes();
-  }, [currentRoadmap, completedNodes]);
+  }, [currentRoadmap, completedNodes, nodes]);
   
   // Handle node click - check access before selection
   const handleNodeClick = async (node: RoadmapNode) => {
@@ -72,18 +67,9 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({
       return;
     }
     
-    // For other nodes, check access server-side
+    // For other nodes, check access using the service
     try {
-      const { data: hasAccess, error } = await nodeAccessService.canAccessNode(node.id);
-      
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Could not verify access to this lesson"
-        });
-        return;
-      }
+      const hasAccess = nodeAccessService.canAccessNode(node, completedNodes, nodes);
       
       if (hasAccess) {
         onNodeSelect(node);
