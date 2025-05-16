@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Loader, Pause, Play } from 'lucide-react';
@@ -71,7 +72,6 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   const [initialText, setInitialText] = useState(existingText);
   
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
-  const { toast } = useToast();
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const isMobile = useIsMobile();

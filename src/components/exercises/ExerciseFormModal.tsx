@@ -74,7 +74,9 @@ const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
           initialValues={initialValues}
           onSuccess={() => {
             onOpenChange(false);
-            toast(mode === 'create' ? "Exercise created" : "Exercise updated");
+            toast({
+              title: mode === 'create' ? "Exercise created" : "Exercise updated"
+            });
           }} 
         />
       </DialogContent>
