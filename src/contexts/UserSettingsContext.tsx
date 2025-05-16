@@ -1,17 +1,21 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { Language } from '@/types';
+import { toast } from 'sonner';
 
 export type UserSettings = {
   selectedLanguage: Language;
   learningLanguages: Language[];
-  avatarUrl?: string; // Add avatarUrl to UserSettings
+  avatarUrl?: string;
 };
 
 type UserSettingsContextType = {
   settings: UserSettings;
   updateSettings: (newSettings: Partial<UserSettings>) => void;
+  avatarUrl: string | undefined;
+  uploadAvatar: (file: File) => Promise<void>;
 };
 
 const UserSettingsContext = createContext<UserSettingsContextType | undefined>(undefined);
@@ -88,8 +92,46 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  const uploadAvatar = async (file: File) => {
+    if (!user) {
+      toast.error('You must be logged in to upload an avatar');
+      return;
+    }
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `avatars/${user.id}/${Math.random().toString(36).slice(2)}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('user-content')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('user-content')
+        .getPublicUrl(filePath);
+      
+      if (!publicUrlData.publicUrl) {
+        throw new Error('Failed to get public URL for avatar');
+      }
+
+      await updateSettings({ avatarUrl: publicUrlData.publicUrl });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      throw error;
+    }
+  };
+
   return (
-    <UserSettingsContext.Provider value={{ settings, updateSettings }}>
+    <UserSettingsContext.Provider value={{ 
+      settings, 
+      updateSettings,
+      avatarUrl: settings.avatarUrl,
+      uploadAvatar
+    }}>
       {children}
     </UserSettingsContext.Provider>
   );

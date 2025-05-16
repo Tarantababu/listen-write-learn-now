@@ -23,7 +23,7 @@ import LevelBadge from '@/components/LevelBadge';
 import { useDefaultExercises, DefaultExercise } from '@/hooks/use-default-exercises';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Language } from '@/types';
+import { Language, LanguageLevel, BadgeVariant } from '@/types';
 
 const DefaultExercisesList: React.FC = () => {
   const { defaultExercises, isLoading, fetchDefaultExercises, addToMyExercises } = useDefaultExercises();
@@ -119,7 +119,7 @@ const DefaultExercisesList: React.FC = () => {
         orderedLevels.map((level) => (
           <div key={level} className="space-y-4">
             <div className="flex items-center gap-2">
-              <LevelBadge level={level} />
+              <LevelBadge level={level as LanguageLevel} />
               <h3 className="text-lg font-semibold">{level} Level</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

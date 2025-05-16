@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -193,24 +194,17 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     return path.join(" / ") || "Root";
   };
 
-  // Language display names - keeping this for reference even though we don't show the dropdown anymore
+  // Language display names mapping
   const languageDisplayNames: Record<Language, string> = {
-    'english': 'English',
-    'german': 'German (Deutsch)',
-    'french': 'French (Français)',
-    'spanish': 'Spanish (Español)',
-    'portuguese': 'Portuguese (Português)',
-    'italian': 'Italian (Italiano)',
-    'dutch': 'Dutch (Nederlands)',
-    'turkish': 'Turkish (Türkçe)',
-    'swedish': 'Swedish (Svenska)',
-    'norwegian': 'Norwegian (Norsk)',
-    'russian': 'Russian (Русский)',
-    'polish': 'Polish (Polski)',
-    'chinese': 'Chinese (中文)',
-    'japanese': 'Japanese (日本語)',
-    'korean': 'Korean (한국어)',
-    'arabic': 'Arabic (العربية)'
+    'en': 'English',
+    'es': 'Spanish (Español)',
+    'fr': 'French (Français)',
+    'de': 'German (Deutsch)',
+    'it': 'Italian (Italiano)',
+    'pt': 'Portuguese (Português)',
+    'ja': 'Japanese (日本語)',
+    'ko': 'Korean (한국어)',
+    'zh': 'Chinese (中文)'
   };
 
   return (
