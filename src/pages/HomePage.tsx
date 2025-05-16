@@ -6,6 +6,7 @@ import UserStatistics from '@/components/UserStatistics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import SubscriptionBanner from '@/components/SubscriptionBanner';
 import { ExerciseProvider } from '@/contexts/ExerciseContext';
+import { VocabularyProvider } from '@/contexts/VocabularyContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Map, ChevronRight, Loader2 } from 'lucide-react';
@@ -47,7 +48,9 @@ const HomePage = () => {
         {/* User Statistics */}
         <div className="w-full">
           <ExerciseProvider>
-            <UserStatistics />
+            <VocabularyProvider>
+              <UserStatistics />
+            </VocabularyProvider>
           </ExerciseProvider>
         </div>
         
