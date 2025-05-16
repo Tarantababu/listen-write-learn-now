@@ -69,22 +69,31 @@ const UserStatistics: React.FC = () => {
         setIsLoading(true);
         
         // Fetch user's streak data for current language
+        // Using maybeSingle() instead of single() to handle cases where no streak data exists
         const { data: streakData, error: streakError } = await supabase
           .from('user_language_streaks')
           .select('current_streak, longest_streak, last_activity_date')
           .eq('user_id', user.id)
           .eq('language', settings.selectedLanguage)
-          .single();
+          .maybeSingle();
 
-        if (streakError && streakError.code !== 'PGRST116') { // Not "No rows returned" error
+        if (streakError) {
           console.error('Error fetching streak data:', streakError);
         }
         
+        // If streak data exists, use it; otherwise use default values
         if (streakData) {
           setStreakData({
             currentStreak: streakData.current_streak,
             longestStreak: streakData.longest_streak,
             lastActivityDate: streakData.last_activity_date ? new Date(streakData.last_activity_date) : null
+          });
+        } else {
+          // No streak data found, use default values
+          setStreakData({
+            currentStreak: 0,
+            longestStreak: 0,
+            lastActivityDate: null
           });
         }
 
