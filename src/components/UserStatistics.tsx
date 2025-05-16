@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { format, subDays, isSameDay, subMonths } from 'date-fns';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -8,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Trophy, BookOpen, CalendarDays } from 'lucide-react';
 import StatsCard from './StatsCard';
 import StatsHeatmap from './StatsHeatmap';
-import { getUserLevel } from '@/utils/levelSystem';
+import { getUserLevel, getLevelProgress } from '@/utils/levelSystem';
 import LanguageLevelDisplay from './LanguageLevelDisplay';
 import { compareWithPreviousDay } from '@/utils/trendUtils';
 
