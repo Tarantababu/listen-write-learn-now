@@ -57,6 +57,7 @@ const HomePage = () => {
 
   // Refresh curriculum data on component mount
   React.useEffect(() => {
+    console.log("HomePage: Refreshing curriculum data");
     refreshCurriculumData();
   }, [refreshCurriculumData]);
 
@@ -77,7 +78,9 @@ const HomePage = () => {
 
   // Don't show subscription banner for admins
   const shouldShowSubscriptionBanner = !subscription.isSubscribed && !isAdmin;
-  return <div className="container mx-auto px-4 py-8">
+  
+  return (
+    <div className="container mx-auto px-4 py-8">
       {shouldShowSubscriptionBanner && <SubscriptionBanner />}
       
       <div className="flex flex-col gap-6">
@@ -90,8 +93,6 @@ const HomePage = () => {
         
         {/* Learning Roadmap Card */}
         <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          
           {/* Learning Curriculum Card */}
           <Card className="w-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -99,9 +100,12 @@ const HomePage = () => {
               <GraduationCap className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              {curriculumLoading ? <div className="flex justify-center py-4">
+              {curriculumLoading ? (
+                <div className="flex justify-center py-4">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div> : stats.total > 0 ? <>
+                </div>
+              ) : stats.total > 0 ? (
+                <>
                   <div className="flex flex-col space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
@@ -137,7 +141,9 @@ const HomePage = () => {
                       </Link>
                     </Button>
                   </div>
-                </> : <div className="py-4">
+                </>
+              ) : (
+                <div className="py-4">
                   <p className="text-center text-muted-foreground mb-4">
                     Explore our comprehensive curriculum of language learning exercises.
                   </p>
@@ -146,11 +152,14 @@ const HomePage = () => {
                       Browse Curriculum <ChevronRight className="ml-1 h-4 w-4" />
                     </Link>
                   </Button>
-                </div>}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default HomePage;

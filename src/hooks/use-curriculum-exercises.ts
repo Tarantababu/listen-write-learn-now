@@ -27,11 +27,20 @@ export function useCurriculumExercises() {
   
   // Process exercises data to determine completion status
   const processedExercises = useMemo(() => {
+    console.log('Processing curriculum exercises with:', {
+      defaultExercisesCount: defaultExercises.length,
+      userExercisesCount: exercises.length,
+      language: settings.selectedLanguage
+    });
+    
     // Filter default exercises by the user's selected language
     const languageDefaultExercises = defaultExercises
       .filter(ex => ex.language === settings.selectedLanguage)
       // Sort by creation date in ascending order (oldest first)
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    // Debug log filtered exercises
+    console.log(`Found ${languageDefaultExercises.length} default exercises for language: ${settings.selectedLanguage}`);
     
     // Map default exercises to include their completion status
     return languageDefaultExercises.map(defaultEx => {
@@ -39,6 +48,19 @@ export function useCurriculumExercises() {
       const matchingExercises = exercises.filter(
         userEx => userEx.default_exercise_id === defaultEx.id
       );
+      
+      // Log matching process for debugging
+      console.log(`Default exercise ID ${defaultEx.id} has ${matchingExercises.length} matching user exercises`);
+      
+      if (matchingExercises.length > 0) {
+        // Log the matching exercise details for debugging
+        console.log('Matching exercises:', matchingExercises.map(ex => ({
+          id: ex.id,
+          defaultExId: ex.default_exercise_id,
+          isCompleted: ex.isCompleted,
+          completionCount: ex.completionCount
+        })));
+      }
       
       let status: 'completed' | 'in-progress' | 'not-started' = 'not-started';
       let completionCount = 0;
@@ -105,6 +127,8 @@ export function useCurriculumExercises() {
     const completed = processedExercises.filter(ex => ex.status === 'completed').length;
     const inProgress = processedExercises.filter(ex => ex.status === 'in-progress').length;
     const total = processedExercises.length;
+    
+    console.log('Curriculum stats calculated:', { completed, inProgress, total });
     
     return {
       completed,

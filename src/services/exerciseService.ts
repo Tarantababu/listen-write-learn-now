@@ -296,7 +296,8 @@ export const mapExerciseFromDb = (ex: any): Exercise => ({
   createdAt: new Date(ex.created_at),
   completionCount: ex.completion_count || 0,
   isCompleted: ex.is_completed || false,
-  archived: ex.archived || false
+  archived: ex.archived || false,
+  default_exercise_id: ex.default_exercise_id || null
 });
 
 /**

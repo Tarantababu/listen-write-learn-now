@@ -18,7 +18,14 @@ const CurriculumPage: React.FC = () => {
   } = useCurriculumExercises();
   const navigate = useNavigate();
   
+  // Refresh data when the component mounts
+  useEffect(() => {
+    console.log("CurriculumPage: Refreshing data on mount");
+    refreshData();
+  }, [refreshData]);
+  
   const handlePracticeExercise = async (id: string) => {
+    console.log(`Opening practice for exercise with ID: ${id}`);
     // Navigate to exercises page with the exercise ID as a parameter
     navigate(`/dashboard/exercises?defaultExerciseId=${id}&action=practice`);
   };
