@@ -14,7 +14,6 @@ import DefaultExercisesList from '@/components/admin/DefaultExercisesList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AdminMessagesForm from '@/components/admin/AdminMessagesForm';
 import AdminMessagesList from '@/components/admin/AdminMessagesList';
-import RoadmapEditor from '@/components/admin/RoadmapEditor';
 
 const AdminPage: React.FC = () => {
   const { isAdmin, loading } = useAdmin();
@@ -65,7 +64,6 @@ const AdminPage: React.FC = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
         <TabsList className="mb-4">
           <TabsTrigger value="default-exercises">Default Exercises</TabsTrigger>
-          <TabsTrigger value="roadmaps">Curriculum</TabsTrigger>
           <TabsTrigger value="messages">User Messages</TabsTrigger>
           <TabsTrigger value="statistics">Statistics</TabsTrigger>
           <TabsTrigger value="feedback">Feedback</TabsTrigger>
@@ -85,13 +83,6 @@ const AdminPage: React.FC = () => {
           <div>
             <h2 className="text-xl font-semibold mb-4">Default Exercises</h2>
             <DefaultExercisesList />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="roadmaps" className="space-y-8">
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Curriculum Management</h2>
-            <RoadmapEditor />
           </div>
         </TabsContent>
 

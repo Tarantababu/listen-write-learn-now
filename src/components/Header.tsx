@@ -82,7 +82,7 @@ const Header: React.FC = () => {
               </Button>
               
               <Button asChild variant={isActive('/dashboard/exercises') ? "default" : "ghost"} size="sm" className="transition-all">
-                <Link to="/dashboard">
+                <Link to="/dashboard/exercises">
                   <BookOpen className="h-4 w-4 sm:mr-1" />
                   <span className="hidden sm:inline">Exercises</span>
                 </Link>
