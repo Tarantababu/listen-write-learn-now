@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
@@ -13,6 +14,7 @@ import LevelBadge from '@/components/LevelBadge';
 import { useAdmin } from '@/hooks/use-admin';
 import { Progress } from '@/components/ui/progress';
 import { useCurriculumExercises } from '@/hooks/use-curriculum-exercises';
+
 const HomePage = () => {
   const location = useLocation();
   const {
@@ -33,7 +35,8 @@ const HomePage = () => {
   // Curriculum data for Learning Curriculum Card
   const {
     stats,
-    loading: curriculumLoading
+    loading: curriculumLoading,
+    refreshData: refreshCurriculumData
   } = useCurriculumExercises();
 
   // React to redirect messages (e.g., access denied)
@@ -51,6 +54,11 @@ const HomePage = () => {
       window.history.replaceState({}, document.title);
     }
   }, [location]);
+
+  // Refresh curriculum data on component mount
+  React.useEffect(() => {
+    refreshCurriculumData();
+  }, [refreshCurriculumData]);
 
   // Calculate roadmap progress percentage
   const progressPercentage = nodes.length > 0 ? Math.round(completedNodes.length / nodes.length * 100) : 0;

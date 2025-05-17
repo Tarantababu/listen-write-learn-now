@@ -5,6 +5,7 @@ import CurriculumProgressSummary from '@/components/curriculum/CurriculumProgres
 import CurriculumTagGroup from '@/components/curriculum/CurriculumTagGroup';
 import { useCurriculumExercises } from '@/hooks/use-curriculum-exercises';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 const CurriculumPage: React.FC = () => {
   const { copyDefaultExercise } = useExerciseContext();
@@ -15,15 +16,11 @@ const CurriculumPage: React.FC = () => {
     selectedLanguage,
     refreshData
   } = useCurriculumExercises();
+  const navigate = useNavigate();
   
   const handlePracticeExercise = async (id: string) => {
-    // Find the exercise in processedExercises
-    const defaultExerciseId = id;
-    
-    // For now, just show a toast explaining what would happen
-    toast.info(`Opening practice for exercise`);
-    // In a real implementation, this would navigate to practice page
-    // You could implement this by using react-router-dom's useNavigate hook
+    // Navigate to exercises page with the exercise ID as a parameter
+    navigate(`/dashboard/exercises?defaultExerciseId=${id}&action=practice`);
   };
   
   const handleAddExercise = async (id: string) => {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import DirectoryBrowser from '@/components/DirectoryBrowser';
 import { Exercise } from '@/types';
 import { toast } from 'sonner';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import DefaultExercisesSection from '@/components/exercises/DefaultExercisesSection';
@@ -34,12 +35,15 @@ const ExercisesPage: React.FC = () => {
     markProgress, 
     canCreateMore, 
     exerciseLimit,
-    canEdit 
+    canEdit,
+    copyDefaultExercise,
+    refreshExercises
   } = useExerciseContext();
   const { currentDirectoryId } = useDirectoryContext();
   const { settings } = useUserSettingsContext();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [key, setKey] = useState(Date.now()); // Add a key to force re-rendering
   const { subscription } = useSubscription();
   
@@ -73,6 +77,55 @@ const ExercisesPage: React.FC = () => {
   useEffect(() => {
     console.log('Current directory changed:', currentDirectoryId);
   }, [currentDirectoryId]);
+
+  // Handle URL parameters for default exercises
+  useEffect(() => {
+    const handleDefaultExerciseFromURL = async () => {
+      const defaultExerciseId = searchParams.get('defaultExerciseId');
+      const action = searchParams.get('action');
+      
+      if (defaultExerciseId) {
+        try {
+          console.log('Processing default exercise from URL:', defaultExerciseId, action);
+          
+          // Find if we already have this exercise copied
+          const existingExercise = exercises.find(ex => ex.default_exercise_id === defaultExerciseId);
+          
+          if (existingExercise) {
+            console.log('Exercise already exists in user exercises:', existingExercise.id);
+            
+            if (action === 'practice') {
+              // Use existing copy to practice
+              setExerciseToPractice(existingExercise);
+              setIsPracticeModalOpen(true);
+            }
+          } else {
+            // Copy the exercise first, then practice
+            console.log('Copying exercise from default:', defaultExerciseId);
+            const newExercise = await copyDefaultExercise(defaultExerciseId);
+            
+            if (action === 'practice') {
+              setExerciseToPractice(newExercise);
+              setIsPracticeModalOpen(true);
+            }
+            
+            toast.success('Exercise added to your list');
+          }
+          
+          // Clear the URL parameters after processing
+          navigate('/dashboard/exercises', { replace: true });
+          
+          // Refresh to ensure the lists are updated
+          refreshExercises();
+        } catch (error) {
+          console.error('Error processing default exercise:', error);
+          toast.error('Failed to process the exercise');
+        }
+      }
+    };
+    
+    handleDefaultExerciseFromURL();
+  }, [searchParams, copyDefaultExercise, exercises, navigate, refreshExercises]);
   
   // Get all unique tags from exercises that match the selected language
   const languageExercises = exercises.filter(ex => ex.language === settings.selectedLanguage && !ex.archived);
@@ -171,6 +224,7 @@ const ExercisesPage: React.FC = () => {
   // Function to refresh the page properly
   const refreshPage = () => {
     setKey(Date.now()); // This will force the component to re-render
+    refreshExercises(); // Also refresh the exercises data from the backend
   };
 
   // Clean up exercise states when modals close
@@ -314,7 +368,7 @@ const ExercisesPage: React.FC = () => {
                   onPractice={handlePractice}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
-                  onMove={handleMove} // Moving is now available for all users
+                  onMove={handleMove}
                   onCreateClick={() => setIsAddModalOpen(true)}
                   canEdit={canEdit}
                 />

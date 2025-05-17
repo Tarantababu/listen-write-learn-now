@@ -1,5 +1,5 @@
 
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useCallback } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { CurriculumExercise } from '@/components/curriculum/CurriculumTagGroup';
@@ -11,12 +11,19 @@ export function useCurriculumExercises() {
   const { defaultExercises, exercises, defaultExercisesLoading, refreshExercises } = useExerciseContext();
   const { settings } = useUserSettingsContext();
   
+  // Define a refresh function that can be called by components
+  const refreshData = useCallback(() => {
+    console.log('Refreshing curriculum exercises data...');
+    // Refresh exercises data to get latest progress
+    refreshExercises();
+  }, [refreshExercises]);
+  
   // Add an effect to refresh exercises when the component mounts
   useEffect(() => {
     // Refresh exercises data when the component mounts
-    refreshExercises();
+    refreshData();
     // We want this to run only once when the component mounts
-  }, [refreshExercises]);
+  }, [refreshData]);
   
   // Process exercises data to determine completion status
   const processedExercises = useMemo(() => {
@@ -37,7 +44,7 @@ export function useCurriculumExercises() {
       let completionCount = 0;
       
       if (matchingExercises.length > 0) {
-        // Check if any matching exercise is completed or archived
+        // Check if any matching exercise is completed
         const isCompleted = matchingExercises.some(
           ex => ex.isCompleted || ex.archived
         );
@@ -50,7 +57,8 @@ export function useCurriculumExercises() {
           status = 'in-progress';
           // Get the max completion count from all matching exercises
           completionCount = Math.max(
-            ...matchingExercises.map(ex => ex.completionCount || 0)
+            ...matchingExercises.map(ex => ex.completionCount || 0),
+            0 // Add 0 as a fallback if no completion counts are found
           );
         }
       }
@@ -111,6 +119,6 @@ export function useCurriculumExercises() {
     stats,
     loading: defaultExercisesLoading,
     selectedLanguage: settings.selectedLanguage,
-    refreshData: refreshExercises // Export the refresh function to allow manual refreshes
+    refreshData // Export the refresh function to allow manual refreshes
   };
 }
