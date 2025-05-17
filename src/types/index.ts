@@ -29,7 +29,7 @@ export interface Exercise {
   completionCount: number;
   isCompleted: boolean;
   archived?: boolean;
-  default_exercise_id?: string;  // Add this line to include the default exercise ID
+  default_exercise_id?: string;
 }
 
 export interface Directory {
@@ -52,6 +52,7 @@ export interface VocabularyItem {
 export interface UserSettings {
   learningLanguages: Language[];
   selectedLanguage: Language;
+  avatarUrl?: string | null;
 }
 
 // Add the new Roadmap types

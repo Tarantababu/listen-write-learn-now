@@ -31,9 +31,9 @@ function App() {
   return (
     <AuthProvider>
       <UserSettingsProvider>
-        <SubscriptionProvider>
-          <VocabularyProvider>
-            <ThemeProvider>
+        <ThemeProvider>
+          <SubscriptionProvider>
+            <VocabularyProvider>
               <ExerciseProvider>
                 <Suspense fallback={<LoadingScreen />}>
                   <Routes>
@@ -75,9 +75,9 @@ function App() {
                 </Suspense>
                 <Toaster />
               </ExerciseProvider>
-            </ThemeProvider>
-          </VocabularyProvider>
-        </SubscriptionProvider>
+            </VocabularyProvider>
+          </SubscriptionProvider>
+        </ThemeProvider>
       </UserSettingsProvider>
     </AuthProvider>
   );

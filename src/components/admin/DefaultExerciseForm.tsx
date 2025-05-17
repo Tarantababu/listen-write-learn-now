@@ -26,10 +26,17 @@ import {
   SelectValue
 } from '@/components/ui/select';
 
+// Define supported languages for exercise form
+const supportedLanguages = z.enum([
+  'english', 'spanish', 'french', 'german', 'italian', 
+  'portuguese', 'turkish', 'swedish', 'dutch', 'norwegian',
+  'russian', 'polish', 'chinese', 'japanese', 'korean', 'arabic'
+]);
+
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   text: z.string().min(1, 'Text is required'),
-  language: z.enum(['english', 'spanish', 'french', 'german', 'italian', 'portuguese']),
+  language: supportedLanguages,
   level: z.enum(['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']),
   audio_url: z.string().optional(),
   tags: z.string().optional(),
@@ -70,11 +77,14 @@ const DefaultExerciseForm: React.FC<DefaultExerciseFormProps> = ({ exerciseToEdi
       const formattedData = {
         ...data,
         tags: data.tags ? data.tags.split(',').map(tag => tag.trim()) : [],
+        text: data.text, // Ensure text is provided
+        title: data.title, // Ensure title is provided
+        language: data.language, // Ensure language is provided
       };
       
       let result;
       
-      if (isEditMode) {
+      if (isEditMode && exerciseToEdit) {
         result = await supabase
           .from('default_exercises')
           .update(formattedData)
@@ -160,38 +170,34 @@ const DefaultExerciseForm: React.FC<DefaultExerciseFormProps> = ({ exerciseToEdi
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Language</FormLabel>
-                <FormControl>
-                  <RadioGroup 
-                    className="flex flex-wrap gap-4" 
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value="english" />
-                      </FormControl>
-                      <FormLabel className="font-normal">English</FormLabel>
-                    </FormItem>
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value="spanish" />
-                      </FormControl>
-                      <FormLabel className="font-normal">Spanish</FormLabel>
-                    </FormItem>
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value="french" />
-                      </FormControl>
-                      <FormLabel className="font-normal">French</FormLabel>
-                    </FormItem>
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                      <FormControl>
-                        <RadioGroupItem value="german" />
-                      </FormControl>
-                      <FormLabel className="font-normal">German</FormLabel>
-                    </FormItem>
-                  </RadioGroup>
-                </FormControl>
+                <Select 
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a language" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="english">English</SelectItem>
+                    <SelectItem value="spanish">Spanish</SelectItem>
+                    <SelectItem value="french">French</SelectItem>
+                    <SelectItem value="german">German</SelectItem>
+                    <SelectItem value="italian">Italian</SelectItem>
+                    <SelectItem value="portuguese">Portuguese</SelectItem>
+                    <SelectItem value="turkish">Turkish</SelectItem>
+                    <SelectItem value="swedish">Swedish</SelectItem>
+                    <SelectItem value="dutch">Dutch</SelectItem>
+                    <SelectItem value="norwegian">Norwegian</SelectItem>
+                    <SelectItem value="russian">Russian</SelectItem>
+                    <SelectItem value="polish">Polish</SelectItem>
+                    <SelectItem value="chinese">Chinese</SelectItem>
+                    <SelectItem value="japanese">Japanese</SelectItem>
+                    <SelectItem value="korean">Korean</SelectItem>
+                    <SelectItem value="arabic">Arabic</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
