@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { DictationPractice } from '@/components/DictationPractice';
+import DictationPractice from '@/components/DictationPractice';
 
 const DictationPage: React.FC = () => {
   return (
