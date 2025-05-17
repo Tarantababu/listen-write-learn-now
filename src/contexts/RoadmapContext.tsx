@@ -22,7 +22,8 @@ interface RoadmapContextType {
   nodeLoading: boolean;
 }
 
-const RoadmapContext = createContext<RoadmapContextType | null>(null);
+// Export the RoadmapContext so it can be imported in other files
+export const RoadmapContext = createContext<RoadmapContextType | null>(null);
 
 export const useRoadmap = () => {
   const context = useContext(RoadmapContext);

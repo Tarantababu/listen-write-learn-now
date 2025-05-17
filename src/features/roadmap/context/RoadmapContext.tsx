@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useRoadmapData } from '../hooks/useRoadmapData';
@@ -19,7 +18,7 @@ interface RoadmapContextType {
   availableNodes: string[];
   nodeProgress: NodeProgressDetails[];
   isLoading: boolean;
-  nodeLoading: boolean; // Added nodeLoading property
+  nodeLoading: boolean;
   initializeUserRoadmap: (level: LanguageLevel, language: Language) => Promise<string>;
   loadUserRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
   loadRoadmaps: (language: Language) => Promise<RoadmapItem[]>;
@@ -28,12 +27,13 @@ interface RoadmapContextType {
   getNodeExercise: (nodeId: string) => Promise<any>;
   markNodeAsCompleted: (nodeId: string) => Promise<void>;
   recordNodeCompletion: (nodeId: string, accuracy: number) => Promise<any>;
-  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<any>; // Added this method
+  incrementNodeCompletion: (nodeId: string, accuracy: number) => Promise<any>;
 }
 
-export const RoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
+// Define the context - use specific name to avoid conflicts
+export const FeatureRoadmapContext = createContext<RoadmapContextType | undefined>(undefined);
 
-export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const FeatureRoadmapProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { settings } = useUserSettingsContext();
   const {
     isLoading,
@@ -52,7 +52,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     getNodeExercise,
     markNodeAsCompleted,
     recordNodeCompletion,
-    nodeLoading, // Include nodeLoading from useRoadmapData
+    nodeLoading,
   } = useRoadmapData();
   
   const [nodeProgress, setNodeProgress] = useState<NodeProgressDetails[]>([]);
@@ -139,7 +139,7 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     availableNodes,
     nodeProgress,
     isLoading,
-    nodeLoading, // Include nodeLoading in context value
+    nodeLoading,
     initializeUserRoadmap: initializeRoadmap,
     loadUserRoadmaps,
     loadRoadmaps,
@@ -148,12 +148,21 @@ export const RoadmapProvider: React.FC<{ children: ReactNode }> = ({ children })
     getNodeExercise,
     markNodeAsCompleted,
     recordNodeCompletion,
-    incrementNodeCompletion, // Added method to context
+    incrementNodeCompletion,
   };
 
   return (
-    <RoadmapContext.Provider value={contextValue}>
+    <FeatureRoadmapContext.Provider value={contextValue}>
       {children}
-    </RoadmapContext.Provider>
+    </FeatureRoadmapContext.Provider>
   );
+};
+
+// Create a custom hook for using this context
+export const useFeatureRoadmap = () => {
+  const context = React.useContext(FeatureRoadmapContext);
+  if (context === undefined) {
+    throw new Error("useFeatureRoadmap must be used within a FeatureRoadmapProvider");
+  }
+  return context;
 };

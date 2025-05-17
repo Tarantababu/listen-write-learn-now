@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -9,7 +8,7 @@ import { UserSettingsProvider } from './contexts/UserSettingsContext';
 import { VocabularyProvider } from './contexts/VocabularyContext';
 import { DirectoryProvider } from './contexts/DirectoryContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
-import { RoadmapProvider } from './contexts/RoadmapContext'; // Use the provider from contexts folder
+import { RoadmapProvider } from './contexts/RoadmapContext'; // Import from contexts folder
 import { HelmetProvider } from 'react-helmet-async';
 import { ThemeProvider } from './contexts/ThemeContext';
 
