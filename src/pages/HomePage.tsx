@@ -97,9 +97,9 @@ const HomePage = () => {
           </ExerciseProvider>
         </div>
         
-        {/* Learning Roadmap Card */}
+        {/* Learning Roadmap Card and Curriculum Progress Card in a grid */}
         <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Learning Curriculum Card */}
+          {/* Moved Curriculum Progress Card here to be in the same grid row as potential other cards */}
           <Card className="w-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-xl font-semibold">Curriculum Progress</CardTitle>
@@ -182,6 +182,7 @@ const HomePage = () => {
               )}
             </CardContent>
           </Card>
+          {/* This is where another card would go (like Vocabulary Items) */}
         </div>
       </div>
     </div>
