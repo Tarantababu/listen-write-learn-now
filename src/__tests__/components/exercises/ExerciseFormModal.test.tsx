@@ -47,16 +47,14 @@ describe('ExerciseFormModal', () => {
     expect(screen.getByText('Update your exercise details')).toBeInTheDocument();
   });
 
-  it('shows upgrade prompt when user cannot create more exercises', () => {
-    vi.mock('@/contexts/ExerciseContext', () => ({
-      useExerciseContext: () => ({
-        canCreateMore: false,
-        canEdit: true,
-        exerciseLimit: 10,
-      }),
-    }), { virtual: true });
+  it('shows upgrade prompt when user cannot create more exercises', async () => {
+    // Override the mock for this test
+    vi.mocked(useExerciseContext as any).mockReturnValue({
+      canCreateMore: false,
+      canEdit: true,
+      exerciseLimit: 10,
+    });
 
-    // Re-render with the new mock
     render(<ExerciseFormModal {...defaultProps} />);
     
     expect(screen.getByText('Premium Subscription Required')).toBeInTheDocument();

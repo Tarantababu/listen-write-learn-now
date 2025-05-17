@@ -2,7 +2,7 @@
 // Test setup file - will be imported by test files
 import { expect, afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
-import matchers from '@testing-library/jest-dom/matchers';
+import * as matchers from '@testing-library/jest-dom/matchers';
 
 // Extend Vitest's expect with testing-library matchers
 expect.extend(matchers);

@@ -41,7 +41,7 @@ export const handlers = [
           text: 'This is a sample exercise text',
           language: 'spanish',
           tags: ['beginner', 'grammar'],
-          created_at: '2023-01-01T12:00:00Z',
+          createdAt: '2023-01-01T12:00:00Z',
           user_id: 'user-123',
         },
         {
@@ -50,7 +50,7 @@ export const handlers = [
           text: 'Another sample exercise text',
           language: 'spanish',
           tags: ['intermediate', 'vocabulary'],
-          created_at: '2023-01-02T12:00:00Z',
+          createdAt: '2023-01-02T12:00:00Z',
           user_id: 'user-123',
         },
       ])

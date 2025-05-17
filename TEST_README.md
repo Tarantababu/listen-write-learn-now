@@ -35,7 +35,7 @@ npx vitest --coverage
 ### Component Tests
 
 ```tsx
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '../utils/test-utils';
 import YourComponent from '@/components/YourComponent';
 

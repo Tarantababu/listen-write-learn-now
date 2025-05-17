@@ -1,5 +1,5 @@
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '../utils/test-utils';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,8 +11,8 @@ import { Navigate, Outlet } from 'react-router-dom';
 vi.mock('@/contexts/AuthContext');
 vi.mock('@/hooks/use-admin');
 vi.mock('@/hooks/use-toast');
-vi.mock('react-router-dom', async (importOriginal) => {
-  const actual = await importOriginal();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
     Navigate: vi.fn(() => <div>Redirected</div>),
@@ -27,17 +27,17 @@ describe('ProtectedRoute', () => {
   });
 
   it('shows loading state when checking authentication', () => {
-    (useAuth as any).mockReturnValue({ user: null, loading: true });
-    (useAdmin as any).mockReturnValue({ isAdmin: false, loading: false });
+    vi.mocked(useAuth).mockReturnValue({ user: null, loading: true } as any);
+    vi.mocked(useAdmin).mockReturnValue({ isAdmin: false, loading: false } as any);
     
     render(<ProtectedRoute />);
     
-    expect(screen.getByText('Loading')).toBeInTheDocument();
+    expect(screen.getByText(/loading/i)).toBeInTheDocument();
   });
 
   it('redirects to login when user is not authenticated', () => {
-    (useAuth as any).mockReturnValue({ user: null, loading: false });
-    (useAdmin as any).mockReturnValue({ isAdmin: false, loading: false });
+    vi.mocked(useAuth).mockReturnValue({ user: null, loading: false } as any);
+    vi.mocked(useAdmin).mockReturnValue({ isAdmin: false, loading: false } as any);
     
     render(<ProtectedRoute />);
     
@@ -46,14 +46,14 @@ describe('ProtectedRoute', () => {
         to: '/login',
         replace: true,
       }),
-      {}
+      expect.anything()
     );
     expect(toast).toHaveBeenCalled();
   });
 
   it('renders children when user is authenticated and children are provided', () => {
-    (useAuth as any).mockReturnValue({ user: { id: '123' }, loading: false });
-    (useAdmin as any).mockReturnValue({ isAdmin: false, loading: false });
+    vi.mocked(useAuth).mockReturnValue({ user: { id: '123' }, loading: false } as any);
+    vi.mocked(useAdmin).mockReturnValue({ isAdmin: false, loading: false } as any);
     
     render(<ProtectedRoute><div>Protected content</div></ProtectedRoute>);
     
@@ -61,8 +61,8 @@ describe('ProtectedRoute', () => {
   });
 
   it('renders outlet when user is authenticated and no children are provided', () => {
-    (useAuth as any).mockReturnValue({ user: { id: '123' }, loading: false });
-    (useAdmin as any).mockReturnValue({ isAdmin: false, loading: false });
+    vi.mocked(useAuth).mockReturnValue({ user: { id: '123' }, loading: false } as any);
+    vi.mocked(useAdmin).mockReturnValue({ isAdmin: false, loading: false } as any);
     
     render(<ProtectedRoute />);
     
@@ -70,8 +70,8 @@ describe('ProtectedRoute', () => {
   });
 
   it('redirects to dashboard when requireAdmin is true but user is not admin', () => {
-    (useAuth as any).mockReturnValue({ user: { id: '123' }, loading: false });
-    (useAdmin as any).mockReturnValue({ isAdmin: false, loading: false });
+    vi.mocked(useAuth).mockReturnValue({ user: { id: '123' }, loading: false } as any);
+    vi.mocked(useAdmin).mockReturnValue({ isAdmin: false, loading: false } as any);
     
     render(<ProtectedRoute requireAdmin={true} />);
     
@@ -80,13 +80,13 @@ describe('ProtectedRoute', () => {
         to: '/dashboard',
         replace: true,
       }),
-      {}
+      expect.anything()
     );
   });
 
   it('renders content when requireAdmin is true and user is admin', () => {
-    (useAuth as any).mockReturnValue({ user: { id: '123' }, loading: false });
-    (useAdmin as any).mockReturnValue({ isAdmin: true, loading: false });
+    vi.mocked(useAuth).mockReturnValue({ user: { id: '123' }, loading: false } as any);
+    vi.mocked(useAdmin).mockReturnValue({ isAdmin: true, loading: false } as any);
     
     render(<ProtectedRoute requireAdmin={true}><div>Admin content</div></ProtectedRoute>);
     

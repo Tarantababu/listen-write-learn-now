@@ -12,8 +12,11 @@ describe('ExerciseGrid', () => {
       text: 'This is a test exercise',
       language: 'english',
       tags: ['test', 'example'],
-      created_at: '2023-01-01T00:00:00Z',
+      createdAt: new Date('2023-01-01T00:00:00Z'),
       user_id: 'user-123',
+      completionCount: 0,
+      isCompleted: false,
+      directoryId: null
     },
     {
       id: '2',
@@ -21,8 +24,11 @@ describe('ExerciseGrid', () => {
       text: 'Another test exercise',
       language: 'english',
       tags: ['test', 'sample'],
-      created_at: '2023-01-02T00:00:00Z',
+      createdAt: new Date('2023-01-02T00:00:00Z'),
       user_id: 'user-123',
+      completionCount: 0,
+      isCompleted: false,
+      directoryId: null
     },
   ];
 

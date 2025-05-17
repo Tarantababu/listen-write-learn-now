@@ -33,7 +33,7 @@ describe('Auth Functions', () => {
   describe('signIn', () => {
     it('calls supabase signInWithPassword and returns data on success', async () => {
       const mockData = { user: { id: '123', email: 'test@example.com' } };
-      (supabase.auth.signInWithPassword as any).mockResolvedValue({ data: mockData, error: null });
+      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({ data: mockData, error: null } as any);
 
       const result = await signIn('test@example.com', 'password');
       
@@ -46,7 +46,7 @@ describe('Auth Functions', () => {
 
     it('throws error and shows toast on failure', async () => {
       const mockError = { message: 'Invalid credentials' };
-      (supabase.auth.signInWithPassword as any).mockResolvedValue({ data: null, error: mockError });
+      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({ data: null, error: mockError } as any);
 
       await expect(signIn('test@example.com', 'wrongpassword')).rejects.toEqual(mockError);
       expect(toast.error).toHaveBeenCalledWith('Invalid credentials');
