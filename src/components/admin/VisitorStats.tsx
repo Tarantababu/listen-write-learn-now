@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { format, subDays, parseISO, isBefore, startOfDay, isAfter, endOfDay } from 'date-fns';
+import { format, subDays, parseISO, startOfDay, endOfDay } from 'date-fns';
 import StatsCard from '@/components/StatsCard';
 import { Activity, Users, Globe, Info } from 'lucide-react';
-import { calculateTrend, compareWithPreviousDay } from '@/utils/trendUtils';
+import { calculateTrend } from '@/utils/trendUtils';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -65,22 +65,24 @@ export function VisitorStats() {
         const uniqueIds = new Set(uniqueData?.map(visitor => visitor.visitor_id));
         setUniqueVisitors(uniqueIds.size);
         
-        // Get today's visitor count
-        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        // Get today's visitor count - Using timestamp comparison for accurate timezone handling
+        const todayStart = startOfDay(new Date()).toISOString();
+        
         const { count: todayCount, error: todayError } = await supabase
           .from('visitors')
           .select('*', { count: 'exact', head: true })
-          .gte('created_at', todayStr);
+          .gte('created_at', todayStart);
         
         if (todayError) throw todayError;
         setTodayVisitors(todayCount || 0);
         
-        // Get visitor counts by day for the last 30 days
-        const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+        // Get visitor data for the last 31 days (today + 30 previous days)
+        const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
         
         const { data: dailyData, error: dailyError } = await supabase
           .from('visitors')
-          .select('created_at');
+          .select('created_at')
+          .gte('created_at', thirtyDaysAgo);
         
         if (dailyError) throw dailyError;
         
@@ -101,10 +103,10 @@ export function VisitorStats() {
           }
         }
         
-        // Process data to count visitors per day
+        // Process data to count visitors per day - using full date objects for comparison
         const dailyCounts: Record<string, number> = {};
         
-        // Initialize all days in the last 30 days with 0
+        // Initialize all days in the last 31 days with 0
         const currentDate = new Date();
         const dailyCountsArray: VisitorCount[] = [];
         
@@ -115,7 +117,7 @@ export function VisitorStats() {
           dailyCounts[dateStr] = 0;
           
           const hasData = earliestDate ? 
-            !isBefore(startOfDay(date), startOfDay(earliestDate)) : 
+            date >= startOfDay(earliestDate) : 
             true;
             
           dailyCountsArray.push({
@@ -126,12 +128,18 @@ export function VisitorStats() {
           });
         }
         
-        // Fill in actual counts
+        // Fill in actual counts by iterating through the visitor data
         if (dailyData) {
           dailyData.forEach((visitor) => {
             if (visitor.created_at) {
-              const date = format(parseISO(visitor.created_at), 'yyyy-MM-dd');
-              dailyCounts[date] = (dailyCounts[date] || 0) + 1;
+              // Parse the ISO date and format to YYYY-MM-DD for bucketing
+              const visitorDate = parseISO(visitor.created_at);
+              const dateKey = format(visitorDate, 'yyyy-MM-dd');
+              
+              // Only count if the dateKey exists in our dailyCounts (within the 31 day range)
+              if (dailyCounts[dateKey] !== undefined) {
+                dailyCounts[dateKey] += 1;
+              }
             }
           });
         }
@@ -221,6 +229,7 @@ export function VisitorStats() {
     const todayStr = format(currentDate, 'MMM dd');
     const yesterdayStr = format(yesterday, 'MMM dd');
     
+    // Find today's and yesterday's data by formatted date string
     const todayData = visitorCounts.find(item => item.date === todayStr);
     const yesterdayData = visitorCounts.find(item => item.date === yesterdayStr);
     
@@ -277,17 +286,6 @@ export function VisitorStats() {
   for (let i = 0; i < referrerCounts.length; i++) {
     chartConfig.sources[`source${i}`] = { color: COLORS[i % COLORS.length] };
   }
-
-  const customBarProps = (entry: any) => {
-    return entry.hasData ? {
-      fill: chartConfig.visitors.color
-    } : {
-      fill: chartConfig.inactive.color,
-      fillOpacity: 0.5,
-      stroke: '#ccc',
-      strokeDasharray: '4 2'
-    };
-  };
 
   return (
     <div className="space-y-6">
@@ -363,9 +361,8 @@ export function VisitorStats() {
                     <Bar 
                       dataKey="count" 
                       name="Visitors" 
-                      // Use custom bar props based on hasData flag
                       shape={(props) => {
-                        const { fill, x, y, width, height, hasData } = props;
+                        const { fill, x, y, width, height } = props;
                         const customProps = props.payload?.hasData ? 
                           { fill: chartConfig.visitors.color } : 
                           { fill: chartConfig.inactive.color, fillOpacity: 0.5 };
@@ -465,7 +462,7 @@ export function VisitorStats() {
                       <Bar 
                         dataKey="count" 
                         name="Views" 
-                        fill={chartConfig.pages.color} // Use direct color reference
+                        fill={chartConfig.pages.color}
                       />
                     </BarChart>
                   </ResponsiveContainer>
