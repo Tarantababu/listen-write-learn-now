@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { ExerciseContent } from '@/components/ExerciseContent';
+import ExerciseContent from '@/components/ExerciseContent';
 
 const ExercisePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
