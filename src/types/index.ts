@@ -1,3 +1,4 @@
+
 export type Language = 
   | 'english' 
   | 'german' 
@@ -133,7 +134,7 @@ export type Json =
 
 export interface ExerciseContextType {
   exercises: Exercise[];
-  defaultExercises: DefaultExercise[];
+  defaultExercises: any[]; // Changed from DefaultExercise[] to any[]
   exercisesLoading: boolean;
   defaultExercisesLoading: boolean;
   addExercise: (exercise: Omit<Exercise, 'id' | 'createdAt' | 'completionCount' | 'isCompleted'>) => Promise<Exercise>;
@@ -143,3 +144,4 @@ export interface ExerciseContextType {
   copyDefaultExercise: (id: string) => Promise<void>;
   refreshExercises: () => Promise<void>;
 }
+

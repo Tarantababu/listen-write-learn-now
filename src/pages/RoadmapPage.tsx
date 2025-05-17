@@ -16,7 +16,7 @@ const RoadmapPage: React.FC = () => {
       </CardHeader>
 
       <div className="mt-6">
-        <Alert variant="warning">
+        <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Feature not available</AlertTitle>
           <AlertDescription>

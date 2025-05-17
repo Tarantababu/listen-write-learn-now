@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
  * Placeholder component for RoadmapExerciseModal
  * This feature has been deprecated
  */
-const RoadmapExerciseModal = ({ isOpen, onOpenChange }) => {
+const RoadmapExerciseModal = ({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: (open: boolean) => void }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
