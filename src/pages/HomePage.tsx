@@ -1,11 +1,10 @@
 
 import React from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import UserStatistics from '@/components/UserStatistics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import SubscriptionBanner from '@/components/SubscriptionBanner';
-import { ExerciseProvider } from '@/contexts/ExerciseContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAdmin } from '@/hooks/use-admin';
@@ -45,9 +44,7 @@ const HomePage = () => {
       <div className="flex flex-col gap-6">
         {/* User Statistics */}
         <div className="w-full">
-          <ExerciseProvider>
-            <UserStatistics />
-          </ExerciseProvider>
+          <UserStatistics />
         </div>
       </div>
     </div>
