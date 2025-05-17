@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useAdmin } from '@/hooks/use-admin';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Menu, LogOut, BookOpen, Home, Settings, CreditCard, Crown, LayoutDashboard, Book, Shield, HelpCircle, GraduationCap } from 'lucide-react';
+import { Headphones, Menu, LogOut, BookOpen, Home, Settings, CreditCard, Crown, LayoutDashboard, Book, Shield, HelpCircle, GraduationCap } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getLanguageFlag } from '@/utils/languageUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -59,11 +60,7 @@ const Header: React.FC = () => {
       <div className="container flex h-14 sm:h-16 items-center justify-between px-4">
         <div className="flex items-center gap-2 sm:gap-6">
           <Link to="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
-            <img 
-              src="/src/assets/lwlnow-logo.png"
-              alt="lwlnow logo"
-              className="h-5 w-5"
-            />
+            <Headphones className="h-5 w-5 text-primary" />
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent hidden sm:inline-block">
               lwlnow
             </span>
