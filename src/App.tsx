@@ -13,7 +13,7 @@ import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
-import NotFoundPage from '@/pages/NotFoundPage';
+import NotFoundPage from '@/pages/NotFound';
 import DefaultExercisesPage from '@/pages/DefaultExercisesPage';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { UserSettingsProvider } from '@/contexts/UserSettingsContext';
@@ -43,7 +43,7 @@ function App() {
                   <DashboardLayout />
                 </ProtectedRoute>
               }>
-                <Route index element={<ExercisesPage />} />
+                <Route index element={<HomePage />} />
                 <Route path="exercises" element={<ExercisesPage />} />
                 <Route path="default-exercises" element={<DefaultExercisesPage />} />
                 <Route path="dictation" element={<DictationPage />} />
