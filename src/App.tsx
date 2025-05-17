@@ -13,7 +13,7 @@ import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
-import NotFoundPage from '@/pages/NotFound';
+import NotFoundPage from '@/pages/NotFoundPage';
 import DefaultExercisesPage from '@/pages/DefaultExercisesPage';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { UserSettingsProvider } from '@/contexts/UserSettingsContext';
