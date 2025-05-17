@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo } from 'react';
 import { format, subDays, isSameDay, subMonths } from 'date-fns';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -280,7 +279,7 @@ const UserStatistics: React.FC = () => {
       </div>
       
       {/* Activity Heatmap */}
-      <StatsHeatmap activityData={activityHeatmap} />
+      <StatsHeatmap activityData={activityHeatmap} isLoading={isLoading} />
     </div>
   );
 };

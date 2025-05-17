@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
@@ -14,6 +13,8 @@ import LevelBadge from '@/components/LevelBadge';
 import { useAdmin } from '@/hooks/use-admin';
 import { Progress } from '@/components/ui/progress';
 import { useCurriculumExercises } from '@/hooks/use-curriculum-exercises';
+import SkeletonUserStats from '@/components/SkeletonUserStats';
+import { useDelayedLoading } from '@/hooks/use-delayed-loading';
 
 const HomePage = () => {
   const location = useLocation();
@@ -38,6 +39,9 @@ const HomePage = () => {
     loading: curriculumLoading,
     refreshData: refreshCurriculumData
   } = useCurriculumExercises();
+
+  // Use debounced loading state to prevent UI flashing
+  const showCurriculumLoading = useDelayedLoading(curriculumLoading, 400);
 
   // React to redirect messages (e.g., access denied)
   React.useEffect(() => {
@@ -100,9 +104,29 @@ const HomePage = () => {
               <GraduationCap className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              {curriculumLoading ? (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              {showCurriculumLoading ? (
+                <div>
+                  <div className="flex flex-col space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-5 w-36" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                    
+                    <Skeleton className="h-2 w-full" />
+                    
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-center text-sm">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="p-2 rounded">
+                          <Skeleton className="h-5 w-full mb-1" />
+                          <Skeleton className="h-3 w-full" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-5">
+                    <Skeleton className="h-9 w-full" />
+                  </div>
                 </div>
               ) : stats.total > 0 ? (
                 <>

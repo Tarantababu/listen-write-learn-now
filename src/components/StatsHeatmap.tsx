@@ -10,16 +10,24 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import SkeletonStatsHeatmap from './SkeletonStatsHeatmap';
+import { useDelayedLoading } from '@/hooks/use-delayed-loading';
+
 interface ActivityData {
   date: Date;
   count: number;
   masteredWords?: number;
 }
+
 interface StatsHeatmapProps {
   activityData: ActivityData[];
+  isLoading?: boolean;
 }
+
 const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
-  activityData
+  activityData,
+  isLoading = false
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [timeRange, setTimeRange] = useState('month');
@@ -31,6 +39,14 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
     settings
   } = useUserSettingsContext();
   const isMobile = useIsMobile();
+  
+  // Use debounced loading state to prevent flashing
+  const showLoading = useDelayedLoading(isLoading, 400);
+  
+  // If we're in loading state and it's been long enough, show skeleton
+  if (showLoading) {
+    return <SkeletonStatsHeatmap />;
+  }
 
   // Filter exercises with partial progress
   const inProgressExercises = useMemo(() => {
@@ -198,7 +214,9 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
   const handleExerciseClick = (exerciseId: string) => {
     navigate(`/dashboard/exercises`);
   };
-  return <Card className="col-span-full animate-fade-in shadow-sm">
+
+  return (
+    <Card className="col-span-full animate-fade-in shadow-sm">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -207,8 +225,6 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
           </div>
           
           <div className="flex items-center gap-2">
-            
-            
             <Select value={timeRange} onValueChange={setTimeRange}>
               <SelectTrigger className="w-[100px] h-8 text-xs">
                 <SelectValue placeholder="Time Range" />
@@ -334,6 +350,8 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
           </div>
         </div>
       </CardContent>
-    </Card>;
+    </Card>
+  );
 };
+
 export default StatsHeatmap;

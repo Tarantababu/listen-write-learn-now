@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -9,26 +8,44 @@ import { TrendData } from '@/utils/trendUtils';
 interface StatsCardProps {
   title: string;
   value: number;
-  description?: string;
+  description: string;
   icon?: React.ReactNode;
-  trend?: TrendData;
   progress?: number;
   progressColor?: string;
+  trend?: { value: number; label: string };
   className?: string;
-  isLoading?: boolean;
+  isLoading?: boolean; // New prop for loading state
 }
 
-const StatsCard: React.FC<StatsCardProps> = ({
+const StatsCard = ({
   title,
   value,
   description,
   icon,
-  trend,
   progress,
-  progressColor = "bg-primary",
-  className,
-  isLoading = false
-}) => {
+  progressColor,
+  trend,
+  className = "",
+  isLoading = false // Default to not loading
+}: StatsCardProps) => {
+  if (isLoading) {
+    return (
+      <Card className={cn("overflow-hidden", className)}>
+        <CardContent className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center">
+              <Skeleton className="h-5 w-5 mr-2 rounded-full" />
+              <Skeleton className="h-5 w-32" />
+            </div>
+            <Skeleton className="h-8 w-16 rounded-md" />
+          </div>
+          <Skeleton className="h-2 w-full mb-4" />
+          <Skeleton className="h-4 w-3/4" />
+        </CardContent>
+      </Card>
+    );
+  }
+  
   // Format value for display
   const formattedValue = value?.toLocaleString() || '0';
   
