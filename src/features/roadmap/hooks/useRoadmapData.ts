@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { roadmapService } from '../api/roadmapService';
 import { RoadmapItem, RoadmapNode } from '../types';
 import { Language, LanguageLevel } from '@/types';
 
@@ -16,32 +15,39 @@ export function useRoadmapData() {
   const [selectedRoadmap, setSelectedRoadmap] = useState<RoadmapItem | null>(null);
   const [nodes, setNodes] = useState<RoadmapNode[]>([]);
 
-  // Simplified stub methods
+  // Completely stubbed methods that don't make any database calls
   const loadRoadmaps = async () => {
+    console.log('Stub useRoadmapData.loadRoadmaps called');
     return [];
   };
   
   const loadUserRoadmaps = async () => {
+    console.log('Stub useRoadmapData.loadUserRoadmaps called');
     return [];
   };
   
   const initializeRoadmap = async () => {
+    console.log('Stub useRoadmapData.initializeRoadmap called');
     return '';
   };
   
   const selectRoadmap = async () => {
+    console.log('Stub useRoadmapData.selectRoadmap called');
     return [];
   };
   
   const getNodeExercise = async () => {
+    console.log('Stub useRoadmapData.getNodeExercise called');
     return null;
   };
   
   const markNodeAsCompleted = async () => {
+    console.log('Stub useRoadmapData.markNodeAsCompleted called');
     // Do nothing
   };
   
   const recordNodeCompletion = async () => {
+    console.log('Stub useRoadmapData.recordNodeCompletion called');
     return {
       completionCount: 0,
       isCompleted: false,

@@ -12,168 +12,56 @@ import { ExerciseContent } from '../types';
 export class ExerciseService extends BaseService implements ExerciseServiceInterface {
   /**
    * Get exercise content for a roadmap node
+   * This is a stubbed implementation that returns null
    */
   public async getNodeExercise(nodeId: string): Promise<ServiceResult<ExerciseContent | null>> {
-    try {
-      // First get the node to get the default exercise ID
-      const { data: node, error: nodeError } = await this.supabase
-        .from('roadmap_nodes')
-        .select('default_exercise_id, language')
-        .eq('id', nodeId)
-        .single();
-        
-      if (nodeError) throw nodeError;
-      
-      if (!node.default_exercise_id) {
-        return this.success(null);
-      }
-      
-      // Get the exercise content
-      const { data: exercise, error: exerciseError } = await this.supabase
-        .from('default_exercises')
-        .select('*')
-        .eq('id', node.default_exercise_id)
-        .single();
-        
-      if (exerciseError) throw exerciseError;
-      
-      return this.success({
-        id: exercise.id,
-        title: exercise.title,
-        text: exercise.text,
-        audioUrl: exercise.audio_url,
-        language: (exercise.language || node.language) as Language,
-        tags: exercise.tags
-      });
-    } catch (error) {
-      return this.handleError(error);
-    }
+    console.log('Stub ExerciseService.getNodeExercise called with nodeId:', nodeId);
+    return this.success(null);
   }
   
   /**
    * Submit exercise result and calculate accuracy
+   * This is a stubbed implementation that returns a mock result
    */
   public async submitExerciseResult(
     exerciseId: string, 
     result: ExerciseSubmission
   ): Promise<ServiceResult<ExerciseResult>> {
-    try {
-      const auth = await this.ensureAuthenticated();
-      if (!auth) {
-        return this.error('User must be authenticated to submit exercise results');
-      }
-      
-      // Get the exercise text to compare with user submission
-      const { data: exercise, error: exerciseError } = await this.supabase
-        .from('default_exercises')
-        .select('text')
-        .eq('id', exerciseId)
-        .single();
-        
-      if (exerciseError) throw exerciseError;
-      
-      // Calculate accuracy using a simple algorithm
-      // In a real implementation, this would use a more sophisticated algorithm
-      const accuracy = this.calculateAccuracy(exercise.text, result.userText);
-      
-      // Update exercise completion in the database
-      const { error: completionError } = await this.supabase
-        .from('completions')
-        .upsert({
-          user_id: auth.userId,
-          exercise_id: exerciseId,
-          accuracy: accuracy,
-          attempt_count: 1,
-          completed: accuracy >= 95
-        });
-        
-      if (completionError) throw completionError;
-      
-      // Return the result
-      return this.success({
-        accuracy,
-        isCompleted: accuracy >= 95,
-        completionCount: 1
-      });
-    } catch (error) {
-      return this.handleError(error);
-    }
+    console.log('Stub ExerciseService.submitExerciseResult called with exerciseId:', exerciseId);
+    
+    return this.success({
+      accuracy: 0,
+      isCompleted: false,
+      completionCount: 0
+    });
   }
   
   /**
    * Generate a new exercise based on language and level
-   * Note: This is a placeholder for future AI-based exercise generation
+   * This is a stubbed implementation that returns a mock exercise
    */
   public async generateExercise(
     language: Language, 
     level: LanguageLevel, 
     topic?: string
   ): Promise<ServiceResult<ExerciseContent>> {
-    try {
-      // In a real implementation, this would call an AI service
-      // For now, we'll find a default exercise that matches the criteria
-      const query = this.supabase
-        .from('default_exercises')
-        .select('*')
-        .eq('language', language)
-        .limit(1);
-        
-      if (topic) {
-        query.contains('tags', [topic]);
-      }
-      
-      const { data, error } = await query.maybeSingle();
-      
-      if (error) throw error;
-      
-      if (!data) {
-        return this.error(`No exercise found for language ${language} and topic ${topic || 'any'}`);
-      }
-      
-      return this.success({
-        id: data.id,
-        title: data.title,
-        text: data.text,
-        audioUrl: data.audio_url,
-        language: data.language as Language,
-        tags: data.tags
-      });
-    } catch (error) {
-      return this.handleError(error);
-    }
+    console.log('Stub ExerciseService.generateExercise called with language:', language, 'level:', level);
+    
+    return this.success({
+      id: 'mock-exercise-id',
+      title: 'Deprecated Exercise',
+      text: 'This feature has been deprecated from the application.',
+      language: language,
+      tags: topic ? [topic] : []
+    });
   }
   
   /**
    * Calculate text similarity as a percentage
-   * This is a simple implementation - in production would use more sophisticated algorithms
+   * This is a stubbed implementation that always returns 0
    */
   private calculateAccuracy(original: string, submission: string): number {
-    // Normalize strings by removing punctuation and extra spaces
-    const normalizeString = (str: string) => 
-      str.toLowerCase()
-         .replace(/[^\w\s]/g, '')
-         .replace(/\s+/g, ' ')
-         .trim();
-    
-    const normalizedOriginal = normalizeString(original);
-    const normalizedSubmission = normalizeString(submission);
-    
-    // Simple word-based comparison
-    const originalWords = normalizedOriginal.split(' ');
-    const submissionWords = normalizedSubmission.split(' ');
-    
-    let correctWords = 0;
-    const totalWords = originalWords.length;
-    
-    // Compare each word
-    for (let i = 0; i < Math.min(originalWords.length, submissionWords.length); i++) {
-      if (originalWords[i] === submissionWords[i]) {
-        correctWords++;
-      }
-    }
-    
-    // Calculate percentage
-    return Math.round((correctWords / totalWords) * 100);
+    return 0;
   }
 }
 
