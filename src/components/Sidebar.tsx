@@ -7,7 +7,9 @@ import {
   Home, 
   Settings, 
   BookOpen, 
+  GraduationCap,
   Headphones,
+  BookMarked,
   ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -63,7 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                     className="w-full justify-start"
                   >
                     <BookOpen className="mr-2 h-4 w-4" />
-                    Learning Materials
+                    Learning Path
                   </Button>
                 )}
               </NavLink>

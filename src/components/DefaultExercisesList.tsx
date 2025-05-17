@@ -23,7 +23,7 @@ import LevelBadge from '@/components/LevelBadge';
 import { useDefaultExercises, DefaultExercise } from '@/hooks/use-default-exercises';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Language, LanguageLevel } from '@/types';
+import { Language } from '@/types';
 
 const DefaultExercisesList: React.FC = () => {
   const { defaultExercises, isLoading, fetchDefaultExercises, addToMyExercises } = useDefaultExercises();
@@ -56,7 +56,7 @@ const DefaultExercisesList: React.FC = () => {
   // Sort levels in order: A0, A1, A2, B1, B2, C1, C2
   const orderedLevels = Object.keys(exercisesByLevel).sort((a, b) => {
     const levelOrder = ['A0', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-    return levelOrder.indexOf(a as LanguageLevel) - levelOrder.indexOf(b as LanguageLevel);
+    return levelOrder.indexOf(a) - levelOrder.indexOf(b);
   });
 
   const handleAddToMyExercises = async (exerciseId: string) => {
@@ -119,7 +119,7 @@ const DefaultExercisesList: React.FC = () => {
         orderedLevels.map((level) => (
           <div key={level} className="space-y-4">
             <div className="flex items-center gap-2">
-              <LevelBadge level={level as LanguageLevel} />
+              <LevelBadge level={level} />
               <h3 className="text-lg font-semibold">{level} Level</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -129,7 +129,7 @@ const DefaultExercisesList: React.FC = () => {
                     <div className="flex justify-between items-start">
                       <CardTitle className="text-lg">{exercise.title}</CardTitle>
                       {exercise.isCompleted && (
-                        <Badge variant="outline" className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200">
+                        <Badge variant="success" className="flex items-center gap-1">
                           <CheckCircle className="h-3 w-3" />
                           Completed
                         </Badge>

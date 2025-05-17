@@ -18,8 +18,7 @@ interface UserSettingsContextProps {
 
 const defaultSettings: UserSettings = {
   learningLanguages: ['english', 'german', 'spanish', 'french'] as Language[],
-  selectedLanguage: 'english' as Language,
-  avatarUrl: null
+  selectedLanguage: 'english' as Language
 };
 
 const UserSettingsContext = createContext<UserSettingsContextProps | undefined>(undefined);
@@ -92,11 +91,6 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       if (data && data.avatar_url) {
         console.log('Avatar loaded from database:', data.avatar_url);
         setAvatarUrl(data.avatar_url);
-        // Update settings with the avatar URL
-        setSettings(prev => ({
-          ...prev,
-          avatarUrl: data.avatar_url
-        }));
         // Store the avatar URL in localStorage with the user ID to ensure it's user-specific
         localStorage.setItem(`userAvatarUrl:${userId}`, data.avatar_url);
       }
@@ -117,7 +111,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setLoading(true);
         const { data, error } = await supabase
           .from('profiles')
-          .select('learning_languages, selected_language, avatar_url')
+          .select('learning_languages, selected_language')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -126,13 +120,8 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (data) {
           setSettings({
             learningLanguages: data.learning_languages as Language[] || defaultSettings.learningLanguages,
-            selectedLanguage: data.selected_language as Language || defaultSettings.selectedLanguage,
-            avatarUrl: data.avatar_url
+            selectedLanguage: data.selected_language as Language || defaultSettings.selectedLanguage
           });
-          
-          if (data.avatar_url) {
-            setAvatarUrl(data.avatar_url);
-          }
         }
       } catch (error) {
         console.error('Error fetching user settings:', error);
@@ -161,8 +150,7 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
           .from('profiles')
           .update({
             learning_languages: updates.learningLanguages || settings.learningLanguages,
-            selected_language: updates.selectedLanguage || settings.selectedLanguage,
-            avatar_url: updates.avatarUrl || settings.avatarUrl
+            selected_language: updates.selectedLanguage || settings.selectedLanguage
           })
           .eq('id', user.id);
 
@@ -209,10 +197,6 @@ export const UserSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       // Update local state and localStorage with user-specific key
       setAvatarUrl(newAvatarUrl);
-      setSettings(prev => ({
-        ...prev,
-        avatarUrl: newAvatarUrl
-      }));
       localStorage.setItem(`userAvatarUrl:${user.id}`, newAvatarUrl);
       console.log('Avatar updated and cached:', newAvatarUrl);
       

@@ -14,7 +14,7 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, signOut } = useAuth();
-  const { settings, avatarUrl } = useUserSettingsContext();
+  const { settings } = useUserSettingsContext();
   const navigate = useNavigate();
 
   const toggleMenu = () => {
@@ -70,7 +70,7 @@ const Header = () => {
               <div className="flex items-center space-x-4">
                 <ThemeToggle />
                 <Avatar className="h-8 w-8 cursor-pointer" onClick={() => navigate('/dashboard/settings')}>
-                  <AvatarImage src={avatarUrl || undefined} />
+                  <AvatarImage src={settings.avatarUrl} />
                   <AvatarFallback>{user.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
                 </Avatar>
                 <Button variant="ghost" size="icon" onClick={toggleMenu} className="md:hidden">
@@ -116,7 +116,7 @@ const Header = () => {
                 <div className="space-y-4">
                   <div className="flex items-center space-x-3 p-2 mb-4">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={avatarUrl || undefined} />
+                      <AvatarImage src={settings.avatarUrl} />
                       <AvatarFallback>{user.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
                     </Avatar>
                     <div>
