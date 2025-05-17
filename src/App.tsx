@@ -18,6 +18,7 @@ import DefaultExercisesPage from '@/pages/DefaultExercisesPage';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { UserSettingsProvider } from '@/contexts/UserSettingsContext';
 import { ExerciseProvider } from '@/contexts/ExerciseContext';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { Toaster } from '@/components/ui/toaster';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AdminRoute from '@/components/AdminRoute';
@@ -27,46 +28,48 @@ function App() {
   return (
     <AuthProvider>
       <UserSettingsProvider>
-        <ExerciseProvider>
-          <Suspense fallback={<LoadingScreen />}>
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<HomePage />} />
-                <Route path="login" element={<LoginPage />} />
-                <Route path="register" element={<RegisterPage />} />
-                <Route path="forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="reset-password" element={<ResetPasswordPage />} />
-              </Route>
-              
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <DashboardLayout />
-                </ProtectedRoute>
-              }>
-                <Route index element={<HomePage />} />
-                <Route path="exercises" element={<ExercisesPage />} />
-                <Route path="default-exercises" element={<DefaultExercisesPage />} />
-                <Route path="dictation" element={<DictationPage />} />
-                <Route path="settings" element={<SettingsPage />} />
-              </Route>
+        <SubscriptionProvider>
+          <ExerciseProvider>
+            <Suspense fallback={<LoadingScreen />}>
+              <Routes>
+                <Route path="/" element={<Layout />}>
+                  <Route index element={<HomePage />} />
+                  <Route path="login" element={<LoginPage />} />
+                  <Route path="register" element={<RegisterPage />} />
+                  <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="reset-password" element={<ResetPasswordPage />} />
+                </Route>
+                
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <DashboardLayout />
+                  </ProtectedRoute>
+                }>
+                  <Route index element={<HomePage />} />
+                  <Route path="exercises" element={<ExercisesPage />} />
+                  <Route path="default-exercises" element={<DefaultExercisesPage />} />
+                  <Route path="dictation" element={<DictationPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
+                </Route>
 
-              <Route path="/exercise/:id" element={
-                <ProtectedRoute>
-                  <ExercisePage />
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/admin" element={
-                <AdminRoute>
-                  <AdminPage />
-                </AdminRoute>
-              } />
+                <Route path="/exercise/:id" element={
+                  <ProtectedRoute>
+                    <ExercisePage />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/admin" element={
+                  <AdminRoute>
+                    <AdminPage />
+                  </AdminRoute>
+                } />
 
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </Suspense>
-          <Toaster />
-        </ExerciseProvider>
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </Suspense>
+            <Toaster />
+          </ExerciseProvider>
+        </SubscriptionProvider>
       </UserSettingsProvider>
     </AuthProvider>
   );
