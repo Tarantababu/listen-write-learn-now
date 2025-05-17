@@ -15,6 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import { useCurriculumExercises } from '@/hooks/use-curriculum-exercises';
 import SkeletonUserStats from '@/components/SkeletonUserStats';
 import { useDelayedLoading } from '@/hooks/use-delayed-loading';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const HomePage = () => {
   const location = useLocation();
