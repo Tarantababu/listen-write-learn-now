@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
@@ -142,7 +141,7 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
     return filteredActivityData.find(a => isSameDay(a.date, date));
   };
 
-  // Custom day renderer with tooltip - Updated to correctly display mastered words count
+  // Custom day renderer with tooltip - Updated for better visibility in light mode
   const renderDay = (day: Date) => {
     const activity = getActivityForDate(day);
     const masteredCount = activity?.masteredWords || 0;
@@ -151,21 +150,22 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
     
     // Determine the appropriate styles based on mastered count
     let textColorClass = "text-foreground";
-    let countClass = "text-[8px] font-bold"; // Make all counts bold for better visibility
+    let badgeClass = "absolute top-0.5 right-0.5 text-xs font-medium rounded-full"; // Increased text size to text-xs
     
     if (hasActivity) {
       if (masteredCount > 350) {
         textColorClass = "text-white";
-        countClass += " text-white font-bold";
+        badgeClass += " text-white font-bold px-1";
       } else if (masteredCount > 150) {
         textColorClass = "text-white";
-        countClass += " text-white font-bold";
+        badgeClass += " text-white font-bold px-1";
       } else if (masteredCount > 50) {
         textColorClass = "text-white";
-        countClass += " text-white font-bold";
+        badgeClass += " text-white font-bold px-1";
       } else {
-        textColorClass = "text-green-800";
-        countClass += " text-green-900 font-bold";
+        // Improved visibility for low count in light mode
+        textColorClass = "text-green-800 dark:text-green-100";
+        badgeClass += " text-green-800 dark:text-green-100 font-semibold bg-white/70 dark:bg-transparent px-1.5 py-0.5 shadow-sm";
       }
     }
     
@@ -176,7 +176,7 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
             <div className="w-full h-full flex items-center justify-center relative">
               <span className={textColorClass}>{format(day, 'd')}</span>
               {hasActivity && (
-                <span className={`absolute top-0.5 right-0.5 text-[8px] font-semibold rounded-full px-1 ${countClass}`}>
+                <span className={badgeClass}>
                   {masteredCount}
                 </span>
               )}
@@ -311,7 +311,7 @@ const StatsHeatmap: React.FC<StatsHeatmapProps> = ({
                   activityHigh: "bg-green-700 hover:bg-green-600 text-white shadow-md",
                   activityMedium: "bg-green-500 hover:bg-green-400 text-white shadow-md",
                   activityLow: "bg-green-400 hover:bg-green-300 text-white shadow-sm",
-                  activityMinimal: "bg-green-200 hover:bg-green-100 text-green-800"
+                  activityMinimal: "bg-green-200 hover:bg-green-100 hover:shadow-sm text-green-800"
                 }}
                 components={{
                   Day: ({ date }) => renderDay(date)
