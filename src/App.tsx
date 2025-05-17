@@ -19,6 +19,7 @@ import HomePage from "@/pages/HomePage";
 import ExercisesPage from "@/pages/ExercisesPage";
 import VocabularyPage from "@/pages/VocabularyPage";
 import RoadmapPage from "@/pages/RoadmapPage";
+import CurriculumPage from "@/pages/CurriculumPage"; // Add import
 import SettingsPage from "@/pages/SettingsPage";
 import SubscriptionPage from "@/pages/SubscriptionPage";
 import AdminPage from "@/pages/AdminPage";
@@ -69,6 +70,7 @@ function App() {
                                       <Route index element={<HomePage />} />
                                       <Route path="exercises" element={<ExercisesPage />} />
                                       <Route path="roadmap" element={<RoadmapPage />} />
+                                      <Route path="curriculum" element={<CurriculumPage />} /> {/* Add route */}
                                       <Route path="vocabulary" element={<VocabularyPage />} />
                                       <Route path="settings" element={<SettingsPage />} />
                                       <Route path="subscription" element={<SubscriptionPage />} />
