@@ -1,12 +1,20 @@
 import { useContext } from 'react';
-import { RoadmapContext } from '@/contexts/RoadmapContext';
+import { FeatureRoadmapContext } from '@/features/roadmap/context/RoadmapContext';
 
 // Re-export the useRoadmap hook from the context file
-export { useRoadmap } from '@/contexts/RoadmapContext';
+export const useRoadmap = () => {
+  const context = useContext(FeatureRoadmapContext);
+  
+  if (!context) {
+    throw new Error('useRoadmap must be used within a RoadmapProvider');
+  }
+  
+  return context;
+};
 
 // This is a backup implementation if you want to keep it
 export function useRoadmapContext() {
-  const context = useContext(RoadmapContext);
+  const context = useContext(FeatureRoadmapContext);
   
   if (!context) {
     throw new Error('useRoadmap must be used within a RoadmapProvider');

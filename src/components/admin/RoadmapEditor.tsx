@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -151,7 +150,7 @@ export const RoadmapEditor: React.FC = () => {
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from('roadmaps')
+          .from('curricula')  // Changed from 'roadmaps' to 'curricula'
           .select('*')
           .order('level', { ascending: true });
 
@@ -210,22 +209,22 @@ export const RoadmapEditor: React.FC = () => {
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from('roadmap_nodes')
+          .from('curriculum_nodes')  // Changed from 'roadmap_nodes' to 'curriculum_nodes'
           .select('*')
-          .eq('roadmap_id', selectedRoadmap.id)
-          .order('position', { ascending: true });
+          .eq('curriculum_id', selectedRoadmap.id)  // Changed from 'roadmap_id' to 'curriculum_id'
+          .order('sequence_order', { ascending: true });  // Changed from 'position' to 'sequence_order'
 
         if (error) throw error;
 
         const formattedNodes: RoadmapNode[] = data.map(node => ({
           id: node.id,
-          roadmapId: node.roadmap_id,
+          roadmapId: node.curriculum_id,  // Changed from 'roadmap_id' to 'curriculum_id'
           defaultExerciseId: node.default_exercise_id,
-          title: node.title,
+          title: node.name,  // Changed from 'title' to 'name'
           description: node.description,
-          position: node.position,
-          isBonus: node.is_bonus,
-          language: node.language as Language | undefined,
+          position: node.sequence_order,  // Changed from 'position' to 'sequence_order'
+          isBonus: false,  // This field may not exist in your schema
+          language: 'english' as Language,  // Default to English if not specified
           createdAt: new Date(node.created_at),
           updatedAt: new Date(node.updated_at)
         }));
@@ -244,24 +243,29 @@ export const RoadmapEditor: React.FC = () => {
     // Also fetch roadmap languages
     const fetchRoadmapLanguages = async () => {
       try {
+        // Since we don't have a roadmap_languages table, we'll have to check if there's
+        // a language field in the curricula table or use a default language
         const { data, error } = await supabase
-          .from('roadmap_languages')
-          .select('*')
-          .eq('roadmap_id', selectedRoadmap.id);
+          .from('curricula')
+          .select('language')
+          .eq('id', selectedRoadmap.id)
+          .single();
 
         if (error) throw error;
 
-        const formattedLanguages: RoadmapLanguage[] = data.map(lang => ({
-          id: lang.id,
-          roadmapId: lang.roadmap_id,
-          language: lang.language as Language,
-          createdAt: new Date(lang.created_at)
-        }));
+        if (data && data.language) {
+          const formattedLanguage: RoadmapLanguage = {
+            id: selectedRoadmap.id,
+            roadmapId: selectedRoadmap.id,
+            language: data.language as Language,
+            createdAt: new Date()
+          };
 
-        setRoadmapLanguages(formattedLanguages);
-        setSelectedLanguages(formattedLanguages.map(l => l.language));
+          setRoadmapLanguages([formattedLanguage]);
+          setSelectedLanguages([data.language]);
+        }
       } catch (err: any) {
-        console.error('Error fetching roadmap languages:', err);
+        console.error('Error fetching roadmap language:', err);
       }
     };
 
@@ -347,36 +351,17 @@ export const RoadmapEditor: React.FC = () => {
       if (selectedRoadmap) {
         // Update existing roadmap
         const { error: roadmapError } = await supabase
-          .from('roadmaps')
+          .from('curricula')  // Changed from 'roadmaps' to 'curricula'
           .update({
             name: values.name,
             level: values.level,
             description: values.description,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            language: values.languages[0]  // Primary language
           })
           .eq('id', selectedRoadmap.id);
 
         if (roadmapError) throw roadmapError;
-
-        // Delete existing language associations
-        const { error: deleteError } = await supabase
-          .from('roadmap_languages')
-          .delete()
-          .eq('roadmap_id', selectedRoadmap.id);
-
-        if (deleteError) throw deleteError;
-
-        // Create new language associations
-        const languageEntries = values.languages.map(lang => ({
-          roadmap_id: selectedRoadmap.id,
-          language: lang
-        }));
-
-        const { error: langError } = await supabase
-          .from('roadmap_languages')
-          .insert(languageEntries);
-
-        if (langError) throw langError;
 
         // Update local state
         const updatedRoadmaps = roadmaps.map(roadmap => 
@@ -405,30 +390,19 @@ export const RoadmapEditor: React.FC = () => {
       } else {
         // Create new roadmap
         const { data: roadmapData, error: roadmapError } = await supabase
-          .from('roadmaps')
+          .from('curricula')  // Changed from 'roadmaps' to 'curricula'
           .insert([
             {
               name: values.name,
               level: values.level,
-              description: values.description
+              description: values.description,
+              language: values.languages[0]  // Primary language
             }
           ])
           .select()
           .single();
 
         if (roadmapError) throw roadmapError;
-
-        // Create language associations
-        const languageEntries = values.languages.map(lang => ({
-          roadmap_id: roadmapData.id,
-          language: lang
-        }));
-
-        const { error: langError } = await supabase
-          .from('roadmap_languages')
-          .insert(languageEntries);
-
-        if (langError) throw langError;
 
         // Add to local state
         const newRoadmap: Roadmap = {
@@ -478,14 +452,12 @@ export const RoadmapEditor: React.FC = () => {
       if (selectedNode) {
         // Update existing node
         const { error } = await supabase
-          .from('roadmap_nodes')
+          .from('curriculum_nodes')  // Changed from 'roadmap_nodes' to 'curriculum_nodes'
           .update({
-            title: values.title,
-            position: values.position,
-            default_exercise_id: values.defaultExerciseId, // Now required
+            name: values.title,  // Changed from 'title' to 'name'
+            sequence_order: values.position,  // Changed from 'position' to 'sequence_order'
+            default_exercise_id: values.defaultExerciseId,
             description: values.description,
-            is_bonus: values.isBonus,
-            language: values.language, // Now required
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedNode.id);
@@ -514,16 +486,14 @@ export const RoadmapEditor: React.FC = () => {
       } else {
         // Create new node
         const { data, error } = await supabase
-          .from('roadmap_nodes')
+          .from('curriculum_nodes')  // Changed from 'roadmap_nodes' to 'curriculum_nodes'
           .insert([
             {
-              roadmap_id: selectedRoadmap.id,
-              title: values.title,
-              position: values.position,
-              default_exercise_id: values.defaultExerciseId, // Now required
-              description: values.description,
-              is_bonus: values.isBonus,
-              language: values.language // Now required
+              curriculum_id: selectedRoadmap.id,  // Changed from 'roadmap_id' to 'curriculum_id'
+              name: values.title,  // Changed from 'title' to 'name'
+              sequence_order: values.position,  // Changed from 'position' to 'sequence_order'
+              default_exercise_id: values.defaultExerciseId,
+              description: values.description
             }
           ])
           .select()
@@ -534,13 +504,13 @@ export const RoadmapEditor: React.FC = () => {
         // Add to local state
         const newNode: RoadmapNode = {
           id: data.id,
-          roadmapId: data.roadmap_id,
+          roadmapId: data.curriculum_id,  // Changed from 'roadmap_id' to 'curriculum_id'
           defaultExerciseId: data.default_exercise_id,
-          title: data.title,
+          title: data.name,  // Changed from 'title' to 'name'
           description: data.description,
-          position: data.position,
-          isBonus: data.is_bonus,
-          language: data.language as Language,
+          position: data.sequence_order,  // Changed from 'position' to 'sequence_order'
+          isBonus: values.isBonus,
+          language: values.language as Language,
           createdAt: new Date(data.created_at),
           updatedAt: new Date(data.updated_at)
         };
@@ -563,7 +533,7 @@ export const RoadmapEditor: React.FC = () => {
     try {
       if (itemToDelete.type === 'roadmap') {
         const { error } = await supabase
-          .from('roadmaps')
+          .from('curricula')  // Changed from 'roadmaps' to 'curricula'
           .delete()
           .eq('id', itemToDelete.id);
 
@@ -576,7 +546,7 @@ export const RoadmapEditor: React.FC = () => {
         toast.success('Roadmap deleted successfully');
       } else {
         const { error } = await supabase
-          .from('roadmap_nodes')
+          .from('curriculum_nodes')  // Changed from 'roadmap_nodes' to 'curriculum_nodes'
           .delete()
           .eq('id', itemToDelete.id);
 
