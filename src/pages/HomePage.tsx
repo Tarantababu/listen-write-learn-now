@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
@@ -14,7 +13,6 @@ import LevelBadge from '@/components/LevelBadge';
 import { useAdmin } from '@/hooks/use-admin';
 import { Progress } from '@/components/ui/progress';
 import { useCurriculumExercises } from '@/hooks/use-curriculum-exercises';
-
 const HomePage = () => {
   const location = useLocation();
   const {
@@ -33,7 +31,10 @@ const HomePage = () => {
   } = useRoadmap();
 
   // Curriculum data for Learning Curriculum Card
-  const { stats, loading: curriculumLoading } = useCurriculumExercises();
+  const {
+    stats,
+    loading: curriculumLoading
+  } = useCurriculumExercises();
 
   // React to redirect messages (e.g., access denied)
   React.useEffect(() => {
@@ -68,7 +69,6 @@ const HomePage = () => {
 
   // Don't show subscription banner for admins
   const shouldShowSubscriptionBanner = !subscription.isSubscribed && !isAdmin;
-  
   return <div className="container mx-auto px-4 py-8">
       {shouldShowSubscriptionBanner && <SubscriptionBanner />}
       
@@ -82,60 +82,7 @@ const HomePage = () => {
         
         {/* Learning Roadmap Card */}
         <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="w-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-xl font-semibold">Learning Roadmap</CardTitle>
-              <Map className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : currentRoadmap ? (
-                <>
-                  <div className="flex flex-col space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <span className="font-medium mr-2">{roadmapName || "Learning Path"}</span>
-                        {roadmapLevel && <LevelBadge level={roadmapLevel} />}
-                      </div>
-                      <span className="text-sm text-muted-foreground">{completedNodes.length}/{nodes.length} complete</span>
-                    </div>
-                    
-                    <Progress value={progressPercentage} className="h-2" />
-                    
-                    {currentNode && (
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium mb-1">Current Exercise:</h4>
-                        <div className="bg-muted p-3 rounded-md">
-                          <p className="font-medium">{currentNode.title}</p>
-                          {currentNode.description && <p className="text-sm text-muted-foreground mt-1">{currentNode.description}</p>}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="mt-5">
-                    <Button asChild variant="default" size="sm" className="w-full">
-                      <Link to="/dashboard/roadmap" className="flex items-center justify-center">
-                        Continue Learning <ChevronRight className="ml-1 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="py-4">
-                  <p className="text-center text-muted-foreground mb-4">Start your language learning journey with a structured roadmap.</p>
-                  <Button asChild variant="default" size="sm" className="w-full">
-                    <Link to="/dashboard/roadmap">
-                      Browse Roadmaps <ChevronRight className="ml-1 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          
           
           {/* Learning Curriculum Card */}
           <Card className="w-full">
@@ -144,12 +91,9 @@ const HomePage = () => {
               <GraduationCap className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              {curriculumLoading ? (
-                <div className="flex justify-center py-4">
+              {curriculumLoading ? <div className="flex justify-center py-4">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : stats.total > 0 ? (
-                <>
+                </div> : stats.total > 0 ? <>
                   <div className="flex flex-col space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
@@ -160,10 +104,7 @@ const HomePage = () => {
                       </span>
                     </div>
                     
-                    <Progress 
-                      value={stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0} 
-                      className="h-2" 
-                    />
+                    <Progress value={stats.total > 0 ? Math.round(stats.completed / stats.total * 100) : 0} className="h-2" />
                     
                     <div className="mt-2 grid grid-cols-3 gap-2 text-center text-sm">
                       <div className="bg-green-50 dark:bg-green-950/20 p-2 rounded">
@@ -188,9 +129,7 @@ const HomePage = () => {
                       </Link>
                     </Button>
                   </div>
-                </>
-              ) : (
-                <div className="py-4">
+                </> : <div className="py-4">
                   <p className="text-center text-muted-foreground mb-4">
                     Explore our comprehensive curriculum of language learning exercises.
                   </p>
@@ -199,13 +138,11 @@ const HomePage = () => {
                       Browse Curriculum <ChevronRight className="ml-1 h-4 w-4" />
                     </Link>
                   </Button>
-                </div>
-              )}
+                </div>}
             </CardContent>
           </Card>
         </div>
       </div>
     </div>;
 };
-
 export default HomePage;
