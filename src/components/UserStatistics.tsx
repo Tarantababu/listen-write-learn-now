@@ -11,6 +11,8 @@ import StatsHeatmap from './StatsHeatmap';
 import { getUserLevel, getLevelProgress } from '@/utils/levelSystem';
 import LanguageLevelDisplay from './LanguageLevelDisplay';
 import { compareWithPreviousDay } from '@/utils/trendUtils';
+import SkeletonUserStats from './SkeletonUserStats';
+import { useDelayedLoading } from '@/hooks/use-delayed-loading';
 
 interface CompletionData {
   date: Date;
@@ -46,6 +48,9 @@ const UserStatistics: React.FC = () => {
   const [dailyActivities, setDailyActivities] = useState<DailyActivity[]>([]);
   const [totalMasteredWords, setTotalMasteredWords] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Use delayed loading to prevent UI flashing for quick loads
+  const showLoading = useDelayedLoading(isLoading, 400);
 
   // Helper function to normalize text (reused from textComparison.ts)
   const normalizeText = (text: string): string => {
@@ -235,8 +240,8 @@ const UserStatistics: React.FC = () => {
     label: streak > 0 ? 'Streak maintained' : 'Streak broken'
   };
 
-  if (isLoading) {
-    return <div className="text-center p-4">Loading statistics...</div>;
+  if (showLoading) {
+    return <SkeletonUserStats />;
   }
 
   return (
