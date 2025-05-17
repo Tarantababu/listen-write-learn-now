@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link, Navigate } from 'react-router-dom';
@@ -63,7 +62,11 @@ const LoginPage: React.FC = () => {
         <CardHeader className="text-center pb-4 sm:pb-6">
           <div className="flex justify-center mb-2 sm:mb-4">
             <div className="flex items-center gap-2">
-              <Headphones className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              <img 
+                src="/src/assets/lwlnow-logo.png"
+                alt="lwlnow logo"
+                className="h-6 w-6 sm:h-8 sm:w-8"
+              />
               <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">ListenWriteLearn</h1>
             </div>
           </div>
