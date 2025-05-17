@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { format, subDays, isSameDay, subMonths } from 'date-fns';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -122,10 +123,9 @@ const UserStatistics: React.FC = () => {
           
           setDailyActivities(formattedActivities);
           
-          // Set the total mastered words from the latest activity
-          if (activityData.length > 0) {
-            setTotalMasteredWords(activityData[0].words_mastered || 0);
-          }
+          // Calculate the total mastered words by summing up all records
+          const totalMastered = activityData.reduce((sum, item) => sum + (item.words_mastered || 0), 0);
+          setTotalMasteredWords(totalMastered);
         }
 
         // Also fetch completion data for backward compatibility
@@ -167,7 +167,8 @@ const UserStatistics: React.FC = () => {
   // Current language filter
   const currentLanguage = settings.selectedLanguage;
 
-  // Use total mastered words from the database instead of calculating client-side
+  // Create a set of masteredWords based on the total count for visualization purposes
+  // Note: This is a placeholder set just to satisfy the component props
   const masteredWords = new Set(Array(totalMasteredWords).fill(0).map((_, i) => `word${i}`));
   
   // Note: We're now using the streak data directly from the database
@@ -201,8 +202,6 @@ const UserStatistics: React.FC = () => {
       count: completionCounts[format(date, 'yyyy-MM-dd')] || 0,
       masteredWords: 0
     }));
-    
-    return [];
   }, [dailyActivities, completions, exercises, currentLanguage]);
 
   // Calculate vocabulary trend for today vs yesterday
