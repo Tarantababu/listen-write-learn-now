@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -176,7 +175,7 @@ export function useRoadmapData() {
   const { settings } = useUserSettingsContext();
   
   const [isLoading, setIsLoading] = useState(false);
-  const [nodeLoading, setNodeLoading] = useState(false); // Added state for node loading
+  const [nodeLoading, setNodeLoading] = useState(false);
   const [roadmaps, setRoadmaps] = useState<RoadmapItem[]>([]);
   const [userRoadmaps, setUserRoadmaps] = useState<RoadmapItem[]>([]);
   const [selectedRoadmap, setSelectedRoadmap] = useState<RoadmapItem | null>(null);
@@ -184,6 +183,7 @@ export function useRoadmapData() {
   
   // Refs for request tracking and caching
   const loadingRef = useRef<{[key: string]: boolean}>({});
+  const abortControllersRef = useRef<{[key: string]: AbortController}>({});
   const cacheRef = useRef<{
     roadmaps: {[language: string]: RoadmapItem[]},
     userRoadmaps: {[language: string]: RoadmapItem[]},
@@ -197,6 +197,33 @@ export function useRoadmapData() {
   
   // Cache expiration time in milliseconds (5 minutes)
   const CACHE_EXPIRATION = 5 * 60 * 1000;
+  
+  // Cleanup function for aborting pending requests
+  const cleanupRequests = useCallback((key?: string) => {
+    if (key && abortControllersRef.current[key]) {
+      abortControllersRef.current[key].abort();
+      delete abortControllersRef.current[key];
+      delete loadingRef.current[key];
+    } else if (!key) {
+      // Abort all pending requests
+      Object.values(abortControllersRef.current).forEach(controller => {
+        try {
+          controller.abort();
+        } catch (e) {
+          console.error("Error aborting request:", e);
+        }
+      });
+      abortControllersRef.current = {};
+      loadingRef.current = {};
+    }
+  }, []);
+  
+  // Make sure to clean up on unmount
+  useEffect(() => {
+    return () => {
+      cleanupRequests();
+    };
+  }, [cleanupRequests]);
   
   // Check if cache is valid
   const isCacheValid = (cacheKey: string) => {
@@ -219,11 +246,18 @@ export function useRoadmapData() {
       return cacheRef.current.roadmaps[normalizedLanguage];
     }
     
+    // Abort any existing request with this key
+    cleanupRequests(cacheKey);
+    
     // Prevent duplicate fetches for the same language
     if (loadingRef.current[cacheKey]) {
       console.log(`Already loading roadmaps for ${normalizedLanguage}, skipping duplicate request`);
       return cacheRef.current.roadmaps[normalizedLanguage] || [];
     }
+    
+    // Create new abort controller
+    const abortController = new AbortController();
+    abortControllersRef.current[cacheKey] = abortController;
     
     loadingRef.current[cacheKey] = true;
     setIsLoading(true);
@@ -231,8 +265,11 @@ export function useRoadmapData() {
     console.log(`Loading all roadmaps for language: ${normalizedLanguage}`);
     
     try {
+      // Log the exact language being requested to check for case issues
+      console.log(`Requesting roadmaps with exact language string: "${normalizedLanguage}"`);
+      
       const roadmapsData = await roadmapService.getRoadmapsForLanguage(normalizedLanguage);
-      console.log(`Loaded ${roadmapsData.length} roadmaps for ${normalizedLanguage}`);
+      console.log(`Loaded ${roadmapsData.length} roadmaps for ${normalizedLanguage}:`, roadmapsData);
       
       // Update state and cache
       setRoadmaps(roadmapsData);
@@ -241,18 +278,21 @@ export function useRoadmapData() {
       
       return roadmapsData;
     } catch (error) {
-      console.error(`Error loading roadmaps for ${normalizedLanguage}:`, error);
-      toast({
-        variant: "destructive",
-        title: "Failed to load roadmaps",
-        description: "There was an error loading available roadmaps."
-      });
+      if (error.name !== 'AbortError') {
+        console.error(`Error loading roadmaps for ${normalizedLanguage}:`, error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load roadmaps",
+          description: "There was an error loading available roadmaps."
+        });
+      }
       return [];
     } finally {
       setIsLoading(false);
-      loadingRef.current[cacheKey] = false;
+      delete loadingRef.current[cacheKey];
+      delete abortControllersRef.current[cacheKey];
     }
-  }, []);
+  }, [cleanupRequests]);
   
   // Load user's roadmaps for a language
   const loadUserRoadmaps = useCallback(async (language: Language) => {
@@ -268,11 +308,18 @@ export function useRoadmapData() {
       return cacheRef.current.userRoadmaps[normalizedLanguage];
     }
     
+    // Abort any existing request with this key
+    cleanupRequests(cacheKey);
+    
     // Prevent duplicate fetches for the same language
     if (loadingRef.current[cacheKey]) {
       console.log(`Already loading user roadmaps for ${normalizedLanguage}, skipping duplicate request`);
       return cacheRef.current.userRoadmaps[normalizedLanguage] || [];
     }
+    
+    // Create new abort controller
+    const abortController = new AbortController();
+    abortControllersRef.current[cacheKey] = abortController;
     
     loadingRef.current[cacheKey] = true;
     setIsLoading(true);
@@ -280,8 +327,11 @@ export function useRoadmapData() {
     console.log(`Loading user roadmaps for language: ${normalizedLanguage}`);
     
     try {
+      // Log the exact language being requested to check for case issues
+      console.log(`Requesting user roadmaps with exact language string: "${normalizedLanguage}"`);
+      
       const userRoadmapsData = await roadmapService.getUserRoadmaps(normalizedLanguage);
-      console.log(`Loaded ${userRoadmapsData.length} user roadmaps for ${normalizedLanguage}`);
+      console.log(`Loaded ${userRoadmapsData.length} user roadmaps for ${normalizedLanguage}:`, userRoadmapsData);
       
       // Update state and cache
       setUserRoadmaps(userRoadmapsData);
@@ -290,18 +340,21 @@ export function useRoadmapData() {
       
       return userRoadmapsData;
     } catch (error) {
-      console.error(`Error loading user roadmaps for ${normalizedLanguage}:`, error);
-      toast({
-        variant: "destructive",
-        title: "Failed to load your roadmaps",
-        description: "There was an error loading your roadmaps."
-      });
+      if (error.name !== 'AbortError') {
+        console.error(`Error loading user roadmaps for ${normalizedLanguage}:`, error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load your roadmaps",
+          description: "There was an error loading your roadmaps."
+        });
+      }
       return [];
     } finally {
       setIsLoading(false);
-      loadingRef.current[cacheKey] = false;
+      delete loadingRef.current[cacheKey];
+      delete abortControllersRef.current[cacheKey];
     }
-  }, []);
+  }, [cleanupRequests]);
   
   // Initialize a new roadmap for the user
   const initializeRoadmap = useCallback(async (level: LanguageLevel, language: Language): Promise<string> => {
@@ -539,7 +592,7 @@ export function useRoadmapData() {
   
   return {
     isLoading,
-    nodeLoading, // Added nodeLoading to return object
+    nodeLoading,
     roadmaps,
     userRoadmaps,
     selectedRoadmap,

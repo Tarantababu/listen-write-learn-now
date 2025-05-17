@@ -3,7 +3,7 @@ import { Exercise } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Play, Pause, SkipBack, SkipForward, BookOpen } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, BookOpen, Volume2, VolumeX } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import VocabularyHighlighter from '@/components/VocabularyHighlighter';
@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DictationMicrophone from '@/components/DictationMicrophone';
 import DictationTips from '@/components/DictationTips';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface DictationPracticeProps {
   exercise: Exercise;
@@ -25,7 +26,8 @@ interface DictationPracticeProps {
   hideVocabularyTab?: boolean;
   onViewReadingAnalysis?: () => void;
   hasReadingAnalysis?: boolean;
-  keepResultsVisible?: boolean; // Added prop to control result visibility
+  keepResultsVisible?: boolean; // Prop to control result visibility
+  autoPlay?: boolean; // Prop to control auto-playing audio
 }
 
 const DictationPractice: React.FC<DictationPracticeProps> = ({
@@ -36,7 +38,8 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   hideVocabularyTab = false,
   onViewReadingAnalysis,
   hasReadingAnalysis = false,
-  keepResultsVisible = false // Default to false for backward compatibility
+  keepResultsVisible = false, // Default to false for backward compatibility
+  autoPlay = false // Default to false for backward compatibility
 }) => {
   const [userInput, setUserInput] = useState('');
   const [accuracy, setAccuracy] = useState<number | null>(null);
@@ -46,6 +49,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(200); // Default duration in seconds
   const [internalShowResults, setInternalShowResults] = useState(showResults);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [stats, setStats] = useState<{
     correct: number;
     almost: number;
@@ -74,6 +78,62 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
+  // Handle audio autoplay when component mounts with recovery attempts
+  useEffect(() => {
+    if (audioRef.current && autoPlay && !internalShowResults) {
+      // We need to catch any autoplay errors to handle browser restrictions
+      const attemptPlay = () => {
+        if (!audioRef.current) return;
+        
+        const playPromise = audioRef.current.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setIsPlaying(true);
+              setAutoplayBlocked(false);
+            })
+            .catch(error => {
+              console.log('Autoplay prevented:', error);
+              setIsPlaying(false);
+              setAutoplayBlocked(true);
+            });
+        }
+      };
+      
+      // Make initial attempt
+      attemptPlay();
+      
+      // Add a user interaction listener to automatically retry playing once user interacts
+      const handleUserInteraction = () => {
+        if (audioRef.current && autoplayBlocked) {
+          attemptPlay();
+          // Remove event listeners after successful play attempt
+          if (!autoplayBlocked) {
+            removeInteractionListeners();
+          }
+        }
+      };
+      
+      // Add listeners for common user interactions
+      const interactionEvents = ['click', 'touchstart', 'keydown'];
+      interactionEvents.forEach(event => {
+        document.addEventListener(event, handleUserInteraction, { once: true });
+      });
+      
+      // Cleanup function to remove listeners
+      const removeInteractionListeners = () => {
+        interactionEvents.forEach(event => {
+          document.removeEventListener(event, handleUserInteraction);
+        });
+      };
+      
+      return () => {
+        removeInteractionListeners();
+      };
+    }
+  }, [audioRef.current, autoPlay, internalShowResults, autoplayBlocked]);
+  
   const handleSubmit = () => {
     if (!userInput.trim()) return;
     
@@ -95,29 +155,27 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     // Set internal results state - show results
     setInternalShowResults(true);
     
-    // Calculate new progress value if accuracy is sufficient (>= 95%)
-    let newCompletionCount = exercise.completionCount;
-    if (result.accuracy >= 95) {
-      newCompletionCount = Math.min(3, newCompletionCount + 1);
-      setProgressValue((newCompletionCount / 3) * 100);
-    }
-    
     // Call onComplete with the accuracy result
     onComplete(result.accuracy);
 
+    // Only show result toast - the calling component will handle persistence
     if (result.accuracy >= 95) {
-      toast("Great job!", {
+      toast({
+        title: "Great job!",
         description: `${Math.round(result.accuracy)}% accuracy!`,
-        variant: "success"
+        variant: "default"
       });
     } else if (result.accuracy >= 70) {
-      toast("Good effort!", {
-        description: `${Math.round(result.accuracy)}% accuracy. Keep practicing!`
+      toast({
+        title: "Good effort!",
+        description: `${Math.round(result.accuracy)}% accuracy. You need 95% for it to count toward completion.`,
+        variant: "default"
       });
     } else {
-      toast("Keep practicing", {
+      toast({
+        title: "Keep practicing",
         description: `You scored ${Math.round(result.accuracy)}%. Try listening again carefully.`,
-        variant: "destructive"
+        variant: "default"
       });
     }
   };
@@ -142,10 +200,22 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     
     if (isPlaying) {
       audioRef.current.pause();
+      setIsPlaying(false);
     } else {
-      audioRef.current.play();
+      const playPromise = audioRef.current.play();
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsPlaying(true);
+            setAutoplayBlocked(false);
+          })
+          .catch(error => {
+            console.log('Play prevented:', error);
+            setAutoplayBlocked(true);
+          });
+      }
     }
-    setIsPlaying(!isPlaying);
   };
   
   const handleSkipBack = () => {
@@ -204,6 +274,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     }
   }, [internalShowResults]);
 
+  // Modified handleTryAgain to respect keepResultsVisible
   const handleTryAgain = () => {
     // Only reset if not instructed to keep results visible
     if (!keepResultsVisible) {
@@ -268,6 +339,17 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
           {/* Audio player */}
           <div className="flex flex-col items-center justify-center">
             {exercise.audioUrl && <audio ref={audioRef} src={exercise.audioUrl} />}
+            
+            {autoplayBlocked && (
+              <Alert className="mb-4 bg-amber-50 border-amber-200">
+                <Volume2 className="h-4 w-4 text-amber-500" />
+                <AlertTitle>Autoplay blocked</AlertTitle>
+                <AlertDescription>
+                  Your browser has blocked automatic audio playback. 
+                  Please use the play button below to start the audio.
+                </AlertDescription>
+              </Alert>
+            )}
             
             <div className="flex items-center justify-center gap-4 mb-4">
               <button 
@@ -414,13 +496,11 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
                       
                       {accuracy && accuracy >= 95 ? (
                         <p className="text-sm text-success mt-2">
-                          Great job! {exercise.completionCount + 1 >= 3 
-                            ? "You've mastered this exercise!" 
-                            : `${3 - exercise.completionCount - 1} more successful attempts until mastery.`}
+                          Great job! This attempt counts toward your progress.
                         </p>
                       ) : (
-                        <p className="text-sm mt-2">
-                          Keep practicing to improve your accuracy
+                        <p className="text-sm mt-2 text-muted-foreground">
+                          You need at least 95% accuracy for it to count toward progress.
                         </p>
                       )}
                     </div>

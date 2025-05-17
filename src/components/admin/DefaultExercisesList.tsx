@@ -1,230 +1,178 @@
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Language } from '@/types';
+import { fetchDefaultExercises, deleteDefaultExercise, checkDefaultExerciseUsage } from '@/services/defaultExerciseService';
+import { Pencil, Trash2, FileText, Languages, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Pencil, Trash2, AlertCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
-import DefaultExerciseForm from './DefaultExerciseForm';
-import LevelBadge from '@/components/LevelBadge';
-import { Language, LanguageLevel } from '@/types';
 
-type DefaultExercise = {
+interface DefaultExerciseItem {
   id: string;
   title: string;
   text: string;
   language: Language;
-  level: LanguageLevel;
+  tags: string[];
   audio_url?: string;
-  tags?: string[];
-};
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+}
 
 const DefaultExercisesList: React.FC = () => {
-  const [exercises, setExercises] = useState<DefaultExercise[]>([]);
+  const [exercises, setExercises] = useState<DefaultExerciseItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [editExercise, setEditExercise] = useState<DefaultExercise | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [deleteExercise, setDeleteExercise] = useState<DefaultExercise | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  
-  const fetchExercises = async () => {
-    setIsLoading(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [exerciseToDelete, setExerciseToDelete] = useState<DefaultExerciseItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [referenceCount, setReferenceCount] = useState(0);
+
+  const loadExercises = async () => {
     try {
-      const { data, error } = await supabase
-        .from('default_exercises')
-        .select('*')
-        .order('language')
-        .order('level')
-        .order('title');
-        
-      if (error) throw error;
-      
-      // Map Supabase data to our component structure
-      const formattedExercises = data.map((exercise: any) => ({
-        id: exercise.id,
-        title: exercise.title,
-        text: exercise.text,
-        language: exercise.language,
-        level: exercise.level || 'A1', // Default to A1 if level is not set
-        audio_url: exercise.audio_url,
-        tags: exercise.tags
-      }));
-      
-      setExercises(formattedExercises);
+      setIsLoading(true);
+      const data = await fetchDefaultExercises();
+      setExercises(data as DefaultExerciseItem[]);
     } catch (error) {
-      console.error('Error fetching exercises:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch exercises',
-        variant: 'destructive',
-      });
+      console.error('Error fetching default exercises:', error);
+      toast.error('Failed to load default exercises');
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   useEffect(() => {
-    fetchExercises();
+    loadExercises();
   }, []);
-  
-  const handleEdit = (exercise: DefaultExercise) => {
-    setEditExercise(exercise);
-    setIsEditDialogOpen(true);
-  };
-  
-  const handleDelete = (exercise: DefaultExercise) => {
-    setDeleteExercise(exercise);
-    setIsDeleteDialogOpen(true);
-  };
-  
-  const confirmDelete = async () => {
-    if (!deleteExercise) return;
+
+  const handleDelete = async () => {
+    if (!exerciseToDelete) return;
     
     try {
-      const { error } = await supabase
-        .from('default_exercises')
-        .delete()
-        .eq('id', deleteExercise.id);
-        
-      if (error) throw error;
+      setIsDeleting(true);
+      await deleteDefaultExercise(exerciseToDelete.id);
+      setExercises(exercises.filter(ex => ex.id !== exerciseToDelete.id));
+      toast.success('Default exercise deleted successfully');
       
-      toast({
-        title: 'Exercise Deleted',
-        description: 'The exercise has been successfully deleted.',
-      });
+      // Show additional message if references were removed
+      if (referenceCount > 0) {
+        toast.info(`${referenceCount} user exercise${referenceCount > 1 ? 's' : ''} updated to remove the reference`);
+      }
       
-      setIsDeleteDialogOpen(false);
-      fetchExercises();
+      setDeleteDialogOpen(false);
     } catch (error) {
-      console.error('Error deleting exercise:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete the exercise',
-        variant: 'destructive',
-      });
+      console.error('Error deleting default exercise:', error);
+      toast.error('Failed to delete default exercise');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const truncateText = (text: string, maxLength: number = 50) => {
-    if (text.length <= maxLength) return text;
-    return `${text.substring(0, maxLength)}...`;
+  const confirmDelete = async (exercise: DefaultExerciseItem) => {
+    setExerciseToDelete(exercise);
+    
+    // Check if there are any references to this default exercise
+    try {
+      const count = await checkDefaultExerciseUsage(exercise.id);
+      setReferenceCount(count);
+    } catch (error) {
+      console.error('Error checking exercise usage:', error);
+      setReferenceCount(0);
+    }
+    
+    setDeleteDialogOpen(true);
   };
 
-  const handleEditSuccess = () => {
-    setIsEditDialogOpen(false);
-    fetchExercises();
-  };
-  
-  if (isLoading) {
-    return <div className="text-center py-8">Loading exercises...</div>;
-  }
-  
   return (
-    <div className="space-y-4">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Title</TableHead>
-            <TableHead className="hidden md:table-cell">Text</TableHead>
-            <TableHead>Language</TableHead>
-            <TableHead>Level</TableHead>
-            <TableHead className="hidden md:table-cell">Tags</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {exercises.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center py-4">
-                No exercises found
-              </TableCell>
-            </TableRow>
-          ) : (
-            exercises.map((exercise) => (
-              <TableRow key={exercise.id}>
-                <TableCell className="font-medium">{exercise.title}</TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {truncateText(exercise.text)}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {exercise.language.charAt(0).toUpperCase() + exercise.language.slice(1)}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <LevelBadge level={exercise.level} />
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  <div className="flex flex-wrap gap-1">
-                    {exercise.tags?.map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell>
+    <div className="space-y-6">
+      {isLoading ? (
+        <div className="flex items-center justify-center h-40">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      ) : exercises.length === 0 ? (
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground">No default exercises found. Create one to get started!</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {exercises.map(exercise => (
+            <Card key={exercise.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                  <CardTitle className="text-lg">{exercise.title}</CardTitle>
                   <div className="flex space-x-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(exercise)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(exercise)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => confirmDelete(exercise)}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-      
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <Languages className="h-4 w-4" />
+                  <span className="capitalize">{exercise.language}</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-muted-foreground mb-4 line-clamp-3">
+                  {exercise.text}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {exercise.tags?.map(tag => (
+                    <Badge key={tag} variant="secondary">{tag}</Badge>
+                  ))}
+                  {(!exercise.tags || exercise.tags.length === 0) && (
+                    <span className="text-xs text-muted-foreground">No tags</span>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground mt-4">
+                  Created: {new Date(exercise.created_at).toLocaleDateString()}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Exercise</DialogTitle>
+            <DialogTitle>Delete Default Exercise</DialogTitle>
+            <DialogDescription>
+              {referenceCount > 0 ? (
+                <div className="flex items-start space-x-2 mt-2 text-amber-600">
+                  <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                  <p>
+                    This default exercise is used by {referenceCount} user exercise{referenceCount > 1 ? 's' : ''}.
+                    The reference will be removed from those exercises, but the exercises themselves will not be deleted.
+                  </p>
+                </div>
+              ) : (
+                <p>Are you sure you want to delete this default exercise? This action cannot be undone.</p>
+              )}
+            </DialogDescription>
           </DialogHeader>
-          {editExercise && (
-            <DefaultExerciseForm 
-              exerciseToEdit={editExercise} 
-              onSuccess={handleEditSuccess} 
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-      
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader className="flex flex-col items-center">
-            <AlertCircle className="h-12 w-12 text-destructive mb-2" />
-            <DialogTitle>Confirm Deletion</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 text-center">
-            Are you sure you want to delete <span className="font-semibold">{deleteExercise?.title}</span>? This action cannot be undone.
-          </div>
-          <DialogFooter className="flex justify-between sm:justify-between">
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
-              Delete
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>Cancel</Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete} 
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>
