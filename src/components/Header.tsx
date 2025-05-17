@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useAdmin } from '@/hooks/use-admin';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Headphones, Menu, LogOut, BookOpen, Home, Settings, CreditCard, Crown, LayoutDashboard, Book, Shield, HelpCircle, Map, GraduationCap } from 'lucide-react';
+import { Headphones, Menu, LogOut, BookOpen, Home, Settings, CreditCard, Crown, LayoutDashboard, Book, Shield, HelpCircle, GraduationCap } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getLanguageFlag } from '@/utils/languageUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -66,17 +67,10 @@ const Header: React.FC = () => {
           </Link>
           
           {!isMobile && user && <nav className="flex items-center gap-1">
-              <Button asChild variant={isActive('/dashboard') && !isActive('/dashboard/exercises') && !isActive('/dashboard/vocabulary') && !isActive('/dashboard/roadmap') && !isActive('/dashboard/curriculum') ? "default" : "ghost"} size="sm" className="transition-all">
+              <Button asChild variant={isActive('/dashboard') && !isActive('/dashboard/exercises') && !isActive('/dashboard/vocabulary') && !isActive('/dashboard/curriculum') ? "default" : "ghost"} size="sm" className="transition-all">
                 <Link to="/dashboard">
                   <LayoutDashboard className="h-4 w-4 sm:mr-1" />
                   <span className="hidden sm:inline">Dashboard</span>
-                </Link>
-              </Button>
-              
-              <Button asChild variant={isActive('/dashboard/roadmap') ? "default" : "ghost"} size="sm" className="transition-all">
-                <Link to="/dashboard/roadmap">
-                  <Map className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Roadmap</span>
                 </Link>
               </Button>
               
@@ -88,7 +82,7 @@ const Header: React.FC = () => {
               </Button>
               
               <Button asChild variant={isActive('/dashboard/exercises') ? "default" : "ghost"} size="sm" className="transition-all">
-                <Link to="/dashboard/exercises">
+                <Link to="/dashboard">
                   <BookOpen className="h-4 w-4 sm:mr-1" />
                   <span className="hidden sm:inline">Exercises</span>
                 </Link>
@@ -164,11 +158,6 @@ const Header: React.FC = () => {
                       <DropdownMenuItem asChild>
                         <Link to="/dashboard" className="flex items-center w-full">
                           <Home className="h-4 w-4 mr-2" /> Dashboard
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/dashboard/roadmap" className="flex items-center w-full">
-                          <Map className="h-4 w-4 mr-2" /> Roadmap
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>

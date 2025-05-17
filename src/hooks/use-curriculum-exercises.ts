@@ -1,5 +1,5 @@
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { CurriculumExercise } from '@/components/curriculum/CurriculumTagGroup';
@@ -8,8 +8,15 @@ import { CurriculumExercise } from '@/components/curriculum/CurriculumTagGroup';
  * Hook to process default exercises and map them to curriculum exercises with completion status
  */
 export function useCurriculumExercises() {
-  const { defaultExercises, exercises, defaultExercisesLoading } = useExerciseContext();
+  const { defaultExercises, exercises, defaultExercisesLoading, refreshExercises } = useExerciseContext();
   const { settings } = useUserSettingsContext();
+  
+  // Add an effect to refresh exercises when the component mounts
+  useEffect(() => {
+    // Refresh exercises data when the component mounts
+    refreshExercises();
+    // We want this to run only once when the component mounts
+  }, [refreshExercises]);
   
   // Process exercises data to determine completion status
   const processedExercises = useMemo(() => {
@@ -103,6 +110,7 @@ export function useCurriculumExercises() {
     exercisesByTag,
     stats,
     loading: defaultExercisesLoading,
-    selectedLanguage: settings.selectedLanguage
+    selectedLanguage: settings.selectedLanguage,
+    refreshData: refreshExercises // Export the refresh function to allow manual refreshes
   };
 }

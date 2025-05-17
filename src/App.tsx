@@ -9,7 +9,7 @@ import { UserSettingsProvider } from './contexts/UserSettingsContext';
 import { VocabularyProvider } from './contexts/VocabularyContext';
 import { DirectoryProvider } from './contexts/DirectoryContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
-import { RoadmapProvider } from './contexts/RoadmapContext'; // Use the provider from contexts folder
+import { RoadmapProvider } from './contexts/RoadmapContext'; // Keeping for now to avoid breaking existing code
 import { HelmetProvider } from 'react-helmet-async';
 import { ThemeProvider } from './contexts/ThemeContext';
 
@@ -18,8 +18,7 @@ import Index from "@/pages/Index";
 import HomePage from "@/pages/HomePage";
 import ExercisesPage from "@/pages/ExercisesPage";
 import VocabularyPage from "@/pages/VocabularyPage";
-import RoadmapPage from "@/pages/RoadmapPage";
-import CurriculumPage from "@/pages/CurriculumPage"; // Add import
+import CurriculumPage from "@/pages/CurriculumPage"; 
 import SettingsPage from "@/pages/SettingsPage";
 import SubscriptionPage from "@/pages/SubscriptionPage";
 import AdminPage from "@/pages/AdminPage";
@@ -69,8 +68,7 @@ function App() {
                                     <Route path="/dashboard" element={<Layout />}>
                                       <Route index element={<HomePage />} />
                                       <Route path="exercises" element={<ExercisesPage />} />
-                                      <Route path="roadmap" element={<RoadmapPage />} />
-                                      <Route path="curriculum" element={<CurriculumPage />} /> {/* Add route */}
+                                      <Route path="curriculum" element={<CurriculumPage />} />
                                       <Route path="vocabulary" element={<VocabularyPage />} />
                                       <Route path="settings" element={<SettingsPage />} />
                                       <Route path="subscription" element={<SubscriptionPage />} />

@@ -1,5 +1,4 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Exercise, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -20,7 +19,7 @@ import {
 import { fetchDefaultExercises, copyDefaultExerciseToUser, mapToExercise } from '@/services/defaultExerciseService';
 import { useLocalExercises } from '@/hooks/useLocalExercises';
 
-interface ExerciseContextProps {
+interface ExerciseContextType {
   exercises: Exercise[];
   selectedExercise: Exercise | null;
   defaultExercises: any[];
@@ -38,9 +37,10 @@ interface ExerciseContextProps {
   canCreateMore: boolean;
   canEdit: boolean;
   exerciseLimit: number;
+  refreshExercises: () => Promise<void>;
 }
 
-const ExerciseContext = createContext<ExerciseContextProps | undefined>(undefined);
+const ExerciseContext = createContext<ExerciseContextType | undefined>(undefined);
 
 export const useExerciseContext = () => {
   const context = useContext(ExerciseContext);
@@ -56,6 +56,7 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [loading, setLoading] = useState(true);
   const [defaultExercisesLoading, setDefaultExercisesLoading] = useState(true);
+  const [loadingExercises, setLoadingExercises] = useState(false);
   const { user } = useAuth();
   const localExercises = useLocalExercises();
   const { subscription } = useSubscription();
@@ -355,6 +356,23 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  /**
+   * Refresh exercises data - allows components to force a refresh
+   */
+  const refreshExercises = useCallback(async () => {
+    if (user) {
+      setLoadingExercises(true);
+      try {
+        const fetchedExercises = await fetchExercises(user.id);
+        setExercises(fetchedExercises);
+      } catch (error) {
+        console.error('Error refreshing exercises:', error);
+      } finally {
+        setLoadingExercises(false);
+      }
+    }
+  }, [user]);
+
   const value = {
     exercises,
     selectedExercise,
@@ -372,7 +390,8 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     defaultExercisesLoading,
     canCreateMore,
     canEdit,
-    exerciseLimit
+    exerciseLimit,
+    refreshExercises,
   };
 
   return (

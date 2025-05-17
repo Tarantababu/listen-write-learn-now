@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import CurriculumProgressSummary from '@/components/curriculum/CurriculumProgressSummary';
 import CurriculumTagGroup from '@/components/curriculum/CurriculumTagGroup';
@@ -12,7 +12,8 @@ const CurriculumPage: React.FC = () => {
     exercisesByTag, 
     stats, 
     loading, 
-    selectedLanguage 
+    selectedLanguage,
+    refreshData
   } = useCurriculumExercises();
   
   const handlePracticeExercise = async (id: string) => {
@@ -28,6 +29,9 @@ const CurriculumPage: React.FC = () => {
   const handleAddExercise = async (id: string) => {
     try {
       await copyDefaultExercise(id);
+      // After adding, refresh the data to update the exercise status
+      refreshData();
+      toast.success('Exercise added to your list');
     } catch (error) {
       console.error('Error copying exercise:', error);
       toast.error('Failed to add exercise to your list');
