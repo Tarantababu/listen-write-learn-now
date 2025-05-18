@@ -67,26 +67,6 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   
   const [progressValue, setProgressValue] = useState((exercise.completionCount / 3) * 100);
   
-  // Extension point: during dictation practice, prevent session timeout
-  const { extendSession } = useSession({ 
-    disableAutoRedirect: true // Never redirect during dictation practice
-  });
-  
-  // Automatically extend session every 5 minutes during active dictation
-  useEffect(() => {
-    if (!internalShowResults) {
-      // Extend session immediately when starting practice
-      extendSession();
-      
-      // Set up interval to keep extending session
-      const interval = setInterval(() => {
-        extendSession();
-      }, 5 * 60 * 1000); // Every 5 minutes
-      
-      return () => clearInterval(interval);
-    }
-  }, [extendSession, internalShowResults]);
-  
   // Sync with external showResults prop
   useEffect(() => {
     setInternalShowResults(showResults);
@@ -154,23 +134,6 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       };
     }
   }, [audioRef.current, autoPlay, internalShowResults, autoplayBlocked]);
-  
-  // Handle tab visibility changes to pause/resume audio
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden' && audioRef.current && isPlaying) {
-        // Pause audio when switching away from tab
-        audioRef.current.pause();
-        setIsPlaying(false);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isPlaying]);
   
   const handleSubmit = () => {
     if (!userInput.trim()) return;

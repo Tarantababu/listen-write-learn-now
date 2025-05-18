@@ -1,6 +1,7 @@
 
 import React from 'react';
 import {
+  AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
@@ -10,38 +11,25 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { PersistentDialog } from '@/components/ui/persistent-dialog';
 
 interface DeleteExerciseDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
-  exerciseId?: string;
 }
 
 const DeleteExerciseDialog: React.FC<DeleteExerciseDialogProps> = ({
   isOpen,
   onOpenChange,
-  onConfirm,
-  exerciseId
+  onConfirm
 }) => {
   const handleConfirm = () => {
     onConfirm();
     toast("Exercise archived");
   };
 
-  // Generate persistence key
-  const getPersistenceKey = () => {
-    return exerciseId ? `delete_exercise_${exerciseId}` : 'delete_exercise';
-  };
-
   return (
-    <PersistentDialog 
-      persistenceKey={getPersistenceKey()} 
-      initialOpen={isOpen}
-      onOpenChange={onOpenChange}
-      persistenceTtl={10 * 60 * 1000} // 10 minutes TTL for delete dialogues
-    >
+    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -54,7 +42,7 @@ const DeleteExerciseDialog: React.FC<DeleteExerciseDialogProps> = ({
           <AlertDialogAction onClick={handleConfirm} className="bg-destructive hover:bg-destructive/90">Archive</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
-    </PersistentDialog>
+    </AlertDialog>
   );
 };
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
-import { PersistentDialog } from '@/components/ui/persistent-dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Exercise } from '@/types';
 import DictationPractice from '@/components/DictationPractice';
@@ -58,11 +57,6 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   const {
     subscription
   } = useSubscription();
-
-  // Generate a unique persistence key based on exercise ID
-  const getPersistenceKey = () => {
-    return exercise ? `practice_modal_${exercise.id}` : 'practice_modal';
-  };
 
   // Update the local exercise state immediately when the prop changes or when exercises are updated 
   useEffect(() => {
@@ -192,12 +186,6 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
 
   // Safe handling of modal open state change
   const handleOpenChange = (open: boolean) => {
-    // Extend session if we're opening or in dictation practice
-    if (open || practiceStage === PracticeStage.DICTATION) {
-      // This ensures session doesn't expire while practicing
-      document.dispatchEvent(new Event('mousemove'));
-    }
-    
     // If closing, we just pass it through without resetting states
     // This ensures dictation results remain visible until the modal fully closes
     onOpenChange(open);
@@ -226,14 +214,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   // If the exercise doesn't match the selected language, don't render
   if (!updatedExercise || updatedExercise.language !== settings.selectedLanguage) return null;
   
-  return (
-    <PersistentDialog 
-      persistenceKey={getPersistenceKey()}
-      initialOpen={isOpen} 
-      onOpenChange={handleOpenChange}
-      persistenceTtl={90 * 60 * 1000} // 90 minutes TTL for practice sessions
-      syncAcrossTabs={true}
-    >
+  return <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl p-0 overflow-hidden max-h-[90vh]">
         <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
         
@@ -310,13 +291,10 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
           showResults={showResults} 
           onTryAgain={handleTryAgain} 
           hasReadingAnalysis={hasExistingAnalysis} 
-          onViewReadingAnalysis={hasExistingAnalysis ? handleViewReadingAnalysis : undefined}
-          keepResultsVisible={true} // Keep results visible when switching tabs
-          autoPlay={false} // Don't autoplay when coming back to tab (avoids confusion)
+          onViewReadingAnalysis={hasExistingAnalysis ? handleViewReadingAnalysis : undefined} 
         />}
       </DialogContent>
-    </PersistentDialog>
-  );
+    </Dialog>;
 };
 
 export default PracticeModal;

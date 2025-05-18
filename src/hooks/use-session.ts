@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -18,10 +17,6 @@ interface UseSessionOptions {
   disableAutoRedirect?: boolean; // Disable automatic redirect to login
 }
 
-/**
- * Hook for managing user session timeouts and activity tracking
- * Now with support for handling tab visibility changes and dialog focus
- */
 export function useSession(options: UseSessionOptions = {}) {
   const {
     timeout = DEFAULT_SESSION_TIMEOUT,
@@ -43,40 +38,6 @@ export function useSession(options: UseSessionOptions = {}) {
   const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const tabActiveRef = useRef<boolean>(true);
-  const dialogActiveRef = useRef<boolean>(false); // Track if a dialog is currently active
-  
-  // Check if any persistent dialog is active
-  useEffect(() => {
-    const checkForActiveDialogs = () => {
-      // Check if any localStorage keys indicate an active dialog
-      const keys = Object.keys(localStorage);
-      const dialogKeys = keys.filter(key => key.startsWith('persistent_state_dialog_'));
-      
-      for (const key of dialogKeys) {
-        try {
-          const item = JSON.parse(localStorage.getItem(key) || '{}');
-          // If we find an open dialog and it's not expired
-          if (item.value === true && item.expiry > Date.now()) {
-            return true;
-          }
-        } catch (e) {
-          console.error('Error parsing localStorage item:', e);
-        }
-      }
-      
-      return false;
-    };
-    
-    // Initial check
-    dialogActiveRef.current = checkForActiveDialogs();
-    
-    // Set up interval to periodically check for active dialogs
-    const checkInterval = setInterval(() => {
-      dialogActiveRef.current = checkForActiveDialogs();
-    }, 30000); // Check every 30 seconds
-    
-    return () => clearInterval(checkInterval);
-  }, []);
   
   // Reset timers and record new activity
   const recordActivity = useCallback(() => {
@@ -97,20 +58,11 @@ export function useSession(options: UseSessionOptions = {}) {
       
       // Set new timeouts
       const newWarningTimeout = setTimeout(() => {
-        // Don't show warning if a dialog is active
-        if (!dialogActiveRef.current) {
-          setShowWarning(true);
-        }
+        setShowWarning(true);
       }, timeout - warningTime);
       
       const newSessionTimeout = setTimeout(() => {
-        // Don't timeout if a dialog is active
-        if (!dialogActiveRef.current) {
-          handleSessionTimeout();
-        } else {
-          // If dialog is active, extend the session instead
-          recordActivity();
-        }
+        handleSessionTimeout();
       }, timeout);
       
       warningTimeoutRef.current = newWarningTimeout;
@@ -120,12 +72,6 @@ export function useSession(options: UseSessionOptions = {}) {
 
   // Handle session timeout
   const handleSessionTimeout = useCallback(() => {
-    // If a dialog is active, don't timeout the session
-    if (dialogActiveRef.current) {
-      recordActivity();
-      return;
-    }
-    
     setSessionActive(false);
     
     if (onTimeout) {
@@ -143,7 +89,7 @@ export function useSession(options: UseSessionOptions = {}) {
       signOut();
       navigate('/login', { replace: true });
     }
-  }, [onTimeout, navigate, signOut, disableAutoRedirect, recordActivity]);
+  }, [onTimeout, navigate, signOut, disableAutoRedirect]);
 
   // Pause timers when tab is not visible
   const handleVisibilityChange = useCallback(() => {
@@ -243,57 +189,15 @@ export function useSession(options: UseSessionOptions = {}) {
     
     // Set initial timeouts
     const initialWarningTimeout = setTimeout(() => {
-      // Only show warning if no dialog is active
-      if (!dialogActiveRef.current) {
-        setShowWarning(true);
-      }
+      setShowWarning(true);
     }, timeout - warningTime);
     
     const initialSessionTimeout = setTimeout(() => {
-      // Only timeout if no dialog is active
-      if (!dialogActiveRef.current) {
-        handleSessionTimeout();
-      } else {
-        // If dialog is active, extend the session instead
-        recordActivity();
-      }
+      handleSessionTimeout();
     }, timeout);
     
     warningTimeoutRef.current = initialWarningTimeout;
     sessionTimeoutRef.current = initialSessionTimeout;
-    
-    // Check for storage events that might indicate dialog state changes
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key && e.key.startsWith('persistent_state_dialog_')) {
-        try {
-          if (e.newValue) {
-            const item = JSON.parse(e.newValue);
-            // If a dialog was opened
-            if (item.value === true) {
-              dialogActiveRef.current = true;
-              // Extend session when dialog opens
-              recordActivity();
-            } else {
-              // Need to check all dialogs
-              const keys = Object.keys(localStorage);
-              const dialogKeys = keys.filter(key => key.startsWith('persistent_state_dialog_'));
-              dialogActiveRef.current = dialogKeys.some(key => {
-                try {
-                  const item = JSON.parse(localStorage.getItem(key) || '{}');
-                  return item.value === true && item.expiry > Date.now();
-                } catch {
-                  return false;
-                }
-              });
-            }
-          }
-        } catch (error) {
-          console.error('Error handling storage event:', error);
-        }
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
     
     // Cleanup
     return () => {
@@ -302,7 +206,6 @@ export function useSession(options: UseSessionOptions = {}) {
       });
       
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('storage', handleStorageChange);
       
       if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
       if (sessionTimeoutRef.current) clearTimeout(sessionTimeoutRef.current);
