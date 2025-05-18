@@ -1,12 +1,12 @@
 
 import React from 'react';
 import {
-  Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { PersistentDialog } from '@/components/ui/persistent-dialog';
 import ExerciseForm from '@/components/ExerciseForm';
 import { Exercise } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -28,13 +28,22 @@ const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
 }) => {
   const { canCreateMore, canEdit, exerciseLimit } = useExerciseContext();
 
+  // Generate a unique persistence key
+  const getPersistenceKey = () => {
+    return initialValues ? `exercise_form_${initialValues.id}` : 'exercise_form_new';
+  };
+
   // Check if user can perform the action based on subscription
   const canPerformAction = mode === 'create' ? canCreateMore : canEdit;
 
   if (!canPerformAction) {
     // Show upgrade prompt instead of form
     return (
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <PersistentDialog 
+        persistenceKey={`upgrade_${mode}`}
+        initialOpen={isOpen} 
+        onOpenChange={onOpenChange}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
@@ -52,12 +61,17 @@ const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
               : "Premium subscribers can edit their exercises anytime. Upgrade now to unlock this feature."}
           />
         </DialogContent>
-      </Dialog>
+      </PersistentDialog>
     );
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <PersistentDialog 
+      persistenceKey={getPersistenceKey()}
+      initialOpen={isOpen} 
+      onOpenChange={onOpenChange}
+      persistenceTtl={30 * 60 * 1000} // 30 minutes TTL for forms
+    >
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
@@ -80,7 +94,7 @@ const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
           }} 
         />
       </DialogContent>
-    </Dialog>
+    </PersistentDialog>
   );
 };
 

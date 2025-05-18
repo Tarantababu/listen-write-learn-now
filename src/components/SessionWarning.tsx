@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { useSession } from '@/hooks/use-session';
@@ -21,12 +21,51 @@ const SessionWarning: React.FC<SessionWarningProps> = ({
     warningTime,
     disableAutoRedirect // Pass the disableAutoRedirect option to useSession
   });
+
+  // Special handling for dialogs - check if any persistent dialog is open
+  const [hasActiveDialog, setHasActiveDialog] = React.useState(false);
+  
+  useEffect(() => {
+    // Check for active dialogs periodically
+    const checkForActiveDialogs = () => {
+      try {
+        // Look for any dialog state in localStorage
+        const keys = Object.keys(localStorage);
+        const dialogKeys = keys.filter(key => 
+          key.startsWith('persistent_state_dialog_') || 
+          key.startsWith('persistent_state_practice_modal_')
+        );
+        
+        for (const key of dialogKeys) {
+          const item = JSON.parse(localStorage.getItem(key) || '{}');
+          // If dialog is open and not expired
+          if (item.value === true && item.expiry > Date.now()) {
+            setHasActiveDialog(true);
+            return;
+          }
+        }
+        
+        setHasActiveDialog(false);
+      } catch (e) {
+        console.error('Error checking for active dialogs:', e);
+      }
+    };
+    
+    // Check immediately and then every 15 seconds
+    checkForActiveDialogs();
+    const interval = setInterval(checkForActiveDialogs, 15000);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  // If active dialog, don't show warning
+  const shouldShowWarning = showWarning && !hasActiveDialog;
   
   // Don't render anything if warning not shown
-  if (!showWarning) return null;
+  if (!shouldShowWarning) return null;
   
   return (
-    <AlertDialog open={showWarning} onOpenChange={(open) => {
+    <AlertDialog open={shouldShowWarning} onOpenChange={(open) => {
       if (!open) extendSession();
     }}>
       <AlertDialogContent>
