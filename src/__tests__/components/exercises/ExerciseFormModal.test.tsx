@@ -10,6 +10,22 @@ vi.mock('@/contexts/ExerciseContext', () => ({
     canCreateMore: true,
     canEdit: true,
     exerciseLimit: 10,
+    // Adding all the required properties from ExerciseContextType
+    exercises: [],
+    selectedExercise: null,
+    defaultExercises: [],
+    addExercise: vi.fn().mockResolvedValue({}),
+    updateExercise: vi.fn().mockResolvedValue({}),
+    deleteExercise: vi.fn().mockResolvedValue({}),
+    selectExercise: vi.fn(),
+    markProgress: vi.fn().mockResolvedValue({}),
+    filterExercisesByLanguage: vi.fn().mockReturnValue([]),
+    moveExerciseToDirectory: vi.fn().mockResolvedValue({}),
+    copyDefaultExercise: vi.fn().mockResolvedValue({}),
+    hasReadingAnalysis: vi.fn().mockResolvedValue(false),
+    loading: false,
+    defaultExercisesLoading: false,
+    refreshExercises: vi.fn().mockResolvedValue({}),
   }),
 }));
 
@@ -54,6 +70,22 @@ describe('ExerciseFormModal', () => {
       canCreateMore: false,
       canEdit: true,
       exerciseLimit: 10,
+      // Adding all the required properties from ExerciseContextType
+      exercises: [],
+      selectedExercise: null,
+      defaultExercises: [],
+      addExercise: vi.fn().mockResolvedValue({}),
+      updateExercise: vi.fn().mockResolvedValue({}),
+      deleteExercise: vi.fn().mockResolvedValue({}),
+      selectExercise: vi.fn(),
+      markProgress: vi.fn().mockResolvedValue({}),
+      filterExercisesByLanguage: vi.fn().mockReturnValue([]),
+      moveExerciseToDirectory: vi.fn().mockResolvedValue({}),
+      copyDefaultExercise: vi.fn().mockResolvedValue({}),
+      hasReadingAnalysis: vi.fn().mockResolvedValue(false),
+      loading: false,
+      defaultExercisesLoading: false,
+      refreshExercises: vi.fn().mockResolvedValue({}),
     });
 
     render(<ExerciseFormModal {...defaultProps} />);
