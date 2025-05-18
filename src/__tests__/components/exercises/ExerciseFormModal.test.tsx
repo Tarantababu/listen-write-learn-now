@@ -2,10 +2,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '../../utils/test-utils';
 import ExerciseFormModal from '@/components/exercises/ExerciseFormModal';
+import { useExerciseContext } from '@/contexts/ExerciseContext';
 
 // Mock dependencies
 vi.mock('@/contexts/ExerciseContext', () => ({
-  useExerciseContext: () => ({
+  useExerciseContext: vi.fn().mockReturnValue({
     canCreateMore: true,
     canEdit: true,
     exerciseLimit: 10,
