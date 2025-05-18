@@ -49,7 +49,7 @@ describe('ExerciseFormModal', () => {
 
   it('shows upgrade prompt when user cannot create more exercises', async () => {
     // Override the mock for this test
-    vi.mocked(useExerciseContext as any).mockReturnValue({
+    vi.mocked(useExerciseContext).mockReturnValue({
       canCreateMore: false,
       canEdit: true,
       exerciseLimit: 10,

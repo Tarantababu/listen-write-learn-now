@@ -1,4 +1,3 @@
-
 export type Language = 
   | 'english' 
   | 'german' 
@@ -29,7 +28,8 @@ export interface Exercise {
   completionCount: number;
   isCompleted: boolean;
   archived?: boolean;
-  default_exercise_id?: string;  // Add this line to include the default exercise ID
+  default_exercise_id?: string;  // For compatibility with older code
+  userId?: string;  // Added userId field for tests
 }
 
 export interface Directory {
@@ -144,4 +144,3 @@ export interface ExerciseContextType {
   copyDefaultExercise: (id: string) => Promise<void>;
   refreshExercises: () => Promise<void>;
 }
-

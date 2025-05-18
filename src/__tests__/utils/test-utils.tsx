@@ -4,6 +4,7 @@ import { render, RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi } from 'vitest';
+import '@testing-library/jest-dom'; // Import jest-dom to ensure matchers are available
 
 // Mock providers for tests
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {

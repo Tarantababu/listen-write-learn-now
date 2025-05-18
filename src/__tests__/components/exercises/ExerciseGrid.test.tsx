@@ -13,7 +13,7 @@ describe('ExerciseGrid', () => {
       language: 'english',
       tags: ['test', 'example'],
       createdAt: new Date('2023-01-01T00:00:00Z'),
-      user_id: 'user-123',
+      userId: 'user-123', // Changed from user_id to userId
       completionCount: 0,
       isCompleted: false,
       directoryId: null
@@ -25,7 +25,7 @@ describe('ExerciseGrid', () => {
       language: 'english',
       tags: ['test', 'sample'],
       createdAt: new Date('2023-01-02T00:00:00Z'),
-      user_id: 'user-123',
+      userId: 'user-123', // Changed from user_id to userId
       completionCount: 0,
       isCompleted: false,
       directoryId: null

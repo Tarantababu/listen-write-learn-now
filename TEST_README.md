@@ -30,6 +30,14 @@ npx vitest --coverage
   - `components/` - Component tests
   - `lib/` - Library function tests
 
+## Testing Matchers
+
+This project uses `@testing-library/jest-dom` for DOM element matchers like:
+- `toBeInTheDocument()`
+- `toHaveTextContent(text)`
+- `toBeVisible()`
+- `toBeDisabled()`
+
 ## Writing Tests
 
 ### Component Tests
