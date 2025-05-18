@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -33,6 +34,16 @@ import CookiePolicy from "@/pages/CookiePolicy";
 import SessionWarning from "@/components/SessionWarning";
 
 const queryClient = new QueryClient();
+
+// Global session warning component that applies to the entire application
+const GlobalSessionWarning = () => {
+  return (
+    <SessionWarning 
+      timeout={45 * 60 * 1000} 
+      warningTime={3 * 60 * 1000} 
+    />
+  );
+};
 
 function App() {
   return (
@@ -84,13 +95,8 @@ function App() {
                                 <Route path="*" element={<NotFound />} />
                               </Routes>
                               
-                              {/* Global session warning for public pages - Layout already contains one for protected routes */}
-                              <Route path="/" element={
-                                <SessionWarning 
-                                  timeout={45 * 60 * 1000} 
-                                  warningTime={3 * 60 * 1000} 
-                                />
-                              } />
+                              {/* Global session warning that doesn't use Route outside Routes */}
+                              <GlobalSessionWarning />
                             </div>
                           </TooltipProvider>
                         </VocabularyProvider>
