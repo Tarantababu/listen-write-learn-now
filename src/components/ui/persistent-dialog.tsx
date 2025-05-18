@@ -1,9 +1,10 @@
 
 import * as React from "react";
-import { Dialog, DialogContent, DialogProps } from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { usePersistentState, useSyncedTabs } from "@/hooks/use-persistent-state";
 
-export interface PersistentDialogProps extends Omit<DialogProps, "open" | "onOpenChange"> {
+export interface PersistentDialogProps extends Omit<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>, "open" | "onOpenChange"> {
   /**
    * Unique identifier for this dialog across tabs
    */
