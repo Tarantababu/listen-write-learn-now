@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -31,6 +30,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import CookiePolicy from "@/pages/CookiePolicy";
+import SessionWarning from "@/components/SessionWarning";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +83,14 @@ function App() {
                                 
                                 <Route path="*" element={<NotFound />} />
                               </Routes>
+                              
+                              {/* Global session warning for public pages - Layout already contains one for protected routes */}
+                              <Route path="/" element={
+                                <SessionWarning 
+                                  timeout={45 * 60 * 1000} 
+                                  warningTime={3 * 60 * 1000} 
+                                />
+                              } />
                             </div>
                           </TooltipProvider>
                         </VocabularyProvider>

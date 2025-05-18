@@ -8,16 +8,18 @@ import { Clock } from 'lucide-react';
 interface SessionWarningProps {
   timeout?: number; // Session timeout in milliseconds
   warningTime?: number; // Show warning this many ms before timeout
+  disableAutoRedirect?: boolean; // Disable automatic redirect to login on session timeout
 }
 
 const SessionWarning: React.FC<SessionWarningProps> = ({ 
   timeout = 30 * 60 * 1000, // 30 minutes default
-  warningTime = 2 * 60 * 1000 // 2 minutes warning default
+  warningTime = 2 * 60 * 1000, // 2 minutes warning default
+  disableAutoRedirect = false // Default to allow redirects after timeout
 }) => {
   const { showWarning, timeLeftFormatted, extendSession } = useSession({
     timeout,
     warningTime,
-    disableAutoRedirect: false // We allow redirects after timeout
+    disableAutoRedirect // Pass the disableAutoRedirect option to useSession
   });
   
   // Don't render anything if warning not shown

@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DictationMicrophone from '@/components/DictationMicrophone';
 import DictationTips from '@/components/DictationTips';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { useSession } from '@/hooks/use-session';
 
 interface DictationPracticeProps {
   exercise: Exercise;
