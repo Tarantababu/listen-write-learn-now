@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { Logo } from './Logo';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,10 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const menuItems = [
-  { name: 'Method', href: '#method' },
-  { name: 'How It Works', href: '#how-it-works' },
-  { name: 'Why It Works', href: '#why-it-works' },
-  { name: 'Tools', href: '#tools' },
+  { name: 'Method', href: '/#method' },
+  { name: 'How It Works', href: '/#how-it-works' },
+  { name: 'Why It Works', href: '/#why-it-works' },
+  { name: 'Tools', href: '/#tools' },
   { name: 'Blog', href: '/blog' },
 ];
 
@@ -19,6 +19,8 @@ export function LandingHeader() {
   const [menuState, setMenuState] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const isMobile = useIsMobile();
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -33,6 +35,25 @@ export function LandingHeader() {
     if (menuState) {
       setMenuState(false);
     }
+  };
+
+  // Handle anchor links or redirects to the home page with anchor
+  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    // If we're on the home page and it's an anchor link, use smooth scrolling
+    if (isHomePage && href.startsWith('/#')) {
+      e.preventDefault();
+      const id = href.substring(2); // Remove the /# part
+      const element = document.getElementById(id);
+      
+      if (element) {
+        window.scrollTo({
+          top: element.offsetTop - 100,
+          behavior: 'smooth'
+        });
+        handleMenuItemClick();
+      }
+    }
+    // If not on homepage, the link will navigate to homepage with the anchor
   };
   
   return (
@@ -66,15 +87,7 @@ export function LandingHeader() {
               <ul className="flex gap-8 text-sm">
                 {menuItems.map((item, index) => (
                   <li key={index}>
-                    {item.href.startsWith('#') ? (
-                      <a
-                        href={item.href}
-                        className="text-muted-foreground hover:text-accent-foreground block duration-150"
-                        onClick={handleMenuItemClick}
-                      >
-                        <span>{item.name}</span>
-                      </a>
-                    ) : (
+                    {item.href === '/blog' ? (
                       <Link
                         to={item.href}
                         className="text-muted-foreground hover:text-accent-foreground block duration-150"
@@ -82,6 +95,14 @@ export function LandingHeader() {
                       >
                         <span>{item.name}</span>
                       </Link>
+                    ) : (
+                      <a
+                        href={item.href}
+                        className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                        onClick={(e) => handleAnchorClick(e, item.href)}
+                      >
+                        <span>{item.name}</span>
+                      </a>
                     )}
                   </li>
                 ))}
@@ -93,15 +114,7 @@ export function LandingHeader() {
                 <ul className="space-y-6 text-base">
                   {menuItems.map((item, index) => (
                     <li key={index}>
-                      {item.href.startsWith('#') ? (
-                        <a
-                          href={item.href}
-                          className="text-muted-foreground hover:text-accent-foreground block duration-150"
-                          onClick={handleMenuItemClick}
-                        >
-                          <span>{item.name}</span>
-                        </a>
-                      ) : (
+                      {item.href === '/blog' ? (
                         <Link
                           to={item.href}
                           className="text-muted-foreground hover:text-accent-foreground block duration-150"
@@ -109,6 +122,14 @@ export function LandingHeader() {
                         >
                           <span>{item.name}</span>
                         </Link>
+                      ) : (
+                        <a
+                          href={item.href}
+                          className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                          onClick={(e) => handleAnchorClick(e, item.href)}
+                        >
+                          <span>{item.name}</span>
+                        </a>
                       )}
                     </li>
                   ))}

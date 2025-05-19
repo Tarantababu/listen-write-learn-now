@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAdmin } from '@/hooks/use-admin';
 import { VisitorStats } from '@/components/admin/VisitorStats';
 import { AdminStatsDashboard } from '@/components/admin/AdminStatsDashboard';
@@ -14,7 +14,6 @@ import DefaultExercisesList from '@/components/admin/DefaultExercisesList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AdminMessagesForm from '@/components/admin/AdminMessagesForm';
 import AdminMessagesList from '@/components/admin/AdminMessagesList';
-import BlogPostEditor from '@/components/blog/admin/BlogPostEditor';
 import { useNavigate as useRouterNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { BlogPost } from '@/types';
@@ -24,7 +23,26 @@ const AdminPage: React.FC = () => {
   const { isAdmin, loading } = useAdmin();
   const navigate = useNavigate();
   const routerNavigate = useRouterNavigate();
-  const [activeTab, setActiveTab] = useState('default-exercises');
+  const location = useLocation();
+  
+  // Get tab from URL query parameter
+  const searchParams = new URLSearchParams(location.search);
+  const tabParam = searchParams.get('tab');
+  
+  // Set initial active tab based on URL parameter or default to 'default-exercises'
+  const [activeTab, setActiveTab] = useState(tabParam || 'default-exercises');
+  
+  // Update URL when active tab changes
+  useEffect(() => {
+    const newSearchParams = new URLSearchParams(location.search);
+    if (activeTab) {
+      newSearchParams.set('tab', activeTab);
+      navigate({
+        pathname: location.pathname,
+        search: newSearchParams.toString(),
+      }, { replace: true });
+    }
+  }, [activeTab, navigate, location.pathname, location.search]);
   
   // Query to fetch blog posts for the admin panel
   const { data: blogPosts, isLoading: loadingPosts } = useQuery({

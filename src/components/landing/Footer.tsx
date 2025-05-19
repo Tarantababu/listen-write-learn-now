@@ -1,9 +1,20 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
 
 export function Footer() {
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+
+  // Handle anchor links
+  const getHref = (anchor: string) => {
+    if (isHomePage) {
+      return anchor; // Just use #method, #how-it-works, etc.
+    }
+    return `/${anchor}`; // If not on homepage, use /#method, /#how-it-works, etc.
+  };
+
   return (
     <footer className="border-t bg-muted/40">
       <div className="container px-4 py-12 md:px-6">
@@ -18,22 +29,22 @@ export function Footer() {
             <h3 className="text-sm font-medium">Platform</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#method" className="text-muted-foreground hover:text-foreground transition-colors">
+                <a href={getHref("#method")} className="text-muted-foreground hover:text-foreground transition-colors">
                   Method
                 </a>
               </li>
               <li>
-                <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
+                <a href={getHref("#how-it-works")} className="text-muted-foreground hover:text-foreground transition-colors">
                   How It Works
                 </a>
               </li>
               <li>
-                <a href="#tools" className="text-muted-foreground hover:text-foreground transition-colors">
+                <a href={getHref("#tools")} className="text-muted-foreground hover:text-foreground transition-colors">
                   Tools
                 </a>
               </li>
               <li>
-                <a href="#why-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
+                <a href={getHref("#why-it-works")} className="text-muted-foreground hover:text-foreground transition-colors">
                   Why It Works
                 </a>
               </li>

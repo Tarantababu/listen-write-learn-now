@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { BlogPost } from '@/types';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface BlogPostEditorProps {
@@ -190,7 +190,8 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
       if (onSave) {
         onSave();
       } else {
-        navigate('/dashboard/admin/blog');
+        // Redirect to the admin page with blog tab selected
+        navigate('/dashboard/admin?tab=blog');
       }
 
     } catch (error: any) {
@@ -216,6 +217,18 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center mb-6">
+        <Button 
+          variant="outline"
+          size="sm"
+          className="mr-2"
+          onClick={() => navigate('/dashboard/admin?tab=blog')}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Blog Posts
+        </Button>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="title">Title</Label>
         <Input
