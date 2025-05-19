@@ -29,7 +29,7 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
   const [featuredImageUrl, setFeaturedImageUrl] = useState(post?.featured_image_url || '');
   const [metaTitle, setMetaTitle] = useState(post?.meta_title || '');
   const [metaDescription, setMetaDescription] = useState(post?.meta_description || '');
-  const [status, setStatus] = useState(post?.status || 'draft');
+  const [status, setStatus] = useState<'draft' | 'published'>(post?.status as ('draft' | 'published') || 'draft');
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [loading, setLoading] = useState(!!id);
@@ -60,7 +60,9 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
         setFeaturedImageUrl(data.featured_image_url || '');
         setMetaTitle(data.meta_title || '');
         setMetaDescription(data.meta_description || '');
-        setStatus(data.status);
+        // Type check to ensure status is either 'draft' or 'published'
+        const postStatus = data.status === 'published' ? 'published' : 'draft';
+        setStatus(postStatus);
       }
     } catch (error) {
       console.error('Error fetching post:', error);
