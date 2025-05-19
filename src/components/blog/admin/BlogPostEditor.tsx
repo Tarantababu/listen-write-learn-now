@@ -1,0 +1,271 @@
+
+import React, { useState, useEffect } from 'react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
+import { BlogPost } from '@/types';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+
+interface BlogPostEditorProps {
+  post?: BlogPost;
+  onSave?: () => void;
+}
+
+const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
+  const navigate = useNavigate();
+  const [title, setTitle] = useState(post?.title || '');
+  const [slug, setSlug] = useState(post?.slug || '');
+  const [content, setContent] = useState(post?.content || '');
+  const [excerpt, setExcerpt] = useState(post?.excerpt || '');
+  const [featuredImageUrl, setFeaturedImageUrl] = useState(post?.featured_image_url || '');
+  const [metaTitle, setMetaTitle] = useState(post?.meta_title || '');
+  const [metaDescription, setMetaDescription] = useState(post?.meta_description || '');
+  const [status, setStatus] = useState(post?.status || 'draft');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  // Generate slug from title
+  useEffect(() => {
+    if (!post && title && !slug) {
+      const generatedSlug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      setSlug(generatedSlug);
+    }
+  }, [title, post, slug]);
+
+  const modules = {
+    toolbar: [
+      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      ['blockquote', 'code-block'],
+      ['link', 'image'],
+      ['clean']
+    ],
+  };
+  
+  const formats = [
+    'header',
+    'bold', 'italic', 'underline', 'strike',
+    'list', 'bullet',
+    'blockquote', 'code-block',
+    'link', 'image'
+  ];
+
+  const savePost = async (publishStatus: 'draft' | 'published') => {
+    try {
+      if (publishStatus === 'published') {
+        setIsPublishing(true);
+      } else {
+        setIsSaving(true);
+      }
+
+      if (!title) {
+        toast({
+          title: "Error",
+          description: "Title is required",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!slug) {
+        toast({
+          title: "Error",
+          description: "Slug is required",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const currentTime = new Date().toISOString();
+      const postData: any = {
+        title,
+        slug,
+        content,
+        excerpt,
+        featured_image_url: featuredImageUrl,
+        status: publishStatus,
+        meta_title: metaTitle || title,
+        meta_description: metaDescription || excerpt,
+        updated_at: currentTime,
+      };
+
+      // If we're publishing for the first time, set the published_at date
+      if (publishStatus === 'published' && (!post || post.status !== 'published')) {
+        postData.published_at = currentTime;
+      }
+
+      let result;
+
+      if (post) {
+        // Update existing post
+        result = await supabase
+          .from('blog_posts')
+          .update(postData)
+          .eq('id', post.id);
+      } else {
+        // Create new post
+        result = await supabase
+          .from('blog_posts')
+          .insert([postData])
+          .select();
+      }
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      toast({
+        title: post ? "Post updated" : "Post created",
+        description: publishStatus === 'published' 
+          ? "Your post has been published" 
+          : "Your post has been saved as a draft"
+      });
+
+      if (onSave) {
+        onSave();
+      } else {
+        navigate('/dashboard/admin/blog');
+      }
+
+    } catch (error) {
+      console.error('Error saving post:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save post",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+      setIsPublishing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor="title">Title</Label>
+        <Input
+          id="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Post title"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="slug">Slug</Label>
+        <Input
+          id="slug"
+          value={slug}
+          onChange={(e) => setSlug(e.target.value)}
+          placeholder="post-url-slug"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="content">Content</Label>
+        <div className="min-h-[400px] border rounded-md">
+          <ReactQuill
+            theme="snow"
+            value={content}
+            onChange={setContent}
+            modules={modules}
+            formats={formats}
+            placeholder="Write your post content here..."
+            className="h-[350px] mb-12"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="excerpt">Excerpt</Label>
+        <Textarea
+          id="excerpt"
+          value={excerpt}
+          onChange={(e) => setExcerpt(e.target.value)}
+          placeholder="Brief summary of the post"
+          rows={3}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="featuredImage">Featured Image URL</Label>
+        <Input
+          id="featuredImage"
+          value={featuredImageUrl}
+          onChange={(e) => setFeaturedImageUrl(e.target.value)}
+          placeholder="https://example.com/image.jpg"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="metaTitle">SEO Title</Label>
+        <Input
+          id="metaTitle"
+          value={metaTitle}
+          onChange={(e) => setMetaTitle(e.target.value)}
+          placeholder="SEO title (optional)"
+        />
+        <p className="text-sm text-muted-foreground">
+          Leave blank to use the post title
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="metaDescription">SEO Description</Label>
+        <Textarea
+          id="metaDescription"
+          value={metaDescription}
+          onChange={(e) => setMetaDescription(e.target.value)}
+          placeholder="SEO description (optional)"
+          rows={2}
+        />
+        <p className="text-sm text-muted-foreground">
+          Leave blank to use the post excerpt
+        </p>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          onClick={() => savePost('draft')}
+          disabled={isSaving || isPublishing}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            'Save Draft'
+          )}
+        </Button>
+        <Button
+          onClick={() => savePost('published')}
+          disabled={isSaving || isPublishing}
+        >
+          {isPublishing ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Publishing...
+            </>
+          ) : (
+            'Publish'
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+export default BlogPostEditor;
