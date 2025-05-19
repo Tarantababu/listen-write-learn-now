@@ -37,6 +37,11 @@ export function Footer() {
                   Why It Works
                 </a>
               </li>
+              <li>
+                <Link to="/blog" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Blog
+                </Link>
+              </li>
             </ul>
           </div>
           

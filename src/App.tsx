@@ -32,6 +32,11 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import CookiePolicy from "@/pages/CookiePolicy";
 import SessionWarning from "@/components/SessionWarning";
+import BlogPostEditor from "@/components/blog/admin/BlogPostEditor";
+
+// Create Blog-related pages
+import BlogPage from "@/pages/BlogPage"; 
+import BlogPostPage from "@/pages/BlogPostPage";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +77,10 @@ function App() {
                                 <Route path="/terms-of-service" element={<TermsOfService />} />
                                 <Route path="/cookie-policy" element={<CookiePolicy />} />
                                 
+                                {/* Public Blog Routes */}
+                                <Route path="/blog" element={<BlogPage />} />
+                                <Route path="/blog/:slug" element={<BlogPostPage />} />
+                                
                                 {/* Protected Routes - Regular User Access */}
                                 <Route element={<ProtectedRoute />}>
                                   <Route path="/dashboard" element={<Layout />}>
@@ -89,6 +98,8 @@ function App() {
                                 <Route element={<ProtectedRoute requireAdmin={true} />}>
                                   <Route path="/dashboard" element={<Layout />}>
                                     <Route path="admin" element={<AdminPage />} />
+                                    <Route path="admin/blog/new" element={<BlogPostEditor />} />
+                                    <Route path="admin/blog/edit/:id" element={<BlogPostEditor />} />
                                   </Route>
                                 </Route>
                                 

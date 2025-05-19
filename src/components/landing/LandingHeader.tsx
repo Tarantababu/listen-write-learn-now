@@ -12,6 +12,7 @@ const menuItems = [
   { name: 'How It Works', href: '#how-it-works' },
   { name: 'Why It Works', href: '#why-it-works' },
   { name: 'Tools', href: '#tools' },
+  { name: 'Blog', href: '/blog' },
 ];
 
 export function LandingHeader() {
@@ -65,13 +66,23 @@ export function LandingHeader() {
               <ul className="flex gap-8 text-sm">
                 {menuItems.map((item, index) => (
                   <li key={index}>
-                    <a
-                      href={item.href}
-                      className="text-muted-foreground hover:text-accent-foreground block duration-150"
-                      onClick={handleMenuItemClick}
-                    >
-                      <span>{item.name}</span>
-                    </a>
+                    {item.href.startsWith('#') ? (
+                      <a
+                        href={item.href}
+                        className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                        onClick={handleMenuItemClick}
+                      >
+                        <span>{item.name}</span>
+                      </a>
+                    ) : (
+                      <Link
+                        to={item.href}
+                        className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                        onClick={handleMenuItemClick}
+                      >
+                        <span>{item.name}</span>
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -82,13 +93,23 @@ export function LandingHeader() {
                 <ul className="space-y-6 text-base">
                   {menuItems.map((item, index) => (
                     <li key={index}>
-                      <a
-                        href={item.href}
-                        className="text-muted-foreground hover:text-accent-foreground block duration-150"
-                        onClick={handleMenuItemClick}
-                      >
-                        <span>{item.name}</span>
-                      </a>
+                      {item.href.startsWith('#') ? (
+                        <a
+                          href={item.href}
+                          className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                          onClick={handleMenuItemClick}
+                        >
+                          <span>{item.name}</span>
+                        </a>
+                      ) : (
+                        <Link
+                          to={item.href}
+                          className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                          onClick={handleMenuItemClick}
+                        >
+                          <span>{item.name}</span>
+                        </Link>
+                      )}
                     </li>
                   ))}
                 </ul>
