@@ -123,6 +123,23 @@ export interface RoadmapNodeProgress {
   updatedAt: Date;
 }
 
+// Add BlogPost type for the blog functionality
+export interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt?: string;
+  featured_image_url?: string;
+  status: 'draft' | 'published';
+  author_id: string;
+  created_at: string;
+  updated_at: string;
+  published_at?: string;
+  meta_title?: string;
+  meta_description?: string;
+}
+
 // Add Json type for compatibility with Supabase
 export type Json =
   | string
@@ -144,4 +161,3 @@ export interface ExerciseContextType {
   copyDefaultExercise: (id: string) => Promise<void>;
   refreshExercises: () => Promise<void>;
 }
-
