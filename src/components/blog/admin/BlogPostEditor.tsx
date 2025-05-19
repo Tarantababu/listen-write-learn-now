@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { BlogPost } from '@/types';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface BlogPostEditorProps {
   post?: BlogPost;
@@ -19,6 +20,8 @@ interface BlogPostEditorProps {
 
 const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const { user } = useAuth(); // Get the current user
   const [title, setTitle] = useState(post?.title || '');
   const [slug, setSlug] = useState(post?.slug || '');
   const [content, setContent] = useState(post?.content || '');
@@ -29,6 +32,47 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
   const [status, setStatus] = useState(post?.status || 'draft');
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [loading, setLoading] = useState(!!id);
+
+  // Fetch post data if editing an existing post
+  useEffect(() => {
+    if (id) {
+      fetchPostData();
+    }
+  }, [id]);
+
+  const fetchPostData = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setTitle(data.title);
+        setSlug(data.slug);
+        setContent(data.content);
+        setExcerpt(data.excerpt || '');
+        setFeaturedImageUrl(data.featured_image_url || '');
+        setMetaTitle(data.meta_title || '');
+        setMetaDescription(data.meta_description || '');
+        setStatus(data.status);
+      }
+    } catch (error) {
+      console.error('Error fetching post:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch post",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Generate slug from title
   useEffect(() => {
@@ -86,6 +130,15 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
         return;
       }
 
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to save a post",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const currentTime = new Date().toISOString();
       const postData: any = {
         title,
@@ -97,6 +150,7 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
         meta_title: metaTitle || title,
         meta_description: metaDescription || excerpt,
         updated_at: currentTime,
+        author_id: user.id, // Set the author_id to the current user's ID
       };
 
       // If we're publishing for the first time, set the published_at date
@@ -106,12 +160,12 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
 
       let result;
 
-      if (post) {
+      if (id) {
         // Update existing post
         result = await supabase
           .from('blog_posts')
           .update(postData)
-          .eq('id', post.id);
+          .eq('id', id);
       } else {
         // Create new post
         result = await supabase
@@ -125,7 +179,7 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
       }
 
       toast({
-        title: post ? "Post updated" : "Post created",
+        title: id ? "Post updated" : "Post created",
         description: publishStatus === 'published' 
           ? "Your post has been published" 
           : "Your post has been saved as a draft"
@@ -137,11 +191,11 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
         navigate('/dashboard/admin/blog');
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving post:', error);
       toast({
         title: "Error",
-        description: "Failed to save post",
+        description: error.message || "Failed to save post",
         variant: "destructive"
       });
     } finally {
@@ -149,6 +203,14 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
       setIsPublishing(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
