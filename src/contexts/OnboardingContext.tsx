@@ -2,167 +2,123 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
+import { OnboardingStep, OnboardingProgress, OnboardingContextType } from '@/types/onboarding';
 import { toast } from 'sonner';
-
-export interface OnboardingStep {
-  id: string;
-  title: string;
-  description: string;
-  target_element: string;
-  position: 'top' | 'right' | 'bottom' | 'left' | 'center';
-  order_index: number;
-  is_active: boolean;
-  feature_area: string;
-}
-
-export interface OnboardingProgress {
-  id: string;
-  user_id: string;
-  completed_onboarding: boolean;
-  last_step_seen: number;
-  dismissed_until: string | null;
-}
-
-interface OnboardingContextType {
-  isOnboardingActive: boolean;
-  currentStepIndex: number;
-  steps: OnboardingStep[];
-  progress: OnboardingProgress | null;
-  isLoading: boolean;
-  startOnboarding: () => void;
-  stopOnboarding: () => void;
-  nextStep: () => void;
-  previousStep: () => void;
-  goToStep: (index: number) => void;
-  dismissOnboarding: (days?: number) => Promise<void>;
-  completeOnboarding: () => Promise<void>;
-  restartOnboarding: () => Promise<void>;
-  currentStep: OnboardingStep | null;
-}
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
-export const useOnboarding = () => {
-  const context = useContext(OnboardingContext);
-  if (!context) {
-    throw new Error('useOnboarding must be used within an OnboardingProvider');
-  }
-  return context;
-};
-
-export const OnboardingProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
+export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [isOnboardingActive, setIsOnboardingActive] = useState<boolean>(false);
   const [steps, setSteps] = useState<OnboardingStep[]>([]);
-  const [progress, setProgress] = useState<OnboardingProgress | null>(null);
-  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [isActive, setIsActive] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [onboardingProgress, setOnboardingProgress] = useState<OnboardingProgress | null>(null);
 
-  // Get current step
-  const currentStep = steps.length > 0 && currentStepIndex < steps.length 
-    ? steps[currentStepIndex] 
-    : null;
-
-  // Load onboarding steps and user progress
+  // Fetch onboarding steps and user progress
   useEffect(() => {
     if (!user) {
       setIsLoading(false);
       return;
     }
 
-    const loadOnboarding = async () => {
+    const fetchOnboardingData = async () => {
       setIsLoading(true);
       try {
-        // Use SQL query directly to bypass type checking since the onboarding_steps table
-        // might not be in the TypeScript definitions yet
-        const { data: stepsData, error: stepsError } = await supabase.rpc('get_onboarding_steps');
+        // Fetch onboarding steps
+        const { data: stepsData, error: stepsError } = await supabase
+          .from('onboarding_steps')
+          .select('*')
+          .order('order_index', { ascending: true })
+          .eq('is_active', true);
 
         if (stepsError) throw stepsError;
-        setSteps(stepsData as OnboardingStep[] || []);
+        
+        if (stepsData) {
+          setSteps(stepsData as OnboardingStep[]);
+        }
 
-        // Fetch user progress using RPC function
-        const { data: progressData, error: progressError } = await supabase.rpc('get_user_onboarding_progress', {
-          user_id_param: user.id
-        });
+        // Fetch user onboarding progress
+        const { data: progressData, error: progressError } = await supabase
+          .from('user_onboarding_progress')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
 
         if (progressError && progressError.code !== 'PGRST116') {
+          // PGRST116 is "row not found" error, which is expected if user has no progress yet
           throw progressError;
         }
 
         if (progressData) {
-          setProgress(progressData as OnboardingProgress);
-          setCurrentStepIndex(progressData.last_step_seen);
-
-          // Check if we should show onboarding
-          const shouldShowOnboarding = !progressData.completed_onboarding && 
-            (!progressData.dismissed_until || new Date(progressData.dismissed_until) < new Date());
+          setOnboardingProgress(progressData as OnboardingProgress);
+          setCurrentStepIndex(progressData.last_step_seen || 0);
           
-          // Auto-start for first-time users who haven't completed onboarding
-          if (shouldShowOnboarding && progressData.last_step_seen === 0) {
-            setIsOnboardingActive(true);
-          }
+          // Check if onboarding should be active
+          const isCompleted = progressData.completed_onboarding;
+          const isDismissed = progressData.dismissed_until && 
+                              new Date(progressData.dismissed_until) > new Date();
+          
+          // Activate if not completed and not dismissed
+          setIsActive(!isCompleted && !isDismissed);
         } else {
-          // Create a new progress record if none exists
-          const { data: newProgress, error: createError } = await supabase.rpc('create_onboarding_progress', {
-            user_id_param: user.id
-          });
+          // Create initial progress record for new users
+          const { data: newProgress, error: createError } = await supabase
+            .from('user_onboarding_progress')
+            .insert([
+              { user_id: user.id, completed_onboarding: false, last_step_seen: 0 }
+            ])
+            .select()
+            .single();
 
           if (createError) throw createError;
-          setProgress(newProgress as OnboardingProgress);
+          
+          if (newProgress) {
+            setOnboardingProgress(newProgress as OnboardingProgress);
+            setIsActive(true); // Activate onboarding for new users
+          }
         }
       } catch (error) {
-        console.error('Error loading onboarding:', error);
-        toast.error('Failed to load onboarding experience');
+        console.error('Error fetching onboarding data:', error);
+        toast.error('Failed to load onboarding data');
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadOnboarding();
+    fetchOnboardingData();
   }, [user]);
 
-  // Update user's progress in the database
+  // Update user progress when navigating between steps
   const updateProgress = async (updates: Partial<OnboardingProgress>) => {
-    if (!user || !progress) return;
+    if (!user || !onboardingProgress) return;
 
     try {
-      const { error } = await supabase.rpc('update_onboarding_progress', {
-        user_id_param: user.id,
-        updates_param: updates
-      });
+      const { error } = await supabase
+        .from('user_onboarding_progress')
+        .update(updates)
+        .eq('user_id', user.id);
 
       if (error) throw error;
-
-      setProgress((prev) => prev ? { ...prev, ...updates } : null);
+      
+      // Update local state
+      setOnboardingProgress(prev => prev ? { ...prev, ...updates } : null);
     } catch (error) {
       console.error('Error updating onboarding progress:', error);
       toast.error('Failed to update onboarding progress');
     }
   };
 
-  // Start the onboarding tour
-  const startOnboarding = () => {
-    setIsOnboardingActive(true);
-  };
-
-  // Stop the onboarding tour without saving
-  const stopOnboarding = () => {
-    setIsOnboardingActive(false);
-  };
-
-  // Navigate to the next step
+  // Navigation functions
   const nextStep = () => {
     if (currentStepIndex < steps.length - 1) {
       const newIndex = currentStepIndex + 1;
       setCurrentStepIndex(newIndex);
       updateProgress({ last_step_seen: newIndex });
-    } else {
-      completeOnboarding();
     }
   };
 
-  // Navigate to the previous step
-  const previousStep = () => {
+  const prevStep = () => {
     if (currentStepIndex > 0) {
       const newIndex = currentStepIndex - 1;
       setCurrentStepIndex(newIndex);
@@ -170,7 +126,6 @@ export const OnboardingProvider: React.FC<{children: React.ReactNode}> = ({ chil
     }
   };
 
-  // Go to a specific step
   const goToStep = (index: number) => {
     if (index >= 0 && index < steps.length) {
       setCurrentStepIndex(index);
@@ -178,48 +133,47 @@ export const OnboardingProvider: React.FC<{children: React.ReactNode}> = ({ chil
     }
   };
 
-  // Dismiss onboarding for a number of days
-  const dismissOnboarding = async (days = 7) => {
-    const dismissedUntil = new Date();
-    dismissedUntil.setDate(dismissedUntil.getDate() + days);
-    
-    await updateProgress({ dismissed_until: dismissedUntil.toISOString() });
-    setIsOnboardingActive(false);
+  const startOnboarding = () => {
+    setIsActive(true);
+    setCurrentStepIndex(0);
+    updateProgress({ 
+      last_step_seen: 0, 
+      completed_onboarding: false,
+      dismissed_until: null 
+    });
   };
 
-  // Mark onboarding as complete
-  const completeOnboarding = async () => {
-    await updateProgress({ completed_onboarding: true });
-    setIsOnboardingActive(false);
+  const dismissOnboarding = (days = 7) => {
+    const dismissDate = new Date();
+    dismissDate.setDate(dismissDate.getDate() + days);
+    
+    setIsActive(false);
+    updateProgress({ dismissed_until: dismissDate.toISOString() });
+  };
+
+  const completeOnboarding = () => {
+    setIsActive(false);
+    updateProgress({ completed_onboarding: true });
     toast.success('Onboarding completed! You can restart it anytime from Settings.');
   };
 
-  // Restart the onboarding from the beginning
-  const restartOnboarding = async () => {
-    await updateProgress({ 
-      completed_onboarding: false,
-      last_step_seen: 0,
-      dismissed_until: null
-    });
-    setCurrentStepIndex(0);
-    setIsOnboardingActive(true);
+  const restartOnboarding = () => {
+    startOnboarding();
+    toast.success('Onboarding restarted!');
   };
 
   const value = {
-    isOnboardingActive,
-    currentStepIndex,
     steps,
-    progress,
+    currentStepIndex,
+    isActive,
     isLoading,
     startOnboarding,
-    stopOnboarding,
-    nextStep,
-    previousStep,
-    goToStep,
     dismissOnboarding,
     completeOnboarding,
+    nextStep,
+    prevStep,
+    goToStep,
     restartOnboarding,
-    currentStep
   };
 
   return (
@@ -227,4 +181,12 @@ export const OnboardingProvider: React.FC<{children: React.ReactNode}> = ({ chil
       {children}
     </OnboardingContext.Provider>
   );
+};
+
+export const useOnboarding = () => {
+  const context = useContext(OnboardingContext);
+  if (context === undefined) {
+    throw new Error('useOnboarding must be used within an OnboardingProvider');
+  }
+  return context;
 };

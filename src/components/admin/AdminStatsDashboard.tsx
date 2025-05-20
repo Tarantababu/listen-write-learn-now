@@ -7,7 +7,7 @@ import StatsCard from '@/components/StatsCard';
 import { UserStats } from './UserStats';
 import { useAdminStats } from '@/hooks/use-admin-stats';
 
-// Changed from export function to default export
+// Export as a default function for compatibility with imports in AdminPage.tsx
 export default function AdminStatsDashboard() {
   const { 
     stats, 

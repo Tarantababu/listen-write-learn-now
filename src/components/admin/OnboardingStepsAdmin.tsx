@@ -1,346 +1,319 @@
 
 import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pencil, Plus, Save, Trash, X } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { OnboardingStep } from '@/types/onboarding';
 import { toast } from 'sonner';
-import { OnboardingStep } from '@/contexts/OnboardingContext';
-import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, Plus, Settings } from 'lucide-react';
 
-export const OnboardingStepsAdmin: React.FC = () => {
+export function OnboardingStepsAdmin() {
   const [steps, setSteps] = useState<OnboardingStep[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [formState, setFormState] = useState<Partial<OnboardingStep>>({
-    title: '',
-    description: '',
-    target_element: '',
-    position: 'bottom',
-    order_index: 0,
-    is_active: true,
-    feature_area: 'general'
-  });
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [editingStep, setEditingStep] = useState<OnboardingStep | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch onboarding steps
-  const fetchSteps = async () => {
-    setLoading(true);
+  // Load onboarding steps
+  const loadSteps = async () => {
     try {
-      // Use our custom RPC function instead of direct table access
-      const { data, error } = await supabase.rpc('get_onboarding_steps');
-
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('onboarding_steps')
+        .select('*')
+        .order('order_index', { ascending: true });
+      
       if (error) throw error;
       
-      // Parse the returned JSON
-      let stepsData: OnboardingStep[] = Array.isArray(data) ? data : [];
-      if (stepsData.length === 0 && data) {
-        try {
-          // If data is a JSON string, parse it
-          const parsedData = JSON.parse(data);
-          stepsData = Array.isArray(parsedData) ? parsedData : [];
-        } catch (e) {
-          console.error('Error parsing onboarding steps:', e);
-        }
+      if (data) {
+        setSteps(data as OnboardingStep[]);
       }
-      
-      setSteps(stepsData);
     } catch (error) {
-      console.error('Error fetching onboarding steps:', error);
+      console.error('Error loading onboarding steps:', error);
       toast.error('Failed to load onboarding steps');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
+  // Initial load
   useEffect(() => {
-    fetchSteps();
+    loadSteps();
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormState((prev) => ({ ...prev, [name]: value }));
+  // Save edited step
+  const saveStep = async () => {
+    if (!editingStep) return;
+    
+    try {
+      setIsLoading(true);
+      
+      if (editingStep.id) {
+        // Update existing step
+        const { error } = await supabase
+          .from('onboarding_steps')
+          .update({
+            title: editingStep.title,
+            description: editingStep.description,
+            target_element: editingStep.target_element,
+            position: editingStep.position,
+            order_index: editingStep.order_index,
+            feature_area: editingStep.feature_area,
+            is_active: editingStep.is_active
+          })
+          .eq('id', editingStep.id);
+        
+        if (error) throw error;
+        toast.success('Step updated successfully');
+      } else {
+        // Create new step
+        const { error } = await supabase
+          .from('onboarding_steps')
+          .insert([{
+            title: editingStep.title,
+            description: editingStep.description,
+            target_element: editingStep.target_element,
+            position: editingStep.position,
+            order_index: editingStep.order_index,
+            feature_area: editingStep.feature_area,
+            is_active: editingStep.is_active
+          }]);
+        
+        if (error) throw error;
+        toast.success('Step created successfully');
+      }
+      
+      // Reload steps and reset state
+      await loadSteps();
+      setEditingStep(null);
+      setIsCreating(false);
+    } catch (error) {
+      console.error('Error saving step:', error);
+      toast.error('Failed to save onboarding step');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSelectChange = (name: string, value: string) => {
-    setFormState((prev) => ({ ...prev, [name]: value }));
+  // Toggle step active status
+  const toggleStepActive = async (stepId: string, isActive: boolean) => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase
+        .from('onboarding_steps')
+        .update({ is_active: isActive })
+        .eq('id', stepId);
+      
+      if (error) throw error;
+      
+      toast.success(`Step ${isActive ? 'activated' : 'deactivated'} successfully`);
+      loadSteps();
+    } catch (error) {
+      console.error('Error toggling step active status:', error);
+      toast.error('Failed to update step status');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSwitchChange = (name: string, checked: boolean) => {
-    setFormState((prev) => ({ ...prev, [name]: checked }));
-  };
-
-  const resetForm = () => {
-    setFormState({
+  // Start creating a new step
+  const startCreatingStep = () => {
+    const highestOrderIndex = steps.length > 0 
+      ? Math.max(...steps.map(s => s.order_index)) 
+      : -1;
+      
+    setEditingStep({
+      id: '', // Empty ID for new step
       title: '',
       description: '',
       target_element: '',
       position: 'bottom',
-      order_index: steps.length,
-      is_active: true,
-      feature_area: 'general'
+      order_index: highestOrderIndex + 1,
+      feature_area: '',
+      is_active: true
     });
-    setIsEditing(false);
-    setCurrentId(null);
+    setIsCreating(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      const payload = {
-        ...formState,
-        // Ensure numeric values are actually numbers
-        order_index: Number(formState.order_index)
-      };
-      
-      if (isEditing && currentId) {
-        // Use serverless function or stored procedure for update
-        const { error } = await supabase.rpc('update_onboarding_step', {
-          step_id: currentId,
-          step_data: payload
-        });
-          
-        if (error) throw error;
-        toast.success('Onboarding step updated successfully');
-      } else {
-        // Use serverless function or stored procedure for insert
-        const { error } = await supabase.rpc('create_onboarding_step', {
-          step_data: payload
-        });
-          
-        if (error) throw error;
-        toast.success('Onboarding step created successfully');
-      }
-      
-      fetchSteps();
-      setIsFormOpen(false);
-      resetForm();
-    } catch (error) {
-      console.error('Error saving onboarding step:', error);
-      toast.error('Failed to save onboarding step');
-    }
+  // Start editing an existing step
+  const startEditingStep = (step: OnboardingStep) => {
+    setEditingStep({...step});
+    setIsCreating(false);
   };
 
-  const handleEdit = (step: OnboardingStep) => {
-    setFormState(step);
-    setIsEditing(true);
-    setCurrentId(step.id);
-    setIsFormOpen(true);
-  };
-
-  const handleToggleActive = async (id: string, currently_active: boolean) => {
-    try {
-      // Use serverless function or stored procedure for toggle
-      const { error } = await supabase.rpc('toggle_onboarding_step_active', {
-        step_id: id,
-        is_active: !currently_active
-      });
-        
-      if (error) throw error;
-      fetchSteps();
-      toast.success(`Step ${currently_active ? 'disabled' : 'enabled'}`);
-    } catch (error) {
-      console.error('Error toggling step status:', error);
-      toast.error('Failed to update step status');
-    }
+  // Cancel editing or creating
+  const cancelEdit = () => {
+    setEditingStep(null);
+    setIsCreating(false);
   };
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <Settings className="mr-2 h-5 w-5 text-primary" />
-            <CardTitle>Onboarding Management</CardTitle>
-          </div>
-          <Button variant="outline" onClick={() => { resetForm(); setIsFormOpen(true); }}>
-            <Plus className="mr-2 h-4 w-4" /> Add Step
-          </Button>
-        </div>
+        <CardTitle>Onboarding Steps Management</CardTitle>
         <CardDescription>
-          Configure the onboarding experience for new users
+          Configure the steps that guide users through the platform
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <div className="flex justify-center p-8">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <div className="rounded-md border">
+        {!editingStep ? (
+          <>
+            <Button 
+              onClick={startCreatingStep} 
+              className="mb-4"
+              disabled={isLoading}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Step
+            </Button>
+            
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Order</TableHead>
                   <TableHead>Title</TableHead>
-                  <TableHead>Target Element</TableHead>
-                  <TableHead>Position</TableHead>
-                  <TableHead>Area</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Feature Area</TableHead>
+                  <TableHead className="text-center">Active</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {steps.map((step) => (
                   <TableRow key={step.id}>
                     <TableCell>{step.order_index}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{step.title}</TableCell>
-                    <TableCell className="font-mono text-xs">{step.target_element}</TableCell>
-                    <TableCell>{step.position}</TableCell>
+                    <TableCell>{step.title}</TableCell>
                     <TableCell>{step.feature_area}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       <Switch 
-                        checked={step.is_active}
-                        onCheckedChange={() => handleToggleActive(step.id, step.is_active)}
+                        checked={step.is_active} 
+                        onCheckedChange={(checked) => toggleStepActive(step.id, checked)}
                       />
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(step)}>
-                        Edit
+                    <TableCell>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => startEditingStep(step)}
+                      >
+                        <Pencil className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
                 {steps.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No onboarding steps found. Add your first step to get started.
+                    <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                      No onboarding steps defined yet
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
+          </>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="title">Title</Label>
+              <Input 
+                id="title" 
+                value={editingStep.title} 
+                onChange={(e) => setEditingStep({...editingStep, title: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea 
+                id="description" 
+                value={editingStep.description} 
+                onChange={(e) => setEditingStep({...editingStep, description: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="target_element">Target Element (CSS Selector)</Label>
+              <Input 
+                id="target_element" 
+                value={editingStep.target_element} 
+                onChange={(e) => setEditingStep({...editingStep, target_element: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="position">Position</Label>
+              <Select 
+                value={editingStep.position} 
+                onValueChange={(value) => setEditingStep({...editingStep, position: value})}
+              >
+                <SelectTrigger id="position">
+                  <SelectValue placeholder="Select position" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="top">Top</SelectItem>
+                  <SelectItem value="bottom">Bottom</SelectItem>
+                  <SelectItem value="left">Left</SelectItem>
+                  <SelectItem value="right">Right</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="order_index">Display Order</Label>
+              <Input 
+                id="order_index" 
+                type="number" 
+                value={editingStep.order_index.toString()} 
+                onChange={(e) => setEditingStep({
+                  ...editingStep, 
+                  order_index: parseInt(e.target.value) || 0
+                })}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="feature_area">Feature Area</Label>
+              <Input 
+                id="feature_area" 
+                value={editingStep.feature_area} 
+                onChange={(e) => setEditingStep({...editingStep, feature_area: e.target.value})}
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Switch 
+                id="is_active"
+                checked={editingStep.is_active} 
+                onCheckedChange={(checked) => setEditingStep({...editingStep, is_active: checked})}
+              />
+              <Label htmlFor="is_active">Active</Label>
+            </div>
           </div>
         )}
-        
-        {/* Form Dialog */}
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{isEditing ? 'Edit Onboarding Step' : 'Add Onboarding Step'}</DialogTitle>
-              <DialogDescription>
-                Configure the details for this onboarding step
-              </DialogDescription>
-            </DialogHeader>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  name="title"
-                  value={formState.title || ''}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={formState.description || ''}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="target_element">Target Element (CSS selector)</Label>
-                  <Input
-                    id="target_element"
-                    name="target_element"
-                    value={formState.target_element || ''}
-                    onChange={handleInputChange}
-                    placeholder="body or CSS selector"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="position">Tooltip Position</Label>
-                  <Select 
-                    value={formState.position} 
-                    onValueChange={(value) => handleSelectChange('position', value as any)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select position" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="top">Top</SelectItem>
-                      <SelectItem value="right">Right</SelectItem>
-                      <SelectItem value="bottom">Bottom</SelectItem>
-                      <SelectItem value="left">Left</SelectItem>
-                      <SelectItem value="center">Center</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="order_index">Order</Label>
-                  <Input
-                    id="order_index"
-                    name="order_index"
-                    type="number"
-                    value={formState.order_index || 0}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="feature_area">Feature Area</Label>
-                  <Input
-                    id="feature_area"
-                    name="feature_area"
-                    value={formState.feature_area || ''}
-                    onChange={handleInputChange}
-                    placeholder="e.g., dashboard, navigation"
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="is_active"
-                  checked={formState.is_active} 
-                  onCheckedChange={(checked) => handleSwitchChange('is_active', checked)}
-                />
-                <Label htmlFor="is_active">Active</Label>
-              </div>
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {isEditing ? 'Update Step' : 'Create Step'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
       </CardContent>
+      {editingStep && (
+        <CardFooter className="flex justify-between">
+          <Button 
+            variant="outline" 
+            onClick={cancelEdit}
+            disabled={isLoading}
+          >
+            <X className="h-4 w-4 mr-2" />
+            Cancel
+          </Button>
+          <Button 
+            onClick={saveStep}
+            disabled={isLoading}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {isCreating ? 'Create' : 'Update'} Step
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
-};
+}

@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminStatsDashboard from '@/components/admin/AdminStatsDashboard';
 import DefaultExercisesList from '@/components/admin/DefaultExercisesList';
-import FeedbackList from '@/components/admin/FeedbackList';
-import UserRoleManagement from '@/components/admin/UserRoleManagement';
+import { FeedbackList } from '@/components/admin/FeedbackList';
+import { UserRoleManagement } from '@/components/admin/UserRoleManagement';
 import AdminMessagesList from '@/components/admin/AdminMessagesList';
 import AdminMessagesForm from '@/components/admin/AdminMessagesForm';
 import { OnboardingStepsAdmin } from '@/components/admin/OnboardingStepsAdmin';
