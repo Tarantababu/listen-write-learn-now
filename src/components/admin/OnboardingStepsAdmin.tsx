@@ -41,16 +41,24 @@ export const OnboardingStepsAdmin: React.FC = () => {
   const fetchSteps = async () => {
     setLoading(true);
     try {
-      // Use a direct SQL query instead of the ORM to fetch onboarding steps
-      const { data, error } = await supabase
-        .from('onboarding_steps')
-        .select('*')
-        .order('order_index', { ascending: true });
+      // Use our custom RPC function instead of direct table access
+      const { data, error } = await supabase.rpc('get_onboarding_steps');
 
       if (error) throw error;
       
-      // Cast the data to the OnboardingStep type
-      setSteps(data as OnboardingStep[]);
+      // Parse the returned JSON
+      let stepsData: OnboardingStep[] = Array.isArray(data) ? data : [];
+      if (stepsData.length === 0 && data) {
+        try {
+          // If data is a JSON string, parse it
+          const parsedData = JSON.parse(data);
+          stepsData = Array.isArray(parsedData) ? parsedData : [];
+        } catch (e) {
+          console.error('Error parsing onboarding steps:', e);
+        }
+      }
+      
+      setSteps(stepsData);
     } catch (error) {
       console.error('Error fetching onboarding steps:', error);
       toast.error('Failed to load onboarding steps');
@@ -94,20 +102,26 @@ export const OnboardingStepsAdmin: React.FC = () => {
     e.preventDefault();
     
     try {
+      const payload = {
+        ...formState,
+        // Ensure numeric values are actually numbers
+        order_index: Number(formState.order_index)
+      };
+      
       if (isEditing && currentId) {
-        // Use a direct SQL query instead of the ORM to update the step
-        const { error } = await supabase
-          .from('onboarding_steps')
-          .update(formState)
-          .eq('id', currentId);
+        // Use serverless function or stored procedure for update
+        const { error } = await supabase.rpc('update_onboarding_step', {
+          step_id: currentId,
+          step_data: payload
+        });
           
         if (error) throw error;
         toast.success('Onboarding step updated successfully');
       } else {
-        // Use a direct SQL query instead of the ORM to insert the step
-        const { error } = await supabase
-          .from('onboarding_steps')
-          .insert([formState]);
+        // Use serverless function or stored procedure for insert
+        const { error } = await supabase.rpc('create_onboarding_step', {
+          step_data: payload
+        });
           
         if (error) throw error;
         toast.success('Onboarding step created successfully');
@@ -131,11 +145,11 @@ export const OnboardingStepsAdmin: React.FC = () => {
 
   const handleToggleActive = async (id: string, currently_active: boolean) => {
     try {
-      // Use a direct SQL query instead of the ORM to toggle active status
-      const { error } = await supabase
-        .from('onboarding_steps')
-        .update({ is_active: !currently_active })
-        .eq('id', id);
+      // Use serverless function or stored procedure for toggle
+      const { error } = await supabase.rpc('toggle_onboarding_step_active', {
+        step_id: id,
+        is_active: !currently_active
+      });
         
       if (error) throw error;
       fetchSteps();
@@ -264,7 +278,7 @@ export const OnboardingStepsAdmin: React.FC = () => {
                   <Label htmlFor="position">Tooltip Position</Label>
                   <Select 
                     value={formState.position} 
-                    onValueChange={(value) => handleSelectChange('position', value)}
+                    onValueChange={(value) => handleSelectChange('position', value as any)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select position" />

@@ -9,6 +9,7 @@ import { Portal } from '@/components/ui/portal';
 interface SpotlightProps {
   targetElement: string;
   position: 'top' | 'right' | 'bottom' | 'left' | 'center';
+  children: React.ReactNode; // Added children prop to the interface
 }
 
 const OnboardingSpotlight: React.FC<SpotlightProps> = ({ targetElement, position, children }) => {

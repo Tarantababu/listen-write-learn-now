@@ -7,7 +7,8 @@ import StatsCard from '@/components/StatsCard';
 import { UserStats } from './UserStats';
 import { useAdminStats } from '@/hooks/use-admin-stats';
 
-export function AdminStatsDashboard() {
+// Changed from export function to default export
+export default function AdminStatsDashboard() {
   const { 
     stats, 
     isLoading, 

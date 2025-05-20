@@ -73,21 +73,17 @@ export const OnboardingProvider: React.FC<{children: React.ReactNode}> = ({ chil
     const loadOnboarding = async () => {
       setIsLoading(true);
       try {
-        // Fetch active onboarding steps using direct SQL query
-        const { data: stepsData, error: stepsError } = await supabase
-          .from('onboarding_steps')
-          .select('*')
-          .order('order_index', { ascending: true });
+        // Use SQL query directly to bypass type checking since the onboarding_steps table
+        // might not be in the TypeScript definitions yet
+        const { data: stepsData, error: stepsError } = await supabase.rpc('get_onboarding_steps');
 
         if (stepsError) throw stepsError;
         setSteps(stepsData as OnboardingStep[] || []);
 
-        // Fetch user progress using direct SQL query
-        const { data: progressData, error: progressError } = await supabase
-          .from('user_onboarding_progress')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        // Fetch user progress using RPC function
+        const { data: progressData, error: progressError } = await supabase.rpc('get_user_onboarding_progress', {
+          user_id_param: user.id
+        });
 
         if (progressError && progressError.code !== 'PGRST116') {
           throw progressError;
@@ -107,11 +103,9 @@ export const OnboardingProvider: React.FC<{children: React.ReactNode}> = ({ chil
           }
         } else {
           // Create a new progress record if none exists
-          const { data: newProgress, error: createError } = await supabase
-            .from('user_onboarding_progress')
-            .insert([{ user_id: user.id }])
-            .select()
-            .single();
+          const { data: newProgress, error: createError } = await supabase.rpc('create_onboarding_progress', {
+            user_id_param: user.id
+          });
 
           if (createError) throw createError;
           setProgress(newProgress as OnboardingProgress);
@@ -132,10 +126,10 @@ export const OnboardingProvider: React.FC<{children: React.ReactNode}> = ({ chil
     if (!user || !progress) return;
 
     try {
-      const { error } = await supabase
-        .from('user_onboarding_progress')
-        .update(updates)
-        .eq('user_id', user.id);
+      const { error } = await supabase.rpc('update_onboarding_progress', {
+        user_id_param: user.id,
+        updates_param: updates
+      });
 
       if (error) throw error;
 
