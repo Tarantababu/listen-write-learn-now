@@ -11,17 +11,23 @@ interface CurriculumTagGroupProps {
   exercises: Exercise[];
   onPracticeExercise: (id: string) => void;
   onAddExercise: (id: string) => void;
-  defaultOpen?: boolean; // Added new prop to control initial state
+  defaultOpen?: boolean;
 }
 
 const CurriculumTagGroup: React.FC<CurriculumTagGroupProps> = ({
   tag,
-  exercises,
+  exercises = [], // Provide a default empty array to prevent undefined errors
   onPracticeExercise,
   onAddExercise,
-  defaultOpen = false, // Changed default to false - this is the key change
+  defaultOpen = false,
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  
+  // Ensure exercises is always an array to prevent "length" errors
+  const safeExercises = Array.isArray(exercises) ? exercises : [];
+  
+  // Count completed exercises safely
+  const completedCount = safeExercises.filter(ex => ex?.status === 'completed').length;
 
   return (
     <div className="border rounded-md">
@@ -34,18 +40,18 @@ const CurriculumTagGroup: React.FC<CurriculumTagGroupProps> = ({
           {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
           <h3 className="font-medium">{tag}</h3>
           <span className="ml-2 text-sm text-muted-foreground">
-            ({exercises.length} exercises)
+            ({safeExercises.length} exercises)
           </span>
         </div>
         <div className="text-sm text-muted-foreground">
-          {exercises.filter(ex => ex.status === 'completed').length} completed
+          {completedCount} completed
         </div>
       </div>
 
       {/* Exercises List - Shown when expanded */}
-      {isOpen && (
+      {isOpen && safeExercises.length > 0 && (
         <div className="divide-y">
-          {exercises.map((exercise) => (
+          {safeExercises.map((exercise) => (
             <div
               key={exercise.id}
               className="flex items-center justify-between px-4 py-3 hover:bg-muted/30"
