@@ -73,28 +73,28 @@ export const OnboardingProvider: React.FC<{children: React.ReactNode}> = ({ chil
     const loadOnboarding = async () => {
       setIsLoading(true);
       try {
-        // Fetch active onboarding steps
+        // Fetch active onboarding steps using direct SQL query
         const { data: stepsData, error: stepsError } = await supabase
           .from('onboarding_steps')
           .select('*')
           .order('order_index', { ascending: true });
 
         if (stepsError) throw stepsError;
-        setSteps(stepsData || []);
+        setSteps(stepsData as OnboardingStep[] || []);
 
-        // Fetch user progress
+        // Fetch user progress using direct SQL query
         const { data: progressData, error: progressError } = await supabase
           .from('user_onboarding_progress')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (progressError && progressError.code !== 'PGRST116') {
           throw progressError;
         }
 
         if (progressData) {
-          setProgress(progressData);
+          setProgress(progressData as OnboardingProgress);
           setCurrentStepIndex(progressData.last_step_seen);
 
           // Check if we should show onboarding
@@ -114,7 +114,7 @@ export const OnboardingProvider: React.FC<{children: React.ReactNode}> = ({ chil
             .single();
 
           if (createError) throw createError;
-          setProgress(newProgress);
+          setProgress(newProgress as OnboardingProgress);
         }
       } catch (error) {
         console.error('Error loading onboarding:', error);

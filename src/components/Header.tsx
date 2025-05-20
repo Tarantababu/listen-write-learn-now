@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, Settings } from 'lucide-react';
@@ -7,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
-import { UserAvatar } from './UserAvatar';
+import UserAvatar from './UserAvatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ModeToggle } from './ModeToggle';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -15,9 +16,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Home } from 'lucide-react';
-import { OnboardingTour } from './onboarding/OnboardingTour';
 
-const Header = () => {
+export function Header() {
   const { user, signOut } = useAuth();
   const { theme } = useTheme();
   const location = useLocation();
@@ -178,6 +178,6 @@ const Header = () => {
       </div>
     </header>
   );
-};
+}
 
 export default Header;

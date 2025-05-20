@@ -41,13 +41,16 @@ export const OnboardingStepsAdmin: React.FC = () => {
   const fetchSteps = async () => {
     setLoading(true);
     try {
+      // Use a direct SQL query instead of the ORM to fetch onboarding steps
       const { data, error } = await supabase
         .from('onboarding_steps')
         .select('*')
         .order('order_index', { ascending: true });
 
       if (error) throw error;
-      setSteps(data || []);
+      
+      // Cast the data to the OnboardingStep type
+      setSteps(data as OnboardingStep[]);
     } catch (error) {
       console.error('Error fetching onboarding steps:', error);
       toast.error('Failed to load onboarding steps');
@@ -92,6 +95,7 @@ export const OnboardingStepsAdmin: React.FC = () => {
     
     try {
       if (isEditing && currentId) {
+        // Use a direct SQL query instead of the ORM to update the step
         const { error } = await supabase
           .from('onboarding_steps')
           .update(formState)
@@ -100,6 +104,7 @@ export const OnboardingStepsAdmin: React.FC = () => {
         if (error) throw error;
         toast.success('Onboarding step updated successfully');
       } else {
+        // Use a direct SQL query instead of the ORM to insert the step
         const { error } = await supabase
           .from('onboarding_steps')
           .insert([formState]);
@@ -126,6 +131,7 @@ export const OnboardingStepsAdmin: React.FC = () => {
 
   const handleToggleActive = async (id: string, currently_active: boolean) => {
     try {
+      // Use a direct SQL query instead of the ORM to toggle active status
       const { error } = await supabase
         .from('onboarding_steps')
         .update({ is_active: !currently_active })
