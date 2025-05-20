@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import CurriculumProgressSummary from '@/components/curriculum/CurriculumProgressSummary';
@@ -51,10 +52,7 @@ const CurriculumPage: React.FC = () => {
     );
   }
   
-  // Ensure exercisesByTag is an object and not undefined
-  const safeExercisesByTag = exercisesByTag || {};
-  
-  if (Object.keys(safeExercisesByTag).length === 0) {
+  if (Object.keys(exercisesByTag).length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-16">
@@ -71,29 +69,23 @@ const CurriculumPage: React.FC = () => {
       <div className="flex flex-col gap-6">
         {/* Progress Summary */}
         <CurriculumProgressSummary
-          totalExercises={stats?.total || 0}
-          completedExercises={stats?.completed || 0}
-          inProgressExercises={stats?.inProgress || 0}
+          totalExercises={stats.total}
+          completedExercises={stats.completed}
+          inProgressExercises={stats.inProgress}
           language={selectedLanguage}
         />
         
         {/* Tag Groups */}
         <div className="space-y-4">
-          {Object.entries(safeExercisesByTag).map(([tag, exercises]) => {
-            // Ensure exercises is an array
-            const safeExercises = Array.isArray(exercises) ? exercises : [];
-            
-            return (
-              <CurriculumTagGroup
-                key={tag}
-                tag={tag}
-                exercises={safeExercises}
-                defaultOpen={false} // This will make all accordions closed by default
-                onPracticeExercise={handlePracticeExercise}
-                onAddExercise={handleAddExercise}
-              />
-            );
-          })}
+          {Object.entries(exercisesByTag).map(([tag, exercises]) => (
+            <CurriculumTagGroup
+              key={tag}
+              tag={tag}
+              exercises={exercises}
+              onPracticeExercise={handlePracticeExercise}
+              onAddExercise={handleAddExercise}
+            />
+          ))}
         </div>
       </div>
     </div>
