@@ -1,86 +1,95 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Check, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Exercise } from '@/types/exercise';
+import React from 'react';
+import { useExerciseContext } from '@/contexts/ExerciseContext';
+import CurriculumProgressSummary from '@/components/curriculum/CurriculumProgressSummary';
+import CurriculumTagGroup from '@/components/curriculum/CurriculumTagGroup';
+import { useCurriculumExercises } from '@/hooks/use-curriculum-exercises';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
-interface CurriculumTagGroupProps {
-  tag: string;
-  exercises: Exercise[];
-  onPracticeExercise: (id: string) => void;
-  onAddExercise: (id: string) => void;
-}
-
-const CurriculumTagGroup: React.FC<CurriculumTagGroupProps> = ({
-  tag,
-  exercises,
-  onPracticeExercise,
-  onAddExercise,
-}) => {
-  // Change this from true to false to make accordions closed by default
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="border rounded-md">
-      {/* Tag Header - Clickable to expand/collapse */}
-      <div
-        className="flex items-center justify-between px-4 py-3 cursor-pointer bg-muted/50 hover:bg-muted"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <div className="flex items-center gap-2">
-          {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-          <h3 className="font-medium">{tag}</h3>
-          <span className="ml-2 text-sm text-muted-foreground">
-            ({exercises.length} exercises)
-          </span>
-        </div>
-        <div className="text-sm text-muted-foreground">
-          {exercises.filter(ex => ex.status === 'completed').length} completed
+const CurriculumPage: React.FC = () => {
+  const { copyDefaultExercise } = useExerciseContext();
+  const { 
+    exercisesByTag, 
+    stats, 
+    loading, 
+    selectedLanguage,
+    refreshData
+  } = useCurriculumExercises();
+  const navigate = useNavigate();
+  
+  // Refresh data when the component mounts
+  React.useEffect(() => {
+    console.log("CurriculumPage: Refreshing data on mount");
+    refreshData();
+  }, [refreshData]);
+  
+  const handlePracticeExercise = async (id: string) => {
+    console.log(`Opening practice for exercise with ID: ${id}`);
+    // Navigate to exercises page with the exercise ID as a parameter
+    navigate(`/dashboard/exercises?defaultExerciseId=${id}&action=practice`);
+  };
+  
+  const handleAddExercise = async (id: string) => {
+    try {
+      await copyDefaultExercise(id);
+      // After adding, refresh the data to update the exercise status
+      refreshData();
+      toast.success('Exercise added to your list');
+    } catch (error) {
+      console.error('Error copying exercise:', error);
+      toast.error('Failed to add exercise to your list');
+    }
+  };
+  
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin h-8 w-8 border-b-2 border-primary rounded-full"></div>
         </div>
       </div>
-
-      {/* Exercises List - Shown when expanded */}
-      {isOpen && (
-        <div className="divide-y">
-          {exercises.map((exercise) => (
-            <div
-              key={exercise.id}
-              className="flex items-center justify-between px-4 py-3 hover:bg-muted/30"
-            >
-              <div className="flex items-center gap-2">
-                {exercise.status === 'completed' ? (
-                  <Check size={18} className="text-green-500" />
-                ) : exercise.status === 'in-progress' ? (
-                  <div className="h-4 w-4 rounded-full bg-amber-400" />
-                ) : (
-                  <div className="h-4 w-4 rounded-full border border-muted-foreground" />
-                )}
-                <span>{exercise.title}</span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onPracticeExercise(exercise.id)}
-                >
-                  Practice
-                </Button>
-                {exercise.status !== 'completed' && exercise.status !== 'in-progress' && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onAddExercise(exercise.id)}
-                  >
-                    <Plus size={16} className="mr-1" />
-                    Add
-                  </Button>
-                )}
-              </div>
-            </div>
+    );
+  }
+  
+  if (Object.keys(exercisesByTag).length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-16">
+          <p className="text-lg text-muted-foreground">
+            No curriculum exercises available for {selectedLanguage}.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col gap-6">
+        {/* Progress Summary */}
+        <CurriculumProgressSummary
+          totalExercises={stats.total}
+          completedExercises={stats.completed}
+          inProgressExercises={stats.inProgress}
+          language={selectedLanguage}
+        />
+        
+        {/* Tag Groups */}
+        <div className="space-y-4">
+          {Object.entries(exercisesByTag).map(([tag, exercises]) => (
+            <CurriculumTagGroup
+              key={tag}
+              tag={tag}
+              exercises={exercises || []}
+              defaultOpen={false} // Add this prop to control the default state
+              onPracticeExercise={handlePracticeExercise}
+              onAddExercise={handleAddExercise}
+            />
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 };
 
-export default CurriculumTagGroup;
+export default CurriculumPage;
