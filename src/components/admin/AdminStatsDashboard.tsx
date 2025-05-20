@@ -82,6 +82,3 @@ export function AdminStatsDashboard() {
     </div>
   );
 }
-
-// Add a default export that forwards to the named export
-export default AdminStatsDashboard;

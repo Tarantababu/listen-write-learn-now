@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -188,50 +189,4 @@
   .dark-gradient {
     @apply dark:bg-gradient-to-br dark:from-background/90 dark:via-background/70 dark:to-accent/10;
   }
-}
-
-/* Onboarding styles */
-.onboarding-tooltip-arrow-top::before,
-.onboarding-tooltip-arrow-right::before,
-.onboarding-tooltip-arrow-bottom::before,
-.onboarding-tooltip-arrow-left::before {
-  content: '';
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background-color: hsl(var(--background));
-  border: 1px solid hsl(var(--border));
-  transform: rotate(45deg);
-}
-
-.onboarding-tooltip-arrow-top::before {
-  bottom: -5px;
-  left: 50%;
-  margin-left: -5px;
-  border-top: none;
-  border-left: none;
-}
-
-.onboarding-tooltip-arrow-right::before {
-  left: -5px;
-  top: 50%;
-  margin-top: -5px;
-  border-top: none;
-  border-right: none;
-}
-
-.onboarding-tooltip-arrow-bottom::before {
-  top: -5px;
-  left: 50%;
-  margin-left: -5px;
-  border-bottom: none;
-  border-right: none;
-}
-
-.onboarding-tooltip-arrow-left::before {
-  right: -5px;
-  top: 50%;
-  margin-top: -5px;
-  border-bottom: none;
-  border-left: none;
 }
