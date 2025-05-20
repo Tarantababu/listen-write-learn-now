@@ -23,15 +23,14 @@ export function OnboardingStepsAdmin() {
   const loadSteps = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('onboarding_steps')
-        .select('*')
-        .order('order_index', { ascending: true });
+      const { data, error } = await supabase.rpc('get_onboarding_steps');
       
       if (error) throw error;
       
       if (data) {
-        setSteps(data as OnboardingStep[]);
+        const parsedSteps = Array.isArray(data) ? data : 
+                        (typeof data === 'string' ? JSON.parse(data) : []);
+        setSteps(parsedSteps as OnboardingStep[]);
       }
     } catch (error) {
       console.error('Error loading onboarding steps:', error);
@@ -53,28 +52,19 @@ export function OnboardingStepsAdmin() {
     try {
       setIsLoading(true);
       
-      if (editingStep.id) {
+      if (editingStep.id && editingStep.id !== '') {
         // Update existing step
-        const { error } = await supabase
-          .from('onboarding_steps')
-          .update({
-            title: editingStep.title,
-            description: editingStep.description,
-            target_element: editingStep.target_element,
-            position: editingStep.position,
-            order_index: editingStep.order_index,
-            feature_area: editingStep.feature_area,
-            is_active: editingStep.is_active
-          })
-          .eq('id', editingStep.id);
+        const { error } = await supabase.rpc('update_onboarding_step', {
+          step_id: editingStep.id,
+          step_data: editingStep
+        });
         
         if (error) throw error;
         toast.success('Step updated successfully');
       } else {
         // Create new step
-        const { error } = await supabase
-          .from('onboarding_steps')
-          .insert([{
+        const { error } = await supabase.rpc('create_onboarding_step', {
+          step_data: {
             title: editingStep.title,
             description: editingStep.description,
             target_element: editingStep.target_element,
@@ -82,7 +72,8 @@ export function OnboardingStepsAdmin() {
             order_index: editingStep.order_index,
             feature_area: editingStep.feature_area,
             is_active: editingStep.is_active
-          }]);
+          }
+        });
         
         if (error) throw error;
         toast.success('Step created successfully');
@@ -104,10 +95,10 @@ export function OnboardingStepsAdmin() {
   const toggleStepActive = async (stepId: string, isActive: boolean) => {
     try {
       setIsLoading(true);
-      const { error } = await supabase
-        .from('onboarding_steps')
-        .update({ is_active: isActive })
-        .eq('id', stepId);
+      const { error } = await supabase.rpc('toggle_onboarding_step_active', {
+        step_id: stepId,
+        is_active: isActive
+      });
       
       if (error) throw error;
       
@@ -258,6 +249,7 @@ export function OnboardingStepsAdmin() {
                   <SelectItem value="bottom">Bottom</SelectItem>
                   <SelectItem value="left">Left</SelectItem>
                   <SelectItem value="right">Right</SelectItem>
+                  <SelectItem value="center">Center</SelectItem>
                 </SelectContent>
               </Select>
             </div>

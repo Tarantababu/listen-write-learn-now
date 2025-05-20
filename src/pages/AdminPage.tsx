@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AdminStatsDashboard from '@/components/admin/AdminStatsDashboard';
+import { AdminStatsDashboard } from '@/components/admin/AdminStatsDashboard';
 import DefaultExercisesList from '@/components/admin/DefaultExercisesList';
 import { FeedbackList } from '@/components/admin/FeedbackList';
 import { UserRoleManagement } from '@/components/admin/UserRoleManagement';

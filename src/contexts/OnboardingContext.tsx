@@ -25,25 +25,23 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const fetchOnboardingData = async () => {
       setIsLoading(true);
       try {
-        // Fetch onboarding steps
-        const { data: stepsData, error: stepsError } = await supabase
-          .from('onboarding_steps')
-          .select('*')
-          .order('order_index', { ascending: true })
-          .eq('is_active', true);
+        // Fetch onboarding steps using RPC functions
+        const { data: stepsData, error: stepsError } = await supabase.rpc('get_onboarding_steps');
 
         if (stepsError) throw stepsError;
         
         if (stepsData) {
-          setSteps(stepsData as OnboardingStep[]);
+          // Parse the JSON result from the RPC function
+          const parsedSteps = Array.isArray(stepsData) ? stepsData : 
+                            (typeof stepsData === 'string' ? JSON.parse(stepsData) : []);
+          setSteps(parsedSteps as OnboardingStep[]);
         }
 
         // Fetch user onboarding progress
-        const { data: progressData, error: progressError } = await supabase
-          .from('user_onboarding_progress')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
+        const { data: progressData, error: progressError } = await supabase.rpc(
+          'get_user_onboarding_progress', 
+          { user_id_param: user.id }
+        );
 
         if (progressError && progressError.code !== 'PGRST116') {
           // PGRST116 is "row not found" error, which is expected if user has no progress yet
@@ -51,30 +49,33 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
 
         if (progressData) {
-          setOnboardingProgress(progressData as OnboardingProgress);
-          setCurrentStepIndex(progressData.last_step_seen || 0);
+          // Parse the JSON result from the RPC function
+          const parsedProgress = typeof progressData === 'string' ? 
+                               JSON.parse(progressData) : progressData;
+          
+          setOnboardingProgress(parsedProgress as OnboardingProgress);
+          setCurrentStepIndex(parsedProgress.last_step_seen || 0);
           
           // Check if onboarding should be active
-          const isCompleted = progressData.completed_onboarding;
-          const isDismissed = progressData.dismissed_until && 
-                              new Date(progressData.dismissed_until) > new Date();
+          const isCompleted = parsedProgress.completed_onboarding;
+          const isDismissed = parsedProgress.dismissed_until && 
+                              new Date(parsedProgress.dismissed_until) > new Date();
           
           // Activate if not completed and not dismissed
           setIsActive(!isCompleted && !isDismissed);
         } else {
           // Create initial progress record for new users
-          const { data: newProgress, error: createError } = await supabase
-            .from('user_onboarding_progress')
-            .insert([
-              { user_id: user.id, completed_onboarding: false, last_step_seen: 0 }
-            ])
-            .select()
-            .single();
+          const { data: newProgress, error: createError } = await supabase.rpc(
+            'create_onboarding_progress',
+            { user_id_param: user.id }
+          );
 
           if (createError) throw createError;
           
           if (newProgress) {
-            setOnboardingProgress(newProgress as OnboardingProgress);
+            const parsedNewProgress = typeof newProgress === 'string' ? 
+                                   JSON.parse(newProgress) : newProgress;
+            setOnboardingProgress(parsedNewProgress as OnboardingProgress);
             setIsActive(true); // Activate onboarding for new users
           }
         }
@@ -94,10 +95,13 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!user || !onboardingProgress) return;
 
     try {
-      const { error } = await supabase
-        .from('user_onboarding_progress')
-        .update(updates)
-        .eq('user_id', user.id);
+      const { error } = await supabase.rpc(
+        'update_onboarding_progress',
+        {
+          user_id_param: user.id,
+          updates_param: updates
+        }
+      );
 
       if (error) throw error;
       

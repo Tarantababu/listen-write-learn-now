@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -9,7 +8,7 @@ import { Portal } from '@/components/ui/portal';
 interface SpotlightProps {
   targetElement: string;
   position: 'top' | 'right' | 'bottom' | 'left' | 'center';
-  children: React.ReactNode; // Added children prop to the interface
+  children: React.ReactNode;
 }
 
 const OnboardingSpotlight: React.FC<SpotlightProps> = ({ targetElement, position, children }) => {
@@ -159,17 +158,19 @@ const OnboardingSpotlight: React.FC<SpotlightProps> = ({ targetElement, position
 
 export const OnboardingTour: React.FC = () => {
   const { 
-    isOnboardingActive, 
-    currentStep, 
-    nextStep, 
-    previousStep,
+    isActive, 
     steps,
     currentStepIndex,
+    nextStep,
+    prevStep,
     dismissOnboarding,
     completeOnboarding,
   } = useOnboarding();
 
-  if (!isOnboardingActive || !currentStep) return null;
+  if (!isActive || steps.length === 0) return null;
+
+  const currentStep = steps[currentStepIndex];
+  if (!currentStep) return null;
 
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === steps.length - 1;
@@ -195,7 +196,7 @@ export const OnboardingTour: React.FC = () => {
         >
           <OnboardingSpotlight
             targetElement={currentStep.target_element}
-            position={currentStep.position}
+            position={currentStep.position as 'top' | 'right' | 'bottom' | 'left' | 'center'}
           >
             <div className="flex flex-col gap-4">
               <div className="flex justify-between items-center">
@@ -220,7 +221,7 @@ export const OnboardingTour: React.FC = () => {
                 </div>
                 <div className="flex space-x-2">
                   {!isFirstStep && (
-                    <Button variant="outline" size="sm" onClick={previousStep}>
+                    <Button variant="outline" size="sm" onClick={prevStep}>
                       <ChevronLeft className="h-4 w-4 mr-1" />
                       Back
                     </Button>
