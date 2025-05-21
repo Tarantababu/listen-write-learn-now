@@ -65,12 +65,14 @@ const StatsCard = ({
         </div>
       );
     } else if (trendValue < 0) {
+      // Special handling for streak broken case (value = 0, trend < 0)
+      const isBrokenStreak = value === 0 && title === "Learning Streak";
       return (
         <div className="flex items-center text-red-600 text-xs font-medium">
           <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
           </svg>
-          <span>{Math.abs(trendValue)}%</span>
+          <span>{isBrokenStreak ? "Broken" : `${Math.abs(trendValue)}%`}</span>
         </div>
       );
     } else {

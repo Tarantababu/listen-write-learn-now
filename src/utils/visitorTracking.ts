@@ -114,3 +114,31 @@ export const applyMigrations = async (): Promise<void> => {
     console.error('Failed to apply migrations:', error);
   }
 };
+
+/**
+ * Calculate streak status based on current and last activity
+ * @returns true if streak is active, false if broken
+ */
+export const isStreakActive = (lastActivityDate: Date | null): boolean => {
+  if (!lastActivityDate) return false;
+  
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const dayBefore = new Date(today);
+  dayBefore.setDate(dayBefore.getDate() - 2);
+  
+  // Reset hours, minutes, seconds for date comparison
+  const resetTime = (date: Date) => {
+    date.setHours(0, 0, 0, 0);
+    return date;
+  };
+  
+  const todayDate = resetTime(today);
+  const yesterdayDate = resetTime(yesterday);
+  const dayBeforeDate = resetTime(dayBefore);
+  const lastActivity = resetTime(new Date(lastActivityDate));
+  
+  // Streak is active if last activity was today, yesterday or day before (2-day grace period)
+  return lastActivity >= dayBeforeDate;
+};

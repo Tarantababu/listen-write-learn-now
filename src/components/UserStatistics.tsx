@@ -20,6 +20,7 @@ import { Link } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronRight } from 'lucide-react';
 import { useCurriculumExercises } from '@/hooks/use-curriculum-exercises';
+import { isStreakActive } from '@/utils/visitorTracking';
 
 interface CompletionData {
   date: Date;
@@ -99,8 +100,14 @@ const UserStatistics: React.FC = () => {
         
         // If streak data exists, use it; otherwise use default values
         if (streakData) {
+          // Check if the streak is active based on last activity date
+          const streakIsActive = isStreakActive(
+            streakData.last_activity_date ? new Date(streakData.last_activity_date) : null
+          );
+          
+          // If streak is broken, set current streak to 0, but keep longest streak
           setStreakData({
-            currentStreak: streakData.current_streak,
+            currentStreak: streakIsActive ? streakData.current_streak : 0,
             longestStreak: streakData.longest_streak,
             lastActivityDate: streakData.last_activity_date ? new Date(streakData.last_activity_date) : null
           });
@@ -187,6 +194,7 @@ const UserStatistics: React.FC = () => {
   const masteredWords = new Set(Array(totalMasteredWords).fill(0).map((_, i) => `word${i}`));
   
   // Note: We're now using the streak data directly from the database
+  // and resetting it to 0 if the streak is broken
   const streak = streakData.currentStreak;
 
   // Heatmap data from daily activities
@@ -245,11 +253,22 @@ const UserStatistics: React.FC = () => {
     });
   })();
 
-  // Calculate streak trend
-  const streakTrend = {
-    value: streak > 0 ? 0 : -100, // 0% if streak maintained, -100% if broken
-    label: streak > 0 ? 'Streak maintained' : 'Streak broken'
-  };
+  // Calculate streak trend - update this to handle broken streaks correctly
+  const streakTrend = (() => {
+    // If streak is 0, it means streak is broken
+    if (streak === 0) {
+      return {
+        value: -100, // -100% decrease
+        label: 'Streak broken'
+      };
+    }
+    
+    // Otherwise streak is maintained or increased
+    return {
+      value: 0, // 0% change (maintained)
+      label: 'Streak maintained'
+    };
+  })();
 
   // Refresh curriculum data on component mount
   React.useEffect(() => {
