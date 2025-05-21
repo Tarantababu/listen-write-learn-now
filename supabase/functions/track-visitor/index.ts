@@ -37,10 +37,31 @@ serve(async (req) => {
       );
     }
     
-    // Parse timestamp if provided, or use current time
-    const created_at = timestamp ? new Date(timestamp) : new Date();
+    // Ensure proper timestamp handling
+    let visitTimestamp;
+    if (timestamp) {
+      try {
+        // Validate the timestamp is a proper ISO string
+        visitTimestamp = new Date(timestamp);
+        if (isNaN(visitTimestamp.getTime())) {
+          // If invalid, fallback to current time
+          console.log("Invalid timestamp provided, using current time instead");
+          visitTimestamp = new Date();
+        }
+      } catch (e) {
+        console.error("Error parsing timestamp:", e);
+        visitTimestamp = new Date();
+      }
+    } else {
+      visitTimestamp = new Date();
+    }
     
-    // Use the track_visitor RPC function with the secure search_path
+    // Format timestamp to ISO string for consistent storage
+    const formattedTimestamp = visitTimestamp.toISOString();
+    
+    console.log(`Processing visitor track: ${visitorId} at ${formattedTimestamp} for page: ${page}`);
+    
+    // Insert the visitor data with properly formatted timestamp
     const { data, error } = await supabaseClient
       .from('visitors')
       .insert({
@@ -49,7 +70,7 @@ serve(async (req) => {
         referer: referer || null,
         user_agent: userAgent || null,
         ip_address: ipAddress,
-        created_at: created_at.toISOString()
+        created_at: formattedTimestamp
       });
     
     if (error) {
@@ -60,7 +81,7 @@ serve(async (req) => {
     console.log("Visitor tracked successfully:", visitorId);
     
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, timestamp: formattedTimestamp }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

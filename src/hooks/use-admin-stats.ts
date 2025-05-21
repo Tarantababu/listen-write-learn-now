@@ -84,17 +84,23 @@ export function useAdminStats() {
     staleTime: 5 * 60 * 1000
   });
 
-  // Get button clicks count - improved query
+  // Get button clicks count - improved query to ensure we're getting accurate counts
   const { data: buttonClicks } = useQuery({
     queryKey: ['admin-button-clicks', refreshKey],
     queryFn: async () => {
       try {
+        // Get all button clicks with prefix 'button_click:'
         const { count, error } = await supabase
           .from('visitors')
           .select('*', { count: 'exact', head: true })
           .like('page', 'button_click:%');
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error in button clicks query:', error);
+          throw error;
+        }
+        
+        console.log('Button clicks count from visitors table:', count);
         return count || 0;
       } catch (err) {
         console.error('Error fetching button clicks:', err);

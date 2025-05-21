@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -85,6 +86,8 @@ export function VisitorStats() {
         
         if (dailyError) throw dailyError;
         
+        console.log("Raw visitor data count:", dailyData?.length || 0);
+        
         // Find the earliest data collection date to mark pre-data-collection dates
         let earliestDate: Date | null = null;
         
@@ -93,7 +96,8 @@ export function VisitorStats() {
           const allDates = dailyData
             .map(visitor => {
               try {
-                const date = visitor.created_at ? parseISO(visitor.created_at) : null;
+                if (!visitor.created_at) return null;
+                const date = parseISO(visitor.created_at);
                 return isValid(date) ? date : null;
               } catch (e) {
                 console.error('Invalid date format:', visitor.created_at);
@@ -107,6 +111,8 @@ export function VisitorStats() {
             setDataStartDate(format(earliestDate, 'MMMM d, yyyy'));
           }
         }
+        
+        console.log("Earliest data date:", earliestDate?.toISOString() || "No data");
         
         // Process data to count visitors per day - using full date objects for comparison
         const dailyCounts: Record<string, number> = {};
@@ -135,7 +141,7 @@ export function VisitorStats() {
         
         // Fill in actual counts by iterating through the visitor data
         if (dailyData) {
-          dailyData.forEach((visitor) => {
+          for (const visitor of dailyData) {
             if (visitor.created_at) {
               try {
                 // Parse the ISO date and format to YYYY-MM-DD for bucketing
@@ -150,19 +156,25 @@ export function VisitorStats() {
                   }
                 }
               } catch (e) {
-                console.error('Error parsing date:', visitor.created_at);
+                console.error('Error parsing date:', visitor.created_at, e);
               }
             }
-          });
+          }
         }
         
         // Update counts in the array
-        dailyCountsArray.forEach(item => {
+        for (let i = 0; i < dailyCountsArray.length; i++) {
+          const item = dailyCountsArray[i];
           const dateStr = format(item.fullDate, 'yyyy-MM-dd');
-          if (dailyCounts[dateStr]) {
-            item.count = dailyCounts[dateStr];
+          if (dailyCounts[dateStr] !== undefined) {
+            dailyCountsArray[i] = {
+              ...item,
+              count: dailyCounts[dateStr]
+            };
           }
-        });
+        }
+        
+        console.log("Daily counts by date:", dailyCounts);
         
         // Sort by date to ensure chronological order (earliest to latest)
         dailyCountsArray.sort((a, b) => a.fullDate.getTime() - b.fullDate.getTime());
@@ -361,7 +373,7 @@ export function VisitorStats() {
                         <ChartTooltipContent 
                           formatter={(value, name, props) => {
                             const entry = props.payload;
-                            if (!entry.hasData) {
+                            if (!entry?.hasData) {
                               return ["No data collected yet", "Visitors"];
                             }
                             return [value, "Visitors"];
