@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 
 const VISITOR_ID_KEY = 'lwl_visitor_id';
+const TUTORIAL_VIEWED_KEY = 'lwl_tutorial_viewed';
 const VISITOR_EXPIRY_DAYS = 365; // Store ID for 1 year
 
 /**
@@ -17,6 +18,21 @@ export const getVisitorId = (): string => {
   }
   
   return visitorId;
+};
+
+/**
+ * Check if the tutorial has been viewed by current user
+ */
+export const hasTutorialBeenViewed = (): boolean => {
+  const value = localStorage.getItem(TUTORIAL_VIEWED_KEY);
+  return value === 'true';
+};
+
+/**
+ * Mark the tutorial as viewed
+ */
+export const markTutorialAsViewed = (): void => {
+  localStorage.setItem(TUTORIAL_VIEWED_KEY, 'true');
 };
 
 /**

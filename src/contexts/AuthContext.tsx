@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { hasTutorialBeenViewed } from '@/utils/visitorTracking';
 
 interface AuthContextProps {
   session: Session | null;
@@ -13,6 +14,7 @@ interface AuthContextProps {
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   loading: boolean;
+  isNewUser: boolean;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -29,6 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isNewUser, setIsNewUser] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -44,8 +47,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             initializeUserProfile(session!.user.id);
           }, 0);
           
-          // Redirect to dashboard on sign in
-          navigate('/dashboard');
+          // Check if tutorial needs to be shown
+          const tutorialViewed = hasTutorialBeenViewed();
+          
+          // Determine where to redirect based on whether tutorial has been viewed
+          if (!tutorialViewed) {
+            navigate('/dashboard/tutorial');
+          } else {
+            navigate('/dashboard');
+          }
         }
         
         if (event === 'SIGNED_OUT') {
@@ -85,7 +95,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       // If profile doesn't exist, create one with default settings
+      // This also means this is likely a new user
       if (!data) {
+        setIsNewUser(true);
+        
         const { error } = await supabase
           .from('profiles')
           .insert({
@@ -95,6 +108,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         
         if (error) throw error;
+      } else {
+        setIsNewUser(false);
       }
     } catch (error) {
       console.error('Error initializing user profile:', error);
@@ -111,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       toast.success('Signed in successfully');
-      navigate('/dashboard');
+      // Navigation handled by auth state change listener
     } catch (error: any) {
       toast.error(error.message || 'Failed to sign in');
       throw error;
@@ -191,6 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signOut,
     loading,
+    isNewUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

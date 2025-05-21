@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { HelpCircle, BookOpen, Book, CreditCard, LayoutDashboard } from 'lucide-react';
+import { BookOpen, Book, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 
@@ -10,46 +10,68 @@ const TutorialPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-6 max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent flex items-center">
-          <HelpCircle className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
-          Step-by-Step Tutorial
+        <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
+          How I Learn a Language with <span className="inline-block">lwlnow</span>
         </h1>
         <p className="text-muted-foreground text-sm">
-          How to learn a language with LWLnow
+          A simple and effective method to make the most of your language learning journey
         </p>
       </div>
 
       <div className="space-y-6">
         <Card className="gradient-card animate-fade-in">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg sm:text-xl">How I Learn a Language with the App</CardTitle>
-            <CardDescription>
-              Follow these steps to maximize your language learning
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="p-4 rounded-lg border bg-card/50 animate-fade-in">
-                <h3 className="font-semibold text-md flex items-center">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">1</span>
-                  Generate a Simple Paragraph
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Create a short paragraph in your target language that's suitable for your level. I usually use ChatGPT for this right now, but soon the app will have this feature built in, so you won't need to leave the app to get level-appropriate content.
+          <CardContent className="pt-6 space-y-8">
+            {/* Step 1 */}
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold flex items-center">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">1</span>
+                Choose or Create Your Practice Text
+              </h2>
+              <div className="pl-8">
+                <p className="text-muted-foreground">
+                  Start by selecting a text that matches your current level:
                 </p>
-                <div className="mt-3 p-3 bg-muted rounded-md text-sm">
-                  <p className="italic font-medium">Example (Beginner A1 - Topic: Introductions):</p>
-                  <p className="mt-1">Hola, me llamo Ana. Soy de México y tengo treinta años. Vivo en Madrid con mi familia. Me gusta leer libros y escuchar música.</p>
+                <ul className="list-disc list-outside pl-5 mt-2 space-y-1 text-muted-foreground">
+                  <li><strong>Use our ready-made curriculum</strong> based on CEFR levels (A1, A2, B1, etc.).</li>
+                  <li><strong>Or create your own content.</strong> A simple paragraph or a few sentences is enough. 
+                    I often generate one using ChatGPT.</li>
+                </ul>
+                <div className="mt-3 p-3 bg-muted rounded-md">
+                  <p className="font-medium">Example (Level A1 – Topic: Introductions):</p>
+                  <blockquote className="mt-2 border-l-2 pl-3 italic">
+                    Hola, me llamo Ana.<br />
+                    Soy de México y tengo treinta años.<br />
+                    Vivo en Madrid con mi familia.<br />
+                    Me gusta leer libros y escuchar música.
+                  </blockquote>
+                </div>
+                <div className="mt-3">
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/dashboard/curriculum">
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      Browse Curriculum
+                    </Link>
+                  </Button>
                 </div>
               </div>
-
-              <div className="p-4 rounded-lg border bg-card/50 animate-fade-in">
-                <h3 className="font-semibold text-md flex items-center">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">2</span>
-                  Copy the Paragraph into the App
-                </h3>
+            </div>
+            
+            <Separator />
+            
+            {/* Step 2 */}
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold flex items-center">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">2</span>
+                Do a Dictation Exercise
+              </h2>
+              <div className="pl-8">
+                <ul className="list-disc list-outside pl-5 space-y-1 text-muted-foreground">
+                  <li>Listen to the audio.</li>
+                  <li>Type what you hear, as accurately as possible.</li>
+                  <li>Repeat the exercise until you get <strong>at least 95% accuracy three times.</strong></li>
+                </ul>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Go to lwlnow.com, paste the paragraph, and create a new dictation exercise.
+                  The app tracks your attempts automatically—this method is based on 100+ hours of real learner experience.
                 </p>
                 <div className="mt-3">
                   <Button asChild variant="outline" size="sm">
@@ -60,35 +82,36 @@ const TutorialPage: React.FC = () => {
                   </Button>
                 </div>
               </div>
-
-              <div className="p-4 rounded-lg border bg-card/50 animate-fade-in">
-                <h3 className="font-semibold text-md flex items-center">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">3</span>
-                  Do the Dictation Exercise
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Listen to the audio and try to type exactly what you hear. Repeat this exercise until you pass it three times with at least 95% accuracy. The app tracks this automatically - it comes from 100 hours of experience.
+            </div>
+            
+            <Separator />
+            
+            {/* Step 3 */}
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold flex items-center">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">3</span>
+                Review Your Mistakes
+              </h2>
+              <div className="pl-8">
+                <p className="text-muted-foreground">
+                  After each try, you'll see a detailed comparison between your answer and the original. Learn from your errors and improve with each attempt.
                 </p>
               </div>
-
-              <div className="p-4 rounded-lg border bg-card/50 animate-fade-in">
-                <h3 className="font-semibold text-md flex items-center">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">4</span>
-                  Compare Your Answer with the Original
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  After each try, you can see where you made mistakes and what you got right.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-lg border bg-card/50 animate-fade-in">
-                <h3 className="font-semibold text-md flex items-center">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">5</span>
-                  Save New Words or Phrases
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  If you don't know a word, click on it in the Vocabulary tab and create a flashcard for future review.
-                </p>
+            </div>
+            
+            <Separator />
+            
+            {/* Step 4 */}
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold flex items-center">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">4</span>
+                Save New Words and Phrases
+              </h2>
+              <div className="pl-8">
+                <ul className="list-disc list-outside pl-5 space-y-1 text-muted-foreground">
+                  <li>Click on unfamiliar words to add them to your <strong>Vocabulary</strong>.</li>
+                  <li>Easily create flashcards for future review.</li>
+                </ul>
                 <div className="mt-3">
                   <Button asChild variant="outline" size="sm">
                     <Link to="/dashboard/vocabulary">
@@ -98,25 +121,40 @@ const TutorialPage: React.FC = () => {
                   </Button>
                 </div>
               </div>
-
-              <div className="p-4 rounded-lg border bg-card/50 animate-fade-in">
-                <h3 className="font-semibold text-md flex items-center">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">6</span>
-                  Listen to Flashcards Anytime
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  The flashcards you save are added to a personal playlist that you can listen to during daily activities—great for passive learning.
+            </div>
+            
+            <Separator />
+            
+            {/* Step 5 */}
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold flex items-center">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">5</span>
+                Listen to Your Flashcards Anytime
+              </h2>
+              <div className="pl-8">
+                <p className="text-muted-foreground">
+                  All saved flashcards are automatically added to a <strong>personal audio playlist</strong>.
+                  Perfect for learning while walking, commuting, or relaxing—ideal for <strong>passive listening</strong>.
                 </p>
               </div>
-
-              <div className="p-4 rounded-lg border bg-card/50 animate-fade-in">
-                <h3 className="font-semibold text-md flex items-center">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">7</span>
-                  Track Progress Toward B2 or C1
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  The app shows your progress and word range. By clicking the (?) icon you can see what vocabulary level you're reaching.
+            </div>
+            
+            <Separator />
+            
+            {/* Step 6 */}
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold flex items-center">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">6</span>
+                Track Your Progress
+              </h2>
+              <div className="pl-8">
+                <p className="text-muted-foreground">
+                  Monitor your growth toward <strong>B1</strong>, <strong>B2</strong>, or <strong>C1</strong>:
                 </p>
+                <ul className="list-disc list-outside pl-5 mt-2 space-y-1 text-muted-foreground">
+                  <li>See your known word range.</li>
+                  <li>Click the <strong>(?) icon</strong> for insights on what vocabulary level you're currently reaching.</li>
+                </ul>
                 <div className="mt-3">
                   <Button asChild variant="outline" size="sm">
                     <Link to="/dashboard">
@@ -127,22 +165,16 @@ const TutorialPage: React.FC = () => {
                 </div>
               </div>
             </div>
-
+            
             <Separator />
-
-            <div className="pt-2">
-              <h3 className="font-semibold mb-2">Ready to get started?</h3>
-              <div className="flex flex-wrap gap-3">
+            
+            <div className="text-center p-3 bg-primary/5 rounded-lg">
+              <p className="font-medium">This method works because it's <strong>simple, consistent, and proven</strong>.</p>
+              <p>Start now and build your fluency step by step.</p>
+              <div className="mt-4">
                 <Button asChild>
-                  <Link to="/dashboard/exercises">
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    Create an Exercise
-                  </Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link to="/dashboard/subscription">
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Upgrade for More Features
+                  <Link to="/dashboard">
+                    Get Started
                   </Link>
                 </Button>
               </div>
