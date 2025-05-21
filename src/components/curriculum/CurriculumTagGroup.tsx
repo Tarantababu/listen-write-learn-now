@@ -31,7 +31,8 @@ const CurriculumTagGroup: React.FC<CurriculumTagGroupProps> = ({
   onPracticeExercise,
   onAddExercise
 }) => {
-  const [isOpen, setIsOpen] = useState(true);
+  // Changed default value to false so all accordions start closed
+  const [isOpen, setIsOpen] = useState(false);
   
   // Calculate progress
   const completedCount = exercises.filter(ex => ex.status === 'completed').length;

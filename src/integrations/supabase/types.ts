@@ -525,6 +525,45 @@ export type Database = {
           },
         ]
       }
+      onboarding_steps: {
+        Row: {
+          created_at: string
+          description: string
+          feature_area: string
+          id: string
+          is_active: boolean
+          order_index: number
+          position: string
+          target_element: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          feature_area: string
+          id?: string
+          is_active?: boolean
+          order_index: number
+          position: string
+          target_element: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          feature_area?: string
+          id?: string
+          is_active?: boolean
+          order_index?: number
+          position?: string
+          target_element?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -901,6 +940,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_onboarding_progress: {
+        Row: {
+          completed_onboarding: boolean
+          created_at: string
+          dismissed_until: string | null
+          id: string
+          last_step_seen: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_onboarding?: boolean
+          created_at?: string
+          dismissed_until?: string | null
+          id?: string
+          last_step_seen?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_onboarding?: boolean
+          created_at?: string
+          dismissed_until?: string | null
+          id?: string
+          last_step_seen?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
