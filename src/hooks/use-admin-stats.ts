@@ -84,13 +84,22 @@ export function useAdminStats() {
     staleTime: 5 * 60 * 1000
   });
 
-  // For button clicks, we'll use a simple approach that doesn't depend on specific tables
+  // Get button clicks count - improved query
   const { data: buttonClicks } = useQuery({
     queryKey: ['admin-button-clicks', refreshKey],
     queryFn: async () => {
-      // Since we don't have a guarantee that the button_clicks table exists,
-      // we'll return a default value for the fallback
-      return 0; // Default to 0 clicks if the edge function fails
+      try {
+        const { count, error } = await supabase
+          .from('visitors')
+          .select('*', { count: 'exact', head: true })
+          .like('page', 'button_click:%');
+        
+        if (error) throw error;
+        return count || 0;
+      } catch (err) {
+        console.error('Error fetching button clicks:', err);
+        return 0; // Default to 0 if there's an error
+      }
     },
     enabled: isError,
     staleTime: 5 * 60 * 1000

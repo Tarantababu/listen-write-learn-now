@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { format, subDays, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { format, subDays, parseISO, startOfDay, endOfDay, isValid } from 'date-fns';
 import StatsCard from '@/components/StatsCard';
 import { Activity, Users, Globe, Info } from 'lucide-react';
 import { calculateTrend } from '@/utils/trendUtils';
@@ -88,17 +87,23 @@ export function VisitorStats() {
         
         // Find the earliest data collection date to mark pre-data-collection dates
         let earliestDate: Date | null = null;
-        let latestDate: Date | null = null;
         
         if (dailyData && dailyData.length > 0) {
-          // Find the earliest date in our dataset
+          // Parse date strings safely, filtering out invalid dates
           const allDates = dailyData
-            .map(visitor => visitor.created_at ? parseISO(visitor.created_at) : null)
+            .map(visitor => {
+              try {
+                const date = visitor.created_at ? parseISO(visitor.created_at) : null;
+                return isValid(date) ? date : null;
+              } catch (e) {
+                console.error('Invalid date format:', visitor.created_at);
+                return null;
+              }
+            })
             .filter(date => date !== null) as Date[];
             
           if (allDates.length > 0) {
             earliestDate = new Date(Math.min(...allDates.map(date => date.getTime())));
-            latestDate = new Date(Math.max(...allDates.map(date => date.getTime())));
             setDataStartDate(format(earliestDate, 'MMMM d, yyyy'));
           }
         }
@@ -132,13 +137,20 @@ export function VisitorStats() {
         if (dailyData) {
           dailyData.forEach((visitor) => {
             if (visitor.created_at) {
-              // Parse the ISO date and format to YYYY-MM-DD for bucketing
-              const visitorDate = parseISO(visitor.created_at);
-              const dateKey = format(visitorDate, 'yyyy-MM-dd');
-              
-              // Only count if the dateKey exists in our dailyCounts (within the 31 day range)
-              if (dailyCounts[dateKey] !== undefined) {
-                dailyCounts[dateKey] += 1;
+              try {
+                // Parse the ISO date and format to YYYY-MM-DD for bucketing
+                const visitorDate = parseISO(visitor.created_at);
+                
+                if (isValid(visitorDate)) {
+                  const dateKey = format(visitorDate, 'yyyy-MM-dd');
+                  
+                  // Only count if the dateKey exists in our dailyCounts (within the 31 day range)
+                  if (dailyCounts[dateKey] !== undefined) {
+                    dailyCounts[dateKey] += 1;
+                  }
+                }
+              } catch (e) {
+                console.error('Error parsing date:', visitor.created_at);
               }
             }
           });
@@ -361,6 +373,7 @@ export function VisitorStats() {
                     <Bar 
                       dataKey="count" 
                       name="Visitors" 
+                      fill={chartConfig.visitors.color}
                       shape={(props) => {
                         const { fill, x, y, width, height } = props;
                         const customProps = props.payload?.hasData ? 

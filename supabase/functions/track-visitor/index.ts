@@ -24,7 +24,7 @@ serve(async (req) => {
     const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
     
     const body = await req.json();
-    const { visitorId, page, referer, userAgent } = body;
+    const { visitorId, page, referer, userAgent, timestamp } = body;
     
     // Get IP address from request headers
     const forwardedFor = req.headers.get('x-forwarded-for');
@@ -37,14 +37,20 @@ serve(async (req) => {
       );
     }
     
+    // Parse timestamp if provided, or use current time
+    const created_at = timestamp ? new Date(timestamp) : new Date();
+    
     // Use the track_visitor RPC function with the secure search_path
-    const { data, error } = await supabaseClient.rpc('track_visitor', {
-      visitor_id: visitorId,
-      page,
-      referer: referer || null,
-      user_agent: userAgent || null,
-      ip_address: ipAddress
-    });
+    const { data, error } = await supabaseClient
+      .from('visitors')
+      .insert({
+        visitor_id: visitorId,
+        page,
+        referer: referer || null,
+        user_agent: userAgent || null,
+        ip_address: ipAddress,
+        created_at: created_at.toISOString()
+      });
     
     if (error) {
       console.error("Error tracking visitor:", error);

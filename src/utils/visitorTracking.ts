@@ -26,16 +26,20 @@ export const trackPageView = async (page: string): Promise<void> => {
   try {
     const visitorId = getVisitorId();
     
+    // Include the current timestamp to ensure accurate date tracking
+    const timestamp = new Date().toISOString();
+    
     await supabase.functions.invoke('track-visitor', {
       body: {
         visitorId,
         page,
         referer: document.referrer || null,
-        userAgent: navigator.userAgent
+        userAgent: navigator.userAgent,
+        timestamp // Include timestamp in the request
       }
     });
     
-    console.log(`Page view tracked: ${page}`);
+    console.log(`Page view tracked: ${page} at ${timestamp}`);
   } catch (error) {
     console.error('Failed to track page view:', error);
     // Continue execution even if tracking fails
@@ -48,17 +52,19 @@ export const trackPageView = async (page: string): Promise<void> => {
 export const trackButtonClick = async (buttonName: string): Promise<void> => {
   try {
     const visitorId = getVisitorId();
+    const timestamp = new Date().toISOString();
     
     await supabase.functions.invoke('track-visitor', {
       body: {
         visitorId,
         page: `button_click:${buttonName}`,
         referer: document.referrer || null,
-        userAgent: navigator.userAgent
+        userAgent: navigator.userAgent,
+        timestamp // Include timestamp in the request
       }
     });
     
-    console.log(`Button click tracked: ${buttonName}`);
+    console.log(`Button click tracked: ${buttonName} at ${timestamp}`);
   } catch (error) {
     console.error('Failed to track button click:', error);
     // Continue execution even if tracking fails
