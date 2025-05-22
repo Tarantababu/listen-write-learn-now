@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useAdmin } from '@/hooks/use-admin';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Headphones, Menu, LogOut, BookOpen, Home, Settings, CreditCard, Crown, LayoutDashboard, Book, Shield, HelpCircle, GraduationCap } from 'lucide-react';
+import { Headphones, LogOut, BookOpen, Home, Settings, CreditCard, Crown, LayoutDashboard, Book, Shield, HelpCircle, GraduationCap } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getLanguageFlag } from '@/utils/languageUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -77,7 +76,7 @@ const Header: React.FC = () => {
               <Button asChild variant={isActive('/dashboard/curriculum') ? "default" : "ghost"} size="sm" className="transition-all">
                 <Link to="/dashboard/curriculum">
                   <GraduationCap className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Curriculum</span>
+                  <span className="hidden sm:inline">Learning Plan</span>
                 </Link>
               </Button>
               
@@ -162,7 +161,7 @@ const Header: React.FC = () => {
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to="/dashboard/curriculum" className="flex items-center w-full">
-                          <GraduationCap className="h-4 w-4 mr-2" /> Curriculum
+                          <GraduationCap className="h-4 w-4 mr-2" /> Learning Plan
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
