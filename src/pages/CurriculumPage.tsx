@@ -58,7 +58,7 @@ const CurriculumPage: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-16">
           <p className="text-lg text-muted-foreground">
-            No curriculum exercises available for {selectedLanguage}.
+            No learning plan exercises available for {selectedLanguage}.
           </p>
         </div>
       </div>
@@ -68,6 +68,17 @@ const CurriculumPage: React.FC = () => {
   // Calculate total lessons and completed lessons across all units
   const totalLessons = stats.total;
   const completedLessons = stats.completed;
+  
+  // Filter in-progress exercises
+  const inProgressTagMap: Record<string, any[]> = {};
+  Object.entries(exercisesByTag).forEach(([tag, exercises]) => {
+    const inProgressExercises = exercises.filter(ex => ex.status === 'in-progress');
+    if (inProgressExercises.length > 0) {
+      inProgressTagMap[tag] = inProgressExercises;
+    }
+  });
+  
+  const hasInProgressExercises = Object.keys(inProgressTagMap).length > 0;
   
   return (
     <div className="container mx-auto px-4 py-8">
@@ -83,8 +94,7 @@ const CurriculumPage: React.FC = () => {
       <Tabs defaultValue="learning-plan" className="mb-8">
         <TabsList>
           <TabsTrigger value="learning-plan">Learning plan</TabsTrigger>
-          <TabsTrigger value="skills" disabled>Skills</TabsTrigger>
-          <TabsTrigger value="achievements" disabled>Achievements</TabsTrigger>
+          <TabsTrigger value="in-progress">In Progress</TabsTrigger>
         </TabsList>
         
         <TabsContent value="learning-plan" className="mt-6">
@@ -102,6 +112,45 @@ const CurriculumPage: React.FC = () => {
                   onAddExercise={handleAddExercise}
                 />
               ))}
+            </div>
+            
+            {/* Sidebar */}
+            <div className="lg:col-span-1">
+              <CurriculumSidebar
+                totalLessons={totalLessons}
+                completedLessons={completedLessons}
+                language={selectedLanguage}
+              />
+            </div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="in-progress" className="mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Content - Units and Lessons */}
+            <div className="lg:col-span-2 space-y-8">
+              {hasInProgressExercises ? (
+                // Units with in-progress exercises
+                Object.entries(inProgressTagMap).map(([tag, exercises], index) => (
+                  <UnitAccordion
+                    key={tag}
+                    unitNumber={index + 1}
+                    title={tag}
+                    lessons={exercises}
+                    onPracticeExercise={handlePracticeExercise}
+                    onAddExercise={handleAddExercise}
+                  />
+                ))
+              ) : (
+                <div className="text-center py-16">
+                  <p className="text-lg text-muted-foreground">
+                    You don't have any in-progress lessons yet.
+                  </p>
+                  <p className="text-muted-foreground mt-2">
+                    Start a lesson from the Learning Plan to see it here.
+                  </p>
+                </div>
+              )}
             </div>
             
             {/* Sidebar */}

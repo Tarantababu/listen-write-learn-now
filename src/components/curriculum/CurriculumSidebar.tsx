@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, Lightbulb, Book } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Lightbulb } from 'lucide-react';
 
 interface CurriculumSidebarProps {
   totalLessons: number;
@@ -35,46 +34,38 @@ const CurriculumSidebar: React.FC<CurriculumSidebarProps> = ({
             </div>
           </div>
         </CardContent>
-        <CardFooter>
-          <Button className="w-full" variant="outline">
-            Find your level
-          </Button>
-        </CardFooter>
       </Card>
       
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center">
             <Lightbulb className="h-4 w-4 mr-2" />
-            Learning Tips
+            Dictation Tips
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Complete each lesson with at least 95% accuracy three times to master it fully.
-            Review completed lessons regularly to maintain your skills.
-          </p>
+        <CardContent className="text-sm space-y-2.5 text-muted-foreground">
+          <p><span className="inline-block mr-1.5">🎧</span> Play the audio and listen to just 2–5 words.</p>
+          
+          <p><span className="inline-block mr-1.5">⏸️</span> Pause immediately! Write after listening — never while the audio is playing.</p>
+          
+          <p><span className="inline-block mr-1.5">📝</span> No need to transcribe the full text.</p>
+          
+          <p>If it feels like too much, just start with 3 sentences!</p>
+          
+          <p><span className="inline-block mr-1.5">⏪</span> Don't rewind. Missed a word? Just leave a blank.</p>
+          
+          <p><span className="inline-block mr-1.5">✅</span> When finished, listen again to:</p>
+          <ul className="list-disc pl-6 mt-1 space-y-0.5">
+            <li>Fill in gaps</li>
+            <li>Fix obvious mistakes</li>
+          </ul>
+          
+          <p><span className="inline-block mr-1.5">🔍</span> Click COMPARE and check your errors.</p>
+          
+          <p>Less than 15 mistakes? Awesome! Try writing a bit more next time!</p>
+          
+          <p><span className="inline-block mr-1.5">🔁</span> Listen one more time and read along your own writing.</p>
         </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center">
-            <Book className="h-4 w-4 mr-2" />
-            More Courses
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Explore more {language} learning materials with our extensive course catalog.
-          </p>
-        </CardContent>
-        <CardFooter>
-          <Button className="w-full" variant="default">
-            <span>Explore more courses</span>
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </CardFooter>
       </Card>
     </div>
   );
