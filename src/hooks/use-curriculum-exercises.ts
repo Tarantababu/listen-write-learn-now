@@ -98,10 +98,39 @@ export function useCurriculumExercises() {
     });
   }, [defaultExercises, exercises, settings.selectedLanguage]);
   
-  // Group exercises by tag
+  // Group exercises by tag and sort tags in a logical order
   const exercisesByTag = useMemo(() => {
     const tagMap: Record<string, CurriculumExercise[]> = {};
     
+    // Define a list of common tag priorities (put beginner tags first)
+    const tagPriorities: Record<string, number> = {
+      "Basics": 0,
+      "Beginner": 1,
+      "First Words": 2,
+      "Greetings": 3,
+      "Introductions": 4,
+      "Common Phrases": 5,
+      "Daily Life": 6,
+      "Intermediate": 7,
+      "Advanced": 8,
+      // Add more tags with priority values as needed
+    };
+    
+    // Helper function to determine tag priority
+    const getTagPriority = (tag: string): number => {
+      // Check if the tag exactly matches a priority key
+      if (tag in tagPriorities) return tagPriorities[tag];
+      
+      // Check if any priority key is part of the tag
+      for (const [priorityTag, value] of Object.entries(tagPriorities)) {
+        if (tag.includes(priorityTag)) return value;
+      }
+      
+      // Default priority for unknown tags
+      return 999;
+    };
+    
+    // Group exercises by tag
     processedExercises.forEach(exercise => {
       if (exercise.tags && exercise.tags.length > 0) {
         exercise.tags.forEach(tag => {
@@ -119,7 +148,22 @@ export function useCurriculumExercises() {
       }
     });
     
-    return tagMap;
+    // Ensure exercises in each tag are sorted by creation date
+    for (const tag in tagMap) {
+      tagMap[tag].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    }
+    
+    // Sort tags by priority and return as a new object
+    const sortedTags = Object.keys(tagMap).sort((a, b) => {
+      return getTagPriority(a) - getTagPriority(b);
+    });
+    
+    const sortedTagMap: Record<string, CurriculumExercise[]> = {};
+    sortedTags.forEach(tag => {
+      sortedTagMap[tag] = tagMap[tag];
+    });
+    
+    return sortedTagMap;
   }, [processedExercises]);
   
   // Calculate overall progress statistics

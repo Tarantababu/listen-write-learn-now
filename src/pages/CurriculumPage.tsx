@@ -1,11 +1,12 @@
 
 import React, { useEffect } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
-import CurriculumProgressSummary from '@/components/curriculum/CurriculumProgressSummary';
-import CurriculumTagGroup from '@/components/curriculum/CurriculumTagGroup';
 import { useCurriculumExercises } from '@/hooks/use-curriculum-exercises';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import UnitAccordion from '@/components/curriculum/UnitAccordion';
+import CurriculumSidebar from '@/components/curriculum/CurriculumSidebar';
 
 const CurriculumPage: React.FC = () => {
   const { copyDefaultExercise } = useExerciseContext();
@@ -64,30 +65,56 @@ const CurriculumPage: React.FC = () => {
     );
   }
   
+  // Calculate total lessons and completed lessons across all units
+  const totalLessons = stats.total;
+  const completedLessons = stats.completed;
+  
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col gap-6">
-        {/* Progress Summary */}
-        <CurriculumProgressSummary
-          totalExercises={stats.total}
-          completedExercises={stats.completed}
-          inProgressExercises={stats.inProgress}
-          language={selectedLanguage}
-        />
-        
-        {/* Tag Groups */}
-        <div className="space-y-4">
-          {Object.entries(exercisesByTag).map(([tag, exercises]) => (
-            <CurriculumTagGroup
-              key={tag}
-              tag={tag}
-              exercises={exercises}
-              onPracticeExercise={handlePracticeExercise}
-              onAddExercise={handleAddExercise}
-            />
-          ))}
-        </div>
+      {/* Greeting Section */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Your {selectedLanguage} Learning Plan</h1>
+        <p className="text-muted-foreground">
+          Follow the structured curriculum to build your {selectedLanguage} skills step by step.
+        </p>
       </div>
+      
+      {/* Tabs */}
+      <Tabs defaultValue="learning-plan" className="mb-8">
+        <TabsList>
+          <TabsTrigger value="learning-plan">Learning plan</TabsTrigger>
+          <TabsTrigger value="skills" disabled>Skills</TabsTrigger>
+          <TabsTrigger value="achievements" disabled>Achievements</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="learning-plan" className="mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Content - Units and Lessons */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Units */}
+              {Object.entries(exercisesByTag).map(([tag, exercises], index) => (
+                <UnitAccordion
+                  key={tag}
+                  unitNumber={index + 1}
+                  title={tag}
+                  lessons={exercises}
+                  onPracticeExercise={handlePracticeExercise}
+                  onAddExercise={handleAddExercise}
+                />
+              ))}
+            </div>
+            
+            {/* Sidebar */}
+            <div className="lg:col-span-1">
+              <CurriculumSidebar
+                totalLessons={totalLessons}
+                completedLessons={completedLessons}
+                language={selectedLanguage}
+              />
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
