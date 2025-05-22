@@ -340,7 +340,7 @@ const UserStatistics: React.FC = () => {
                 <div className="mt-5">
                   <Button asChild variant="default" size="sm" className="w-full">
                     <Link to="/dashboard/curriculum" className="flex items-center justify-center">
-                      View Curriculum <ChevronRight className="ml-1 h-4 w-4" />
+                      View Learning Plan <ChevronRight className="ml-1 h-4 w-4" />
                     </Link>
                   </Button>
                 </div>
@@ -350,7 +350,7 @@ const UserStatistics: React.FC = () => {
                 </p>
                 <Button asChild variant="default" size="sm" className="w-full">
                   <Link to="/dashboard/curriculum">
-                    Browse Curriculum <ChevronRight className="ml-1 h-4 w-4" />
+                    Browse Learning Plan <ChevronRight className="ml-1 h-4 w-4" />
                   </Link>
                 </Button>
               </div>}
