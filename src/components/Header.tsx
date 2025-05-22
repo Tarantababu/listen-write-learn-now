@@ -15,7 +15,6 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { UserMessages } from '@/components/UserMessages';
 import ThemeToggle from './ThemeToggle';
-
 const Header: React.FC = () => {
   const {
     user,
@@ -90,7 +89,7 @@ const Header: React.FC = () => {
               <Button asChild variant={isActive('/dashboard/vocabulary') ? "default" : "ghost"} size="sm" className="transition-all">
                 <Link to="/dashboard/vocabulary">
                   <Book className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Vocabulary</span>
+                  <span className="hidden sm:inline">My Vocabulary</span>
                 </Link>
               </Button>
               
@@ -215,5 +214,4 @@ const Header: React.FC = () => {
       </div>
     </header>;
 };
-
 export default Header;
