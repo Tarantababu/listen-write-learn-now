@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { SampleDictationModal } from './SampleDictationModal';
 import { FlagIcon } from "react-flag-kit";
-
 const transitionVariants = {
   item: {
     hidden: {
@@ -25,60 +24,67 @@ const transitionVariants = {
     }
   }
 };
-
-const languages = [
-  { name: 'English', flag: 'US', level: 'C1' },
-  { name: 'German', flag: 'DE', level: 'B2' },
-  { name: 'Spanish', flag: 'ES', level: 'B1' },
-  { name: 'French', flag: 'FR', level: 'A2' },
-  { name: 'Italian', flag: 'IT', level: 'A1' },
-  { name: 'Portuguese', flag: 'PT', level: 'B1' },
-  { name: 'Dutch', flag: 'NL', level: 'A2' },
-  { name: 'Turkish', flag: 'TR', level: 'B1' },
-  { name: 'Swedish', flag: 'SE', level: 'A1' }
-];
-
-const features = [
-  "🎯 Focused Dictation Practice",
-  "🧠 Deep Learning Method",
-  "📚 Growing Exercise Library",
-  "🔍 Word-Level Accuracy Feedback",
-  "📊 Progress Tracking",
-  "📝 Vocabulary Building"
-];
-
-const steps = [
-  {
-    number: 1,
-    title: "Choose an exercise",
-    description: "Select from our library of carefully curated exercises for your level."
-  },
-  {
-    number: 2,
-    title: "Listen and write",
-    description: "Listen to native speakers and write what you hear, one phrase at a time."
-  },
-  {
-    number: 3,
-    title: "Compare and learn",
-    description: "Get immediate word-by-word feedback and see where you need improvement."
-  },
-  {
-    number: 4,
-    title: "Track your progress",
-    description: "Build your skills with each session and watch your comprehension improve."
-  }
-];
-
+const languages = [{
+  name: 'English',
+  flag: 'US',
+  level: 'C1'
+}, {
+  name: 'German',
+  flag: 'DE',
+  level: 'B2'
+}, {
+  name: 'Spanish',
+  flag: 'ES',
+  level: 'B1'
+}, {
+  name: 'French',
+  flag: 'FR',
+  level: 'A2'
+}, {
+  name: 'Italian',
+  flag: 'IT',
+  level: 'A1'
+}, {
+  name: 'Portuguese',
+  flag: 'PT',
+  level: 'B1'
+}, {
+  name: 'Dutch',
+  flag: 'NL',
+  level: 'A2'
+}, {
+  name: 'Turkish',
+  flag: 'TR',
+  level: 'B1'
+}, {
+  name: 'Swedish',
+  flag: 'SE',
+  level: 'A1'
+}];
+const features = ["🎯 Focused Dictation Practice", "🧠 Deep Learning Method", "📚 Growing Exercise Library", "🔍 Word-Level Accuracy Feedback", "📊 Progress Tracking", "📝 Vocabulary Building"];
+const steps = [{
+  number: 1,
+  title: "Choose an exercise",
+  description: "Select from our library of carefully curated exercises for your level."
+}, {
+  number: 2,
+  title: "Listen and write",
+  description: "Listen to native speakers and write what you hear, one phrase at a time."
+}, {
+  number: 3,
+  title: "Compare and learn",
+  description: "Get immediate word-by-word feedback and see where you need improvement."
+}, {
+  number: 4,
+  title: "Track your progress",
+  description: "Build your skills with each session and watch your comprehension improve."
+}];
 export function Hero() {
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
-
   const handleOpenSample = () => {
     setSampleModalOpen(true);
   };
-
-  return (
-    <>
+  return <>
       <section className="pt-24 pb-20 md:pt-36 relative overflow-hidden bg-gradient-to-br from-white to-brand-light/10">
         <div className="container px-4 md:px-6 mx-auto">
           <div className="max-w-4xl mx-auto text-center">
@@ -92,15 +98,13 @@ export function Hero() {
               </p>
 
               <div className="mt-10 flex flex-wrap justify-center gap-4">
-                {languages.slice(0, 6).map((lang, i) => (
-                  <div key={i} className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100">
+                {languages.slice(0, 6).map((lang, i) => <div key={i} className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100">
                     <div className="flex-shrink-0">
                       <FlagIcon code={lang.flag} size={24} />
                     </div>
                     <span>{lang.name}</span>
-                    <span className="ml-1 text-xs bg-brand-primary text-white px-1 rounded">{lang.level}</span>
-                  </div>
-                ))}
+                    
+                  </div>)}
                 <div className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100">
                   <Globe size={24} className="text-brand-primary" />
                   <span>+ more</span>
@@ -122,15 +126,8 @@ export function Hero() {
               
               {/* Product Hunt badge */}
               <div className="mt-10 flex justify-center">
-                <a href="https://www.producthunt.com/posts/lwlnow?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-lwlnow" 
-                   target="_blank" 
-                   rel="noopener noreferrer" 
-                   className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl">
-                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=961139&theme=light&t=1746390894369" 
-                       alt="lwlnow - Learn languages by listening, typing, and mastering." 
-                       width="250" 
-                       height="54" 
-                       className="rounded" />
+                <a href="https://www.producthunt.com/posts/lwlnow?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-lwlnow" target="_blank" rel="noopener noreferrer" className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl">
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=961139&theme=light&t=1746390894369" alt="lwlnow - Learn languages by listening, typing, and mastering." width="250" height="54" className="rounded" />
                 </a>
               </div>
             </AnimatedGroup>
@@ -141,11 +138,9 @@ export function Hero() {
             <h2 className="text-3xl font-bold text-center mb-10 text-brand-dark">Our Unique Approach</h2>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {features.map((feature, i) => (
-                <div key={i} className="feature-card">
+              {features.map((feature, i) => <div key={i} className="feature-card">
                   <p className="text-lg font-medium">{feature}</p>
-                </div>
-              ))}
+                </div>)}
             </div>
           </div>
 
@@ -154,8 +149,7 @@ export function Hero() {
             <h2 className="text-3xl font-bold text-center mb-10 text-brand-dark">How It Works</h2>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              {steps.map((step, i) => (
-                <div key={i} className="flex gap-4">
+              {steps.map((step, i) => <div key={i} className="flex gap-4">
                   <div className="flex-shrink-0 w-10 h-10 rounded-full bg-brand-primary text-white flex items-center justify-center font-bold">
                     {step.number}
                   </div>
@@ -163,8 +157,7 @@ export function Hero() {
                     <h3 className="text-xl font-bold text-brand-dark">{step.title}</h3>
                     <p className="mt-2 text-muted-foreground">{step.description}</p>
                   </div>
-                </div>
-              ))}
+                </div>)}
             </div>
           </div>
 
@@ -229,6 +222,5 @@ export function Hero() {
 
       {/* Sample dictation modal */}
       <SampleDictationModal open={sampleModalOpen} onOpenChange={setSampleModalOpen} />
-    </>
-  );
+    </>;
 }
