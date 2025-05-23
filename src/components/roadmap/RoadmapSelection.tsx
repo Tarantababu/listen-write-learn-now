@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { FlagIcon } from 'react-flag-kit';
 
 /**
  * Placeholder component for RoadmapSelection
@@ -15,6 +16,11 @@ const RoadmapSelection: React.FC = () => {
       </CardHeader>
       <CardContent className="text-center">
         <p>Roadmap functionality is no longer available.</p>
+        <div className="mt-4 flex justify-center gap-2">
+          <FlagIcon code="US" size={24} />
+          <FlagIcon code="DE" size={24} />
+          <FlagIcon code="ES" size={24} />
+        </div>
       </CardContent>
     </Card>
   );

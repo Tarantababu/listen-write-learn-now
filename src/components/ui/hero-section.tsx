@@ -1,10 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronRight, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { cn } from '@/lib/utils';
+import { FlagIcon } from 'react-flag-kit';
+import { Logo } from '@/components/landing/Logo';
 
 const transitionVariants = {
     item: {
@@ -343,3 +344,6 @@ const Logo = ({ className }: { className?: string }) => {
 
 // Import Headphones component
 import { Headphones } from 'lucide-react';
+
+// Use FlagIcon component
+import { FlagIcon } from 'react-flag-kit';

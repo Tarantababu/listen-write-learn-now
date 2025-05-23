@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, Globe, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { SampleDictationModal } from './SampleDictationModal';
-import Flag from 'react-flagpack';
+import { FlagIcon } from "react-flag-kit";
 
 const transitionVariants = {
   item: {
@@ -95,9 +94,8 @@ export function Hero() {
               <div className="mt-10 flex flex-wrap justify-center gap-4">
                 {languages.slice(0, 6).map((lang, i) => (
                   <div key={i} className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100">
-                    {/* Force rerender with key to help with flag display issues */}
-                    <div key={`flag-${lang.flag}`} className="flex-shrink-0">
-                      <Flag code={lang.flag} size="M" />
+                    <div className="flex-shrink-0">
+                      <FlagIcon code={lang.flag} size={24} />
                     </div>
                     <span>{lang.name}</span>
                     <span className="ml-1 text-xs bg-brand-primary text-white px-1 rounded">{lang.level}</span>
