@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, Globe, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { SampleDictationModal } from './SampleDictationModal';
-import { Flag } from 'react-flagpack';
+import Flag from 'react-flagpack';
 
 const transitionVariants = {
   item: {
