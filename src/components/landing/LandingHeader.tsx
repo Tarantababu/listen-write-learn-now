@@ -9,8 +9,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const menuItems = [
   { name: 'Method', href: '/#method' },
-  { name: 'Features', href: '/#features' },
-  { name: 'Pricing', href: '/#pricing' },
   { name: 'Blog', href: '/blog' },
 ];
 
