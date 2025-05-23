@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, Globe, Play } from 'lucide-react';
@@ -91,16 +92,16 @@ export function Hero() {
                 Train your ear, sharpen your memory, and improve your writing—all in one immersive experience.
               </p>
 
-              <div className="mt-10 flex flex-wrap justify-center gap-3">
+              <div className="mt-10 flex flex-wrap justify-center gap-4">
                 {languages.slice(0, 6).map((lang, i) => (
-                  <div key={i} className="language-chip">
-                    <Flag code={lang.flag} size="S" />
+                  <div key={i} className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100">
+                    <Flag code={lang.flag} size="M" />
                     <span>{lang.name}</span>
                     <span className="ml-1 text-xs bg-brand-primary text-white px-1 rounded">{lang.level}</span>
                   </div>
                 ))}
-                <div className="language-chip">
-                  <Globe size={16} className="text-brand-primary" />
+                <div className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100">
+                  <Globe size={24} className="text-brand-primary" />
                   <span>+ more</span>
                 </div>
               </div>
