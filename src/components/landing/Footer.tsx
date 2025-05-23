@@ -1,8 +1,6 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
-
 export function Footer() {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
@@ -14,9 +12,7 @@ export function Footer() {
     }
     return `/${anchor}`;
   };
-
-  return (
-    <footer className="bg-brand-dark text-white">
+  return <footer className="bg-brand-dark text-white">
       <div className="container px-4 py-12 md:px-6">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-4">
@@ -34,14 +30,10 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href={getHref("#features")} className="text-brand-light hover:text-white transition-colors">
-                  Features
-                </a>
+                
               </li>
               <li>
-                <a href={getHref("#pricing")} className="text-brand-light hover:text-white transition-colors">
-                  Pricing
-                </a>
+                
               </li>
               <li>
                 <Link to="/blog" className="text-brand-light hover:text-white transition-colors">
@@ -81,14 +73,7 @@ export function Footer() {
                 </span>
               </li>
               <li>
-                <a 
-                  href="https://twitter.com/lwlnow" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-brand-light hover:text-white transition-colors"
-                >
-                  Twitter
-                </a>
+                
               </li>
             </ul>
           </div>
@@ -97,6 +82,5 @@ export function Footer() {
           <p>© {new Date().getFullYear()} lwlnow. All rights reserved.</p>
         </div>
       </div>
-    </footer>
-  );
+    </footer>;
 }
