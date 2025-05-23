@@ -139,7 +139,7 @@ export function Hero() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               {features.map((feature, i) => <div key={i} className="feature-card">
-                  <p className="text-lg font-medium">{feature}</p>
+                  <p className="text-lg text-center font-normal">{feature}</p>
                 </div>)}
             </div>
           </div>
