@@ -3,10 +3,10 @@ import React from 'react';
 
 export function VideoExplanation() {
   return (
-    <section className="py-16 bg-background">
+    <section id="method" className="py-16 bg-white">
       <div className="container px-4 md:px-6 mx-auto">
         <div className="text-center mb-10">
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">See How It Works</h2>
+          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-brand-dark">See How It Works</h2>
           <p className="mt-4 text-xl text-muted-foreground max-w-3xl mx-auto">
             Watch our quick demo to see how ListenWriteLearn helps you master languages through dictation
           </p>

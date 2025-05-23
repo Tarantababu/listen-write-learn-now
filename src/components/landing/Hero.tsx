@@ -1,9 +1,12 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Check, Globe, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { SampleDictationModal } from './SampleDictationModal';
+import { Flag } from 'react-flagpack';
+
 const transitionVariants = {
   item: {
     hidden: {
@@ -23,105 +26,208 @@ const transitionVariants = {
     }
   }
 };
+
+const languages = [
+  { name: 'English', flag: 'US', level: 'C1' },
+  { name: 'German', flag: 'DE', level: 'B2' },
+  { name: 'Spanish', flag: 'ES', level: 'B1' },
+  { name: 'French', flag: 'FR', level: 'A2' },
+  { name: 'Italian', flag: 'IT', level: 'A1' },
+  { name: 'Portuguese', flag: 'PT', level: 'B1' },
+  { name: 'Dutch', flag: 'NL', level: 'A2' },
+  { name: 'Turkish', flag: 'TR', level: 'B1' },
+  { name: 'Swedish', flag: 'SE', level: 'A1' }
+];
+
+const features = [
+  "🎯 Focused Dictation Practice",
+  "🧠 Deep Learning Method",
+  "📚 Growing Exercise Library",
+  "🔍 Word-Level Accuracy Feedback",
+  "📊 Progress Tracking",
+  "📝 Vocabulary Building"
+];
+
+const steps = [
+  {
+    number: 1,
+    title: "Choose an exercise",
+    description: "Select from our library of carefully curated exercises for your level."
+  },
+  {
+    number: 2,
+    title: "Listen and write",
+    description: "Listen to native speakers and write what you hear, one phrase at a time."
+  },
+  {
+    number: 3,
+    title: "Compare and learn",
+    description: "Get immediate word-by-word feedback and see where you need improvement."
+  },
+  {
+    number: 4,
+    title: "Track your progress",
+    description: "Build your skills with each session and watch your comprehension improve."
+  }
+];
+
 export function Hero() {
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
+
   const handleOpenSample = () => {
     setSampleModalOpen(true);
   };
-  return <section className="relative pt-24 md:pt-36">
-      <div aria-hidden className="z-[2] absolute inset-0 pointer-events-none isolate opacity-50 contain-strict hidden lg:block">
-        <div className="w-[35rem] h-[80rem] -translate-y-[350px] absolute left-0 top-0 -rotate-45 rounded-full bg-[radial-gradient(68.54%_68.72%_at_55.02%_31.46%,hsla(0,0%,85%,.08)_0,hsla(0,0%,55%,.02)_50%,hsla(0,0%,45%,0)_80%)]" />
-        <div className="h-[80rem] absolute left-0 top-0 w-56 -rotate-45 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,hsla(0,0%,85%,.06)_0,hsla(0,0%,45%,.02)_80%,transparent_100%)] [translate:5%_-50%]" />
-        <div className="h-[80rem] -translate-y-[350px] absolute left-0 top-0 w-56 -rotate-45 bg-[radial-gradient(50%_50%_at_50%_50%,hsla(0,0%,85%,.04)_0,hsla(0,0%,45%,.02)_80%,transparent_100%)]" />
-      </div>
-      
-      <AnimatedGroup variants={{
-      container: {
-        visible: {
-          transition: {
-            delayChildren: 1
-          }
-        }
-      },
-      item: {
-        hidden: {
-          opacity: 0,
-          y: 20
-        },
-        visible: {
-          opacity: 1,
-          y: 0,
-          transition: {
-            type: 'spring',
-            bounce: 0.3,
-            duration: 2
-          }
-        }
-      }
-    }} className="absolute inset-0 -z-20">
-        <img src="https://ik.imagekit.io/lrigu76hy/tailark/night-background.jpg?updatedAt=1745733451120" alt="background" className="absolute inset-x-0 top-56 -z-20 hidden lg:top-32 dark:block" width="3276" height="4095" />
-      </AnimatedGroup>
-      <div aria-hidden className="absolute inset-0 -z-10 size-full [background:radial-gradient(125%_125%_at_50%_100%,transparent_0%,var(--background)_75%)]" />
-      
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="text-center sm:mx-auto lg:mr-auto lg:mt-0">
-          <AnimatedGroup variants={transitionVariants}>
-            <span className="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium inline-block">
-              📘 Welcome to ListenWriteLearn
-            </span>
-            <h1 className="mt-8 max-w-4xl mx-auto text-balance text-6xl md:text-7xl lg:mt-16 xl:text-[5.25rem]">
-              Master a New Language Through Dictation
-            </h1>
-            <p className="mx-auto mt-8 max-w-2xl text-balance text-lg">
-              Train your ear, sharpen your memory, and improve your writing—all in one immersive experience.
-            </p>
-            <p className="mx-auto mt-4 max-w-2xl text-balance text-md text-muted-foreground">
-              Master a new language with dictation, repetition, and deep understanding — not memorization.
-            </p>
-          </AnimatedGroup>
 
-          <AnimatedGroup variants={{
-          container: {
-            visible: {
-              transition: {
-                staggerChildren: 0.05,
-                delayChildren: 0.75
-              }
-            }
-          },
-          ...transitionVariants
-        }} className="mt-12 flex flex-col items-center justify-center gap-4 md:flex-row">
-            <div className="bg-foreground/10 rounded-[14px] border p-0.5">
-              <Button asChild size="lg" className="rounded-xl px-5 text-base">
-                <Link to="/signup">
-                  <span className="text-nowrap">Get Started Now</span>
+  return (
+    <>
+      <section className="pt-24 pb-20 md:pt-36 relative overflow-hidden bg-gradient-to-br from-white to-brand-light/10">
+        <div className="container px-4 md:px-6 mx-auto">
+          <div className="max-w-4xl mx-auto text-center">
+            <AnimatedGroup variants={transitionVariants}>
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-brand-dark mb-4">
+                Master Languages Through <span className="text-brand-primary">Dictation</span>
+              </h1>
+              
+              <p className="mt-6 text-xl text-muted-foreground max-w-2xl mx-auto">
+                Train your ear, sharpen your memory, and improve your writing—all in one immersive experience.
+              </p>
+
+              <div className="mt-10 flex flex-wrap justify-center gap-3">
+                {languages.slice(0, 6).map((lang, i) => (
+                  <div key={i} className="language-chip">
+                    <Flag code={lang.flag} size="S" />
+                    <span>{lang.name}</span>
+                    <span className="ml-1 text-xs bg-brand-primary text-white px-1 rounded">{lang.level}</span>
+                  </div>
+                ))}
+                <div className="language-chip">
+                  <Globe size={16} className="text-brand-primary" />
+                  <span>+ more</span>
+                </div>
+              </div>
+              
+              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-6">
+                  <Link to="/signup" className="flex items-center gap-2">
+                    Get Started Free
+                    <ArrowRight size={18} />
+                  </Link>
+                </Button>
+                
+                <Button variant="outline" size="lg" className="rounded-full px-6 border-brand-primary text-brand-primary" onClick={handleOpenSample}>
+                  <Play size={18} className="mr-2" /> Try a Demo
+                </Button>
+              </div>
+              
+              {/* Product Hunt badge */}
+              <div className="mt-10 flex justify-center">
+                <a href="https://www.producthunt.com/posts/lwlnow?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-lwlnow" 
+                   target="_blank" 
+                   rel="noopener noreferrer" 
+                   className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl">
+                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=961139&theme=light&t=1746390894369" 
+                       alt="lwlnow - Learn languages by listening, typing, and mastering." 
+                       width="250" 
+                       height="54" 
+                       className="rounded" />
+                </a>
+              </div>
+            </AnimatedGroup>
+          </div>
+
+          {/* Features grid */}
+          <div className="mt-24 max-w-5xl mx-auto">
+            <h2 className="text-3xl font-bold text-center mb-10 text-brand-dark">Our Unique Approach</h2>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {features.map((feature, i) => (
+                <div key={i} className="feature-card">
+                  <p className="text-lg font-medium">{feature}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* How it works section */}
+          <div className="mt-24 max-w-4xl mx-auto">
+            <h2 className="text-3xl font-bold text-center mb-10 text-brand-dark">How It Works</h2>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              {steps.map((step, i) => (
+                <div key={i} className="flex gap-4">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-brand-primary text-white flex items-center justify-center font-bold">
+                    {step.number}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-brand-dark">{step.title}</h3>
+                    <p className="mt-2 text-muted-foreground">{step.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Benefits */}
+          <div className="mt-24 max-w-4xl mx-auto">
+            <h2 className="text-3xl font-bold text-center mb-10 text-brand-dark">Why It Works</h2>
+            
+            <div className="bg-brand-light/5 rounded-xl p-8 border border-brand-light/20">
+              <ul className="space-y-4">
+                <li className="flex items-start gap-3">
+                  <Check className="h-6 w-6 text-brand-primary flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="font-medium text-lg">Improves Listening Comprehension</p>
+                    <p className="text-muted-foreground">Train your ears to recognize natural speech patterns and accents</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check className="h-6 w-6 text-brand-primary flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="font-medium text-lg">Strengthens Writing Skills</p>
+                    <p className="text-muted-foreground">Master spelling, grammar, and sentence structure through practice</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check className="h-6 w-6 text-brand-primary flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="font-medium text-lg">Builds Vocabulary in Context</p>
+                    <p className="text-muted-foreground">Learn new words naturally in proper context, not as isolated flashcards</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check className="h-6 w-6 text-brand-primary flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="font-medium text-lg">Creates Deeper Neural Connections</p>
+                    <p className="text-muted-foreground">Engage multiple learning pathways simultaneously for better retention</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="mt-24 max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl font-bold text-center mb-6 text-brand-dark">Ready to Transform Your Language Journey?</h2>
+            <p className="text-xl text-muted-foreground mb-8">Join thousands of learners who have improved their language skills with our method.</p>
+            
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-6">
+                <Link to="/signup" className="flex items-center gap-2">
+                  Start Learning Now
+                  <ArrowRight size={18} />
                 </Link>
               </Button>
+              
+              <Button variant="outline" size="lg" className="rounded-full px-6 border-brand-primary text-brand-primary" onClick={handleOpenSample}>
+                <Play size={18} className="mr-2" /> Try a Sample Exercise
+              </Button>
             </div>
-            <Button variant="outline" size="lg" className="rounded-xl px-5" onClick={handleOpenSample}>
-              <span className="text-nowrap">Try a Sample</span>
-            </Button>
-          </AnimatedGroup>
-          
-          {/* Product Hunt badge */}
-          <AnimatedGroup variants={{
-          container: {
-            visible: {
-              transition: {
-                delayChildren: 1.25
-              }
-            }
-          },
-          ...transitionVariants
-        }} className="mt-10 flex justify-center my-[30px] mx-0 px-0 py-[2px]">
-            <a href="https://www.producthunt.com/posts/lwlnow?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-lwlnow" target="_blank" rel="noopener noreferrer" className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl" aria-label="View lwlnow on Product Hunt">
-              <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=961139&theme=light&t=1746390894369" alt="lwlnow - Learn languages by listening, typing, and mastering." width="250" height="54" className="rounded" />
-            </a>
-          </AnimatedGroup>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Sample dictation modal */}
       <SampleDictationModal open={sampleModalOpen} onOpenChange={setSampleModalOpen} />
-    </section>;
+    </>
+  );
 }

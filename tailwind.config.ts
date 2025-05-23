@@ -67,6 +67,14 @@ export default {
           			DEFAULT: '#10B981',
           			light: '#D1FAE5',
         		},
+				// Added new brand colors
+				brand: {
+					dark: '#1F0459',
+					light: '#AB96D9',
+					primary: '#491BF2',
+					secondary: '#6D49F2',
+					tertiary: '#6F6BF2',
+				}
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

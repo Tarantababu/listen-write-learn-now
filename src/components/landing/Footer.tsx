@@ -10,46 +10,41 @@ export function Footer() {
   // Handle anchor links
   const getHref = (anchor: string) => {
     if (isHomePage) {
-      return anchor; // Just use #method, #how-it-works, etc.
+      return anchor;
     }
-    return `/${anchor}`; // If not on homepage, use /#method, /#how-it-works, etc.
+    return `/${anchor}`;
   };
 
   return (
-    <footer className="border-t bg-muted/40">
+    <footer className="bg-brand-dark text-white">
       <div className="container px-4 py-12 md:px-6">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-4">
-            <Logo className="text-lg" />
-            <p className="max-w-xs text-sm text-muted-foreground">
+            <Logo className="text-white text-lg" />
+            <p className="max-w-xs text-sm text-brand-light">
               Improve your language skills through our unique dictation-based learning approach.
             </p>
           </div>
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">Platform</h3>
+            <h3 className="text-sm font-medium text-white">Platform</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href={getHref("#method")} className="text-muted-foreground hover:text-foreground transition-colors">
+                <a href={getHref("#method")} className="text-brand-light hover:text-white transition-colors">
                   Method
                 </a>
               </li>
               <li>
-                <a href={getHref("#how-it-works")} className="text-muted-foreground hover:text-foreground transition-colors">
-                  How It Works
+                <a href={getHref("#features")} className="text-brand-light hover:text-white transition-colors">
+                  Features
                 </a>
               </li>
               <li>
-                <a href={getHref("#tools")} className="text-muted-foreground hover:text-foreground transition-colors">
-                  Tools
+                <a href={getHref("#pricing")} className="text-brand-light hover:text-white transition-colors">
+                  Pricing
                 </a>
               </li>
               <li>
-                <a href={getHref("#why-it-works")} className="text-muted-foreground hover:text-foreground transition-colors">
-                  Why It Works
-                </a>
-              </li>
-              <li>
-                <Link to="/blog" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link to="/blog" className="text-brand-light hover:text-white transition-colors">
                   Blog
                 </Link>
               </li>
@@ -57,20 +52,20 @@ export function Footer() {
           </div>
           
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">Legal</h3>
+            <h3 className="text-sm font-medium text-white">Legal</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/privacy-policy" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link to="/privacy-policy" className="text-brand-light hover:text-white transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link to="/terms-of-service" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link to="/terms-of-service" className="text-brand-light hover:text-white transition-colors">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link to="/cookie-policy" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link to="/cookie-policy" className="text-brand-light hover:text-white transition-colors">
                   Cookie Policy
                 </Link>
               </li>
@@ -78,10 +73,10 @@ export function Footer() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">Contact</h3>
+            <h3 className="text-sm font-medium text-white">Contact</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <span className="text-muted-foreground">
+                <span className="text-brand-light">
                   support@lwlnow.com
                 </span>
               </li>
@@ -90,7 +85,7 @@ export function Footer() {
                   href="https://twitter.com/lwlnow" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-brand-light hover:text-white transition-colors"
                 >
                   Twitter
                 </a>
@@ -98,7 +93,7 @@ export function Footer() {
             </ul>
           </div>
         </div>
-        <div className="mt-12 border-t pt-8 text-center text-sm text-muted-foreground">
+        <div className="mt-12 border-t border-brand-light/20 pt-8 text-center text-sm text-brand-light">
           <p>© {new Date().getFullYear()} lwlnow. All rights reserved.</p>
         </div>
       </div>
