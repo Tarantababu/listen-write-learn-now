@@ -6,7 +6,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useAdmin } from '@/hooks/use-admin';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Headphones, LogOut, BookOpen, Home, Settings, CreditCard, Crown, LayoutDashboard, Book, Shield, HelpCircle, GraduationCap } from 'lucide-react';
+import { LogOut, BookOpen, Home, Settings, CreditCard, Crown, LayoutDashboard, Book, Shield, HelpCircle, GraduationCap } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getLanguageFlag } from '@/utils/languageUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { UserMessages } from '@/components/UserMessages';
 import ThemeToggle from './ThemeToggle';
+import { Logo } from './landing/Logo';
+
 const Header: React.FC = () => {
   const {
     user,
@@ -58,10 +60,7 @@ const Header: React.FC = () => {
       <div className="container flex h-14 sm:h-16 items-center justify-between px-4">
         <div className="flex items-center gap-2 sm:gap-6">
           <Link to="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
-            <Headphones className="h-5 w-5 text-primary" />
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent hidden sm:inline-block">
-              lwlnow
-            </span>
+            <Logo />
           </Link>
           
           {!isMobile && user && <nav className="flex items-center gap-1">
@@ -214,4 +213,5 @@ const Header: React.FC = () => {
       </div>
     </header>;
 };
+
 export default Header;

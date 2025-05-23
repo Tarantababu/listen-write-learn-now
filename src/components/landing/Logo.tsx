@@ -10,7 +10,7 @@ export function Logo({ className }: LogoProps) {
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <img 
-        src="/lovable-uploads/49a4fa5b-8a92-4e9f-8811-e64fc98f3e4c.png" 
+        src="/lovable-uploads/b9a006c6-dd0a-4ffa-805b-63f0b8b71aff.png" 
         alt="Zebra logo" 
         className="h-8 w-8 object-contain"
       />

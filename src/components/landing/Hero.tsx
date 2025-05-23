@@ -95,7 +95,10 @@ export function Hero() {
               <div className="mt-10 flex flex-wrap justify-center gap-4">
                 {languages.slice(0, 6).map((lang, i) => (
                   <div key={i} className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100">
-                    <Flag code={lang.flag} size="M" />
+                    {/* Force rerender with key to help with flag display issues */}
+                    <div key={`flag-${lang.flag}`} className="flex-shrink-0">
+                      <Flag code={lang.flag} size="M" />
+                    </div>
                     <span>{lang.name}</span>
                     <span className="ml-1 text-xs bg-brand-primary text-white px-1 rounded">{lang.level}</span>
                   </div>
