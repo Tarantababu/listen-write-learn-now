@@ -1,7 +1,6 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,9 +8,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, CheckCircle2, Home, Headphones } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { updateProfile } from '@/lib/auth';
+import { capitalizeLanguage, getLanguageFlag } from '@/utils/languageUtils';
 
 const SignUpPage: React.FC = () => {
   const { signUp, signInWithGoogle, user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const selectedLanguage = searchParams.get('lang');
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -44,6 +48,20 @@ const SignUpPage: React.FC = () => {
     
     try {
       await signUp(email, password);
+      
+      // If a language was selected, update the user's profile
+      if (selectedLanguage) {
+        try {
+          await updateProfile({
+            selected_language: selectedLanguage,
+            learning_languages: [selectedLanguage]
+          });
+        } catch (profileError) {
+          console.error('Failed to update language preference:', profileError);
+          // Don't fail the signup if profile update fails
+        }
+      }
+      
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
@@ -58,6 +76,9 @@ const SignUpPage: React.FC = () => {
     
     try {
       await signInWithGoogle();
+      
+      // Note: For Google signup, we'll handle language setting in the dashboard
+      // since the redirect happens immediately
     } catch (err: any) {
       setError(err.message || 'Failed to sign up with Google');
       setIsGoogleLoading(false);
@@ -81,6 +102,16 @@ const SignUpPage: React.FC = () => {
               <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">ListenWriteLearn</h1>
             </div>
           </div>
+          
+          {selectedLanguage && (
+            <div className="flex items-center justify-center gap-2 mb-3 p-2 bg-primary/5 rounded-lg border border-primary/10">
+              <span className="text-lg">{getLanguageFlag(selectedLanguage)}</span>
+              <span className="text-sm font-medium text-primary">
+                Learning: {capitalizeLanguage(selectedLanguage)}
+              </span>
+            </div>
+          )}
+          
           <CardTitle className="text-xl sm:text-2xl">Create an Account</CardTitle>
           <CardDescription className="text-sm mb-2">
             Join ListenWriteLearn and start improving your language skills

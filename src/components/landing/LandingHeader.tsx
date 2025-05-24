@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { Logo } from './Logo';
+import { LanguageSelector } from './LanguageSelector';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -131,6 +131,9 @@ export function LandingHeader() {
                 </ul>
               </div>
               <div className="flex w-full flex-col mt-8 lg:mt-0 space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
+                <div className="hidden lg:block">
+                  <LanguageSelector />
+                </div>
                 <Button
                   asChild
                   variant="outline"
@@ -148,6 +151,9 @@ export function LandingHeader() {
                     <span>Sign Up</span>
                   </Link>
                 </Button>
+                <div className="lg:hidden">
+                  <LanguageSelector />
+                </div>
               </div>
             </div>
           </div>
