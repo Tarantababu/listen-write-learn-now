@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import VocabularyPlaylist from '@/components/VocabularyPlaylist';
 import VocabularyCard from '@/components/VocabularyCard';
@@ -15,6 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import VocabularyExport from '@/components/VocabularyExport';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface VocabularyItem {
   id: string;
@@ -23,6 +25,7 @@ interface VocabularyItem {
   example?: string;
   exampleAudio?: string;
   language: string;
+  lastReviewed?: Date;
 }
 
 const VocabularyPage = () => {
@@ -30,7 +33,8 @@ const VocabularyPage = () => {
     vocabulary,
     getVocabularyByLanguage,
     vocabularyLimit,
-    removeVocabularyItem
+    removeVocabularyItem,
+    isLoading: isVocabularyLoading
   } = useVocabularyContext();
   const {
     settings
@@ -48,10 +52,12 @@ const VocabularyPage = () => {
 
   // Local state for enhanced UX
   const [searchTerm, setSearchTerm] = useState('');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'cards' | 'study'>('list');
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [showDefinition, setShowDefinition] = useState<{[key: string]: boolean}>({});
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   // Filter vocabulary by currently selected language
   const languageVocabulary = getVocabularyByLanguage(settings.selectedLanguage);
@@ -84,7 +90,7 @@ const VocabularyPage = () => {
   }, [languageVocabulary, filteredVocabulary]);
 
   // Audio functionality - plays example audio
-  const playAudio = async (itemId: string) => {
+  const playAudio = useCallback(async (itemId: string) => {
     const audioKey = `${itemId}-example`;
 
     // Stop currently playing audio
@@ -131,29 +137,27 @@ const VocabularyPage = () => {
       audioRefs.current[audioKey] = audio;
 
       // Set up event listeners
-      audio.addEventListener('ended', () => {
+      const cleanup = () => {
         setPlayingAudio(null);
         setAudioLoading(prev => ({
           ...prev,
           [audioKey]: false
         }));
-      });
+        audio.removeEventListener('ended', cleanup);
+        audio.removeEventListener('error', cleanup);
+        audio.removeEventListener('canplay', canPlayHandler);
+      };
 
-      audio.addEventListener('error', () => {
+      const canPlayHandler = () => {
         setAudioLoading(prev => ({
           ...prev,
           [audioKey]: false
         }));
-        setPlayingAudio(null);
-        console.error('Audio playback failed');
-      });
+      };
 
-      audio.addEventListener('canplay', () => {
-        setAudioLoading(prev => ({
-          ...prev,
-          [audioKey]: false
-        }));
-      });
+      audio.addEventListener('ended', cleanup);
+      audio.addEventListener('error', cleanup);
+      audio.addEventListener('canplay', canPlayHandler);
 
       await audio.play();
       setPlayingAudio(audioKey);
@@ -166,7 +170,7 @@ const VocabularyPage = () => {
       }));
       setPlayingAudio(null);
     }
-  };
+  }, [filteredVocabulary, playingAudio]);
 
   // Cleanup audio on unmount
   useEffect(() => {
@@ -175,68 +179,101 @@ const VocabularyPage = () => {
       Object.values(audioRefs.current).forEach(audio => {
         if (audio) {
           audio.pause();
-          audio.removeEventListener('ended', () => {});
-          audio.removeEventListener('error', () => {});
-          audio.removeEventListener('canplay', () => {});
+          audio.currentTime = 0;
         }
       });
     };
   }, []);
 
+  // Keyboard navigation for study mode
+  useEffect(() => {
+    if (viewMode !== 'study') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') navigateCard('next');
+      if (e.key === 'ArrowLeft') navigateCard('prev');
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        const currentItem = filteredVocabulary[currentCardIndex];
+        if (currentItem) {
+          toggleDefinition(currentItem.id);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewMode, currentCardIndex, filteredVocabulary]);
+
   // Enhanced interaction handlers
   const handleDeleteVocabularyItem = (id: string) => {
-    if (showDeleteConfirm === id) {
+    if (itemToDelete === id) {
       removeVocabularyItem(id);
-      setShowDeleteConfirm(null);
+      setItemToDelete(null);
       // Adjust current card index if needed in study mode
       if (viewMode === 'study' && currentCardIndex >= filteredVocabulary.length - 1) {
         setCurrentCardIndex(Math.max(0, currentCardIndex - 1));
       }
-    } else {
-      setShowDeleteConfirm(id);
-      // Auto-cancel confirmation after 3 seconds
-      setTimeout(() => setShowDeleteConfirm(null), 3000);
+      // Remove from selected items if present
+      setSelectedItems(prev => prev.filter(itemId => itemId !== id));
     }
   };
 
-  const toggleDefinition = (id: string) => {
+  const toggleDefinition = useCallback((id: string) => {
     setShowDefinition(prev => ({
       ...prev,
       [id]: !prev[id]
     }));
-  };
+  }, []);
 
-  const navigateCard = (direction: 'prev' | 'next') => {
-    if (direction === 'prev') {
-      setCurrentCardIndex(prev => prev > 0 ? prev - 1 : filteredVocabulary.length - 1);
-    } else {
-      setCurrentCardIndex(prev => prev < filteredVocabulary.length - 1 ? prev + 1 : 0);
-    }
-  };
+  const navigateCard = useCallback((direction: 'prev' | 'next') => {
+    setCurrentCardIndex(prev => {
+      if (direction === 'prev') {
+        return prev > 0 ? prev - 1 : filteredVocabulary.length - 1;
+      } else {
+        return prev < filteredVocabulary.length - 1 ? prev + 1 : 0;
+      }
+    });
+  }, [filteredVocabulary.length]);
 
-  const shuffleCards = () => {
+  const shuffleCards = useCallback(() => {
     setCurrentCardIndex(Math.floor(Math.random() * filteredVocabulary.length));
-  };
+  }, [filteredVocabulary.length]);
+
+  const toggleSelectItem = useCallback((id: string) => {
+    setSelectedItems(prev => 
+      prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
+    );
+  }, []);
+
+  const handleBulkDelete = useCallback(() => {
+    selectedItems.forEach(id => removeVocabularyItem(id));
+    setSelectedItems([]);
+    setItemToDelete(null);
+    // Reset study mode if needed
+    if (viewMode === 'study') {
+      setCurrentCardIndex(0);
+    }
+  }, [selectedItems, removeVocabularyItem, viewMode]);
 
   // Get status color for progress
-  const getProgressColor = () => {
+  const getProgressColor = useCallback(() => {
     if (isAtLimit) return 'bg-red-500';
     if (isNearLimit) return 'bg-yellow-500';
     return 'bg-green-500';
-  };
+  }, [isAtLimit, isNearLimit]);
 
   // Get motivational message based on progress
-  const getMotivationalMessage = () => {
+  const getMotivationalMessage = useCallback(() => {
     const count = languageVocabulary.length;
     if (count === 0) return "Start building your vocabulary library! 📚";
     if (count < 10) return "Great start! Keep adding more words! 🌱";
     if (count < 50) return "You're building a solid foundation! 💪";
     if (count < 100) return "Impressive vocabulary collection! 🎯";
     return "Amazing! You're a vocabulary master! 🏆";
-  };
+  }, [languageVocabulary.length]);
 
   // Audio button component
-  const AudioButton = ({
+  const AudioButton = React.memo(({
     itemId,
     size = 'sm' as const,
     className = ''
@@ -264,9 +301,13 @@ const VocabularyPage = () => {
         className={`${className} ${isPlaying ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`} 
         disabled={isLoading} 
         title="Play audio"
+        aria-label={isPlaying ? "Stop audio" : "Play audio"}
       >
         {isLoading ? (
-          <Loader2 className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} animate-spin`} />
+          <div className="relative">
+            <Loader2 className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} animate-spin`} />
+            <div className="absolute inset-0 border-2 border-transparent border-t-primary rounded-full animate-spin" />
+          </div>
         ) : isPlaying ? (
           <VolumeX className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'}`} />
         ) : (
@@ -274,7 +315,12 @@ const VocabularyPage = () => {
         )}
       </Button>
     );
-  };
+  });
+
+  // Add search term to recent searches
+  const handleSearch = useCallback((term: string) => {
+    setSearchTerm(term);
+    }, []);
 
   return (
     <div className="container mx-auto px-4 py-4 sm:py-8">
@@ -341,7 +387,12 @@ const VocabularyPage = () => {
               {/* Search Input */}
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search words or definitions..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
+                <Input 
+                  placeholder="Search words or definitions..." 
+                  value={searchTerm} 
+                  onChange={e => handleSearch(e.target.value)} 
+                  className="pl-9" 
+                />
               </div>
             </div>
             
@@ -395,7 +446,13 @@ const VocabularyPage = () => {
               </div>
             </CardHeader>
             <CardContent>
-              {languageVocabulary.length === 0 ? (
+              {isVocabularyLoading ? (
+                <div className="space-y-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : languageVocabulary.length === 0 ? (
                 <div className="text-center py-8 sm:py-12">
                   <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
                     <BookOpen className="h-8 w-8 text-muted-foreground" />
@@ -421,28 +478,36 @@ const VocabularyPage = () => {
                 </div>
               ) : (
                 <>
+                  {/* Bulk Actions Bar */}
+                  {selectedItems.length > 0 && (
+                    <div className="bg-muted/50 rounded-lg p-3 mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">
+                          {selectedItems.length} selected
+                        </span>
+                      </div>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => setItemToDelete('bulk')}
+                        className="h-7"
+                      >
+                        Delete Selected
+                      </Button>
+                    </div>
+                  )}
+
                   {/* List View */}
                   {viewMode === 'list' && (
                     <div className="space-y-3 sm:space-y-4">
                       {filteredVocabulary.map(item => (
                         <div key={item.id} className="group relative">
-                          <VocabularyCard item={item} onDelete={() => handleDeleteVocabularyItem(item.id)} />
-                          {/* Delete confirmation overlay */}
-                          {showDeleteConfirm === item.id && (
-                            <div className="absolute inset-0 bg-red-50 border border-red-200 rounded-lg flex items-center justify-center z-10">
-                              <div className="text-center">
-                                <p className="text-sm font-medium text-red-900 mb-2">Delete this word?</p>
-                                <div className="flex gap-2">
-                                  <Button size="sm" variant="destructive" onClick={() => handleDeleteVocabularyItem(item.id)}>
-                                    Yes, Delete
-                                  </Button>
-                                  <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
-                                    Cancel
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                          <VocabularyCard 
+                            item={item} 
+                            onDelete={() => setItemToDelete(item.id)}
+                            isSelected={selectedItems.includes(item.id)}
+                            onSelect={() => toggleSelectItem(item.id)}
+                          />
                         </div>
                       ))}
                     </div>
@@ -453,7 +518,7 @@ const VocabularyPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {filteredVocabulary.map(item => (
                         <div key={item.id} className="group relative">
-                          <Card className="h-48 cursor-pointer transition-all duration-200 hover:shadow-md border-2 hover:border-primary/20">
+                          <Card className={`h-48 cursor-pointer transition-all duration-200 hover:shadow-md border-2 ${selectedItems.includes(item.id) ? 'border-primary' : 'hover:border-primary/20'}`}>
                             <CardContent className="p-4 h-full flex flex-col justify-between">
                               <div className="flex-1">
                                 <div className="flex justify-between items-start mb-3">
@@ -495,29 +560,33 @@ const VocabularyPage = () => {
                                 <Badge variant="secondary" className="text-xs">
                                   {item.language}
                                 </Badge>
-                                <Button variant="ghost" size="sm" onClick={() => handleDeleteVocabularyItem(item.id)} className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50">
-                                  ×
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                          
-                          {/* Delete confirmation overlay for cards */}
-                          {showDeleteConfirm === item.id && (
-                            <div className="absolute inset-0 bg-red-50 border-2 border-red-200 rounded-lg flex items-center justify-center z-10">
-                              <div className="text-center">
-                                <p className="text-sm font-medium text-red-900 mb-2">Delete this word?</p>
-                                <div className="flex gap-2">
-                                  <Button size="sm" variant="destructive" onClick={() => handleDeleteVocabularyItem(item.id)}>
-                                    Delete
+                                <div className="flex gap-1">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleSelectItem(item.id);
+                                    }}
+                                    className={`h-6 w-6 p-0 ${selectedItems.includes(item.id) ? 'text-primary' : 'text-muted-foreground'}`}
+                                  >
+                                    {selectedItems.includes(item.id) ? '✓' : '○'}
                                   </Button>
-                                  <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
-                                    Cancel
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setItemToDelete(item.id);
+                                    }}
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    ×
                                   </Button>
                                 </div>
                               </div>
-                            </div>
-                          )}
+                            </CardContent>
+                          </Card>
                         </div>
                       ))}
                     </div>
@@ -618,6 +687,7 @@ const VocabularyPage = () => {
                               key={index} 
                               onClick={() => setCurrentCardIndex(index)} 
                               className={`w-2 h-2 rounded-full transition-colors ${index === currentCardIndex ? 'bg-primary' : 'bg-muted'}`} 
+                              aria-label={`Go to card ${index + 1}`}
                             />
                           ))}
                         </div>
@@ -704,6 +774,39 @@ const VocabularyPage = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {itemToDelete === 'bulk' ? 'Delete Selected Items' : 'Delete Vocabulary Item'}
+            </DialogTitle>
+            <DialogDescription>
+              {itemToDelete === 'bulk' 
+                ? `Are you sure you want to delete ${selectedItems.length} selected items? This action cannot be undone.`
+                : 'Are you sure you want to delete this vocabulary item? This action cannot be undone.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setItemToDelete(null)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => {
+                if (itemToDelete === 'bulk') {
+                  handleBulkDelete();
+                } else if (itemToDelete) {
+                  handleDeleteVocabularyItem(itemToDelete);
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
