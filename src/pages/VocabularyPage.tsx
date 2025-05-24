@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import VocabularyPlaylist from '@/components/VocabularyPlaylist';
 import VocabularyCard from '@/components/VocabularyCard';
@@ -6,7 +6,7 @@ import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Sparkles, Search, Filter, BookOpen, Download, Trophy, Plus, AlertCircle, CheckCircle, Grid3X3, List, Eye, EyeOff, ChevronLeft, ChevronRight, RotateCcw, Shuffle } from 'lucide-react';
+import { Sparkles, Search, Filter, BookOpen, Download, Trophy, Plus, AlertCircle, CheckCircle, Grid3X3, List, Eye, EyeOff, ChevronLeft, ChevronRight, RotateCcw, Shuffle, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useNavigate } from 'react-router-dom';
 import UpgradePrompt from '@/components/UpgradePrompt';
@@ -32,12 +32,17 @@ const VocabularyPage = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
+  // Audio refs and state
+  const audioRefs = useRef({});
+  const [playingAudio, setPlayingAudio] = useState(null);
+  const [audioLoading, setAudioLoading] = useState({});
+
   // Local state for enhanced UX
   const [searchTerm, setSearchTerm] = useState('');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'cards' | 'study'>('list');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [viewMode, setViewMode] = useState('list');
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [showDefinition, setShowDefinition] = useState<{[key: string]: boolean}>({});
+  const [showDefinition, setShowDefinition] = useState({});
 
   // Filter vocabulary by currently selected language
   const languageVocabulary = getVocabularyByLanguage(settings.selectedLanguage);
@@ -70,8 +75,119 @@ const VocabularyPage = () => {
     };
   }, [languageVocabulary, filteredVocabulary]);
 
+  // Audio functionality
+  const playAudio = async (text, itemId, type = 'example') => {
+    if (!text) return;
+    
+    const audioKey = `${itemId}-${type}`;
+    
+    // Stop currently playing audio
+    if (playingAudio && playingAudio !== audioKey) {
+      const currentAudio = audioRefs.current[playingAudio];
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+      }
+    }
+
+    // Toggle if clicking the same audio
+    if (playingAudio === audioKey) {
+      const audio = audioRefs.current[audioKey];
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+      setPlayingAudio(null);
+      return;
+    }
+
+    try {
+      setAudioLoading(prev => ({ ...prev, [audioKey]: true }));
+      
+      // Create or get existing audio element
+      if (!audioRefs.current[audioKey]) {
+        const audio = new Audio();
+        audioRefs.current[audioKey] = audio;
+        
+        // Set up event listeners
+        audio.addEventListener('ended', () => {
+          setPlayingAudio(null);
+        });
+        
+        audio.addEventListener('error', () => {
+          setAudioLoading(prev => ({ ...prev, [audioKey]: false }));
+          setPlayingAudio(null);
+          console.error('Audio playback failed');
+        });
+        
+        audio.addEventListener('loadstart', () => {
+          setAudioLoading(prev => ({ ...prev, [audioKey]: true }));
+        });
+        
+        audio.addEventListener('canplay', () => {
+          setAudioLoading(prev => ({ ...prev, [audioKey]: false }));
+        });
+      }
+
+      const audio = audioRefs.current[audioKey];
+      
+      // Use text-to-speech API or create audio URL
+      // For demo purposes, we'll use Web Speech API if available
+      if ('speechSynthesis' in window) {
+        // Cancel any existing speech
+        window.speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = settings.selectedLanguage || 'en-US';
+        utterance.rate = 0.8;
+        utterance.pitch = 1;
+        
+        utterance.onstart = () => {
+          setPlayingAudio(audioKey);
+          setAudioLoading(prev => ({ ...prev, [audioKey]: false }));
+        };
+        
+        utterance.onend = () => {
+          setPlayingAudio(null);
+        };
+        
+        utterance.onerror = () => {
+          setPlayingAudio(null);
+          setAudioLoading(prev => ({ ...prev, [audioKey]: false }));
+        };
+        
+        window.speechSynthesis.speak(utterance);
+      } else {
+        // Fallback: You would integrate with a TTS service here
+        console.log('Speech synthesis not supported');
+        setAudioLoading(prev => ({ ...prev, [audioKey]: false }));
+      }
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      setAudioLoading(prev => ({ ...prev, [audioKey]: false }));
+      setPlayingAudio(null);
+    }
+  };
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      // Stop any playing speech
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      
+      // Cleanup audio refs
+      Object.values(audioRefs.current).forEach(audio => {
+        if (audio && typeof audio.pause === 'function') {
+          audio.pause();
+        }
+      });
+    };
+  }, []);
+
   // Enhanced interaction handlers
-  const handleDeleteVocabularyItem = (id: string) => {
+  const handleDeleteVocabularyItem = (id) => {
     if (showDeleteConfirm === id) {
       removeVocabularyItem(id);
       setShowDeleteConfirm(null);
@@ -86,14 +202,14 @@ const VocabularyPage = () => {
     }
   };
 
-  const toggleDefinition = (id: string) => {
+  const toggleDefinition = (id) => {
     setShowDefinition(prev => ({
       ...prev,
       [id]: !prev[id]
     }));
   };
 
-  const navigateCard = (direction: 'prev' | 'next') => {
+  const navigateCard = (direction) => {
     if (direction === 'prev') {
       setCurrentCardIndex(prev => prev > 0 ? prev - 1 : filteredVocabulary.length - 1);
     } else {
@@ -120,6 +236,37 @@ const VocabularyPage = () => {
     if (count < 50) return "You're building a solid foundation! 💪";
     if (count < 100) return "Impressive vocabulary collection! 🎯";
     return "Amazing! You're a vocabulary master! 🏆";
+  };
+
+  // Audio button component for reusability
+  const AudioButton = ({ text, itemId, type = 'example', size = 'sm', className = '' }) => {
+    const audioKey = `${itemId}-${type}`;
+    const isLoading = audioLoading[audioKey];
+    const isPlaying = playingAudio === audioKey;
+    
+    if (!text) return null;
+    
+    return (
+      <Button
+        variant="ghost"
+        size={size}
+        onClick={(e) => {
+          e.stopPropagation();
+          playAudio(text, itemId, type);
+        }}
+        className={`${className} ${isPlaying ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+        disabled={isLoading}
+        title="Play audio"
+      >
+        {isLoading ? (
+          <Loader2 className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} animate-spin`} />
+        ) : isPlaying ? (
+          <VolumeX className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'}`} />
+        ) : (
+          <Volume2 className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'}`} />
+        )}
+      </Button>
+    );
   };
   
   return (
@@ -370,17 +517,26 @@ const VocabularyPage = () => {
                               <div className="flex-1">
                                 <div className="flex justify-between items-start mb-3">
                                   <h3 className="font-semibold text-lg text-primary">{item.word}</h3>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => toggleDefinition(item.id)}
-                                    className="h-6 w-6 p-0"
-                                  >
-                                    {showDefinition[item.id] ? 
-                                      <EyeOff className="h-3 w-3" /> : 
-                                      <Eye className="h-3 w-3" />
-                                    }
-                                  </Button>
+                                  <div className="flex items-center gap-1">
+                                    <AudioButton 
+                                      text={item.word} 
+                                      itemId={item.id} 
+                                      type="word"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => toggleDefinition(item.id)}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      {showDefinition[item.id] ? 
+                                        <EyeOff className="h-3 w-3" /> : 
+                                        <Eye className="h-3 w-3" />
+                                      }
+                                    </Button>
+                                  </div>
                                 </div>
                                 
                                 {showDefinition[item.id] && (
@@ -391,9 +547,18 @@ const VocabularyPage = () => {
                                       </p>
                                     )}
                                     {item.example && (
-                                      <p className="text-xs italic text-muted-foreground border-l-2 border-muted pl-2">
-                                        "{item.example}"
-                                      </p>
+                                      <div className="text-xs italic text-muted-foreground border-l-2 border-muted pl-2">
+                                        <div className="flex items-start gap-2">
+                                          <span className="flex-1">"{item.example}"</span>
+                                          <AudioButton 
+                                            text={item.example} 
+                                            itemId={item.id} 
+                                            type="example"
+                                            size="sm"
+                                            className="h-4 w-4 p-0 mt-0.5 flex-shrink-0"
+                                          />
+                                        </div>
+                                      </div>
                                     )}
                                   </div>
                                 )}
@@ -486,11 +651,20 @@ const VocabularyPage = () => {
                       {/* Study Card */}
                       <div className="relative">
                         <Card className="min-h-[300px] border-2 border-primary/20">
-                          <CardContent className="p-8 h-full flex flex-col justify-center text-center">
+                          <CardContent className="p-4 sm:p-8 h-full flex flex-col justify-center text-center">
                             <div className="space-y-6">
-                              <h2 className="text-3xl font-bold text-primary mb-4">
-                                {filteredVocabulary[currentCardIndex]?.word}
-                              </h2>
+                              <div className="flex items-center justify-center gap-3">
+                                <h2 className="text-2xl sm:text-3xl font-bold text-primary">
+                                  {filteredVocabulary[currentCardIndex]?.word}
+                                </h2>
+                                <AudioButton 
+                                  text={filteredVocabulary[currentCardIndex]?.word} 
+                                  itemId={filteredVocabulary[currentCardIndex]?.id} 
+                                  type="word"
+                                  size="lg"
+                                  className="h-8 w-8 p-0"
+                                />
+                              </div>
                               
                               <Button
                                 variant="outline"
@@ -512,15 +686,24 @@ const VocabularyPage = () => {
                               {showDefinition[filteredVocabulary[currentCardIndex]?.id] && (
                                 <div className="space-y-4 animate-in fade-in-50 duration-200">
                                   {filteredVocabulary[currentCardIndex]?.definition && (
-                                    <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                                    <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                                       {filteredVocabulary[currentCardIndex].definition}
                                     </p>
                                   )}
                                   {filteredVocabulary[currentCardIndex]?.example && (
                                     <div className="bg-muted/50 rounded-lg p-4 max-w-xl mx-auto">
-                                      <p className="text-sm italic text-muted-foreground">
-                                        "{filteredVocabulary[currentCardIndex].example}"
-                                      </p>
+                                      <div className="flex items-start gap-3">
+                                        <p className="text-sm italic text-muted-foreground flex-1">
+                                          "{filteredVocabulary[currentCardIndex].example}"
+                                        </p>
+                                        <AudioButton 
+                                          text={filteredVocabulary[currentCardIndex].example} 
+                                          itemId={filteredVocabulary[currentCardIndex].id} 
+                                          type="example"
+                                          size="sm"
+                                          className="h-6 w-6 p-0 flex-shrink-0"
+                                        />
+                                      </div>
                                     </div>
                                   )}
                                 </div>
