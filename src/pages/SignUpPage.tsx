@@ -119,7 +119,7 @@ const SignUpPage: React.FC = () => {
           <div className="flex justify-center mb-2 sm:mb-4">
             <div className="flex items-center gap-2">
               <Headphones className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-              <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">ListenWriteLearn</h1>
+              <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">lwlnow</h1>
             </div>
           </div>
           
