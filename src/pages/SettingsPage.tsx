@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,9 +15,10 @@ import AvatarUpload from '@/components/AvatarUpload';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ResetLanguageProgress from '@/components/ResetLanguageProgress';
-import { getLanguageFlag } from '@/utils/languageUtils';
+import { getLanguageFlagCode, capitalizeLanguage } from '@/utils/languageUtils';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
+import { FlagIcon } from 'react-flag-kit';
 
 const SettingsPage: React.FC = () => {
   const {
@@ -137,8 +139,8 @@ const SettingsPage: React.FC = () => {
               {availableLanguages.map(language => <div key={language} className="flex items-center space-x-2">
                   <Checkbox id={`language-${language}`} checked={settings.learningLanguages.includes(language)} onCheckedChange={checked => handleLanguageToggle(language, checked as boolean)} disabled={updatingLanguage === language || settings.learningLanguages.length === 1 && settings.learningLanguages.includes(language)} />
                   <Label htmlFor={`language-${language}`} className="capitalize text-sm sm:text-base flex items-center">
-                    <span className="mr-2">{getLanguageFlag(language)}</span>
-                    {language}
+                    <FlagIcon code={getLanguageFlagCode(language)} size={20} className="mr-2" />
+                    {capitalizeLanguage(language)}
                     {updatingLanguage === language && <Loader2 className="h-3 w-3 animate-spin ml-2 inline" />}
                   </Label>
                 </div>)}
@@ -158,8 +160,8 @@ const SettingsPage: React.FC = () => {
               {settings.learningLanguages.map(language => <div key={language} className="flex items-center space-x-2 mb-2">
                   <RadioGroupItem value={language} id={`active-${language}`} disabled={updatingLanguage === language} />
                   <Label htmlFor={`active-${language}`} className={`capitalize text-sm sm:text-base flex items-center ${settings.selectedLanguage === language ? 'font-medium text-primary' : ''}`}>
-                    <span className="mr-2">{getLanguageFlag(language)}</span>
-                    {language}
+                    <FlagIcon code={getLanguageFlagCode(language)} size={20} className="mr-2" />
+                    {capitalizeLanguage(language)}
                     {updatingLanguage === language && <Loader2 className="h-3 w-3 animate-spin ml-2 inline" />}
                   </Label>
                 </div>)}

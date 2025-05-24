@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { useAdmin } from '@/hooks/use-admin';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LogOut, BookOpen, Home, Settings, CreditCard, Crown, LayoutDashboard, Book, Shield, HelpCircle, GraduationCap } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { getLanguageFlag } from '@/utils/languageUtils';
+import { getLanguageFlagCode } from '@/utils/languageUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import UserAvatar from './UserAvatar';
 import { cn } from '@/lib/utils';
@@ -16,6 +17,7 @@ import { toast } from 'sonner';
 import { UserMessages } from '@/components/UserMessages';
 import ThemeToggle from './ThemeToggle';
 import { Logo } from './landing/Logo';
+import { FlagIcon } from 'react-flag-kit';
 
 const Header: React.FC = () => {
   const {
@@ -38,7 +40,7 @@ const Header: React.FC = () => {
   const isActive = (path: string) => {
     return location.pathname === path || path !== '/dashboard' && location.pathname.startsWith(path);
   };
-  const languageFlag = getLanguageFlag(settings.selectedLanguage);
+  const languageFlagCode = getLanguageFlagCode(settings.selectedLanguage);
 
   // Handler for clicking on the language flag
   const handleLanguageClick = async () => {
@@ -56,6 +58,7 @@ const Header: React.FC = () => {
       toast.error('Failed to switch language');
     }
   };
+
   return <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur">
       <div className="container flex h-14 sm:h-16 items-center justify-between px-4">
         <div className="flex items-center gap-2 sm:gap-6">
@@ -105,8 +108,8 @@ const Header: React.FC = () => {
           {user && <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button onClick={handleLanguageClick} className="flex items-center justify-center h-8 w-8 text-lg animate-fade-in hover:scale-110 transition-transform rounded-full hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="Cycle through languages">
-                    {languageFlag}
+                  <button onClick={handleLanguageClick} className="flex items-center justify-center h-8 w-8 animate-fade-in hover:scale-110 transition-transform rounded-full hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="Cycle through languages">
+                    <FlagIcon code={languageFlagCode} size={24} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
