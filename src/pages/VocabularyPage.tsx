@@ -60,7 +60,6 @@ const VocabularyPage = () => {
   const filteredVocabulary = useMemo(() => {
     let filtered = languageVocabulary;
 
-    // Search filter
     if (searchTerm) {
       filtered = filtered.filter(item => 
         item.word?.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -70,20 +69,12 @@ const VocabularyPage = () => {
     return filtered;
   }, [languageVocabulary, searchTerm]);
 
-  // Progress calculations for better UX
+  // Progress calculations
   const progressPercentage = Math.min(vocabulary.length / vocabularyLimit * 100, 100);
   const isNearLimit = vocabulary.length >= vocabularyLimit * 0.8;
   const isAtLimit = vocabulary.length >= vocabularyLimit;
 
-  // Stats for better UX
-  const vocabularyStats = useMemo(() => {
-    return {
-      total: languageVocabulary.length,
-      filtered: filteredVocabulary.length
-    };
-  }, [languageVocabulary, filteredVocabulary]);
-
-  // Audio functionality - plays example audio
+  // Audio functionality
   const playAudio = async (itemId: string) => {
     const audioKey = `${itemId}-example`;
 
@@ -115,22 +106,15 @@ const VocabularyPage = () => {
 
       const vocabularyItem = filteredVocabulary.find(item => item.id === itemId);
       
-      if (!vocabularyItem) {
-        throw new Error('Vocabulary item not found');
+      if (!vocabularyItem || !vocabularyItem.exampleAudio) {
+        throw new Error('Audio not available');
       }
 
-      // Use the example audio URL
-      const audioUrl = vocabularyItem.exampleAudio;
-      
-      if (!audioUrl) {
-        throw new Error('Example audio URL not available');
-      }
-
-      // Create new audio element each time to ensure it plays
-      const audio = new Audio(audioUrl);
+      // Create new audio element
+      const audio = new Audio(vocabularyItem.exampleAudio);
       audioRefs.current[audioKey] = audio;
 
-      // Set up event listeners
+      // Event listeners
       audio.addEventListener('ended', () => {
         setPlayingAudio(null);
         setAudioLoading(prev => ({
@@ -145,14 +129,6 @@ const VocabularyPage = () => {
           [audioKey]: false
         }));
         setPlayingAudio(null);
-        console.error('Audio playback failed');
-      });
-
-      audio.addEventListener('canplay', () => {
-        setAudioLoading(prev => ({
-          ...prev,
-          [audioKey]: false
-        }));
       });
 
       await audio.play();
@@ -171,30 +147,26 @@ const VocabularyPage = () => {
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
-      // Cleanup audio refs
       Object.values(audioRefs.current).forEach(audio => {
         if (audio) {
           audio.pause();
           audio.removeEventListener('ended', () => {});
           audio.removeEventListener('error', () => {});
-          audio.removeEventListener('canplay', () => {});
         }
       });
     };
   }, []);
 
-  // Enhanced interaction handlers
+  // Interaction handlers
   const handleDeleteVocabularyItem = (id: string) => {
     if (showDeleteConfirm === id) {
       removeVocabularyItem(id);
       setShowDeleteConfirm(null);
-      // Adjust current card index if needed in study mode
       if (viewMode === 'study' && currentCardIndex >= filteredVocabulary.length - 1) {
         setCurrentCardIndex(Math.max(0, currentCardIndex - 1));
       }
     } else {
       setShowDeleteConfirm(id);
-      // Auto-cancel confirmation after 3 seconds
       setTimeout(() => setShowDeleteConfirm(null), 3000);
     }
   };
@@ -218,27 +190,10 @@ const VocabularyPage = () => {
     setCurrentCardIndex(Math.floor(Math.random() * filteredVocabulary.length));
   };
 
-  // Get status color for progress
-  const getProgressColor = () => {
-    if (isAtLimit) return 'bg-red-500';
-    if (isNearLimit) return 'bg-yellow-500';
-    return 'bg-green-500';
-  };
-
-  // Get motivational message based on progress
-  const getMotivationalMessage = () => {
-    const count = languageVocabulary.length;
-    if (count === 0) return "Start building your vocabulary library! 📚";
-    if (count < 10) return "Great start! Keep adding more words! 🌱";
-    if (count < 50) return "You're building a solid foundation! 💪";
-    if (count < 100) return "Impressive vocabulary collection! 🎯";
-    return "Amazing! You're a vocabulary master! 🏆";
-  };
-
   // Audio button component
   const AudioButton = ({
     itemId,
-    size = 'sm' as const,
+    size = 'sm',
     className = ''
   }: {
     itemId: string;
@@ -248,8 +203,7 @@ const VocabularyPage = () => {
     const audioKey = `${itemId}-example`;
     const isLoading = audioLoading[audioKey];
     const isPlaying = playingAudio === audioKey;
-    const vocabularyItem = filteredVocabulary.find(item => item.id === itemId);
-    const hasAudio = vocabularyItem?.exampleAudio;
+    const hasAudio = filteredVocabulary.find(item => item.id === itemId)?.exampleAudio;
 
     if (!hasAudio) return null;
 
@@ -263,7 +217,7 @@ const VocabularyPage = () => {
         }} 
         className={`${className} ${isPlaying ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`} 
         disabled={isLoading} 
-        title="Play audio"
+        title="Play example audio"
       >
         {isLoading ? (
           <Loader2 className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} animate-spin`} />
@@ -278,7 +232,7 @@ const VocabularyPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-4 sm:py-8">
-      {/* Enhanced Header with Stats */}
+      {/* Header and search section */}
       <div className="flex flex-col gap-4 md:flex-row justify-between items-start md:items-center mb-6">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
@@ -287,163 +241,59 @@ const VocabularyPage = () => {
               {languageVocabulary.length} words
             </Badge>
           </div>
-          <p className="text-muted-foreground text-sm">
-            {getMotivationalMessage()}
-          </p>
         </div>
       </div>
 
-      {/* Enhanced Subscription Status Alert */}
-      {!subscription.isSubscribed && (
-        <Alert className={`mb-6 border-l-4 ${isAtLimit ? 'bg-red-50 border-red-400' : isNearLimit ? 'bg-yellow-50 border-yellow-400' : 'bg-blue-50 border-blue-400'}`}>
-          <div className="flex items-center gap-2">
-            {isAtLimit ? <AlertCircle className="h-4 w-4 text-red-500" /> : isNearLimit ? <AlertCircle className="h-4 w-4 text-yellow-500" /> : <Sparkles className="h-4 w-4 text-blue-500" />}
-            
-            <AlertDescription className="flex-1">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">
-                      {isAtLimit ? 'Vocabulary limit reached!' : isNearLimit ? 'Approaching vocabulary limit' : 'Free Plan'}
-                    </span>
-                    <Badge variant={isAtLimit ? 'destructive' : isNearLimit ? 'secondary' : 'outline'} className="text-xs">
-                      {vocabulary.length}/{vocabularyLimit}
-                    </Badge>
-                  </div>
-                  
-                  {/* Visual Progress Bar */}
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className={`h-2 rounded-full transition-all duration-300 ${getProgressColor()}`} style={{
-                      width: `${progressPercentage}%`
-                    }} />
-                  </div>
-                  
-                  <p className="text-xs text-muted-foreground">
-                    {isAtLimit ? 'Upgrade to add unlimited vocabulary words' : `${vocabularyLimit - vocabulary.length} words remaining`}
-                  </p>
-                </div>
-                
-                <Button variant={isAtLimit ? "default" : "outline"} size="sm" className={isAtLimit ? "bg-red-600 hover:bg-red-700" : "border-primary text-primary hover:bg-primary/10"} onClick={() => navigate('/dashboard/subscription')}>
-                  <Sparkles className="h-3 w-3 mr-1" /> 
-                  {isAtLimit ? 'Upgrade Now' : 'Upgrade'}
-                </Button>
-              </div>
-            </AlertDescription>
-          </div>
-        </Alert>
-      )}
-
-      {/* Search and Filter Bar */}
-      {languageVocabulary.length > 0 && (
-        <Card className="mb-6">
-          <CardContent className="pt-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              {/* Search Input */}
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search words or definitions..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
-              </div>
-            </div>
-            
-            {/* Active Filters Display */}
-            {searchTerm && (
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t">
-                <span className="text-xs text-muted-foreground">Active filters:</span>
-                <Badge variant="secondary" className="text-xs">
-                  Search: "{searchTerm}"
-                </Badge>
-                <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')} className="text-xs h-6 px-2">
-                  Clear
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-      
+      {/* Main content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Left column: Enhanced Vocabulary List */}
+        {/* Vocabulary list section */}
         <div className="lg:col-span-2 space-y-4">
           <Card className="h-full">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-                  <BookOpen className="h-5 w-5" />
-                  Your Vocabulary List
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  {filteredVocabulary.length !== languageVocabulary.length && (
-                    <Badge variant="outline" className="text-xs">
-                      {filteredVocabulary.length} of {languageVocabulary.length}
-                    </Badge>
-                  )}
-                  {/* View Mode Toggle */}
-                  {filteredVocabulary.length > 0 && (
-                    <div className="flex bg-muted rounded-lg p-1">
-                      <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('list')} className="h-7 px-2" title="List view">
-                        <List className="h-3 w-3" />
-                      </Button>
-                      <Button variant={viewMode === 'cards' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('cards')} className="h-7 px-2" title="Card grid view">
-                        <Grid3X3 className="h-3 w-3" />
-                      </Button>
-                      <Button variant={viewMode === 'study' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('study')} className="h-7 px-2" title="Study mode">
-                        <Eye className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                <CardTitle className="text-lg sm:text-xl">Your Vocabulary</CardTitle>
+                {filteredVocabulary.length > 0 && (
+                  <div className="flex bg-muted rounded-lg p-1">
+                    <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('list')}>
+                      <List className="h-3 w-3" />
+                    </Button>
+                    <Button variant={viewMode === 'cards' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('cards')}>
+                      <Grid3X3 className="h-3 w-3" />
+                    </Button>
+                    <Button variant={viewMode === 'study' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('study')}>
+                      <Eye className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardHeader>
+
             <CardContent>
               {languageVocabulary.length === 0 ? (
-                <div className="text-center py-8 sm:py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
-                    <BookOpen className="h-8 w-8 text-muted-foreground" />
-                  </div>
+                <div className="text-center py-12">
+                  <BookOpen className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
                   <h3 className="text-lg font-semibold mb-2">No vocabulary words yet</h3>
-                  <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
-                    Start building your vocabulary by adding words through the Vocabulary Builder when reading exercises.
-                  </p>
-                  <Button onClick={() => navigate('/dashboard/reading')} className="mt-2">
+                  <Button onClick={() => navigate('/dashboard/reading')}>
                     <Plus className="h-4 w-4 mr-2" />
                     Start Reading
                   </Button>
                 </div>
               ) : filteredVocabulary.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
-                    <Search className="h-8 w-8 text-muted-foreground" />
-                  </div>
+                  <Search className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
                   <h3 className="text-lg font-semibold mb-2">No matches found</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Try adjusting your search terms.
-                  </p>
                 </div>
               ) : (
                 <>
                   {/* List View */}
                   {viewMode === 'list' && (
-                    <div className="space-y-3 sm:space-y-4">
+                    <div className="space-y-4">
                       {filteredVocabulary.map(item => (
-                        <div key={item.id} className="group relative">
-                          <VocabularyCard item={item} onDelete={() => handleDeleteVocabularyItem(item.id)} />
-                          {/* Delete confirmation overlay */}
-                          {showDeleteConfirm === item.id && (
-                            <div className="absolute inset-0 bg-red-50 border border-red-200 rounded-lg flex items-center justify-center z-10">
-                              <div className="text-center">
-                                <p className="text-sm font-medium text-red-900 mb-2">Delete this word?</p>
-                                <div className="flex gap-2">
-                                  <Button size="sm" variant="destructive" onClick={() => handleDeleteVocabularyItem(item.id)}>
-                                    Yes, Delete
-                                  </Button>
-                                  <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
-                                    Cancel
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        <VocabularyCard 
+                          key={item.id} 
+                          item={item} 
+                          onDelete={() => handleDeleteVocabularyItem(item.id)} 
+                        />
                       ))}
                     </div>
                   )}
@@ -452,146 +302,27 @@ const VocabularyPage = () => {
                   {viewMode === 'cards' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {filteredVocabulary.map(item => (
-                        <div key={item.id} className="group relative">
-                          <Card className="h-48 cursor-pointer transition-all duration-200 hover:shadow-md border-2 hover:border-primary/20">
-                            <CardContent className="p-4 h-full flex flex-col justify-between">
-                              <div className="flex-1">
-                                <div className="flex justify-between items-start mb-3">
-                                  <h3 className="font-semibold text-lg text-primary">{item.word}</h3>
-                                  <div className="flex items-center gap-1">
-                                    <AudioButton itemId={item.id} size="sm" className="h-6 w-6 p-0" />
-                                    <Button variant="ghost" size="sm" onClick={() => toggleDefinition(item.id)} className="h-6 w-6 p-0">
-                                      {showDefinition[item.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                                    </Button>
-                                  </div>
-                                </div>
-                                
-                                {showDefinition[item.id] && (
-                                  <div className="space-y-2 text-sm">
-                                    {item.definition && (
-                                      <p className="text-muted-foreground leading-relaxed">
-                                        {item.definition}
-                                      </p>
-                                    )}
-                                    {item.example && (
-                                      <div className="text-xs italic text-muted-foreground border-l-2 border-muted pl-2">
-                                        <div className="flex items-start gap-2">
-                                          <span className="flex-1">"{item.example}"</span>
-                                          <AudioButton itemId={item.id} size="sm" className="h-4 w-4 p-0 mt-0.5 flex-shrink-0" />
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                
-                                {!showDefinition[item.id] && (
-                                  <div className="flex items-center justify-center h-full">
-                                    <p className="text-muted-foreground text-sm">Click eye to reveal</p>
-                                  </div>
-                                )}
-                              </div>
-                              
-                              <div className="flex justify-between items-center pt-2 border-t">
-                                <Badge variant="secondary" className="text-xs">
-                                  {item.language}
-                                </Badge>
-                                <Button variant="ghost" size="sm" onClick={() => handleDeleteVocabularyItem(item.id)} className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50">
-                                  ×
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                          
-                          {/* Delete confirmation overlay for cards */}
-                          {showDeleteConfirm === item.id && (
-                            <div className="absolute inset-0 bg-red-50 border-2 border-red-200 rounded-lg flex items-center justify-center z-10">
-                              <div className="text-center">
-                                <p className="text-sm font-medium text-red-900 mb-2">Delete this word?</p>
-                                <div className="flex gap-2">
-                                  <Button size="sm" variant="destructive" onClick={() => handleDeleteVocabularyItem(item.id)}>
-                                    Delete
-                                  </Button>
-                                  <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
-                                    Cancel
+                        <Card key={item.id} className="h-48 hover:shadow-md">
+                          <CardContent className="p-4 h-full flex flex-col justify-between">
+                            <div className="flex-1">
+                              <div className="flex justify-between items-start mb-3">
+                                <h3 className="font-semibold text-lg">{item.word}</h3>
+                                <div className="flex gap-1">
+                                  <AudioButton itemId={item.id} />
+                                  <Button variant="ghost" size="sm" onClick={() => toggleDefinition(item.id)}>
+                                    {showDefinition[item.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                                   </Button>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Study Mode */}
-                  {viewMode === 'study' && (
-                    <div className="space-y-4">
-                      {/* Study Mode Controls */}
-                      <div className="flex justify-between items-center bg-muted/30 rounded-lg p-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">Study Mode</span>
-                          <Badge variant="outline" className="text-xs">
-                            {currentCardIndex + 1} of {filteredVocabulary.length}
-                          </Badge>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => shuffleCards()} className="h-7 px-2" title="Random card">
-                            <Shuffle className="h-3 w-3" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setCurrentCardIndex(0)} className="h-7 px-2" title="Reset to first">
-                            <RotateCcw className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Study Card */}
-                      <div className="relative">
-                        <Card className="min-h-[300px] border-2 border-primary/20">
-                          <CardContent className="p-4 sm:p-8 h-full flex flex-col justify-center text-center">
-                            <div className="space-y-6">
-                              <div className="flex items-center justify-center gap-3">
-                                <h2 className="text-2xl sm:text-3xl font-bold text-primary">
-                                  {filteredVocabulary[currentCardIndex]?.word}
-                                </h2>
-                                <AudioButton 
-                                  itemId={filteredVocabulary[currentCardIndex]?.id} 
-                                  size="lg" 
-                                  className="h-8 w-8 p-0" 
-                                />
-                              </div>
                               
-                              <Button variant="outline" onClick={() => toggleDefinition(filteredVocabulary[currentCardIndex]?.id)} className="mx-auto">
-                                {showDefinition[filteredVocabulary[currentCardIndex]?.id] ? (
-                                  <>
-                                    <EyeOff className="h-4 w-4 mr-2" />
-                                    Hide Definition
-                                  </>
-                                ) : (
-                                  <>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    Show Definition
-                                  </>
-                                )}
-                              </Button>
-
-                              {showDefinition[filteredVocabulary[currentCardIndex]?.id] && (
-                                <div className="space-y-4 animate-in fade-in-50 duration-200">
-                                  {filteredVocabulary[currentCardIndex]?.definition && (
-                                    <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                                      {filteredVocabulary[currentCardIndex].definition}
-                                    </p>
-                                  )}
-                                  {filteredVocabulary[currentCardIndex]?.example && (
-                                    <div className="bg-muted/50 rounded-lg p-4 max-w-xl mx-auto">
-                                      <div className="flex items-start gap-3">
-                                        <p className="text-sm italic text-muted-foreground flex-1">
-                                          "{filteredVocabulary[currentCardIndex].example}"
-                                        </p>
-                                        <AudioButton 
-                                          itemId={filteredVocabulary[currentCardIndex].id} 
-                                          size="sm" 
-                                          className="h-6 w-6 p-0 flex-shrink-0" 
-                                        />
+                              {showDefinition[item.id] && (
+                                <div className="space-y-2 text-sm">
+                                  {item.definition && <p>{item.definition}</p>}
+                                  {item.example && (
+                                    <div className="italic border-l-2 pl-2">
+                                      <div className="flex items-start gap-2">
+                                        <span>"{item.example}"</span>
+                                        <AudioButton itemId={item.id} size="sm" />
                                       </div>
                                     </div>
                                   )}
@@ -600,27 +331,68 @@ const VocabularyPage = () => {
                             </div>
                           </CardContent>
                         </Card>
+                      ))}
+                    </div>
+                  )}
 
-                        {/* Navigation Arrows */}
-                        <Button variant="ghost" size="sm" onClick={() => navigateCard('prev')} className="absolute left-2 top-1/2 transform -translate-y-1/2 h-10 w-10 p-0 bg-white shadow-md hover:bg-gray-50" disabled={filteredVocabulary.length <= 1}>
-                          <ChevronLeft className="h-5 w-5" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => navigateCard('next')} className="absolute right-2 top-1/2 transform -translate-y-1/2 h-10 w-10 p-0 bg-white shadow-md hover:bg-gray-50" disabled={filteredVocabulary.length <= 1}>
-                          <ChevronRight className="h-5 w-5" />
-                        </Button>
+                  {/* Study View */}
+                  {viewMode === 'study' && (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center bg-muted/30 rounded-lg p-3">
+                        <Badge variant="outline">
+                          {currentCardIndex + 1} of {filteredVocabulary.length}
+                        </Badge>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={shuffleCards}>
+                            <Shuffle className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setCurrentCardIndex(0)}>
+                            <RotateCcw className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
 
-                      {/* Study Progress */}
-                      <div className="flex justify-center">
-                        <div className="flex gap-1">
-                          {filteredVocabulary.map((_, index) => (
-                            <button 
-                              key={index} 
-                              onClick={() => setCurrentCardIndex(index)} 
-                              className={`w-2 h-2 rounded-full transition-colors ${index === currentCardIndex ? 'bg-primary' : 'bg-muted'}`} 
-                            />
-                          ))}
-                        </div>
+                      <div className="relative">
+                        <Card className="min-h-[300px]">
+                          <CardContent className="p-6 h-full flex flex-col justify-center text-center">
+                            <div className="space-y-6">
+                              <div className="flex items-center justify-center gap-3">
+                                <h2 className="text-2xl sm:text-3xl font-bold">
+                                  {filteredVocabulary[currentCardIndex]?.word}
+                                </h2>
+                                <AudioButton itemId={filteredVocabulary[currentCardIndex]?.id} size="lg" />
+                              </div>
+
+                              {filteredVocabulary[currentCardIndex]?.example && (
+                                <div className="bg-muted/50 rounded-lg p-4">
+                                  <div className="flex items-start gap-3">
+                                    <p className="text-sm italic flex-1">
+                                      "{filteredVocabulary[currentCardIndex].example}"
+                                    </p>
+                                    <AudioButton itemId={filteredVocabulary[currentCardIndex].id} />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => navigateCard('prev')}
+                          className="absolute left-2 top-1/2 transform -translate-y-1/2"
+                        >
+                          <ChevronLeft className="h-5 w-5" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => navigateCard('next')}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -629,38 +401,28 @@ const VocabularyPage = () => {
             </CardContent>
           </Card>
         </div>
-        
-        {/* Right column: Enhanced Tools and actions */}
+
+        {/* Tools section */}
         <div className="space-y-4">
-          {/* Enhanced Tools Tabs */}
-          <Card className="h-full">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-                <Trophy className="h-5 w-5" />
-                Vocabulary Tools
-              </CardTitle>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg sm:text-xl">Vocabulary Tools</CardTitle>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="practice" className="w-full">
+              <Tabs defaultValue="practice">
                 <TabsList className="w-full mb-4">
-                  <TabsTrigger value="practice" className="flex-1 text-xs">
+                  <TabsTrigger value="practice" className="flex-1">
                     <Trophy className="h-3 w-3 mr-1" />
                     Practice
                   </TabsTrigger>
-                  <TabsTrigger value="export" className="flex-1 text-xs">
+                  <TabsTrigger value="export" className="flex-1">
                     <Download className="h-3 w-3 mr-1" />
                     Export
                   </TabsTrigger>
                 </TabsList>
-                <TabsContent value="practice" className="space-y-3">
+                <TabsContent value="practice">
                   {languageVocabulary.length > 0 ? (
                     <>
-                      <div className="bg-muted/30 rounded-lg p-3 mb-3">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <CheckCircle className="h-4 w-4" />
-                          Ready to practice with {languageVocabulary.length} words
-                        </div>
-                      </div>
                       <VocabularyPlaylist vocabulary={languageVocabulary} />
                     </>
                   ) : (
@@ -672,17 +434,9 @@ const VocabularyPage = () => {
                     </div>
                   )}
                 </TabsContent>
-                <TabsContent value="export" className="space-y-3">
+                <TabsContent value="export">
                   {languageVocabulary.length > 0 ? (
-                    <>
-                      <div className="bg-muted/30 rounded-lg p-3 mb-3">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Download className="h-4 w-4" />
-                          Export {languageVocabulary.length} words
-                        </div>
-                      </div>
-                      <VocabularyExport vocabulary={languageVocabulary} />
-                    </>
+                    <VocabularyExport vocabulary={languageVocabulary} />
                   ) : (
                     <div className="text-center py-6">
                       <Download className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
@@ -695,13 +449,6 @@ const VocabularyPage = () => {
               </Tabs>
             </CardContent>
           </Card>
-          
-          {/* Enhanced Subscription Upgrade Card */}
-          {!subscription.isSubscribed && (
-            <div className="mt-4">
-              <UpgradePrompt title="Unlimited Vocabulary" message="Premium subscribers can create unlimited vocabulary lists and export all their flashcards with audio." />
-            </div>
-          )}
         </div>
       </div>
     </div>
