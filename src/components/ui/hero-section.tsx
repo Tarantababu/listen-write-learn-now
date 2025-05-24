@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronRight, Menu, X, Headphones } from 'lucide-react';
@@ -26,6 +25,73 @@ const transitionVariants = {
         },
     },
 };
+
+// Sketchy Arrow Component
+const SketchyArrow = () => (
+    <div className="absolute -right-16 top-1/2 -translate-y-1/2 hidden md:block lg:-right-20">
+        <svg
+            width="120"
+            height="80"
+            viewBox="0 0 120 80"
+            fill="none"
+            className="text-primary/60 animate-pulse"
+            style={{ 
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+                animation: 'sketchy-draw 3s ease-in-out infinite alternate'
+            }}
+        >
+            {/* Main curved arrow line */}
+            <path
+                d="M8 35c15-8 25-12 35-8 12 5 18 15 25 12 8-3 12-15 20-10 6 4 8 12 15 8"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="2,3"
+                style={{ 
+                    strokeDashoffset: 0,
+                    animation: 'dash 4s linear infinite'
+                }}
+            />
+            
+            {/* Arrow head - sketchy style */}
+            <path
+                d="M95 30c3 2 6 4 8 7 1 2 0 4-1 5-2-1-4-3-5-5-1-2-2-4-2-7z"
+                fill="currentColor"
+                opacity="0.8"
+            />
+            <path
+                d="M100 42c2-3 4-6 7-8 2-1 4 0 5 1-1 2-3 4-5 5-2 1-4 2-7 2z"
+                fill="currentColor"
+                opacity="0.8"
+            />
+        </svg>
+        
+        {/* Handwritten-style text */}
+        <div className="absolute -bottom-8 right-0 transform rotate-6">
+            <span className="text-sm text-primary/70 font-handwriting italic">
+                Start here!
+            </span>
+        </div>
+        
+        <style jsx>{`
+            @keyframes dash {
+                0% { stroke-dashoffset: 0; }
+                50% { stroke-dashoffset: 10; }
+                100% { stroke-dashoffset: 0; }
+            }
+            
+            @keyframes sketchy-draw {
+                0% { transform: translateY(-50%) rotate(-2deg) scale(0.98); }
+                100% { transform: translateY(-50%) rotate(2deg) scale(1.02); }
+            }
+            
+            .font-handwriting {
+                font-family: 'Kalam', 'Comic Sans MS', cursive;
+            }
+        `}</style>
+    </div>
+);
 
 export function HeroSection() {
     return (
@@ -119,10 +185,10 @@ export function HeroSection() {
                                         },
                                         ...transitionVariants,
                                     }}
-                                    className="mt-12 flex flex-col items-center justify-center gap-2 md:flex-row">
+                                    className="mt-12 flex flex-col items-center justify-center gap-2 md:flex-row relative">
                                     <div
                                         key={1}
-                                        className="bg-foreground/10 rounded-[14px] border p-0.5">
+                                        className="bg-foreground/10 rounded-[14px] border p-0.5 relative">
                                         <Button
                                             asChild
                                             size="lg"
@@ -131,6 +197,8 @@ export function HeroSection() {
                                                 <span className="text-nowrap">Get Started</span>
                                             </Link>
                                         </Button>
+                                        {/* Sketchy Arrow pointing to Get Started button */}
+                                        <SketchyArrow />
                                     </div>
                                     <Button
                                         key={2}
