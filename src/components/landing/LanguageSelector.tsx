@@ -54,7 +54,7 @@ export function LanguageSelector() {
             onClick={() => handleLanguageSelect(language.name.toLowerCase())}
             className="flex items-center gap-3 cursor-pointer hover:bg-blue-50 rounded-xl px-3 py-2.5 mx-1 transition-all duration-150 hover:scale-[1.02] hover:shadow-sm group"
           >
-            <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 shadow-sm ring-1 ring-gray-200 group-hover:ring-blue-300 transition-all duration-150">
+            <div className="w-6 h-4 overflow-hidden flex-shrink-0 shadow-sm ring-1 ring-gray-200 group-hover:ring-blue-300 transition-all duration-150 flex items-center justify-center">
               <FlagIcon code={language.code} size={24} />
             </div>
             <span className="text-gray-900 font-medium group-hover:text-blue-900 transition-colors duration-150">{language.name}</span>
