@@ -15,7 +15,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import VocabularyExport from '@/components/VocabularyExport';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-
 const VocabularyPage = () => {
   const {
     vocabulary,
@@ -53,17 +52,13 @@ const VocabularyPage = () => {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(item => 
-        item.word?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.definition?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter(item => item.word?.toLowerCase().includes(searchTerm.toLowerCase()) || item.definition?.toLowerCase().includes(searchTerm.toLowerCase()));
     }
-
     return filtered;
   }, [languageVocabulary, searchTerm]);
 
   // Progress calculations for better UX
-  const progressPercentage = Math.min((vocabulary.length / vocabularyLimit) * 100, 100);
+  const progressPercentage = Math.min(vocabulary.length / vocabularyLimit * 100, 100);
   const isNearLimit = vocabulary.length >= vocabularyLimit * 0.8;
   const isAtLimit = vocabulary.length >= vocabularyLimit;
 
@@ -78,9 +73,8 @@ const VocabularyPage = () => {
   // Audio functionality
   const playAudio = async (text, itemId, type = 'example') => {
     if (!text) return;
-    
     const audioKey = `${itemId}-${type}`;
-    
+
     // Stop currently playing audio
     if (playingAudio && playingAudio !== audioKey) {
       const currentAudio = audioRefs.current[playingAudio];
@@ -100,71 +94,85 @@ const VocabularyPage = () => {
       setPlayingAudio(null);
       return;
     }
-
     try {
-      setAudioLoading(prev => ({ ...prev, [audioKey]: true }));
-      
+      setAudioLoading(prev => ({
+        ...prev,
+        [audioKey]: true
+      }));
+
       // Create or get existing audio element
       if (!audioRefs.current[audioKey]) {
         const audio = new Audio();
         audioRefs.current[audioKey] = audio;
-        
+
         // Set up event listeners
         audio.addEventListener('ended', () => {
           setPlayingAudio(null);
         });
-        
         audio.addEventListener('error', () => {
-          setAudioLoading(prev => ({ ...prev, [audioKey]: false }));
+          setAudioLoading(prev => ({
+            ...prev,
+            [audioKey]: false
+          }));
           setPlayingAudio(null);
           console.error('Audio playback failed');
         });
-        
         audio.addEventListener('loadstart', () => {
-          setAudioLoading(prev => ({ ...prev, [audioKey]: true }));
+          setAudioLoading(prev => ({
+            ...prev,
+            [audioKey]: true
+          }));
         });
-        
         audio.addEventListener('canplay', () => {
-          setAudioLoading(prev => ({ ...prev, [audioKey]: false }));
+          setAudioLoading(prev => ({
+            ...prev,
+            [audioKey]: false
+          }));
         });
       }
-
       const audio = audioRefs.current[audioKey];
-      
+
       // Use text-to-speech API or create audio URL
       // For demo purposes, we'll use Web Speech API if available
       if ('speechSynthesis' in window) {
         // Cancel any existing speech
         window.speechSynthesis.cancel();
-        
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = settings.selectedLanguage || 'en-US';
         utterance.rate = 0.8;
         utterance.pitch = 1;
-        
         utterance.onstart = () => {
           setPlayingAudio(audioKey);
-          setAudioLoading(prev => ({ ...prev, [audioKey]: false }));
+          setAudioLoading(prev => ({
+            ...prev,
+            [audioKey]: false
+          }));
         };
-        
         utterance.onend = () => {
           setPlayingAudio(null);
         };
-        
         utterance.onerror = () => {
           setPlayingAudio(null);
-          setAudioLoading(prev => ({ ...prev, [audioKey]: false }));
+          setAudioLoading(prev => ({
+            ...prev,
+            [audioKey]: false
+          }));
         };
-        
         window.speechSynthesis.speak(utterance);
       } else {
         // Fallback: You would integrate with a TTS service here
         console.log('Speech synthesis not supported');
-        setAudioLoading(prev => ({ ...prev, [audioKey]: false }));
+        setAudioLoading(prev => ({
+          ...prev,
+          [audioKey]: false
+        }));
       }
     } catch (error) {
       console.error('Error playing audio:', error);
-      setAudioLoading(prev => ({ ...prev, [audioKey]: false }));
+      setAudioLoading(prev => ({
+        ...prev,
+        [audioKey]: false
+      }));
       setPlayingAudio(null);
     }
   };
@@ -176,7 +184,7 @@ const VocabularyPage = () => {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
-      
+
       // Cleanup audio refs
       Object.values(audioRefs.current).forEach(audio => {
         if (audio && typeof audio.pause === 'function') {
@@ -187,7 +195,7 @@ const VocabularyPage = () => {
   }, []);
 
   // Enhanced interaction handlers
-  const handleDeleteVocabularyItem = (id) => {
+  const handleDeleteVocabularyItem = id => {
     if (showDeleteConfirm === id) {
       removeVocabularyItem(id);
       setShowDeleteConfirm(null);
@@ -201,22 +209,19 @@ const VocabularyPage = () => {
       setTimeout(() => setShowDeleteConfirm(null), 3000);
     }
   };
-
-  const toggleDefinition = (id) => {
+  const toggleDefinition = id => {
     setShowDefinition(prev => ({
       ...prev,
       [id]: !prev[id]
     }));
   };
-
-  const navigateCard = (direction) => {
+  const navigateCard = direction => {
     if (direction === 'prev') {
       setCurrentCardIndex(prev => prev > 0 ? prev - 1 : filteredVocabulary.length - 1);
     } else {
       setCurrentCardIndex(prev => prev < filteredVocabulary.length - 1 ? prev + 1 : 0);
     }
   };
-
   const shuffleCards = () => {
     setCurrentCardIndex(Math.floor(Math.random() * filteredVocabulary.length));
   };
@@ -239,38 +244,25 @@ const VocabularyPage = () => {
   };
 
   // Audio button component for reusability
-  const AudioButton = ({ text, itemId, type = 'example', size = 'sm', className = '' }) => {
+  const AudioButton = ({
+    text,
+    itemId,
+    type = 'example',
+    size = 'sm',
+    className = ''
+  }) => {
     const audioKey = `${itemId}-${type}`;
     const isLoading = audioLoading[audioKey];
     const isPlaying = playingAudio === audioKey;
-    
     if (!text) return null;
-    
-    return (
-      <Button
-        variant="ghost"
-        size={size}
-        onClick={(e) => {
-          e.stopPropagation();
-          playAudio(text, itemId, type);
-        }}
-        className={`${className} ${isPlaying ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
-        disabled={isLoading}
-        title="Play audio"
-      >
-        {isLoading ? (
-          <Loader2 className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} animate-spin`} />
-        ) : isPlaying ? (
-          <VolumeX className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'}`} />
-        ) : (
-          <Volume2 className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'}`} />
-        )}
-      </Button>
-    );
+    return <Button variant="ghost" size={size} onClick={e => {
+      e.stopPropagation();
+      playAudio(text, itemId, type);
+    }} className={`${className} ${isPlaying ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`} disabled={isLoading} title="Play audio">
+        {isLoading ? <Loader2 className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} animate-spin`} /> : isPlaying ? <VolumeX className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'}`} /> : <Volume2 className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'}`} />}
+      </Button>;
   };
-  
-  return (
-    <div className="container mx-auto px-4 py-4 sm:py-8">
+  return <div className="container mx-auto px-4 py-4 sm:py-8">
       {/* Enhanced Header with Stats */}
       <div className="flex flex-col gap-4 md:flex-row justify-between items-start md:items-center mb-6">
         <div className="flex-1">
@@ -287,34 +279,21 @@ const VocabularyPage = () => {
         
         {/* Quick Actions */}
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => navigate('/dashboard/reading')}
-            className="text-xs"
-          >
-            <Plus className="h-3 w-3 mr-1" />
-            Add Words
-          </Button>
+          
         </div>
       </div>
 
       {/* Enhanced Subscription Status Alert */}
-      {!subscription.isSubscribed && (
-        <Alert className={`mb-6 border-l-4 ${isAtLimit ? 'bg-red-50 border-red-400' : isNearLimit ? 'bg-yellow-50 border-yellow-400' : 'bg-blue-50 border-blue-400'}`}>
+      {!subscription.isSubscribed && <Alert className={`mb-6 border-l-4 ${isAtLimit ? 'bg-red-50 border-red-400' : isNearLimit ? 'bg-yellow-50 border-yellow-400' : 'bg-blue-50 border-blue-400'}`}>
           <div className="flex items-center gap-2">
-            {isAtLimit ? <AlertCircle className="h-4 w-4 text-red-500" /> : 
-             isNearLimit ? <AlertCircle className="h-4 w-4 text-yellow-500" /> : 
-             <Sparkles className="h-4 w-4 text-blue-500" />}
+            {isAtLimit ? <AlertCircle className="h-4 w-4 text-red-500" /> : isNearLimit ? <AlertCircle className="h-4 w-4 text-yellow-500" /> : <Sparkles className="h-4 w-4 text-blue-500" />}
             
             <AlertDescription className="flex-1">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">
-                      {isAtLimit ? 'Vocabulary limit reached!' : 
-                       isNearLimit ? 'Approaching vocabulary limit' : 
-                       'Free Plan'}
+                      {isAtLimit ? 'Vocabulary limit reached!' : isNearLimit ? 'Approaching vocabulary limit' : 'Free Plan'}
                     </span>
                     <Badge variant={isAtLimit ? 'destructive' : isNearLimit ? 'secondary' : 'outline'} className="text-xs">
                       {vocabulary.length}/{vocabularyLimit}
@@ -323,70 +302,48 @@ const VocabularyPage = () => {
                   
                   {/* Visual Progress Bar */}
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full transition-all duration-300 ${getProgressColor()}`}
-                      style={{ width: `${progressPercentage}%` }}
-                    />
+                    <div className={`h-2 rounded-full transition-all duration-300 ${getProgressColor()}`} style={{
+                  width: `${progressPercentage}%`
+                }} />
                   </div>
                   
                   <p className="text-xs text-muted-foreground">
-                    {isAtLimit ? 'Upgrade to add unlimited vocabulary words' : 
-                     `${vocabularyLimit - vocabulary.length} words remaining`}
+                    {isAtLimit ? 'Upgrade to add unlimited vocabulary words' : `${vocabularyLimit - vocabulary.length} words remaining`}
                   </p>
                 </div>
                 
-                <Button 
-                  variant={isAtLimit ? "default" : "outline"}
-                  size="sm" 
-                  className={isAtLimit ? "bg-red-600 hover:bg-red-700" : "border-primary text-primary hover:bg-primary/10"}
-                  onClick={() => navigate('/dashboard/subscription')}
-                >
+                <Button variant={isAtLimit ? "default" : "outline"} size="sm" className={isAtLimit ? "bg-red-600 hover:bg-red-700" : "border-primary text-primary hover:bg-primary/10"} onClick={() => navigate('/dashboard/subscription')}>
                   <Sparkles className="h-3 w-3 mr-1" /> 
                   {isAtLimit ? 'Upgrade Now' : 'Upgrade'}
                 </Button>
               </div>
             </AlertDescription>
           </div>
-        </Alert>
-      )}
+        </Alert>}
 
       {/* Search and Filter Bar */}
-      {languageVocabulary.length > 0 && (
-        <Card className="mb-6">
+      {languageVocabulary.length > 0 && <Card className="mb-6">
           <CardContent className="pt-4">
             <div className="flex flex-col sm:flex-row gap-3">
               {/* Search Input */}
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search words or definitions..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
+                <Input placeholder="Search words or definitions..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
               </div>
             </div>
             
             {/* Active Filters Display */}
-            {searchTerm && (
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+            {searchTerm && <div className="flex items-center gap-2 mt-3 pt-3 border-t">
                 <span className="text-xs text-muted-foreground">Active filters:</span>
                 <Badge variant="secondary" className="text-xs">
                   Search: "{searchTerm}"
                 </Badge>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearchTerm('')}
-                  className="text-xs h-6 px-2"
-                >
+                <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')} className="text-xs h-6 px-2">
                   Clear
                 </Button>
-              </div>
-            )}
+              </div>}
           </CardContent>
-        </Card>
-      )}
+        </Card>}
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Left column: Enhanced Vocabulary List */}
@@ -399,49 +356,26 @@ const VocabularyPage = () => {
                   Your Vocabulary List
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  {filteredVocabulary.length !== languageVocabulary.length && (
-                    <Badge variant="outline" className="text-xs">
+                  {filteredVocabulary.length !== languageVocabulary.length && <Badge variant="outline" className="text-xs">
                       {filteredVocabulary.length} of {languageVocabulary.length}
-                    </Badge>
-                  )}
+                    </Badge>}
                   {/* View Mode Toggle */}
-                  {filteredVocabulary.length > 0 && (
-                    <div className="flex bg-muted rounded-lg p-1">
-                      <Button
-                        variant={viewMode === 'list' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setViewMode('list')}
-                        className="h-7 px-2"
-                        title="List view"
-                      >
+                  {filteredVocabulary.length > 0 && <div className="flex bg-muted rounded-lg p-1">
+                      <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('list')} className="h-7 px-2" title="List view">
                         <List className="h-3 w-3" />
                       </Button>
-                      <Button
-                        variant={viewMode === 'cards' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setViewMode('cards')}
-                        className="h-7 px-2"
-                        title="Card grid view"
-                      >
+                      <Button variant={viewMode === 'cards' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('cards')} className="h-7 px-2" title="Card grid view">
                         <Grid3X3 className="h-3 w-3" />
                       </Button>
-                      <Button
-                        variant={viewMode === 'study' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setViewMode('study')}
-                        className="h-7 px-2"
-                        title="Study mode"
-                      >
+                      <Button variant={viewMode === 'study' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('study')} className="h-7 px-2" title="Study mode">
                         <Eye className="h-3 w-3" />
                       </Button>
-                    </div>
-                  )}
+                    </div>}
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              {languageVocabulary.length === 0 ? (
-                <div className="text-center py-8 sm:py-12">
+              {languageVocabulary.length === 0 ? <div className="text-center py-8 sm:py-12">
                   <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
                     <BookOpen className="h-8 w-8 text-muted-foreground" />
                   </div>
@@ -449,16 +383,11 @@ const VocabularyPage = () => {
                   <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
                     Start building your vocabulary by adding words through the Vocabulary Builder when reading exercises.
                   </p>
-                  <Button 
-                    onClick={() => navigate('/dashboard/reading')}
-                    className="mt-2"
-                  >
+                  <Button onClick={() => navigate('/dashboard/reading')} className="mt-2">
                     <Plus className="h-4 w-4 mr-2" />
                     Start Reading
                   </Button>
-                </div>
-              ) : filteredVocabulary.length === 0 ? (
-                <div className="text-center py-8">
+                </div> : filteredVocabulary.length === 0 ? <div className="text-center py-8">
                   <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
                     <Search className="h-8 w-8 text-muted-foreground" />
                   </div>
@@ -466,120 +395,66 @@ const VocabularyPage = () => {
                   <p className="text-muted-foreground text-sm">
                     Try adjusting your search terms.
                   </p>
-                </div>
-              ) : (
-                <>
+                </div> : <>
                   {/* List View */}
-                  {viewMode === 'list' && (
-                    <div className="space-y-3 sm:space-y-4">
-                      {filteredVocabulary.map(item => (
-                        <div key={item.id} className="group relative">
-                          <VocabularyCard 
-                            item={item} 
-                            onDelete={() => handleDeleteVocabularyItem(item.id)}
-                          />
+                  {viewMode === 'list' && <div className="space-y-3 sm:space-y-4">
+                      {filteredVocabulary.map(item => <div key={item.id} className="group relative">
+                          <VocabularyCard item={item} onDelete={() => handleDeleteVocabularyItem(item.id)} />
                           {/* Delete confirmation overlay */}
-                          {showDeleteConfirm === item.id && (
-                            <div className="absolute inset-0 bg-red-50 border border-red-200 rounded-lg flex items-center justify-center z-10">
+                          {showDeleteConfirm === item.id && <div className="absolute inset-0 bg-red-50 border border-red-200 rounded-lg flex items-center justify-center z-10">
                               <div className="text-center">
                                 <p className="text-sm font-medium text-red-900 mb-2">Delete this word?</p>
                                 <div className="flex gap-2">
-                                  <Button 
-                                    size="sm" 
-                                    variant="destructive"
-                                    onClick={() => handleDeleteVocabularyItem(item.id)}
-                                  >
+                                  <Button size="sm" variant="destructive" onClick={() => handleDeleteVocabularyItem(item.id)}>
                                     Yes, Delete
                                   </Button>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    onClick={() => setShowDeleteConfirm(null)}
-                                  >
+                                  <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
                                     Cancel
                                   </Button>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                            </div>}
+                        </div>)}
+                    </div>}
 
                   {/* Card Grid View */}
-                  {viewMode === 'cards' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {filteredVocabulary.map(item => (
-                        <div key={item.id} className="group relative">
+                  {viewMode === 'cards' && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {filteredVocabulary.map(item => <div key={item.id} className="group relative">
                           <Card className="h-48 cursor-pointer transition-all duration-200 hover:shadow-md border-2 hover:border-primary/20">
                             <CardContent className="p-4 h-full flex flex-col justify-between">
                               <div className="flex-1">
                                 <div className="flex justify-between items-start mb-3">
                                   <h3 className="font-semibold text-lg text-primary">{item.word}</h3>
                                   <div className="flex items-center gap-1">
-                                    <AudioButton 
-                                      text={item.word} 
-                                      itemId={item.id} 
-                                      type="word"
-                                      size="sm"
-                                      className="h-6 w-6 p-0"
-                                    />
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => toggleDefinition(item.id)}
-                                      className="h-6 w-6 p-0"
-                                    >
-                                      {showDefinition[item.id] ? 
-                                        <EyeOff className="h-3 w-3" /> : 
-                                        <Eye className="h-3 w-3" />
-                                      }
+                                    <AudioButton text={item.word} itemId={item.id} type="word" size="sm" className="h-6 w-6 p-0" />
+                                    <Button variant="ghost" size="sm" onClick={() => toggleDefinition(item.id)} className="h-6 w-6 p-0">
+                                      {showDefinition[item.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                                     </Button>
                                   </div>
                                 </div>
                                 
-                                {showDefinition[item.id] && (
-                                  <div className="space-y-2 text-sm">
-                                    {item.definition && (
-                                      <p className="text-muted-foreground leading-relaxed">
+                                {showDefinition[item.id] && <div className="space-y-2 text-sm">
+                                    {item.definition && <p className="text-muted-foreground leading-relaxed">
                                         {item.definition}
-                                      </p>
-                                    )}
-                                    {item.example && (
-                                      <div className="text-xs italic text-muted-foreground border-l-2 border-muted pl-2">
+                                      </p>}
+                                    {item.example && <div className="text-xs italic text-muted-foreground border-l-2 border-muted pl-2">
                                         <div className="flex items-start gap-2">
                                           <span className="flex-1">"{item.example}"</span>
-                                          <AudioButton 
-                                            text={item.example} 
-                                            itemId={item.id} 
-                                            type="example"
-                                            size="sm"
-                                            className="h-4 w-4 p-0 mt-0.5 flex-shrink-0"
-                                          />
+                                          <AudioButton text={item.example} itemId={item.id} type="example" size="sm" className="h-4 w-4 p-0 mt-0.5 flex-shrink-0" />
                                         </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
+                                      </div>}
+                                  </div>}
                                 
-                                {!showDefinition[item.id] && (
-                                  <div className="flex items-center justify-center h-full">
+                                {!showDefinition[item.id] && <div className="flex items-center justify-center h-full">
                                     <p className="text-muted-foreground text-sm">Click eye to reveal</p>
-                                  </div>
-                                )}
+                                  </div>}
                               </div>
                               
                               <div className="flex justify-between items-center pt-2 border-t">
                                 <Badge variant="secondary" className="text-xs">
                                   {item.language}
                                 </Badge>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteVocabularyItem(item.id)}
-                                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                >
+                                <Button variant="ghost" size="sm" onClick={() => handleDeleteVocabularyItem(item.id)} className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50">
                                   ×
                                 </Button>
                               </div>
@@ -587,37 +462,24 @@ const VocabularyPage = () => {
                           </Card>
                           
                           {/* Delete confirmation overlay for cards */}
-                          {showDeleteConfirm === item.id && (
-                            <div className="absolute inset-0 bg-red-50 border-2 border-red-200 rounded-lg flex items-center justify-center z-10">
+                          {showDeleteConfirm === item.id && <div className="absolute inset-0 bg-red-50 border-2 border-red-200 rounded-lg flex items-center justify-center z-10">
                               <div className="text-center">
                                 <p className="text-sm font-medium text-red-900 mb-2">Delete this word?</p>
                                 <div className="flex gap-2">
-                                  <Button 
-                                    size="sm" 
-                                    variant="destructive"
-                                    onClick={() => handleDeleteVocabularyItem(item.id)}
-                                  >
+                                  <Button size="sm" variant="destructive" onClick={() => handleDeleteVocabularyItem(item.id)}>
                                     Delete
                                   </Button>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline"
-                                    onClick={() => setShowDeleteConfirm(null)}
-                                  >
+                                  <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(null)}>
                                     Cancel
                                   </Button>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                            </div>}
+                        </div>)}
+                    </div>}
 
                   {/* Study Mode */}
-                  {viewMode === 'study' && (
-                    <div className="space-y-4">
+                  {viewMode === 'study' && <div className="space-y-4">
                       {/* Study Mode Controls */}
                       <div className="flex justify-between items-center bg-muted/30 rounded-lg p-3">
                         <div className="flex items-center gap-2">
@@ -627,22 +489,10 @@ const VocabularyPage = () => {
                           </Badge>
                         </div>
                         <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => shuffleCards()}
-                            className="h-7 px-2"
-                            title="Random card"
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => shuffleCards()} className="h-7 px-2" title="Random card">
                             <Shuffle className="h-3 w-3" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setCurrentCardIndex(0)}
-                            className="h-7 px-2"
-                            title="Reset to first"
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => setCurrentCardIndex(0)} className="h-7 px-2" title="Reset to first">
                             <RotateCcw className="h-3 w-3" />
                           </Button>
                         </div>
@@ -657,78 +507,41 @@ const VocabularyPage = () => {
                                 <h2 className="text-2xl sm:text-3xl font-bold text-primary">
                                   {filteredVocabulary[currentCardIndex]?.word}
                                 </h2>
-                                <AudioButton 
-                                  text={filteredVocabulary[currentCardIndex]?.word} 
-                                  itemId={filteredVocabulary[currentCardIndex]?.id} 
-                                  type="word"
-                                  size="lg"
-                                  className="h-8 w-8 p-0"
-                                />
+                                <AudioButton text={filteredVocabulary[currentCardIndex]?.word} itemId={filteredVocabulary[currentCardIndex]?.id} type="word" size="lg" className="h-8 w-8 p-0" />
                               </div>
                               
-                              <Button
-                                variant="outline"
-                                onClick={() => toggleDefinition(filteredVocabulary[currentCardIndex]?.id)}
-                                className="mx-auto"
-                              >
-                                {showDefinition[filteredVocabulary[currentCardIndex]?.id] ? 
-                                  <>
+                              <Button variant="outline" onClick={() => toggleDefinition(filteredVocabulary[currentCardIndex]?.id)} className="mx-auto">
+                                {showDefinition[filteredVocabulary[currentCardIndex]?.id] ? <>
                                     <EyeOff className="h-4 w-4 mr-2" />
                                     Hide Definition
-                                  </> : 
-                                  <>
+                                  </> : <>
                                     <Eye className="h-4 w-4 mr-2" />
                                     Show Definition
-                                  </>
-                                }
+                                  </>}
                               </Button>
 
-                              {showDefinition[filteredVocabulary[currentCardIndex]?.id] && (
-                                <div className="space-y-4 animate-in fade-in-50 duration-200">
-                                  {filteredVocabulary[currentCardIndex]?.definition && (
-                                    <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                              {showDefinition[filteredVocabulary[currentCardIndex]?.id] && <div className="space-y-4 animate-in fade-in-50 duration-200">
+                                  {filteredVocabulary[currentCardIndex]?.definition && <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                                       {filteredVocabulary[currentCardIndex].definition}
-                                    </p>
-                                  )}
-                                  {filteredVocabulary[currentCardIndex]?.example && (
-                                    <div className="bg-muted/50 rounded-lg p-4 max-w-xl mx-auto">
+                                    </p>}
+                                  {filteredVocabulary[currentCardIndex]?.example && <div className="bg-muted/50 rounded-lg p-4 max-w-xl mx-auto">
                                       <div className="flex items-start gap-3">
                                         <p className="text-sm italic text-muted-foreground flex-1">
                                           "{filteredVocabulary[currentCardIndex].example}"
                                         </p>
-                                        <AudioButton 
-                                          text={filteredVocabulary[currentCardIndex].example} 
-                                          itemId={filteredVocabulary[currentCardIndex].id} 
-                                          type="example"
-                                          size="sm"
-                                          className="h-6 w-6 p-0 flex-shrink-0"
-                                        />
+                                        <AudioButton text={filteredVocabulary[currentCardIndex].example} itemId={filteredVocabulary[currentCardIndex].id} type="example" size="sm" className="h-6 w-6 p-0 flex-shrink-0" />
                                       </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
+                                    </div>}
+                                </div>}
                             </div>
                           </CardContent>
                         </Card>
 
                         {/* Navigation Arrows */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigateCard('prev')}
-                          className="absolute left-2 top-1/2 transform -translate-y-1/2 h-10 w-10 p-0 bg-white shadow-md hover:bg-gray-50"
-                          disabled={filteredVocabulary.length <= 1}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => navigateCard('prev')} className="absolute left-2 top-1/2 transform -translate-y-1/2 h-10 w-10 p-0 bg-white shadow-md hover:bg-gray-50" disabled={filteredVocabulary.length <= 1}>
                           <ChevronLeft className="h-5 w-5" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigateCard('next')}
-                          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-10 w-10 p-0 bg-white shadow-md hover:bg-gray-50"
-                          disabled={filteredVocabulary.length <= 1}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => navigateCard('next')} className="absolute right-2 top-1/2 transform -translate-y-1/2 h-10 w-10 p-0 bg-white shadow-md hover:bg-gray-50" disabled={filteredVocabulary.length <= 1}>
                           <ChevronRight className="h-5 w-5" />
                         </Button>
                       </div>
@@ -736,21 +549,11 @@ const VocabularyPage = () => {
                       {/* Study Progress */}
                       <div className="flex justify-center">
                         <div className="flex gap-1">
-                          {filteredVocabulary.map((_, index) => (
-                            <button
-                              key={index}
-                              onClick={() => setCurrentCardIndex(index)}
-                              className={`w-2 h-2 rounded-full transition-colors ${
-                                index === currentCardIndex ? 'bg-primary' : 'bg-muted'
-                              }`}
-                            />
-                          ))}
+                          {filteredVocabulary.map((_, index) => <button key={index} onClick={() => setCurrentCardIndex(index)} className={`w-2 h-2 rounded-full transition-colors ${index === currentCardIndex ? 'bg-primary' : 'bg-muted'}`} />)}
                         </div>
                       </div>
-                    </div>
-                  )}
-                </>
-              )}
+                    </div>}
+                </>}
             </CardContent>
           </Card>
         </div>
@@ -778,8 +581,7 @@ const VocabularyPage = () => {
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="practice" className="space-y-3">
-                  {languageVocabulary.length > 0 ? (
-                    <>
+                  {languageVocabulary.length > 0 ? <>
                       <div className="bg-muted/30 rounded-lg p-3 mb-3">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <CheckCircle className="h-4 w-4" />
@@ -787,19 +589,15 @@ const VocabularyPage = () => {
                         </div>
                       </div>
                       <VocabularyPlaylist vocabulary={languageVocabulary} />
-                    </>
-                  ) : (
-                    <div className="text-center py-6">
+                    </> : <div className="text-center py-6">
                       <Trophy className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">
                         Add vocabulary words to start practicing
                       </p>
-                    </div>
-                  )}
+                    </div>}
                 </TabsContent>
                 <TabsContent value="export" className="space-y-3">
-                  {languageVocabulary.length > 0 ? (
-                    <>
+                  {languageVocabulary.length > 0 ? <>
                       <div className="bg-muted/30 rounded-lg p-3 mb-3">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Download className="h-4 w-4" />
@@ -807,33 +605,23 @@ const VocabularyPage = () => {
                         </div>
                       </div>
                       <VocabularyExport vocabulary={languageVocabulary} />
-                    </>
-                  ) : (
-                    <div className="text-center py-6">
+                    </> : <div className="text-center py-6">
                       <Download className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">
                         Add vocabulary words to enable export
                       </p>
-                    </div>
-                  )}
+                    </div>}
                 </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
           
           {/* Enhanced Subscription Upgrade Card */}
-          {!subscription.isSubscribed && (
-            <div className="mt-4">
-              <UpgradePrompt 
-                title="Unlimited Vocabulary" 
-                message="Premium subscribers can create unlimited vocabulary lists and export all their flashcards with audio." 
-              />
-            </div>
-          )}
+          {!subscription.isSubscribed && <div className="mt-4">
+              <UpgradePrompt title="Unlimited Vocabulary" message="Premium subscribers can create unlimited vocabulary lists and export all their flashcards with audio." />
+            </div>}
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default VocabularyPage;
