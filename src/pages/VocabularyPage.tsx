@@ -34,13 +34,12 @@ const VocabularyPage = () => {
 
   // Local state for enhanced UX
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   // Filter vocabulary by currently selected language
   const languageVocabulary = getVocabularyByLanguage(settings.selectedLanguage);
 
-  // Enhanced filtering with search and difficulty
+  // Enhanced filtering with search
   const filteredVocabulary = useMemo(() => {
     let filtered = languageVocabulary;
 
@@ -48,29 +47,25 @@ const VocabularyPage = () => {
     if (searchTerm) {
       filtered = filtered.filter(item => 
         item.word?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.translation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.definition?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Difficulty filter
-    if (selectedDifficulty !== 'all') {
-      filtered = filtered.filter(item => item.difficulty === selectedDifficulty);
-    }
-
     return filtered;
-  }, [languageVocabulary, searchTerm, selectedDifficulty]);
+  }, [languageVocabulary, searchTerm]);
 
   // Progress calculations for better UX
   const progressPercentage = Math.min((vocabulary.length / vocabularyLimit) * 100, 100);
   const isNearLimit = vocabulary.length >= vocabularyLimit * 0.8;
   const isAtLimit = vocabulary.length >= vocabularyLimit;
 
-  // Get unique difficulties for filter
-  const availableDifficulties = useMemo(() => {
-    const difficulties = [...new Set(languageVocabulary.map(item => item.difficulty).filter(Boolean))];
-    return difficulties;
-  }, [languageVocabulary]);
+  // Stats for better UX
+  const vocabularyStats = useMemo(() => {
+    return {
+      total: languageVocabulary.length,
+      filtered: filteredVocabulary.length
+    };
+  }, [languageVocabulary, filteredVocabulary]);
 
   // Handle vocabulary deletion with confirmation
   const handleDeleteVocabularyItem = (id: string) => {
@@ -191,66 +186,28 @@ const VocabularyPage = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search words, translations, or definitions..."
+                  placeholder="Search words or definitions..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
                 />
               </div>
-              
-              {/* Difficulty Filter */}
-              {availableDifficulties.length > 0 && (
-                <div className="flex gap-2 flex-wrap">
-                  <Button
-                    variant={selectedDifficulty === 'all' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedDifficulty('all')}
-                    className="text-xs"
-                  >
-                    All ({languageVocabulary.length})
-                  </Button>
-                  {availableDifficulties.map(difficulty => {
-                    const count = languageVocabulary.filter(item => item.difficulty === difficulty).length;
-                    return (
-                      <Button
-                        key={difficulty}
-                        variant={selectedDifficulty === difficulty ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setSelectedDifficulty(difficulty)}
-                        className="text-xs capitalize"
-                      >
-                        {difficulty} ({count})
-                      </Button>
-                    );
-                  })}
-                </div>
-              )}
             </div>
             
             {/* Active Filters Display */}
-            {(searchTerm || selectedDifficulty !== 'all') && (
+            {searchTerm && (
               <div className="flex items-center gap-2 mt-3 pt-3 border-t">
                 <span className="text-xs text-muted-foreground">Active filters:</span>
-                {searchTerm && (
-                  <Badge variant="secondary" className="text-xs">
-                    Search: "{searchTerm}"
-                  </Badge>
-                )}
-                {selectedDifficulty !== 'all' && (
-                  <Badge variant="secondary" className="text-xs capitalize">
-                    Difficulty: {selectedDifficulty}
-                  </Badge>
-                )}
+                <Badge variant="secondary" className="text-xs">
+                  Search: "{searchTerm}"
+                </Badge>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSelectedDifficulty('all');
-                  }}
+                  onClick={() => setSearchTerm('')}
                   className="text-xs h-6 px-2"
                 >
-                  Clear all
+                  Clear
                 </Button>
               </div>
             )}
@@ -310,11 +267,10 @@ const VocabularyPage = () => {
                       <VocabularyCard 
                         item={item} 
                         onDelete={() => handleDeleteVocabularyItem(item.id)}
-                        deleteConfirmation={showDeleteConfirm === item.id}
                       />
                       {/* Delete confirmation overlay */}
                       {showDeleteConfirm === item.id && (
-                        <div className="absolute inset-0 bg-red-50 border border-red-200 rounded-lg flex items-center justify-center">
+                        <div className="absolute inset-0 bg-red-50 border border-red-200 rounded-lg flex items-center justify-center z-10">
                           <div className="text-center">
                             <p className="text-sm font-medium text-red-900 mb-2">Delete this word?</p>
                             <div className="flex gap-2">
