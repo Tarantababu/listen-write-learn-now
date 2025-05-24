@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Headphones, Home, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Loader2, Headphones, Home, Eye, EyeOff, AlertCircle, Sparkles, ArrowRight } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -70,8 +70,6 @@ const useLoginForm = () => {
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to sign in';
       setError(errorMessage);
-      
-      // Clear form errors when there's a server error
       clearErrors();
     } finally {
       setIsLoading(false);
@@ -138,7 +136,7 @@ const LoginPage: React.FC = () => {
 
   // Memoize Google SVG icon to prevent re-renders
   const GoogleIcon = useMemo(() => (
-    <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
       <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
       <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
       <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
@@ -147,108 +145,128 @@ const LoginPage: React.FC = () => {
   ), []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 bg-gradient-to-br from-background via-background to-accent/10">
-      <Card className="w-full max-w-md shadow-lg animate-slide-in gradient-card">
-        <CardHeader className="text-center pb-4 sm:pb-6">
-          {/* Back to Home button moved to card header */}
-          <div className="flex justify-start mb-2">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-blue-950/50 to-indigo-950/30"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(120,119,198,0.3),transparent_50%)]"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.1),transparent_50%)]"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_40%_80%,rgba(120,119,198,0.2),transparent_50%)]"></div>
+      
+      {/* Floating Elements */}
+      <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+
+      {/* Glassmorphism Card */}
+      <Card className="w-full max-w-md relative z-10 backdrop-blur-2xl bg-white/10 border border-white/20 shadow-2xl shadow-black/50">
+        <CardHeader className="text-center pb-6 relative">
+          {/* Back to Home button - Ultra modern style */}
+          <div className="absolute -top-2 -left-2">
             <Link 
               to="/" 
-              className="text-primary hover:text-accent transition-colors duration-200"
+              className="group"
               tabIndex={0}
             >
               <Button 
                 variant="ghost" 
-                size={isMobile ? "sm" : "default"} 
-                className="flex items-center gap-1 sm:gap-2 hover:bg-primary/10 transition-colors duration-200"
+                size="sm"
+                className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:rotate-3 p-0"
               >
-                <Home className="h-4 w-4" />
-                <span>{isMobile ? "Home" : "Back to Home"}</span>
+                <Home className="h-4 w-4 text-white/80 group-hover:text-white transition-colors" />
               </Button>
             </Link>
           </div>
 
-          <div className="flex justify-center mb-2 sm:mb-4">
-            <div className="flex items-center gap-2">
-              <Headphones className="h-6 w-6 sm:h-8 sm:w-8 text-primary animate-pulse" />
-              <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
+          {/* Logo Section */}
+          <div className="flex justify-center mb-6 relative">
+            <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-white/20 to-white/10 backdrop-blur-sm border border-white/30">
+              <div className="relative">
+                <Headphones className="h-8 w-8 text-white drop-shadow-lg" />
+                <div className="absolute -top-1 -right-1">
+                  <Sparkles className="h-4 w-4 text-yellow-300 animate-pulse" />
+                </div>
+              </div>
+              <h1 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-purple-200 tracking-tight">
                 lwlnow
               </h1>
             </div>
           </div>
           
-          <CardTitle className="text-xl sm:text-2xl">Welcome Back</CardTitle>
-          <CardDescription className="text-sm mb-2">
-            Sign in to continue your language learning journey
+          <CardTitle className="text-3xl font-bold text-white mb-2 tracking-tight">
+            Welcome Back
+          </CardTitle>
+          <CardDescription className="text-white/70 text-lg mb-6 font-medium">
+            Continue your learning journey
           </CardDescription>
           
-          <div className="px-2 sm:px-4">
-            <Alert className="bg-primary/5 border-primary/10 mb-2 transition-all duration-300 hover:bg-primary/10">
-              <Headphones className="h-4 w-4" />
-              <AlertTitle>Continue Learning</AlertTitle>
-              <AlertDescription>
-                Access your personalized exercises, track progress, and improve your skills.
+          {/* Feature Highlight */}
+          <div className="px-4">
+            <Alert className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-white/30 backdrop-blur-sm">
+              <Sparkles className="h-4 w-4 text-yellow-300" />
+              <AlertTitle className="text-white font-semibold">Premium Experience</AlertTitle>
+              <AlertDescription className="text-white/80">
+                AI-powered exercises, real-time feedback, and personalized learning paths.
               </AlertDescription>
             </Alert>
           </div>
         </CardHeader>
 
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-            <div className="space-y-1 sm:space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">
+        <CardContent className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email Field */}
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-white/90 text-sm font-medium tracking-wide">
                 Email Address
               </Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="your@email.com" 
-                value={email} 
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (errors.email) clearErrors();
-                }}
-                onBlur={() => {
-                  // Real-time validation on blur
-                  if (email && !email.includes('@')) {
-                    // Trigger validation for better UX
-                  }
-                }}
-                required 
-                disabled={isFormDisabled}
-                className={`border-input focus:border-primary transition-colors duration-200 ${
-                  errors.email 
-                    ? 'border-destructive focus:border-destructive' 
-                    : 'hover:border-primary/50'
-                }`}
-                aria-describedby={errors.email ? "email-error" : undefined}
-              />
+              <div className="relative group">
+                <Input 
+                  id="email" 
+                  type="email" 
+                  placeholder="your@email.com" 
+                  value={email} 
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errors.email) clearErrors();
+                  }}
+                  required 
+                  disabled={isFormDisabled}
+                  className={`
+                    h-12 bg-white/10 border-white/30 text-white placeholder:text-white/50 
+                    focus:bg-white/20 focus:border-white/50 focus:ring-2 focus:ring-white/20
+                    backdrop-blur-sm transition-all duration-300 rounded-xl
+                    hover:bg-white/15 group-hover:border-white/40
+                    ${errors.email ? 'border-red-400/60 bg-red-500/10' : ''}
+                  `}
+                  aria-describedby={errors.email ? "email-error" : undefined}
+                />
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/0 via-purple-500/0 to-pink-500/0 group-focus-within:from-blue-500/20 group-focus-within:via-purple-500/20 group-focus-within:to-pink-500/20 transition-all duration-500 -z-10"></div>
+              </div>
               {errors.email && (
-                <p id="email-error" className="text-xs text-destructive flex items-center gap-1">
+                <p id="email-error" className="text-red-300 text-xs flex items-center gap-2 animate-in slide-in-from-left-2">
                   <AlertCircle className="h-3 w-3" />
                   {errors.email}
                 </p>
               )}
             </div>
 
-            <div className="space-y-1 sm:space-y-2">
+            {/* Password Field */}
+            <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <Label htmlFor="password" className="text-sm font-medium">
+                <Label htmlFor="password" className="text-white/90 text-sm font-medium tracking-wide">
                   Password
                 </Label>
                 <Link 
                   to="/forgot-password" 
-                  className="text-xs text-primary hover:text-accent hover:underline transition-colors duration-200"
+                  className="text-xs text-white/70 hover:text-white transition-colors duration-200 hover:underline underline-offset-2"
                   tabIndex={isFormDisabled ? -1 : 0}
                 >
                   Forgot Password?
                 </Link>
               </div>
-              <div className="relative">
+              <div className="relative group">
                 <Input 
                   id="password" 
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••" 
+                  placeholder="••••••••••" 
                   value={password} 
                   onChange={(e) => {
                     setPassword(e.target.value);
@@ -256,99 +274,112 @@ const LoginPage: React.FC = () => {
                   }}
                   required 
                   disabled={isFormDisabled}
-                  className={`border-input focus:border-primary transition-colors duration-200 pr-10 ${
-                    errors.password 
-                      ? 'border-destructive focus:border-destructive' 
-                      : 'hover:border-primary/50'
-                  }`}
+                  className={`
+                    h-12 bg-white/10 border-white/30 text-white placeholder:text-white/50 
+                    focus:bg-white/20 focus:border-white/50 focus:ring-2 focus:ring-white/20
+                    backdrop-blur-sm transition-all duration-300 rounded-xl pr-12
+                    hover:bg-white/15 group-hover:border-white/40
+                    ${errors.password ? 'border-red-400/60 bg-red-500/10' : ''}
+                  `}
                   aria-describedby={errors.password ? "password-error" : undefined}
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-white/20 rounded-lg transition-all duration-200"
                   onClick={togglePasswordVisibility}
                   disabled={isFormDisabled}
                   tabIndex={isFormDisabled ? -1 : 0}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors" />
+                    <EyeOff className="h-4 w-4 text-white/70 hover:text-white transition-colors" />
                   ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors" />
+                    <Eye className="h-4 w-4 text-white/70 hover:text-white transition-colors" />
                   )}
                 </Button>
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/0 via-purple-500/0 to-pink-500/0 group-focus-within:from-blue-500/20 group-focus-within:via-purple-500/20 group-focus-within:to-pink-500/20 transition-all duration-500 -z-10"></div>
               </div>
               {errors.password && (
-                <p id="password-error" className="text-xs text-destructive flex items-center gap-1">
+                <p id="password-error" className="text-red-300 text-xs flex items-center gap-2 animate-in slide-in-from-left-2">
                   <AlertCircle className="h-3 w-3" />
                   {errors.password}
                 </p>
               )}
             </div>
             
+            {/* Error Alert */}
             {error && (
-              <Alert variant="destructive" className="animate-shake">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+              <Alert className="bg-red-500/20 border-red-400/30 backdrop-blur-sm animate-in slide-in-from-top-2">
+                <AlertCircle className="h-4 w-4 text-red-300" />
+                <AlertDescription className="text-red-200">{error}</AlertDescription>
               </Alert>
             )}
 
+            {/* Sign In Button */}
             <Button 
               type="submit" 
-              className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]" 
+              className="w-full h-12 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-500 hover:via-purple-500 hover:to-indigo-500 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-purple-500/25 active:scale-[0.98] border-0 relative overflow-hidden group" 
               disabled={isFormDisabled}
             >
+              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
               {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing you in...
-                </>
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Signing you in...</span>
+                </div>
               ) : (
-                'Sign In'
+                <div className="flex items-center gap-2">
+                  <span>Sign In</span>
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </div>
               )}
             </Button>
             
-            <div className="relative my-4">
+            {/* Divider */}
+            <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-muted" />
+                <span className="w-full border-t border-white/20" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
+                <span className="bg-white/10 backdrop-blur-sm px-4 py-1 text-white/70 rounded-full border border-white/20 font-medium tracking-wider">
                   Or continue with
                 </span>
               </div>
             </div>
             
+            {/* Google Sign In Button */}
             <Button 
               type="button" 
               variant="outline" 
-              className="w-full hover:bg-primary/5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]" 
+              className="w-full h-12 bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/40 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] rounded-xl font-medium group" 
               onClick={handleGoogleSignIn} 
               disabled={isFormDisabled}
             >
               {isGoogleLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Connecting...
-                </>
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Connecting...</span>
+                </div>
               ) : (
-                <>
-                  {GoogleIcon}
-                  Sign in with Google
-                </>
+                <div className="flex items-center gap-3">
+                  <div className="group-hover:scale-110 transition-transform duration-200">
+                    {GoogleIcon}
+                  </div>
+                  <span>Continue with Google</span>
+                </div>
               )}
             </Button>
           </form>
         </CardContent>
 
-        <CardFooter className="flex justify-center pt-0 pb-6">
-          <p className="text-xs sm:text-sm text-muted-foreground">
+        <CardFooter className="flex justify-center pt-4 pb-8">
+          <p className="text-white/70 text-sm">
             Don't have an account?{' '}
             <Link 
               to="/signup" 
-              className="text-primary hover:text-accent hover:underline transition-colors duration-200 font-medium"
+              className="text-white font-semibold hover:text-blue-200 transition-colors duration-200 underline underline-offset-2 decoration-white/50 hover:decoration-blue-200"
               tabIndex={isFormDisabled ? -1 : 0}
             >
               Create account
