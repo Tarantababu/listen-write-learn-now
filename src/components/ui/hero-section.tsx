@@ -74,7 +74,8 @@ const SketchyArrow = () => (
             </span>
         </div>
         
-        <style jsx>{`
+        <style>
+            {`
             @keyframes dash {
                 0% { stroke-dashoffset: 0; }
                 50% { stroke-dashoffset: 10; }
@@ -89,7 +90,8 @@ const SketchyArrow = () => (
             .font-handwriting {
                 font-family: 'Kalam', 'Comic Sans MS', cursive;
             }
-        `}</style>
+            `}
+        </style>
     </div>
 );
 
