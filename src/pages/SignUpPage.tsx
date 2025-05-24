@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, CheckCircle2, Home, Headphones } from 'lucide-react';
+import { Loader2, CheckCircle2, Home, Headphones, ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { updateProfile } from '@/lib/auth';
 import { capitalizeLanguage, getLanguageFlag } from '@/utils/languageUtils';
@@ -34,33 +34,60 @@ const SignUpPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const selectedLanguage = searchParams.get('lang');
   
+  // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // If user is already logged in, redirect to dashboard page
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const validateForm = () => {
+    if (!email.trim()) {
+      setError('Email is required');
+      return false;
+    }
+    
+    if (!email.includes('@') || !email.includes('.')) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+    
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return false;
+    }
+    
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-    
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
     
@@ -82,7 +109,7 @@ const SignUpPage: React.FC = () => {
       
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || 'Failed to create account');
+      setError(err.message || 'Failed to create account. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -94,11 +121,10 @@ const SignUpPage: React.FC = () => {
     
     try {
       await signInWithGoogle();
-      
       // Note: For Google signup, we'll handle language setting in the dashboard
       // since the redirect happens immediately
     } catch (err: any) {
-      setError(err.message || 'Failed to sign up with Google');
+      setError(err.message || 'Failed to sign up with Google. Please try again.');
       setIsGoogleLoading(false);
     }
   };
@@ -107,26 +133,39 @@ const SignUpPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 bg-gradient-to-br from-background via-background to-accent/10">
-      <Link to="/" className="absolute top-4 left-4 text-primary hover:text-accent transition-colors animate-fade-in">
-        <Button variant="ghost" size={isMobile ? "sm" : "default"} className="flex items-center gap-1 sm:gap-2">
-          <Home className="h-4 w-4" />
-          <span>{isMobile ? "Home" : "Back to Home"}</span>
-        </Button>
-      </Link>
-      
-      <Card className="w-full max-w-md shadow-lg animate-slide-in gradient-card">
-        <CardHeader className="text-center pb-4 sm:pb-6">
-          <div className="flex justify-center mb-2 sm:mb-4">
+      <Card className={`w-full max-w-md shadow-lg transition-all duration-500 ease-out transform ${
+        mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+      } gradient-card`}>
+        
+        {/* Card Header with Back Button */}
+        <CardHeader className="text-center pb-4 sm:pb-6 relative">
+          {/* Back to Home Button - Integrated into card */}
+          <div className="absolute top-4 left-4">
+            <Link to="/" className="text-muted-foreground hover:text-primary transition-colors duration-200">
+              <Button variant="ghost" size="sm" className="flex items-center gap-1.5 px-2">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Home</span>
+              </Button>
+            </Link>
+          </div>
+          
+          {/* Logo and Title */}
+          <div className="flex justify-center mb-3 sm:mb-4 mt-8 sm:mt-4">
             <div className="flex items-center gap-2">
-              <Headphones className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-              <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">lwlnow</h1>
+              <div className="p-2 rounded-full bg-primary/10">
+                <Headphones className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
+                lwlnow
+              </h1>
             </div>
           </div>
           
+          {/* Selected Language Display */}
           {selectedLanguage && (
-            <div className="flex items-center justify-center gap-2 mb-3 p-2 bg-primary/5 rounded-lg border border-primary/10">
+            <div className="flex items-center justify-center gap-2 mb-4 p-3 bg-primary/5 rounded-lg border border-primary/10 transition-colors duration-200">
               {countryCode ? (
-                <div className="w-6 h-4 overflow-hidden flex-shrink-0 shadow-sm ring-1 ring-gray-200 flex items-center justify-center">
+                <div className="w-6 h-4 overflow-hidden flex-shrink-0 shadow-sm ring-1 ring-gray-200/50 rounded-sm flex items-center justify-center">
                   <FlagIcon code={countryCode} size={24} />
                 </div>
               ) : (
@@ -138,77 +177,141 @@ const SignUpPage: React.FC = () => {
             </div>
           )}
           
-          <CardTitle className="text-xl sm:text-2xl">Create an Account</CardTitle>
-          <CardDescription className="text-sm mb-2">
-            Join ListenWriteLearn and start improving your language skills
+          <CardTitle className="text-xl sm:text-2xl font-semibold text-foreground">
+            Create Your Account
+          </CardTitle>
+          <CardDescription className="text-sm text-muted-foreground leading-relaxed">
+            Join ListenWriteLearn and start mastering languages through interactive dictation exercises
           </CardDescription>
-          <div className="px-2 sm:px-4">
-            <Alert className="bg-primary/5 border-primary/10 mb-2">
-              <AlertTitle>Master languages through dictation</AlertTitle>
-              <AlertDescription>
-                Sign up to access customized language exercises, progress tracking, and vocabulary tools to accelerate your learning.
+          
+          {/* Value Proposition Alert */}
+          <div className="px-2 sm:px-4 mt-4">
+            <Alert className="bg-primary/5 border-primary/20 text-left">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <AlertTitle className="text-sm font-medium">Master languages through dictation</AlertTitle>
+              <AlertDescription className="text-xs text-muted-foreground">
+                Access personalized exercises, track your progress, and build vocabulary effectively.
               </AlertDescription>
             </Alert>
           </div>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="px-6 pb-6">
           {success ? (
-            <div className="space-y-3 sm:space-y-4">
-              <Alert className="bg-primary/10 border-primary/20">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
-                <AlertDescription className="text-xs sm:text-sm">
-                  Account created successfully! Check your email for verification instructions.
-                </AlertDescription>
-              </Alert>
-              <Button asChild className="w-full">
+            <div className="space-y-4 text-center">
+              <div className="p-4 rounded-full bg-primary/10 w-fit mx-auto">
+                <CheckCircle2 className="h-8 w-8 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">Account Created!</h3>
+                <p className="text-sm text-muted-foreground">
+                  Check your email for verification instructions to complete your registration.
+                </p>
+              </div>
+              <Button asChild className="w-full mt-4">
                 <Link to="/login">
-                  Proceed to Login
+                  Continue to Sign In
                 </Link>
               </Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-              <div className="space-y-1 sm:space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Email Field */}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email Address
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input 
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 h-11"
+                    required
+                  />
+                </div>
               </div>
-              <div className="space-y-1 sm:space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input 
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+
+              {/* Password Field */}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input 
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Create a password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 pr-10 h-11"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-1 sm:space-y-2">
-                <Label htmlFor="confirm-password">Confirm Password</Label>
-                <Input 
-                  id="confirm-password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
+
+              {/* Confirm Password Field */}
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password" className="text-sm font-medium">
+                  Confirm Password
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input 
+                    id="confirm-password"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-10 pr-10 h-11"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
               </div>
               
+              {/* Error Display */}
               {error && (
-                <div className="text-xs sm:text-sm text-destructive">{error}</div>
+                <Alert className="bg-destructive/10 border-destructive/20">
+                  <AlertDescription className="text-sm text-destructive">
+                    {error}
+                  </AlertDescription>
+                </Alert>
               )}
 
+              {/* Sign Up Button */}
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
+                className="w-full h-11 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-all duration-200 font-medium"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -217,25 +320,27 @@ const SignUpPage: React.FC = () => {
                     Creating Account...
                   </>
                 ) : (
-                  'Sign Up with Email'
+                  'Create Account'
                 )}
               </Button>
               
-              <div className="relative my-4">
+              {/* Divider */}
+              <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-muted" />
+                  <span className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
+                  <span className="bg-background px-3 text-muted-foreground font-medium">
                     Or continue with
                   </span>
                 </div>
               </div>
               
+              {/* Google Sign Up Button */}
               <Button 
                 type="button"
                 variant="outline" 
-                className="w-full"
+                className="w-full h-11 transition-all duration-200 hover:bg-accent/10"
                 onClick={handleGoogleSignUp}
                 disabled={isGoogleLoading}
               >
@@ -252,18 +357,22 @@ const SignUpPage: React.FC = () => {
                       <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
                       <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
                     </svg>
-                    Sign up with Google
+                    Continue with Google
                   </>
                 )}
               </Button>
             </form>
           )}
         </CardContent>
+
         <CardFooter className="flex justify-center pt-0 pb-6">
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Already have an account?{' '}
-            <Link to="/login" className="text-primary hover:underline">
-              Sign in
+            <Link 
+              to="/login" 
+              className="text-primary hover:text-primary/80 font-medium transition-colors duration-200 hover:underline"
+            >
+              Sign in here
             </Link>
           </p>
         </CardFooter>
