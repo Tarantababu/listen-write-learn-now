@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, AlertTriangle } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ReadingAnalysisProps {
   exercise: Exercise;
@@ -47,6 +47,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
   const [selectedSentenceIndex, setSelectedSentenceIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     const fetchOrGenerateAnalysis = async () => {
@@ -329,37 +330,64 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
   const currentSentence = analysis.sentences[selectedSentenceIndex];
   
   return (
-    <div className="p-6 space-y-6">
-      <h2 className="text-2xl font-bold mb-4">{exercise.title} - Reading Analysis</h2>
+    <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-4 md:space-y-6`}>
+      <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold mb-2 md:mb-4`}>{exercise.title} - Reading Analysis</h2>
       
       <Tabs defaultValue="sentence" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="sentence">Sentence by Sentence</TabsTrigger>
-          <TabsTrigger value="patterns">Common Patterns</TabsTrigger>
-          <TabsTrigger value="summary">Summary</TabsTrigger>
+        <TabsList className={`${isMobile 
+          ? 'flex flex-wrap w-full h-auto p-1' 
+          : 'grid w-full grid-cols-3'
+        } rounded-lg bg-muted text-muted-foreground dark:bg-muted/80`}>
+          <TabsTrigger 
+            value="sentence" 
+            className={`${isMobile 
+              ? 'flex-1 min-w-0 text-xs px-2 py-2 whitespace-nowrap' 
+              : ''
+            }`}
+          >
+            {isMobile ? 'Sentence' : 'Sentence by Sentence'}
+          </TabsTrigger>
+          <TabsTrigger 
+            value="patterns"
+            className={`${isMobile 
+              ? 'flex-1 min-w-0 text-xs px-2 py-2 whitespace-nowrap' 
+              : ''
+            }`}
+          >
+            {isMobile ? 'Patterns' : 'Common Patterns'}
+          </TabsTrigger>
+          <TabsTrigger 
+            value="summary"
+            className={`${isMobile 
+              ? 'flex-1 min-w-0 text-xs px-2 py-2 whitespace-nowrap' 
+              : ''
+            }`}
+          >
+            Summary
+          </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="sentence" className="space-y-4">
-          <div className="bg-muted/30 p-4 rounded-lg dark:bg-muted/10">
-            <p className="text-lg font-medium">
+        <TabsContent value="sentence" className={`space-y-3 md:space-y-4 mt-3 md:mt-4`}>
+          <div className={`bg-muted/30 ${isMobile ? 'p-3' : 'p-4'} rounded-lg dark:bg-muted/10`}>
+            <p className={`${isMobile ? 'text-base' : 'text-lg'} font-medium`}>
               Sentence {selectedSentenceIndex + 1} of {analysis.sentences.length}
             </p>
-            <p className="text-xl mt-2 font-medium">{currentSentence.text}</p>
+            <p className={`${isMobile ? 'text-lg' : 'text-xl'} mt-2 font-medium leading-relaxed`}>{currentSentence.text}</p>
           </div>
           
-          <ScrollArea className="h-[350px] rounded-md border p-4 dark:border-muted/30">
-            <div className="space-y-4">
+          <ScrollArea className={`${isMobile ? 'h-[300px]' : 'h-[350px]'} rounded-md border ${isMobile ? 'p-3' : 'p-4'} dark:border-muted/30`}>
+            <div className={`space-y-3 md:space-y-4`}>
               <div>
-                <h3 className="text-lg font-semibold">Key Words</h3>
-                <div className="space-y-3 mt-2">
+                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>Key Words</h3>
+                <div className={`space-y-2 md:space-y-3 mt-2`}>
                   {currentSentence.analysis.words.map((word, i) => (
-                    <div key={i} className="bg-background p-3 rounded-lg border dark:border-muted/20 dark:bg-muted/5">
-                      <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-1">
-                        <span className="font-bold text-primary">{word.word}</span>
-                        <span className="text-foreground md:text-right">{word.definition}</span>
+                    <div key={i} className={`bg-background ${isMobile ? 'p-2' : 'p-3'} rounded-lg border dark:border-muted/20 dark:bg-muted/5`}>
+                      <div className="flex flex-col gap-1">
+                        <span className={`font-bold text-primary ${isMobile ? 'text-sm' : ''}`}>{word.word}</span>
+                        <span className={`text-foreground ${isMobile ? 'text-sm' : ''}`}>{word.definition}</span>
                       </div>
                       {word.exampleSentence && (
-                        <p className="text-sm mt-1">
+                        <p className={`${isMobile ? 'text-xs' : 'text-sm'} mt-1`}>
                           <span className="font-semibold">Example:</span> {word.exampleSentence}
                         </p>
                       )}
@@ -369,36 +397,43 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold">Grammar Insights</h3>
-                <ul className="list-disc list-inside space-y-1 mt-2">
+                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>Grammar Insights</h3>
+                <ul className={`list-disc list-inside space-y-1 mt-2`}>
                   {currentSentence.analysis.grammarInsights.map((insight, i) => (
-                    <li key={i} className="text-sm">{insight}</li>
+                    <li key={i} className={`${isMobile ? 'text-xs' : 'text-sm'}`}>{insight}</li>
                   ))}
                 </ul>
               </div>
               
               <div>
-                <h3 className="text-lg font-semibold">Sentence Structure</h3>
-                <p className="text-sm mt-1">{currentSentence.analysis.structure}</p>
+                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold`}>Sentence Structure</h3>
+                <p className={`${isMobile ? 'text-xs' : 'text-sm'} mt-1`}>{currentSentence.analysis.structure}</p>
               </div>
             </div>
           </ScrollArea>
           
-          <div className="flex justify-between pt-2">
+          <div className={`flex ${isMobile ? 'flex-col gap-2' : 'justify-between'} pt-2`}>
             <Button 
               onClick={handlePrevious}
               disabled={selectedSentenceIndex === 0}
               variant="outline"
+              className={isMobile ? 'w-full' : ''}
             >
               Previous Sentence
             </Button>
             
             {selectedSentenceIndex < analysis.sentences.length - 1 ? (
-              <Button onClick={handleNext}>
+              <Button 
+                onClick={handleNext}
+                className={isMobile ? 'w-full' : ''}
+              >
                 Next Sentence
               </Button>
             ) : (
-              <Button onClick={onComplete} className="bg-primary">
+              <Button 
+                onClick={onComplete} 
+                className={`bg-primary ${isMobile ? 'w-full' : ''}`}
+              >
                 Continue to Dictation
               </Button>
             )}
@@ -406,12 +441,12 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         </TabsContent>
         
         <TabsContent value="patterns">
-          <ScrollArea className="h-[450px] rounded-md border p-4 dark:border-muted/30">
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold">Common Patterns in this Text</h3>
-              <ul className="space-y-3">
+          <ScrollArea className={`${isMobile ? 'h-[400px]' : 'h-[450px]'} rounded-md border ${isMobile ? 'p-3' : 'p-4'} dark:border-muted/30`}>
+            <div className={`space-y-3 md:space-y-4`}>
+              <h3 className={`${isMobile ? 'text-lg' : 'text-xl'} font-semibold`}>Common Patterns in this Text</h3>
+              <ul className={`space-y-2 md:space-y-3`}>
                 {analysis.commonPatterns.map((pattern, i) => (
-                  <li key={i} className="bg-muted/30 p-3 rounded-lg dark:bg-muted/10">
+                  <li key={i} className={`bg-muted/30 ${isMobile ? 'p-2 text-sm' : 'p-3'} rounded-lg dark:bg-muted/10`}>
                     {pattern}
                   </li>
                 ))}
@@ -419,35 +454,41 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
             </div>
           </ScrollArea>
           
-          <div className="flex justify-end mt-4">
-            <Button onClick={onComplete} className="bg-primary">
+          <div className={`flex justify-end mt-3 md:mt-4`}>
+            <Button 
+              onClick={onComplete} 
+              className={`bg-primary ${isMobile ? 'w-full' : ''}`}
+            >
               Continue to Dictation
             </Button>
           </div>
         </TabsContent>
         
         <TabsContent value="summary">
-          <div className="space-y-4">
-            <div className="bg-muted/30 p-4 rounded-lg dark:bg-muted/10">
-              <h3 className="text-lg font-semibold mb-2">Text Summary</h3>
-              <p>{analysis.summary}</p>
+          <div className={`space-y-3 md:space-y-4`}>
+            <div className={`bg-muted/30 ${isMobile ? 'p-3' : 'p-4'} rounded-lg dark:bg-muted/10`}>
+              <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold mb-2`}>Text Summary</h3>
+              <p className={isMobile ? 'text-sm' : ''}>{analysis.summary}</p>
             </div>
             
             {analysis.englishTranslation && (
-              <div className="bg-muted/30 p-4 rounded-lg dark:bg-muted/10">
-                <h3 className="text-lg font-semibold mb-2">English Translation</h3>
-                <p>{analysis.englishTranslation}</p>
+              <div className={`bg-muted/30 ${isMobile ? 'p-3' : 'p-4'} rounded-lg dark:bg-muted/10`}>
+                <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold mb-2`}>English Translation</h3>
+                <p className={isMobile ? 'text-sm' : ''}>{analysis.englishTranslation}</p>
               </div>
             )}
             
-            <div className="bg-muted/10 p-4 rounded-lg border dark:border-muted/30 dark:bg-muted/5">
-              <h3 className="text-lg font-semibold mb-2">Full Text</h3>
-              <p className="whitespace-pre-wrap">{exercise.text}</p>
+            <div className={`bg-muted/10 ${isMobile ? 'p-3' : 'p-4'} rounded-lg border dark:border-muted/30 dark:bg-muted/5`}>
+              <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold mb-2`}>Full Text</h3>
+              <p className={`whitespace-pre-wrap ${isMobile ? 'text-sm' : ''}`}>{exercise.text}</p>
             </div>
           </div>
           
-          <div className="flex justify-end mt-4">
-            <Button onClick={onComplete} className="bg-primary">
+          <div className={`flex justify-end mt-3 md:mt-4`}>
+            <Button 
+              onClick={onComplete} 
+              className={`bg-primary ${isMobile ? 'w-full' : ''}`}
+            >
               Continue to Dictation
             </Button>
           </div>
