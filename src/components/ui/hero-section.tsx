@@ -1,10 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronRight, Menu, X } from 'lucide-react';
+import { ArrowRight, ChevronRight, Menu, X, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { cn } from '@/lib/utils';
-import { FlagIcon } from 'react-flag-kit';
 import { Logo } from '@/components/landing/Logo';
 
 const transitionVariants = {
@@ -332,18 +332,3 @@ const HeroHeader = () => {
         </header>
     );
 };
-
-const Logo = ({ className }: { className?: string }) => {
-    return (
-        <div className="flex items-center gap-2">
-            <Headphones className="h-6 w-6 text-primary" />
-            <h1 className={cn("text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent", className)}>ListenWriteLearn</h1>
-        </div>
-    );
-};
-
-// Import Headphones component
-import { Headphones } from 'lucide-react';
-
-// Use FlagIcon component
-import { FlagIcon } from 'react-flag-kit';

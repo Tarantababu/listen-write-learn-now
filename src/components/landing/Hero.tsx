@@ -4,7 +4,8 @@ import { ArrowRight, Check, Globe, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { SampleDictationModal } from './SampleDictationModal';
-import { FlagIcon } from "react-flag-kit";
+import { FlagIcon, FlagIconCode } from "react-flag-kit";
+
 const transitionVariants = {
   item: {
     hidden: {
@@ -24,43 +25,45 @@ const transitionVariants = {
     }
   }
 };
+
 const languages = [{
   name: 'English',
-  flag: 'US',
+  flag: 'US' as FlagIconCode,
   level: 'C1'
 }, {
   name: 'German',
-  flag: 'DE',
+  flag: 'DE' as FlagIconCode,
   level: 'B2'
 }, {
   name: 'Spanish',
-  flag: 'ES',
+  flag: 'ES' as FlagIconCode,
   level: 'B1'
 }, {
   name: 'French',
-  flag: 'FR',
+  flag: 'FR' as FlagIconCode,
   level: 'A2'
 }, {
   name: 'Italian',
-  flag: 'IT',
+  flag: 'IT' as FlagIconCode,
   level: 'A1'
 }, {
   name: 'Portuguese',
-  flag: 'PT',
+  flag: 'PT' as FlagIconCode,
   level: 'B1'
 }, {
   name: 'Dutch',
-  flag: 'NL',
+  flag: 'NL' as FlagIconCode,
   level: 'A2'
 }, {
   name: 'Turkish',
-  flag: 'TR',
+  flag: 'TR' as FlagIconCode,
   level: 'B1'
 }, {
   name: 'Swedish',
-  flag: 'SE',
+  flag: 'SE' as FlagIconCode,
   level: 'A1'
 }];
+
 const features = ["🎯 Focused Dictation Practice", "🧠 Deep Learning Method", "📚 Growing Exercise Library", "🔍 Word-Level Accuracy Feedback", "📊 Progress Tracking", "📝 Vocabulary Building"];
 const steps = [{
   number: 1,
@@ -79,6 +82,7 @@ const steps = [{
   title: "Track your progress",
   description: "Build your skills with each session and watch your comprehension improve."
 }];
+
 export function Hero() {
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
   const handleOpenSample = () => {
@@ -98,7 +102,7 @@ export function Hero() {
               </p>
 
               <div className="mt-10 flex flex-wrap justify-center gap-4">
-                {languages.slice(0, 6).map((lang, i) => <div key={i} className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100">
+                {languages.slice(0, 6).map((lang, i) => <div key={`${lang.flag}-${i}`} className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100">
                     <div className="flex-shrink-0">
                       <FlagIcon code={lang.flag} size={24} />
                     </div>
