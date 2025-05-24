@@ -10,6 +10,24 @@ import { Loader2, CheckCircle2, Home, Headphones } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { updateProfile } from '@/lib/auth';
 import { capitalizeLanguage, getLanguageFlag } from '@/utils/languageUtils';
+import { FlagIcon, FlagIconCode } from 'react-flag-kit';
+
+// Language to country code mapping
+const getCountryCode = (language: string): FlagIconCode | null => {
+  const languageMap: Record<string, FlagIconCode> = {
+    'english': 'GB' as FlagIconCode,
+    'spanish': 'ES' as FlagIconCode,
+    'french': 'FR' as FlagIconCode,
+    'german': 'DE' as FlagIconCode,
+    'italian': 'IT' as FlagIconCode,
+    'portuguese': 'PT' as FlagIconCode,
+    'dutch': 'NL' as FlagIconCode,
+    'turkish': 'TR' as FlagIconCode,
+    'swedish': 'SE' as FlagIconCode,
+    'norwegian': 'NO' as FlagIconCode
+  };
+  return languageMap[language.toLowerCase()] || null;
+};
 
 const SignUpPage: React.FC = () => {
   const { signUp, signInWithGoogle, user } = useAuth();
@@ -85,6 +103,8 @@ const SignUpPage: React.FC = () => {
     }
   };
 
+  const countryCode = selectedLanguage ? getCountryCode(selectedLanguage) : null;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 bg-gradient-to-br from-background via-background to-accent/10">
       <Link to="/" className="absolute top-4 left-4 text-primary hover:text-accent transition-colors animate-fade-in">
@@ -105,7 +125,13 @@ const SignUpPage: React.FC = () => {
           
           {selectedLanguage && (
             <div className="flex items-center justify-center gap-2 mb-3 p-2 bg-primary/5 rounded-lg border border-primary/10">
-              <span className="text-lg">{getLanguageFlag(selectedLanguage)}</span>
+              {countryCode ? (
+                <div className="w-6 h-4 overflow-hidden flex-shrink-0 shadow-sm ring-1 ring-gray-200 flex items-center justify-center">
+                  <FlagIcon code={countryCode} size={24} />
+                </div>
+              ) : (
+                <span className="text-lg">{getLanguageFlag(selectedLanguage)}</span>
+              )}
               <span className="text-sm font-medium text-primary">
                 Learning: {capitalizeLanguage(selectedLanguage)}
               </span>
