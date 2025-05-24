@@ -34,7 +34,7 @@ const SketchyArrow = () => (
             height="80"
             viewBox="0 0 120 80"
             fill="none"
-            className="text-primary/60 animate-pulse"
+            className="text-primary/60"
             style={{ 
                 filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
                 animation: 'sketchy-draw 3s ease-in-out infinite alternate'
@@ -49,7 +49,6 @@ const SketchyArrow = () => (
                 strokeLinecap="round"
                 strokeDasharray="2,3"
                 style={{ 
-                    strokeDashoffset: 0,
                     animation: 'dash 4s linear infinite'
                 }}
             />
@@ -74,24 +73,26 @@ const SketchyArrow = () => (
             </span>
         </div>
         
-        <style>
-            {`
+        <style jsx global>{`
             @keyframes dash {
-                0% { stroke-dashoffset: 0; }
-                50% { stroke-dashoffset: 10; }
-                100% { stroke-dashoffset: 0; }
+                to {
+                    stroke-dashoffset: 10;
+                }
             }
             
             @keyframes sketchy-draw {
-                0% { transform: translateY(-50%) rotate(-2deg) scale(0.98); }
-                100% { transform: translateY(-50%) rotate(2deg) scale(1.02); }
+                0% { 
+                    transform: translateY(-50%) rotate(-2deg) scale(0.98); 
+                }
+                100% { 
+                    transform: translateY(-50%) rotate(2deg) scale(1.02); 
+                }
             }
             
             .font-handwriting {
                 font-family: 'Kalam', 'Comic Sans MS', cursive;
             }
-            `}
-        </style>
+        `}</style>
     </div>
 );
 
