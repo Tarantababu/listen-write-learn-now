@@ -16,6 +16,16 @@ import VocabularyExport from '@/components/VocabularyExport';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 
+interface VocabularyItem {
+  id: string;
+  word: string;
+  definition?: string;
+  example?: string;
+  wordAudio?: string;
+  exampleAudio?: string;
+  language: string;
+}
+
 const VocabularyPage = () => {
   const {
     vocabulary,
@@ -33,16 +43,16 @@ const VocabularyPage = () => {
   const isMobile = useIsMobile();
 
   // Audio refs and state
-  const audioRefs = useRef({});
-  const [playingAudio, setPlayingAudio] = useState(null);
-  const [audioLoading, setAudioLoading] = useState({});
+  const audioRefs = useRef<{[key: string]: HTMLAudioElement}>({});
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [audioLoading, setAudioLoading] = useState<{[key: string]: boolean}>({});
 
   // Local state for enhanced UX
   const [searchTerm, setSearchTerm] = useState('');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
-  const [viewMode, setViewMode] = useState('list');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'cards' | 'study'>('list');
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [showDefinition, setShowDefinition] = useState({});
+  const [showDefinition, setShowDefinition] = useState<{[key: string]: boolean}>({});
 
   // Filter vocabulary by currently selected language
   const languageVocabulary = getVocabularyByLanguage(settings.selectedLanguage);
@@ -53,7 +63,10 @@ const VocabularyPage = () => {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(item => item.word?.toLowerCase().includes(searchTerm.toLowerCase()) || item.definition?.toLowerCase().includes(searchTerm.toLowerCase()));
+      filtered = filtered.filter(item => 
+        item.word?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        item.definition?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
     return filtered;
   }, [languageVocabulary, searchTerm]);
@@ -71,10 +84,9 @@ const VocabularyPage = () => {
     };
   }, [languageVocabulary, filteredVocabulary]);
 
-  // Audio functionality
-  const playAudio = async (text, itemId, type = 'example') => {
-    if (!text) return;
-    const audioKey = `${itemId}-${type}`;
+  // Audio functionality - always plays example audio
+  const playAudio = async (itemId: string) => {
+    const audioKey = `${itemId}-example`;
 
     // Stop currently playing audio
     if (playingAudio && playingAudio !== audioKey) {
@@ -134,11 +146,11 @@ const VocabularyPage = () => {
         throw new Error('Vocabulary item not found');
       }
 
-      // Use the audio URL from the vocabulary item
-      const audioUrl = type === 'word' ? vocabularyItem.wordAudio : vocabularyItem.exampleAudio;
+      // Always use the example audio URL
+      const audioUrl = vocabularyItem.exampleAudio;
       
       if (!audioUrl) {
-        throw new Error('Audio URL not available');
+        throw new Error('Example audio URL not available');
       }
 
       audio.src = audioUrl;
@@ -168,7 +180,7 @@ const VocabularyPage = () => {
     return () => {
       // Cleanup audio refs
       Object.values(audioRefs.current).forEach(audio => {
-        if (audio && typeof audio.pause === 'function') {
+        if (audio) {
           audio.pause();
           // Remove event listeners
           audio.removeEventListener('ended', () => {});
@@ -180,7 +192,7 @@ const VocabularyPage = () => {
   }, []);
 
   // Enhanced interaction handlers
-  const handleDeleteVocabularyItem = id => {
+  const handleDeleteVocabularyItem = (id: string) => {
     if (showDeleteConfirm === id) {
       removeVocabularyItem(id);
       setShowDeleteConfirm(null);
@@ -194,19 +206,22 @@ const VocabularyPage = () => {
       setTimeout(() => setShowDeleteConfirm(null), 3000);
     }
   };
-  const toggleDefinition = id => {
+
+  const toggleDefinition = (id: string) => {
     setShowDefinition(prev => ({
       ...prev,
       [id]: !prev[id]
     }));
   };
-  const navigateCard = direction => {
+
+  const navigateCard = (direction: 'prev' | 'next') => {
     if (direction === 'prev') {
       setCurrentCardIndex(prev => prev > 0 ? prev - 1 : filteredVocabulary.length - 1);
     } else {
       setCurrentCardIndex(prev => prev < filteredVocabulary.length - 1 ? prev + 1 : 0);
     }
   };
+
   const shuffleCards = () => {
     setCurrentCardIndex(Math.floor(Math.random() * filteredVocabulary.length));
   };
@@ -230,22 +245,38 @@ const VocabularyPage = () => {
 
   // Audio button component for reusability
   const AudioButton = ({
-    text,
     itemId,
-    type = 'example',
-    size = 'sm',
+    size = 'sm' as const,
     className = ''
+  }: {
+    itemId: string;
+    size?: 'sm' | 'default' | 'lg' | 'icon';
+    className?: string;
   }) => {
-    const audioKey = `${itemId}-${type}`;
+    const audioKey = `${itemId}-example`;
     const isLoading = audioLoading[audioKey];
     const isPlaying = playingAudio === audioKey;
-    if (!text) return null;
-    return <Button variant="ghost" size={size} onClick={e => {
-      e.stopPropagation();
-      playAudio(text, itemId, type);
-    }} className={`${className} ${isPlaying ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`} disabled={isLoading} title="Play audio">
-        {isLoading ? <Loader2 className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} animate-spin`} /> : isPlaying ? <VolumeX className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'}`} /> : <Volume2 className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'}`} />}
-      </Button>;
+    return (
+      <Button 
+        variant="ghost" 
+        size={size} 
+        onClick={(e) => {
+          e.stopPropagation();
+          playAudio(itemId);
+        }} 
+        className={`${className} ${isPlaying ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`} 
+        disabled={isLoading} 
+        title="Play audio"
+      >
+        {isLoading ? (
+          <Loader2 className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} animate-spin`} />
+        ) : isPlaying ? (
+          <VolumeX className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'}`} />
+        ) : (
+          <Volume2 className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'}`} />
+        )}
+      </Button>
+    );
   };
 
   return (
@@ -262,11 +293,6 @@ const VocabularyPage = () => {
           <p className="text-muted-foreground text-sm">
             {getMotivationalMessage()}
           </p>
-        </div>
-        
-        {/* Quick Actions */}
-        <div className="flex gap-2">
-          
         </div>
       </div>
 
@@ -436,7 +462,7 @@ const VocabularyPage = () => {
                                 <div className="flex justify-between items-start mb-3">
                                   <h3 className="font-semibold text-lg text-primary">{item.word}</h3>
                                   <div className="flex items-center gap-1">
-                                    <AudioButton text={item.word} itemId={item.id} type="word" size="sm" className="h-6 w-6 p-0" />
+                                    <AudioButton itemId={item.id} size="sm" className="h-6 w-6 p-0" />
                                     <Button variant="ghost" size="sm" onClick={() => toggleDefinition(item.id)} className="h-6 w-6 p-0">
                                       {showDefinition[item.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                                     </Button>
@@ -454,7 +480,7 @@ const VocabularyPage = () => {
                                       <div className="text-xs italic text-muted-foreground border-l-2 border-muted pl-2">
                                         <div className="flex items-start gap-2">
                                           <span className="flex-1">"{item.example}"</span>
-                                          <AudioButton text={item.example} itemId={item.id} type="example" size="sm" className="h-4 w-4 p-0 mt-0.5 flex-shrink-0" />
+                                          <AudioButton itemId={item.id} size="sm" className="h-4 w-4 p-0 mt-0.5 flex-shrink-0" />
                                         </div>
                                       </div>
                                     )}
@@ -531,9 +557,7 @@ const VocabularyPage = () => {
                                   {filteredVocabulary[currentCardIndex]?.word}
                                 </h2>
                                 <AudioButton 
-                                  text={filteredVocabulary[currentCardIndex]?.word} 
                                   itemId={filteredVocabulary[currentCardIndex]?.id} 
-                                  type="word" 
                                   size="lg" 
                                   className="h-8 w-8 p-0" 
                                 />
@@ -567,9 +591,7 @@ const VocabularyPage = () => {
                                           "{filteredVocabulary[currentCardIndex].example}"
                                         </p>
                                         <AudioButton 
-                                          text={filteredVocabulary[currentCardIndex].example} 
                                           itemId={filteredVocabulary[currentCardIndex].id} 
-                                          type="example" 
                                           size="sm" 
                                           className="h-6 w-6 p-0 flex-shrink-0" 
                                         />
