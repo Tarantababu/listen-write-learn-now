@@ -16,8 +16,10 @@ import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DictationMicrophone from '@/components/DictationMicrophone';
 import DictationTips from '@/components/DictationTips';
+import SpecialCharacterHints from '@/components/SpecialCharacterHints';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useSession } from '@/hooks/use-session';
+import { getLanguageShortcuts, applyShortcuts } from '@/utils/specialCharacters';
 
 interface DictationPracticeProps {
   exercise: Exercise;
@@ -66,6 +68,9 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   });
   
   const [progressValue, setProgressValue] = useState((exercise.completionCount / 3) * 100);
+  
+  // Get shortcuts for the current language
+  const shortcuts = getLanguageShortcuts(exercise.language);
   
   // Sync with external showResults prop
   useEffect(() => {
@@ -134,6 +139,19 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       };
     }
   }, [audioRef.current, autoPlay, internalShowResults, autoplayBlocked]);
+  
+  // Handle text input with special character shortcuts
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    
+    // Apply special character shortcuts if available
+    if (shortcuts.length > 0) {
+      const processedValue = applyShortcuts(newValue, shortcuts);
+      setUserInput(processedValue);
+    } else {
+      setUserInput(newValue);
+    }
+  };
   
   const handleSubmit = () => {
     if (!userInput.trim()) return;
@@ -397,26 +415,32 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
             <Textarea
               ref={textareaRef}
               value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
+              onChange={handleTextChange}
               onKeyDown={handleKeyDown}
               placeholder="Type what you hear..."
               className="min-h-32 rounded-xl border-gray-200 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             />
             
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <p className="text-sm text-gray-500">
-                Press <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Shift</span> + <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Space</span> to play/pause
-              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm text-gray-500">
+                  Press <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Shift</span> + <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Space</span> to play/pause
+                </p>
+                
+                <SpecialCharacterHints language={exercise.language} />
+              </div>
               
-              <DictationTips />
-              
-              {/* Updated microphone dictation button with existing text */}
-              <DictationMicrophone 
-                onTextReceived={handleDictationResult}
-                language={exercise.language}
-                isDisabled={internalShowResults}
-                existingText={userInput}
-              />
+              <div className="flex items-center gap-2">
+                <DictationTips />
+                
+                {/* Updated microphone dictation button with existing text */}
+                <DictationMicrophone 
+                  onTextReceived={handleDictationResult}
+                  language={exercise.language}
+                  isDisabled={internalShowResults}
+                  existingText={userInput}
+                />
+              </div>
             </div>
           </div>
           
