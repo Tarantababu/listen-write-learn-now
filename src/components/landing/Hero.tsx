@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, Globe, Play } from 'lucide-react';
@@ -83,6 +84,75 @@ const steps = [{
   description: "Build your skills with each session and watch your comprehension improve."
 }];
 
+// Sketchy Arrow Component
+const SketchyArrow = () => (
+  <div className="absolute -right-16 top-1/2 -translate-y-1/2 hidden md:block lg:-right-20">
+    <svg
+      width="120"
+      height="80"
+      viewBox="0 0 120 80"
+      fill="none"
+      className="text-brand-primary/60 animate-pulse"
+      style={{ 
+        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+        animation: 'sketchy-draw 3s ease-in-out infinite alternate'
+      }}
+    >
+      {/* Main curved arrow line */}
+      <path
+        d="M8 35c15-8 25-12 35-8 12 5 18 15 25 12 8-3 12-15 20-10 6 4 8 12 15 8"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray="2,3"
+        style={{ 
+          strokeDashoffset: 0,
+          animation: 'dash 4s linear infinite'
+        }}
+      />
+      
+      {/* Arrow head - sketchy style */}
+      <path
+        d="M95 30c3 2 6 4 8 7 1 2 0 4-1 5-2-1-4-3-5-5-1-2-2-4-2-7z"
+        fill="currentColor"
+        opacity="0.8"
+      />
+      <path
+        d="M100 42c2-3 4-6 7-8 2-1 4 0 5 1-1 2-3 4-5 5-2 1-4 2-7 2z"
+        fill="currentColor"
+        opacity="0.8"
+      />
+    </svg>
+    
+    {/* Handwritten-style text */}
+    <div className="absolute -bottom-8 right-0 transform rotate-6">
+      <span className="text-sm text-brand-primary/70 font-handwriting italic">
+        Start here!
+      </span>
+    </div>
+    
+    <style>
+      {`
+        @keyframes dash {
+          0% { stroke-dashoffset: 0; }
+          50% { stroke-dashoffset: 10; }
+          100% { stroke-dashoffset: 0; }
+        }
+        
+        @keyframes sketchy-draw {
+          0% { transform: translateY(-50%) rotate(-2deg) scale(0.98); }
+          100% { transform: translateY(-50%) rotate(2deg) scale(1.02); }
+        }
+        
+        .font-handwriting {
+          font-family: 'Kalam', 'Comic Sans MS', cursive;
+        }
+      `}
+    </style>
+  </div>
+);
+
 export function Hero() {
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
   const handleOpenSample = () => {
@@ -91,50 +161,70 @@ export function Hero() {
   return <>
       <section className="pt-24 pb-20 md:pt-36 relative overflow-hidden bg-gradient-to-br from-white to-brand-light/10">
         <div className="container px-4 md:px-6 mx-auto">
-          <div className="max-w-4xl mx-auto text-center">
-            <AnimatedGroup variants={transitionVariants}>
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-brand-dark mb-4">
-                Master Languages Through <span className="text-brand-primary">Dictation</span>
-              </h1>
-              
-              <p className="mt-6 text-xl text-muted-foreground max-w-2xl mx-auto">
-                Train your ear, sharpen your memory, and improve your writing—all in one immersive experience.
-              </p>
-
-              <div className="mt-10 flex flex-wrap justify-center gap-4">
-                {languages.slice(0, 6).map((lang, i) => <div key={`${lang.flag}-${i}`} className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100">
-                    <div className="flex-shrink-0">
-                      <FlagIcon code={lang.flag} size={24} />
-                    </div>
-                    <span>{lang.name}</span>
-                    
-                  </div>)}
-                <div className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100">
-                  <Globe size={24} className="text-brand-primary" />
-                  <span>+ more</span>
-                </div>
-              </div>
-              
-              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-6">
-                  <Link to="/signup" className="flex items-center gap-2">
-                    Get Started Free
-                    <ArrowRight size={18} />
-                  </Link>
-                </Button>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left Column - Text Content */}
+            <div className="text-center lg:text-left">
+              <AnimatedGroup variants={transitionVariants}>
+                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-brand-dark mb-4">
+                  Master Languages Through <span className="text-brand-primary">Dictation</span>
+                </h1>
                 
-                <Button variant="outline" size="lg" className="rounded-full px-6 border-brand-primary text-brand-primary" onClick={handleOpenSample}>
-                  <Play size={18} className="mr-2" /> Try a Demo
-                </Button>
-              </div>
-              
-              {/* Product Hunt badge */}
-              <div className="mt-10 flex justify-center">
-                <a href="https://www.producthunt.com/posts/lwlnow?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-lwlnow" target="_blank" rel="noopener noreferrer" className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl">
-                  <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=961139&theme=light&t=1746390894369" alt="lwlnow - Learn languages by listening, typing, and mastering." width="250" height="54" className="rounded" />
-                </a>
-              </div>
-            </AnimatedGroup>
+                <p className="mt-6 text-xl text-muted-foreground max-w-2xl lg:mx-0 mx-auto">
+                  Train your ear, sharpen your memory, and improve your writing—all in one immersive experience.
+                </p>
+
+                <div className="mt-10 flex flex-wrap justify-center lg:justify-start gap-4">
+                  {languages.slice(0, 6).map((lang, i) => <div key={`${lang.flag}-${i}`} className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100">
+                      <div className="flex-shrink-0">
+                        <FlagIcon code={lang.flag} size={24} />
+                      </div>
+                      <span>{lang.name}</span>
+                      
+                    </div>)}
+                  <div className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100">
+                    <Globe size={24} className="text-brand-primary" />
+                    <span>+ more</span>
+                  </div>
+                </div>
+                
+                <div className="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 relative">
+                  <div className="relative">
+                    <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-6">
+                      <Link to="/language-selection" className="flex items-center gap-2">
+                        Get Started Free
+                        <ArrowRight size={18} />
+                      </Link>
+                    </Button>
+                    {/* Sketchy Arrow pointing to Get Started button */}
+                    <SketchyArrow />
+                  </div>
+                  
+                  <Button variant="outline" size="lg" className="rounded-full px-6 border-brand-primary text-brand-primary" onClick={handleOpenSample}>
+                    <Play size={18} className="mr-2" /> Try a Demo
+                  </Button>
+                </div>
+                
+                {/* Product Hunt badge */}
+                <div className="mt-10 flex justify-center lg:justify-start">
+                  <a href="https://www.producthunt.com/posts/lwlnow?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-lwlnow" target="_blank" rel="noopener noreferrer" className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl">
+                    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=961139&theme=light&t=1746390894369" alt="lwlnow - Learn languages by listening, typing, and mastering." width="250" height="54" className="rounded" />
+                  </a>
+                </div>
+              </AnimatedGroup>
+            </div>
+
+            {/* Right Column - Hero Image */}
+            <div className="flex justify-center lg:justify-end">
+              <AnimatedGroup variants={transitionVariants}>
+                <div className="max-w-md w-full">
+                  <img 
+                    src="/lovable-uploads/e1e8d5b6-2bcd-4fe7-bf0f-1090e33675da.png" 
+                    alt="Language learning through dictation - illustration of person with headphones practicing on laptop"
+                    className="w-full h-auto object-contain"
+                  />
+                </div>
+              </AnimatedGroup>
+            </div>
           </div>
 
           {/* Features grid */}
@@ -210,7 +300,7 @@ export function Hero() {
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-6">
-                <Link to="/signup" className="flex items-center gap-2">
+                <Link to="/language-selection" className="flex items-center gap-2">
                   Start Learning Now
                   <ArrowRight size={18} />
                 </Link>
