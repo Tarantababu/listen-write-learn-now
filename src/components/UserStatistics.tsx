@@ -287,22 +287,27 @@ const UserStatistics: React.FC = () => {
               Your structured path to language mastery
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end gap-3">
             <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 rounded-full">
               <Target className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-primary">
                 {stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}%` : '0%'}
               </span>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowStartModal(true)}
-              className="hover:bg-primary/5 hover:border-primary/40"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Options
-            </Button>
+            <div className="text-right">
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={() => setShowStartModal(true)}
+                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 animate-pulse hover:animate-none border-2 border-amber-400/50"
+              >
+                <Sparkles className="h-4 w-4 mr-2 animate-spin" />
+                Not sure what to do next?
+              </Button>
+              <p className="text-xs text-muted-foreground mt-1 font-medium">
+                Click here for guidance! 👆
+              </p>
+            </div>
           </div>
         </div>
       </CardHeader>
