@@ -338,72 +338,45 @@ const ExercisesPage: React.FC = () => {
 
           {!isDirectoryCollapsed && (
             <div className="p-4">
-              <DirectoryBrowser 
-                onExerciseClick={handlePractice} 
-                showExercises={true}
-                filterByLanguage={settings.selectedLanguage}
-                renderDirectoryItem={(directory, isSelected, onClick) => (
-                  <div
-                    key={directory.id}
-                    onClick={onClick}
-                    className={`
-                      flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200
-                      ${isSelected 
-                        ? 'bg-blue-100 border border-blue-200 shadow-sm' 
-                        : 'hover:bg-gray-50 border border-transparent'
-                      }
-                    `}
-                  >
-                    <div className="flex items-center space-x-3">
-                      {isSelected ? (
-                        <FolderOpen className="h-4 w-4 text-blue-600" />
-                      ) : (
-                        <Folder className="h-4 w-4 text-gray-500" />
-                      )}
-                      <span className={`font-medium ${isSelected ? 'text-blue-900' : 'text-gray-700'}`}>
-                        {directory.name}
-                      </span>
-                    </div>
-                    <div className={`
-                      px-2 py-1 rounded-full text-xs font-medium
-                      ${isSelected 
-                        ? 'bg-blue-200 text-blue-800'
-                        : 'bg-gray-100 text-gray-600'
-                      }
-                    `}>
-                      {getExerciseCount(directory.id)}
-                    </div>
+              {/* Custom Directory Browser UI */}
+              <div className="space-y-2">
+                {/* All Exercises Option */}
+                <div
+                  onClick={() => {/* Handle all exercises click - you'll need to implement this based on your DirectoryContext */}}
+                  className={`
+                    flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200
+                    ${!currentDirectoryId 
+                      ? 'bg-blue-100 border border-blue-200 shadow-sm' 
+                      : 'hover:bg-gray-50 border border-transparent'
+                    }
+                  `}
+                >
+                  <div className="flex items-center space-x-3">
+                    <BookOpen className={`h-4 w-4 ${!currentDirectoryId ? 'text-blue-600' : 'text-gray-500'}`} />
+                    <span className={`font-medium ${!currentDirectoryId ? 'text-blue-900' : 'text-gray-700'}`}>
+                      All Exercises
+                    </span>
                   </div>
-                )}
-                renderAllExercisesItem={(isSelected, onClick) => (
-                  <div
-                    onClick={onClick}
-                    className={`
-                      flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200
-                      ${isSelected 
-                        ? 'bg-blue-100 border border-blue-200 shadow-sm' 
-                        : 'hover:bg-gray-50 border border-transparent'
-                      }
-                    `}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <BookOpen className={`h-4 w-4 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
-                      <span className={`font-medium ${isSelected ? 'text-blue-900' : 'text-gray-700'}`}>
-                        All Exercises
-                      </span>
-                    </div>
-                    <div className={`
-                      px-2 py-1 rounded-full text-xs font-medium
-                      ${isSelected 
-                        ? 'bg-blue-200 text-blue-800'
-                        : 'bg-gray-100 text-gray-600'
-                      }
-                    `}>
-                      {getExerciseCount(null)}
-                    </div>
+                  <div className={`
+                    px-2 py-1 rounded-full text-xs font-medium
+                    ${!currentDirectoryId 
+                      ? 'bg-blue-200 text-blue-800'
+                      : 'bg-gray-100 text-gray-600'
+                    }
+                  `}>
+                    {getExerciseCount(null)}
                   </div>
-                )}
-              />
+                </div>
+
+                {/* Use original DirectoryBrowser but with enhanced styling wrapper */}
+                <div className="space-y-1">
+                  <DirectoryBrowser 
+                    onExerciseClick={handlePractice} 
+                    showExercises={true}
+                    filterByLanguage={settings.selectedLanguage}
+                  />
+                </div>
+              </div>
               
               {/* Subscription Upgrade Card */}
               {!subscription.isSubscribed && (
