@@ -227,34 +227,34 @@ const UserStatistics: React.FC = () => {
   // Render First-time User Learning Plan Card
   const renderFirstTimeUserCard = () => (
     <Card className="w-full border-2 border-[#AB96D9]/30 bg-gradient-to-br from-[#6F6BF2]/10 via-[#6D49F2]/5 to-transparent relative overflow-hidden">
-      {/* Decorative elements */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#491BF2]/20 to-transparent rounded-full blur-2xl" />
-      <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-[#AB96D9]/20 to-transparent rounded-full blur-xl" />
+      {/* Decorative elements - Hidden on mobile for cleaner look */}
+      <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-bl from-[#491BF2]/20 to-transparent rounded-full blur-2xl" />
+      <div className="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-tr from-[#AB96D9]/20 to-transparent rounded-full blur-xl" />
       
-      <CardHeader className="pb-4 relative">
-        <div className="flex items-start justify-between">
+      <CardHeader className="pb-3 sm:pb-4 relative px-4 sm:px-6 pt-4 sm:pt-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-[#491BF2]" />
-              <CardTitle className="text-2xl font-bold text-[#1F0459]">
+              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-[#491BF2] flex-shrink-0" />
+              <CardTitle className="text-xl sm:text-2xl font-bold text-[#1F0459] leading-tight">
                 Ready to Start Learning?
               </CardTitle>
             </div>
-            <p className="text-muted-foreground max-w-md">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-md leading-relaxed">
               Choose your path to language mastery. We'll guide you every step of the way.
             </p>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6 relative">
-        <div className="text-center py-8 space-y-6">
-          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-[#491BF2] to-[#6D49F2] rounded-full flex items-center justify-center shadow-lg">
-            <GraduationCap className="h-10 w-10 text-white" />
+      <CardContent className="space-y-4 sm:space-y-6 relative px-4 sm:px-6 pb-4 sm:pb-6">
+        <div className="text-center py-4 sm:py-8 space-y-4 sm:space-y-6">
+          <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-[#491BF2] to-[#6D49F2] rounded-full flex items-center justify-center shadow-lg">
+            <GraduationCap className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
           </div>
           
-          <div className="space-y-3">
-            <h3 className="text-xl font-bold text-[#1F0459]">Begin Your Language Journey</h3>
-            <p className="text-muted-foreground max-w-lg mx-auto leading-relaxed">
+          <div className="space-y-2 sm:space-y-3">
+            <h3 className="text-lg sm:text-xl font-bold text-[#1F0459]">Begin Your Language Journey</h3>
+            <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto leading-relaxed px-4 sm:px-0">
               Start with our structured learning plan designed by language experts, or jump right in by creating your own exercises.
             </p>
           </div>
@@ -262,11 +262,11 @@ const UserStatistics: React.FC = () => {
           <Button 
             onClick={() => setShowStartModal(true)}
             size="lg" 
-            className="bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 text-white"
+            className="bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 text-white w-full sm:w-auto px-6 py-3"
           >
-            <Sparkles className="mr-2 h-5 w-5" />
+            <Sparkles className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
             Get Started Now
-            <ArrowRight className="ml-2 h-5 w-5" />
+            <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
         </div>
       </CardContent>
@@ -276,71 +276,71 @@ const UserStatistics: React.FC = () => {
   // Render Existing User Learning Plan Card
   const renderExistingUserCard = () => (
     <Card className="w-full border-2 border-[#AB96D9]/20 bg-gradient-to-br from-[#6F6BF2]/5 to-[#AB96D9]/10">
-      <CardHeader className="pb-4">
-        <div className="flex items-start justify-between">
+      <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6 pt-4 sm:pt-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
           <div className="space-y-1">
-            <CardTitle className="text-2xl font-bold flex items-center gap-2 text-[#1F0459]">
-              <GraduationCap className="h-6 w-6 text-[#491BF2]" />
+            <CardTitle className="text-lg sm:text-2xl font-bold flex items-center gap-2 text-[#1F0459] leading-tight">
+              <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 text-[#491BF2] flex-shrink-0" />
               Learning Plan Progress
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Your structured path to language mastery
             </p>
           </div>
-          <div className="flex flex-col items-end gap-3">
-            <div className="flex items-center gap-1 px-3 py-1 bg-[#491BF2]/10 rounded-full">
-              <Target className="h-4 w-4 text-[#491BF2]" />
-              <span className="text-sm font-medium text-[#491BF2]">
+          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-3">
+            <div className="flex items-center gap-1 px-2 sm:px-3 py-1 bg-[#491BF2]/10 rounded-full">
+              <Target className="h-3 w-3 sm:h-4 sm:w-4 text-[#491BF2]" />
+              <span className="text-xs sm:text-sm font-medium text-[#491BF2]">
                 {stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}%` : '0%'}
               </span>
             </div>
-            <div className="text-right">
+            <div className="sm:text-right">
               <div className="relative">
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={() => setShowStartModal(true)}
-                  className="bg-gradient-to-r from-[#AB96D9]/20 to-[#6F6BF2]/20 hover:from-[#AB96D9]/30 hover:to-[#6F6BF2]/30 border-[#491BF2]/30 hover:border-[#491BF2]/50 text-[#1F0459] font-semibold shadow-md hover:shadow-lg transition-all duration-200 relative overflow-hidden group"
+                  className="bg-gradient-to-r from-[#AB96D9]/20 to-[#6F6BF2]/20 hover:from-[#AB96D9]/30 hover:to-[#6F6BF2]/30 border-[#491BF2]/30 hover:border-[#491BF2]/50 text-[#1F0459] font-semibold shadow-md hover:shadow-lg transition-all duration-200 relative overflow-hidden group text-xs sm:text-sm"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-[#491BF2]/5 via-[#6D49F2]/5 to-[#6F6BF2]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <HelpCircle className="h-4 w-4 mr-2 text-[#491BF2]" />
+                  <HelpCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 text-[#491BF2]" />
                   <span className="relative z-10">Need guidance?</span>
                 </Button>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#491BF2] rounded-full flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#491BF2] rounded-full flex items-center justify-center">
+                  <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-white rounded-full"></div>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-1 font-medium">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 font-medium hidden sm:block">
                 Get personalized suggestions ✨
               </p>
             </div>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6 pb-4 sm:pb-6">
         {showCurriculumLoading ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Skeleton className="h-5 w-48" />
-              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 sm:h-5 w-32 sm:w-48" />
+              <Skeleton className="h-3 sm:h-4 w-24 sm:w-32" />
             </div>
-            <Skeleton className="h-3 w-full" />
-            <div className="grid grid-cols-3 gap-4">
+            <Skeleton className="h-2 sm:h-3 w-full" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               {[1, 2, 3].map(i => (
-                <div key={i} className="space-y-2 p-4 rounded-lg border">
-                  <Skeleton className="h-6 w-full" />
-                  <Skeleton className="h-4 w-full" />
+                <div key={i} className="space-y-2 p-3 sm:p-4 rounded-lg border">
+                  <Skeleton className="h-5 sm:h-6 w-full" />
+                  <Skeleton className="h-3 sm:h-4 w-full" />
                 </div>
               ))}
             </div>
-            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-9 sm:h-10 w-full" />
           </div>
         ) : (
           <>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-[#1F0459]">Foundational Exercises</h3>
-                <span className="text-sm font-medium text-muted-foreground bg-[#AB96D9]/20 px-3 py-1 rounded-full">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                <h3 className="text-base sm:text-lg font-semibold text-[#1F0459]">Foundational Exercises</h3>
+                <span className="text-xs sm:text-sm font-medium text-muted-foreground bg-[#AB96D9]/20 px-2 sm:px-3 py-1 rounded-full w-fit">
                   {stats.completed} of {stats.total} complete
                 </span>
               </div>
@@ -348,52 +348,52 @@ const UserStatistics: React.FC = () => {
               <div className="space-y-2">
                 <Progress 
                   value={stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0} 
-                  className="h-3" 
+                  className="h-2 sm:h-3" 
                   style={{
                     background: '#AB96D9/20'
                   }}
                 />
-                <div className="flex justify-between text-sm text-muted-foreground">
+                <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
                   <span>Progress</span>
                   <span>{stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}% Complete</span>
                 </div>
               </div>
               
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-gradient-to-br from-[#6F6BF2]/10 to-[#6D49F2]/10 p-4 rounded-lg border border-[#6F6BF2]/30">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="bg-gradient-to-br from-[#6F6BF2]/10 to-[#6D49F2]/10 p-3 sm:p-4 rounded-lg border border-[#6F6BF2]/30">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="w-2 h-2 bg-[#6F6BF2] rounded-full"></div>
-                    <p className="text-xs font-medium text-[#491BF2] uppercase tracking-wide">
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#6F6BF2] rounded-full"></div>
+                    <p className="text-[10px] sm:text-xs font-medium text-[#491BF2] uppercase tracking-wide">
                       Completed
                     </p>
                   </div>
-                  <p className="text-2xl font-bold text-[#1F0459]">{stats.completed}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-[#1F0459]">{stats.completed}</p>
                 </div>
-                <div className="bg-gradient-to-br from-[#6D49F2]/10 to-[#491BF2]/10 p-4 rounded-lg border border-[#6D49F2]/30">
+                <div className="bg-gradient-to-br from-[#6D49F2]/10 to-[#491BF2]/10 p-3 sm:p-4 rounded-lg border border-[#6D49F2]/30">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="w-2 h-2 bg-[#6D49F2] rounded-full"></div>
-                    <p className="text-xs font-medium text-[#491BF2] uppercase tracking-wide">
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#6D49F2] rounded-full"></div>
+                    <p className="text-[10px] sm:text-xs font-medium text-[#491BF2] uppercase tracking-wide">
                       In Progress
                     </p>
                   </div>
-                  <p className="text-2xl font-bold text-[#1F0459]">{stats.inProgress}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-[#1F0459]">{stats.inProgress}</p>
                 </div>
-                <div className="bg-gradient-to-br from-[#AB96D9]/10 to-[#AB96D9]/20 p-4 rounded-lg border border-[#AB96D9]/30">
+                <div className="bg-gradient-to-br from-[#AB96D9]/10 to-[#AB96D9]/20 p-3 sm:p-4 rounded-lg border border-[#AB96D9]/30">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="w-2 h-2 bg-[#AB96D9] rounded-full"></div>
-                    <p className="text-xs font-medium text-[#491BF2] uppercase tracking-wide">
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#AB96D9] rounded-full"></div>
+                    <p className="text-[10px] sm:text-xs font-medium text-[#491BF2] uppercase tracking-wide">
                       Remaining
                     </p>
                   </div>
-                  <p className="text-2xl font-bold text-[#1F0459]">
+                  <p className="text-xl sm:text-2xl font-bold text-[#1F0459]">
                     {stats.total - stats.completed - stats.inProgress}
                   </p>
                 </div>
               </div>
             </div>
             
-            <Button asChild size="lg" className="w-full bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] text-white">
-              <Link to="/dashboard/curriculum" className="flex items-center justify-center gap-2">
+            <Button asChild size="lg" className="w-full bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] text-white h-10 sm:h-11">
+              <Link to="/dashboard/curriculum" className="flex items-center justify-center gap-2 text-sm sm:text-base">
                 Continue Learning Plan 
                 <ChevronRight className="h-4 w-4" />
               </Link>
@@ -405,12 +405,12 @@ const UserStatistics: React.FC = () => {
   );
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold tracking-tight text-[#1F0459]">
+    <div className="space-y-6 sm:space-y-8 px-4 sm:px-0">
+      <div className="space-y-1 sm:space-y-2">
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1F0459] leading-tight">
           {isFirstTimeUser ? "Welcome to Your Language Journey" : "Your Learning Journey"}
         </h2>
-        <p className="text-muted-foreground">
+        <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
           {isFirstTimeUser 
             ? "Let's get you started on the path to language mastery" 
             : "Track your progress and continue building your language skills"
@@ -426,13 +426,13 @@ const UserStatistics: React.FC = () => {
 
       {/* Start Modal - Now available for all users */}
       <Dialog open={showStartModal} onOpenChange={setShowStartModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl text-[#1F0459]">
-              <Sparkles className="h-5 w-5 text-[#491BF2]" />
+        <DialogContent className="sm:max-w-md max-w-[90vw] w-full mx-4 sm:mx-auto rounded-lg">
+          <DialogHeader className="px-1 sm:px-0">
+            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl text-[#1F0459] leading-tight">
+              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-[#491BF2] flex-shrink-0" />
               Choose Your Learning Path
             </DialogTitle>
-            <DialogDescription className="text-base">
+            <DialogDescription className="text-sm sm:text-base leading-relaxed">
               {isFirstTimeUser 
                 ? "How would you like to begin your language learning journey?"
                 : "Continue with your current path or try something new"
@@ -440,48 +440,48 @@ const UserStatistics: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 mt-6">
+          <div className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
             <div 
               onClick={handleStartLearningPlan}
-              className="p-4 border-2 border-[#AB96D9]/30 rounded-lg hover:border-[#491BF2]/40 hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group"
+              className="p-3 sm:p-4 border-2 border-[#AB96D9]/30 rounded-lg hover:border-[#491BF2]/40 hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group"
             >
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-[#491BF2]/10 rounded-lg group-hover:bg-[#491BF2]/20 transition-colors">
-                  <Play className="h-5 w-5 text-[#491BF2]" />
+                <div className="p-2 bg-[#491BF2]/10 rounded-lg group-hover:bg-[#491BF2]/20 transition-colors flex-shrink-0">
+                  <Play className="h-4 w-4 sm:h-5 sm:w-5 text-[#491BF2]" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-1 text-[#1F0459]">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-base sm:text-lg mb-1 text-[#1F0459] leading-tight">
                     {isFirstTimeUser ? "Start with Learning Plan" : "Continue Learning Plan"}
                   </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                     {isFirstTimeUser 
                       ? "Follow our expertly designed curriculum with structured exercises and progressive difficulty."
                       : "Continue with your structured curriculum and track your progress."
                     }
                   </p>
                 </div>
-                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors" />
+                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors flex-shrink-0 mt-0.5" />
               </div>
             </div>
 
             <div 
               onClick={handleCreateOwnExercise}
-              className="p-4 border-2 border-muted hover:border-[#491BF2]/40 hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group rounded-lg"
+              className="p-3 sm:p-4 border-2 border-muted hover:border-[#491BF2]/40 hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group rounded-lg"
             >
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-muted group-hover:bg-[#491BF2]/20 rounded-lg transition-colors">
-                  <Plus className="h-5 w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors" />
+                <div className="p-2 bg-muted group-hover:bg-[#491BF2]/20 rounded-lg transition-colors flex-shrink-0">
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-1 text-[#1F0459]">Create Your Own Exercise</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-base sm:text-lg mb-1 text-[#1F0459] leading-tight">Create Your Own Exercise</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                     {isFirstTimeUser 
                       ? "Jump right in by creating custom exercises tailored to your specific learning needs."
                       : "Create additional custom exercises to supplement your learning plan."
                     }
                   </p>
                 </div>
-                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors" />
+                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors flex-shrink-0 mt-0.5" />
               </div>
             </div>
           </div>
