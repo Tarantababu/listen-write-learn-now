@@ -221,33 +221,11 @@ const UserStatistics: React.FC = () => {
     navigate('/dashboard/exercises');
   };
 
-  // NEW: Enhanced guidance banner component
+// NEW: Enhanced guidance banner component
   const renderGuidanceBanner = () => {
     if (isFirstTimeUser) {
-      return (
-        <Alert className="border-2 border-[#6F6BF2]/30 bg-gradient-to-r from-[#6F6BF2]/10 via-[#491BF2]/5 to-[#AB96D9]/10 shadow-lg">
-          <Compass className="h-5 w-5 text-[#491BF2]" />
-          <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-            <div className="space-y-1">
-              <h3 className="font-semibold text-[#1F0459] text-base sm:text-lg">
-                🎯 Ready to start your language journey?
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                We'll help you choose the perfect learning path based on your goals and experience level.
-              </p>
-            </div>
-            <Button 
-              onClick={() => setShowStartModal(true)}
-              className="bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] text-white shadow-md hover:shadow-lg transition-all duration-200 whitespace-nowrap"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              Get Started
-            </Button>
-          </AlertDescription>
-        </Alert>
-      );
+      return null;
     }
-
     return (
       <Alert className="border border-[#AB96D9]/30 bg-gradient-to-r from-[#AB96D9]/5 to-[#6F6BF2]/5">
         <Info className="h-4 w-4 text-[#491BF2]" />
