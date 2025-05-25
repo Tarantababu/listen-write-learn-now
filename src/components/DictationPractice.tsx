@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Exercise } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
+import { Slider } from '@/components/ui/slider';
 import { Play, Pause, SkipBack, SkipForward, BookOpen, Volume2, VolumeX } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -53,6 +55,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   const [duration, setDuration] = useState(200); // Default duration in seconds
   const [internalShowResults, setInternalShowResults] = useState(showResults);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [stats, setStats] = useState<{
     correct: number;
     almost: number;
@@ -246,6 +249,23 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     if (!audioRef.current) return;
     audioRef.current.currentTime = Math.min(audioRef.current.duration, audioRef.current.currentTime + 10);
   };
+
+  // Handle seeking with slider
+  const handleSeek = (value: number[]) => {
+    if (!audioRef.current) return;
+    
+    const newTime = value[0];
+    audioRef.current.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  const handleSeekStart = () => {
+    setIsDragging(true);
+  };
+
+  const handleSeekEnd = () => {
+    setIsDragging(false);
+  };
   
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
@@ -258,7 +278,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     if (!audioRef.current) return;
     
     const updateTime = () => {
-      if (audioRef.current) {
+      if (audioRef.current && !isDragging) {
         setCurrentTime(audioRef.current.currentTime);
       }
     };
@@ -284,7 +304,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
         audioRef.current.removeEventListener('ended', handleEnded);
       }
     };
-  }, []);
+  }, [isDragging]);
   
   // Auto-focus textarea
   useEffect(() => {
@@ -396,16 +416,20 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
               </button>
             </div>
             
-            <div className="w-full max-w-md">
-              <div className="flex justify-between text-sm text-gray-500 mb-1">
+            <div className="w-full max-w-md space-y-2">
+              <Slider
+                value={[currentTime]}
+                max={duration || 100}
+                step={0.1}
+                onValueChange={handleSeek}
+                onValueCommit={handleSeekEnd}
+                onPointerDown={handleSeekStart}
+                className="w-full"
+                disabled={!exercise.audioUrl}
+              />
+              <div className="flex justify-between text-sm text-gray-500">
                 <span>{formatTime(currentTime)}</span>
                 <span>{formatTime(duration)}</span>
-              </div>
-              <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-indigo-600 transition-all" 
-                  style={{ width: `${(currentTime / duration) * 100}%` }}
-                />
               </div>
             </div>
           </div>
