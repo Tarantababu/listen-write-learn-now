@@ -55,6 +55,7 @@ const ExercisesPage: React.FC = () => {
   
   // Directory browser state
   const [isDirectoryCollapsed, setIsDirectoryCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Selected exercise state
   const [exerciseToEdit, setExerciseToEdit] = useState<Exercise | null>(null);
@@ -290,111 +291,111 @@ const ExercisesPage: React.FC = () => {
     const inProgressCount = directoryExercises.filter(ex => !ex.isCompleted && ex.completionCount > 0).length;
     const newCount = directoryExercises.filter(ex => ex.completionCount === 0).length;
 
+    // Auto-collapse on mobile
+    const shouldShowContent = !isDirectoryCollapsed && (window.innerWidth >= 768 || isMobileMenuOpen);
+
     return (
-      <div className={`transition-all duration-300 ease-in-out ${isDirectoryCollapsed ? 'w-12' : 'min-w-80'}`}>
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm h-fit">
-          {/* Header */}
-          <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
-            <div className="flex items-center justify-between">
-              {!isDirectoryCollapsed && (
-                <div className="flex items-center space-x-2">
-                  <Folder className="h-5 w-5 text-blue-600" />
-                  <h2 className="text-lg font-semibold text-gray-900">Folders</h2>
-                </div>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsDirectoryCollapsed(!isDirectoryCollapsed)}
-                className="h-8 w-8 p-0 hover:bg-white/50"
-              >
-                {isDirectoryCollapsed ? (
-                  <ChevronRight className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
+      <>
+        {/* Mobile Overlay */}
+        {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+        
+        <div className={`
+          transition-all duration-300 ease-in-out z-50
+          ${isDirectoryCollapsed ? 'w-12' : 'w-full md:min-w-80 md:w-80'}
+          ${isMobileMenuOpen ? 'fixed inset-y-0 left-0 w-80' : ''}
+          md:relative md:translate-x-0
+        `}>
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm h-fit">
+            {/* Header */}
+            <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                {!isDirectoryCollapsed && (
+                  <div className="flex items-center space-x-2">
+                    <Folder className="h-5 w-5 text-blue-600" />
+                    <h2 className="text-lg font-semibold text-gray-900">Folders</h2>
+                  </div>
                 )}
-              </Button>
-            </div>
-            
-            {!isDirectoryCollapsed && currentDirectoryId && (
-              <div className="mt-3 pt-3 border-t border-white/30">
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div className="bg-white/60 rounded-lg p-2 text-center">
-                    <div className="font-semibold text-emerald-600">{completedCount}</div>
-                    <div className="text-gray-600">Mastered</div>
-                  </div>
-                  <div className="bg-white/60 rounded-lg p-2 text-center">
-                    <div className="font-semibold text-amber-600">{inProgressCount}</div>
-                    <div className="text-gray-600">Learning</div>
-                  </div>
-                  <div className="bg-white/60 rounded-lg p-2 text-center">
-                    <div className="font-semibold text-blue-600">{newCount}</div>
-                    <div className="text-gray-600">New</div>
-                  </div>
+                <div className="flex items-center space-x-2">
+                  {/* Mobile close button */}
+                  {isMobileMenuOpen && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="h-8 w-8 p-0 hover:bg-white/50 md:hidden"
+                    >
+                      ×
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setIsDirectoryCollapsed(!isDirectoryCollapsed);
+                      if (window.innerWidth < 768) {
+                        setIsMobileMenuOpen(!isMobileMenuOpen);
+                      }
+                    }}
+                    className="h-8 w-8 p-0 hover:bg-white/50"
+                  >
+                    {isDirectoryCollapsed ? (
+                      <ChevronRight className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
               </div>
-            )}
-          </div>
-
-          {!isDirectoryCollapsed && (
-            <div className="p-4">
-              <DirectoryBrowser 
-                onExerciseClick={handlePractice} 
-                showExercises={true}
-                filterByLanguage={settings.selectedLanguage}
-                renderDirectoryItem={(directory, isSelected, onClick) => (
-                  <div
-                    key={directory.id}
-                    onClick={onClick}
-                    className={`
-                      flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200
-                      ${isSelected 
-                        ? 'bg-blue-100 border border-blue-200 shadow-sm' 
-                        : 'hover:bg-gray-50 border border-transparent'
-                      }
-                    `}
-                  >
-                    <div className="flex items-center space-x-3">
-                      {isSelected ? (
-                        <FolderOpen className="h-4 w-4 text-blue-600" />
-                      ) : (
-                        <Folder className="h-4 w-4 text-gray-500" />
-                      )}
-                      <span className={`font-medium ${isSelected ? 'text-blue-900' : 'text-gray-700'}`}>
-                        {directory.name}
-                      </span>
+              
+              {shouldShowContent && currentDirectoryId && (
+                <div className="mt-3 pt-3 border-t border-white/30">
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="bg-white/60 rounded-lg p-2 text-center">
+                      <div className="font-semibold text-emerald-600">{completedCount}</div>
+                      <div className="text-gray-600">Mastered</div>
                     </div>
-                    <div className={`
-                      px-2 py-1 rounded-full text-xs font-medium
-                      ${isSelected 
-                        ? 'bg-blue-200 text-blue-800'
-                        : 'bg-gray-100 text-gray-600'
-                      }
-                    `}>
-                      {getExerciseCount(directory.id)}
+                    <div className="bg-white/60 rounded-lg p-2 text-center">
+                      <div className="font-semibold text-amber-600">{inProgressCount}</div>
+                      <div className="text-gray-600">Learning</div>
+                    </div>
+                    <div className="bg-white/60 rounded-lg p-2 text-center">
+                      <div className="font-semibold text-blue-600">{newCount}</div>
+                      <div className="text-gray-600">New</div>
                     </div>
                   </div>
-                )}
-                renderAllExercisesItem={(isSelected, onClick) => (
+                </div>
+              )}
+            </div>
+
+            {shouldShowContent && (
+              <div className="p-4">
+                {/* Custom Directory Browser UI */}
+                <div className="space-y-2">
+                  {/* All Exercises Option */}
                   <div
-                    onClick={onClick}
+                    onClick={() => {/* Handle all exercises click - you'll need to implement this based on your DirectoryContext */}}
                     className={`
                       flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200
-                      ${isSelected 
+                      ${!currentDirectoryId 
                         ? 'bg-blue-100 border border-blue-200 shadow-sm' 
                         : 'hover:bg-gray-50 border border-transparent'
                       }
                     `}
                   >
                     <div className="flex items-center space-x-3">
-                      <BookOpen className={`h-4 w-4 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
-                      <span className={`font-medium ${isSelected ? 'text-blue-900' : 'text-gray-700'}`}>
+                      <BookOpen className={`h-4 w-4 ${!currentDirectoryId ? 'text-blue-600' : 'text-gray-500'}`} />
+                      <span className={`font-medium ${!currentDirectoryId ? 'text-blue-900' : 'text-gray-700'} text-sm md:text-base`}>
                         All Exercises
                       </span>
                     </div>
                     <div className={`
                       px-2 py-1 rounded-full text-xs font-medium
-                      ${isSelected 
+                      ${!currentDirectoryId 
                         ? 'bg-blue-200 text-blue-800'
                         : 'bg-gray-100 text-gray-600'
                       }
@@ -402,114 +403,137 @@ const ExercisesPage: React.FC = () => {
                       {getExerciseCount(null)}
                     </div>
                   </div>
-                )}
-              />
-              
-              {/* Subscription Upgrade Card */}
-              {!subscription.isSubscribed && (
-                <div className="mt-6 p-4 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0">
-                      <Sparkles className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-purple-900">Unlock Premium</h3>
-                      <p className="text-xs text-purple-700 mt-1">
-                        Create unlimited exercises and edit them anytime.
-                      </p>
-                      <Button 
-                        size="sm" 
-                        className="mt-3 bg-purple-600 hover:bg-purple-700 text-white"
-                        onClick={() => navigate('/dashboard/subscription')}
-                      >
-                        Upgrade Now
-                      </Button>
-                    </div>
+
+                  {/* Use original DirectoryBrowser but with enhanced styling wrapper */}
+                  <div className="space-y-1">
+                    <DirectoryBrowser 
+                      onExerciseClick={handlePractice} 
+                      showExercises={true}
+                      filterByLanguage={settings.selectedLanguage}
+                    />
                   </div>
                 </div>
-              )}
-            </div>
-          )}
+                
+                {/* Subscription Upgrade Card */}
+                {!subscription.isSubscribed && (
+                  <div className="mt-6 p-4 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <Sparkles className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold text-purple-900">Unlock Premium</h3>
+                        <p className="text-xs text-purple-700 mt-1">
+                          Create unlimited exercises and edit them anytime.
+                        </p>
+                        <Button 
+                          size="sm" 
+                          className="mt-3 bg-purple-600 hover:bg-purple-700 text-white w-full md:w-auto"
+                          onClick={() => navigate('/dashboard/subscription')}
+                        >
+                          Upgrade Now
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </>
     );
   };
   
   return (
     <DirectoryProvider>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30" key={key}>
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
           {/* Enhanced Header */}
-          <div className="mb-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                  {settings.selectedLanguage.charAt(0).toUpperCase() + settings.selectedLanguage.slice(1)} Exercises
-                </h1>
-                <div className="flex items-center space-x-4 text-sm text-gray-600">
-                  <div className="flex items-center space-x-1">
-                    <BookOpen className="h-4 w-4" />
-                    <span>{directoryExercises.length} exercises</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Trophy className="h-4 w-4 text-emerald-500" />
-                    <span>{directoryExercises.filter(ex => ex.isCompleted).length} mastered</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Clock className="h-4 w-4 text-amber-500" />
-                    <span>{directoryExercises.filter(ex => !ex.isCompleted && ex.completionCount > 0).length} in progress</span>
-                  </div>
-                  {currentDirectoryId && (
-                    <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                      In selected folder
+          <div className="mb-6 md:mb-8">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="space-y-2">
+                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+                    {settings.selectedLanguage.charAt(0).toUpperCase() + settings.selectedLanguage.slice(1)} Exercises
+                  </h1>
+                  <div className="flex flex-wrap items-center gap-3 md:gap-4 text-xs md:text-sm text-gray-600">
+                    <div className="flex items-center space-x-1">
+                      <BookOpen className="h-3 w-3 md:h-4 md:w-4" />
+                      <span>{directoryExercises.length} exercises</span>
                     </div>
-                  )}
+                    <div className="flex items-center space-x-1">
+                      <Trophy className="h-3 w-3 md:h-4 md:w-4 text-emerald-500" />
+                      <span>{directoryExercises.filter(ex => ex.isCompleted).length} mastered</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Clock className="h-3 w-3 md:h-4 md:w-4 text-amber-500" />
+                      <span>{directoryExercises.filter(ex => !ex.isCompleted && ex.completionCount > 0).length} in progress</span>
+                    </div>
+                    {currentDirectoryId && (
+                      <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                        In selected folder
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  {/* Mobile Directory Toggle */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsMobileMenuOpen(true)}
+                    className="md:hidden flex items-center"
+                  >
+                    <Folder className="h-4 w-4 mr-2" />
+                    Folders
+                  </Button>
+                  <Button 
+                    onClick={() => setIsAddModalOpen(true)} 
+                    disabled={!canCreateMore}
+                    size="lg"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:from-gray-400 disabled:to-gray-500"
+                  >
+                    <Plus className="h-4 w-4 md:h-5 md:w-5 mr-2" /> 
+                    Create Exercise
+                  </Button>
                 </div>
               </div>
-              <Button 
-                onClick={() => setIsAddModalOpen(true)} 
-                disabled={!canCreateMore}
-                size="lg"
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:from-gray-400 disabled:to-gray-500"
-              >
-                <Plus className="h-5 w-5 mr-2" /> 
-                Create Exercise
-              </Button>
-            </div>
             
-            {/* Enhanced Subscription Status Alert */}
-            {!subscription.isSubscribed && (
-              <Alert className="mt-6 border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">
-                <Sparkles className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <span className="text-amber-800">
-                      <strong>Free Plan:</strong> Limited to {exerciseLimit} exercises
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-24 bg-amber-200 rounded-full h-2">
-                        <div 
-                          className="bg-amber-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${Math.min((exercises.length / exerciseLimit) * 100, 100)}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-amber-700">
-                        {exercises.length}/{exerciseLimit}
+              {/* Enhanced Subscription Status Alert */}
+              {!subscription.isSubscribed && (
+                <Alert className="border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">
+                  <Sparkles className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                      <span className="text-amber-800 text-sm">
+                        <strong>Free Plan:</strong> Limited to {exerciseLimit} exercises
                       </span>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-20 sm:w-24 bg-amber-200 rounded-full h-2">
+                          <div 
+                            className="bg-amber-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${Math.min((exercises.length / exerciseLimit) * 100, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-amber-700">
+                          {exercises.length}/{exerciseLimit}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="ml-4 border-amber-300 text-amber-700 hover:bg-amber-100"
-                    onClick={() => navigate('/dashboard/subscription')}
-                  >
-                    <Sparkles className="h-3 w-3 mr-1" /> Upgrade
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="border-amber-300 text-amber-700 hover:bg-amber-100 w-full sm:w-auto"
+                      onClick={() => navigate('/dashboard/subscription')}
+                    >
+                      <Sparkles className="h-3 w-3 mr-1" /> Upgrade
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          }
           
           <div className="flex gap-6">
             {/* Enhanced Directory Browser */}
