@@ -82,7 +82,7 @@ export function LandingHeader() {
               to="/"
               aria-label="home"
               className="flex items-center space-x-2 transition-opacity duration-200 hover:opacity-80">
-              <Logo />
+              <Logo className="text-xl sm:text-2xl md:text-3xl lg:text-4xl" />
             </Link>
 
             {/* Hamburger Button */}
