@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, Globe, Play } from 'lucide-react';
+import { ArrowRight, Check, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { SampleDictationModal } from './SampleDictationModal';
@@ -132,16 +132,12 @@ export function Hero() {
                       <ArrowRight size={20} />
                     </Link>
                   </Button>
-                  
-                  <Button variant="ghost" size="sm" className="mt-3 text-brand-primary underline hover:no-underline" onClick={handleOpenSample}>
-                    <Play size={16} className="mr-1" /> Try a quick demo first
-                  </Button>
                 </div>
                 
                 {/* Product Hunt badge */}
-                <div className="mt-10 flex justify-center lg:justify-start">
+                <div className="mt-10 flex justify-center">
                   <a href="https://www.producthunt.com/posts/lwlnow?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-lwlnow" target="_blank" rel="noopener noreferrer" className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl">
-                    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=961139&theme=light&t=1746390894369" alt="lwlnow - Learn languages by listening, typing, and mastering." width="250" height="54" className="rounded" />
+                    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=961139&theme=light&t=1746390894369" alt="lwlnow - Learn languages by listening, typing, and mastering." width="200" height="43" className="rounded" />
                   </a>
                 </div>
               </AnimatedGroup>
@@ -238,10 +234,6 @@ export function Hero() {
                   Start Learning Now
                   <ArrowRight size={20} />
                 </Link>
-              </Button>
-              
-              <Button variant="ghost" size="sm" className="mt-3 text-brand-primary underline hover:no-underline" onClick={handleOpenSample}>
-                <Play size={16} className="mr-1" /> Try a sample exercise
               </Button>
             </div>
           </div>
