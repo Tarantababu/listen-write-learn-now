@@ -291,15 +291,15 @@ const ExercisesPage: React.FC = () => {
     const newCount = directoryExercises.filter(ex => ex.completionCount === 0).length;
 
     return (
-      <div className={`transition-all duration-300 ease-in-out ${isDirectoryCollapsed ? 'w-12' : 'min-w-80'}`}>
+      <div className={`transition-all duration-300 ease-in-out ${isDirectoryCollapsed ? 'w-12' : 'w-full md:min-w-80'}`}>
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm h-fit">
           {/* Header */}
-          <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
+          <div className="p-3 md:p-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
             <div className="flex items-center justify-between">
               {!isDirectoryCollapsed && (
                 <div className="flex items-center space-x-2">
                   <Folder className="h-5 w-5 text-blue-600" />
-                  <h2 className="text-lg font-semibold text-gray-900">Folders</h2>
+                  <h2 className="text-base md:text-lg font-semibold text-gray-900">Folders</h2>
                 </div>
               )}
               <Button
@@ -318,18 +318,18 @@ const ExercisesPage: React.FC = () => {
             
             {!isDirectoryCollapsed && currentDirectoryId && (
               <div className="mt-3 pt-3 border-t border-white/30">
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div className="bg-white/60 rounded-lg p-2 text-center">
+                <div className="grid grid-cols-3 gap-1 md:gap-2 text-xs">
+                  <div className="bg-white/60 rounded-lg p-1.5 md:p-2 text-center">
                     <div className="font-semibold text-emerald-600">{completedCount}</div>
-                    <div className="text-gray-600">Mastered</div>
+                    <div className="text-gray-600 text-[10px] md:text-xs">Mastered</div>
                   </div>
-                  <div className="bg-white/60 rounded-lg p-2 text-center">
+                  <div className="bg-white/60 rounded-lg p-1.5 md:p-2 text-center">
                     <div className="font-semibold text-amber-600">{inProgressCount}</div>
-                    <div className="text-gray-600">Learning</div>
+                    <div className="text-gray-600 text-[10px] md:text-xs">Learning</div>
                   </div>
-                  <div className="bg-white/60 rounded-lg p-2 text-center">
+                  <div className="bg-white/60 rounded-lg p-1.5 md:p-2 text-center">
                     <div className="font-semibold text-blue-600">{newCount}</div>
-                    <div className="text-gray-600">New</div>
+                    <div className="text-gray-600 text-[10px] md:text-xs">New</div>
                   </div>
                 </div>
               </div>
@@ -337,23 +337,23 @@ const ExercisesPage: React.FC = () => {
           </div>
 
           {!isDirectoryCollapsed && (
-            <div className="p-4">
+            <div className="p-3 md:p-4">
               {/* Custom Directory Browser UI */}
               <div className="space-y-2">
                 {/* All Exercises Option */}
                 <div
                   onClick={() => {/* Handle all exercises click - you'll need to implement this based on your DirectoryContext */}}
                   className={`
-                    flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200
+                    flex items-center justify-between p-2 md:p-3 rounded-lg cursor-pointer transition-all duration-200
                     ${!currentDirectoryId 
                       ? 'bg-blue-100 border border-blue-200 shadow-sm' 
                       : 'hover:bg-gray-50 border border-transparent'
                     }
                   `}
                 >
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2 md:space-x-3">
                     <BookOpen className={`h-4 w-4 ${!currentDirectoryId ? 'text-blue-600' : 'text-gray-500'}`} />
-                    <span className={`font-medium ${!currentDirectoryId ? 'text-blue-900' : 'text-gray-700'}`}>
+                    <span className={`font-medium text-sm md:text-base ${!currentDirectoryId ? 'text-blue-900' : 'text-gray-700'}`}>
                       All Exercises
                     </span>
                   </div>
@@ -380,19 +380,19 @@ const ExercisesPage: React.FC = () => {
               
               {/* Subscription Upgrade Card */}
               {!subscription.isSubscribed && (
-                <div className="mt-6 p-4 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
-                  <div className="flex items-start space-x-3">
+                <div className="mt-4 md:mt-6 p-3 md:p-4 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
+                  <div className="flex items-start space-x-2 md:space-x-3">
                     <div className="flex-shrink-0">
-                      <Sparkles className="h-5 w-5 text-purple-600" />
+                      <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-purple-900">Unlock Premium</h3>
-                      <p className="text-xs text-purple-700 mt-1">
+                      <h3 className="text-xs md:text-sm font-semibold text-purple-900">Unlock Premium</h3>
+                      <p className="text-[10px] md:text-xs text-purple-700 mt-1">
                         Create unlimited exercises and edit them anytime.
                       </p>
                       <Button 
-                        size="sm" 
-                        className="mt-3 bg-purple-600 hover:bg-purple-700 text-white"
+                        size="sm"
+                        className="mt-2 md:mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white text-xs"
                         onClick={() => navigate('/dashboard/subscription')}
                       >
                         Upgrade Now
@@ -454,13 +454,13 @@ const ExercisesPage: React.FC = () => {
             {!subscription.isSubscribed && (
               <Alert className="mt-6 border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">
                 <Sparkles className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <span className="text-amber-800">
+                <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                    <span className="text-amber-800 text-sm">
                       <strong>Free Plan:</strong> Limited to {exerciseLimit} exercises
                     </span>
                     <div className="flex items-center space-x-2">
-                      <div className="w-24 bg-amber-200 rounded-full h-2">
+                      <div className="w-20 sm:w-24 bg-amber-200 rounded-full h-2">
                         <div 
                           className="bg-amber-600 h-2 rounded-full transition-all duration-300"
                           style={{ width: `${Math.min((exercises.length / exerciseLimit) * 100, 100)}%` }}
@@ -474,7 +474,7 @@ const ExercisesPage: React.FC = () => {
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="ml-4 border-amber-300 text-amber-700 hover:bg-amber-100"
+                    className="w-full sm:w-auto border-amber-300 text-amber-700 hover:bg-amber-100"
                     onClick={() => navigate('/dashboard/subscription')}
                   >
                     <Sparkles className="h-3 w-3 mr-1" /> Upgrade
@@ -484,9 +484,11 @@ const ExercisesPage: React.FC = () => {
             )}
           </div>
           
-          <div className="flex gap-6">
+          <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
             {/* Enhanced Directory Browser */}
-            <EnhancedDirectoryBrowser />
+            <div className="lg:flex-shrink-0">
+              <EnhancedDirectoryBrowser />
+            </div>
             
             {/* Main Content */}
             <div className="flex-1 min-w-0">
