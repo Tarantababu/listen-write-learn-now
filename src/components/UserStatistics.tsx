@@ -5,7 +5,7 @@ import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Trophy, BookOpen, CalendarDays, GraduationCap } from 'lucide-react';
+import { Trophy, BookOpen, CalendarDays, GraduationCap, Target, TrendingUp } from 'lucide-react';
 import StatsCard from './StatsCard';
 import StatsHeatmap from './StatsHeatmap';
 import { getUserLevel, getLevelProgress } from '@/utils/levelSystem';
@@ -21,23 +21,27 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronRight } from 'lucide-react';
 import { useCurriculumExercises } from '@/hooks/use-curriculum-exercises';
 import { isStreakActive } from '@/utils/visitorTracking';
+
 interface CompletionData {
   date: Date;
   exerciseId: string;
   accuracy: number;
   words: number;
 }
+
 interface StreakData {
   currentStreak: number;
   longestStreak: number;
   lastActivityDate: Date | null;
 }
+
 interface DailyActivity {
   date: Date;
   count: number;
   exercises: number;
   masteredWords: number;
 }
+
 const UserStatistics: React.FC = () => {
   const {
     user
@@ -229,137 +233,177 @@ const UserStatistics: React.FC = () => {
     return compareWithPreviousDay(vocabularyByDay);
   })();
 
-  // Calculate mastered words trend
-  const masteredWordsTrend = (() => {
-    // Simulating a small increase from yesterday to today for trend display
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
-    return compareWithPreviousDay({
-      [today]: masteredWords.size,
-      [yesterday]: Math.max(0, masteredWords.size - Math.floor(masteredWords.size * 0.02))
-    });
-  })();
-
-  // Calculate streak trend - update this to handle broken streaks correctly
-  const streakTrend = (() => {
-    // If streak is 0, it means streak is broken
-    if (streak === 0) {
-      return {
-        value: -100,
-        // -100% decrease
-        label: 'Streak broken'
-      };
-    }
-
-    // Otherwise streak is maintained or increased
-    return {
-      value: 0,
-      // 0% change (maintained)
-      label: 'Streak maintained'
-    };
-  })();
-
   // Refresh curriculum data on component mount
   React.useEffect(() => {
     console.log("UserStatistics: Refreshing curriculum data");
     refreshCurriculumData();
   }, [refreshCurriculumData]);
+
   if (showLoading) {
     return <SkeletonUserStats />;
   }
-  return <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Your Language Progress</h2>
+
+  return (
+    <div className="space-y-8">
+      <div className="space-y-2">
+        <h2 className="text-2xl font-bold tracking-tight">Your Learning Journey</h2>
+        <p className="text-muted-foreground">
+          Track your progress and continue building your language skills
+        </p>
+      </div>
       
       {/* Language Level Display */}
       <LanguageLevelDisplay masteredWords={totalMasteredWords} />
       
-      {/* Key Statistics Cards - Now including the Curriculum Progress card */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <StatsCard title="Mastered Words" value={totalMasteredWords} icon={<Trophy className="text-amber-500" />} description="Words from exercises completed with 95%+ accuracy at least 3 times" progress={getLevelProgress(totalMasteredWords)} progressColor="bg-gradient-to-r from-amber-500 to-yellow-400" trend={masteredWordsTrend} className="animate-fade-in" />
-        
-        <StatsCard title="Learning Streak" value={streak} icon={<CalendarDays className="text-green-500" />} description="Consecutive days with high accuracy completions" trend={streakTrend} className="animate-fade-in" />
-
-        <StatsCard title="Vocabulary Items" value={vocabulary.filter(item => item.language === currentLanguage).length} icon={<BookOpen className="text-purple-500" />} description="Words saved to your vocabulary list" trend={vocabTrend} className="animate-fade-in" />
-        
-        {/* Curriculum Progress Card moved here as requested */}
-        <Card className="w-full">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xl font-semibold">Learning Plan Progress</CardTitle>
-            <GraduationCap className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {showCurriculumLoading ? <div>
-                <div className="flex flex-col space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Skeleton className="h-5 w-36" />
-                    <Skeleton className="h-4 w-24" />
+      {/* Featured Learning Plan Progress Card */}
+      <Card className="w-full border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+        <CardHeader className="pb-4">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                <GraduationCap className="h-6 w-6 text-primary" />
+                Learning Plan Progress
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Your structured path to language mastery
+              </p>
+            </div>
+            <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 rounded-full">
+              <Target className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-primary">
+                {stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}%` : '0%'}
+              </span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {showCurriculumLoading ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-5 w-48" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+              <Skeleton className="h-3 w-full" />
+              <div className="grid grid-cols-3 gap-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="space-y-2 p-4 rounded-lg border">
+                    <Skeleton className="h-6 w-full" />
+                    <Skeleton className="h-4 w-full" />
                   </div>
-                  
-                  <Skeleton className="h-2 w-full" />
-                  
-                  <div className="mt-2 grid grid-cols-3 gap-2 text-center text-sm">
-                    {[1, 2, 3].map(i => <div key={i} className="p-2 rounded">
-                        <Skeleton className="h-5 w-full mb-1" />
-                        <Skeleton className="h-3 w-full" />
-                      </div>)}
+                ))}
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : stats.total > 0 ? (
+            <>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Foundational Exercises</h3>
+                  <span className="text-sm font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                    {stats.completed} of {stats.total} complete
+                  </span>
+                </div>
+                
+                <div className="space-y-2">
+                  <Progress 
+                    value={stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0} 
+                    className="h-3" 
+                  />
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Progress</span>
+                    <span>{stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}% Complete</span>
                   </div>
                 </div>
                 
-                <div className="mt-5">
-                  <Skeleton className="h-9 w-full" />
-                </div>
-              </div> : stats.total > 0 ? <>
-                <div className="flex flex-col space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <span className="font-medium mr-2">Foundational Exercises</span>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <p className="text-xs font-medium text-green-700 dark:text-green-300 uppercase tracking-wide">
+                        Completed
+                      </p>
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                      {stats.completed}/{stats.total} complete
-                    </span>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.completed}</p>
                   </div>
-                  
-                  <Progress value={stats.total > 0 ? Math.round(stats.completed / stats.total * 100) : 0} className="h-2" />
-                  
-                  <div className="mt-2 grid grid-cols-3 gap-2 text-center text-sm">
-                    <div className="bg-green-50 dark:bg-green-950/20 p-2 rounded">
-                      <p className="font-semibold text-green-600 dark:text-green-400">{stats.completed}</p>
-                      <p className="text-xs text-muted-foreground">Completed</p>
+                  <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <p className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wide">
+                        In Progress
+                      </p>
                     </div>
-                    <div className="bg-blue-50 dark:bg-blue-950/20 p-2 rounded">
-                      <p className="font-semibold text-blue-600 dark:text-blue-400">{stats.inProgress}</p>
-                      <p className="text-xs text-muted-foreground">In Progress</p>
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.inProgress}</p>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-900/20 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                      <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                        Remaining
+                      </p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-gray-900/20 p-2 rounded">
-                      <p className="font-semibold">{stats.total - stats.completed - stats.inProgress}</p>
-                      <p className="text-xs text-muted-foreground">Not Started</p>
-                    </div>
+                    <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">
+                      {stats.total - stats.completed - stats.inProgress}
+                    </p>
                   </div>
                 </div>
-                
-                <div className="mt-5">
-                  <Button asChild variant="default" size="sm" className="w-full">
-                    <Link to="/dashboard/curriculum" className="flex items-center justify-center">
-                      View Learning Plan <ChevronRight className="ml-1 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              </> : <div className="py-4">
-                <p className="text-center text-muted-foreground mb-4">
-                  Explore our comprehensive curriculum of language learning exercises.
+              </div>
+              
+              <Button asChild size="lg" className="w-full">
+                <Link to="/dashboard/curriculum" className="flex items-center justify-center gap-2">
+                  Continue Learning Plan 
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <div className="text-center py-8 space-y-4">
+              <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                <GraduationCap className="h-8 w-8 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Start Your Learning Journey</h3>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  Explore our comprehensive curriculum designed to take you from beginner to advanced proficiency.
                 </p>
-                <Button asChild variant="default" size="sm" className="w-full">
-                  <Link to="/dashboard/curriculum">
-                    Browse Learning Plan <ChevronRight className="ml-1 h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>}
-          </CardContent>
-        </Card>
+              </div>
+              <Button asChild size="lg" className="mt-4">
+                <Link to="/dashboard/curriculum" className="flex items-center gap-2">
+                  Browse Learning Plan 
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Secondary Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+        <StatsCard 
+          title="Vocabulary Collection" 
+          value={vocabulary.filter(item => item.language === currentLanguage).length} 
+          icon={<BookOpen className="text-purple-500" />} 
+          description="Words and phrases saved for review" 
+          trend={vocabTrend} 
+          className="animate-fade-in" 
+        />
       </div>
       
       {/* Activity Heatmap */}
-      <StatsHeatmap activityData={activityHeatmap} isLoading={isLoading} />
-    </div>;
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <h3 className="text-xl font-semibold flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-muted-foreground" />
+            Activity Overview
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Your learning activity over the past 3 months
+          </p>
+        </div>
+        <StatsHeatmap activityData={activityHeatmap} isLoading={isLoading} />
+      </div>
+    </div>
+  );
 };
+
 export default UserStatistics;
