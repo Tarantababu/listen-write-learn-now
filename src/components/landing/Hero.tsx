@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, Globe, Play } from 'lucide-react';
@@ -84,15 +83,15 @@ const steps = [{
   description: "Build your skills with each session and watch your comprehension improve."
 }];
 
-// Sketchy Arrow Component
-const SketchyArrow = () => (
-  <div className="absolute -right-16 top-1/2 -translate-y-1/2 hidden md:block lg:-right-20">
+// Sketchy Arrow Component for "Get Started" button
+const SketchyArrowGetStarted = () => (
+  <div className="absolute -top-16 left-1/2 -translate-x-1/2 hidden lg:block">
     <svg
-      width="120"
+      width="140"
       height="80"
-      viewBox="0 0 120 80"
+      viewBox="0 0 140 80"
       fill="none"
-      className="text-brand-primary/60 animate-pulse"
+      className="text-brand-primary/60"
       style={{ 
         filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
         animation: 'sketchy-draw 3s ease-in-out infinite alternate'
@@ -100,7 +99,7 @@ const SketchyArrow = () => (
     >
       {/* Main curved arrow line */}
       <path
-        d="M8 35c15-8 25-12 35-8 12 5 18 15 25 12 8-3 12-15 20-10 6 4 8 12 15 8"
+        d="M25 15c15 8 25 12 35 8 12-5 18-15 25-12 8 3 12 15 20 10 6-4 8-12 15-8"
         stroke="currentColor"
         strokeWidth="2.5"
         fill="none"
@@ -112,23 +111,73 @@ const SketchyArrow = () => (
         }}
       />
       
-      {/* Arrow head - sketchy style */}
+      {/* Arrow head pointing down */}
       <path
-        d="M95 30c3 2 6 4 8 7 1 2 0 4-1 5-2-1-4-3-5-5-1-2-2-4-2-7z"
+        d="M70 65c-2-3-4-6-7-8-2-1-4 0-5 1 1 2 3 4 5 5 2 1 4 2 7 2z"
         fill="currentColor"
         opacity="0.8"
       />
       <path
-        d="M100 42c2-3 4-6 7-8 2-1 4 0 5 1-1 2-3 4-5 5-2 1-4 2-7 2z"
+        d="M75 62c3 2 6 4 8 7 1 2 0 4-1 5-2-1-4-3-5-5-1-2-2-4-2-7z"
         fill="currentColor"
         opacity="0.8"
       />
     </svg>
     
     {/* Handwritten-style text */}
-    <div className="absolute -bottom-8 right-0 transform rotate-6">
-      <span className="text-sm text-brand-primary/70 font-handwriting italic">
+    <div className="absolute -top-8 left-1/2 -translate-x-1/2 transform -rotate-12">
+      <span className="text-sm text-brand-primary/70 font-handwriting italic whitespace-nowrap">
         Start here!
+      </span>
+    </div>
+  </div>
+);
+
+// Sketchy Arrow Component for CTA section
+const SketchyArrowCTA = () => (
+  <div className="absolute -top-16 left-1/2 -translate-x-1/2 hidden md:block">
+    <svg
+      width="120"
+      height="70"
+      viewBox="0 0 120 70"
+      fill="none"
+      className="text-brand-primary/60"
+      style={{ 
+        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+        animation: 'sketchy-draw 3s ease-in-out infinite alternate'
+      }}
+    >
+      {/* Main curved arrow line */}
+      <path
+        d="M20 12c12 6 20 8 28 6 10-3 15-10 20-8 6 2 10 10 16 7 5-3 7-8 12-5"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray="2,3"
+        style={{ 
+          strokeDashoffset: 0,
+          animation: 'dash 4s linear infinite'
+        }}
+      />
+      
+      {/* Arrow head pointing down */}
+      <path
+        d="M60 55c-2-2-3-5-6-6-2-1-3 0-4 1 1 1 2 3 4 4 1 1 3 1 6 1z"
+        fill="currentColor"
+        opacity="0.8"
+      />
+      <path
+        d="M64 53c2 2 4 3 6 5 1 1 1 3 0 4-1-1-3-2-4-4-1-1-1-3-2-5z"
+        fill="currentColor"
+        opacity="0.8"
+      />
+    </svg>
+    
+    {/* Handwritten-style text */}
+    <div className="absolute -top-6 left-1/2 -translate-x-1/2 transform rotate-6">
+      <span className="text-sm text-brand-primary/70 font-handwriting italic whitespace-nowrap">
+        Don't miss out!
       </span>
     </div>
     
@@ -141,8 +190,8 @@ const SketchyArrow = () => (
         }
         
         @keyframes sketchy-draw {
-          0% { transform: translateY(-50%) rotate(-2deg) scale(0.98); }
-          100% { transform: translateY(-50%) rotate(2deg) scale(1.02); }
+          0% { transform: translateX(-50%) translateY(0) rotate(-1deg) scale(0.98); }
+          100% { transform: translateX(-50%) translateY(0) rotate(1deg) scale(1.02); }
         }
         
         .font-handwriting {
@@ -187,7 +236,7 @@ export function Hero() {
                   </div>
                 </div>
                 
-                <div className="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 relative">
+                <div className="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
                   <div className="relative">
                     <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-6">
                       <Link to="/language-selection" className="flex items-center gap-2">
@@ -196,7 +245,7 @@ export function Hero() {
                       </Link>
                     </Button>
                     {/* Sketchy Arrow pointing to Get Started button */}
-                    <SketchyArrow />
+                    <SketchyArrowGetStarted />
                   </div>
                   
                   <Button variant="outline" size="lg" className="rounded-full px-6 border-brand-primary text-brand-primary" onClick={handleOpenSample}>
@@ -298,7 +347,7 @@ export function Hero() {
             <h2 className="text-3xl font-bold text-center mb-6 text-brand-dark">Ready to Transform Your Language Journey?</h2>
             <p className="text-xl text-muted-foreground mb-8">Join thousands of learners who have improved their language skills with our method.</p>
             
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 relative">
               <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-6">
                 <Link to="/language-selection" className="flex items-center gap-2">
                   Start Learning Now
@@ -309,6 +358,9 @@ export function Hero() {
               <Button variant="outline" size="lg" className="rounded-full px-6 border-brand-primary text-brand-primary" onClick={handleOpenSample}>
                 <Play size={18} className="mr-2" /> Try a Sample Exercise
               </Button>
+              
+              {/* Sketchy Arrow pointing to CTA buttons */}
+              <SketchyArrowCTA />
             </div>
           </div>
         </div>
