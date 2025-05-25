@@ -23,7 +23,7 @@ export function CTASection() {
           
           <div className="flex flex-col sm:flex-row gap-4">
             <Button asChild size="lg" className="rounded-xl px-6">
-              <Link to="/signup">
+              <Link to="/language-selection">
                 <span className="text-nowrap">Get Started Now</span>
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

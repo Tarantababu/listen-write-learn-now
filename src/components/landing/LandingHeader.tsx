@@ -147,7 +147,7 @@ export function LandingHeader() {
                   asChild
                   size="sm"
                   className="bg-brand-primary hover:bg-brand-secondary">
-                  <Link to="/signup">
+                  <Link to="/language-selection">
                     <span>Sign Up</span>
                   </Link>
                 </Button>
