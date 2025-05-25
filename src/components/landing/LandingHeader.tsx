@@ -65,57 +65,76 @@ export function LandingHeader() {
               </button>
             </div>
 
-            <div className={`bg-white fixed inset-0 top-16 z-10 mb-6 w-full flex-wrap items-start justify-end p-6 pt-10 shadow-2xl shadow-zinc-300/20 md:flex-nowrap lg:m-0 lg:w-fit lg:gap-6 lg:space-y-0 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none ${menuState ? 'block' : 'hidden'} lg:static lg:flex lg:items-center lg:p-0 lg:shadow-none`}>
-              <div className="lg:hidden">
-                <ul className="space-y-6 text-base">
-                  {menuItems.map((item, index) => (
-                    <li key={index}>
-                      {item.href === '/blog' ? (
-                        <Link
-                          to={item.href}
-                          className="text-brand-dark hover:text-brand-primary block duration-150"
-                          onClick={handleMenuItemClick}
-                        >
-                          <span>{item.name}</span>
-                        </Link>
-                      ) : (
-                        <a
-                          href={item.href}
-                          className="text-brand-dark hover:text-brand-primary block duration-150"
-                          onClick={(e) => handleAnchorClick(e, item.href)}
-                        >
-                          <span>{item.name}</span>
-                        </a>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="flex w-full flex-col mt-8 lg:mt-0 space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
-                <div className="hidden lg:block">
-                  <LanguageSelector />
+            {/* Mobile Menu Overlay */}
+            <div className={`bg-white fixed inset-0 top-16 z-10 mb-6 w-full p-6 pt-10 shadow-2xl shadow-zinc-300/20 ${menuState ? 'block' : 'hidden'} lg:hidden`}>
+              <ul className="space-y-6 text-base mb-8">
+                {menuItems.map((item, index) => (
+                  <li key={index}>
+                    {item.href === '/blog' ? (
+                      <Link
+                        to={item.href}
+                        className="text-brand-dark hover:text-brand-primary block duration-150"
+                        onClick={handleMenuItemClick}
+                      >
+                        <span>{item.name}</span>
+                      </Link>
+                    ) : (
+                      <a
+                        href={item.href}
+                        className="text-brand-dark hover:text-brand-primary block duration-150"
+                        onClick={(e) => handleAnchorClick(e, item.href)}
+                      >
+                        <span>{item.name}</span>
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              
+              <div className="flex flex-col space-y-3">
+                <div className="flex flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="border-brand-primary text-brand-primary hover:bg-brand-primary/10">
+                    <Link to="/login" onClick={handleMenuItemClick}>
+                      <span>Login</span>
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="sm"
+                    className="bg-brand-primary hover:bg-brand-secondary">
+                    <Link to="/language-selection" onClick={handleMenuItemClick}>
+                      <span>Sign Up</span>
+                    </Link>
+                  </Button>
                 </div>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="sm"
-                  className="border-brand-primary text-brand-primary hover:bg-brand-primary/10">
-                  <Link to="/login">
-                    <span>Login</span>
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  size="sm"
-                  className="bg-brand-primary hover:bg-brand-secondary">
-                  <Link to="/language-selection">
-                    <span>Sign Up</span>
-                  </Link>
-                </Button>
-                <div className="lg:hidden">
-                  <LanguageSelector />
-                </div>
+                <LanguageSelector />
               </div>
+            </div>
+
+            {/* Desktop Actions */}
+            <div className="hidden lg:flex lg:items-center lg:gap-6">
+              <LanguageSelector />
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="border-brand-primary text-brand-primary hover:bg-brand-primary/10">
+                <Link to="/login">
+                  <span>Login</span>
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                className="bg-brand-primary hover:bg-brand-secondary">
+                <Link to="/language-selection">
+                  <span>Sign Up</span>
+                </Link>
+              </Button>
             </div>
           </div>
         </div>
