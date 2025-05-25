@@ -46,7 +46,7 @@ export function LandingHeader() {
       <nav
         data-state={menuState ? 'active' : undefined}
         className="w-full px-2">
-        <div className="mx-auto mt-2 max-w-6xl px-4 sm:px-6 lg:px-12">
+        <div className="mx-auto mt-2 max-w-6xl px-4 sm:px-6 lg:px-12 bg-[#FCFCFD] rounded-2xl border shadow-sm">
           <div className="relative flex flex-wrap items-center justify-between gap-4 py-3 lg:gap-0 lg:py-4">
             <div className="flex w-full justify-between lg:w-auto">
               <Link
@@ -59,14 +59,14 @@ export function LandingHeader() {
               <button
                 onClick={() => setMenuState(!menuState)}
                 aria-label={menuState ? 'Close Menu' : 'Open Menu'}
-                className="relative z-20 -m-2.5 -mr-4 block cursor-pointer p-2.5 lg:hidden">
+                className="relative z-20 -m-2.5 -mr-4 block cursor-pointer p-2.5">
                 <Menu className={`m-auto size-5 sm:size-6 duration-200 ${menuState ? 'scale-0 opacity-0 rotate-180' : ''}`} />
                 <X className={`absolute inset-0 m-auto size-5 sm:size-6 duration-200 ${menuState ? 'rotate-0 scale-100 opacity-100' : '-rotate-180 scale-0 opacity-0'}`} />
               </button>
             </div>
 
             {/* Mobile Menu Overlay */}
-            <div className={`bg-white fixed inset-0 top-16 z-10 mb-6 w-full p-6 pt-10 shadow-2xl shadow-zinc-300/20 ${menuState ? 'block' : 'hidden'} lg:hidden`}>
+            <div className={`bg-[#FCFCFD] fixed inset-0 top-16 z-10 mb-6 w-full p-6 pt-10 shadow-2xl border rounded-2xl ${menuState ? 'block' : 'hidden'}`}>
               <ul className="space-y-6 text-base mb-8">
                 {menuItems.map((item, index) => (
                   <li key={index}>
@@ -92,7 +92,7 @@ export function LandingHeader() {
               </ul>
               
               <div className="flex flex-col space-y-3">
-                <div className="flex flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0">
+                <div className="flex flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 lg:hidden">
                   <Button
                     asChild
                     variant="outline"
@@ -111,7 +111,9 @@ export function LandingHeader() {
                     </Link>
                   </Button>
                 </div>
-                <LanguageSelector />
+                <div className="lg:hidden">
+                  <LanguageSelector />
+                </div>
               </div>
             </div>
 
