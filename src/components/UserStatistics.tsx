@@ -421,6 +421,40 @@ const UserStatistics: React.FC = () => {
       {/* Conditional Language Level Display - only show for existing users */}
       {hasStartedLearning && <LanguageLevelDisplay masteredWords={totalMasteredWords} />}
       
+      {/* Need Guidance Section - Fancy floating helper */}
+      {hasStartedLearning && (
+        <div className="relative">
+          <div className="absolute -top-4 right-0 z-10">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-[#491BF2] via-[#6D49F2] to-[#6F6BF2] rounded-full blur-lg opacity-30 group-hover:opacity-50 transition-opacity duration-300 animate-pulse"></div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowStartModal(true)}
+                className="relative bg-white/90 backdrop-blur-sm hover:bg-white hover:scale-105 border-2 border-[#491BF2]/30 hover:border-[#491BF2]/60 text-[#1F0459] font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 transform group px-3 sm:px-4 py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <HelpCircle className="h-4 w-4 text-[#491BF2] group-hover:rotate-12 transition-transform duration-300" />
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-[#491BF2] rounded-full animate-bounce"></div>
+                  </div>
+                  <span className="text-xs sm:text-sm font-bold bg-gradient-to-r from-[#491BF2] to-[#6D49F2] bg-clip-text text-transparent">
+                    Need guidance?
+                  </span>
+                  <Sparkles className="h-3 w-3 text-[#6F6BF2] group-hover:rotate-180 transition-transform duration-500" />
+                </div>
+              </Button>
+            </div>
+            <div className="mt-2 text-center">
+              <div className="inline-flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-[#491BF2]/10 to-[#6F6BF2]/10 rounded-full border border-[#491BF2]/20">
+                <div className="w-1.5 h-1.5 bg-[#491BF2] rounded-full animate-ping"></div>
+                <span className="text-[10px] font-medium text-[#491BF2]">AI Assistant</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Learning Plan Progress Card - Adaptive based on user status */}
       {isFirstTimeUser ? renderFirstTimeUserCard() : renderExistingUserCard()}
 
