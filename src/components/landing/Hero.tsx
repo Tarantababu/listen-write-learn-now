@@ -85,11 +85,11 @@ const steps = [{
 
 // Sketchy Arrow Component for "Get Started" button
 const SketchyArrowGetStarted = () => (
-  <div className="absolute -top-20 -left-8 hidden lg:block">
+  <div className="absolute -top-12 -left-4 hidden lg:block">
     <svg
-      width="120"
-      height="90"
-      viewBox="0 0 120 90"
+      width="80"
+      height="50"
+      viewBox="0 0 80 50"
       fill="none"
       className="text-brand-primary/60"
       style={{ 
@@ -99,7 +99,7 @@ const SketchyArrowGetStarted = () => (
     >
       {/* Main curved arrow line pointing to Get Started button */}
       <path
-        d="M15 25c12 8 20 10 30 15 8 4 15 8 20 15 4 6 6 12 12 18 5 5 10 8 15 12"
+        d="M10 15c8 5 15 8 22 12 6 3 12 6 16 10"
         stroke="currentColor"
         strokeWidth="2.5"
         fill="none"
@@ -113,20 +113,20 @@ const SketchyArrowGetStarted = () => (
       
       {/* Arrow head pointing toward button */}
       <path
-        d="M85 78c2-2 4-4 7-5 2-1 4 0 5 1-1 2-3 3-5 4-2 1-4 1-7 0z"
+        d="M45 35c2-1 3-2 5-2 1 0 2 1 2 2-1 1-2 2-4 2-1 0-2-1-3-2z"
         fill="currentColor"
         opacity="0.8"
       />
       <path
-        d="M90 82c-1-3-2-6-4-8-1-2-3-2-4-1 0 2 1 4 3 5 2 2 3 3 5 4z"
+        d="M48 38c-1-2-1-3-2-5 0-1 1-2 2-1 1 1 1 3 1 4 0 1-1 2-1 2z"
         fill="currentColor"
         opacity="0.8"
       />
     </svg>
     
     {/* Handwritten-style text */}
-    <div className="absolute top-2 left-2 transform -rotate-12">
-      <span className="text-sm text-brand-primary/70 font-handwriting italic whitespace-nowrap">
+    <div className="absolute top-1 left-1 transform -rotate-12">
+      <span className="text-xs text-brand-primary/70 font-handwriting italic whitespace-nowrap">
         Best choice!
       </span>
     </div>
@@ -135,11 +135,11 @@ const SketchyArrowGetStarted = () => (
 
 // Sketchy Arrow Component for "Try a Demo" button
 const SketchyArrowDemo = () => (
-  <div className="absolute -top-20 -right-8 hidden lg:block">
+  <div className="absolute -top-12 -right-4 hidden lg:block">
     <svg
-      width="120"
-      height="90"
-      viewBox="0 0 120 90"
+      width="80"
+      height="50"
+      viewBox="0 0 80 50"
       fill="none"
       className="text-brand-primary/60"
       style={{ 
@@ -149,7 +149,7 @@ const SketchyArrowDemo = () => (
     >
       {/* Main curved arrow line pointing to Try Demo button */}
       <path
-        d="M105 25c-12 8-20 10-30 15-8 4-15 8-20 15-4 6-6 12-12 18-5 5-10 8-15 12"
+        d="M70 15c-8 5-15 8-22 12-6 3-12 6-16 10"
         stroke="currentColor"
         strokeWidth="2.5"
         fill="none"
@@ -163,20 +163,20 @@ const SketchyArrowDemo = () => (
       
       {/* Arrow head pointing toward button */}
       <path
-        d="M35 78c-2-2-4-4-7-5-2-1-4 0-5 1 1 2 3 3 5 4 2 1 4 1 7 0z"
+        d="M35 35c-2-1-3-2-5-2-1 0-2 1-2 2 1 1 2 2 4 2 1 0 2-1 3-2z"
         fill="currentColor"
         opacity="0.8"
       />
       <path
-        d="M30 82c1-3 2-6 4-8 1-2 3-2 4-1 0 2-1 4-3 5-2 2-3 3-5 4z"
+        d="M32 38c1-2 1-3 2-5 0-1-1-2-2-1-1 1-1 3-1 4 0 1 1 2 1 2z"
         fill="currentColor"
         opacity="0.8"
       />
     </svg>
     
     {/* Handwritten-style text */}
-    <div className="absolute top-2 right-2 transform rotate-12">
-      <span className="text-sm text-brand-primary/70 font-handwriting italic whitespace-nowrap">
+    <div className="absolute top-1 right-1 transform rotate-12">
+      <span className="text-xs text-brand-primary/70 font-handwriting italic whitespace-nowrap">
         Start here!
       </span>
     </div>
