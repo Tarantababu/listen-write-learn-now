@@ -37,7 +37,6 @@ export function useSession(options: UseSessionOptions = {}) {
   const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const tabActiveRef = useRef<boolean>(true);
   
   // Reset timers and record new activity
   const recordActivity = useCallback(() => {
@@ -91,33 +90,6 @@ export function useSession(options: UseSessionOptions = {}) {
     }
   }, [onTimeout, navigate, signOut, disableAutoRedirect]);
 
-  // Pause timers when tab is not visible
-  const handleVisibilityChange = useCallback(() => {
-    const isTabVisible = document.visibilityState === 'visible';
-    tabActiveRef.current = isTabVisible;
-    
-    if (isTabVisible) {
-      // When tab becomes visible again, we don't immediately trigger activity
-      // This prevents unwanted resets when user quickly switches tabs
-      // Instead, we'll wait for actual user interaction to trigger recordActivity
-      console.log('Tab is now visible - waiting for user interaction');
-    } else {
-      // When tab becomes hidden, we pause the timers by clearing them
-      console.log('Tab hidden - pausing session timers');
-      
-      // Save the remaining time before clearing timeouts
-      if (warningTimeoutRef.current) {
-        clearTimeout(warningTimeoutRef.current);
-        warningTimeoutRef.current = null;
-      }
-      
-      if (sessionTimeoutRef.current) {
-        clearTimeout(sessionTimeoutRef.current);
-        sessionTimeoutRef.current = null;
-      }
-    }
-  }, []);
-
   // Keep track of time left during warning period
   useEffect(() => {
     if (intervalRef.current) {
@@ -150,7 +122,7 @@ export function useSession(options: UseSessionOptions = {}) {
     };
   }, [showWarning, lastActivity, timeout]);
 
-  // Set up user activity tracking and visibility change detection
+  // Set up user activity tracking
   useEffect(() => {
     if (!user) return;
     
@@ -166,12 +138,6 @@ export function useSession(options: UseSessionOptions = {}) {
     // Throttled event handler - we don't need to record every tiny movement
     let lastRecordTime = Date.now();
     const handleUserActivity = () => {
-      if (!tabActiveRef.current) {
-        // Tab just became active through user interaction
-        tabActiveRef.current = true;
-        console.log('User interaction detected after tab switch');
-      }
-      
       const now = Date.now();
       if (now - lastRecordTime > 10000) { // Only record every 10 seconds max
         recordActivity();
@@ -183,9 +149,6 @@ export function useSession(options: UseSessionOptions = {}) {
     activityEvents.forEach(event => {
       document.addEventListener(event, handleUserActivity, { passive: true });
     });
-    
-    // Register visibility change event listener
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     // Set initial timeouts
     const initialWarningTimeout = setTimeout(() => {
@@ -205,13 +168,11 @@ export function useSession(options: UseSessionOptions = {}) {
         document.removeEventListener(event, handleUserActivity);
       });
       
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      
       if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
       if (sessionTimeoutRef.current) clearTimeout(sessionTimeoutRef.current);
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [user, recordActivity, handleSessionTimeout, handleVisibilityChange, timeout, warningTime]);
+  }, [user, recordActivity, handleSessionTimeout, timeout, warningTime]);
 
   // Format time left as mm:ss
   const formatTimeLeft = (ms: number | null): string => {

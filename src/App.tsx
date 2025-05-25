@@ -32,7 +32,6 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import CookiePolicy from "@/pages/CookiePolicy";
-import SessionWarning from "@/components/SessionWarning";
 import BlogPostEditor from "@/components/blog/admin/BlogPostEditor";
 
 // Create Blog-related pages
@@ -40,16 +39,6 @@ import BlogPage from "@/pages/BlogPage";
 import BlogPostPage from "@/pages/BlogPostPage";
 
 const queryClient = new QueryClient();
-
-// Global session warning component that applies to the entire application
-const GlobalSessionWarning = () => {
-  return (
-    <SessionWarning 
-      timeout={45 * 60 * 1000} 
-      warningTime={3 * 60 * 1000} 
-    />
-  );
-};
 
 function App() {
   return (
@@ -107,9 +96,6 @@ function App() {
                                 
                                 <Route path="*" element={<NotFound />} />
                               </Routes>
-                              
-                              {/* Global session warning that doesn't use Route outside Routes */}
-                              <GlobalSessionWarning />
                             </div>
                           </TooltipProvider>
                         </VocabularyProvider>

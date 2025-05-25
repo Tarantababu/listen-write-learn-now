@@ -38,29 +38,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // First set up auth state listener to avoid missing auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state change:', event, session?.user?.id);
+        
         setSession(session);
         setUser(session?.user ?? null);
         
-        if (event === 'SIGNED_IN') {
+        if (event === 'SIGNED_IN' && session?.user) {
           // Initialize user profile on sign in
           setTimeout(() => {
-            initializeUserProfile(session!.user.id);
+            initializeUserProfile(session.user.id);
           }, 0);
           
           // Check if tutorial needs to be shown
           const tutorialViewed = hasTutorialBeenViewed();
           
-          // Determine where to redirect based on whether tutorial has been viewed
-          if (!tutorialViewed) {
-            navigate('/dashboard/tutorial');
-          } else {
-            navigate('/dashboard');
+          // Only navigate if not already on dashboard routes to prevent unnecessary remounts
+          const currentPath = window.location.pathname;
+          if (!currentPath.startsWith('/dashboard')) {
+            if (!tutorialViewed) {
+              navigate('/dashboard/tutorial');
+            } else {
+              navigate('/dashboard');
+            }
           }
         }
         
         if (event === 'SIGNED_OUT') {
-          // Ensure we redirect on sign out event
-          navigate('/login');
+          // Only redirect if not already on login/public pages
+          const currentPath = window.location.pathname;
+          if (currentPath.startsWith('/dashboard')) {
+            navigate('/login');
+          }
         }
       }
     );
@@ -181,11 +189,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      // Always show success message and redirect
+      // Always show success message
       toast.success('Signed out successfully');
       
-      // Explicitly redirect to login page
-      window.location.href = '/login'; // Force full page refresh to clear any remaining state
+      // Navigate to login without force refresh to maintain app stability
+      navigate('/login', { replace: true });
     } catch (error: any) {
       // Only show error toast for non-session-missing errors
       if (!error.message.includes('Auth session missing')) {
@@ -193,7 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         // For session missing errors, still show success and redirect
         toast.success('Signed out successfully');
-        window.location.href = '/login';
+        navigate('/login', { replace: true });
       }
     }
   };
