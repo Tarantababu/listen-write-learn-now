@@ -102,9 +102,6 @@ export function Hero() {
                   <p className="text-lg md:text-xl font-medium text-brand-dark mt-2">
                     From Beginner to Fluent in Months, Not Years
                   </p>
-                  <p className="text-xs text-muted-foreground/70 mt-2 italic">
-                    * Dictation transforms passive input into active language mastery.
-                  </p>
                 </div>
                 
                 <p className="mt-6 text-xl text-muted-foreground max-w-2xl lg:mx-0 mx-auto">
