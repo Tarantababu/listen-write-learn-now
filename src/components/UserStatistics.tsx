@@ -287,33 +287,11 @@ const UserStatistics: React.FC = () => {
               Your structured path to language mastery
             </p>
           </div>
-          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-3">
-            <div className="flex items-center gap-1 px-2 sm:px-3 py-1 bg-[#491BF2]/10 rounded-full">
-              <Target className="h-3 w-3 sm:h-4 sm:w-4 text-[#491BF2]" />
-              <span className="text-xs sm:text-sm font-medium text-[#491BF2]">
-                {stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}%` : '0%'}
-              </span>
-            </div>
-            <div className="sm:text-right">
-              <div className="relative">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setShowStartModal(true)}
-                  className="bg-gradient-to-r from-[#AB96D9]/20 to-[#6F6BF2]/20 hover:from-[#AB96D9]/30 hover:to-[#6F6BF2]/30 border-[#491BF2]/30 hover:border-[#491BF2]/50 text-[#1F0459] font-semibold shadow-md hover:shadow-lg transition-all duration-200 relative overflow-hidden group text-xs sm:text-sm"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#491BF2]/5 via-[#6D49F2]/5 to-[#6F6BF2]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <HelpCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 text-[#491BF2]" />
-                  <span className="relative z-10">Need guidance?</span>
-                </Button>
-                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#491BF2] rounded-full flex items-center justify-center">
-                  <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-white rounded-full"></div>
-                </div>
-              </div>
-              <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 font-medium hidden sm:block">
-                Get personalized suggestions ✨
-              </p>
-            </div>
+          <div className="flex items-center gap-1 px-2 sm:px-3 py-1 bg-[#491BF2]/10 rounded-full">
+            <Target className="h-3 w-3 sm:h-4 sm:w-4 text-[#491BF2]" />
+            <span className="text-xs sm:text-sm font-medium text-[#491BF2]">
+              {stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}%` : '0%'}
+            </span>
           </div>
         </div>
       </CardHeader>
@@ -404,6 +382,21 @@ const UserStatistics: React.FC = () => {
     </Card>
   );
 
+  // Render Need Guidance Button - Separate component for existing users
+  const renderNeedGuidanceButton = () => (
+    <div className="flex justify-end mb-4">
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={() => setShowStartModal(true)}
+        className="bg-gradient-to-r from-[#AB96D9]/20 to-[#6F6BF2]/20 hover:from-[#AB96D9]/30 hover:to-[#6F6BF2]/30 border-[#491BF2]/30 hover:border-[#491BF2]/50 text-[#1F0459] font-semibold shadow-md hover:shadow-lg transition-all duration-200"
+      >
+        <HelpCircle className="h-4 w-4 mr-2 text-[#491BF2]" />
+        Need guidance?
+      </Button>
+    </div>
+  );
+
   return (
     <div className="space-y-6 sm:space-y-8 px-4 sm:px-0">
       <div className="space-y-1 sm:space-y-2">
@@ -421,39 +414,8 @@ const UserStatistics: React.FC = () => {
       {/* Conditional Language Level Display - only show for existing users */}
       {hasStartedLearning && <LanguageLevelDisplay masteredWords={totalMasteredWords} />}
       
-      {/* Need Guidance Section - Fancy floating helper */}
-      {hasStartedLearning && (
-        <div className="relative">
-          <div className="absolute -top-4 right-0 z-10">
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-[#491BF2] via-[#6D49F2] to-[#6F6BF2] rounded-full blur-lg opacity-30 group-hover:opacity-50 transition-opacity duration-300 animate-pulse"></div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowStartModal(true)}
-                className="relative bg-white/90 backdrop-blur-sm hover:bg-white hover:scale-105 border-2 border-[#491BF2]/30 hover:border-[#491BF2]/60 text-[#1F0459] font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 transform group px-3 sm:px-4 py-2"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <HelpCircle className="h-4 w-4 text-[#491BF2] group-hover:rotate-12 transition-transform duration-300" />
-                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-[#491BF2] rounded-full animate-bounce"></div>
-                  </div>
-                  <span className="text-xs sm:text-sm font-bold bg-gradient-to-r from-[#491BF2] to-[#6D49F2] bg-clip-text text-transparent">
-                    Need guidance?
-                  </span>
-                  <Sparkles className="h-3 w-3 text-[#6F6BF2] group-hover:rotate-180 transition-transform duration-500" />
-                </div>
-              </Button>
-            </div>
-            <div className="mt-2 text-center">
-              <div className="inline-flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-[#491BF2]/10 to-[#6F6BF2]/10 rounded-full border border-[#491BF2]/20">
-                <div className="w-1.5 h-1.5 bg-[#491BF2] rounded-full animate-ping"></div>
-                <span className="text-[10px] font-medium text-[#491BF2]">AI Assistant</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Need Guidance Button - Only show for existing users, placed above Learning Plan */}
+      {hasStartedLearning && renderNeedGuidanceButton()}
       
       {/* Learning Plan Progress Card - Adaptive based on user status */}
       {isFirstTimeUser ? renderFirstTimeUserCard() : renderExistingUserCard()}
