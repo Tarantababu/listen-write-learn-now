@@ -203,49 +203,6 @@ const UserStatistics: React.FC = () => {
   // and resetting it to 0 if the streak is broken
   const streak = streakData.currentStreak;
 
-  // Heatmap data from daily activities
-  const activityHeatmap = useMemo(() => {
-    // If we have the new daily activities data, use that directly
-    if (dailyActivities.length > 0) {
-      return dailyActivities.map(activity => ({
-        date: activity.date,
-        count: activity.exercises || 0,
-        masteredWords: activity.masteredWords || 0
-      }));
-    }
-
-    // Fallback to the old method if no daily activities data
-    const today = new Date();
-    const last90Days = Array.from({
-      length: 90
-    }, (_, i) => subDays(today, i));
-    const completionCounts: {
-      [key: string]: number;
-    } = completions.filter(completion => completion && exercises.find(ex => ex.id === completion.exerciseId)?.language === currentLanguage).reduce((acc: {
-      [key: string]: number;
-    }, completion) => {
-      const dateKey = format(completion.date, 'yyyy-MM-dd');
-      acc[dateKey] = (acc[dateKey] || 0) + 1;
-      return acc;
-    }, {});
-    return last90Days.map(date => ({
-      date,
-      count: completionCounts[format(date, 'yyyy-MM-dd')] || 0,
-      masteredWords: 0
-    }));
-  }, [dailyActivities, completions, exercises, currentLanguage]);
-
-  // Calculate vocabulary trend for today vs yesterday
-  const vocabTrend = (() => {
-    const vocabularyByDay = vocabulary.filter(item => item.language === currentLanguage).reduce((acc: Record<string, number>, item) => {
-      // Use creation date as timestamp
-      const dateKey = format(new Date(), 'yyyy-MM-dd');
-      acc[dateKey] = (acc[dateKey] || 0) + 1;
-      return acc;
-    }, {});
-    return compareWithPreviousDay(vocabularyByDay);
-  })();
-
   // Refresh curriculum data on component mount
   React.useEffect(() => {
     console.log("UserStatistics: Refreshing curriculum data");
@@ -330,11 +287,22 @@ const UserStatistics: React.FC = () => {
               Your structured path to language mastery
             </p>
           </div>
-          <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 rounded-full">
-            <Target className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-primary">
-              {stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}%` : '0%'}
-            </span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 rounded-full">
+              <Target className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-primary">
+                {stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}%` : '0%'}
+              </span>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowStartModal(true)}
+              className="hover:bg-primary/5 hover:border-primary/40"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Options
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -442,37 +410,7 @@ const UserStatistics: React.FC = () => {
       {/* Learning Plan Progress Card - Adaptive based on user status */}
       {isFirstTimeUser ? renderFirstTimeUserCard() : renderExistingUserCard()}
 
-      {/* Secondary Statistics - Only show for existing users */}
-      {hasStartedLearning && (
-        <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-          <StatsCard 
-            title="Vocabulary Collection" 
-            value={vocabulary.filter(item => item.language === currentLanguage).length} 
-            icon={<BookOpen className="text-purple-500" />} 
-            description="Words and phrases saved for review" 
-            trend={vocabTrend} 
-            className="animate-fade-in" 
-          />
-        </div>
-      )}
-      
-      {/* Activity Heatmap - Only show for existing users */}
-      {hasStartedLearning && (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <h3 className="text-xl font-semibold flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-muted-foreground" />
-              Activity Overview
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Your learning activity over the past 3 months
-            </p>
-          </div>
-          <StatsHeatmap activityData={activityHeatmap} isLoading={isLoading} />
-        </div>
-      )}
-
-      {/* Start Modal */}
+      {/* Start Modal - Now available for all users */}
       <Dialog open={showStartModal} onOpenChange={setShowStartModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -481,7 +419,10 @@ const UserStatistics: React.FC = () => {
               Choose Your Learning Path
             </DialogTitle>
             <DialogDescription className="text-base">
-              How would you like to begin your language learning journey?
+              {isFirstTimeUser 
+                ? "How would you like to begin your language learning journey?"
+                : "Continue with your current path or try something new"
+              }
             </DialogDescription>
           </DialogHeader>
           
@@ -495,9 +436,14 @@ const UserStatistics: React.FC = () => {
                   <Play className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-1">Start with Learning Plan</h3>
+                  <h3 className="font-semibold text-lg mb-1">
+                    {isFirstTimeUser ? "Start with Learning Plan" : "Continue Learning Plan"}
+                  </h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Follow our expertly designed curriculum with structured exercises and progressive difficulty.
+                    {isFirstTimeUser 
+                      ? "Follow our expertly designed curriculum with structured exercises and progressive difficulty."
+                      : "Continue with your structured curriculum and track your progress."
+                    }
                   </p>
                 </div>
                 <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -515,7 +461,10 @@ const UserStatistics: React.FC = () => {
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg mb-1">Create Your Own Exercise</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Jump right in by creating custom exercises tailored to your specific learning needs.
+                    {isFirstTimeUser 
+                      ? "Jump right in by creating custom exercises tailored to your specific learning needs."
+                      : "Create additional custom exercises to supplement your learning plan."
+                    }
                   </p>
                 </div>
                 <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
