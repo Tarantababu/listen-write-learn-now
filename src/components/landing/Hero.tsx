@@ -89,7 +89,7 @@ export function Hero() {
     setSampleModalOpen(true);
   };
   return <>
-      <section className="pt-24 pb-20 md:pt-36 relative overflow-hidden bg-gradient-to-br from-white to-brand-light/10">
+      <section className="pt-8 pb-20 md:pt-12 relative overflow-hidden bg-gradient-to-br from-white to-brand-light/10">
         <div className="container px-4 md:px-6 mx-auto">
           <div className="grid lg:grid-cols-2 gap-8 items-center">
             {/* Left Column - Text Content */}
