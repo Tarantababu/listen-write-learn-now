@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, Globe, Play, Volume2 } from 'lucide-react';
+import { ArrowRight, Check, Globe, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { SampleDictationModal } from './SampleDictationModal';
@@ -67,127 +67,21 @@ const languages = [{
 const features = ["🎯 Focused Dictation Practice", "🧠 Deep Learning Method", "📚 Growing Exercise Library", "🔍 Word-Level Accuracy Feedback", "📊 Progress Tracking", "📝 Vocabulary Building"];
 const steps = [{
   number: 1,
-  title: "Choose your language",
+  title: "Choose an exercise",
   description: "Select from our library of carefully curated exercises for your level."
 }, {
   number: 2,
-  title: "Take skill test",
-  description: "Quick 5-minute assessment to determine your starting point."
+  title: "Listen and write",
+  description: "Listen to native speakers and write what you hear, one phrase at a time."
 }, {
   number: 3,
-  title: "Start learning",
-  description: "Begin with personalized dictation exercises that match your level."
+  title: "Compare and learn",
+  description: "Get immediate word-by-word feedback and see where you need improvement."
+}, {
+  number: 4,
+  title: "Track your progress",
+  description: "Build your skills with each session and watch your comprehension improve."
 }];
-
-// Interactive Demo Component
-const InteractiveDemoWidget = () => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [userInput, setUserInput] = useState('');
-  const [hasPlayed, setHasPlayed] = useState(false);
-  
-  const correctText = "Guten Morgen! Wie geht es Ihnen?";
-  const placeholder = "Listen and type what you hear...";
-  
-  const handlePlay = () => {
-    setIsPlaying(true);
-    setHasPlayed(true);
-    // Simulating audio playback
-    setTimeout(() => {
-      setIsPlaying(false);
-    }, 3000);
-  };
-  
-  const getAccuracy = () => {
-    if (!userInput.trim()) return 0;
-    const words = correctText.toLowerCase().split(' ');
-    const userWords = userInput.toLowerCase().split(' ');
-    let correct = 0;
-    
-    userWords.forEach((word, index) => {
-      if (words[index] && word === words[index]) {
-        correct++;
-      }
-    });
-    
-    return Math.round((correct / words.length) * 100);
-  };
-  
-  const accuracy = getAccuracy();
-  
-  return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-      <div className="flex items-center gap-3 mb-4">
-        <FlagIcon code="DE" size={24} />
-        <span className="font-medium text-gray-800">Try German Dictation</span>
-        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Beginner</span>
-      </div>
-      
-      <div className="flex items-center gap-3 mb-4">
-        <Button
-          onClick={handlePlay}
-          disabled={isPlaying}
-          className="flex items-center gap-2 bg-brand-primary hover:bg-brand-secondary"
-          size="sm"
-        >
-          <Volume2 size={16} />
-          {isPlaying ? 'Playing...' : 'Play Audio'}
-        </Button>
-        <div className="text-sm text-gray-600">
-          {isPlaying && <span className="animate-pulse">🔊 Playing German phrase...</span>}
-        </div>
-      </div>
-      
-      <div className="mb-4">
-        <input
-          type="text"
-          value={userInput}
-          onChange={(e) => setUserInput(e.target.value)}
-          placeholder={hasPlayed ? placeholder : "Click play button first"}
-          disabled={!hasPlayed}
-          className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent"
-        />
-      </div>
-      
-      {userInput.length > 0 && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Accuracy: {accuracy}%</span>
-          <div className="w-24 bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-green-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${accuracy}%` }}
-            />
-          </div>
-        </div>
-      )}
-      
-      <div className="mt-3 text-xs text-gray-500">
-        Correct answer: "{correctText}"
-      </div>
-    </div>
-  );
-};
-
-// Progress Indicator Component
-const ProgressIndicator = () => {
-  return (
-    <div className="flex items-center justify-center gap-2 mt-6">
-      <div className="flex items-center gap-1">
-        <div className="w-2 h-2 bg-brand-primary rounded-full"></div>
-        <span className="text-sm text-gray-600">Choose Language</span>
-      </div>
-      <div className="w-8 h-0.5 bg-gray-300"></div>
-      <div className="flex items-center gap-1">
-        <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-        <span className="text-sm text-gray-600">Skill Test</span>
-      </div>
-      <div className="w-8 h-0.5 bg-gray-300"></div>
-      <div className="flex items-center gap-1">
-        <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-        <span className="text-sm text-gray-600">Start Learning</span>
-      </div>
-    </div>
-  );
-};
 
 export function Hero() {
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
@@ -203,7 +97,7 @@ export function Hero() {
               <AnimatedGroup variants={transitionVariants}>
                 <div className="mb-4">
                   <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-brand-dark">
-                    Master Any Language <span className="text-brand-primary">3X Faster</span>
+                    Master Languages Through <span className="text-brand-primary">Dictation</span>
                   </h1>
                   <p className="text-xs text-muted-foreground/70 mt-2 italic">
                     * Dictation transforms passive input into active language mastery.
@@ -211,7 +105,7 @@ export function Hero() {
                 </div>
                 
                 <p className="mt-6 text-xl text-muted-foreground max-w-2xl lg:mx-0 mx-auto">
-                  From beginner to fluent in months, not years. Train your ear, sharpen your memory, and master writing—all in one immersive experience.
+                  Train your ear, sharpen your memory, and improve your writing—all in one immersive experience.
                 </p>
 
                 <div className="mt-10 flex flex-wrap justify-center lg:justify-start gap-4">
@@ -228,24 +122,17 @@ export function Hero() {
                   </div>
                 </div>
                 
-                <div className="mt-10 flex flex-col items-center justify-center lg:justify-start">
-                  <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+                <div className="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+                  <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-6">
                     <Link to="/language-selection" className="flex items-center gap-2">
-                      Start My Free Trial
-                      <ArrowRight size={20} />
+                      Get Started Free
+                      <ArrowRight size={18} />
                     </Link>
                   </Button>
                   
-                  <ProgressIndicator />
-                  
-                  <p className="text-sm text-gray-600 mt-2">Setup takes less than 60 seconds</p>
-                  
-                  <button 
-                    onClick={handleOpenSample}
-                    className="mt-4 text-sm text-brand-primary hover:text-brand-secondary underline"
-                  >
-                    or try a quick demo first
-                  </button>
+                  <Button variant="outline" size="lg" className="rounded-full px-6 border-brand-primary text-brand-primary" onClick={handleOpenSample}>
+                    <Play size={18} className="mr-2" /> Try a Demo
+                  </Button>
                 </div>
                 
                 {/* Product Hunt badge */}
@@ -257,11 +144,15 @@ export function Hero() {
               </AnimatedGroup>
             </div>
 
-            {/* Right Column - Interactive Demo */}
+            {/* Right Column - Hero Image */}
             <div className="flex justify-center lg:justify-end">
               <AnimatedGroup variants={transitionVariants}>
                 <div className="max-w-md w-full">
-                  <InteractiveDemoWidget />
+                  <img 
+                    src="/lovable-uploads/e1e8d5b6-2bcd-4fe7-bf0f-1090e33675da.png" 
+                    alt="Language learning through dictation - illustration of person with headphones practicing on laptop"
+                    className="w-full h-auto object-contain"
+                  />
                 </div>
               </AnimatedGroup>
             </div>
@@ -282,9 +173,9 @@ export function Hero() {
           <div className="mt-24 max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold text-center mb-10 text-brand-dark">How It Works</h2>
             
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-              {steps.map((step, i) => <div key={i} className="flex flex-col items-center text-center gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-brand-primary text-white flex items-center justify-center font-bold text-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              {steps.map((step, i) => <div key={i} className="flex gap-4">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-brand-primary text-white flex items-center justify-center font-bold">
                     {step.number}
                   </div>
                   <div>
@@ -338,20 +229,17 @@ export function Hero() {
             <h2 className="text-3xl font-bold text-center mb-6 text-brand-dark">Ready to Transform Your Language Journey?</h2>
             <p className="text-xl text-muted-foreground mb-8">Join thousands of learners who have improved their language skills with our method.</p>
             
-            <div className="flex flex-col items-center justify-center gap-4">
-              <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-6">
                 <Link to="/language-selection" className="flex items-center gap-2">
-                  Start My Free Trial
-                  <ArrowRight size={20} />
+                  Start Learning Now
+                  <ArrowRight size={18} />
                 </Link>
               </Button>
               
-              <button 
-                onClick={handleOpenSample}
-                className="text-sm text-brand-primary hover:text-brand-secondary underline"
-              >
-                Try a Sample Exercise First
-              </button>
+              <Button variant="outline" size="lg" className="rounded-full px-6 border-brand-primary text-brand-primary" onClick={handleOpenSample}>
+                <Play size={18} className="mr-2" /> Try a Sample Exercise
+              </Button>
             </div>
           </div>
         </div>
