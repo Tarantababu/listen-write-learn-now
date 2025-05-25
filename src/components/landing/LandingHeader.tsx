@@ -75,7 +75,7 @@ export function LandingHeader() {
         data-state={menuState ? 'active' : undefined}
         className="w-full px-2"
         style={{ backgroundColor: '#FCFCFD' }}>
-        <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-12 lg:py-5">
+        <div className="container mx-auto px-4 py-4 md:px-6 lg:py-5">
           <div className="relative flex items-center justify-between">
             {/* Logo */}
             <Link
