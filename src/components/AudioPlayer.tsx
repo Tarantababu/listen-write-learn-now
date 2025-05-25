@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 
 interface AudioPlayerProps {
   audioUrl?: string;
@@ -19,6 +20,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   registerMethods
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const play = () => {
@@ -49,6 +53,28 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     setIsPlaying(true);
   };
 
+  const handleSeek = (value: number[]) => {
+    if (!audioRef.current) return;
+    
+    const newTime = value[0];
+    audioRef.current.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  const handleSeekStart = () => {
+    setIsDragging(true);
+  };
+
+  const handleSeekEnd = () => {
+    setIsDragging(false);
+  };
+
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   // Register methods for external control
   useEffect(() => {
     if (registerMethods) {
@@ -71,13 +97,33 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const handleEnded = () => {
       setIsPlaying(false);
     };
+
+    const handleTimeUpdate = () => {
+      if (!isDragging) {
+        setCurrentTime(audio.currentTime);
+      }
+    };
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration || 0);
+    };
+
+    const handleDurationChange = () => {
+      setDuration(audio.duration || 0);
+    };
     
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('durationchange', handleDurationChange);
     
     return () => {
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('durationchange', handleDurationChange);
     };
-  }, []);
+  }, [isDragging]);
 
   // If no audio URL and not in demo mode, don't render the player
   if (!audioUrl && !demoMode) {
@@ -89,7 +135,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   }
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-4 w-full max-w-md">
       {audioUrl && <audio ref={audioRef} src={audioUrl} />}
       
       <div className="flex items-center gap-2">
@@ -114,9 +160,27 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
           <RotateCcw className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* Progress Bar */}
+      <div className="w-full space-y-2">
+        <Slider
+          value={[currentTime]}
+          max={duration || 100}
+          step={0.1}
+          onValueChange={handleSeek}
+          onValueCommit={handleSeekEnd}
+          onPointerDown={handleSeekStart}
+          className="w-full"
+          disabled={!audioUrl && !demoMode}
+        />
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+      </div>
       
       {demoMode && (
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-xs text-muted-foreground mt-2 text-center">
           Audio would play here in the full version
         </p>
       )}
