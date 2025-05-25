@@ -97,8 +97,11 @@ export function Hero() {
               <AnimatedGroup variants={transitionVariants}>
                 <div className="mb-4">
                   <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-brand-dark">
-                    Master Languages Through <span className="text-brand-primary">Dictation</span>
+                    Master Any Language <span className="text-brand-primary">3X Faster</span>
                   </h1>
+                  <p className="text-lg md:text-xl font-medium text-brand-dark mt-2">
+                    From Beginner to Fluent in Months, Not Years
+                  </p>
                   <p className="text-xs text-muted-foreground/70 mt-2 italic">
                     * Dictation transforms passive input into active language mastery.
                   </p>
@@ -122,16 +125,16 @@ export function Hero() {
                   </div>
                 </div>
                 
-                <div className="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-                  <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-6">
+                <div className="mt-10 flex flex-col items-center justify-center lg:justify-start">
+                  <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all">
                     <Link to="/language-selection" className="flex items-center gap-2">
-                      Get Started Free
-                      <ArrowRight size={18} />
+                      Start My Free Trial
+                      <ArrowRight size={20} />
                     </Link>
                   </Button>
                   
-                  <Button variant="outline" size="lg" className="rounded-full px-6 border-brand-primary text-brand-primary" onClick={handleOpenSample}>
-                    <Play size={18} className="mr-2" /> Try a Demo
+                  <Button variant="ghost" size="sm" className="mt-3 text-brand-primary underline hover:no-underline" onClick={handleOpenSample}>
+                    <Play size={16} className="mr-1" /> Try a quick demo first
                   </Button>
                 </div>
                 
@@ -229,16 +232,16 @@ export function Hero() {
             <h2 className="text-3xl font-bold text-center mb-6 text-brand-dark">Ready to Transform Your Language Journey?</h2>
             <p className="text-xl text-muted-foreground mb-8">Join thousands of learners who have improved their language skills with our method.</p>
             
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-6">
+            <div className="flex flex-col items-center justify-center">
+              <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all">
                 <Link to="/language-selection" className="flex items-center gap-2">
                   Start Learning Now
-                  <ArrowRight size={18} />
+                  <ArrowRight size={20} />
                 </Link>
               </Button>
               
-              <Button variant="outline" size="lg" className="rounded-full px-6 border-brand-primary text-brand-primary" onClick={handleOpenSample}>
-                <Play size={18} className="mr-2" /> Try a Sample Exercise
+              <Button variant="ghost" size="sm" className="mt-3 text-brand-primary underline hover:no-underline" onClick={handleOpenSample}>
+                <Play size={16} className="mr-1" /> Try a sample exercise
               </Button>
             </div>
           </div>
