@@ -5,7 +5,7 @@ import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Trophy, BookOpen, CalendarDays, GraduationCap, Target, TrendingUp, Sparkles, ArrowRight, Play, Plus, X } from 'lucide-react';
+import { Trophy, BookOpen, CalendarDays, GraduationCap, Target, TrendingUp, Sparkles, ArrowRight, Play, Plus, X, HelpCircle } from 'lucide-react';
 import StatsCard from './StatsCard';
 import StatsHeatmap from './StatsHeatmap';
 import { getUserLevel, getLevelProgress } from '@/utils/levelSystem';
@@ -226,17 +226,17 @@ const UserStatistics: React.FC = () => {
 
   // Render First-time User Learning Plan Card
   const renderFirstTimeUserCard = () => (
-    <Card className="w-full border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent relative overflow-hidden">
+    <Card className="w-full border-2 border-[#AB96D9]/30 bg-gradient-to-br from-[#6F6BF2]/10 via-[#6D49F2]/5 to-transparent relative overflow-hidden">
       {/* Decorative elements */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-primary/20 to-transparent rounded-full blur-2xl" />
-      <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-secondary/20 to-transparent rounded-full blur-xl" />
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#491BF2]/20 to-transparent rounded-full blur-2xl" />
+      <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-[#AB96D9]/20 to-transparent rounded-full blur-xl" />
       
       <CardHeader className="pb-4 relative">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-primary animate-pulse" />
-              <CardTitle className="text-2xl font-bold">
+              <Sparkles className="h-6 w-6 text-[#491BF2]" />
+              <CardTitle className="text-2xl font-bold text-[#1F0459]">
                 Ready to Start Learning?
               </CardTitle>
             </div>
@@ -248,12 +248,12 @@ const UserStatistics: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-6 relative">
         <div className="text-center py-8 space-y-6">
-          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-primary to-primary/70 rounded-full flex items-center justify-center shadow-lg">
+          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-[#491BF2] to-[#6D49F2] rounded-full flex items-center justify-center shadow-lg">
             <GraduationCap className="h-10 w-10 text-white" />
           </div>
           
           <div className="space-y-3">
-            <h3 className="text-xl font-bold">Begin Your Language Journey</h3>
+            <h3 className="text-xl font-bold text-[#1F0459]">Begin Your Language Journey</h3>
             <p className="text-muted-foreground max-w-lg mx-auto leading-relaxed">
               Start with our structured learning plan designed by language experts, or jump right in by creating your own exercises.
             </p>
@@ -262,7 +262,7 @@ const UserStatistics: React.FC = () => {
           <Button 
             onClick={() => setShowStartModal(true)}
             size="lg" 
-            className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+            className="bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 text-white"
           >
             <Sparkles className="mr-2 h-5 w-5" />
             Get Started Now
@@ -275,12 +275,12 @@ const UserStatistics: React.FC = () => {
 
   // Render Existing User Learning Plan Card
   const renderExistingUserCard = () => (
-    <Card className="w-full border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+    <Card className="w-full border-2 border-[#AB96D9]/20 bg-gradient-to-br from-[#6F6BF2]/5 to-[#AB96D9]/10">
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-2xl font-bold flex items-center gap-2">
-              <GraduationCap className="h-6 w-6 text-primary" />
+            <CardTitle className="text-2xl font-bold flex items-center gap-2 text-[#1F0459]">
+              <GraduationCap className="h-6 w-6 text-[#491BF2]" />
               Learning Plan Progress
             </CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -288,24 +288,30 @@ const UserStatistics: React.FC = () => {
             </p>
           </div>
           <div className="flex flex-col items-end gap-3">
-            <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 rounded-full">
-              <Target className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">
+            <div className="flex items-center gap-1 px-3 py-1 bg-[#491BF2]/10 rounded-full">
+              <Target className="h-4 w-4 text-[#491BF2]" />
+              <span className="text-sm font-medium text-[#491BF2]">
                 {stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}%` : '0%'}
               </span>
             </div>
             <div className="text-right">
-              <Button 
-                variant="default" 
-                size="sm" 
-                onClick={() => setShowStartModal(true)}
-                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 animate-pulse hover:animate-none border-2 border-amber-400/50"
-              >
-                <Sparkles className="h-4 w-4 mr-2 animate-spin" />
-                Not sure what to do next?
-              </Button>
+              <div className="relative">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowStartModal(true)}
+                  className="bg-gradient-to-r from-[#AB96D9]/20 to-[#6F6BF2]/20 hover:from-[#AB96D9]/30 hover:to-[#6F6BF2]/30 border-[#491BF2]/30 hover:border-[#491BF2]/50 text-[#1F0459] font-semibold shadow-md hover:shadow-lg transition-all duration-200 relative overflow-hidden group"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#491BF2]/5 via-[#6D49F2]/5 to-[#6F6BF2]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <HelpCircle className="h-4 w-4 mr-2 text-[#491BF2]" />
+                  <span className="relative z-10">Need guidance?</span>
+                </Button>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#491BF2] rounded-full flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                </div>
+              </div>
               <p className="text-xs text-muted-foreground mt-1 font-medium">
-                Click here for guidance! 👆
+                Get personalized suggestions ✨
               </p>
             </div>
           </div>
@@ -333,8 +339,8 @@ const UserStatistics: React.FC = () => {
           <>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Foundational Exercises</h3>
-                <span className="text-sm font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                <h3 className="text-lg font-semibold text-[#1F0459]">Foundational Exercises</h3>
+                <span className="text-sm font-medium text-muted-foreground bg-[#AB96D9]/20 px-3 py-1 rounded-full">
                   {stats.completed} of {stats.total} complete
                 </span>
               </div>
@@ -343,6 +349,9 @@ const UserStatistics: React.FC = () => {
                 <Progress 
                   value={stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0} 
                   className="h-3" 
+                  style={{
+                    background: '#AB96D9/20'
+                  }}
                 />
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>Progress</span>
@@ -351,39 +360,39 @@ const UserStatistics: React.FC = () => {
               </div>
               
               <div className="grid grid-cols-3 gap-4">
-                <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="bg-gradient-to-br from-[#6F6BF2]/10 to-[#6D49F2]/10 p-4 rounded-lg border border-[#6F6BF2]/30">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <p className="text-xs font-medium text-green-700 dark:text-green-300 uppercase tracking-wide">
+                    <div className="w-2 h-2 bg-[#6F6BF2] rounded-full"></div>
+                    <p className="text-xs font-medium text-[#491BF2] uppercase tracking-wide">
                       Completed
                     </p>
                   </div>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.completed}</p>
+                  <p className="text-2xl font-bold text-[#1F0459]">{stats.completed}</p>
                 </div>
-                <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="bg-gradient-to-br from-[#6D49F2]/10 to-[#491BF2]/10 p-4 rounded-lg border border-[#6D49F2]/30">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wide">
+                    <div className="w-2 h-2 bg-[#6D49F2] rounded-full"></div>
+                    <p className="text-xs font-medium text-[#491BF2] uppercase tracking-wide">
                       In Progress
                     </p>
                   </div>
-                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.inProgress}</p>
+                  <p className="text-2xl font-bold text-[#1F0459]">{stats.inProgress}</p>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-900/20 p-4 rounded-lg border border-gray-200 dark:border-gray-800">
+                <div className="bg-gradient-to-br from-[#AB96D9]/10 to-[#AB96D9]/20 p-4 rounded-lg border border-[#AB96D9]/30">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                    <div className="w-2 h-2 bg-[#AB96D9] rounded-full"></div>
+                    <p className="text-xs font-medium text-[#491BF2] uppercase tracking-wide">
                       Remaining
                     </p>
                   </div>
-                  <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">
+                  <p className="text-2xl font-bold text-[#1F0459]">
                     {stats.total - stats.completed - stats.inProgress}
                   </p>
                 </div>
               </div>
             </div>
             
-            <Button asChild size="lg" className="w-full">
+            <Button asChild size="lg" className="w-full bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] text-white">
               <Link to="/dashboard/curriculum" className="flex items-center justify-center gap-2">
                 Continue Learning Plan 
                 <ChevronRight className="h-4 w-4" />
@@ -398,7 +407,7 @@ const UserStatistics: React.FC = () => {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold tracking-tight">
+        <h2 className="text-2xl font-bold tracking-tight text-[#1F0459]">
           {isFirstTimeUser ? "Welcome to Your Language Journey" : "Your Learning Journey"}
         </h2>
         <p className="text-muted-foreground">
@@ -419,8 +428,8 @@ const UserStatistics: React.FC = () => {
       <Dialog open={showStartModal} onOpenChange={setShowStartModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <Sparkles className="h-5 w-5 text-primary" />
+            <DialogTitle className="flex items-center gap-2 text-xl text-[#1F0459]">
+              <Sparkles className="h-5 w-5 text-[#491BF2]" />
               Choose Your Learning Path
             </DialogTitle>
             <DialogDescription className="text-base">
@@ -434,14 +443,14 @@ const UserStatistics: React.FC = () => {
           <div className="space-y-4 mt-6">
             <div 
               onClick={handleStartLearningPlan}
-              className="p-4 border-2 border-primary/20 rounded-lg hover:border-primary/40 hover:bg-primary/5 cursor-pointer transition-all duration-200 group"
+              className="p-4 border-2 border-[#AB96D9]/30 rounded-lg hover:border-[#491BF2]/40 hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group"
             >
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
-                  <Play className="h-5 w-5 text-primary" />
+                <div className="p-2 bg-[#491BF2]/10 rounded-lg group-hover:bg-[#491BF2]/20 transition-colors">
+                  <Play className="h-5 w-5 text-[#491BF2]" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-1">
+                  <h3 className="font-semibold text-lg mb-1 text-[#1F0459]">
                     {isFirstTimeUser ? "Start with Learning Plan" : "Continue Learning Plan"}
                   </h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
@@ -451,20 +460,20 @@ const UserStatistics: React.FC = () => {
                     }
                   </p>
                 </div>
-                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors" />
               </div>
             </div>
 
             <div 
               onClick={handleCreateOwnExercise}
-              className="p-4 border-2 border-muted hover:border-primary/40 hover:bg-primary/5 cursor-pointer transition-all duration-200 group rounded-lg"
+              className="p-4 border-2 border-muted hover:border-[#491BF2]/40 hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group rounded-lg"
             >
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-muted group-hover:bg-primary/20 rounded-lg transition-colors">
-                  <Plus className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                <div className="p-2 bg-muted group-hover:bg-[#491BF2]/20 rounded-lg transition-colors">
+                  <Plus className="h-5 w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-1">Create Your Own Exercise</h3>
+                  <h3 className="font-semibold text-lg mb-1 text-[#1F0459]">Create Your Own Exercise</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {isFirstTimeUser 
                       ? "Jump right in by creating custom exercises tailored to your specific learning needs."
@@ -472,7 +481,7 @@ const UserStatistics: React.FC = () => {
                     }
                   </p>
                 </div>
-                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors" />
               </div>
             </div>
           </div>
