@@ -153,7 +153,7 @@ const LanguageLevelDisplay: React.FC<LanguageLevelDisplayProps> = ({ masteredWor
           
           {/* Level Journey Timeline */}
           <div className="pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-6">
               <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Level Journey
               </h4>
@@ -162,65 +162,71 @@ const LanguageLevelDisplay: React.FC<LanguageLevelDisplayProps> = ({ masteredWor
               </span>
             </div>
             
-            <div className="flex justify-between items-center px-2">
-              {LANGUAGE_LEVELS.map((level, index) => {
-                const isPast = index < currentLevelIndex;
-                const isCurrent = index === currentLevelIndex;
-                const isNext = index === currentLevelIndex + 1;
-                
-                return (
-                  <TooltipProvider key={level.level}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex flex-col items-center cursor-help">
-                          <div className={`relative h-4 w-4 rounded-full transition-all duration-300 ${
-                            isCurrent 
-                              ? "bg-gradient-to-br from-purple-500 to-blue-500 ring-4 ring-purple-200/50 dark:ring-purple-500/30 scale-125 shadow-lg" 
-                              : isPast 
-                                ? "bg-gradient-to-br from-green-400 to-emerald-500 shadow-sm" 
-                                : isNext
-                                  ? "bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-500 ring-2 ring-gray-200 dark:ring-gray-600"
-                                  : "bg-gray-200 dark:bg-gray-700"
-                          }`}>
-                            {isPast && (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="h-2 w-2 bg-white rounded-full" />
-                              </div>
-                            )}
+            <div className="relative px-4">
+              {/* Connection line - positioned behind the dots */}
+              <div className="absolute top-2 left-8 right-8 h-0.5 bg-gradient-to-r from-green-400 via-purple-400 to-gray-300 dark:from-green-500 dark:via-purple-500 dark:to-gray-600" />
+              
+              {/* Level dots */}
+              <div className="relative flex justify-between items-center">
+                {LANGUAGE_LEVELS.map((level, index) => {
+                  const isPast = index < currentLevelIndex;
+                  const isCurrent = index === currentLevelIndex;
+                  const isNext = index === currentLevelIndex + 1;
+                  
+                  return (
+                    <TooltipProvider key={level.level}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex flex-col items-center cursor-help relative z-10">
+                            <div className={`relative h-4 w-4 rounded-full transition-all duration-300 ${
+                              isCurrent 
+                                ? "bg-gradient-to-br from-purple-500 to-blue-500 ring-4 ring-purple-200/50 dark:ring-purple-500/30 scale-125 shadow-lg" 
+                                : isPast 
+                                  ? "bg-gradient-to-br from-green-400 to-emerald-500 shadow-sm border-2 border-white dark:border-gray-800" 
+                                  : isNext
+                                    ? "bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-500 ring-2 ring-gray-200 dark:ring-gray-600 border-2 border-white dark:border-gray-800"
+                                    : "bg-gray-200 dark:bg-gray-700 border-2 border-white dark:border-gray-800"
+                            }`}>
+                              {isPast && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="h-2 w-2 bg-white rounded-full" />
+                                </div>
+                              )}
+                              {isCurrent && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="h-2 w-2 bg-white rounded-full animate-pulse" />
+                                </div>
+                              )}
+                            </div>
+                            <span className={`text-[11px] mt-3 font-medium transition-colors ${
+                              isCurrent 
+                                ? "text-purple-700 dark:text-purple-300 font-bold" 
+                                : isPast 
+                                  ? "text-green-600 dark:text-green-400"
+                                  : "text-gray-500 dark:text-gray-400"
+                            }`}>
+                              {level.level}
+                            </span>
                           </div>
-                          <span className={`text-[11px] mt-2 font-medium transition-colors ${
-                            isCurrent 
-                              ? "text-purple-700 dark:text-purple-300" 
-                              : isPast 
-                                ? "text-green-600 dark:text-green-400"
-                                : "text-gray-500 dark:text-gray-400"
-                          }`}>
-                            {level.level}
-                          </span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="text-xs p-3 max-w-xs">
-                        <div className="space-y-1">
-                          <p className="font-semibold text-gray-900 dark:text-white">
-                            {level.title}
-                          </p>
-                          <p className="text-gray-600 dark:text-gray-300">
-                            {level.cefrEquivalent}
-                          </p>
-                          <p className="text-gray-500 dark:text-gray-400">
-                            {formatNumber(level.minWords)}+ words required
-                          </p>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                );
-              })}
-            </div>
-            
-            {/* Connection line */}
-            <div className="relative mt-[-8px] mx-4">
-              <div className="h-0.5 bg-gradient-to-r from-green-300 via-purple-300 to-gray-300 dark:from-green-600 dark:via-purple-600 dark:to-gray-600" />
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs p-3 max-w-xs">
+                          <div className="space-y-1">
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                              {level.title}
+                            </p>
+                            <p className="text-gray-600 dark:text-gray-300">
+                              {level.cefrEquivalent}
+                            </p>
+                            <p className="text-gray-500 dark:text-gray-400">
+                              {formatNumber(level.minWords)}+ words required
+                            </p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
