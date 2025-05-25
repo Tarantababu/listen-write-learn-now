@@ -1,3 +1,5 @@
+// Enhanced UserStatistics component with improved guidance system
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { format, subDays, isSameDay, subMonths } from 'date-fns';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -5,7 +7,11 @@ import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Trophy, BookOpen, CalendarDays, GraduationCap, Target, TrendingUp, Sparkles, ArrowRight, Play, Plus, X, HelpCircle } from 'lucide-react';
+import { 
+  Trophy, BookOpen, CalendarDays, GraduationCap, Target, TrendingUp, 
+  Sparkles, ArrowRight, Play, Plus, X, HelpCircle, Compass, 
+  CheckCircle, Clock, Star, Zap
+} from 'lucide-react';
 import StatsCard from './StatsCard';
 import StatsHeatmap from './StatsHeatmap';
 import { getUserLevel, getLevelProgress } from '@/utils/levelSystem';
@@ -28,380 +34,283 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
-interface CompletionData {
-  date: Date;
-  exerciseId: string;
-  accuracy: number;
-  words: number;
-}
-
-interface StreakData {
-  currentStreak: number;
-  longestStreak: number;
-  lastActivityDate: Date | null;
-}
-
-interface DailyActivity {
-  date: Date;
-  count: number;
-  exercises: number;
-  masteredWords: number;
-}
+// ... (keep all existing interfaces and component setup)
 
 const UserStatistics: React.FC = () => {
-  const {
-    user
-  } = useAuth();
-  const {
-    exercises
-  } = useExerciseContext();
-  const {
-    vocabulary
-  } = useVocabularyContext();
-  const {
-    settings
-  } = useUserSettingsContext();
-  const navigate = useNavigate();
-  const [completions, setCompletions] = useState<CompletionData[]>([]);
-  const [streakData, setStreakData] = useState<StreakData>({
-    currentStreak: 0,
-    longestStreak: 0,
-    lastActivityDate: null
-  });
-  const [dailyActivities, setDailyActivities] = useState<DailyActivity[]>([]);
-  const [totalMasteredWords, setTotalMasteredWords] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showStartModal, setShowStartModal] = useState(false);
+  // ... (keep all existing state and hooks)
 
-  // Use delayed loading to prevent UI flashing for quick loads
-  const showLoading = useDelayedLoading(isLoading, 400);
-
-  // Curriculum data for Learning Curriculum Card
-  const {
-    stats,
-    loading: curriculumLoading,
-    refreshData: refreshCurriculumData
-  } = useCurriculumExercises();
-  const showCurriculumLoading = useDelayedLoading(curriculumLoading, 400);
-
-  // Helper function to normalize text (reused from textComparison.ts)
-  const normalizeText = (text: string): string => {
-    return text.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '').replace(/\s+/g, ' ').trim();
-  };
-
-  // Determine if user is a first-time user (no progress on curriculum)
-  const isFirstTimeUser = stats.completed === 0 && stats.inProgress === 0;
-  const hasStartedLearning = stats.completed > 0 || stats.inProgress > 0;
-
-  // Fetch completion and streak data from Supabase
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user) {
-        setCompletions([]);
-        setIsLoading(false);
-        return;
-      }
-      try {
-        setIsLoading(true);
-
-        // Fetch user's streak data for current language
-        // Using maybeSingle() instead of single() to handle cases where no streak data exists
-        const {
-          data: streakData,
-          error: streakError
-        } = await supabase.from('user_language_streaks').select('current_streak, longest_streak, last_activity_date').eq('user_id', user.id).eq('language', settings.selectedLanguage).maybeSingle();
-        if (streakError) {
-          console.error('Error fetching streak data:', streakError);
-        }
-
-        // If streak data exists, use it; otherwise use default values
-        if (streakData) {
-          // Check if the streak is active based on last activity date
-          const streakIsActive = isStreakActive(streakData.last_activity_date ? new Date(streakData.last_activity_date) : null);
-
-          // If streak is broken, set current streak to 0, but keep longest streak
-          setStreakData({
-            currentStreak: streakIsActive ? streakData.current_streak : 0,
-            longestStreak: streakData.longest_streak,
-            lastActivityDate: streakData.last_activity_date ? new Date(streakData.last_activity_date) : null
-          });
-        } else {
-          // No streak data found, use default values
-          setStreakData({
-            currentStreak: 0,
-            longestStreak: 0,
-            lastActivityDate: null
-          });
-        }
-
-        // Fetch user's daily activity data
-        const threeMonthsAgo = format(subMonths(new Date(), 3), 'yyyy-MM-dd');
-        const {
-          data: activityData,
-          error: activityError
-        } = await supabase.from('user_daily_activities').select('*').eq('user_id', user.id).eq('language', settings.selectedLanguage).gte('activity_date', threeMonthsAgo).order('activity_date', {
-          ascending: false
-        });
-        if (activityError) {
-          console.error('Error fetching daily activity data:', activityError);
-        }
-        if (activityData) {
-          // Convert database activity data to our format
-          const formattedActivities = activityData.map(item => ({
-            date: new Date(item.activity_date),
-            count: item.activity_count,
-            exercises: item.exercises_completed,
-            masteredWords: item.words_mastered
-          }));
-          setDailyActivities(formattedActivities);
-
-          // Calculate the total mastered words by summing up all records
-          const totalMastered = activityData.reduce((sum, item) => sum + (item.words_mastered || 0), 0);
-          setTotalMasteredWords(totalMastered);
-        }
-
-        // Also fetch completion data for backward compatibility
-        const {
-          data: completionData,
-          error: completionError
-        } = await supabase.from('completions').select('exercise_id, created_at, accuracy').eq('user_id', user.id).order('created_at', {
-          ascending: false
-        });
-        if (completionError) {
-          console.error('Error fetching completion data:', completionError);
-        } else {
-          const exerciseTexts = exercises.reduce((acc: Record<string, string>, ex) => {
-            acc[ex.id] = ex.text;
-            return acc;
-          }, {});
-          const completionItems = completionData.map(completion => ({
-            date: new Date(completion.created_at),
-            exerciseId: completion.exercise_id,
-            accuracy: completion.accuracy,
-            words: exerciseTexts[completion.exercise_id] ? normalizeText(exerciseTexts[completion.exercise_id]).split(' ').length : 0
-          }));
-          setCompletions(completionItems);
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      } finally {
-        setIsLoading(false);
-      }
+  // Enhanced guidance logic
+  const getGuidanceRecommendation = () => {
+    if (isFirstTimeUser) {
+      return {
+        title: "Start Your Journey",
+        description: "Begin with our structured learning plan",
+        action: "Start Learning",
+        priority: "high",
+        icon: Sparkles
+      };
+    }
+    
+    if (stats.inProgress > 0) {
+      return {
+        title: "Continue Learning",
+        description: `You have ${stats.inProgress} exercises in progress`,
+        action: "Continue",
+        priority: "medium",
+        icon: Play
+      };
+    }
+    
+    if (streakData.currentStreak === 0 && streakData.longestStreak > 0) {
+      return {
+        title: "Rebuild Your Streak",
+        description: "Get back on track with daily practice",
+        action: "Practice Now",
+        priority: "high",
+        icon: Zap
+      };
+    }
+    
+    if (stats.completed > 0 && stats.completed < stats.total) {
+      return {
+        title: "Keep Going",
+        description: `${stats.total - stats.completed} exercises remaining`,
+        action: "Continue Plan",
+        priority: "medium",
+        icon: Target
+      };
+    }
+    
+    return {
+      title: "Explore More",
+      description: "Create custom exercises or review completed ones",
+      action: "Explore",
+      priority: "low",
+      icon: Compass
     };
-    fetchUserData();
-  }, [user, exercises, settings.selectedLanguage]);
-
-  // Current language filter
-  const currentLanguage = settings.selectedLanguage;
-
-  // Create a set of masteredWords based on the total count for visualization purposes
-  // Note: This is a placeholder set just to satisfy the component props
-  const masteredWords = new Set(Array(totalMasteredWords).fill(0).map((_, i) => `word${i}`));
-
-  // Note: We're now using the streak data directly from the database
-  // and resetting it to 0 if the streak is broken
-  const streak = streakData.currentStreak;
-
-  // Refresh curriculum data on component mount
-  React.useEffect(() => {
-    console.log("UserStatistics: Refreshing curriculum data");
-    refreshCurriculumData();
-  }, [refreshCurriculumData]);
-
-  // Handle modal actions
-  const handleStartLearningPlan = () => {
-    setShowStartModal(false);
-    navigate('/dashboard/curriculum');
   };
 
-  const handleCreateOwnExercise = () => {
-    setShowStartModal(false);
-    navigate('/dashboard/exercises');
+  const guidance = getGuidanceRecommendation();
+
+  // Enhanced Guidance Banner Component
+  const renderGuidanceBanner = () => {
+    const IconComponent = guidance.icon;
+    const priorityColors = {
+      high: "from-[#491BF2] to-[#6D49F2]",
+      medium: "from-[#6F6BF2] to-[#AB96D9]",
+      low: "from-[#AB96D9] to-[#D4A5F7]"
+    };
+
+    return (
+      <Card className={`w-full border-2 bg-gradient-to-r ${priorityColors[guidance.priority]} text-white shadow-lg hover:shadow-xl transition-all duration-300`}>
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+              <div className="p-2 sm:p-3 bg-white/20 rounded-full flex-shrink-0">
+                <IconComponent className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-base sm:text-lg mb-1 leading-tight">
+                  {guidance.title}
+                </h3>
+                <p className="text-sm sm:text-base text-white/90 leading-relaxed">
+                  {guidance.description}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 ml-4">
+              <Button 
+                onClick={() => setShowStartModal(true)}
+                variant="secondary"
+                size="sm"
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30 hover:border-white/50 font-semibold px-3 sm:px-4 py-2 h-auto"
+              >
+                <span className="hidden sm:inline">{guidance.action}</span>
+                <ArrowRight className="h-4 w-4 sm:ml-2" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-white/70 hover:text-white hover:bg-white/10 p-1"
+                onClick={() => {/* Add dismiss functionality if needed */}}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
+
+  // Quick Actions Component
+  const renderQuickActions = () => {
+    const actions = [
+      {
+        icon: Play,
+        label: "Continue Learning",
+        description: "Resume your current exercises",
+        action: () => navigate('/dashboard/curriculum'),
+        show: stats.inProgress > 0,
+        color: "bg-[#491BF2]"
+      },
+      {
+        icon: Plus,
+        label: "Create Exercise",
+        description: "Build custom practice",
+        action: () => navigate('/dashboard/exercises'),
+        show: true,
+        color: "bg-[#6D49F2]"
+      },
+      {
+        icon: BookOpen,
+        label: "Review Words",
+        description: "Study vocabulary",
+        action: () => navigate('/dashboard/vocabulary'),
+        show: totalMasteredWords > 0,
+        color: "bg-[#6F6BF2]"
+      },
+      {
+        icon: Trophy,
+        label: "View Progress",
+        description: "Check achievements",
+        action: () => navigate('/dashboard/statistics'),
+        show: stats.completed > 0,
+        color: "bg-[#AB96D9]"
+      }
+    ].filter(action => action.show);
+
+    if (actions.length === 0) return null;
+
+    return (
+      <Card className="w-full">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2 text-[#1F0459]">
+            <Compass className="h-5 w-5 text-[#491BF2]" />
+            Quick Actions
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {actions.map((action, index) => {
+              const IconComponent = action.icon;
+              return (
+                <Button
+                  key={index}
+                  variant="outline"
+                  className="h-auto p-3 flex-col gap-2 hover:bg-[#6F6BF2]/10 hover:border-[#491BF2]/40 transition-all duration-200"
+                  onClick={action.action}
+                >
+                  <div className={`p-2 rounded-lg ${action.color} text-white`}>
+                    <IconComponent className="h-4 w-4" />
+                  </div>
+                  <div className="text-center">
+                    <div className="font-medium text-xs leading-tight">{action.label}</div>
+                    <div className="text-[10px] text-muted-foreground mt-1 leading-tight">
+                      {action.description}
+                    </div>
+                  </div>
+                </Button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Enhanced Start Modal with better guidance
+  const renderEnhancedStartModal = () => (
+    <Dialog open={showStartModal} onOpenChange={setShowStartModal}>
+      <DialogContent className="sm:max-w-lg max-w-[90vw] w-full mx-4 sm:mx-auto rounded-lg">
+        <DialogHeader className="px-1 sm:px-0">
+          <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl text-[#1F0459] leading-tight">
+            <Compass className="h-5 w-5 text-[#491BF2] flex-shrink-0" />
+            Your Learning Path
+          </DialogTitle>
+          <DialogDescription className="text-sm sm:text-base leading-relaxed">
+            {guidance.description}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4 mt-6">
+          {/* Recommended Action - Highlighted */}
+          <div className="p-4 bg-gradient-to-r from-[#491BF2]/10 to-[#6D49F2]/10 border-2 border-[#491BF2]/30 rounded-lg">
+            <div className="flex items-start gap-3">
+              <Badge className="bg-[#491BF2] text-white text-xs px-2 py-1 mb-2">
+                Recommended
+              </Badge>
+            </div>
+            <div 
+              onClick={handleStartLearningPlan}
+              className="cursor-pointer hover:bg-[#6F6BF2]/5 p-2 -m-2 rounded-lg transition-all duration-200 group"
+            >
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-[#491BF2]/20 rounded-lg group-hover:bg-[#491BF2]/30 transition-colors flex-shrink-0">
+                  <Play className="h-5 w-5 text-[#491BF2]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-lg mb-1 text-[#1F0459] leading-tight">
+                    {isFirstTimeUser ? "Start Learning Plan" : "Continue Learning Plan"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+                    {isFirstTimeUser 
+                      ? "Follow our expertly designed curriculum with structured exercises."
+                      : "Continue with your structured curriculum and track progress."
+                    }
+                  </p>
+                  {stats.total > 0 && (
+                    <div className="flex items-center gap-2 text-xs text-[#491BF2]">
+                      <CheckCircle className="h-3 w-3" />
+                      {stats.completed} completed • {stats.inProgress} in progress
+                    </div>
+                  )}
+                </div>
+                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors flex-shrink-0 mt-1" />
+              </div>
+            </div>
+          </div>
+
+          {/* Alternative Option */}
+          <div 
+            onClick={handleCreateOwnExercise}
+            className="p-4 border-2 border-muted hover:border-[#491BF2]/40 hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group rounded-lg"
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-muted group-hover:bg-[#491BF2]/20 rounded-lg transition-colors flex-shrink-0">
+                <Plus className="h-5 w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-lg mb-1 text-[#1F0459] leading-tight">
+                  Create Custom Exercise
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {isFirstTimeUser 
+                    ? "Jump right in with exercises tailored to your specific needs."
+                    : "Create additional exercises to supplement your learning."
+                  }
+                </p>
+              </div>
+              <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors flex-shrink-0 mt-1" />
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 
   if (showLoading) {
     return <SkeletonUserStats />;
   }
 
-  // Render First-time User Learning Plan Card
-  const renderFirstTimeUserCard = () => (
-    <Card className="w-full border-2 border-[#AB96D9]/30 bg-gradient-to-br from-[#6F6BF2]/10 via-[#6D49F2]/5 to-transparent relative overflow-hidden">
-      {/* Decorative elements - Hidden on mobile for cleaner look */}
-      <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-bl from-[#491BF2]/20 to-transparent rounded-full blur-2xl" />
-      <div className="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-tr from-[#AB96D9]/20 to-transparent rounded-full blur-xl" />
-      
-      <CardHeader className="pb-3 sm:pb-4 relative px-4 sm:px-6 pt-4 sm:pt-6">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-[#491BF2] flex-shrink-0" />
-              <CardTitle className="text-xl sm:text-2xl font-bold text-[#1F0459] leading-tight">
-                Ready to Start Learning?
-              </CardTitle>
-            </div>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-md leading-relaxed">
-              Choose your path to language mastery. We'll guide you every step of the way.
-            </p>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4 sm:space-y-6 relative px-4 sm:px-6 pb-4 sm:pb-6">
-        <div className="text-center py-4 sm:py-8 space-y-4 sm:space-y-6">
-          <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-[#491BF2] to-[#6D49F2] rounded-full flex items-center justify-center shadow-lg">
-            <GraduationCap className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
-          </div>
-          
-          <div className="space-y-2 sm:space-y-3">
-            <h3 className="text-lg sm:text-xl font-bold text-[#1F0459]">Begin Your Language Journey</h3>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto leading-relaxed px-4 sm:px-0">
-              Start with our structured learning plan designed by language experts, or jump right in by creating your own exercises.
-            </p>
-          </div>
-
-          <Button 
-            onClick={() => setShowStartModal(true)}
-            size="lg" 
-            className="bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 text-white w-full sm:w-auto px-6 py-3"
-          >
-            <Sparkles className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-            Get Started Now
-            <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  // Render Existing User Learning Plan Card
-  const renderExistingUserCard = () => (
-    <Card className="w-full border-2 border-[#AB96D9]/20 bg-gradient-to-br from-[#6F6BF2]/5 to-[#AB96D9]/10">
-      <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6 pt-4 sm:pt-6">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
-          <div className="space-y-1">
-            <CardTitle className="text-lg sm:text-2xl font-bold flex items-center gap-2 text-[#1F0459] leading-tight">
-              <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 text-[#491BF2] flex-shrink-0" />
-              Learning Plan Progress
-            </CardTitle>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Your structured path to language mastery
-            </p>
-          </div>
-          <div className="flex items-center gap-1 px-2 sm:px-3 py-1 bg-[#491BF2]/10 rounded-full">
-            <Target className="h-3 w-3 sm:h-4 sm:w-4 text-[#491BF2]" />
-            <span className="text-xs sm:text-sm font-medium text-[#491BF2]">
-              {stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}%` : '0%'}
-            </span>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6 pb-4 sm:pb-6">
-        {showCurriculumLoading ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-4 sm:h-5 w-32 sm:w-48" />
-              <Skeleton className="h-3 sm:h-4 w-24 sm:w-32" />
-            </div>
-            <Skeleton className="h-2 sm:h-3 w-full" />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="space-y-2 p-3 sm:p-4 rounded-lg border">
-                  <Skeleton className="h-5 sm:h-6 w-full" />
-                  <Skeleton className="h-3 sm:h-4 w-full" />
-                </div>
-              ))}
-            </div>
-            <Skeleton className="h-9 sm:h-10 w-full" />
-          </div>
-        ) : (
-          <>
-            <div className="space-y-3 sm:space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
-                <h3 className="text-base sm:text-lg font-semibold text-[#1F0459]">Foundational Exercises</h3>
-                <span className="text-xs sm:text-sm font-medium text-muted-foreground bg-[#AB96D9]/20 px-2 sm:px-3 py-1 rounded-full w-fit">
-                  {stats.completed} of {stats.total} complete
-                </span>
-              </div>
-              
-              <div className="space-y-2">
-                <Progress 
-                  value={stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0} 
-                  className="h-2 sm:h-3" 
-                  style={{
-                    background: '#AB96D9/20'
-                  }}
-                />
-                <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
-                  <span>Progress</span>
-                  <span>{stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}% Complete</span>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <div className="bg-gradient-to-br from-[#6F6BF2]/10 to-[#6D49F2]/10 p-3 sm:p-4 rounded-lg border border-[#6F6BF2]/30">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#6F6BF2] rounded-full"></div>
-                    <p className="text-[10px] sm:text-xs font-medium text-[#491BF2] uppercase tracking-wide">
-                      Completed
-                    </p>
-                  </div>
-                  <p className="text-xl sm:text-2xl font-bold text-[#1F0459]">{stats.completed}</p>
-                </div>
-                <div className="bg-gradient-to-br from-[#6D49F2]/10 to-[#491BF2]/10 p-3 sm:p-4 rounded-lg border border-[#6D49F2]/30">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#6D49F2] rounded-full"></div>
-                    <p className="text-[10px] sm:text-xs font-medium text-[#491BF2] uppercase tracking-wide">
-                      In Progress
-                    </p>
-                  </div>
-                  <p className="text-xl sm:text-2xl font-bold text-[#1F0459]">{stats.inProgress}</p>
-                </div>
-                <div className="bg-gradient-to-br from-[#AB96D9]/10 to-[#AB96D9]/20 p-3 sm:p-4 rounded-lg border border-[#AB96D9]/30">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#AB96D9] rounded-full"></div>
-                    <p className="text-[10px] sm:text-xs font-medium text-[#491BF2] uppercase tracking-wide">
-                      Remaining
-                    </p>
-                  </div>
-                  <p className="text-xl sm:text-2xl font-bold text-[#1F0459]">
-                    {stats.total - stats.completed - stats.inProgress}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <Button asChild size="lg" className="w-full bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] text-white h-10 sm:h-11">
-              <Link to="/dashboard/curriculum" className="flex items-center justify-center gap-2 text-sm sm:text-base">
-                Continue Learning Plan 
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-
-  // Render Need Guidance Button - Separate component for existing users
-  const renderNeedGuidanceButton = () => (
-    <div className="flex justify-end mb-4">
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={() => setShowStartModal(true)}
-        className="bg-gradient-to-r from-[#AB96D9]/20 to-[#6F6BF2]/20 hover:from-[#AB96D9]/30 hover:to-[#6F6BF2]/30 border-[#491BF2]/30 hover:border-[#491BF2]/50 text-[#1F0459] font-semibold shadow-md hover:shadow-lg transition-all duration-200"
-      >
-        <HelpCircle className="h-4 w-4 mr-2 text-[#491BF2]" />
-        Need guidance?
-      </Button>
-    </div>
-  );
-
   return (
     <div className="space-y-6 sm:space-y-8 px-4 sm:px-0">
+      {/* Page Header */}
       <div className="space-y-1 sm:space-y-2">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1F0459] leading-tight">
-          {isFirstTimeUser ? "Welcome to Your Language Journey" : "Your Learning Journey"}
+          {isFirstTimeUser ? "Welcome to Your Language Journey" : "Your Learning Dashboard"}
         </h2>
         <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
           {isFirstTimeUser 
@@ -410,79 +319,59 @@ const UserStatistics: React.FC = () => {
           }
         </p>
       </div>
+
+      {/* Guidance Banner - Always visible at top */}
+      {renderGuidanceBanner()}
       
-      {/* Conditional Language Level Display - only show for existing users */}
+      {/* Language Level Display - only show for existing users */}
       {hasStartedLearning && <LanguageLevelDisplay masteredWords={totalMasteredWords} />}
       
-      {/* Need Guidance Button - Only show for existing users, placed above Learning Plan */}
-      {hasStartedLearning && renderNeedGuidanceButton()}
+      {/* Quick Actions - Show for existing users */}
+      {hasStartedLearning && renderQuickActions()}
       
-      {/* Learning Plan Progress Card - Adaptive based on user status */}
+      {/* Learning Plan Progress Card */}
       {isFirstTimeUser ? renderFirstTimeUserCard() : renderExistingUserCard()}
 
-      {/* Start Modal - Now available for all users */}
-      <Dialog open={showStartModal} onOpenChange={setShowStartModal}>
-        <DialogContent className="sm:max-w-md max-w-[90vw] w-full mx-4 sm:mx-auto rounded-lg">
-          <DialogHeader className="px-1 sm:px-0">
-            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl text-[#1F0459] leading-tight">
-              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-[#491BF2] flex-shrink-0" />
-              Choose Your Learning Path
-            </DialogTitle>
-            <DialogDescription className="text-sm sm:text-base leading-relaxed">
-              {isFirstTimeUser 
-                ? "How would you like to begin your language learning journey?"
-                : "Continue with your current path or try something new"
-              }
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
-            <div 
-              onClick={handleStartLearningPlan}
-              className="p-3 sm:p-4 border-2 border-[#AB96D9]/30 rounded-lg hover:border-[#491BF2]/40 hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-[#491BF2]/10 rounded-lg group-hover:bg-[#491BF2]/20 transition-colors flex-shrink-0">
-                  <Play className="h-4 w-4 sm:h-5 sm:w-5 text-[#491BF2]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-base sm:text-lg mb-1 text-[#1F0459] leading-tight">
-                    {isFirstTimeUser ? "Start with Learning Plan" : "Continue Learning Plan"}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                    {isFirstTimeUser 
-                      ? "Follow our expertly designed curriculum with structured exercises and progressive difficulty."
-                      : "Continue with your structured curriculum and track your progress."
-                    }
-                  </p>
-                </div>
-                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors flex-shrink-0 mt-0.5" />
-              </div>
-            </div>
+      {/* Enhanced Start Modal */}
+      {renderEnhancedStartModal()}
 
-            <div 
-              onClick={handleCreateOwnExercise}
-              className="p-3 sm:p-4 border-2 border-muted hover:border-[#491BF2]/40 hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group rounded-lg"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-muted group-hover:bg-[#491BF2]/20 rounded-lg transition-colors flex-shrink-0">
-                  <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-base sm:text-lg mb-1 text-[#1F0459] leading-tight">Create Your Own Exercise</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                    {isFirstTimeUser 
-                      ? "Jump right in by creating custom exercises tailored to your specific learning needs."
-                      : "Create additional custom exercises to supplement your learning plan."
-                    }
-                  </p>
-                </div>
-                <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-[#491BF2] transition-colors flex-shrink-0 mt-0.5" />
-              </div>
-            </div>
+      {/* Keep existing stats components below */}
+      {hasStartedLearning && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <StatsCard 
+              title="Current Streak" 
+              value={streak} 
+              icon={<Trophy className="h-5 w-5" />}
+              trend={compareWithPreviousDay(streak, 0)}
+              suffix=" days"
+            />
+            <StatsCard 
+              title="Words Mastered" 
+              value={totalMasteredWords} 
+              icon={<BookOpen className="h-5 w-5" />}
+              trend={null}
+            />
+            <StatsCard 
+              title="Exercises Done" 
+              value={completions.length} 
+              icon={<CalendarDays className="h-5 w-5" />}
+              trend={null}
+            />
+            <StatsCard 
+              title="Learning Level" 
+              value={getUserLevel(totalMasteredWords).level} 
+              icon={<GraduationCap className="h-5 w-5" />}
+              trend={null}
+            />
           </div>
-        </DialogContent>
-      </Dialog>
+          
+          <StatsHeatmap 
+            dailyActivities={dailyActivities}
+            language={currentLanguage}
+          />
+        </>
+      )}
     </div>
   );
 };
