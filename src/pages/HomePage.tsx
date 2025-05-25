@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
@@ -59,60 +60,12 @@ const HomePage = () => {
       {shouldShowSubscriptionBanner && <SubscriptionBanner />}
       
       <div className="flex flex-col gap-6">
-        {/* Main Content Grid - Mobile-first responsive design */}
+        {/* User Statistics - now contains the Curriculum Progress card */}
         <div className="w-full">
           <ExerciseProvider>
-            {/* 
-              Two-column layout for Learning Plan Progress and Language Journey
-              - Single column on mobile (< md breakpoint)
-              - Two columns on tablet and desktop (>= md breakpoint)
-              - Equal width columns with gap
-            */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* Learning Plan Progress Column */}
-              <div className="w-full">
-                <LearningPlanProgress />
-              </div>
-              
-              {/* Your Language Journey Column */}
-              <div className="w-full">
-                <LanguageJourney />
-              </div>
-            </div>
-            
-            {/* Rest of UserStatistics content */}
             <UserStatistics />
           </ExerciseProvider>
         </div>
-      </div>
-    </div>
-  );
-};
-
-// Placeholder components - replace with your actual components
-const LearningPlanProgress = () => {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 h-full">
-      <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-        Learning Plan Progress
-      </h2>
-      {/* Your Learning Plan Progress content goes here */}
-      <div className="space-y-4">
-        {/* Add your progress bars, charts, or other content */}
-      </div>
-    </div>
-  );
-};
-
-const LanguageJourney = () => {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 h-full">
-      <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-        Your Language Journey
-      </h2>
-      {/* Your Language Journey content goes here */}
-      <div className="space-y-4">
-        {/* Add your journey timeline, milestones, or other content */}
       </div>
     </div>
   );
