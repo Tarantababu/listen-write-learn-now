@@ -69,15 +69,6 @@ const HomePage = () => {
               - Equal width columns with gap
             */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* Learning Plan Progress Column */}
-              <div className="w-full">
-                <LearningPlanProgress />
-              </div>
-              
-              {/* Your Language Journey Column */}
-              <div className="w-full">
-                <LanguageJourney />
-              </div>
             </div>
             
             {/* Rest of UserStatistics content */}
