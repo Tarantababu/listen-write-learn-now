@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import VocabularyPlaylist from '@/components/VocabularyPlaylist';
@@ -17,23 +18,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-
-interface VocabularyItem {
-  id: string;
-  word: string;
-  definition?: string;
-  example?: string;
-  exampleAudio?: string;
-  language: string;
-  lastReviewed?: Date;
-}
-
-interface VocabularyCardProps {
-  item: VocabularyItem;
-  onDelete: () => void;
-  isSelected?: boolean;
-  onSelect?: () => void;
-}
 
 const VocabularyPage = () => {
   const {
@@ -131,8 +115,8 @@ const VocabularyPage = () => {
         throw new Error('Vocabulary item not found');
       }
 
-      // Use the example audio URL if available
-      const audioUrl = vocabularyItem.exampleAudio;
+      // Use the audio URL if available
+      const audioUrl = vocabularyItem.audioUrl;
       
       if (!audioUrl) {
         throw new Error('No audio available for this item');
@@ -292,7 +276,7 @@ const VocabularyPage = () => {
     const isLoading = audioLoading[audioKey];
     const isPlaying = playingAudio === audioKey;
     const vocabularyItem = filteredVocabulary.find(item => item.id === itemId);
-    const hasAudio = vocabularyItem?.exampleAudio;
+    const hasAudio = vocabularyItem?.audioUrl;
 
     if (!hasAudio) return null;
 
@@ -525,7 +509,7 @@ const VocabularyPage = () => {
                                 <div className="flex justify-between items-start mb-3">
                                   <h3 className="font-semibold text-lg text-primary">{item.word}</h3>
                                   <div className="flex items-center gap-1">
-                                    {item.exampleAudio && (
+                                    {item.audioUrl && (
                                       <AudioButton itemId={item.id} size="sm" className="h-6 w-6 p-0" />
                                     )}
                                     <Button variant="ghost" size="sm" onClick={() => toggleDefinition(item.id)} className="h-6 w-6 p-0">
@@ -541,11 +525,11 @@ const VocabularyPage = () => {
                                         {item.definition}
                                       </p>
                                     )}
-                                    {item.example && (
+                                    {item.exampleSentence && (
                                       <div className="text-xs italic text-muted-foreground border-l-2 border-muted pl-2">
                                         <div className="flex items-start gap-2">
-                                          <span className="flex-1">"{item.example}"</span>
-                                          {item.exampleAudio && (
+                                          <span className="flex-1">"{item.exampleSentence}"</span>
+                                          {item.audioUrl && (
                                             <AudioButton itemId={item.id} size="sm" className="h-4 w-4 p-0 mt-0.5 flex-shrink-0" />
                                           )}
                                         </div>
@@ -627,7 +611,7 @@ const VocabularyPage = () => {
                                 <h2 className="text-2xl sm:text-3xl font-bold text-primary">
                                   {filteredVocabulary[currentCardIndex]?.word}
                                 </h2>
-                                {filteredVocabulary[currentCardIndex]?.exampleAudio && (
+                                {filteredVocabulary[currentCardIndex]?.audioUrl && (
                                   <AudioButton 
                                     itemId={filteredVocabulary[currentCardIndex]?.id} 
                                     size="lg" 
@@ -657,13 +641,13 @@ const VocabularyPage = () => {
                                       {filteredVocabulary[currentCardIndex].definition}
                                     </p>
                                   )}
-                                  {filteredVocabulary[currentCardIndex]?.example && (
+                                  {filteredVocabulary[currentCardIndex]?.exampleSentence && (
                                     <div className="bg-muted/50 rounded-lg p-4 max-w-xl mx-auto">
                                       <div className="flex items-start gap-3">
                                         <p className="text-sm italic text-muted-foreground flex-1">
-                                          "{filteredVocabulary[currentCardIndex].example}"
+                                          "{filteredVocabulary[currentCardIndex].exampleSentence}"
                                         </p>
-                                        {filteredVocabulary[currentCardIndex]?.exampleAudio && (
+                                        {filteredVocabulary[currentCardIndex]?.audioUrl && (
                                           <AudioButton 
                                             itemId={filteredVocabulary[currentCardIndex].id} 
                                             size="sm" 

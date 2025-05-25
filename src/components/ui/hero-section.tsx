@@ -74,22 +74,24 @@ const SketchyArrow = () => (
             </span>
         </div>
         
-        <style jsx>{`
-            @keyframes dash {
-                0% { stroke-dashoffset: 0; }
-                50% { stroke-dashoffset: 10; }
-                100% { stroke-dashoffset: 0; }
-            }
-            
-            @keyframes sketchy-draw {
-                0% { transform: translateY(-50%) rotate(-2deg) scale(0.98); }
-                100% { transform: translateY(-50%) rotate(2deg) scale(1.02); }
-            }
-            
-            .font-handwriting {
-                font-family: 'Kalam', 'Comic Sans MS', cursive;
-            }
-        `}</style>
+        <style>
+            {`
+                @keyframes dash {
+                    0% { stroke-dashoffset: 0; }
+                    50% { stroke-dashoffset: 10; }
+                    100% { stroke-dashoffset: 0; }
+                }
+                
+                @keyframes sketchy-draw {
+                    0% { transform: translateY(-50%) rotate(-2deg) scale(0.98); }
+                    100% { transform: translateY(-50%) rotate(2deg) scale(1.02); }
+                }
+                
+                .font-handwriting {
+                    font-family: 'Kalam', 'Comic Sans MS', cursive;
+                }
+            `}
+        </style>
     </div>
 );
 

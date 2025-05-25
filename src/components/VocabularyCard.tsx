@@ -1,13 +1,17 @@
+
 import React from 'react';
 import { VocabularyItem } from '@/types';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import AudioPlayer from '@/components/AudioPlayer';
 import { cn } from '@/lib/utils';
+
 interface VocabularyCardProps {
   item: VocabularyItem;
   onDelete: () => void;
   isHighlighted?: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
 /**
@@ -16,7 +20,9 @@ interface VocabularyCardProps {
 const VocabularyCard: React.FC<VocabularyCardProps> = ({
   item,
   onDelete,
-  isHighlighted = false
+  isHighlighted = false,
+  isSelected = false,
+  onSelect
 }) => {
   const {
     word,
@@ -25,13 +31,31 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
     audioUrl,
     language
   } = item;
-  return <Card className={cn("overflow-hidden h-full flex flex-col border transition-all duration-200", isHighlighted ? "ring-2 ring-primary shadow-lg" : "shadow-sm hover:shadow-md")}>
+
+  return (
+    <Card className={cn(
+      "overflow-hidden h-full flex flex-col border transition-all duration-200", 
+      isHighlighted ? "ring-2 ring-primary shadow-lg" : "shadow-sm hover:shadow-md",
+      isSelected ? "border-primary bg-primary/5" : ""
+    )}>
       <CardContent className="p-4 flex-grow">
         <div className="mb-2 flex justify-between items-start gap-4">
           <h3 className={cn("font-medium text-lg", isHighlighted && "text-primary")}>{word}</h3>
-          <span className="text-xs px-2 py-1 bg-muted rounded-full capitalize shrink-0 mx-[16px]">
-            {language}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs px-2 py-1 bg-muted rounded-full capitalize shrink-0">
+              {language}
+            </span>
+            {onSelect && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onSelect}
+                className="h-6 w-6 p-0"
+              >
+                {isSelected ? '✓' : '○'}
+              </Button>
+            )}
+          </div>
         </div>
         
         <div className="space-y-2 mt-3">
@@ -49,7 +73,8 @@ const VocabularyCard: React.FC<VocabularyCardProps> = ({
           Remove
         </Button>
       </CardFooter>
-    </Card>;
+    </Card>
+  );
 };
 
 // Extracted components for better maintainability
@@ -57,16 +82,22 @@ const VocabularyDefinition = ({
   definition
 }: {
   definition: string;
-}) => <div>
+}) => (
+  <div>
     <h4 className="text-sm font-medium">Definition:</h4>
     <p className="text-sm text-muted-foreground">{definition}</p>
-  </div>;
+  </div>
+);
+
 const VocabularyExample = ({
   example
 }: {
   example: string;
-}) => <div>
+}) => (
+  <div>
     <h4 className="text-sm font-medium">Example:</h4>
     <p className="text-sm text-muted-foreground italic">"{example}"</p>
-  </div>;
+  </div>
+);
+
 export default VocabularyCard;

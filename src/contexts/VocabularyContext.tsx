@@ -13,6 +13,7 @@ interface VocabularyContextProps {
   getVocabularyByExercise: (exerciseId: string) => VocabularyItem[];
   getVocabularyByLanguage: (language: Language) => VocabularyItem[];
   loading: boolean;
+  isLoading: boolean; // Add this property for compatibility
   canCreateMore: boolean;
   vocabularyLimit: number;
 }
@@ -192,6 +193,7 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     getVocabularyByExercise,
     getVocabularyByLanguage,
     loading,
+    isLoading: loading, // Add this for compatibility
     canCreateMore,
     vocabularyLimit
   };
