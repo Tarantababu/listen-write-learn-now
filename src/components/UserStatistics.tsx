@@ -455,7 +455,7 @@ const UserStatistics: React.FC = () => {
             </div>
             
             <Button asChild size="lg" className="w-full bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] text-white h-10 sm:h-11">
-              <Link to="/dashboard/curriculum" className="flex items-center justify-center gap-2 text-sm sm:text-base">
+              <Link to="/dashboard/curriculum" className="relative z-10">
                 Continue Learning Plan 
                 <ChevronRight className="h-4 w-4" />
               </Link>
