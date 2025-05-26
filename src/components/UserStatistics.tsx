@@ -263,7 +263,7 @@ const UserStatistics: React.FC = () => {
   }
 
   // ENHANCED: New guidance card component
-  const renderEnhancedGuidanceCard = (): React.ReactNode => {
+  const renderEnhancedGuidanceCard = () => {
     if (isFirstTimeUser) {
       return null
     }
@@ -332,7 +332,7 @@ const UserStatistics: React.FC = () => {
   }
 
   // ENHANCED: Better modal content with clearer next steps and personalized recommendations
-  const renderEnhancedModal = (): React.ReactNode => {
+  const renderEnhancedModal = () => {
     const recommendation = getSmartRecommendation()
 
     return (
@@ -490,7 +490,7 @@ const UserStatistics: React.FC = () => {
   }
 
   // Render First-time User Learning Plan Card
-  const renderFirstTimeUserCard = (): React.ReactNode => (
+  const renderFirstTimeUserCard = () => (
     <Card className="w-full border-2 border-[#AB96D9]/30 bg-gradient-to-br from-[#6F6BF2]/10 via-[#6D49F2]/5 to-transparent relative overflow-hidden">
       {/* Decorative elements - Hidden on mobile for cleaner look */}
       <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-bl from-[#491BF2]/20 to-transparent rounded-full blur-2xl" />
@@ -540,7 +540,7 @@ const UserStatistics: React.FC = () => {
   )
 
   // Render Existing User Learning Plan Card
-  const renderExistingUserCard = (): React.ReactNode => (
+  const renderExistingUserCard = () => (
     <Card className="w-full border-2 border-[#AB96D9]/20 bg-gradient-to-br from-[#6F6BF2]/5 to-[#AB96D9]/10">
       <CardHeader className="relative z-10">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
