@@ -12,9 +12,7 @@ import { useDelayedLoading } from "@/hooks/use-delayed-loading"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Link, useNavigate } from "react-router-dom"
-import { Skeleton } from "@/components/ui/skeleton"
-import { ChevronRight } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import { useCurriculumExercises } from "@/hooks/use-curriculum-exercises"
 import { isStreakActive } from "@/utils/visitorTracking"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -247,7 +245,7 @@ const UserStatistics: React.FC = () => {
     }
   }
 
-  // Enhanced guidance card component
+  // Enhanced guidance card component - "Continue Your Progress"
   const renderEnhancedGuidanceCard = (): React.ReactNode => {
     if (isFirstTimeUser) {
       return null
@@ -318,131 +316,35 @@ const UserStatistics: React.FC = () => {
     )
   }
 
-  // Render Existing User Learning Plan Card
-  const renderExistingUserCard = (): React.ReactNode => (
-    <Card className="w-full border-2 border-[#AB96D9]/20 bg-gradient-to-br from-[#6F6BF2]/5 to-[#AB96D9]/10 h-fit">
-      <CardHeader className="relative z-10 pb-3 lg:pb-4">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base lg:text-lg font-bold text-[#1F0459] leading-tight">
-              Learning Plan Progress
-            </CardTitle>
-            <div className="flex items-center gap-1 px-2 py-1 bg-[#491BF2]/10 rounded-full">
-              <Target className="h-3 w-3 text-[#491BF2]" />
-              <span className="text-xs font-medium text-[#491BF2]">
-                {stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}%` : "0%"}
-              </span>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">Your structured path to language mastery</p>
-        </div>
-      </CardHeader>
-      <CardContent className="relative z-10 pt-0">
-        {showCurriculumLoading ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-24" />
-            </div>
-            <Skeleton className="h-2 w-full" />
-            <div className="grid grid-cols-3 gap-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="space-y-2 p-3 rounded-lg border">
-                  <Skeleton className="h-5 w-full" />
-                  <Skeleton className="h-3 w-full" />
-                </div>
-              ))}
-            </div>
-            <Skeleton className="h-9 w-full" />
-          </div>
-        ) : (
-          <>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground bg-[#AB96D9]/20 px-2 py-1 rounded-full">
-                  {stats.completed} of {stats.total} complete
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                <Progress
-                  value={stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}
-                  className="h-2"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-gradient-to-br from-[#6F6BF2]/10 to-[#6D49F2]/10 p-3 rounded-lg border border-[#6F6BF2]/30">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-1.5 h-1.5 bg-[#6F6BF2] rounded-full"></div>
-                    <p className="text-[10px] font-medium text-[#491BF2] uppercase tracking-wide">Completed</p>
-                  </div>
-                  <p className="text-lg font-bold text-[#1F0459]">{stats.completed}</p>
-                </div>
-                <div className="bg-gradient-to-br from-[#6D49F2]/10 to-[#491BF2]/10 p-3 rounded-lg border border-[#6D49F2]/30">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-1.5 h-1.5 bg-[#6D49F2] rounded-full"></div>
-                    <p className="text-[10px] font-medium text-[#491BF2] uppercase tracking-wide">In Progress</p>
-                  </div>
-                  <p className="text-lg font-bold text-[#1F0459]">{stats.inProgress}</p>
-                </div>
-                <div className="bg-gradient-to-br from-[#AB96D9]/10 to-[#AB96D9]/20 p-3 rounded-lg border border-[#AB96D9]/30">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-1.5 h-1.5 bg-[#AB96D9] rounded-full"></div>
-                    <p className="text-[10px] font-medium text-[#491BF2] uppercase tracking-wide">Remaining</p>
-                  </div>
-                  <p className="text-lg font-bold text-[#1F0459]">{stats.total - stats.completed - stats.inProgress}</p>
-                </div>
-              </div>
-            </div>
-
-            <Button
-              asChild
-              size="sm"
-              className="w-full bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] text-white mt-4"
-            >
-              <Link to={stats.inProgress > 0 ? "/dashboard/curriculum?tab=in-progress" : "/dashboard/curriculum"}>
-                Continue Learning Plan
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </>
-        )}
-      </CardContent>
-    </Card>
-  )
-
-  // Render First-time User Learning Plan Card
+  // Render First-time User Learning Plan Card - "Your Language Journey"
   const renderFirstTimeUserCard = (): React.ReactNode => (
-    <Card className="w-full border-2 border-[#AB96D9]/30 bg-gradient-to-br from-[#6F6BF2]/10 via-[#6D49F2]/5 to-transparent relative overflow-hidden col-span-full">
+    <Card className="w-full border-2 border-[#AB96D9]/30 bg-gradient-to-br from-[#6F6BF2]/10 via-[#6D49F2]/5 to-transparent relative overflow-hidden h-fit">
       {/* Decorative elements */}
       <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-bl from-[#491BF2]/20 to-transparent rounded-full blur-2xl" />
       <div className="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-tr from-[#AB96D9]/20 to-transparent rounded-full blur-xl" />
 
-      <CardHeader className="pb-3 sm:pb-4 relative px-4 sm:px-6 pt-4 sm:pt-6">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-[#491BF2] flex-shrink-0" />
-              <CardTitle className="text-xl sm:text-2xl font-bold text-[#1F0459] leading-tight">
-                Ready to Start Learning?
-              </CardTitle>
-            </div>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-md leading-relaxed">
-              Choose your path to language mastery. We'll guide you every step of the way.
-            </p>
+      <CardHeader className="pb-3 relative px-4 lg:px-6 pt-4 lg:pt-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 lg:h-6 lg:w-6 text-[#491BF2] flex-shrink-0" />
+            <CardTitle className="text-lg lg:text-xl font-bold text-[#1F0459] leading-tight">
+              Your Language Journey
+            </CardTitle>
           </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Choose your path to language mastery. We'll guide you every step of the way.
+          </p>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4 sm:space-y-6 relative px-4 sm:px-6 pb-4 sm:pb-6">
-        <div className="text-center py-4 sm:py-8 space-y-4 sm:space-y-6">
-          <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-[#491BF2] to-[#6D49F2] rounded-full flex items-center justify-center shadow-lg">
-            <GraduationCap className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+      <CardContent className="space-y-4 relative px-4 lg:px-6 pb-4 lg:pb-6">
+        <div className="text-center py-4 space-y-4">
+          <div className="mx-auto w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-[#491BF2] to-[#6D49F2] rounded-full flex items-center justify-center shadow-lg">
+            <GraduationCap className="h-6 w-6 lg:h-8 lg:w-8 text-white" />
           </div>
 
-          <div className="space-y-2 sm:space-y-3">
-            <h3 className="text-lg sm:text-xl font-bold text-[#1F0459]">Begin Your Language Journey</h3>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto leading-relaxed px-4 sm:px-0">
+          <div className="space-y-2">
+            <h3 className="text-base lg:text-lg font-bold text-[#1F0459]">Begin Your Language Journey</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Start with our structured learning plan designed by language experts, or jump right in by creating your
               own exercises.
             </p>
@@ -450,12 +352,12 @@ const UserStatistics: React.FC = () => {
 
           <Button
             onClick={() => setShowStartModal(true)}
-            size="lg"
-            className="bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 text-white w-full sm:w-auto px-6 py-3"
+            size="sm"
+            className="bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 text-white w-full"
           >
-            <Sparkles className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+            <Sparkles className="mr-2 h-4 w-4" />
             Get Started Now
-            <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       </CardContent>
@@ -631,11 +533,11 @@ const UserStatistics: React.FC = () => {
 
       {/* Two-column responsive grid for main content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-        {/* Enhanced Guidance Card - Only for existing users */}
+        {/* "Continue Your Progress" Card - Only for existing users */}
         {!isFirstTimeUser && renderEnhancedGuidanceCard()}
 
-        {/* Learning Plan Progress Card - Adaptive based on user status */}
-        {isFirstTimeUser ? renderFirstTimeUserCard() : renderExistingUserCard()}
+        {/* "Your Language Journey" Card - Always shown */}
+        {renderFirstTimeUserCard()}
       </div>
 
       {/* Enhanced Start Modal */}
