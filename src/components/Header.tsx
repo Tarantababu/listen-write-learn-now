@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,7 @@ import { UserMessages } from '@/components/UserMessages';
 import ThemeToggle from './ThemeToggle';
 import { Logo } from './landing/Logo';
 import { FlagIcon } from 'react-flag-kit';
+import { StreakIndicator } from './StreakIndicator';
 
 const Header: React.FC = () => {
   const {
@@ -105,6 +105,9 @@ const Header: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-2">
+          {/* Add StreakIndicator for logged-in users */}
+          {user && <StreakIndicator />}
+          
           {user && <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
