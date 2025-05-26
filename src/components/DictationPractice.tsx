@@ -50,7 +50,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   const [duration, setDuration] = useState(200) // Default duration in seconds
   const [internalShowResults, setInternalShowResults] = useState(showResults)
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
-  const [isDragging, setIsDragging] = useState(isDragging)
+  const [isDragging, setIsDragging] = useState(false)
   const [stats, setStats] = useState<{
     correct: number
     almost: number
