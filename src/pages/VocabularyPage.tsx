@@ -1096,10 +1096,7 @@ const VocabularyPage = () => {
                     <BookOpen className="h-8 w-8 text-primary" />
                   </div>
                   <h3 className="text-lg font-semibold mb-2">No vocabulary words yet</h3>
-                  <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
-                    Start building your vocabulary by adding words through the Vocabulary Builder when reading
-                    exercises.
-                  </p>
+                  <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">Start building your vocabulary by adding words through the Vocabulary Builder when dictation exercises.</p>
                 </div> : filteredVocabulary.length === 0 ? <div className="text-center py-8 animate-in fade-in-50 duration-300">
                   <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-yellow-100 to-yellow-50 rounded-full flex items-center justify-center">
                     <Search className="h-8 w-8 text-yellow-600" />
