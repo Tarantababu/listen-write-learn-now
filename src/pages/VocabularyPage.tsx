@@ -238,11 +238,13 @@ const VocabularyPage = () => {
             return
           }
 
-          // Handle queue playback
-          if (audioQueue.length > 0 && currentQueueIndex < audioQueue.length - 1) {
-            const nextIndex = currentQueueIndex + 1
+          // Handle queue playback - use current values, not state
+          const currentIndex = audioQueue.indexOf(itemId)
+          if (currentIndex !== -1 && currentIndex < audioQueue.length - 1) {
+            const nextIndex = currentIndex + 1
+            const nextItemId = audioQueue[nextIndex]
             setCurrentQueueIndex(nextIndex)
-            setTimeout(() => playAudio(audioQueue[nextIndex]), 500)
+            setTimeout(() => playAudio(nextItemId), 500)
           }
 
           cleanup()
@@ -288,7 +290,7 @@ const VocabularyPage = () => {
         setPlayingAudio(null)
       }
     },
-    [filteredVocabulary, playingAudio, audioVolume, isRepeatMode, audioQueue, currentQueueIndex],
+    [filteredVocabulary, playingAudio, audioVolume, isRepeatMode, audioQueue],
   )
 
   // Audio queue management
@@ -300,20 +302,26 @@ const VocabularyPage = () => {
   }, [audioQueue, playAudio])
 
   const skipToNext = useCallback(() => {
-    if (audioQueue.length > 0 && currentQueueIndex < audioQueue.length - 1) {
-      const nextIndex = currentQueueIndex + 1
-      setCurrentQueueIndex(nextIndex)
-      playAudio(audioQueue[nextIndex])
+    if (audioQueue.length > 0) {
+      const currentIndex = playingAudio ? audioQueue.indexOf(playingAudio.replace("-example", "")) : currentQueueIndex
+      const nextIndex = currentIndex < audioQueue.length - 1 ? currentIndex + 1 : currentIndex
+      if (nextIndex !== currentIndex) {
+        setCurrentQueueIndex(nextIndex)
+        playAudio(audioQueue[nextIndex])
+      }
     }
-  }, [audioQueue, currentQueueIndex, playAudio])
+  }, [audioQueue, currentQueueIndex, playAudio, playingAudio])
 
   const skipToPrevious = useCallback(() => {
-    if (audioQueue.length > 0 && currentQueueIndex > 0) {
-      const prevIndex = currentQueueIndex - 1
-      setCurrentQueueIndex(prevIndex)
-      playAudio(audioQueue[prevIndex])
+    if (audioQueue.length > 0) {
+      const currentIndex = playingAudio ? audioQueue.indexOf(playingAudio.replace("-example", "")) : currentQueueIndex
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex
+      if (prevIndex !== currentIndex) {
+        setCurrentQueueIndex(prevIndex)
+        playAudio(audioQueue[prevIndex])
+      }
     }
-  }, [audioQueue, currentQueueIndex, playAudio])
+  }, [audioQueue, currentQueueIndex, playAudio, playingAudio])
 
   const clearQueue = useCallback(() => {
     setAudioQueue([])
@@ -344,6 +352,13 @@ const VocabularyPage = () => {
       })
     }
   }, [])
+
+  // Update volume of currently playing audio when volume changes
+  useEffect(() => {
+    if (playingAudio && audioRefs.current[playingAudio]) {
+      audioRefs.current[playingAudio].volume = audioVolume
+    }
+  }, [audioVolume, playingAudio])
 
   // Keyboard navigation for study mode
   useEffect(() => {
