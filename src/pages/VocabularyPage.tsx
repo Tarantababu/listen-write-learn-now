@@ -152,24 +152,28 @@ const VocabularyPage = () => {
   // Persist playlist state to localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedQueue = localStorage.getItem("vocabulary-audio-queue")
-      const savedOriginalQueue = localStorage.getItem("vocabulary-original-queue")
-      const savedIndex = localStorage.getItem("vocabulary-queue-index")
-      const savedShuffle = localStorage.getItem("vocabulary-shuffle-mode")
-      const savedRepeat = localStorage.getItem("vocabulary-repeat-mode")
+      try {
+        const savedQueue = localStorage.getItem("vocabulary-audio-queue")
+        const savedOriginalQueue = localStorage.getItem("vocabulary-original-queue")
+        const savedIndex = localStorage.getItem("vocabulary-queue-index")
+        const savedShuffle = localStorage.getItem("vocabulary-shuffle-mode")
+        const savedRepeat = localStorage.getItem("vocabulary-repeat-mode")
 
-      if (savedQueue) {
-        try {
-          const queue = JSON.parse(savedQueue)
-          const originalQueue = savedOriginalQueue ? JSON.parse(savedOriginalQueue) : queue
-          setAudioQueue(queue)
-          setOriginalQueue(originalQueue)
-          setCurrentQueueIndex(savedIndex ? Number.parseInt(savedIndex) : 0)
-          setIsShuffleMode(savedShuffle === "true")
-          setIsRepeatMode(savedRepeat === "true")
-        } catch (error) {
-          console.error("Error loading saved playlist:", error)
+        if (savedQueue) {
+          try {
+            const queue = JSON.parse(savedQueue)
+            const originalQueue = savedOriginalQueue ? JSON.parse(savedOriginalQueue) : queue
+            setAudioQueue(queue)
+            setOriginalQueue(originalQueue)
+            setCurrentQueueIndex(savedIndex ? Number.parseInt(savedIndex) : 0)
+            setIsShuffleMode(savedShuffle === "true")
+            setIsRepeatMode(savedRepeat === "true")
+          } catch (error) {
+            console.error("Error parsing saved playlist data:", error)
+          }
         }
+      } catch (error) {
+        console.error("Error accessing localStorage:", error)
       }
     }
   }, [])
@@ -442,6 +446,50 @@ const VocabularyPage = () => {
     }
   }, [audioQueue, originalQueue, isShuffleMode])
 
+  const removeFromQueue = useCallback(
+    (itemId: string) => {
+      const currentIndex = audioQueue.indexOf(itemId)
+      if (currentIndex === -1) return
+
+      // Stop audio if currently playing this item
+      const audioKey = `${itemId}-example`
+      if (playingAudio === audioKey) {
+        const audio = audioRefs.current[audioKey]
+        if (audio) {
+          audio.pause()
+          audio.currentTime = 0
+        }
+        setPlayingAudio(null)
+      }
+
+      // Remove from both queues
+      const newQueue = audioQueue.filter((id) => id !== itemId)
+      const newOriginalQueue = originalQueue.filter((id) => id !== itemId)
+
+      setAudioQueue(newQueue)
+      setOriginalQueue(newOriginalQueue)
+
+      // Adjust current index if needed
+      if (currentIndex <= currentQueueIndex) {
+        setCurrentQueueIndex(Math.max(0, currentQueueIndex - 1))
+      }
+
+      // If queue is empty, reset everything
+      if (newQueue.length === 0) {
+        setCurrentQueueIndex(0)
+      }
+    },
+    [audioQueue, originalQueue, currentQueueIndex, playingAudio],
+  )
+
+  const removeSelectedFromQueue = useCallback(() => {
+    selectedItems.forEach((itemId) => {
+      if (audioQueue.includes(itemId)) {
+        removeFromQueue(itemId)
+      }
+    })
+  }, [selectedItems, audioQueue, removeFromQueue])
+
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
@@ -641,6 +689,22 @@ const VocabularyPage = () => {
               title="Add to playlist"
             >
               <Plus className="h-3 w-3" />
+            </Button>
+          )}
+
+          {/* Remove from Queue Button */}
+          {showAddToQueue && isInQueue && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                removeFromQueue(itemId)
+              }}
+              className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 transition-all duration-200"
+              title="Remove from playlist"
+            >
+              <X className="h-3 w-3" />
             </Button>
           )}
 
@@ -894,6 +958,18 @@ const VocabularyPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {audioQueue.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFromQueue(audioQueue[currentQueueIndex])}
+                      className="h-8 px-2 text-xs hover:bg-destructive/10 hover:text-destructive"
+                      title="Remove current track"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Remove
+                    </Button>
+                  )}
                   <Badge variant="outline" className="text-xs border-primary text-primary">
                     Playlist
                   </Badge>
@@ -1278,6 +1354,17 @@ const VocabularyPage = () => {
                           <Plus className="h-3 w-3 mr-1" />
                           Add to Playlist
                         </Button>
+                        {selectedItems.some((id) => audioQueue.includes(id)) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={removeSelectedFromQueue}
+                            className="h-7 text-xs border-red-300 hover:border-red-500 hover:text-red-600"
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Remove from Playlist
+                          </Button>
+                        )}
                       </div>
                       <Button
                         variant="destructive"
@@ -1524,7 +1611,7 @@ const VocabularyPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="export" className="w-full">
+              <Tabs defaultValue="stats" className="w-full">
                 <TabsList className="w-full mb-4">
                   <TabsTrigger value="stats" className="flex-1 text-xs transition-all duration-200">
                     <Trophy className="h-3 w-3 mr-1" />
