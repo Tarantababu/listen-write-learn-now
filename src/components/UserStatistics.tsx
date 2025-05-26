@@ -208,7 +208,12 @@ const UserStatistics: React.FC = () => {
   // Handle modal actions
   const handleStartLearningPlan = () => {
     setShowStartModal(false)
-    navigate("/dashboard/curriculum")
+    // Check if user has in-progress exercises and navigate accordingly
+    if (stats.inProgress > 0) {
+      navigate("/dashboard/curriculum?tab=in-progress")
+    } else {
+      navigate("/dashboard/curriculum")
+    }
   }
   const handleCreateOwnExercise = () => {
     setShowStartModal(false)
@@ -228,7 +233,7 @@ const UserStatistics: React.FC = () => {
         description: `You have ${stats.inProgress} exercise${stats.inProgress > 1 ? "s" : ""} in progress. Keep the momentum going!`,
         action: "Continue Learning",
         icon: Play,
-        route: "/dashboard/curriculum",
+        route: "/dashboard/curriculum?tab=in-progress",
       }
     } else if (hasCompleted && !recentActivity) {
       return {
@@ -236,7 +241,7 @@ const UserStatistics: React.FC = () => {
         description: "You haven't practiced today yet. A quick session will maintain your progress!",
         action: "Practice Now",
         icon: Zap,
-        route: "/dashboard/curriculum",
+        route: "/dashboard/curriculum?tab=in-progress",
       }
     } else if (hasCompleted) {
       return {
@@ -626,7 +631,10 @@ const UserStatistics: React.FC = () => {
               size="lg"
               className="w-full bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] text-white h-10 sm:h-11"
             >
-              <Link to="/dashboard/curriculum" className="relative z-10 my-[10px]">
+              <Link
+                to={stats.inProgress > 0 ? "/dashboard/curriculum?tab=in-progress" : "/dashboard/curriculum"}
+                className="relative z-10 my-[10px]"
+              >
                 Continue Learning Plan
                 <ChevronRight className="h-4 w-4" />
               </Link>
