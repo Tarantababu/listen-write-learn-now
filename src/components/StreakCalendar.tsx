@@ -103,31 +103,34 @@ export function StreakCalendar({ isOpen, onOpenChange }: StreakCalendarProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Learning Streak Calendar</span>
-            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="h-6 w-6">
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogTitle>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onOpenChange(false)}
+          className="absolute right-4 top-4 h-6 w-6 z-10"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+        <DialogHeader className="pb-2">
+          <DialogTitle>Learning Streak Calendar</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-6 pt-2">
           {/* Month Navigation */}
-          <div className="flex items-center justify-between">
-            <Button variant="outline" size="icon" onClick={goToPreviousMonth} className="h-8 w-8">
+          <div className="flex items-center justify-between px-2">
+            <Button variant="outline" size="icon" onClick={goToPreviousMonth} className="h-9 w-9">
               <ChevronLeft className="h-4 w-4" />
             </Button>
 
-            <h3 className="text-lg font-semibold">{format(currentMonth, "MMMM yyyy")}</h3>
+            <h3 className="text-xl font-semibold">{format(currentMonth, "MMMM yyyy")}</h3>
 
-            <Button variant="outline" size="icon" onClick={goToNextMonth} className="h-8 w-8">
+            <Button variant="outline" size="icon" onClick={goToNextMonth} className="h-9 w-9">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
 
           {/* Calendar Grid */}
-          <div className="space-y-2">
+          <div className="space-y-3 border rounded-lg p-4 bg-muted/20">
             {/* Week day headers */}
             <div className="grid grid-cols-7 gap-1">
               {weekDays.map((day) => (
