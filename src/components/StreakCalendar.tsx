@@ -9,7 +9,7 @@ import {
   startOfWeek,
   endOfWeek,
 } from "date-fns"
-import { ChevronLeft, ChevronRight, X } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { getActivityCalendar, type ActivityDay } from "@/services/streakService"
@@ -103,14 +103,6 @@ export function StreakCalendar({ isOpen, onOpenChange }: StreakCalendarProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onOpenChange(false)}
-          className="absolute right-4 top-4 h-6 w-6 z-10"
-        >
-          <X className="h-4 w-4" />
-        </Button>
         <DialogHeader className="pb-2">
           <DialogTitle>Learning Streak Calendar</DialogTitle>
         </DialogHeader>
