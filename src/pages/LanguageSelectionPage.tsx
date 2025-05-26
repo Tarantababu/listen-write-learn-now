@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Headphones } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { FlagIcon, FlagIconCode } from 'react-flag-kit';
+import { Logo } from '@/components/landing/Logo';
 
 const AVAILABLE_LANGUAGES = [
   { name: 'English', code: 'GB' as FlagIconCode },
@@ -51,14 +51,7 @@ const LanguageSelectionPage: React.FC = () => {
 
           {/* Logo */}
           <div className="flex justify-center mb-6">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-full bg-primary/10">
-                <Headphones className="h-8 w-8 text-primary" />
-              </div>
-              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-                lwlnow
-              </h1>
-            </div>
+            <Logo />
           </div>
 
           {/* Title */}
