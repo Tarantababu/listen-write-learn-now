@@ -12,9 +12,7 @@ import { useDelayedLoading } from "@/hooks/use-delayed-loading"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Link, useNavigate } from "react-router-dom"
-import { Skeleton } from "@/components/ui/skeleton"
-import { ChevronRight } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import { useCurriculumExercises } from "@/hooks/use-curriculum-exercises"
 import { isStreakActive } from "@/utils/visitorTracking"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -536,110 +534,9 @@ const UserStatistics: React.FC = () => {
   )
 
   // Render Existing User Learning Plan Card
-  const renderExistingUserCard = (): React.ReactNode => (
-    <Card className="w-full border-2 border-[#AB96D9]/20 bg-gradient-to-br from-[#6F6BF2]/5 to-[#AB96D9]/10">
-      <CardHeader className="relative z-10">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
-          <div className="space-y-1">
-            <CardTitle className="text-lg font-bold flex items-center gap-2 text-[#1F0459] leading-tight sm:text-base">
-              Learning Plan Progress
-            </CardTitle>
-            <p className="text-xs sm:text-sm text-muted-foreground">Your structured path to language mastery</p>
-          </div>
-          <div className="flex items-center gap-1 px-2 sm:px-3 py-1 bg-[#491BF2]/10 rounded-full">
-            <Target className="h-3 w-3 sm:h-4 sm:w-4 text-[#491BF2]" />
-            <span className="text-xs sm:text-sm font-medium text-[#491BF2]">
-              {stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}%` : "0%"}
-            </span>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="relative z-10">
-        {showCurriculumLoading ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-4 sm:h-5 w-32 sm:w-48" />
-              <Skeleton className="h-3 sm:h-4 w-24 sm:w-32" />
-            </div>
-            <Skeleton className="h-2 sm:h-3 w-full" />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="space-y-2 p-3 sm:p-4 rounded-lg border">
-                  <Skeleton className="h-5 sm:h-6 w-full" />
-                  <Skeleton className="h-3 sm:h-4 w-full" />
-                </div>
-              ))}
-            </div>
-            <Skeleton className="h-9 sm:h-10 w-full" />
-          </div>
-        ) : (
-          <>
-            <div className="space-y-3 sm:space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
-                <span className="text-xs sm:text-sm font-medium text-muted-foreground bg-[#AB96D9]/20 px-2 sm:px-3 py-1 rounded-full w-fit">
-                  {stats.completed} of {stats.total} complete
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                <Progress
-                  value={stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}
-                  className="h-2 sm:h-3"
-                  style={{ background: "#AB96D9/20" }}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                <div className="bg-gradient-to-br from-[#6F6BF2]/10 to-[#6D49F2]/10 p-3 sm:p-4 rounded-lg border border-[#6F6BF2]/30">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#6F6BF2] rounded-full"></div>
-                    <p className="text-[10px] sm:text-xs font-medium text-[#491BF2] uppercase tracking-wide">
-                      Completed
-                    </p>
-                  </div>
-                  <p className="text-xl font-bold text-[#1F0459] sm:text-base">{stats.completed}</p>
-                </div>
-                <div className="bg-gradient-to-br from-[#6D49F2]/10 to-[#491BF2]/10 p-3 sm:p-4 rounded-lg border border-[#6D49F2]/30">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#6D49F2] rounded-full"></div>
-                    <p className="text-[10px] sm:text-xs font-medium text-[#491BF2] uppercase tracking-wide">
-                      In Progress
-                    </p>
-                  </div>
-                  <p className="text-xl font-bold text-[#1F0459] sm:text-base">{stats.inProgress}</p>
-                </div>
-                <div className="bg-gradient-to-br from-[#AB96D9]/10 to-[#AB96D9]/20 p-3 sm:p-4 rounded-lg border border-[#AB96D9]/30">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#AB96D9] rounded-full"></div>
-                    <p className="text-[10px] sm:text-xs font-medium text-[#491BF2] uppercase tracking-wide">
-                      Remaining
-                    </p>
-                  </div>
-                  <p className="text-xl font-bold text-[#1F0459] sm:text-base">
-                    {stats.total - stats.completed - stats.inProgress}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <Button
-              asChild
-              size="lg"
-              className="w-full bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] text-white h-10 sm:h-11"
-            >
-              <Link
-                to={stats.inProgress > 0 ? "/dashboard/curriculum?tab=in-progress" : "/dashboard/curriculum"}
-                className="relative z-10 my-[10px]"
-              >
-                Continue Learning Plan
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </>
-        )}
-      </CardContent>
-    </Card>
-  )
+  const renderExistingUserCard = (): React.ReactNode => {
+    return null
+  }
 
   return (
     <div className="space-y-6 sm:space-y-8 px-4 sm:px-0">
