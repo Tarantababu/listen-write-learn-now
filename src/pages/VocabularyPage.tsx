@@ -8,7 +8,10 @@ import {
   Sparkles,
   Search,
   BookOpen,
+  Download,
+  Trophy,
   AlertCircle,
+  CheckCircle,
   List,
   Eye,
   EyeOff,
@@ -35,7 +38,9 @@ import {
 } from "lucide-react"
 import { useSubscription } from "@/contexts/SubscriptionContext"
 import { useNavigate } from "react-router-dom"
+import UpgradePrompt from "@/components/UpgradePrompt"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import VocabularyExport from "@/components/VocabularyExport"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -1100,7 +1105,11 @@ const VocabularyPage = () => {
                     className="h-10 w-10 sm:h-12 sm:w-12 p-0 bg-primary hover:bg-primary/90 shadow-md"
                     title="Play playlist"
                   >
-                    {playingAudio ? <Pause className="h-5 w-5 sm:h-6 sm:w-6" /> : <Play className="h-5 w-5 sm:h-6 sm:w-6" />}
+                    {playingAudio ? (
+                      <Pause className="h-5 w-5 sm:h-6 sm:w-6" />
+                    ) : (
+                      <Play className="h-5 w-5 sm:h-6 sm:w-6" />
+                    )}
                   </Button>
                   <Button
                     variant="ghost"
@@ -1673,26 +1682,165 @@ const VocabularyPage = () => {
                           <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
                         </Button>
                       </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
 
-            {/* Vocabulary Export */}
-          </div>
-          <div className="xl:col-span-1">
-            <VocabularyExport />
-          </div>
+                      {/* Enhanced Study Progress */}
+                      <div className="flex justify-center">
+                        <div className="flex gap-1 bg-muted/50 rounded-full p-2">
+                          {filteredVocabulary.map((_, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setCurrentCardIndex(index)}
+                              className={`w-3 h-3 rounded-full transition-all duration-200 ${
+                                index === currentCardIndex
+                                  ? "bg-primary shadow-lg scale-125"
+                                  : "bg-muted hover:bg-primary/50"
+                              }`}
+                              aria-label={`Go to card ${index + 1}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Playlist Guide */}
-        <PlaylistGuide />
+        {/* Right column: Simplified Tools */}
+        <div className="space-y-4">
+          {/* Simplified Tools Card - Removed redundant Practice tab */}
+          <Card className="h-full animate-in slide-in-from-right-5 duration-500">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+                <Trophy className="h-5 w-5" />
+                Vocabulary Tools
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="stats" className="w-full">
+                <TabsList className="w-full mb-4">
+                  <TabsTrigger value="stats" className="flex-1 text-xs transition-all duration-200">
+                    <Trophy className="h-3 w-3 mr-1" />
+                    Stats
+                  </TabsTrigger>
+                  <TabsTrigger value="export" className="flex-1 text-xs transition-all duration-200">
+                    <Download className="h-3 w-3 mr-1" />
+                    Export
+                  </TabsTrigger>
+                </TabsList>
 
-        {/* Quick Start Guide */}
-        <QuickStartGuide />
+                <TabsContent value="stats" className="space-y-3">
+                  {languageVocabulary.length > 0 ? (
+                    <>
+                      <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 mb-3 border border-green-200">
+                        <div className="flex items-center gap-2 text-sm text-green-700 mb-2">
+                          <CheckCircle className="h-4 w-4" />
+                          Vocabulary Statistics
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Total words:</span>
+                            <span className="font-medium">{vocabularyStats.total}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>With audio:</span>
+                            <span className="font-medium">{vocabularyStats.withAudio}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>In playlist:</span>
+                            <span className="font-medium">{audioQueue.length}</span>
+                          </div>
+                          {searchTerm && (
+                            <div className="flex justify-between">
+                              <span>Filtered:</span>
+                              <span className="font-medium">{vocabularyStats.filtered}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Quick Actions */}
+                      <div className="space-y-2">
+                        {wordsWithAudio.length > 0 && audioQueue.length === 0 && (
+                          <Button onClick={() => setShowQuickStart(true)} className="w-full" size="sm">
+                            <Music className="h-4 w-4 mr-2" />
+                            Create Audio Playlist
+                          </Button>
+                        )}
+
+                        {audioQueue.length > 0 && (
+                          <Button onClick={playQueue} className="w-full" size="sm">
+                            <Play className="h-4 w-4 mr-2" />
+                            Play Playlist ({audioQueue.length} words)
+                          </Button>
+                        )}
+
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowPlaylistGuide(true)}
+                          className="w-full"
+                          size="sm"
+                        >
+                          <HelpCircle className="h-4 w-4 mr-2" />
+                          Playlist Guide
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-6">
+                      <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
+                        <Trophy className="h-6 w-6 text-primary" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">Add vocabulary words to see statistics</p>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="export" className="space-y-3">
+                  {languageVocabulary.length > 0 ? (
+                    <>
+                      <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 mb-3 border border-blue-200">
+                        <div className="flex items-center gap-2 text-sm text-blue-700">
+                          <Download className="h-4 w-4" />
+                          Export {languageVocabulary.length} words
+                        </div>
+                      </div>
+                      <VocabularyExport vocabulary={languageVocabulary} />
+                    </>
+                  ) : (
+                    <div className="text-center py-6">
+                      <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
+                        <Download className="h-6 w-6 text-primary" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">Add vocabulary words to enable export</p>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+
+          {/* Enhanced Subscription Upgrade Card */}
+          {!subscription.isSubscribed && (
+            <div className="mt-4 animate-in slide-in-from-right-5 duration-500 delay-200">
+              <UpgradePrompt
+                title="Unlimited Vocabulary"
+                message="Premium subscribers can create unlimited vocabulary lists, export all their flashcards with audio, and access advanced audio playlist features with unlimited queue capacity."
+              />
+            </div>
+          )}
+        </div>
       </div>
-    )
-  }
-\
-  export default VocabularyPage
+
+      {/* Playlist Guide */}
+      <PlaylistGuide />
+
+      {/* Quick Start Guide */}
+      <QuickStartGuide />
+    </div>
+  )
+}
+
+export default VocabularyPage
