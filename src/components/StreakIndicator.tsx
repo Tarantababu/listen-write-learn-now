@@ -47,10 +47,30 @@ export function StreakIndicator() {
     return 'cold';
   };
 
+  const getFlameColor = (level: string, active: boolean) => {
+    // If streak is not active, keep it muted
+    if (!active) {
+      return 'text-muted-foreground';
+    }
+
+    // Color the flame based on streak level when active
+    switch (level) {
+      case 'legendary':
+        return 'text-purple-500';
+      case 'fire':
+        return 'text-red-500';
+      case 'hot':
+        return 'text-orange-500';
+      case 'warm':
+        return 'text-yellow-500';
+      default:
+        return 'text-orange-400'; // Default active color for any streak
+    }
+  };
+
   const getStreakStyles = (level: string, active: boolean) => {
     if (!active) {
       return {
-        flame: 'text-muted-foreground',
         text: 'text-muted-foreground',
         button: 'hover:bg-muted/50'
       };
@@ -59,33 +79,28 @@ export function StreakIndicator() {
     switch (level) {
       case 'legendary':
         return {
-          flame: 'text-purple-500 drop-shadow-sm',
           text: 'text-purple-600 font-bold',
           button: 'bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border-purple-200'
         };
       case 'fire':
         return {
-          flame: 'text-red-500 drop-shadow-sm',
           text: 'text-red-600 font-bold',
           button: 'bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 border-red-200'
         };
       case 'hot':
         return {
-          flame: 'text-orange-500 drop-shadow-sm',
           text: 'text-orange-600 font-bold',
           button: 'bg-gradient-to-r from-orange-50 to-yellow-50 hover:from-orange-100 hover:to-yellow-100 border-orange-200'
         };
       case 'warm':
         return {
-          flame: 'text-yellow-500 drop-shadow-sm',
           text: 'text-yellow-700 font-semibold',
           button: 'bg-gradient-to-r from-yellow-50 to-orange-50 hover:from-yellow-100 hover:to-orange-100 border-yellow-200'
         };
       default:
         return {
-          flame: 'text-muted-foreground',
-          text: 'text-muted-foreground',
-          button: 'hover:bg-muted/50'
+          text: 'text-orange-600 font-medium',
+          button: 'bg-gradient-to-r from-orange-50 to-red-50 hover:from-orange-100 hover:to-red-100 border-orange-200'
         };
     }
   };
@@ -105,6 +120,7 @@ export function StreakIndicator() {
   }
 
   const streakLevel = getStreakLevel(streakData.currentStreak);
+  const flameColor = getFlameColor(streakLevel, streakData.streakActive);
   const styles = getStreakStyles(streakLevel, streakData.streakActive);
 
   return (
@@ -122,8 +138,9 @@ export function StreakIndicator() {
         <div className="relative">
           <Flame 
             className={cn(
-              "h-4 w-4 transition-colors duration-200",
-              styles.flame,
+              "h-4 w-4 transition-all duration-300",
+              flameColor,
+              streakData.streakActive && "drop-shadow-sm",
               streakData.streakActive && streakLevel !== 'cold' && "animate-pulse"
             )} 
           />
