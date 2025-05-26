@@ -88,13 +88,58 @@ const VocabularyPage = () => {
   const [audioVolume, setAudioVolume] = useState(0.8)
   const [isRepeatMode, setIsRepeatMode] = useState(false)
   const [isShuffleMode, setIsShuffleMode] = useState(false)
-  const [audioQueue, setAudioQueue] = useState<string[]>([])
-  const [originalQueue, setOriginalQueue] = useState<string[]>([])
-  const [currentQueueIndex, setCurrentQueueIndex] = useState(0)
+  const [audioQueue, setAudioQueue] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("vocabulary-audio-queue")
+        return saved ? JSON.parse(saved) : []
+      } catch {
+        return []
+      }
+    }
+    return []
+  })
+
+  const [originalQueue, setOriginalQueue] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("vocabulary-original-queue")
+        return saved ? JSON.parse(saved) : []
+      } catch {
+        return []
+      }
+    }
+    return []
+  })
+
+  const [currentQueueIndex, setCurrentQueueIndex] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("vocabulary-queue-index")
+        return saved ? Number.parseInt(saved) : 0
+      } catch {
+        return 0
+      }
+    }
+    return 0
+  })
+
+  const [_isShuffleMode, _setIsShuffleMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("vocabulary-shuffle-mode") === "true"
+    }
+    return false
+  })
+
+  const [_isRepeatMode, _setIsRepeatMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("vocabulary-repeat-mode") === "true"
+    }
+    return false
+  })
 
   // Local state for enhanced UX
   const [searchTerm, setSearchTerm] = useState("")
-  const [itemToDelete, setItemToDelete] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"list" | "study">("list")
   const [currentCardIndex, setCurrentCardIndex] = useState(0)
   const [showDefinition, setShowDefinition] = useState<{
@@ -152,42 +197,33 @@ const VocabularyPage = () => {
   // Persist playlist state to localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
-      try {
-        const savedQueue = localStorage.getItem("vocabulary-audio-queue")
-        const savedOriginalQueue = localStorage.getItem("vocabulary-original-queue")
-        const savedIndex = localStorage.getItem("vocabulary-queue-index")
-        const savedShuffle = localStorage.getItem("vocabulary-shuffle-mode")
-        const savedRepeat = localStorage.getItem("vocabulary-repeat-mode")
-
-        if (savedQueue) {
-          try {
-            const queue = JSON.parse(savedQueue)
-            const originalQueue = savedOriginalQueue ? JSON.parse(savedOriginalQueue) : queue
-            setAudioQueue(queue)
-            setOriginalQueue(originalQueue)
-            setCurrentQueueIndex(savedIndex ? Number.parseInt(savedIndex) : 0)
-            setIsShuffleMode(savedShuffle === "true")
-            setIsRepeatMode(savedRepeat === "true")
-          } catch (error) {
-            console.error("Error parsing saved playlist data:", error)
-          }
-        }
-      } catch (error) {
-        console.error("Error accessing localStorage:", error)
-      }
+      localStorage.setItem("vocabulary-audio-queue", JSON.stringify(audioQueue))
     }
-  }, [])
+  }, [audioQueue])
 
-  // Save playlist state to localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("vocabulary-audio-queue", JSON.stringify(audioQueue))
       localStorage.setItem("vocabulary-original-queue", JSON.stringify(originalQueue))
-      localStorage.setItem("vocabulary-queue-index", currentQueueIndex.toString())
-      localStorage.setItem("vocabulary-shuffle-mode", isShuffleMode.toString())
-      localStorage.setItem("vocabulary-repeat-mode", isRepeatMode.toString())
     }
-  }, [audioQueue, originalQueue, currentQueueIndex, isShuffleMode, isRepeatMode])
+  }, [originalQueue])
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("vocabulary-queue-index", currentQueueIndex.toString())
+    }
+  }, [currentQueueIndex])
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("vocabulary-shuffle-mode", _isShuffleMode.toString())
+    }
+  }, [_isShuffleMode])
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("vocabulary-repeat-mode", _isRepeatMode.toString())
+    }
+  }, [_isRepeatMode])
 
   // Show quick start guide for new users
   useEffect(() => {
@@ -211,6 +247,8 @@ const VocabularyPage = () => {
           if (!isShuffleMode) {
             setOriginalQueue(newQueue)
           }
+          localStorage.setItem("vocabulary-audio-queue", JSON.stringify(newQueue))
+          localStorage.setItem("vocabulary-original-queue", JSON.stringify(newQueue))
           return newQueue
         })
         return
@@ -377,6 +415,7 @@ const VocabularyPage = () => {
         currentQueueIndex < audioQueue.length - 1 ? currentQueueIndex + 1 : isRepeatMode ? 0 : currentQueueIndex
       if (nextIndex !== currentQueueIndex || isRepeatMode) {
         setCurrentQueueIndex(nextIndex)
+        localStorage.setItem("vocabulary-queue-index", nextIndex.toString())
         playAudio(audioQueue[nextIndex])
       }
     }
@@ -388,6 +427,7 @@ const VocabularyPage = () => {
         currentQueueIndex > 0 ? currentQueueIndex - 1 : isRepeatMode ? audioQueue.length - 1 : currentQueueIndex
       if (prevIndex !== currentQueueIndex || isRepeatMode) {
         setCurrentQueueIndex(prevIndex)
+        localStorage.setItem("vocabulary-queue-index", prevIndex.toString())
         playAudio(audioQueue[prevIndex])
       }
     }
@@ -403,6 +443,9 @@ const VocabularyPage = () => {
     setAudioQueue([])
     setOriginalQueue([])
     setCurrentQueueIndex(0)
+    localStorage.removeItem("vocabulary-audio-queue")
+    localStorage.removeItem("vocabulary-original-queue")
+    localStorage.removeItem("vocabulary-queue-index")
   }, [playingAudio])
 
   const addAllToQueue = useCallback(() => {
@@ -413,6 +456,8 @@ const VocabularyPage = () => {
     if (!isShuffleMode) {
       setOriginalQueue(updatedQueue)
     }
+    localStorage.setItem("vocabulary-audio-queue", JSON.stringify(updatedQueue))
+    localStorage.setItem("vocabulary-original-queue", JSON.stringify(updatedQueue))
   }, [wordsWithAudio, audioQueue, isShuffleMode])
 
   const addSelectedToQueue = useCallback(() => {
@@ -426,25 +471,34 @@ const VocabularyPage = () => {
     if (!isShuffleMode) {
       setOriginalQueue(updatedQueue)
     }
+    localStorage.setItem("vocabulary-audio-queue", JSON.stringify(updatedQueue))
+    localStorage.setItem("vocabulary-original-queue", JSON.stringify(updatedQueue))
   }, [selectedItems, languageVocabulary, audioQueue, isShuffleMode])
 
   const shuffleQueue = useCallback(() => {
     if (audioQueue.length <= 1) return
 
-    if (!isShuffleMode) {
+    if (!_isShuffleMode) {
       // Enable shuffle mode
       setOriginalQueue([...audioQueue])
       const shuffled = [...audioQueue].sort(() => Math.random() - 0.5)
       setAudioQueue(shuffled)
-      setIsShuffleMode(true)
+      _setIsShuffleMode(true)
       setCurrentQueueIndex(0)
+      localStorage.setItem("vocabulary-audio-queue", JSON.stringify(shuffled))
+      localStorage.setItem("vocabulary-original-queue", JSON.stringify([...audioQueue]))
+      localStorage.setItem("vocabulary-shuffle-mode", "true")
+      localStorage.setItem("vocabulary-queue-index", "0")
     } else {
       // Disable shuffle mode - restore original order
       setAudioQueue([...originalQueue])
-      setIsShuffleMode(false)
+      _setIsShuffleMode(false)
       setCurrentQueueIndex(0)
+      localStorage.setItem("vocabulary-audio-queue", JSON.stringify([...originalQueue]))
+      localStorage.setItem("vocabulary-shuffle-mode", "false")
+      localStorage.setItem("vocabulary-queue-index", "0")
     }
-  }, [audioQueue, originalQueue, isShuffleMode])
+  }, [audioQueue, originalQueue, _isShuffleMode])
 
   const removeFromQueue = useCallback(
     (itemId: string) => {
@@ -472,12 +526,17 @@ const VocabularyPage = () => {
       // Adjust current index if needed
       if (currentIndex <= currentQueueIndex) {
         setCurrentQueueIndex(Math.max(0, currentQueueIndex - 1))
+        localStorage.setItem("vocabulary-queue-index", Math.max(0, currentQueueIndex - 1).toString())
       }
 
       // If queue is empty, reset everything
       if (newQueue.length === 0) {
         setCurrentQueueIndex(0)
+        localStorage.setItem("vocabulary-queue-index", "0")
       }
+
+      localStorage.setItem("vocabulary-audio-queue", JSON.stringify(newQueue))
+      localStorage.setItem("vocabulary-original-queue", JSON.stringify(newOriginalQueue))
     },
     [audioQueue, originalQueue, currentQueueIndex, playingAudio],
   )
@@ -536,19 +595,16 @@ const VocabularyPage = () => {
 
   // Enhanced interaction handlers
   const handleDeleteVocabularyItem = (id: string) => {
-    if (itemToDelete === id) {
-      removeVocabularyItem(id)
-      setItemToDelete(null)
-      // Adjust current card index if needed in study mode
-      if (viewMode === "study" && currentCardIndex >= filteredVocabulary.length - 1) {
-        setCurrentCardIndex(Math.max(0, currentCardIndex - 1))
-      }
-      // Remove from selected items if present
-      setSelectedItems((prev) => prev.filter((itemId) => itemId !== id))
-      // Remove from audio queue if present
-      setAudioQueue((prev) => prev.filter((itemId) => itemId !== id))
-      setOriginalQueue((prev) => prev.filter((itemId) => itemId !== id))
+    removeVocabularyItem(id)
+    // Adjust current card index if needed in study mode
+    if (viewMode === "study" && currentCardIndex >= filteredVocabulary.length - 1) {
+      setCurrentCardIndex(Math.max(0, currentCardIndex - 1))
     }
+    // Remove from selected items if present
+    setSelectedItems((prev) => prev.filter((itemId) => itemId !== id))
+    // Remove from audio queue if present
+    setAudioQueue((prev) => prev.filter((itemId) => itemId !== id))
+    setOriginalQueue((prev) => prev.filter((itemId) => itemId !== id))
   }
 
   const toggleDefinition = useCallback((id: string) => {
@@ -580,10 +636,13 @@ const VocabularyPage = () => {
   }, [])
 
   const handleBulkDelete = useCallback(() => {
-    selectedItems.forEach((id) => removeVocabularyItem(id))
+    selectedItems.forEach((id) => {
+      removeVocabularyItem(id)
+      if (audioQueue.includes(id)) {
+        removeFromQueue(id)
+      }
+    })
     setSelectedItems([])
-    setItemToDelete(null)
-    // Reset study mode if needed
     if (viewMode === "study") {
       setCurrentCardIndex(0)
     }
@@ -682,6 +741,8 @@ const VocabularyPage = () => {
                   if (!isShuffleMode) {
                     setOriginalQueue(newQueue)
                   }
+                  localStorage.setItem("vocabulary-audio-queue", JSON.stringify(newQueue))
+                  localStorage.setItem("vocabulary-original-queue", JSON.stringify(newQueue))
                   return newQueue
                 })
               }}
@@ -953,7 +1014,7 @@ const VocabularyPage = () => {
                       "No track selected"}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {currentQueueIndex + 1} of {audioQueue.length} • {isShuffleMode ? "Shuffled" : "Original order"} •{" "}
+                    {currentQueueIndex + 1} of {audioQueue.length} • {_isShuffleMode ? "Shuffled" : "Original order"} •{" "}
                     {isRepeatMode ? "Repeat on" : "Repeat off"}
                   </div>
                 </div>
@@ -1054,8 +1115,8 @@ const VocabularyPage = () => {
                     variant="ghost"
                     size="sm"
                     onClick={shuffleQueue}
-                    className={`h-10 w-10 p-0 ${isShuffleMode ? "text-primary bg-primary/10" : "hover:bg-primary/10"}`}
-                    title={isShuffleMode ? "Disable shuffle" : "Enable shuffle"}
+                    className={`h-10 w-10 p-0 ${_isShuffleMode ? "text-primary bg-primary/10" : "hover:bg-primary/10"}`}
+                    title={_isShuffleMode ? "Disable shuffle" : "Enable shuffle"}
                   >
                     <Shuffle className="h-5 w-5" />
                   </Button>
@@ -1369,7 +1430,19 @@ const VocabularyPage = () => {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => setItemToDelete("bulk")}
+                        onClick={() => {
+                          // Direct bulk delete
+                          selectedItems.forEach((id) => {
+                            removeVocabularyItem(id)
+                            if (audioQueue.includes(id)) {
+                              removeFromQueue(id)
+                            }
+                          })
+                          setSelectedItems([])
+                          if (viewMode === "study") {
+                            setCurrentCardIndex(0)
+                          }
+                        }}
                         className="h-7 hover:shadow-md transition-all duration-200"
                       >
                         Delete Selected
@@ -1425,8 +1498,19 @@ const VocabularyPage = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setItemToDelete(item.id)}
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 transition-all duration-200"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  // Direct delete without confirmation
+                                  removeVocabularyItem(item.id)
+                                  // Remove from selected items if present
+                                  setSelectedItems((prev) => prev.filter((itemId) => itemId !== item.id))
+                                  // Remove from audio queue if present
+                                  if (audioQueue.includes(item.id)) {
+                                    removeFromQueue(item.id)
+                                  }
+                                }}
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-all duration-200"
+                                title="Delete word"
                               >
                                 <X className="h-3 w-3" />
                               </Button>
@@ -1727,41 +1811,6 @@ const VocabularyPage = () => {
       </div>
 
       {/* Enhanced Delete Confirmation Dialog */}
-      <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
-        <DialogContent className="animate-in fade-in-50 zoom-in-95 duration-200">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-500" />
-              {itemToDelete === "bulk" ? "Delete Selected Items" : "Delete Vocabulary Item"}
-            </DialogTitle>
-            <DialogDescription>
-              {itemToDelete === "bulk"
-                ? `Are you sure you want to delete ${selectedItems.length} selected items? This action cannot be undone.`
-                : "Are you sure you want to delete this vocabulary item? This action cannot be undone."}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setItemToDelete(null)} className="transition-all duration-200">
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (itemToDelete === "bulk") {
-                  handleBulkDelete()
-                } else if (itemToDelete) {
-                  handleDeleteVocabularyItem(itemToDelete)
-                }
-              }}
-              className="transition-all duration-200 hover:shadow-md"
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Playlist Guide Dialog */}
       <PlaylistGuide />
 
       {/* Quick Start Guide Dialog */}
