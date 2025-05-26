@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import VocabularyPlaylist from "@/components/VocabularyPlaylist"
-import VocabularyCard from "@/components/VocabularyCard"
 import { useVocabularyContext } from "@/contexts/VocabularyContext"
 import { useUserSettingsContext } from "@/contexts/UserSettingsContext"
 import { Button } from "@/components/ui/button"
@@ -14,7 +13,6 @@ import {
   Trophy,
   AlertCircle,
   CheckCircle,
-  Grid3X3,
   List,
   Eye,
   EyeOff,
@@ -30,6 +28,14 @@ import {
   SkipForward,
   SkipBack,
   Repeat,
+  Plus,
+  HelpCircle,
+  X,
+  Music,
+  ListMusic,
+  Zap,
+  CheckSquare,
+  PlayCircle,
 } from "lucide-react"
 import { useSubscription } from "@/contexts/SubscriptionContext"
 import { useNavigate } from "react-router-dom"
@@ -88,12 +94,17 @@ const VocabularyPage = () => {
   // Local state for enhanced UX
   const [searchTerm, setSearchTerm] = useState("")
   const [itemToDelete, setItemToDelete] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<"list" | "cards" | "study">("list")
+  const [viewMode, setViewMode] = useState<"list" | "study">("list")
   const [currentCardIndex, setCurrentCardIndex] = useState(0)
   const [showDefinition, setShowDefinition] = useState<{
     [key: string]: boolean
   }>({})
   const [selectedItems, setSelectedItems] = useState<string[]>([])
+
+  // Playlist guide state
+  const [showPlaylistGuide, setShowPlaylistGuide] = useState(false)
+  const [showQuickStart, setShowQuickStart] = useState(false)
+  const [hasSeenGuide, setHasSeenGuide] = useState(false)
 
   // Filter vocabulary by currently selected language
   const languageVocabulary = getVocabularyByLanguage(settings.selectedLanguage)
@@ -125,6 +136,16 @@ const VocabularyPage = () => {
       filtered: filteredVocabulary.length,
     }
   }, [languageVocabulary, filteredVocabulary])
+
+  // Show quick start guide for new users
+  useEffect(() => {
+    if (languageVocabulary.length > 0 && !hasSeenGuide && audioQueue.length === 0) {
+      const timer = setTimeout(() => {
+        setShowQuickStart(true)
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [languageVocabulary.length, hasSeenGuide, audioQueue.length])
 
   // Enhanced Audio functionality with queue management
   const playAudio = useCallback(
@@ -299,6 +320,19 @@ const VocabularyPage = () => {
     setCurrentQueueIndex(0)
   }, [])
 
+  const addAllToQueue = useCallback(() => {
+    const newQueue = filteredVocabulary
+      .filter((item) => item.audioUrl && !audioQueue.includes(item.id))
+      .map((item) => item.id)
+    setAudioQueue((prev) => [...prev, ...newQueue])
+  }, [filteredVocabulary, audioQueue])
+
+  const shuffleQueue = useCallback(() => {
+    const shuffled = [...audioQueue].sort(() => Math.random() - 0.5)
+    setAudioQueue(shuffled)
+    setCurrentQueueIndex(0)
+  }, [audioQueue])
+
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
@@ -415,12 +449,14 @@ const VocabularyPage = () => {
       className = "",
       showProgress = false,
       showQueue = false,
+      showAddToQueue = false,
     }: {
       itemId: string
       size?: "sm" | "default" | "lg" | "icon"
       className?: string
       showProgress?: boolean
       showQueue?: boolean
+      showAddToQueue?: boolean
     }) => {
       const audioKey = `${itemId}-example`
       const isLoading = audioLoading[audioKey]
@@ -434,7 +470,7 @@ const VocabularyPage = () => {
       if (!hasAudio) return null
 
       return (
-        <div className="relative group">
+        <div className="relative group flex items-center gap-1">
           <Button
             variant="ghost"
             size={size}
@@ -488,6 +524,22 @@ const VocabularyPage = () => {
             )}
           </Button>
 
+          {/* Add to Queue Button */}
+          {showAddToQueue && !isInQueue && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                setAudioQueue((prev) => [...prev, itemId])
+              }}
+              className="h-6 w-6 p-0 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200"
+              title="Add to playlist"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          )}
+
           {/* Queue indicator */}
           {showQueue && isInQueue && (
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
@@ -498,11 +550,199 @@ const VocabularyPage = () => {
           {/* Enhanced tooltip on hover */}
           <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
             {error ? `Error: ${error}` : isPlaying ? "Playing..." : "Click to play"}
-            {showQueue && <div className="text-[10px] opacity-75">Right-click to add to queue</div>}
+            {showAddToQueue && <div className="text-[10px] opacity-75">+ to add to playlist</div>}
           </div>
         </div>
       )
     },
+  )
+
+  // Playlist Guide Component
+  const PlaylistGuide = () => (
+    <Dialog open={showPlaylistGuide} onOpenChange={setShowPlaylistGuide}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Music className="h-5 w-5 text-primary" />
+            Audio Playlist Guide
+          </DialogTitle>
+          <DialogDescription>
+            Learn how to create and use audio playlists for effective vocabulary practice
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Step 1 */}
+          <div className="flex gap-4">
+            <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm">
+              1
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Add Words to Playlist
+              </h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Build your audio playlist by adding vocabulary words. You can:
+              </p>
+              <ul className="text-sm space-y-1 text-muted-foreground ml-4">
+                <li>
+                  • Click the <Plus className="h-3 w-3 inline mx-1" /> button next to any word
+                </li>
+                <li>• Select multiple words and click "Add to Queue"</li>
+                <li>• Use "Add All" to queue all visible words</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="flex gap-4">
+            <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm">
+              2
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                <PlayCircle className="h-4 w-4" />
+                Control Playback
+              </h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Use the playlist controls to manage your listening session:
+              </p>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Play className="h-3 w-3" />
+                  <span>Play/Pause</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <SkipForward className="h-3 w-3" />
+                  <span>Next word</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <SkipBack className="h-3 w-3" />
+                  <span>Previous word</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Repeat className="h-3 w-3" />
+                  <span>Repeat mode</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="flex gap-4">
+            <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-bold text-sm">
+              3
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                Practice Effectively
+              </h3>
+              <p className="text-sm text-muted-foreground mb-3">Maximize your learning with these tips:</p>
+              <ul className="text-sm space-y-1 text-muted-foreground ml-4">
+                <li>• Use repeat mode to focus on difficult words</li>
+                <li>• Adjust volume for comfortable listening</li>
+                <li>• Shuffle your playlist for varied practice</li>
+                <li>• Practice regularly with short sessions</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Pro Tips */}
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+            <h3 className="font-semibold mb-2 flex items-center gap-2 text-blue-700">
+              <Sparkles className="h-4 w-4" />
+              Pro Tips
+            </h3>
+            <ul className="text-sm space-y-1 text-blue-600">
+              <li>• Create themed playlists (e.g., "Daily Words", "Difficult Pronunciation")</li>
+              <li>• Use keyboard shortcuts: P to play, Space to toggle definition</li>
+              <li>• Listen while doing other activities for passive learning</li>
+              <li>• Review your playlist regularly to reinforce memory</li>
+            </ul>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            onClick={() => {
+              setShowPlaylistGuide(false)
+              setHasSeenGuide(true)
+            }}
+            className="w-full"
+          >
+            Got it! Start Creating Playlists
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  // Quick Start Guide Component
+  const QuickStartGuide = () => (
+    <Dialog open={showQuickStart} onOpenChange={setShowQuickStart}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ListMusic className="h-5 w-5 text-primary" />
+            Create Your First Playlist!
+          </DialogTitle>
+          <DialogDescription>
+            You have {languageVocabulary.length} vocabulary words ready for audio practice
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="text-center">
+            <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
+              <Music className="h-8 w-8 text-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Create audio playlists to practice pronunciation and improve listening skills
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <Button
+              onClick={() => {
+                addAllToQueue()
+                setShowQuickStart(false)
+                setHasSeenGuide(true)
+              }}
+              className="w-full"
+              size="lg"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add All Words to Playlist
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowQuickStart(false)
+                setShowPlaylistGuide(true)
+              }}
+              className="w-full"
+            >
+              <HelpCircle className="h-4 w-4 mr-2" />
+              Learn How Playlists Work
+            </Button>
+
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowQuickStart(false)
+                setHasSeenGuide(true)
+              }}
+              className="w-full text-xs"
+            >
+              Skip for now
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 
   return (
@@ -518,61 +758,173 @@ const VocabularyPage = () => {
               {languageVocabulary.length} words
             </Badge>
             {audioQueue.length > 0 && (
-              <Badge variant="outline" className="text-xs border-primary text-primary">
-                {audioQueue.length} queued
+              <Badge variant="outline" className="text-xs border-primary text-primary animate-pulse">
+                <Music className="h-3 w-3 mr-1" />
+                {audioQueue.length} in playlist
               </Badge>
             )}
           </div>
-          <p className="text-muted-foreground text-sm animate-in slide-in-from-left-5 duration-500">
-            {getMotivationalMessage()}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-muted-foreground text-sm animate-in slide-in-from-left-5 duration-500">
+              {getMotivationalMessage()}
+            </p>
+            {languageVocabulary.length > 0 && audioQueue.length === 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPlaylistGuide(true)}
+                className="text-xs text-primary hover:text-primary/80 h-6 px-2"
+              >
+                <HelpCircle className="h-3 w-3 mr-1" />
+                How to create playlists?
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* Audio Queue Controls */}
+        {/* Enhanced Audio Queue Controls */}
         {audioQueue.length > 0 && (
-          <Card className="p-3 animate-in slide-in-from-right-5 duration-300">
-            <div className="flex items-center gap-2">
+          <Card className="p-3 animate-in slide-in-from-right-5 duration-300 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
+            <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={skipToPrevious}
                   disabled={currentQueueIndex === 0}
-                  className="h-7 w-7 p-0"
+                  className="h-8 w-8 p-0 hover:bg-primary/10"
+                  title="Previous word"
                 >
-                  <SkipBack className="h-3 w-3" />
+                  <SkipBack className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={playQueue} className="h-7 w-7 p-0">
-                  <Play className="h-3 w-3" />
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={playQueue}
+                  className="h-8 w-8 p-0 bg-primary hover:bg-primary/90"
+                  title="Play playlist"
+                >
+                  <Play className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={skipToNext}
                   disabled={currentQueueIndex === audioQueue.length - 1}
-                  className="h-7 w-7 p-0"
+                  className="h-8 w-8 p-0 hover:bg-primary/10"
+                  title="Next word"
                 >
-                  <SkipForward className="h-3 w-3" />
+                  <SkipForward className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsRepeatMode(!isRepeatMode)}
-                  className={`h-7 w-7 p-0 ${isRepeatMode ? "text-primary" : ""}`}
+                  className={`h-8 w-8 p-0 ${isRepeatMode ? "text-primary bg-primary/10" : "hover:bg-primary/10"}`}
+                  title="Repeat mode"
                 >
-                  <Repeat className="h-3 w-3" />
+                  <Repeat className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={shuffleQueue}
+                  className="h-8 w-8 p-0 hover:bg-primary/10"
+                  title="Shuffle playlist"
+                >
+                  <Shuffle className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="text-xs text-muted-foreground">
+
+              <div className="text-xs text-muted-foreground font-medium">
                 {currentQueueIndex + 1}/{audioQueue.length}
               </div>
-              <Button variant="ghost" size="sm" onClick={clearQueue} className="h-7 px-2 text-xs">
-                Clear
-              </Button>
+
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPlaylistGuide(true)}
+                  className="h-7 px-2 text-xs hover:bg-primary/10"
+                  title="Playlist guide"
+                >
+                  <HelpCircle className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearQueue}
+                  className="h-7 px-2 text-xs hover:bg-destructive/10 hover:text-destructive"
+                  title="Clear playlist"
+                >
+                  Clear
+                </Button>
+              </div>
             </div>
           </Card>
         )}
       </div>
+
+      {/* Playlist Quick Actions */}
+      {languageVocabulary.length > 0 && (
+        <Card className="animate-in slide-in-from-top-5 duration-300 delay-50 border-primary/20">
+          <CardContent className="pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ListMusic className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Audio Playlist</span>
+                {audioQueue.length === 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    Empty
+                  </Badge>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {filteredVocabulary.filter((item) => item.audioUrl).length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addAllToQueue}
+                    className="h-7 text-xs border-primary/30 hover:border-primary hover:bg-primary/5"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add All ({filteredVocabulary.filter((item) => item.audioUrl).length})
+                  </Button>
+                )}
+
+                {audioQueue.length > 0 && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={shuffleQueue} className="h-7 text-xs">
+                      <Shuffle className="h-3 w-3 mr-1" />
+                      Shuffle
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={playQueue}
+                      className="h-7 text-xs bg-primary text-white hover:bg-primary/90"
+                    >
+                      <Play className="h-3 w-3 mr-1" />
+                      Play All
+                    </Button>
+                  </>
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPlaylistGuide(true)}
+                  className="h-7 text-xs text-primary hover:text-primary/80"
+                >
+                  <HelpCircle className="h-3 w-3 mr-1" />
+                  Guide
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Enhanced Subscription Status Alert */}
       {!subscription.isSubscribed && (
@@ -623,7 +975,7 @@ const VocabularyPage = () => {
 
                   <p className="text-xs text-muted-foreground">
                     {isAtLimit
-                      ? "Upgrade to add unlimited vocabulary words with enhanced audio features"
+                      ? "Upgrade to add unlimited vocabulary words with enhanced audio playlists"
                       : `${vocabularyLimit - vocabulary.length} words remaining`}
                   </p>
                 </div>
@@ -748,15 +1100,6 @@ const VocabularyPage = () => {
                         <List className="h-3 w-3" />
                       </Button>
                       <Button
-                        variant={viewMode === "cards" ? "default" : "ghost"}
-                        size="sm"
-                        onClick={() => setViewMode("cards")}
-                        className="h-7 px-2 transition-all duration-200"
-                        title="Card grid view"
-                      >
-                        <Grid3X3 className="h-3 w-3" />
-                      </Button>
-                      <Button
                         variant={viewMode === "study" ? "default" : "ghost"}
                         size="sm"
                         onClick={() => setViewMode("study")}
@@ -815,9 +1158,10 @@ const VocabularyPage = () => {
                             })
                             setAudioQueue(newQueue)
                           }}
-                          className="h-7 text-xs"
+                          className="h-7 text-xs border-primary/30 hover:border-primary"
                         >
-                          Add to Queue
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add to Playlist
                         </Button>
                       </div>
                       <Button
@@ -840,124 +1184,53 @@ const VocabularyPage = () => {
                           className="group relative animate-in slide-in-from-left-5 duration-300"
                           style={{ animationDelay: `${index * 50}ms` }}
                         >
-                          <VocabularyCard
-                            item={item}
-                            onDelete={() => setItemToDelete(item.id)}
-                            isSelected={selectedItems.includes(item.id)}
-                            onSelect={() => toggleSelectItem(item.id)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                          <div className="flex items-center gap-3 p-4 rounded-lg border hover:border-primary/30 transition-all duration-200 hover:shadow-sm">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleSelectItem(item.id)}
+                                className={`h-6 w-6 p-0 transition-all duration-200 ${
+                                  selectedItems.includes(item.id)
+                                    ? "text-primary bg-primary/10"
+                                    : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                                }`}
+                              >
+                                {selectedItems.includes(item.id) ? <CheckSquare className="h-3 w-3" /> : "○"}
+                              </Button>
+                            </div>
 
-                  {/* Enhanced Card Grid View */}
-                  {viewMode === "cards" && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {filteredVocabulary.map((item, index) => (
-                        <div
-                          key={item.id}
-                          className="group relative animate-in slide-in-from-bottom-5 duration-300"
-                          style={{ animationDelay: `${index * 100}ms` }}
-                        >
-                          <Card
-                            className={`h-48 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-2 ${
-                              selectedItems.includes(item.id)
-                                ? "border-primary shadow-primary/20 shadow-lg"
-                                : "hover:border-primary/30 hover:shadow-primary/10"
-                            }`}
-                          >
-                            <CardContent className="p-4 h-full flex flex-col justify-between">
-                              <div className="flex-1">
-                                <div className="flex justify-between items-start mb-3">
-                                  <h3 className="font-semibold text-lg text-primary group-hover:text-primary/80 transition-colors duration-200">
-                                    {item.word}
-                                  </h3>
-                                  <div className="flex items-center gap-1">
-                                    <AudioButton
-                                      itemId={item.id}
-                                      size="sm"
-                                      className="h-6 w-6 p-0"
-                                      showProgress={true}
-                                      showQueue={true}
-                                    />
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => toggleDefinition(item.id)}
-                                      className="h-6 w-6 p-0 hover:bg-primary/10 transition-all duration-200"
-                                    >
-                                      {showDefinition[item.id] ? (
-                                        <EyeOff className="h-3 w-3" />
-                                      ) : (
-                                        <Eye className="h-3 w-3" />
-                                      )}
-                                    </Button>
-                                  </div>
-                                </div>
-
-                                {showDefinition[item.id] && (
-                                  <div className="space-y-2 text-sm animate-in fade-in-50 slide-in-from-top-2 duration-200">
-                                    {item.definition && (
-                                      <p className="text-muted-foreground leading-relaxed">{item.definition}</p>
-                                    )}
-                                    {item.exampleSentence && (
-                                      <div className="text-xs italic text-muted-foreground border-l-2 border-primary/30 pl-2 bg-primary/5 rounded-r p-2">
-                                        <div className="flex items-start gap-2">
-                                          <span className="flex-1">"{item.exampleSentence}"</span>
-                                          <AudioButton
-                                            itemId={item.id}
-                                            size="sm"
-                                            className="h-4 w-4 p-0 mt-0.5 flex-shrink-0"
-                                          />
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-
-                                {!showDefinition[item.id] && (
-                                  <div className="flex items-center justify-center h-full">
-                                    <p className="text-muted-foreground text-sm opacity-60">Click eye to reveal</p>
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="flex justify-between items-center pt-2 border-t border-muted/50">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold text-primary">{item.word}</h3>
                                 <Badge variant="secondary" className="text-xs">
                                   {item.language}
                                 </Badge>
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      toggleSelectItem(item.id)
-                                    }}
-                                    className={`h-6 w-6 p-0 transition-all duration-200 ${
-                                      selectedItems.includes(item.id)
-                                        ? "text-primary bg-primary/10"
-                                        : "text-muted-foreground hover:text-primary hover:bg-primary/5"
-                                    }`}
-                                  >
-                                    {selectedItems.includes(item.id) ? "✓" : "○"}
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setItemToDelete(item.id)
-                                    }}
-                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 transition-all duration-200"
-                                  >
-                                    ×
-                                  </Button>
-                                </div>
                               </div>
-                            </CardContent>
-                          </Card>
+                              {item.definition && (
+                                <p className="text-sm text-muted-foreground truncate">{item.definition}</p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <AudioButton
+                                itemId={item.id}
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                showProgress={true}
+                                showQueue={true}
+                                showAddToQueue={true}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setItemToDelete(item.id)}
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 transition-all duration-200"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1008,12 +1281,27 @@ const VocabularyPage = () => {
                                 <h2 className="text-2xl sm:text-3xl font-bold text-primary animate-in slide-in-from-top-5 duration-300">
                                   {filteredVocabulary[currentCardIndex]?.word}
                                 </h2>
-                                <AudioButton
-                                  itemId={filteredVocabulary[currentCardIndex]?.id}
-                                  size="lg"
-                                  className="h-10 w-10 p-0 shadow-md hover:shadow-lg transition-all duration-200"
-                                  showProgress={true}
-                                />
+                                <div className="flex items-center gap-2">
+                                  <AudioButton
+                                    itemId={filteredVocabulary[currentCardIndex]?.id}
+                                    size="lg"
+                                    className="h-10 w-10 p-0 shadow-md hover:shadow-lg transition-all duration-200"
+                                    showProgress={true}
+                                  />
+                                  {!audioQueue.includes(filteredVocabulary[currentCardIndex]?.id) && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() =>
+                                        setAudioQueue((prev) => [...prev, filteredVocabulary[currentCardIndex]?.id])
+                                      }
+                                      className="h-10 px-3 border-primary/30 hover:border-primary"
+                                      title="Add to playlist"
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
 
                               <Button
@@ -1178,7 +1466,7 @@ const VocabularyPage = () => {
             <div className="mt-4 animate-in slide-in-from-right-5 duration-500 delay-200">
               <UpgradePrompt
                 title="Unlimited Vocabulary"
-                message="Premium subscribers can create unlimited vocabulary lists, export all their flashcards with audio, and access advanced audio features like playlists and repeat modes."
+                message="Premium subscribers can create unlimited vocabulary lists, export all their flashcards with audio, and access advanced audio playlist features with unlimited queue capacity."
               />
             </div>
           )}
@@ -1219,6 +1507,12 @@ const VocabularyPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Playlist Guide Dialog */}
+      <PlaylistGuide />
+
+      {/* Quick Start Guide Dialog */}
+      <QuickStartGuide />
     </div>
   )
 }
