@@ -12,7 +12,9 @@ import { useDelayedLoading } from "@/hooks/use-delayed-loading"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
+import { Skeleton } from "@/components/ui/skeleton"
+import { ChevronRight } from "lucide-react"
 import { useCurriculumExercises } from "@/hooks/use-curriculum-exercises"
 import { isStreakActive } from "@/utils/visitorTracking"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -86,6 +88,7 @@ const UserStatistics: React.FC = () => {
         setIsLoading(true)
 
         // Fetch user's streak data for current language
+        // Using maybeSingle() instead of single() to handle cases where no streak data exists
         const { data: streakData, error: streakError } = await supabase
           .from("user_language_streaks")
           .select("current_streak, longest_streak, last_activity_date")
@@ -98,16 +101,19 @@ const UserStatistics: React.FC = () => {
 
         // If streak data exists, use it; otherwise use default values
         if (streakData) {
+          // Check if the streak is active based on last activity date
           const streakIsActive = isStreakActive(
             streakData.last_activity_date ? new Date(streakData.last_activity_date) : null,
           )
 
+          // If streak is broken, set current streak to 0, but keep longest streak
           setStreakData({
             currentStreak: streakIsActive ? streakData.current_streak : 0,
             longestStreak: streakData.longest_streak,
             lastActivityDate: streakData.last_activity_date ? new Date(streakData.last_activity_date) : null,
           })
         } else {
+          // No streak data found, use default values
           setStreakData({
             currentStreak: 0,
             longestStreak: 0,
@@ -130,6 +136,7 @@ const UserStatistics: React.FC = () => {
           console.error("Error fetching daily activity data:", activityError)
         }
         if (activityData) {
+          // Convert database activity data to our format
           const formattedActivities = activityData.map((item) => ({
             date: new Date(item.activity_date),
             count: item.activity_count,
@@ -138,6 +145,7 @@ const UserStatistics: React.FC = () => {
           }))
           setDailyActivities(formattedActivities)
 
+          // Calculate the total mastered words by summing up all records
           const totalMastered = activityData.reduce((sum, item) => sum + (item.words_mastered || 0), 0)
           setTotalMasteredWords(totalMastered)
         }
@@ -176,12 +184,20 @@ const UserStatistics: React.FC = () => {
     fetchUserData()
   }, [user, exercises, settings.selectedLanguage])
 
+  // Current language filter
+  const currentLanguage = settings.selectedLanguage
+
   // Create a set of masteredWords based on the total count for visualization purposes
+  // Note: This is a placeholder set just to satisfy the component props
   const masteredWords = new Set(
     Array(totalMasteredWords)
       .fill(0)
       .map((_, i) => `word${i}`),
   )
+
+  // Note: We're now using the streak data directly from the database
+  // and resetting it to 0 if the streak is broken
+  const streak = streakData.currentStreak
 
   // Refresh curriculum data on component mount
   React.useEffect(() => {
@@ -192,6 +208,7 @@ const UserStatistics: React.FC = () => {
   // Handle modal actions
   const handleStartLearningPlan = () => {
     setShowStartModal(false)
+    // Check if user has in-progress exercises and navigate accordingly
     if (stats.inProgress > 0) {
       navigate("/dashboard/curriculum?tab=in-progress")
     } else {
@@ -203,7 +220,7 @@ const UserStatistics: React.FC = () => {
     navigate("/dashboard/exercises")
   }
 
-  // Smart recommendation system
+  // ENHANCED: Smart recommendation system
   const getSmartRecommendation = () => {
     const hasInProgress = stats.inProgress > 0
     const hasCompleted = stats.completed > 0
@@ -245,7 +262,7 @@ const UserStatistics: React.FC = () => {
     }
   }
 
-  // Enhanced guidance card component - "Continue Your Progress"
+  // ENHANCED: New guidance card component
   const renderEnhancedGuidanceCard = (): React.ReactNode => {
     if (isFirstTimeUser) {
       return null
@@ -255,36 +272,35 @@ const UserStatistics: React.FC = () => {
     const IconComponent = recommendation.icon
 
     return (
-      <Card className="w-full border-2 border-[#6F6BF2]/30 bg-gradient-to-r from-[#6F6BF2]/10 via-[#AB96D9]/5 to-[#6F6BF2]/10 relative overflow-hidden h-fit">
+      <Card className="w-full border-2 border-[#6F6BF2]/30 bg-gradient-to-r from-[#6F6BF2]/10 via-[#AB96D9]/5 to-[#6F6BF2]/10 relative overflow-hidden">
         {/* Animated background elements */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#491BF2]/20 to-transparent rounded-full blur-2xl animate-pulse" />
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-[#AB96D9]/20 to-transparent rounded-full blur-xl" />
 
-        <CardContent className="p-4 lg:p-6 relative z-10">
-          <div className="flex flex-col gap-4">
+        <CardContent className="p-6 relative z-10">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             {/* Icon and content */}
-            <div className="flex items-start gap-3 lg:gap-4">
-              <div className="p-2 lg:p-3 bg-gradient-to-br from-[#491BF2]/20 to-[#6D49F2]/20 rounded-xl flex-shrink-0">
-                <IconComponent className="h-5 w-5 lg:h-6 lg:w-6 text-[#491BF2]" />
+            <div className="flex items-start gap-4 flex-1">
+              <div className="p-3 bg-gradient-to-br from-[#491BF2]/20 to-[#6D49F2]/20 rounded-xl">
+                <IconComponent className="h-6 w-6 text-[#491BF2]" />
               </div>
-              <div className="space-y-2 flex-1 min-w-0">
+              <div className="space-y-2 flex-1">
                 <div className="flex items-center gap-2">
-                  <Brain className="h-3 w-3 lg:h-4 lg:w-4 text-[#491BF2] flex-shrink-0" />
+                  <Brain className="h-4 w-4 text-[#491BF2]" />
                   <span className="text-xs font-medium text-[#491BF2] uppercase tracking-wide">
                     Smart Recommendation
                   </span>
                 </div>
-                <h3 className="text-base lg:text-lg font-bold text-[#1F0459] leading-tight">{recommendation.title}</h3>
+                <h3 className="text-lg font-bold text-[#1F0459] leading-tight">{recommendation.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{recommendation.description}</p>
               </div>
             </div>
 
             {/* Action buttons */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:flex-shrink-0">
               <Button
                 onClick={() => navigate(recommendation.route)}
-                className="bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 w-full"
-                size="sm"
+                className="bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
               >
                 <IconComponent className="h-4 w-4 mr-2" />
                 {recommendation.action}
@@ -292,79 +308,30 @@ const UserStatistics: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={() => setShowStartModal(true)}
-                className="border-[#491BF2]/30 hover:border-[#491BF2]/50 hover:bg-[#6F6BF2]/10 text-[#1F0459] w-full"
-                size="sm"
+                className="border-[#491BF2]/30 hover:border-[#491BF2]/50 hover:bg-[#6F6BF2]/10 text-[#1F0459]"
               >
                 <Compass className="h-4 w-4 mr-2" />
                 More Options
               </Button>
             </div>
-
-            {/* Progress indicator for existing users */}
-            {hasStartedLearning && (
-              <div className="pt-3 border-t border-[#AB96D9]/20">
-                <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                  <span>Overall Progress</span>
-                  <span>{stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}% Complete</span>
-                </div>
-                <Progress value={stats.total > 0 ? (stats.completed / stats.total) * 100 : 0} className="h-2" />
-              </div>
-            )}
           </div>
+
+          {/* Progress indicator for existing users */}
+          {hasStartedLearning && (
+            <div className="mt-4 pt-4 border-t border-[#AB96D9]/20">
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                <span>Overall Progress</span>
+                <span>{stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}% Complete</span>
+              </div>
+              <Progress value={stats.total > 0 ? (stats.completed / stats.total) * 100 : 0} className="h-2" />
+            </div>
+          )}
         </CardContent>
       </Card>
     )
   }
 
-  // Render First-time User Learning Plan Card - "Your Language Journey"
-  const renderFirstTimeUserCard = (): React.ReactNode => (
-    <Card className="w-full border-2 border-[#AB96D9]/30 bg-gradient-to-br from-[#6F6BF2]/10 via-[#6D49F2]/5 to-transparent relative overflow-hidden h-fit">
-      {/* Decorative elements */}
-      <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-bl from-[#491BF2]/20 to-transparent rounded-full blur-2xl" />
-      <div className="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-tr from-[#AB96D9]/20 to-transparent rounded-full blur-xl" />
-
-      <CardHeader className="pb-3 relative px-4 lg:px-6 pt-4 lg:pt-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 lg:h-6 lg:w-6 text-[#491BF2] flex-shrink-0" />
-            <CardTitle className="text-lg lg:text-xl font-bold text-[#1F0459] leading-tight">
-              Your Language Journey
-            </CardTitle>
-          </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Choose your path to language mastery. We'll guide you every step of the way.
-          </p>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4 relative px-4 lg:px-6 pb-4 lg:pb-6">
-        <div className="text-center py-4 space-y-4">
-          <div className="mx-auto w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-br from-[#491BF2] to-[#6D49F2] rounded-full flex items-center justify-center shadow-lg">
-            <GraduationCap className="h-6 w-6 lg:h-8 lg:w-8 text-white" />
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="text-base lg:text-lg font-bold text-[#1F0459]">Begin Your Language Journey</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Start with our structured learning plan designed by language experts, or jump right in by creating your
-              own exercises.
-            </p>
-          </div>
-
-          <Button
-            onClick={() => setShowStartModal(true)}
-            size="sm"
-            className="bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 text-white w-full"
-          >
-            <Sparkles className="mr-2 h-4 w-4" />
-            Get Started Now
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  )
-
-  // Enhanced modal content
+  // ENHANCED: Better modal content with clearer next steps and personalized recommendations
   const renderEnhancedModal = (): React.ReactNode => {
     const recommendation = getSmartRecommendation()
 
@@ -522,23 +489,175 @@ const UserStatistics: React.FC = () => {
     return <SkeletonUserStats />
   }
 
-  return (
-    <div className="space-y-6 px-4 sm:px-0">
-      {/* Language Level Display - Full width for existing users */}
-      {hasStartedLearning && (
-        <div className="w-full">
-          <LanguageLevelDisplay masteredWords={totalMasteredWords} />
+  // Render First-time User Learning Plan Card
+  const renderFirstTimeUserCard = (): React.ReactNode => (
+    <Card className="w-full border-2 border-[#AB96D9]/30 bg-gradient-to-br from-[#6F6BF2]/10 via-[#6D49F2]/5 to-transparent relative overflow-hidden">
+      {/* Decorative elements - Hidden on mobile for cleaner look */}
+      <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-bl from-[#491BF2]/20 to-transparent rounded-full blur-2xl" />
+      <div className="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-tr from-[#AB96D9]/20 to-transparent rounded-full blur-xl" />
+
+      <CardHeader className="pb-3 sm:pb-4 relative px-4 sm:px-6 pt-4 sm:pt-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-[#491BF2] flex-shrink-0" />
+              <CardTitle className="text-xl sm:text-2xl font-bold text-[#1F0459] leading-tight">
+                Ready to Start Learning?
+              </CardTitle>
+            </div>
+            <p className="text-sm sm:text-base text-muted-foreground max-w-md leading-relaxed">
+              Choose your path to language mastery. We'll guide you every step of the way.
+            </p>
+          </div>
         </div>
-      )}
+      </CardHeader>
+      <CardContent className="space-y-4 sm:space-y-6 relative px-4 sm:px-6 pb-4 sm:pb-6">
+        <div className="text-center py-4 sm:py-8 space-y-4 sm:space-y-6">
+          <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-[#491BF2] to-[#6D49F2] rounded-full flex items-center justify-center shadow-lg">
+            <GraduationCap className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+          </div>
 
-      {/* Two-column responsive grid for main content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-        {/* "Continue Your Progress" Card - Only for existing users */}
-        {!isFirstTimeUser && renderEnhancedGuidanceCard()}
+          <div className="space-y-2 sm:space-y-3">
+            <h3 className="text-lg sm:text-xl font-bold text-[#1F0459]">Begin Your Language Journey</h3>
+            <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto leading-relaxed px-4 sm:px-0">
+              Start with our structured learning plan designed by language experts, or jump right in by creating your
+              own exercises.
+            </p>
+          </div>
 
-        {/* "Your Language Journey" Card - Always shown */}
-        {renderFirstTimeUserCard()}
-      </div>
+          <Button
+            onClick={() => setShowStartModal(true)}
+            size="lg"
+            className="bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 text-white w-full sm:w-auto px-6 py-3"
+          >
+            <Sparkles className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+            Get Started Now
+            <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  // Render Existing User Learning Plan Card
+  const renderExistingUserCard = (): React.ReactNode => (
+    <Card className="w-full border-2 border-[#AB96D9]/20 bg-gradient-to-br from-[#6F6BF2]/5 to-[#AB96D9]/10">
+      <CardHeader className="relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
+          <div className="space-y-1">
+            <CardTitle className="text-lg font-bold flex items-center gap-2 text-[#1F0459] leading-tight sm:text-base">
+              Learning Plan Progress
+            </CardTitle>
+            <p className="text-xs sm:text-sm text-muted-foreground">Your structured path to language mastery</p>
+          </div>
+          <div className="flex items-center gap-1 px-2 sm:px-3 py-1 bg-[#491BF2]/10 rounded-full">
+            <Target className="h-3 w-3 sm:h-4 sm:w-4 text-[#491BF2]" />
+            <span className="text-xs sm:text-sm font-medium text-[#491BF2]">
+              {stats.total > 0 ? `${Math.round((stats.completed / stats.total) * 100)}%` : "0%"}
+            </span>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="relative z-10">
+        {showCurriculumLoading ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 sm:h-5 w-32 sm:w-48" />
+              <Skeleton className="h-3 sm:h-4 w-24 sm:w-32" />
+            </div>
+            <Skeleton className="h-2 sm:h-3 w-full" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-2 p-3 sm:p-4 rounded-lg border">
+                  <Skeleton className="h-5 sm:h-6 w-full" />
+                  <Skeleton className="h-3 sm:h-4 w-full" />
+                </div>
+              ))}
+            </div>
+            <Skeleton className="h-9 sm:h-10 w-full" />
+          </div>
+        ) : (
+          <>
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                <span className="text-xs sm:text-sm font-medium text-muted-foreground bg-[#AB96D9]/20 px-2 sm:px-3 py-1 rounded-full w-fit">
+                  {stats.completed} of {stats.total} complete
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <Progress
+                  value={stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}
+                  className="h-2 sm:h-3"
+                  style={{ background: "#AB96D9/20" }}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="bg-gradient-to-br from-[#6F6BF2]/10 to-[#6D49F2]/10 p-3 sm:p-4 rounded-lg border border-[#6F6BF2]/30">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#6F6BF2] rounded-full"></div>
+                    <p className="text-[10px] sm:text-xs font-medium text-[#491BF2] uppercase tracking-wide">
+                      Completed
+                    </p>
+                  </div>
+                  <p className="text-xl font-bold text-[#1F0459] sm:text-base">{stats.completed}</p>
+                </div>
+                <div className="bg-gradient-to-br from-[#6D49F2]/10 to-[#491BF2]/10 p-3 sm:p-4 rounded-lg border border-[#6D49F2]/30">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#6D49F2] rounded-full"></div>
+                    <p className="text-[10px] sm:text-xs font-medium text-[#491BF2] uppercase tracking-wide">
+                      In Progress
+                    </p>
+                  </div>
+                  <p className="text-xl font-bold text-[#1F0459] sm:text-base">{stats.inProgress}</p>
+                </div>
+                <div className="bg-gradient-to-br from-[#AB96D9]/10 to-[#AB96D9]/20 p-3 sm:p-4 rounded-lg border border-[#AB96D9]/30">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#AB96D9] rounded-full"></div>
+                    <p className="text-[10px] sm:text-xs font-medium text-[#491BF2] uppercase tracking-wide">
+                      Remaining
+                    </p>
+                  </div>
+                  <p className="text-xl font-bold text-[#1F0459] sm:text-base">
+                    {stats.total - stats.completed - stats.inProgress}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              asChild
+              size="lg"
+              className="w-full bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] text-white h-10 sm:h-11"
+            >
+              <Link
+                to={stats.inProgress > 0 ? "/dashboard/curriculum?tab=in-progress" : "/dashboard/curriculum"}
+                className="relative z-10 my-[10px]"
+              >
+                Continue Learning Plan
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+
+  return (
+    <div className="space-y-6 sm:space-y-8 px-4 sm:px-0">
+      {/* Header */}
+      <div className="space-y-1 sm:space-y-2"></div>
+
+      {/* ENHANCED GUIDANCE CARD - Replaces the old banner */}
+      {renderEnhancedGuidanceCard()}
+
+      {/* Conditional Language Level Display - only show for existing users */}
+      {hasStartedLearning && <LanguageLevelDisplay masteredWords={totalMasteredWords} />}
+
+      {/* Learning Plan Progress Card - Adaptive based on user status */}
+      {isFirstTimeUser ? renderFirstTimeUserCard() : renderExistingUserCard()}
 
       {/* Enhanced Start Modal */}
       {renderEnhancedModal()}
