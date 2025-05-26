@@ -8,10 +8,7 @@ import {
   Sparkles,
   Search,
   BookOpen,
-  Download,
-  Trophy,
   AlertCircle,
-  CheckCircle,
   List,
   Eye,
   EyeOff,
@@ -38,9 +35,7 @@ import {
 } from "lucide-react"
 import { useSubscription } from "@/contexts/SubscriptionContext"
 import { useNavigate } from "react-router-dom"
-import UpgradePrompt from "@/components/UpgradePrompt"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import VocabularyExport from "@/components/VocabularyExport"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -998,131 +993,149 @@ const VocabularyPage = () => {
   )
 
   return (
-    <div className="container mx-auto px-4 py-4 sm:py-8 space-y-6">
-      {/* Main Audio Player - Consolidated at top */}
+    <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 md:py-8 space-y-4 sm:space-y-6">
+      {/* Main Audio Player - Mobile-friendly */}
       {audioQueue.length > 0 && (
-        <Card className="animate-in slide-in-from-top-5 duration-300 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 sticky top-4 z-10 shadow-lg">
-          <CardContent className="pt-4">
-            <div className="flex flex-col gap-4">
-              {/* Now Playing Info */}
-              <div className="flex items-center gap-3">
-                <Music className="h-5 w-5 text-primary" />
+        <Card className="animate-in slide-in-from-top-5 duration-300 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 sticky top-2 z-10 shadow-lg">
+          <CardContent className="pt-3 pb-3">
+            <div className="flex flex-col gap-3">
+              {/* Now Playing Info - Mobile optimized */}
+              <div className="flex items-center gap-2">
+                <Music className="h-4 w-4 text-primary flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-primary">
+                  <div className="text-xs sm:text-sm font-medium text-primary truncate">
                     {(audioQueue.length > 0 &&
                       languageVocabulary.find((item) => item.id === audioQueue[currentQueueIndex])?.word) ||
                       "No track selected"}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {currentQueueIndex + 1} of {audioQueue.length} • {_isShuffleMode ? "Shuffled" : "Original order"} •{" "}
-                    {isRepeatMode ? "Repeat on" : "Repeat off"}
+                    {currentQueueIndex + 1}/{audioQueue.length} • {_isShuffleMode ? "Shuffled" : "Original"}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {audioQueue.length > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeFromQueue(audioQueue[currentQueueIndex])}
-                      className="h-8 px-2 text-xs hover:bg-destructive/10 hover:text-destructive"
-                      title="Remove current track"
-                    >
-                      <X className="h-3 w-3 mr-1" />
-                      Remove
-                    </Button>
-                  )}
-                  <Badge variant="outline" className="text-xs border-primary text-primary">
-                    Playlist
-                  </Badge>
-                  {/* Quick Actions */}
-                  {wordsWithAudio.length > audioQueue.length && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={addAllToQueue}
-                      className="h-7 text-xs border-primary/30 hover:border-primary hover:bg-primary/5"
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add All ({wordsWithAudio.length - audioQueue.length})
-                    </Button>
-                  )}
-                  {selectedItems.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={addSelectedToQueue}
-                      className="h-7 text-xs border-primary/30 hover:border-primary hover:bg-primary/5"
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add Selected (
-                      {
-                        selectedItems.filter((id) => {
-                          const item = languageVocabulary.find((v) => v.id === id)
-                          return item?.audioUrl && !audioQueue.includes(id)
-                        }).length
-                      }
-                      )
-                    </Button>
-                  )}
-                </div>
+                <Badge variant="outline" className="text-xs border-primary text-primary hidden sm:inline-flex">
+                  Playlist
+                </Badge>
               </div>
 
-              {/* Main Controls */}
+              {/* Mobile Quick Actions */}
+              <div className="flex flex-wrap gap-1 sm:hidden">
+                {audioQueue.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFromQueue(audioQueue[currentQueueIndex])}
+                    className="h-6 px-2 text-xs hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Remove
+                  </Button>
+                )}
+                {wordsWithAudio.length > audioQueue.length && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addAllToQueue}
+                    className="h-6 text-xs border-primary/30 hover:border-primary"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add All
+                  </Button>
+                )}
+              </div>
+
+              {/* Desktop Quick Actions */}
+              <div className="hidden sm:flex items-center gap-2 justify-end">
+                {audioQueue.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFromQueue(audioQueue[currentQueueIndex])}
+                    className="h-8 px-2 text-xs hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Remove
+                  </Button>
+                )}
+                {wordsWithAudio.length > audioQueue.length && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addAllToQueue}
+                    className="h-7 text-xs border-primary/30 hover:border-primary hover:bg-primary/5"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add All ({wordsWithAudio.length - audioQueue.length})
+                  </Button>
+                )}
+                {selectedItems.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addSelectedToQueue}
+                    className="h-7 text-xs border-primary/30 hover:border-primary hover:bg-primary/5"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Selected
+                  </Button>
+                )}
+              </div>
+
+              {/* Main Controls - Mobile optimized */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={skipToPrevious}
                     disabled={audioQueue.length <= 1}
-                    className="h-10 w-10 p-0 hover:bg-primary/10"
+                    className="h-8 w-8 sm:h-10 sm:w-10 p-0 hover:bg-primary/10"
                     title="Previous word"
                   >
-                    <SkipBack className="h-5 w-5" />
+                    <SkipBack className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                   <Button
                     variant="default"
                     size="sm"
                     onClick={playQueue}
-                    className="h-12 w-12 p-0 bg-primary hover:bg-primary/90 shadow-md"
+                    className="h-10 w-10 sm:h-12 sm:w-12 p-0 bg-primary hover:bg-primary/90 shadow-md"
                     title="Play playlist"
                   >
-                    {playingAudio ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+                    {playingAudio ? <Pause className="h-5 w-5 sm:h-6 sm:w-6" /> : <Play className="h-5 w-5 sm:h-6 sm:w-6" />}
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={skipToNext}
                     disabled={audioQueue.length <= 1}
-                    className="h-10 w-10 p-0 hover:bg-primary/10"
+                    className="h-8 w-8 sm:h-10 sm:w-10 p-0 hover:bg-primary/10"
                     title="Next word"
                   >
-                    <SkipForward className="h-5 w-5" />
+                    <SkipForward className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsRepeatMode(!isRepeatMode)}
-                    className={`h-10 w-10 p-0 ${isRepeatMode ? "text-primary bg-primary/10" : "hover:bg-primary/10"}`}
+                    className={`h-8 w-8 sm:h-10 sm:w-10 p-0 ${isRepeatMode ? "text-primary bg-primary/10" : "hover:bg-primary/10"}`}
                     title={isRepeatMode ? "Disable repeat" : "Enable repeat"}
                   >
-                    <Repeat className="h-5 w-5" />
+                    <Repeat className="h-3 w-3 sm:h-5 sm:w-5" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={shuffleQueue}
-                    className={`h-10 w-10 p-0 ${_isShuffleMode ? "text-primary bg-primary/10" : "hover:bg-primary/10"}`}
+                    className={`h-8 w-8 sm:h-10 sm:w-10 p-0 ${_isShuffleMode ? "text-primary bg-primary/10" : "hover:bg-primary/10"}`}
                     title={_isShuffleMode ? "Disable shuffle" : "Enable shuffle"}
                   >
-                    <Shuffle className="h-5 w-5" />
+                    <Shuffle className="h-3 w-3 sm:h-5 sm:w-5" />
                   </Button>
 
-                  {/* Volume Control */}
-                  <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
+                  {/* Volume Control - Hidden on mobile */}
+                  <div className="hidden sm:flex items-center gap-1 bg-muted/50 rounded-lg p-1">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1147,19 +1160,20 @@ const VocabularyPage = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowPlaylistGuide(true)}
-                    className="h-8 px-2 text-xs hover:bg-primary/10"
+                    className="h-6 w-6 sm:h-8 sm:w-8 p-0 hover:bg-primary/10"
                     title="Playlist guide"
                   >
-                    <HelpCircle className="h-4 w-4" />
+                    <HelpCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={clearQueue}
-                    className="h-8 px-2 text-xs hover:bg-destructive/10 hover:text-destructive"
+                    className="h-6 px-1 sm:h-8 sm:px-2 text-xs hover:bg-destructive/10 hover:text-destructive"
                     title="Clear playlist"
                   >
-                    Clear
+                    <span className="hidden sm:inline">Clear</span>
+                    <X className="h-3 w-3 sm:hidden" />
                   </Button>
                 </div>
               </div>
@@ -1168,44 +1182,46 @@ const VocabularyPage = () => {
         </Card>
       )}
 
-      {/* Enhanced Header with Stats */}
-      <div className="flex flex-col gap-4 md:flex-row justify-between items-start md:items-center">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-              Vocabulary
-            </h1>
-            <Badge variant="secondary" className="text-xs animate-in fade-in-50 duration-300">
-              {languageVocabulary.length} words
-            </Badge>
-            {vocabularyStats.withAudio > 0 && (
-              <Badge variant="outline" className="text-xs border-green-500 text-green-600">
-                <Volume2 className="h-3 w-3 mr-1" />
-                {vocabularyStats.withAudio} with audio
+      {/* Enhanced Header with Stats - Mobile optimized */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:justify-between sm:items-start">
+          <div className="flex-1">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                Vocabulary
+              </h1>
+              <Badge variant="secondary" className="text-xs animate-in fade-in-50 duration-300">
+                {languageVocabulary.length} words
               </Badge>
-            )}
-            {audioQueue.length > 0 && (
-              <Badge variant="outline" className="text-xs border-primary text-primary">
-                <Music className="h-3 w-3 mr-1" />
-                {audioQueue.length} in playlist
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <p className="text-muted-foreground text-sm animate-in slide-in-from-left-5 duration-500">
-              {getMotivationalMessage()}
-            </p>
-            {wordsWithAudio.length > 0 && audioQueue.length === 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowPlaylistGuide(true)}
-                className="text-xs text-primary hover:text-primary/80 h-6 px-2"
-              >
-                <HelpCircle className="h-3 w-3 mr-1" />
-                How to create playlists?
-              </Button>
-            )}
+              {vocabularyStats.withAudio > 0 && (
+                <Badge variant="outline" className="text-xs border-green-500 text-green-600">
+                  <Volume2 className="h-3 w-3 mr-1" />
+                  {vocabularyStats.withAudio} audio
+                </Badge>
+              )}
+              {audioQueue.length > 0 && (
+                <Badge variant="outline" className="text-xs border-primary text-primary">
+                  <Music className="h-3 w-3 mr-1" />
+                  {audioQueue.length} queued
+                </Badge>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <p className="text-muted-foreground text-sm animate-in slide-in-from-left-5 duration-500">
+                {getMotivationalMessage()}
+              </p>
+              {wordsWithAudio.length > 0 && audioQueue.length === 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPlaylistGuide(true)}
+                  className="text-xs text-primary hover:text-primary/80 h-6 px-2 self-start sm:self-auto"
+                >
+                  <HelpCircle className="h-3 w-3 mr-1" />
+                  How to create playlists?
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1331,9 +1347,9 @@ const VocabularyPage = () => {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Left column: Enhanced Vocabulary List */}
-        <div className="lg:col-span-2 space-y-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
+        {/* Main content - Full width on mobile, 2/3 on desktop */}
+        <div className="xl:col-span-2 space-y-4">
           <Card className="h-full animate-in slide-in-from-left-5 duration-500">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -1450,22 +1466,22 @@ const VocabularyPage = () => {
                     </div>
                   )}
 
-                  {/* List View */}
+                  {/* List View - Mobile optimized */}
                   {viewMode === "list" && (
-                    <div className="space-y-3 sm:space-y-4">
+                    <div className="space-y-2 sm:space-y-4">
                       {filteredVocabulary.map((item, index) => (
                         <div
                           key={item.id}
                           className="group relative animate-in slide-in-from-left-5 duration-300"
                           style={{ animationDelay: `${index * 50}ms` }}
                         >
-                          <div className="flex items-center gap-3 p-4 rounded-lg border hover:border-primary/30 transition-all duration-200 hover:shadow-sm">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border hover:border-primary/30 transition-all duration-200 hover:shadow-sm">
+                            <div className="flex items-center gap-2 pt-1">
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => toggleSelectItem(item.id)}
-                                className={`h-6 w-6 p-0 transition-all duration-200 ${
+                                className={`h-5 w-5 sm:h-6 sm:w-6 p-0 transition-all duration-200 ${
                                   selectedItems.includes(item.id)
                                     ? "text-primary bg-primary/10"
                                     : "text-muted-foreground hover:text-primary hover:bg-primary/5"
@@ -1476,22 +1492,24 @@ const VocabularyPage = () => {
                             </div>
 
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-semibold text-primary">{item.word}</h3>
-                                <Badge variant="secondary" className="text-xs">
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
+                                <h3 className="font-semibold text-primary text-sm sm:text-base">{item.word}</h3>
+                                <Badge variant="secondary" className="text-xs self-start sm:self-auto">
                                   {item.language}
                                 </Badge>
                               </div>
                               {item.definition && (
-                                <p className="text-sm text-muted-foreground truncate">{item.definition}</p>
+                                <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 sm:line-clamp-1">
+                                  {item.definition}
+                                </p>
                               )}
                             </div>
 
-                            <div className="flex items-center gap-1">
+                            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1">
                               <AudioButton
                                 itemId={item.id}
                                 size="sm"
-                                className="h-8 w-8 p-0"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                                 showProgress={true}
                                 showAddToQueue={true}
                               />
@@ -1500,16 +1518,13 @@ const VocabularyPage = () => {
                                 size="sm"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  // Direct delete without confirmation
                                   removeVocabularyItem(item.id)
-                                  // Remove from selected items if present
                                   setSelectedItems((prev) => prev.filter((itemId) => itemId !== item.id))
-                                  // Remove from audio queue if present
                                   if (audioQueue.includes(item.id)) {
                                     removeFromQueue(item.id)
                                   }
                                 }}
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-all duration-200"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-all duration-200"
                                 title="Delete word"
                               >
                                 <X className="h-3 w-3" />
@@ -1557,20 +1572,20 @@ const VocabularyPage = () => {
                         </div>
                       </div>
 
-                      {/* Enhanced Study Card */}
+                      {/* Enhanced Study Card - Mobile optimized */}
                       <div className="relative">
-                        <Card className="min-h-[300px] border-2 border-primary/20 shadow-lg hover:shadow-xl transition-all duration-300">
-                          <CardContent className="p-4 sm:p-8 h-full flex flex-col justify-center text-center">
-                            <div className="space-y-6">
-                              <div className="flex items-center justify-center gap-4">
-                                <h2 className="text-2xl sm:text-3xl font-bold text-primary animate-in slide-in-from-top-5 duration-300">
+                        <Card className="min-h-[250px] sm:min-h-[300px] border-2 border-primary/20 shadow-lg hover:shadow-xl transition-all duration-300">
+                          <CardContent className="p-3 sm:p-4 md:p-8 h-full flex flex-col justify-center text-center">
+                            <div className="space-y-4 sm:space-y-6">
+                              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+                                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary animate-in slide-in-from-top-5 duration-300">
                                   {filteredVocabulary[currentCardIndex]?.word}
                                 </h2>
                                 <div className="flex items-center gap-2">
                                   <AudioButton
                                     itemId={filteredVocabulary[currentCardIndex]?.id}
                                     size="lg"
-                                    className="h-10 w-10 p-0 shadow-md hover:shadow-lg transition-all duration-200"
+                                    className="h-9 w-9 sm:h-10 sm:w-10 p-0 shadow-md hover:shadow-lg transition-all duration-200"
                                     showProgress={true}
                                   />
                                   {!audioQueue.includes(filteredVocabulary[currentCardIndex]?.id) && (
@@ -1584,10 +1599,10 @@ const VocabularyPage = () => {
                                           setOriginalQueue(newQueue)
                                         }
                                       }}
-                                      className="h-10 px-3 border-primary/30 hover:border-primary"
+                                      className="h-9 px-2 sm:h-10 sm:px-3 border-primary/30 hover:border-primary text-xs sm:text-sm"
                                       title="Add to playlist"
                                     >
-                                      <Plus className="h-4 w-4" />
+                                      <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                                     </Button>
                                   )}
                                 </div>
@@ -1596,7 +1611,7 @@ const VocabularyPage = () => {
                               <Button
                                 variant="outline"
                                 onClick={() => toggleDefinition(filteredVocabulary[currentCardIndex]?.id)}
-                                className="mx-auto transition-all duration-200 hover:shadow-md border-primary/30 hover:border-primary"
+                                className="mx-auto transition-all duration-200 hover:shadow-md border-primary/30 hover:border-primary text-sm"
                               >
                                 {showDefinition[filteredVocabulary[currentCardIndex]?.id] ? (
                                   <>
@@ -1612,22 +1627,22 @@ const VocabularyPage = () => {
                               </Button>
 
                               {showDefinition[filteredVocabulary[currentCardIndex]?.id] && (
-                                <div className="space-y-4 animate-in fade-in-50 slide-in-from-bottom-5 duration-300">
+                                <div className="space-y-3 sm:space-y-4 animate-in fade-in-50 slide-in-from-bottom-5 duration-300">
                                   {filteredVocabulary[currentCardIndex]?.definition && (
-                                    <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                                    <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                                       {filteredVocabulary[currentCardIndex].definition}
                                     </p>
                                   )}
                                   {filteredVocabulary[currentCardIndex]?.exampleSentence && (
-                                    <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-4 max-w-xl mx-auto border border-primary/20">
-                                      <div className="flex items-start gap-3">
-                                        <p className="text-sm italic text-muted-foreground flex-1">
+                                    <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-3 sm:p-4 max-w-xl mx-auto border border-primary/20">
+                                      <div className="flex items-start gap-2 sm:gap-3">
+                                        <p className="text-xs sm:text-sm italic text-muted-foreground flex-1">
                                           "{filteredVocabulary[currentCardIndex].exampleSentence}"
                                         </p>
                                         <AudioButton
                                           itemId={filteredVocabulary[currentCardIndex].id}
                                           size="sm"
-                                          className="h-6 w-6 p-0 flex-shrink-0"
+                                          className="h-5 w-5 sm:h-6 sm:w-6 p-0 flex-shrink-0"
                                         />
                                       </div>
                                     </div>
@@ -1638,185 +1653,46 @@ const VocabularyPage = () => {
                           </CardContent>
                         </Card>
 
-                        {/* Enhanced Navigation Arrows */}
+                        {/* Enhanced Navigation Arrows - Mobile optimized */}
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => navigateCard("prev")}
-                          className="absolute left-2 top-1/2 transform -translate-y-1/2 h-12 w-12 p-0 bg-white/90 backdrop-blur-sm shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200 border border-primary/20"
+                          className="absolute left-1 sm:left-2 top-1/2 transform -translate-y-1/2 h-10 w-10 sm:h-12 sm:w-12 p-0 bg-white/90 backdrop-blur-sm shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200 border border-primary/20"
                           disabled={filteredVocabulary.length <= 1}
                         >
-                          <ChevronLeft className="h-6 w-6" />
+                          <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => navigateCard("next")}
-                          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-12 w-12 p-0 bg-white/90 backdrop-blur-sm shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200 border border-primary/20"
+                          className="absolute right-1 sm:right-2 top-1/2 transform -translate-y-1/2 h-10 w-10 sm:h-12 sm:w-12 p-0 bg-white/90 backdrop-blur-sm shadow-lg hover:bg-white hover:shadow-xl transition-all duration-200 border border-primary/20"
                           disabled={filteredVocabulary.length <= 1}
                         >
-                          <ChevronRight className="h-6 w-6" />
+                          <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
                         </Button>
                       </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
-                      {/* Enhanced Study Progress */}
-                      <div className="flex justify-center">
-                        <div className="flex gap-1 bg-muted/50 rounded-full p-2">
-                          {filteredVocabulary.map((_, index) => (
-                            <button
-                              key={index}
-                              onClick={() => setCurrentCardIndex(index)}
-                              className={`w-3 h-3 rounded-full transition-all duration-200 ${
-                                index === currentCardIndex
-                                  ? "bg-primary shadow-lg scale-125"
-                                  : "bg-muted hover:bg-primary/50"
-                              }`}
-                              aria-label={`Go to card ${index + 1}`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
+            {/* Vocabulary Export */}
+          </div>
+          <div className="xl:col-span-1">
+            <VocabularyExport />
+          </div>
         </div>
 
-        {/* Right column: Simplified Tools */}
-        <div className="space-y-4">
-          {/* Simplified Tools Card - Removed redundant Practice tab */}
-          <Card className="h-full animate-in slide-in-from-right-5 duration-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-                <Trophy className="h-5 w-5" />
-                Vocabulary Tools
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="stats" className="w-full">
-                <TabsList className="w-full mb-4">
-                  <TabsTrigger value="stats" className="flex-1 text-xs transition-all duration-200">
-                    <Trophy className="h-3 w-3 mr-1" />
-                    Stats
-                  </TabsTrigger>
-                  <TabsTrigger value="export" className="flex-1 text-xs transition-all duration-200">
-                    <Download className="h-3 w-3 mr-1" />
-                    Export
-                  </TabsTrigger>
-                </TabsList>
+        {/* Playlist Guide */}
+        <PlaylistGuide />
 
-                <TabsContent value="stats" className="space-y-3">
-                  {languageVocabulary.length > 0 ? (
-                    <>
-                      <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 mb-3 border border-green-200">
-                        <div className="flex items-center gap-2 text-sm text-green-700 mb-2">
-                          <CheckCircle className="h-4 w-4" />
-                          Vocabulary Statistics
-                        </div>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span>Total words:</span>
-                            <span className="font-medium">{vocabularyStats.total}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>With audio:</span>
-                            <span className="font-medium">{vocabularyStats.withAudio}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>In playlist:</span>
-                            <span className="font-medium">{audioQueue.length}</span>
-                          </div>
-                          {searchTerm && (
-                            <div className="flex justify-between">
-                              <span>Filtered:</span>
-                              <span className="font-medium">{vocabularyStats.filtered}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Quick Actions */}
-                      <div className="space-y-2">
-                        {wordsWithAudio.length > 0 && audioQueue.length === 0 && (
-                          <Button onClick={() => setShowQuickStart(true)} className="w-full" size="sm">
-                            <Music className="h-4 w-4 mr-2" />
-                            Create Audio Playlist
-                          </Button>
-                        )}
-
-                        {audioQueue.length > 0 && (
-                          <Button onClick={playQueue} className="w-full" size="sm">
-                            <Play className="h-4 w-4 mr-2" />
-                            Play Playlist ({audioQueue.length} words)
-                          </Button>
-                        )}
-
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowPlaylistGuide(true)}
-                          className="w-full"
-                          size="sm"
-                        >
-                          <HelpCircle className="h-4 w-4 mr-2" />
-                          Playlist Guide
-                        </Button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-6">
-                      <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
-                        <Trophy className="h-6 w-6 text-primary" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">Add vocabulary words to see statistics</p>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="export" className="space-y-3">
-                  {languageVocabulary.length > 0 ? (
-                    <>
-                      <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3 mb-3 border border-blue-200">
-                        <div className="flex items-center gap-2 text-sm text-blue-700">
-                          <Download className="h-4 w-4" />
-                          Export {languageVocabulary.length} words
-                        </div>
-                      </div>
-                      <VocabularyExport vocabulary={languageVocabulary} />
-                    </>
-                  ) : (
-                    <div className="text-center py-6">
-                      <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
-                        <Download className="h-6 w-6 text-primary" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">Add vocabulary words to enable export</p>
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-
-          {/* Enhanced Subscription Upgrade Card */}
-          {!subscription.isSubscribed && (
-            <div className="mt-4 animate-in slide-in-from-right-5 duration-500 delay-200">
-              <UpgradePrompt
-                title="Unlimited Vocabulary"
-                message="Premium subscribers can create unlimited vocabulary lists, export all their flashcards with audio, and access advanced audio playlist features with unlimited queue capacity."
-              />
-            </div>
-          )}
-        </div>
+        {/* Quick Start Guide */}
+        <QuickStartGuide />
       </div>
-
-      {/* Enhanced Delete Confirmation Dialog */}
-      <PlaylistGuide />
-
-      {/* Quick Start Guide Dialog */}
-      <QuickStartGuide />
-    </div>
-  )
-}
-
-export default VocabularyPage
+    )
+  }
+\
+  export default VocabularyPage
