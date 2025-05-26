@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Headphones, Home, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Loader2, Home, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Logo } from '@/components/landing/Logo';
 
 // Custom hook for form validation
 const useFormValidation = () => {
@@ -169,12 +170,7 @@ const LoginPage: React.FC = () => {
           </div>
 
           <div className="flex justify-center mb-2 sm:mb-4">
-            <div className="flex items-center gap-2">
-              <Headphones className="h-6 w-6 sm:h-8 sm:w-8 text-primary animate-pulse" />
-              <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-                lwlnow
-              </h1>
-            </div>
+            <Logo />
           </div>
           
           <CardTitle className="text-xl sm:text-2xl">Welcome Back</CardTitle>
@@ -184,7 +180,11 @@ const LoginPage: React.FC = () => {
           
           <div className="px-2 sm:px-4">
             <Alert className="bg-primary/5 border-primary/10 mb-2 transition-all duration-300 hover:bg-primary/10">
-              <Headphones className="h-4 w-4" />
+              <img 
+                src="/lovable-uploads/d5c238a4-d6b3-4586-8dd6-8ad314490ee5.png" 
+                alt="lwlnow logo" 
+                className="h-4 w-4"
+              />
               <AlertTitle>Continue Learning</AlertTitle>
               <AlertDescription>
                 Access your personalized exercises, track progress, and improve your skills.

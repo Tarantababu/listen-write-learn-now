@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, CheckCircle2, Home, Headphones, ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Loader2, CheckCircle2, ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { updateProfile } from '@/lib/auth';
 import { capitalizeLanguage, getLanguageFlag } from '@/utils/languageUtils';
 import { FlagIcon, FlagIconCode } from 'react-flag-kit';
+import { Logo } from '@/components/landing/Logo';
 
 // Language to country code mapping
 const getCountryCode = (language: string): FlagIconCode | null => {
@@ -151,14 +152,7 @@ const SignUpPage: React.FC = () => {
           
           {/* Logo and Title */}
           <div className="flex justify-center mb-3 sm:mb-4 mt-8 sm:mt-4">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-full bg-primary/10">
-                <Headphones className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-              </div>
-              <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-                lwlnow
-              </h1>
-            </div>
+            <Logo />
           </div>
           
           {/* Selected Language Display */}
