@@ -251,7 +251,7 @@ const UserStatistics: React.FC = () => {
   };
 
   // ENHANCED: New guidance card component
-  const renderEnhancedGuidanceCard = () => {
+  const renderEnhancedGuidanceCard = (): React.ReactNode => {
     if (isFirstTimeUser) {
       return null;
     }
@@ -307,7 +307,7 @@ const UserStatistics: React.FC = () => {
   };
 
   // ENHANCED: Better modal content with clearer next steps and personalized recommendations
-  const renderEnhancedModal = () => {
+  const renderEnhancedModal = (): React.ReactNode => {
     const recommendation = getSmartRecommendation();
     return <Dialog open={showStartModal} onOpenChange={setShowStartModal}>
         <DialogContent className="sm:max-w-2xl max-w-[95vw] w-full mx-auto">
@@ -434,7 +434,7 @@ const UserStatistics: React.FC = () => {
   }
 
   // Render First-time User Learning Plan Card
-  const renderFirstTimeUserCard = () => <Card className="w-full border-2 border-[#AB96D9]/30 bg-gradient-to-br from-[#6F6BF2]/10 via-[#6D49F2]/5 to-transparent relative overflow-hidden">
+  const renderFirstTimeUserCard = (): React.ReactNode => <Card className="w-full border-2 border-[#AB96D9]/30 bg-gradient-to-br from-[#6F6BF2]/10 via-[#6D49F2]/5 to-transparent relative overflow-hidden">
       {/* Decorative elements - Hidden on mobile for cleaner look */}
       <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-bl from-[#491BF2]/20 to-transparent rounded-full blur-2xl" />
       <div className="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-tr from-[#AB96D9]/20 to-transparent rounded-full blur-xl" />
@@ -478,7 +478,7 @@ const UserStatistics: React.FC = () => {
     </Card>;
 
   // Render Existing User Learning Plan Card
-  const renderExistingUserCard = () => {};
+  const renderExistingUserCard = (): React.ReactNode => {};
   return <div className="space-y-6 sm:space-y-8 px-4 sm:px-0">
       {/* Header */}
       <div className="space-y-1 sm:space-y-2"></div>
