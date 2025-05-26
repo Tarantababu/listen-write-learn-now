@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Award, ChevronRight, Target, TrendingUp, Seedling, Sprout, Leaf, TreePine, Mountain, Crown, Zap } from 'lucide-react';
+import { Award, ChevronRight, Target, TrendingUp, Sprout, Leaf, TreePine, Mountain, Crown, Circle } from 'lucide-react';
 import { getUserLevel, getLevelProgress, getWordsToNextLevel, formatNumber, LANGUAGE_LEVELS } from '@/utils/levelSystem';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import LevelInfoTooltip from './LevelInfoTooltip';
@@ -10,15 +10,15 @@ interface LanguageLevelDisplayProps {
   masteredWords: number;
 }
 
-// Level icons mapping - elegant progression from seed to crown
+// Level icons mapping - elegant progression using available Lucide icons
 const LEVEL_ICONS = {
-  'A0': Seedling,  // Just starting - a tiny seed
-  'A1': Sprout,    // First growth - sprouting 
-  'A2': Leaf,      // Growing - developing leaves
-  'B1': TreePine,  // Establishing - young tree
-  'B2': TreePine,  // Strengthening - mature tree  
-  'C1': Mountain,  // Reaching heights - mountain peak
-  'C2': Crown      // Mastery achieved - crown/trophy
+  'A0': Circle,     // Starting point - simple circle
+  'A1': Sprout,     // First growth - sprouting 
+  'A2': Leaf,       // Growing - developing leaves
+  'B1': TreePine,   // Establishing - young tree
+  'B2': TreePine,   // Strengthening - mature tree  
+  'C1': Mountain,   // Reaching heights - mountain peak
+  'C2': Crown       // Mastery achieved - crown/trophy
 };
 
 // Elegant gradient colors for each level
@@ -101,9 +101,9 @@ const LanguageLevelDisplay: React.FC<LanguageLevelDisplayProps> = ({ masteredWor
                   <span className="text-2xl font-bold tracking-wide">{currentLevel.level}</span>
                 </div>
                 
-                {/* Enhanced sparkle effect with level-specific styling */}
+                {/* Enhanced sparkle effect */}
                 <div className="absolute -top-1 -right-1 h-6 w-6 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
-                  <Zap className="h-3 w-3 text-white" />
+                  <div className="h-2 w-2 bg-white rounded-full" />
                 </div>
                 
                 {/* Subtle glow effect */}
