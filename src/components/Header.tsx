@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,6 @@ import ThemeToggle from './ThemeToggle';
 import { Logo } from './landing/Logo';
 import { StreakIndicator } from './StreakIndicator';
 import { LanguageSelectionDropdown } from './LanguageSelectionDropdown';
-
 const Header: React.FC = () => {
   const {
     user,
@@ -34,7 +32,6 @@ const Header: React.FC = () => {
   const isActive = (path: string) => {
     return location.pathname === path || path !== '/dashboard' && location.pathname.startsWith(path);
   };
-
   return <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur">
       <div className="container flex h-14 sm:h-16 items-center justify-between px-4">
         <div className="flex items-center gap-2 sm:gap-6">
@@ -104,9 +101,7 @@ const Header: React.FC = () => {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button asChild variant="ghost" size="icon" className="rounded-full text-amber-500 hover:text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/30">
-                        <Link to="/dashboard/admin">
-                          <Shield className="h-5 w-5" />
-                        </Link>
+                        
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -185,5 +180,4 @@ const Header: React.FC = () => {
       </div>
     </header>;
 };
-
 export default Header;
