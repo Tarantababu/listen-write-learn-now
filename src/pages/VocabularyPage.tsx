@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import VocabularyPlaylist from "@/components/VocabularyPlaylist"
 import { useVocabularyContext } from "@/contexts/VocabularyContext"
 import { useUserSettingsContext } from "@/contexts/UserSettingsContext"
 import { Button } from "@/components/ui/button"
@@ -103,7 +102,7 @@ const VocabularyPage = () => {
   }>({})
   const [selectedItems, setSelectedItems] = useState<string[]>([])
 
-  // Playlist guide state - Fixed dialog state management
+  // Playlist guide state
   const [showPlaylistGuide, setShowPlaylistGuide] = useState(false)
   const [showQuickStart, setShowQuickStart] = useState(false)
   const [hasSeenGuide, setHasSeenGuide] = useState(() => {
@@ -141,6 +140,7 @@ const VocabularyPage = () => {
     return {
       total: languageVocabulary.length,
       filtered: filteredVocabulary.length,
+      withAudio: languageVocabulary.filter((item) => item.audioUrl).length,
     }
   }, [languageVocabulary, filteredVocabulary])
 
@@ -185,7 +185,7 @@ const VocabularyPage = () => {
     }
   }, [audioQueue, originalQueue, currentQueueIndex, isShuffleMode, isRepeatMode])
 
-  // Show quick start guide for new users - Fixed condition
+  // Show quick start guide for new users
   useEffect(() => {
     if (wordsWithAudio.length > 0 && !hasSeenGuide && audioQueue.length === 0) {
       const timer = setTimeout(() => {
@@ -411,6 +411,19 @@ const VocabularyPage = () => {
     }
   }, [wordsWithAudio, audioQueue, isShuffleMode])
 
+  const addSelectedToQueue = useCallback(() => {
+    const newQueue = selectedItems.filter((id) => {
+      const item = languageVocabulary.find((v) => v.id === id)
+      return item?.audioUrl && !audioQueue.includes(id)
+    })
+
+    const updatedQueue = [...audioQueue, ...newQueue]
+    setAudioQueue(updatedQueue)
+    if (!isShuffleMode) {
+      setOriginalQueue(updatedQueue)
+    }
+  }, [selectedItems, languageVocabulary, audioQueue, isShuffleMode])
+
   const shuffleQueue = useCallback(() => {
     if (audioQueue.length <= 1) return
 
@@ -545,7 +558,7 @@ const VocabularyPage = () => {
     return "Amazing! You're a vocabulary master! 🏆"
   }, [languageVocabulary.length])
 
-  // Simple Audio button component - removed redundant controls
+  // Simple Audio button component
   const AudioButton = React.memo(
     ({
       itemId,
@@ -642,7 +655,7 @@ const VocabularyPage = () => {
     },
   )
 
-  // Playlist Guide Component - Fixed dialog management
+  // Playlist Guide Component
   const PlaylistGuide = () => (
     <Dialog
       open={showPlaylistGuide}
@@ -683,8 +696,8 @@ const VocabularyPage = () => {
                 <li>
                   • Click the <Plus className="h-3 w-3 inline mx-1" /> button next to any word
                 </li>
-                <li>• Select multiple words and click "Add to Playlist"</li>
-                <li>• Use "Add All" to queue all visible words</li>
+                <li>• Select multiple words and click "Add Selected to Playlist"</li>
+                <li>• Use "Add All" to queue all words with audio</li>
               </ul>
             </div>
           </div>
@@ -722,6 +735,10 @@ const VocabularyPage = () => {
                 <div className="flex items-center gap-2">
                   <Shuffle className="h-3 w-3" />
                   <span>Shuffle playlist</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Volume2 className="h-3 w-3" />
+                  <span>Volume control</span>
                 </div>
               </div>
             </div>
@@ -778,7 +795,7 @@ const VocabularyPage = () => {
     </Dialog>
   )
 
-  // Quick Start Guide Component - Fixed condition
+  // Quick Start Guide Component
   const QuickStartGuide = () => (
     <Dialog
       open={showQuickStart}
@@ -876,9 +893,41 @@ const VocabularyPage = () => {
                     {isRepeatMode ? "Repeat on" : "Repeat off"}
                   </div>
                 </div>
-                <Badge variant="outline" className="text-xs border-primary text-primary">
-                  Playlist
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs border-primary text-primary">
+                    Playlist
+                  </Badge>
+                  {/* Quick Actions */}
+                  {wordsWithAudio.length > audioQueue.length && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={addAllToQueue}
+                      className="h-7 text-xs border-primary/30 hover:border-primary hover:bg-primary/5"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add All ({wordsWithAudio.length - audioQueue.length})
+                    </Button>
+                  )}
+                  {selectedItems.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={addSelectedToQueue}
+                      className="h-7 text-xs border-primary/30 hover:border-primary hover:bg-primary/5"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Selected (
+                      {
+                        selectedItems.filter((id) => {
+                          const item = languageVocabulary.find((v) => v.id === id)
+                          return item?.audioUrl && !audioQueue.includes(id)
+                        }).length
+                      }
+                      )
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Main Controls */}
@@ -992,6 +1041,12 @@ const VocabularyPage = () => {
             <Badge variant="secondary" className="text-xs animate-in fade-in-50 duration-300">
               {languageVocabulary.length} words
             </Badge>
+            {vocabularyStats.withAudio > 0 && (
+              <Badge variant="outline" className="text-xs border-green-500 text-green-600">
+                <Volume2 className="h-3 w-3 mr-1" />
+                {vocabularyStats.withAudio} with audio
+              </Badge>
+            )}
             {audioQueue.length > 0 && (
               <Badge variant="outline" className="text-xs border-primary text-primary">
                 <Music className="h-3 w-3 mr-1" />
@@ -1017,61 +1072,6 @@ const VocabularyPage = () => {
           </div>
         </div>
       </div>
-
-      {/* Playlist Quick Actions */}
-      {wordsWithAudio.length > 0 && (
-        <Card className="animate-in slide-in-from-top-5 duration-300 delay-50 border-primary/20">
-          <CardContent className="pt-4">
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ListMusic className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">Audio Playlist</span>
-                {audioQueue.length === 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    Empty
-                  </Badge>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {wordsWithAudio.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={addAllToQueue}
-                    className="h-7 text-xs border-primary/30 hover:border-primary hover:bg-primary/5"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add All ({wordsWithAudio.length})
-                  </Button>
-                )}
-
-                {audioQueue.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={playQueue}
-                    className="h-7 text-xs bg-primary text-white hover:bg-primary/90"
-                  >
-                    <Play className="h-3 w-3 mr-1" />
-                    Play All
-                  </Button>
-                )}
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowPlaylistGuide(true)}
-                  className="h-7 text-xs text-primary hover:text-primary/80"
-                >
-                  <HelpCircle className="h-3 w-3 mr-1" />
-                  Guide
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Enhanced Subscription Status Alert */}
       {!subscription.isSubscribed && (
@@ -1272,18 +1272,7 @@ const VocabularyPage = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            const newQueue = [...audioQueue]
-                            selectedItems.forEach((id) => {
-                              if (!newQueue.includes(id)) {
-                                newQueue.push(id)
-                              }
-                            })
-                            setAudioQueue(newQueue)
-                            if (!isShuffleMode) {
-                              setOriginalQueue(newQueue)
-                            }
-                          }}
+                          onClick={addSelectedToQueue}
                           className="h-7 text-xs border-primary/30 hover:border-primary"
                         >
                           <Plus className="h-3 w-3 mr-1" />
@@ -1524,9 +1513,9 @@ const VocabularyPage = () => {
           </Card>
         </div>
 
-        {/* Right column: Enhanced Tools and actions */}
+        {/* Right column: Simplified Tools */}
         <div className="space-y-4">
-          {/* Enhanced Tools Tabs */}
+          {/* Simplified Tools Card - Removed redundant Practice tab */}
           <Card className="h-full animate-in slide-in-from-right-5 duration-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
@@ -1535,37 +1524,85 @@ const VocabularyPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="practice" className="w-full">
+              <Tabs defaultValue="export" className="w-full">
                 <TabsList className="w-full mb-4">
-                  <TabsTrigger value="practice" className="flex-1 text-xs transition-all duration-200">
+                  <TabsTrigger value="stats" className="flex-1 text-xs transition-all duration-200">
                     <Trophy className="h-3 w-3 mr-1" />
-                    Practice
+                    Stats
                   </TabsTrigger>
                   <TabsTrigger value="export" className="flex-1 text-xs transition-all duration-200">
                     <Download className="h-3 w-3 mr-1" />
                     Export
                   </TabsTrigger>
                 </TabsList>
-                <TabsContent value="practice" className="space-y-3">
+
+                <TabsContent value="stats" className="space-y-3">
                   {languageVocabulary.length > 0 ? (
                     <>
                       <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-3 mb-3 border border-green-200">
-                        <div className="flex items-center gap-2 text-sm text-green-700">
+                        <div className="flex items-center gap-2 text-sm text-green-700 mb-2">
                           <CheckCircle className="h-4 w-4" />
-                          Ready to practice with {languageVocabulary.length} words
+                          Vocabulary Statistics
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Total words:</span>
+                            <span className="font-medium">{vocabularyStats.total}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>With audio:</span>
+                            <span className="font-medium">{vocabularyStats.withAudio}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>In playlist:</span>
+                            <span className="font-medium">{audioQueue.length}</span>
+                          </div>
+                          {searchTerm && (
+                            <div className="flex justify-between">
+                              <span>Filtered:</span>
+                              <span className="font-medium">{vocabularyStats.filtered}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <VocabularyPlaylist vocabulary={languageVocabulary} />
+
+                      {/* Quick Actions */}
+                      <div className="space-y-2">
+                        {wordsWithAudio.length > 0 && audioQueue.length === 0 && (
+                          <Button onClick={() => setShowQuickStart(true)} className="w-full" size="sm">
+                            <Music className="h-4 w-4 mr-2" />
+                            Create Audio Playlist
+                          </Button>
+                        )}
+
+                        {audioQueue.length > 0 && (
+                          <Button onClick={playQueue} className="w-full" size="sm">
+                            <Play className="h-4 w-4 mr-2" />
+                            Play Playlist ({audioQueue.length} words)
+                          </Button>
+                        )}
+
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowPlaylistGuide(true)}
+                          className="w-full"
+                          size="sm"
+                        >
+                          <HelpCircle className="h-4 w-4 mr-2" />
+                          Playlist Guide
+                        </Button>
+                      </div>
                     </>
                   ) : (
                     <div className="text-center py-6">
                       <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
                         <Trophy className="h-6 w-6 text-primary" />
                       </div>
-                      <p className="text-sm text-muted-foreground">Add vocabulary words to start practicing</p>
+                      <p className="text-sm text-muted-foreground">Add vocabulary words to see statistics</p>
                     </div>
                   )}
                 </TabsContent>
+
                 <TabsContent value="export" className="space-y-3">
                   {languageVocabulary.length > 0 ? (
                     <>
