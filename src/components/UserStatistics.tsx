@@ -369,11 +369,11 @@ const UserStatistics: React.FC = () => {
 
   // Render Existing User Learning Plan Card
   const renderExistingUserCard = () => <Card className="w-full border-2 border-[#AB96D9]/20 bg-gradient-to-br from-[#6F6BF2]/5 to-[#AB96D9]/10">
-      <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6 pt-4 sm:pt-6">
+      <CardHeader className="relative z-10">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
           <div className="space-y-1">
-            <CardTitle className="text-lg sm:text-2xl font-bold flex items-center gap-2 text-[#1F0459] leading-tight">
-              <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 text-[#491BF2] flex-shrink-0" />
+            <CardTitle className="text-lg font-bold flex items-center gap-2 text-[#1F0459] leading-tight sm:text-base">
+              
               Learning Plan Progress
             </CardTitle>
             <p className="text-xs sm:text-sm text-muted-foreground">
@@ -388,7 +388,7 @@ const UserStatistics: React.FC = () => {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6 pb-4 sm:pb-6">
+      <CardContent className="relative z-10">
         {showCurriculumLoading ? <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Skeleton className="h-4 sm:h-5 w-32 sm:w-48" />
@@ -405,7 +405,7 @@ const UserStatistics: React.FC = () => {
           </div> : <>
             <div className="space-y-3 sm:space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
-                <h3 className="text-base sm:text-lg font-semibold text-[#1F0459]">Foundational Exercises</h3>
+                
                 <span className="text-xs sm:text-sm font-medium text-muted-foreground bg-[#AB96D9]/20 px-2 sm:px-3 py-1 rounded-full w-fit">
                   {stats.completed} of {stats.total} complete
                 </span>
@@ -416,8 +416,8 @@ const UserStatistics: React.FC = () => {
               background: '#AB96D9/20'
             }} />
                 <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
-                  <span>Progress</span>
-                  <span>{stats.total > 0 ? Math.round(stats.completed / stats.total * 100) : 0}% Complete</span>
+                  
+                  
                 </div>
               </div>
               
@@ -429,7 +429,7 @@ const UserStatistics: React.FC = () => {
                       Completed
                     </p>
                   </div>
-                  <p className="text-xl sm:text-2xl font-bold text-[#1F0459]">{stats.completed}</p>
+                  <p className="text-xl font-bold text-[#1F0459] sm:text-base">{stats.completed}</p>
                 </div>
                 <div className="bg-gradient-to-br from-[#6D49F2]/10 to-[#491BF2]/10 p-3 sm:p-4 rounded-lg border border-[#6D49F2]/30">
                   <div className="flex items-center gap-2 mb-1">
@@ -438,7 +438,7 @@ const UserStatistics: React.FC = () => {
                       In Progress
                     </p>
                   </div>
-                  <p className="text-xl sm:text-2xl font-bold text-[#1F0459]">{stats.inProgress}</p>
+                  <p className="text-xl font-bold text-[#1F0459] sm:text-base">{stats.inProgress}</p>
                 </div>
                 <div className="bg-gradient-to-br from-[#AB96D9]/10 to-[#AB96D9]/20 p-3 sm:p-4 rounded-lg border border-[#AB96D9]/30">
                   <div className="flex items-center gap-2 mb-1">
@@ -447,7 +447,7 @@ const UserStatistics: React.FC = () => {
                       Remaining
                     </p>
                   </div>
-                  <p className="text-xl sm:text-2xl font-bold text-[#1F0459]">
+                  <p className="text-xl font-bold text-[#1F0459] sm:text-base">
                     {stats.total - stats.completed - stats.inProgress}
                   </p>
                 </div>

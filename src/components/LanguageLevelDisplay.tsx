@@ -80,9 +80,7 @@ const LanguageLevelDisplay: React.FC<LanguageLevelDisplayProps> = ({
       <CardHeader className="pb-4 relative z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/40 dark:to-blue-900/40 shadow-sm">
-              <Award className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            </div>
+            
             <div>
               <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
                 Your Language Journey
