@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Exercise } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,8 @@ import SpecialCharacterHints from '@/components/SpecialCharacterHints';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useSession } from '@/hooks/use-session';
 import { getLanguageShortcuts, applyShortcuts } from '@/utils/specialCharacters';
+import ConfettiCelebration from '@/components/ConfettiCelebration';
+import { ArrowRightIcon } from 'lucide-react';
 
 interface DictationPracticeProps {
   exercise: Exercise;
@@ -33,6 +34,8 @@ interface DictationPracticeProps {
   hasReadingAnalysis?: boolean;
   keepResultsVisible?: boolean; // Prop to control result visibility
   autoPlay?: boolean; // Prop to control auto-playing audio
+  onNextExercise?: () => void; // New prop for next exercise navigation
+  hasNextExercise?: boolean; // New prop to indicate if there's a next exercise
 }
 
 const DictationPractice: React.FC<DictationPracticeProps> = ({
@@ -44,7 +47,9 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   onViewReadingAnalysis,
   hasReadingAnalysis = false,
   keepResultsVisible = false, // Default to false for backward compatibility
-  autoPlay = false // Default to false for backward compatibility
+  autoPlay = false, // Default to false for backward compatibility
+  onNextExercise,
+  hasNextExercise = false
 }) => {
   const [userInput, setUserInput] = useState('');
   const [accuracy, setAccuracy] = useState<number | null>(null);
@@ -71,6 +76,8 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   });
   
   const [progressValue, setProgressValue] = useState((exercise.completionCount / 3) * 100);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showMasteryMessage, setShowMasteryMessage] = useState(false);
   
   // Get shortcuts for the current language
   const shortcuts = getLanguageShortcuts(exercise.language);
@@ -177,11 +184,18 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     // Set internal results state - show results
     setInternalShowResults(true);
     
+    // Check if this completion will result in mastery (3/3)
+    const willBeMastered = result.accuracy >= 95 && exercise.completionCount === 2;
+    
     // Call onComplete with the accuracy result
     onComplete(result.accuracy);
 
-    // Only show result toast - the calling component will handle persistence
-    if (result.accuracy >= 95) {
+    // Show confetti if exercise is being mastered
+    if (willBeMastered) {
+      setShowConfetti(true);
+      setShowMasteryMessage(true);
+      // Don't show the regular toast for mastery, confetti handles the celebration
+    } else if (result.accuracy >= 95) {
       toast({
         title: "Great job!",
         description: `${Math.round(result.accuracy)}% accuracy!`,
@@ -319,6 +333,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
     if (!keepResultsVisible) {
       setUserInput('');
       setInternalShowResults(false);
+      setShowMasteryMessage(false);
       
       // Focus on textarea after resetting
       setTimeout(() => {
@@ -345,9 +360,20 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       }
     }, 100);
   };
+
+  // Handle confetti completion
+  const handleConfettiComplete = () => {
+    setShowConfetti(false);
+  };
   
   return (
     <div className="space-y-4">
+      {/* Confetti celebration */}
+      <ConfettiCelebration 
+        show={showConfetti} 
+        onComplete={handleConfettiComplete}
+      />
+
       {/* Header with exercise title and progress */}
       <div className="p-4 border-b">
         <div className="flex justify-between items-center mb-2">
@@ -492,6 +518,36 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       ) : (
         // Enhanced Results view with tabs
         <div className="overflow-hidden">
+          {/* Show mastery celebration message if exercise was just mastered */}
+          {showMasteryMessage && exercise.completionCount >= 3 && (
+            <div className="px-6 pt-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl">🎉</div>
+                  <div>
+                    <h3 className="font-semibold text-green-800">Exercise Mastered!</h3>
+                    <p className="text-sm text-green-600">
+                      Congratulations! You've completed this exercise 3 times with high accuracy.
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Show next exercise button if available */}
+                {hasNextExercise && onNextExercise && (
+                  <div className="mt-3 flex justify-end">
+                    <Button
+                      onClick={onNextExercise}
+                      className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                    >
+                      Next Exercise
+                      <ArrowRightIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <Tabs defaultValue="summary" className="w-full">
             <div className="px-6 pt-4">
               <TabsList className={cn(
@@ -627,12 +683,24 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
                         </Button>
                       )}
                     </div>
-                    <Button
-                      onClick={handleTryAgain}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                    >
-                      Try Again
-                    </Button>
+                    <div className="flex gap-2">
+                      {/* Show next exercise button if mastered and available */}
+                      {showMasteryMessage && hasNextExercise && onNextExercise && (
+                        <Button
+                          onClick={onNextExercise}
+                          className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                        >
+                          Next Exercise
+                          <ArrowRightIcon className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        onClick={handleTryAgain}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                      >
+                        Try Again
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </ScrollArea>
