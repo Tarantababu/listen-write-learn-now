@@ -20,7 +20,7 @@ const CurriculumPage: React.FC = () => {
     refreshData
   } = useCurriculumExercises();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Get URL parameters
   const tabParam = searchParams.get('tab') || 'learning-plan';
@@ -31,6 +31,13 @@ const CurriculumPage: React.FC = () => {
     console.log("CurriculumPage: Refreshing data on mount");
     refreshData();
   }, [refreshData]);
+
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('tab', value);
+    setSearchParams(newSearchParams);
+  };
 
   // Function to find the next exercise in the same tag
   const findNextExercise = (currentExerciseId: string, currentTag: string) => {
@@ -118,7 +125,7 @@ const CurriculumPage: React.FC = () => {
       
       
       {/* Tabs */}
-      <Tabs value={tabParam} className="mb-8">
+      <Tabs value={tabParam} onValueChange={handleTabChange} className="mb-8">
         <TabsList>
           <TabsTrigger value="learning-plan">Learning plan</TabsTrigger>
           <TabsTrigger value="in-progress">In Progress</TabsTrigger>
