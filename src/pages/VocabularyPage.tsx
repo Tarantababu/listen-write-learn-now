@@ -980,10 +980,7 @@ const VocabularyPage = () => {
               <Badge variant="secondary" className="text-xs animate-in fade-in-50 duration-300">
                 {languageVocabulary.length} words
               </Badge>
-              {vocabularyStats.withAudio > 0 && <Badge variant="outline" className="text-xs border-green-500 text-green-600">
-                  <Volume2 className="h-3 w-3 mr-1" />
-                  {vocabularyStats.withAudio} audio
-                </Badge>}
+              {vocabularyStats.withAudio > 0}
               {audioQueue.length > 0 && <Badge variant="outline" className="text-xs border-primary text-primary">
                   <Music className="h-3 w-3 mr-1" />
                   {audioQueue.length} queued
