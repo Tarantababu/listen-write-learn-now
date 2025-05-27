@@ -8,6 +8,8 @@ interface Exercise {
   id: string;
   title: string;
   status: 'not-started' | 'in-progress' | 'completed';
+  description?: string;
+  completionCount?: number;
 }
 
 interface UnitAccordionProps {
@@ -148,8 +150,11 @@ const UnitAccordion: React.FC<UnitAccordionProps> = ({
               {lessons.map((lesson, index) => (
                 <LessonItem
                   key={lesson.id}
-                  lesson={lesson}
                   lessonNumber={index + 1}
+                  title={lesson.title}
+                  description={lesson.description || ''}
+                  status={lesson.status}
+                  completionCount={lesson.completionCount || 0}
                   onPractice={() => onPracticeExercise(lesson.id)}
                   onAdd={() => onAddExercise(lesson.id)}
                 />
