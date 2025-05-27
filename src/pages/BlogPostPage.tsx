@@ -4,12 +4,12 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BlogPost } from '@/types';
-import { Helmet } from 'react-helmet-async';
 import { Footer } from '@/components/landing/Footer';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import SEO from '@/components/SEO';
 
 const BlogPostPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -31,11 +31,21 @@ const BlogPostPage: React.FC = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{post?.meta_title || post?.title || 'Blog Post'} | lwlnow</title>
-        <meta name="description" content={post?.meta_description || post?.excerpt || ''} />
-        {post?.featured_image_url && <meta property="og:image" content={post.featured_image_url} />}
-      </Helmet>
+      <SEO
+        title={post?.meta_title || post?.title || 'Blog Post'}
+        description={post?.meta_description || post?.excerpt || 'Read this article on language learning techniques and tips.'}
+        keywords={`language learning, dictation, ${post?.title || ''}, education, vocabulary`}
+        image={post?.featured_image_url || "https://lovable.dev/opengraph-image-p98pqg.png"}
+        url={`https://lwlnow.com/blog/${slug}`}
+        type="article"
+        article={post ? {
+          author: "lwlnow Team",
+          publishedTime: post.published_at || undefined,
+          modifiedTime: post.updated_at || undefined,
+          section: "Language Learning",
+          tags: ["language learning", "dictation", "education"]
+        } : undefined}
+      />
       
       <div className="min-h-screen flex flex-col">
         <LandingHeader />

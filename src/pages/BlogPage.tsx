@@ -5,10 +5,10 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BlogPost } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Helmet } from 'react-helmet-async';
 import { Footer } from '@/components/landing/Footer';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { Loader2 } from 'lucide-react';
+import SEO from '@/components/SEO';
 
 const BlogPage: React.FC = () => {
   const { data: posts, isLoading, error } = useQuery({
@@ -27,17 +27,19 @@ const BlogPage: React.FC = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Blog | lwlnow</title>
-        <meta name="description" content="Read the latest articles and updates on language learning techniques." />
-      </Helmet>
+      <SEO
+        title="Language Learning Blog - Tips, Techniques & Updates"
+        description="Read the latest articles and updates on language learning techniques, dictation methods, and educational insights from lwlnow experts."
+        keywords="language learning blog, dictation techniques, language education, learning tips, vocabulary building, foreign language articles"
+        url="https://lwlnow.com/blog"
+      />
       
       <div className="min-h-screen flex flex-col">
         <LandingHeader />
         
         <main className="flex-1 container mx-auto px-4 py-16 mt-10">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold mb-8">Blog</h1>
+            <h1 className="text-4xl font-bold mb-8">Language Learning Blog</h1>
             
             {isLoading ? (
               <div className="flex justify-center py-20">
