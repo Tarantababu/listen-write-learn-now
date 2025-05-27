@@ -637,15 +637,18 @@ const PlanCard: React.FC<PlanCardProps> = ({
   
   return (
     <Card className={`border-2 flex flex-col ${featured 
-      ? 'border-primary shadow-lg relative overflow-hidden' 
+      ? 'border-primary shadow-xl relative overflow-hidden border-t-4 border-t-primary bg-gradient-to-br from-primary/5 via-transparent to-primary/5' 
       : isActive 
         ? 'border-green-400/50 shadow-md' 
         : 'border-border'
-      }`}>
+      } transition-all hover:shadow-lg`}>
       
       {featured && (
-        <div className="absolute -right-12 top-5 rotate-45 bg-primary px-10 py-1 text-xs font-semibold text-white">
-          Popular
+        <div className="absolute -right-8 top-3 rotate-45 bg-gradient-to-r from-primary to-accent px-10 py-1 text-xs font-bold text-white shadow-md">
+          <div className="flex items-center gap-1">
+            <Sparkles className="h-3 w-3" />
+            POPULAR
+          </div>
         </div>
       )}
       
@@ -660,7 +663,10 @@ const PlanCard: React.FC<PlanCardProps> = ({
       <CardHeader>
         <div className="flex items-center gap-2">
           <span className="text-2xl">{plan.emoji}</span>
-          <CardTitle>{plan.name}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            {plan.name}
+            {featured && <Crown className="h-5 w-5 text-yellow-500 fill-yellow-300" />}
+          </CardTitle>
         </div>
         <CardDescription>{plan.tagline}</CardDescription>
       </CardHeader>
@@ -668,17 +674,17 @@ const PlanCard: React.FC<PlanCardProps> = ({
       <CardContent className="flex-grow">
         <div className="space-y-4">
           <div>
-            <div className="flex items-baseline">
-              <span className="text-3xl font-bold">
+            <div className={`flex items-baseline ${featured ? 'text-primary' : ''}`}>
+              <span className={`text-3xl font-bold ${featured ? 'text-4xl' : ''}`}>
                 {formatPrice(convertedPrice, currency)}
               </span>
-              <span className="text-muted-foreground ml-2">
+              <span className={`ml-2 ${featured ? 'text-primary/90 font-medium' : 'text-muted-foreground'}`}>
                 {isOneTime ? 'one-time' : `/${billing}`}
               </span>
             </div>
             
             {(plan.savePercent > 0) && (
-              <p className="text-sm text-primary font-medium mt-1">
+              <p className={`text-sm ${featured ? 'text-primary font-semibold' : 'text-primary font-medium'} mt-1`}>
                 Save {plan.savePercent}% vs monthly
               </p>
             )}
