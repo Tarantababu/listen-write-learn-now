@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plus, ChevronRight, ChevronDown, Folder, FolderOpen, BookOpen, Trophy, Clock } from 'lucide-react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -84,6 +85,16 @@ const ExercisesPage: React.FC = () => {
   useEffect(() => {
     console.log('Current directory changed:', currentDirectoryId);
   }, [currentDirectoryId]);
+
+  // Handle URL parameters for creating exercises
+  useEffect(() => {
+    const createExercise = searchParams.get('createExercise');
+    if (createExercise === 'true') {
+      setIsAddModalOpen(true);
+      // Clear the URL parameter
+      navigate('/dashboard/exercises', { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   // Handle URL parameters for default exercises
   useEffect(() => {

@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useCurriculumExercises } from '@/hooks/use-curriculum-exercises';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import UnitAccordion from '@/components/curriculum/UnitAccordion';
 import CurriculumSidebar from '@/components/curriculum/CurriculumSidebar';
@@ -20,6 +20,11 @@ const CurriculumPage: React.FC = () => {
     refreshData
   } = useCurriculumExercises();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Get URL parameters
+  const tabParam = searchParams.get('tab') || 'learning-plan';
+  const openTagParam = searchParams.get('openTag');
 
   // Refresh data when the component mounts
   useEffect(() => {
@@ -113,7 +118,7 @@ const CurriculumPage: React.FC = () => {
       
       
       {/* Tabs */}
-      <Tabs defaultValue="learning-plan" className="mb-8">
+      <Tabs value={tabParam} className="mb-8">
         <TabsList>
           <TabsTrigger value="learning-plan">Learning plan</TabsTrigger>
           <TabsTrigger value="in-progress">In Progress</TabsTrigger>
@@ -131,7 +136,8 @@ const CurriculumPage: React.FC = () => {
                   title={tag} 
                   lessons={exercises} 
                   onPracticeExercise={(id) => handlePracticeExercise(id, tag)}
-                  onAddExercise={handleAddExercise} 
+                  onAddExercise={handleAddExercise}
+                  defaultOpen={openTagParam === tag}
                 />
               ))}
             </div>
@@ -156,7 +162,8 @@ const CurriculumPage: React.FC = () => {
                 title={tag} 
                 lessons={exercises} 
                 onPracticeExercise={(id) => handlePracticeExercise(id, tag)}
-                onAddExercise={handleAddExercise} 
+                onAddExercise={handleAddExercise}
+                defaultOpen={openTagParam === tag}
               />
             )) : <div className="text-center py-16">
                   <p className="text-lg text-muted-foreground">

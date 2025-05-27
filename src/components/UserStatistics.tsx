@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react"
 import { format, subMonths } from "date-fns"
 import { useExerciseContext } from "@/contexts/ExerciseContext"
@@ -58,7 +59,7 @@ const UserStatistics: React.FC = () => {
   const showLoading = useDelayedLoading(isLoading, 400)
 
   // Curriculum data for Learning Curriculum Card
-  const { stats, loading: curriculumLoading, refreshData: refreshCurriculumData } = useCurriculumExercises()
+  const { stats, exercisesByTag, loading: curriculumLoading, refreshData: refreshCurriculumData } = useCurriculumExercises()
   const showCurriculumLoading = useDelayedLoading(curriculumLoading, 400)
 
   // Helper function to normalize text (reused from textComparison.ts)
@@ -73,6 +74,39 @@ const UserStatistics: React.FC = () => {
   // Determine if user is a first-time user (no progress on curriculum)
   const isFirstTimeUser = stats.completed === 0 && stats.inProgress === 0
   const hasStartedLearning = stats.completed > 0 || stats.inProgress > 0
+
+  // Function to find the most recently updated in-progress exercise
+  const findMostRecentInProgressExercise = () => {
+    const inProgressExercises: Array<{exercise: any, tag: string}> = []
+    
+    Object.entries(exercisesByTag).forEach(([tag, exercises]) => {
+      exercises.forEach(exercise => {
+        if (exercise.status === 'in-progress') {
+          inProgressExercises.push({ exercise, tag })
+        }
+      })
+    })
+
+    if (inProgressExercises.length === 0) return null
+
+    // Sort by most recent update (assuming updated_at field exists, fallback to created_at)
+    const sortedExercises = inProgressExercises.sort((a, b) => {
+      const dateA = new Date(a.exercise.updated_at || a.exercise.created_at || 0)
+      const dateB = new Date(b.exercise.updated_at || b.exercise.created_at || 0)
+      return dateB.getTime() - dateA.getTime()
+    })
+
+    return sortedExercises[0]
+  }
+
+  // Function to find the latest tag with exercises
+  const findLatestTag = () => {
+    const tags = Object.keys(exercisesByTag)
+    if (tags.length === 0) return null
+    
+    // Return the first tag (assuming they're ordered)
+    return tags[0]
+  }
 
   // Fetch completion and streak data from Supabase
   useEffect(() => {
@@ -203,19 +237,37 @@ const UserStatistics: React.FC = () => {
     refreshCurriculumData()
   }, [refreshCurriculumData])
 
-  // Handle modal actions
-  const handleStartLearningPlan = () => {
+  // Handle modal actions with improved navigation
+  const handleContinueLearning = () => {
     setShowStartModal(false)
-    // Check if user has in-progress exercises and navigate accordingly
-    if (stats.inProgress > 0) {
-      navigate("/dashboard/curriculum?tab=in-progress")
+    const recentInProgress = findMostRecentInProgressExercise()
+    
+    if (recentInProgress) {
+      // Navigate to in-progress tab with specific tag
+      navigate(`/dashboard/curriculum?tab=in-progress&openTag=${encodeURIComponent(recentInProgress.tag)}`)
     } else {
-      navigate("/dashboard/curriculum")
+      // Fallback to in-progress tab
+      navigate("/dashboard/curriculum?tab=in-progress")
     }
   }
+
+  const handleStartLearningPlan = () => {
+    setShowStartModal(false)
+    const latestTag = findLatestTag()
+    
+    if (latestTag) {
+      // Navigate to learning plan tab with latest tag opened
+      navigate(`/dashboard/curriculum?tab=learning-plan&openTag=${encodeURIComponent(latestTag)}`)
+    } else {
+      // Fallback to learning plan tab
+      navigate("/dashboard/curriculum?tab=learning-plan")
+    }
+  }
+
   const handleCreateOwnExercise = () => {
     setShowStartModal(false)
-    navigate("/dashboard/exercises")
+    // Navigate to exercises page and trigger the create modal
+    navigate("/dashboard/exercises?createExercise=true")
   }
 
   // ENHANCED: Smart recommendation system
@@ -230,7 +282,7 @@ const UserStatistics: React.FC = () => {
         description: `You have ${stats.inProgress} exercise${stats.inProgress > 1 ? "s" : ""} in progress. Keep the momentum going!`,
         action: "Continue Learning",
         icon: Play,
-        route: "/dashboard/curriculum?tab=in-progress",
+        handler: handleContinueLearning,
       }
     } else if (hasCompleted && !recentActivity) {
       return {
@@ -238,7 +290,7 @@ const UserStatistics: React.FC = () => {
         description: "You haven't practiced today yet. A quick session will maintain your progress!",
         action: "Practice Now",
         icon: Zap,
-        route: "/dashboard/curriculum?tab=in-progress",
+        handler: handleContinueLearning,
       }
     } else if (hasCompleted) {
       return {
@@ -246,7 +298,7 @@ const UserStatistics: React.FC = () => {
         description: "Great progress! Continue with the next lesson or create a custom exercise.",
         action: "Next Lesson",
         icon: ArrowRight,
-        route: "/dashboard/curriculum",
+        handler: handleStartLearningPlan,
       }
     } else {
       return {
@@ -254,7 +306,7 @@ const UserStatistics: React.FC = () => {
         description: "Begin with our structured learning plan designed for your success.",
         action: "Start Learning",
         icon: GraduationCap,
-        route: "/dashboard/curriculum",
+        handler: handleStartLearningPlan,
       }
     }
   }
@@ -294,7 +346,7 @@ const UserStatistics: React.FC = () => {
             {/* Action buttons */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:flex-shrink-0">
               <Button
-                onClick={() => navigate(recommendation.route)}
+                onClick={recommendation.handler}
                 className="bg-gradient-to-r from-[#491BF2] to-[#6D49F2] hover:from-[#6D49F2] hover:to-[#6F6BF2] text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
               >
                 <IconComponent className="h-4 w-4 mr-2" />
@@ -326,46 +378,48 @@ const UserStatistics: React.FC = () => {
     )
   }
 
-  // ENHANCED: Better modal content with clearer next steps and personalized recommendations
+  // ENHANCED: Better modal content with clearer next steps and personalized recommendations - Mobile Friendly
   const renderEnhancedModal = (): React.ReactNode => {
     const recommendation = getSmartRecommendation()
     return (
       <Dialog open={showStartModal} onOpenChange={setShowStartModal}>
-        <DialogContent className="sm:max-w-2xl max-w-[95vw] w-full mx-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl text-[#1F0459]">
-              <Brain className="h-5 w-5 text-[#491BF2]" />
-              {isFirstTimeUser ? "Welcome! Let's Get You Started" : "Choose Your Next Learning Step"}
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto mx-auto">
+          <DialogHeader className="space-y-3 pb-4">
+            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl text-[#1F0459]">
+              <Brain className="h-4 w-4 sm:h-5 sm:w-5 text-[#491BF2] flex-shrink-0" />
+              <span className="leading-tight">
+                {isFirstTimeUser ? "Welcome! Let's Get You Started" : "Choose Your Next Learning Step"}
+              </span>
             </DialogTitle>
-            <DialogDescription className="text-base leading-relaxed">
+            <DialogDescription className="text-sm sm:text-base leading-relaxed">
               {isFirstTimeUser
                 ? "We've designed two paths to help you succeed. Choose the one that fits your learning style:"
                 : "Based on your progress, here are the best ways to continue your language learning journey:"}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 mt-6">
+          <div className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
             {/* Recommended option - highlighted for existing users */}
             {!isFirstTimeUser && (
               <div className="p-1 bg-gradient-to-r from-[#491BF2]/20 to-[#6D49F2]/20 rounded-lg">
                 <div
-                  onClick={handleStartLearningPlan}
-                  className="p-4 bg-white rounded-lg hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group border-2 border-[#491BF2]/30"
+                  onClick={recommendation.handler}
+                  className="p-3 sm:p-4 bg-white rounded-lg hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group border-2 border-[#491BF2]/30"
                 >
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-gradient-to-br from-[#491BF2]/20 to-[#6D49F2]/20 rounded-lg group-hover:from-[#491BF2]/30 group-hover:to-[#6D49F2]/30 transition-all">
-                      <recommendation.icon className="h-6 w-6 text-[#491BF2]" />
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <div className="p-2 sm:p-3 bg-gradient-to-br from-[#491BF2]/20 to-[#6D49F2]/20 rounded-lg group-hover:from-[#491BF2]/30 group-hover:to-[#6D49F2]/30 transition-all flex-shrink-0">
+                      <recommendation.icon className="h-5 w-5 sm:h-6 sm:w-6 text-[#491BF2]" />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="bg-[#491BF2] text-white text-xs px-2 py-1 rounded-full font-medium">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                        <span className="bg-[#491BF2] text-white text-xs px-2 py-1 rounded-full font-medium w-fit">
                           RECOMMENDED
                         </span>
-                        <Sparkles className="h-4 w-4 text-[#491BF2]" />
+                        <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 text-[#491BF2]" />
                       </div>
-                      <h3 className="font-bold text-lg mb-2 text-[#1F0459]">{recommendation.title}</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed mb-3">{recommendation.description}</p>
-                      <p className="text-sm font-medium text-[#491BF2]">{recommendation.action} →</p>
+                      <h3 className="font-bold text-base sm:text-lg mb-2 text-[#1F0459] leading-tight">{recommendation.title}</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-3">{recommendation.description}</p>
+                      <p className="text-xs sm:text-sm font-medium text-[#491BF2]">{recommendation.action} →</p>
                     </div>
                   </div>
                 </div>
@@ -375,35 +429,35 @@ const UserStatistics: React.FC = () => {
             {/* Structured Learning Path */}
             <div
               onClick={handleStartLearningPlan}
-              className={`p-4 border-2 ${isFirstTimeUser ? "border-[#6F6BF2]/30 hover:border-[#491BF2]/50" : "border-muted hover:border-[#491BF2]/40"} rounded-lg hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group`}
+              className={`p-3 sm:p-4 border-2 ${isFirstTimeUser ? "border-[#6F6BF2]/30 hover:border-[#491BF2]/50" : "border-muted hover:border-[#491BF2]/40"} rounded-lg hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group`}
             >
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-3 sm:gap-4">
                 <div
-                  className={`p-3 ${isFirstTimeUser ? "bg-gradient-to-br from-[#491BF2]/20 to-[#6D49F2]/20 group-hover:from-[#491BF2]/30 group-hover:to-[#6D49F2]/30" : "bg-muted group-hover:bg-[#491BF2]/20"} rounded-lg transition-all`}
+                  className={`p-2 sm:p-3 ${isFirstTimeUser ? "bg-gradient-to-br from-[#491BF2]/20 to-[#6D49F2]/20 group-hover:from-[#491BF2]/30 group-hover:to-[#6D49F2]/30" : "bg-muted group-hover:bg-[#491BF2]/20"} rounded-lg transition-all flex-shrink-0`}
                 >
                   <GraduationCap
-                    className={`h-6 w-6 ${isFirstTimeUser ? "text-[#491BF2]" : "text-muted-foreground group-hover:text-[#491BF2]"} transition-colors`}
+                    className={`h-5 w-5 sm:h-6 sm:w-6 ${isFirstTimeUser ? "text-[#491BF2]" : "text-muted-foreground group-hover:text-[#491BF2]"} transition-colors`}
                   />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg mb-1 text-[#1F0459]">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-base sm:text-lg mb-1 text-[#1F0459] leading-tight">
                     {isFirstTimeUser ? "📚 Guided Learning Plan" : "📚 Continue Learning Plan"}
                   </h3>
                   <div className="space-y-2 mb-3">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                       {isFirstTimeUser
                         ? "Perfect for beginners! Follow our step-by-step curriculum designed by language experts."
                         : "Continue with your structured path and track your progress."}
                     </p>
                     {isFirstTimeUser && (
-                      <div className="flex flex-wrap gap-2 text-xs">
+                      <div className="flex flex-wrap gap-1 sm:gap-2 text-xs">
                         <span className="bg-[#6F6BF2]/10 text-[#491BF2] px-2 py-1 rounded-full">✓ Structured</span>
                         <span className="bg-[#6F6BF2]/10 text-[#491BF2] px-2 py-1 rounded-full">✓ Progressive</span>
                         <span className="bg-[#6F6BF2]/10 text-[#491BF2] px-2 py-1 rounded-full">✓ Expert-designed</span>
                       </div>
                     )}
                   </div>
-                  <p className={`text-sm font-medium ${isFirstTimeUser ? "text-[#491BF2]" : "text-muted-foreground"}`}>
+                  <p className={`text-xs sm:text-sm font-medium ${isFirstTimeUser ? "text-[#491BF2]" : "text-muted-foreground"}`}>
                     {isFirstTimeUser ? "Recommended for beginners →" : "Continue where you left off →"}
                   </p>
                 </div>
@@ -413,27 +467,27 @@ const UserStatistics: React.FC = () => {
             {/* Custom Exercise Path */}
             <div
               onClick={handleCreateOwnExercise}
-              className="p-4 border-2 border-muted hover:border-[#491BF2]/40 hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group"
+              className="p-3 sm:p-4 border-2 border-muted hover:border-[#491BF2]/40 hover:bg-[#6F6BF2]/5 cursor-pointer transition-all duration-200 group"
             >
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-muted group-hover:bg-[#491BF2]/20 rounded-lg transition-all">
-                  <Plus className="h-6 w-6 text-muted-foreground group-hover:text-[#491BF2] transition-colors" />
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="p-2 sm:p-3 bg-muted group-hover:bg-[#491BF2]/20 rounded-lg transition-all flex-shrink-0">
+                  <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground group-hover:text-[#491BF2] transition-colors" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg mb-1 text-[#1F0459]">🎯 Create Custom Exercise</h3>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-base sm:text-lg mb-1 text-[#1F0459] leading-tight">🎯 Create Custom Exercise</h3>
                   <div className="space-y-2 mb-3">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                       {isFirstTimeUser
                         ? "Jump right in! Create exercises with your own content or specific topics you want to practice."
                         : "Add personalized exercises to supplement your learning plan."}
                     </p>
-                    <div className="flex flex-wrap gap-2 text-xs">
+                    <div className="flex flex-wrap gap-1 sm:gap-2 text-xs">
                       <span className="bg-muted text-muted-foreground px-2 py-1 rounded-full">✓ Flexible</span>
                       <span className="bg-muted text-muted-foreground px-2 py-1 rounded-full">✓ Personalized</span>
                       <span className="bg-muted text-muted-foreground px-2 py-1 rounded-full">✓ Your content</span>
                     </div>
                   </div>
-                  <p className="text-sm font-medium text-muted-foreground">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">
                     {isFirstTimeUser ? "Great for self-directed learners →" : "Add to your routine →"}
                   </p>
                 </div>
@@ -442,8 +496,8 @@ const UserStatistics: React.FC = () => {
 
             {/* Additional helpful tip for first-time users */}
             {isFirstTimeUser && (
-              <div className="mt-6 p-3 bg-[#AB96D9]/10 rounded-lg border border-[#AB96D9]/30">
-                <p className="text-sm text-[#1F0459] text-center">
+              <div className="mt-4 sm:mt-6 p-3 bg-[#AB96D9]/10 rounded-lg border border-[#AB96D9]/30">
+                <p className="text-xs sm:text-sm text-[#1F0459] text-center leading-relaxed">
                   💡 <strong>New to language learning?</strong> Start with the Guided Learning Plan. You can always
                   create custom exercises later!
                 </p>
@@ -452,22 +506,22 @@ const UserStatistics: React.FC = () => {
 
             {/* Progress summary for existing users */}
             {!isFirstTimeUser && (
-              <div className="mt-6 p-4 bg-gradient-to-r from-[#6F6BF2]/5 to-[#AB96D9]/5 rounded-lg border border-[#AB96D9]/20">
+              <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gradient-to-r from-[#6F6BF2]/5 to-[#AB96D9]/5 rounded-lg border border-[#AB96D9]/20">
                 <div className="flex items-center gap-3 mb-2">
-                  <Target className="h-4 w-4 text-[#491BF2]" />
-                  <span className="text-sm font-medium text-[#1F0459]">Your Progress Summary</span>
+                  <Target className="h-3 w-3 sm:h-4 sm:w-4 text-[#491BF2] flex-shrink-0" />
+                  <span className="text-xs sm:text-sm font-medium text-[#1F0459]">Your Progress Summary</span>
                 </div>
-                <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
                   <div>
-                    <p className="text-lg font-bold text-[#491BF2]">{stats.completed}</p>
+                    <p className="text-base sm:text-lg font-bold text-[#491BF2]">{stats.completed}</p>
                     <p className="text-xs text-muted-foreground">Completed</p>
                   </div>
                   <div>
-                    <p className="text-lg font-bold text-[#6D49F2]">{stats.inProgress}</p>
+                    <p className="text-base sm:text-lg font-bold text-[#6D49F2]">{stats.inProgress}</p>
                     <p className="text-xs text-muted-foreground">In Progress</p>
                   </div>
                   <div>
-                    <p className="text-lg font-bold text-[#AB96D9]">{totalMasteredWords}</p>
+                    <p className="text-base sm:text-lg font-bold text-[#AB96D9]">{totalMasteredWords}</p>
                     <p className="text-xs text-muted-foreground">Words Mastered</p>
                   </div>
                 </div>
