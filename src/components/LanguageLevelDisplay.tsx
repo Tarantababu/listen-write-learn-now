@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -11,47 +12,47 @@ interface LanguageLevelDisplayProps {
 
 // Level icons mapping - elegant progression using available Lucide icons
 const LEVEL_ICONS = {
-  'A0': Circle,
+  'Level 1': Circle,
   // Starting point - simple circle
-  'A1': Sprout,
+  'Level 2': Sprout,
   // First growth - sprouting 
-  'A2': Leaf,
+  'Level 3': Leaf,
   // Growing - developing leaves
-  'B1': TreePine,
+  'Level 4': TreePine,
   // Establishing - young tree
-  'B2': TreePine,
+  'Level 5': TreePine,
   // Strengthening - mature tree  
-  'C1': Mountain,
+  'Level 6': Mountain,
   // Reaching heights - mountain peak
-  'C2': Crown // Mastery achieved - crown/trophy
+  'Level 7': Crown // Mastery achieved - crown/trophy
 };
 
 // Elegant gradient colors for each level
 const LEVEL_GRADIENTS = {
-  'A0': 'from-slate-400 via-gray-500 to-slate-600',
+  'Level 1': 'from-slate-400 via-gray-500 to-slate-600',
   // Subtle beginnings
-  'A1': 'from-green-400 via-emerald-500 to-teal-600',
+  'Level 2': 'from-green-400 via-emerald-500 to-teal-600',
   // Fresh growth
-  'A2': 'from-green-500 via-teal-600 to-cyan-600',
+  'Level 3': 'from-green-500 via-teal-600 to-cyan-600',
   // Developing
-  'B1': 'from-blue-500 via-indigo-600 to-purple-600',
+  'Level 4': 'from-blue-500 via-indigo-600 to-purple-600',
   // Building strength
-  'B2': 'from-purple-500 via-violet-600 to-indigo-600',
+  'Level 5': 'from-purple-500 via-violet-600 to-indigo-600',
   // Advanced growth
-  'C1': 'from-purple-600 via-pink-600 to-rose-600',
+  'Level 6': 'from-purple-600 via-pink-600 to-rose-600',
   // Near mastery
-  'C2': 'from-amber-500 via-orange-500 to-red-500' // Complete mastery
+  'Level 7': 'from-amber-500 via-orange-500 to-red-500' // Complete mastery
 };
 
 // Accent colors for supporting elements
 const LEVEL_ACCENTS = {
-  'A0': 'text-slate-600 dark:text-slate-400',
-  'A1': 'text-emerald-600 dark:text-emerald-400',
-  'A2': 'text-teal-600 dark:text-teal-400',
-  'B1': 'text-indigo-600 dark:text-indigo-400',
-  'B2': 'text-purple-600 dark:text-purple-400',
-  'C1': 'text-pink-600 dark:text-pink-400',
-  'C2': 'text-orange-600 dark:text-orange-400'
+  'Level 1': 'text-slate-600 dark:text-slate-400',
+  'Level 2': 'text-emerald-600 dark:text-emerald-400',
+  'Level 3': 'text-teal-600 dark:text-teal-400',
+  'Level 4': 'text-indigo-600 dark:text-indigo-400',
+  'Level 5': 'text-purple-600 dark:text-purple-400',
+  'Level 6': 'text-pink-600 dark:text-pink-400',
+  'Level 7': 'text-orange-600 dark:text-orange-400'
 };
 const LanguageLevelDisplay: React.FC<LanguageLevelDisplayProps> = ({
   masteredWords
@@ -67,8 +68,8 @@ const LanguageLevelDisplay: React.FC<LanguageLevelDisplayProps> = ({
 
   // Get visual elements for current level
   const CurrentLevelIcon = LEVEL_ICONS[currentLevel.level] || Award;
-  const currentGradient = LEVEL_GRADIENTS[currentLevel.level] || LEVEL_GRADIENTS['A1'];
-  const currentAccent = LEVEL_ACCENTS[currentLevel.level] || LEVEL_ACCENTS['A1'];
+  const currentGradient = LEVEL_GRADIENTS[currentLevel.level] || LEVEL_GRADIENTS['Level 2'];
+  const currentAccent = LEVEL_ACCENTS[currentLevel.level] || LEVEL_ACCENTS['Level 2'];
   return <Card className="col-span-full shadow-lg bg-gradient-to-br from-white via-blue-50/30 to-purple-50/50 dark:from-gray-900 dark:via-blue-950/20 dark:to-purple-950/30 border-0 overflow-hidden animate-fade-in">
       {/* Enhanced decorative background pattern */}
       <div className="absolute inset-0 opacity-5">
@@ -207,7 +208,7 @@ const LanguageLevelDisplay: React.FC<LanguageLevelDisplayProps> = ({
                 const isCurrent = index === currentLevelIndex;
                 const isNext = index === currentLevelIndex + 1;
                 const LevelIcon = LEVEL_ICONS[level.level] || Award;
-                const levelGradient = LEVEL_GRADIENTS[level.level] || LEVEL_GRADIENTS['A1'];
+                const levelGradient = LEVEL_GRADIENTS[level.level] || LEVEL_GRADIENTS['Level 2'];
                 return <TooltipProvider key={level.level}>
                       <Tooltip>
                         <TooltipTrigger asChild>

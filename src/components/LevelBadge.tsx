@@ -21,15 +21,15 @@ const LevelBadge: React.FC<LevelBadgeProps> = ({ masteredWords, level, className
   }
   
   if (level !== undefined) {
-    // Use direct level value for CEFR levels
+    // Use direct level value for the new level system
     const levelColors: Record<LanguageLevel, string> = {
-      'A0': 'bg-slate-400',
-      'A1': 'bg-green-400',
-      'A2': 'bg-blue-400',
-      'B1': 'bg-indigo-500',
-      'B2': 'bg-purple-500',
-      'C1': 'bg-amber-500',
-      'C2': 'bg-rose-500'
+      'Level 1': 'bg-slate-400',
+      'Level 2': 'bg-green-400',
+      'Level 3': 'bg-blue-400',
+      'Level 4': 'bg-indigo-500',
+      'Level 5': 'bg-purple-500',
+      'Level 6': 'bg-amber-500',
+      'Level 7': 'bg-rose-500'
     };
     
     return (
@@ -40,7 +40,7 @@ const LevelBadge: React.FC<LevelBadgeProps> = ({ masteredWords, level, className
   }
   
   // Fallback
-  return <Badge className={className}>A0</Badge>;
+  return <Badge className={className}>Level 1</Badge>;
 };
 
 export default LevelBadge;

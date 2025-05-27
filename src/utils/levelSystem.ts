@@ -13,7 +13,7 @@ export interface LevelInfo {
 
 export const LANGUAGE_LEVELS: LevelInfo[] = [
   {
-    level: "A0",
+    level: "Level 1",
     title: "Beginner Starter",
     description: "Can recognize isolated high-frequency words and basic phrases",
     cefrEquivalent: "Pre-A1",
@@ -22,7 +22,7 @@ export const LANGUAGE_LEVELS: LevelInfo[] = [
     color: "bg-slate-400"
   },
   {
-    level: "A1",
+    level: "Level 2",
     title: "Elementary",
     description: "Understands and uses routine expressions and elementary vocabulary",
     cefrEquivalent: "A1",
@@ -31,7 +31,7 @@ export const LANGUAGE_LEVELS: LevelInfo[] = [
     color: "bg-green-400"
   },
   {
-    level: "A2",
+    level: "Level 3",
     title: "Pre-Intermediate",
     description: "Manages simple interactions using concrete vocabulary and set phrases",
     cefrEquivalent: "A2",
@@ -40,7 +40,7 @@ export const LANGUAGE_LEVELS: LevelInfo[] = [
     color: "bg-blue-400"
   },
   {
-    level: "B1",
+    level: "Level 4",
     title: "Intermediate",
     description: "Can navigate familiar topics and produce connected discourse on routine matters",
     cefrEquivalent: "B1",
@@ -49,7 +49,7 @@ export const LANGUAGE_LEVELS: LevelInfo[] = [
     color: "bg-indigo-500"
   },
   {
-    level: "B2",
+    level: "Level 5",
     title: "Upper Intermediate",
     description: "Can understand abstract topics and discuss them with a range of vocabulary",
     cefrEquivalent: "B2",
@@ -58,7 +58,7 @@ export const LANGUAGE_LEVELS: LevelInfo[] = [
     color: "bg-purple-500"
   },
   {
-    level: "C1",
+    level: "Level 6",
     title: "Advanced",
     description: "Uses nuanced vocabulary flexibly for social, academic, and professional contexts",
     cefrEquivalent: "C1",
@@ -67,7 +67,7 @@ export const LANGUAGE_LEVELS: LevelInfo[] = [
     color: "bg-amber-500"
   },
   {
-    level: "C2",
+    level: "Level 7",
     title: "Proficient",
     description: "Demonstrates native-like control over idiomatic, technical, and literary language",
     cefrEquivalent: "C2",

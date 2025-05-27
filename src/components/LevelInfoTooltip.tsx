@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Popover,
@@ -14,7 +13,7 @@ import { HelpCircle } from 'lucide-react';
 import { LANGUAGE_LEVELS } from "@/utils/levelSystem";
 import { LanguageLevel } from '@/types';
 
-const LevelInfoTooltip: React.FC<{ userLevel?: string }> = ({ userLevel = "A0" }) => {
+const LevelInfoTooltip: React.FC<{ userLevel?: string }> = ({ userLevel = "Level 1" }) => {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -39,9 +38,7 @@ const LevelInfoTooltip: React.FC<{ userLevel?: string }> = ({ userLevel = "A0" }
                   // Determine if this is a future level based on user's current level
                   const isCurrentLevel = level.level === userLevel;
                   const isFutureLevel = !isCurrentLevel && userLevel 
-                    ? (level.level.charCodeAt(0) > userLevel.charCodeAt(0) || 
-                      (level.level.charCodeAt(0) === userLevel.charCodeAt(0) && 
-                       parseInt(level.level.charAt(1) || '0') > parseInt(userLevel.charAt(1) || '0')))
+                    ? (parseInt(level.level.split(' ')[1]) > parseInt(userLevel.split(' ')[1]))
                     : false;
                   
                   return (
@@ -69,7 +66,7 @@ const LevelInfoTooltip: React.FC<{ userLevel?: string }> = ({ userLevel = "A0" }
                         <div className="space-y-2">
                           <h5 className="font-semibold text-sm flex items-center gap-1.5">
                             <span className={`inline-block w-2 h-2 rounded-full ${getLevelColorClass(level.level)}`}></span>
-                            Level {level.level}
+                            {level.level}
                             {isCurrentLevel && <span className="text-xs font-normal text-primary ml-1">(current)</span>}
                           </h5>
                           <p className="text-muted-foreground leading-relaxed">{level.description}</p>
@@ -109,12 +106,12 @@ const levelColorsDark = [
 
 // Helper function to get the appropriate color class for the level dot
 const getLevelColorClass = (level: string): string => {
-  return level === 'A0' ? 'bg-slate-400 dark:bg-slate-400' : 
-         level === 'A1' ? 'bg-green-400 dark:bg-green-500' : 
-         level === 'A2' ? 'bg-blue-400 dark:bg-blue-500' : 
-         level === 'B1' ? 'bg-indigo-400 dark:bg-indigo-500' : 
-         level === 'B2' ? 'bg-purple-400 dark:bg-purple-500' : 
-         level === 'C1' ? 'bg-amber-400 dark:bg-amber-500' : 'bg-rose-400 dark:bg-rose-500';
+  return level === 'Level 1' ? 'bg-slate-400 dark:bg-slate-400' : 
+         level === 'Level 2' ? 'bg-green-400 dark:bg-green-500' : 
+         level === 'Level 3' ? 'bg-blue-400 dark:bg-blue-500' : 
+         level === 'Level 4' ? 'bg-indigo-400 dark:bg-indigo-500' : 
+         level === 'Level 5' ? 'bg-purple-400 dark:bg-purple-500' : 
+         level === 'Level 6' ? 'bg-amber-400 dark:bg-amber-500' : 'bg-rose-400 dark:bg-rose-500';
 };
 
 // Future level styles - more transparent/faded

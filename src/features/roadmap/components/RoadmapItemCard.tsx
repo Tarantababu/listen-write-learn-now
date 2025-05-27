@@ -46,7 +46,7 @@ const RoadmapItemCard: React.FC<RoadmapItemCardProps> = ({
               {roadmap.name || capitalize(roadmap.language)}
             </CardTitle>
             
-            <LevelBadge level={roadmap.level || 'A1'} />
+            <LevelBadge level={roadmap.level || 'Level 2'} />
           </div>
         </CardHeader>
         

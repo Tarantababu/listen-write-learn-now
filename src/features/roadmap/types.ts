@@ -1,4 +1,3 @@
-
 import { Language, LanguageLevel } from '@/types';
 
 // Core roadmap types
@@ -19,6 +18,7 @@ export interface RoadmapItem {
   roadmapId?: string; // Add this for user roadmaps that reference parent roadmap
 }
 
+// API response for node exercise content
 export interface RoadmapNode {
   id: string;
   roadmapId: string;
