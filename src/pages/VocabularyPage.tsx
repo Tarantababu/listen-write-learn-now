@@ -977,9 +977,7 @@ const VocabularyPage = () => {
               <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
                 Vocabulary
               </h1>
-              <Badge variant="secondary" className="text-xs animate-in fade-in-50 duration-300">
-                {languageVocabulary.length} words
-              </Badge>
+              
               {vocabularyStats.withAudio > 0}
               {audioQueue.length > 0 && <Badge variant="outline" className="text-xs border-primary text-primary">
                   <Music className="h-3 w-3 mr-1" />
@@ -1154,9 +1152,7 @@ const VocabularyPage = () => {
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
                                 <h3 className="font-semibold text-primary text-sm sm:text-base">{item.word}</h3>
-                                <Badge variant="secondary" className="text-xs self-start sm:self-auto">
-                                  {item.language}
-                                </Badge>
+                                
                               </div>
                               {item.definition && <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 sm:line-clamp-1">
                                   {item.definition}
