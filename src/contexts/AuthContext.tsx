@@ -1,10 +1,10 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { hasTutorialBeenViewed } from '@/utils/visitorTracking';
+import { EmailService } from '@/services/emailService';
 
 interface AuthContextProps {
   session: Session | null;
@@ -161,12 +161,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      const { error, data } = await supabase.auth.signUp({
         email,
         password
       });
       
       if (error) throw error;
+      
+      // Send welcome email after successful signup
+      if (data.user) {
+        try {
+          await EmailService.sendWelcomeEmail({
+            email: data.user.email || email,
+            name: data.user.user_metadata?.name
+          });
+          console.log('Welcome email sent successfully');
+        } catch (emailError) {
+          // Don't fail the signup if email sending fails
+          console.error('Failed to send welcome email:', emailError);
+        }
+      }
       
       toast.success('Account created successfully. Please check your email for verification.');
     } catch (error: any) {

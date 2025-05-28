@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { EmailService } from '@/services/emailService';
 
 export async function signUp(email: string, password: string) {
   const { data, error } = await supabase.auth.signUp({
@@ -10,6 +11,24 @@ export async function signUp(email: string, password: string) {
   if (error) {
     toast.error(error.message);
     throw error;
+  }
+
+  // Send welcome email after successful signup
+  if (data.user) {
+    try {
+      await EmailService.sendWelcomeEmail({
+        email: data.user.email || email,
+        name: data.user.user_metadata?.name
+      });
+      console.log('Welcome email sent successfully');
+    } catch (emailError) {
+      // Don't fail the signup if email sending fails
+      console.error('Failed to send welcome email:', emailError);
+      // Optionally show a non-blocking toast
+      toast('Account created successfully! Welcome email will be sent shortly.', {
+        duration: 3000,
+      });
+    }
   }
 
   return data;
