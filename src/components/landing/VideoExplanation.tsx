@@ -8,7 +8,7 @@ export function VideoExplanation() {
         <div className="text-center mb-10">
           <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-brand-dark">See How It Works</h2>
           <p className="mt-4 text-xl text-muted-foreground max-w-3xl mx-auto">
-            Watch our quick demo to see how ListenWriteLearn helps you master languages through dictation
+            Watch our quick demo to see how lwlnow helps you master languages through dictation
           </p>
         </div>
         
@@ -17,8 +17,8 @@ export function VideoExplanation() {
             <iframe 
               width="100%" 
               height="100%" 
-              src="https://embed.app.guidde.com/playbooks/soJN2AGizD8NwNKcTTmJT1" 
-              title="How to create exercises and do dictation" 
+              src="https://youtu.be/sExupd54k2c" 
+              title="How to Use the lwlnow – Full Guide for Language Learners | Get Started Today!" 
               frameBorder="0" 
               referrerPolicy="unsafe-url" 
               allowFullScreen={true} 
