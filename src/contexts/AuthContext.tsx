@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
@@ -171,18 +172,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Send welcome email after successful signup
       if (data.user) {
         try {
+          console.log('Attempting to send welcome email to:', data.user.email);
           await EmailService.sendWelcomeEmail({
             email: data.user.email || email,
             name: data.user.user_metadata?.name
           });
           console.log('Welcome email sent successfully');
+          toast.success('Account created successfully! Welcome email sent. Please check your email for verification.');
         } catch (emailError) {
           // Don't fail the signup if email sending fails
           console.error('Failed to send welcome email:', emailError);
+          toast.success('Account created successfully. Please check your email for verification.');
         }
+      } else {
+        toast.success('Account created successfully. Please check your email for verification.');
       }
-      
-      toast.success('Account created successfully. Please check your email for verification.');
     } catch (error: any) {
       toast.error(error.message || 'Failed to create account');
       throw error;
