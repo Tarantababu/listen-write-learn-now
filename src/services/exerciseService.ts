@@ -1,7 +1,7 @@
-
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { FirstExerciseEmailService } from './firstExerciseEmailService';
 
 /**
  * Fetches exercises from Supabase for an authenticated user
@@ -191,6 +191,9 @@ export const recordCompletion = async (userId: string, exerciseId: string, accur
       
       console.log(`Recording language activity with ${masteredWordsCount} mastered words`);
       
+      // Check if this is the user's first successful exercise completion
+      await checkAndSendFirstExerciseEmail(userId);
+      
       // Use our record_language_activity function to update streaks and include mastered words
       const { error: activityError } = await supabase.rpc(
         'record_language_activity',
@@ -232,6 +235,62 @@ export const recordCompletion = async (userId: string, exerciseId: string, accur
     }
   } catch (error) {
     console.error('Error in recordCompletion:', error);
+  }
+};
+
+/**
+ * Check if this is the user's first successful exercise completion and send email if so
+ */
+const checkAndSendFirstExerciseEmail = async (userId: string) => {
+  try {
+    // Check if user has already received the first exercise email
+    const hasReceived = await FirstExerciseEmailService.hasReceivedFirstExerciseEmail(userId);
+    
+    if (hasReceived) {
+      console.log('User has already received first exercise completion email');
+      return;
+    }
+
+    // Check if this is indeed the user's first successful completion
+    const { data: completions, error } = await supabase
+      .from('completions')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('accuracy', 95);
+
+    if (error) {
+      console.error('Error checking completion history:', error);
+      return;
+    }
+
+    // If this is the first successful completion (95%+ accuracy)
+    if (completions && completions.length === 1) {
+      // Get user email
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user?.email) {
+        console.error('Error getting user email:', userError);
+        return;
+      }
+
+      // Send the first exercise completion email
+      try {
+        await FirstExerciseEmailService.sendFirstExerciseEmail({
+          email: user.email,
+          name: user.user_metadata?.name
+        });
+
+        // Mark the email as sent
+        await FirstExerciseEmailService.markFirstExerciseEmailSent(userId);
+        
+        console.log('First exercise completion email sent successfully');
+      } catch (emailError) {
+        console.error('Failed to send first exercise completion email:', emailError);
+        // Don't throw error - completion should still be recorded
+      }
+    }
+  } catch (error) {
+    console.error('Error in checkAndSendFirstExerciseEmail:', error);
   }
 };
 
