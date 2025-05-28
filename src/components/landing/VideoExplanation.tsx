@@ -17,7 +17,7 @@ export function VideoExplanation() {
             <iframe 
               width="100%" 
               height="100%" 
-              src="https://youtu.be/sExupd54k2c" 
+              src="https://www.youtube.com/embed/sExupd54k2c" 
               title="How to Use the lwlnow – Full Guide for Language Learners | Get Started Today!" 
               frameBorder="0" 
               referrerPolicy="unsafe-url" 
