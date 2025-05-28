@@ -568,6 +568,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          first_exercise_email_sent: boolean
           id: string
           learning_languages: string[]
           reading_analyses_count: number
@@ -576,6 +577,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          first_exercise_email_sent?: boolean
           id: string
           learning_languages?: string[]
           reading_analyses_count?: number
@@ -584,6 +586,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          first_exercise_email_sent?: boolean
           id?: string
           learning_languages?: string[]
           reading_analyses_count?: number
