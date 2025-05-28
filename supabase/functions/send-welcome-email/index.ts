@@ -289,9 +289,9 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending welcome email to: ${email}`);
 
     const emailResponse = await resend.emails.send({
-      from: "lwlnow <welcome@lwlnow.com>",
+      from: "support@marketing.lwlnow.com",
       to: [email],
-      subject: "Welcome to lwlnow - Start Your Language Journey!",
+      subject: "Welcome to lwlnow! Your language journey starts here.",
       html: getWelcomeEmailHTML(),
     });
 
