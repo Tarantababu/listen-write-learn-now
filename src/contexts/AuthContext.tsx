@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
@@ -6,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { hasTutorialBeenViewed } from '@/utils/visitorTracking';
 import { EmailService } from '@/services/emailService';
+import { ResendContactService } from '@/services/resendContactService';
 
 interface AuthContextProps {
   session: Session | null;
@@ -169,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
-      // Send welcome email after successful signup
+      // Send welcome email and create Resend contact after successful signup
       if (data.user) {
         try {
           console.log('Attempting to send welcome email to:', data.user.email);
@@ -178,10 +178,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             name: data.user.user_metadata?.name
           });
           console.log('Welcome email sent successfully');
+          
+          // Create contact in Resend
+          console.log('Creating Resend contact for:', data.user.email);
+          await ResendContactService.createContact({
+            email: data.user.email || email,
+            firstName: data.user.user_metadata?.first_name,
+            lastName: data.user.user_metadata?.last_name
+          });
+          console.log('Resend contact created successfully');
+          
           toast.success('Account created successfully! Welcome email sent. Please check your email for verification.');
         } catch (emailError) {
-          // Don't fail the signup if email sending fails
-          console.error('Failed to send welcome email:', emailError);
+          // Don't fail the signup if email sending or contact creation fails
+          console.error('Failed to send welcome email or create Resend contact:', emailError);
           toast.success('Account created successfully. Please check your email for verification.');
         }
       } else {

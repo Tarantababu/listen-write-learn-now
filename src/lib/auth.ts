@@ -1,6 +1,8 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { EmailService } from '@/services/emailService';
+import { ResendContactService } from '@/services/resendContactService';
 
 export async function signUp(email: string, password: string) {
   const { data, error } = await supabase.auth.signUp({
@@ -13,7 +15,7 @@ export async function signUp(email: string, password: string) {
     throw error;
   }
 
-  // Send welcome email after successful signup
+  // Send welcome email and create Resend contact after successful signup
   if (data.user) {
     try {
       await EmailService.sendWelcomeEmail({
@@ -21,10 +23,17 @@ export async function signUp(email: string, password: string) {
         name: data.user.user_metadata?.name
       });
       console.log('Welcome email sent successfully');
+      
+      // Create contact in Resend
+      await ResendContactService.createContact({
+        email: data.user.email || email,
+        firstName: data.user.user_metadata?.first_name,
+        lastName: data.user.user_metadata?.last_name
+      });
+      console.log('Resend contact created successfully');
     } catch (emailError) {
-      // Don't fail the signup if email sending fails
-      console.error('Failed to send welcome email:', emailError);
-      // Optionally show a non-blocking toast
+      // Don't fail the signup if email sending or contact creation fails
+      console.error('Failed to send welcome email or create Resend contact:', emailError);
       toast('Account created successfully! Welcome email will be sent shortly.', {
         duration: 3000,
       });
