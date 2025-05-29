@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { SUBSCRIPTION_PLANS, AVAILABLE_CURRENCIES, DEFAULT_CURRENCY } from '@/lib/stripe';
 import { useAdmin } from '@/hooks/use-admin';
+import { PremiumEmailService } from '@/services/premiumEmailService';
 
 interface SubscriptionState {
   isLoading: boolean;
@@ -190,6 +190,28 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
 
       console.log('Raw subscription data:', data);
+
+      // Check if user just became premium and hasn't received the email yet
+      const wasFree = subscription.subscriptionTier === 'free';
+      const isNowPremium = data?.subscribed && data?.subscription_tier === 'premium';
+      
+      if (wasFree && isNowPremium && user.email) {
+        try {
+          const hasReceived = await PremiumEmailService.hasReceivedPremiumEmail(user.id);
+          if (!hasReceived) {
+            console.log('User became premium, sending premium email');
+            await PremiumEmailService.sendPremiumEmail({
+              email: user.email,
+              name: user.user_metadata?.full_name || user.user_metadata?.name
+            });
+            await PremiumEmailService.markPremiumEmailSent(user.id);
+            console.log('Premium email sent successfully');
+          }
+        } catch (emailError) {
+          console.error('Error sending premium email:', emailError);
+          // Don't block the subscription check if email fails
+        }
+      }
 
       setSubscription({
         isLoading: false,
