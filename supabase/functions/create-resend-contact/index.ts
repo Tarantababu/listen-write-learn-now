@@ -36,14 +36,31 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log(`Creating Resend contact for: ${email}`);
+    console.log(`First name: ${firstName || 'null'}, Last name: ${lastName || 'null'}`);
 
-    const contactResponse = await resend.contacts.create({
+    // Check if resend.contacts exists
+    if (!resend.contacts) {
+      console.error("Resend contacts API not available");
+      return new Response(
+        JSON.stringify({ error: "Resend contacts API not available" }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    const contactPayload = {
       email: email,
-      firstName: firstName,
-      lastName: lastName,
+      firstName: firstName || null,
+      lastName: lastName || null,
       unsubscribed: false,
       audienceId: '96edb5a4-ab84-49e3-b7c8-e034961d281a',
-    });
+    };
+
+    console.log("Contact payload:", JSON.stringify(contactPayload));
+
+    const contactResponse = await resend.contacts.create(contactPayload);
 
     console.log("Resend contact created successfully:", contactResponse);
 
@@ -56,8 +73,13 @@ const handler = async (req: Request): Promise<Response> => {
     });
   } catch (error: any) {
     console.error("Error in create-resend-contact function:", error);
+    console.error("Error details:", error.message, error.stack);
+    
     return new Response(
-      JSON.stringify({ error: error.message || "Failed to create Resend contact" }),
+      JSON.stringify({ 
+        error: error.message || "Failed to create Resend contact",
+        details: error.stack || "No stack trace available"
+      }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
