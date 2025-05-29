@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { SUBSCRIPTION_PLANS, AVAILABLE_CURRENCIES, DEFAULT_CURRENCY } from '@/lib/stripe';
 import { useAdmin } from '@/hooks/use-admin';
-import { PremiumEmailService } from '@/services/premiumEmailService';
+import { PremiumEmailService, CancellationEmailService } from '@/services';
 
 interface SubscriptionState {
   isLoading: boolean;
@@ -209,6 +209,28 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           }
         } catch (emailError) {
           console.error('Error sending premium email:', emailError);
+          // Don't block the subscription check if email fails
+        }
+      }
+
+      // Check if subscription was just canceled and send cancellation email
+      const wasPremium = subscription.subscriptionTier === 'premium' && subscription.subscriptionStatus === 'active';
+      const isNowCanceled = data?.canceled_at && data?.subscription_status === 'canceled';
+      
+      if (wasPremium && isNowCanceled && user.email) {
+        try {
+          const hasReceived = await CancellationEmailService.hasReceivedCancellationEmail(user.id);
+          if (!hasReceived) {
+            console.log('Subscription was canceled, sending cancellation email');
+            await CancellationEmailService.sendCancellationEmail({
+              email: user.email,
+              name: user.user_metadata?.full_name || user.user_metadata?.name
+            });
+            await CancellationEmailService.markCancellationEmailSent(user.id);
+            console.log('Cancellation email sent successfully');
+          }
+        } catch (emailError) {
+          console.error('Error sending cancellation email:', emailError);
           // Don't block the subscription check if email fails
         }
       }

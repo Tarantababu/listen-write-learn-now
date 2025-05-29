@@ -567,28 +567,34 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          cancellation_email_sent: boolean
           created_at: string
           first_exercise_email_sent: boolean
           id: string
           learning_languages: string[]
+          premium_email_sent: boolean
           reading_analyses_count: number
           selected_language: string
         }
         Insert: {
           avatar_url?: string | null
+          cancellation_email_sent?: boolean
           created_at?: string
           first_exercise_email_sent?: boolean
           id: string
           learning_languages?: string[]
+          premium_email_sent?: boolean
           reading_analyses_count?: number
           selected_language?: string
         }
         Update: {
           avatar_url?: string | null
+          cancellation_email_sent?: boolean
           created_at?: string
           first_exercise_email_sent?: boolean
           id?: string
           learning_languages?: string[]
+          premium_email_sent?: boolean
           reading_analyses_count?: number
           selected_language?: string
         }
