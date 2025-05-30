@@ -871,7 +871,11 @@ const MobileResultsScreen: React.FC<{
   const [savedWords, setSavedWords] = useState<string[]>([])
   const [showTextSelection, setShowTextSelection] = useState(false)
   // Add this to the MobileResultsScreen component state variables
-  const [showVocabBuilder, setShowVocabBuilder] = useState(false)
+  const [selectedWord, setSelectedWord] = useState<string>("")
+  const [isAddingToVocab, setIsAddingToVocab] = useState(false)
+  const [addSuccess, setAddSuccess] = useState(false)
+
+  const { user } = useAuth()
 
   // Compare user input with correct text
   const getComparison = () => {
@@ -1042,6 +1046,73 @@ const MobileResultsScreen: React.FC<{
     })
   }
 
+  // Add word to vocabulary (using localStorage)
+  const addToVocabulary = async () => {
+    if (!selectedWord) return
+
+    setIsAddingToVocab(true)
+
+    try {
+      // Check if word is already saved
+      if (savedWords.includes(selectedWord)) {
+        toast({
+          title: "Word already saved",
+          description: `"${selectedWord}" is already in your vocabulary list.`,
+          variant: "default",
+        })
+        setIsAddingToVocab(false)
+        return
+      }
+
+      // Add word to saved words
+      const updatedWords = [...savedWords, selectedWord]
+      setSavedWords(updatedWords)
+
+      // Save to localStorage
+      const savedWordsKey = `saved_words_${exercise.language}`
+      localStorage.setItem(savedWordsKey, JSON.stringify(updatedWords))
+
+      setAddSuccess(true)
+      toast({
+        title: "Added to vocabulary",
+        description: `"${selectedWord}" has been added to your vocabulary list.`,
+        variant: "default",
+      })
+
+      // Reset selection after a short delay
+      setTimeout(() => {
+        setSelectedWord("")
+        setAddSuccess(false)
+      }, 2000)
+    } catch (error) {
+      console.error("Error adding word to vocabulary:", error)
+      toast({
+        title: "Failed to add word",
+        description: "There was a problem adding this word to your vocabulary.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsAddingToVocab(false)
+    }
+  }
+
+  // Load saved words on component mount
+  useEffect(() => {
+    const loadSavedWords = () => {
+      try {
+        const savedWordsKey = `saved_words_${exercise.language}`
+        const stored = localStorage.getItem(savedWordsKey)
+        if (stored) {
+          setSavedWords(JSON.parse(stored))
+        }
+      } catch (error) {
+        console.error("Error loading saved words:", error)
+      }
+    }
+
+    loadSavedWords()
+  }, [exercise.language])
+
   return (
     <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
       {showConfetti && <Confetti />}
@@ -1188,6 +1259,18 @@ const MobileResultsScreen: React.FC<{
                   </div>
                 ))}
               </div>
+
+              {/* Full Text Display */}
+              <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="font-medium text-base mb-2 text-gray-900 dark:text-white">Full Text</h4>
+                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg text-gray-800 dark:text-gray-200 text-sm leading-relaxed">
+                  {exercise.text.split("\n").map((paragraph, index) => (
+                    <p key={index} className="mb-3">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1195,85 +1278,87 @@ const MobileResultsScreen: React.FC<{
         {resultsTab === ResultsTab.VOCABULARY && (
           <div className="space-y-4">
             <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
-              <h3 className="font-semibold text-lg mb-3 text-gray-900 dark:text-white">Key Vocabulary</h3>
+              <h3 className="font-semibold text-lg mb-3 text-gray-900 dark:text-white">Vocabulary Building</h3>
 
-              {isLoadingVocabulary ? (
-                <div className="py-8 flex flex-col items-center justify-center">
-                  <div className="h-8 w-8 rounded-full border-2 border-t-transparent border-blue-500 animate-spin mb-3"></div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Loading vocabulary...</p>
-                </div>
-              ) : vocabularyError ? (
-                <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 rounded-lg">
-                  <p>{vocabularyError}</p>
-                </div>
-              ) : vocabularyItems.length === 0 ? (
-                <div className="p-4 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg">
-                  <p>No vocabulary items available for this exercise.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {vocabularyItems.map((item, index) => {
-                    const isCorrect = comparison.some(
-                      (c) => c.correct.toLowerCase() === item.word.toLowerCase() && c.isMatch,
-                    )
-                    const isSaved = savedWords.includes(item.word)
-
-                    return (
-                      <div key={index} className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div className="font-medium text-blue-800 dark:text-blue-200">{item.word}</div>
-                          <div className="flex items-center space-x-2">
-                            {item.partOfSpeech !== "unknown" && (
-                              <div className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
-                                {item.partOfSpeech}
-                              </div>
-                            )}
-                            <button
-                              onClick={() => toggleSaveWord(item.word)}
-                              className={`p-1 rounded-full ${isSaved ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-900 dark:text-yellow-300" : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"}`}
-                            >
-                              <Star className={`h-4 w-4 ${isSaved ? "fill-yellow-500" : ""}`} />
-                            </button>
-                          </div>
-                        </div>
-                        {item.translation !== "Translation not available" && (
-                          <div className="text-sm text-blue-600 dark:text-blue-400 mt-1">{item.translation}</div>
-                        )}
-                        <div className="text-xs text-blue-500 dark:text-blue-400 mt-2 flex items-center">
-                          {isCorrect ? (
-                            <>
-                              <Check className="h-3 w-3 mr-1" /> Correctly identified
-                            </>
-                          ) : (
-                            <>
-                              <AlertTriangle className="h-3 w-3 mr-1" /> Review this word
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              {/* Add the button to open vocabulary builder */}
-              <div className="mt-6">
-                <Button
-                  onClick={() => setShowVocabBuilder(true)}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3"
-                >
-                  <BookMarked className="h-4 w-4 mr-2" />
-                  Select Words from Text
-                </Button>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-                  Select any word or phrase from the exercise text to add to your vocabulary.
+              <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg mb-4">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  Select any word or phrase from the text below to add it to your vocabulary.
                 </p>
               </div>
+
+              {/* Text Selection Area */}
+              <div
+                className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 leading-relaxed select-text"
+                onMouseUp={() => {
+                  const selection = window.getSelection()
+                  if (selection && selection.toString().trim()) {
+                    setSelectedWord(selection.toString().trim())
+                  }
+                }}
+                onTouchEnd={() => {
+                  const selection = window.getSelection()
+                  if (selection && selection.toString().trim()) {
+                    setSelectedWord(selection.toString().trim())
+                  }
+                }}
+                style={{ userSelect: "text", WebkitUserSelect: "text" }}
+              >
+                {exercise.text.split("\n").map((paragraph, index) => (
+                  <p key={index} className="mb-3 select-text">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+
+              {/* Word Selection Input */}
+              <div className="mt-4 flex items-center space-x-3">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={selectedWord}
+                    onChange={(e) => setSelectedWord(e.target.value)}
+                    placeholder="Selected word or phrase"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                  />
+                </div>
+                <Button
+                  onClick={addToVocabulary}
+                  disabled={!selectedWord || isAddingToVocab}
+                  className={`px-4 py-2 ${addSuccess ? "bg-green-600" : "bg-indigo-600"} text-white font-medium rounded-lg transition-colors`}
+                >
+                  {isAddingToVocab ? (
+                    <div className="h-5 w-5 rounded-full border-2 border-t-transparent border-white animate-spin"></div>
+                  ) : addSuccess ? (
+                    <Check className="h-5 w-5" />
+                  ) : (
+                    "Add to Vocabulary"
+                  )}
+                </Button>
+              </div>
+
+              {/* Saved Words Display */}
+              {savedWords.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Your Saved Words ({savedWords.length}):
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {savedWords.map((word, index) => (
+                      <span
+                        key={index}
+                        className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full"
+                      >
+                        {word}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Tap the star icon to save words to your vocabulary list for future practice.
+                Tap on any word in the text above to select it, or type a word manually.
               </p>
             </div>
           </div>
@@ -1299,16 +1384,6 @@ const MobileResultsScreen: React.FC<{
           </Button>
         </div>
       </div>
-      {/* Vocabulary Builder Modal */}
-      {showVocabBuilder && (
-        <div className="absolute inset-0 z-50">
-          <TextSelectionVocabulary
-            text={exercise.text}
-            language={exercise.language}
-            onClose={() => setShowVocabBuilder(false)}
-          />
-        </div>
-      )}
     </div>
   )
 }
@@ -1513,8 +1588,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
 
   const { settings } = useUserSettingsContext()
   const { exercises, hasReadingAnalysis } = useExerciseContext()
-  const { user } = useAuth()
   const { subscription } = useSubscription()
+  const { user } = useAuth()
 
   // Update exercise state when prop or context changes
   useEffect(() => {
