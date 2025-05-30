@@ -8,6 +8,8 @@ import UnitAccordion from '@/components/curriculum/UnitAccordion';
 import CurriculumSidebar from '@/components/curriculum/CurriculumSidebar';
 import PracticeModal from '@/components/exercises/PracticeModal';
 import { Exercise } from '@/types';
+import { CurriculumExercise } from '@/components/curriculum/CurriculumTagGroup';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 const CurriculumPage: React.FC = () => {
   const {
@@ -21,6 +23,7 @@ const CurriculumPage: React.FC = () => {
     selectedLanguage,
     refreshData
   } = useCurriculumExercises();
+  const { settings } = useUserSettingsContext();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -35,6 +38,21 @@ const CurriculumPage: React.FC = () => {
   const defaultExerciseId = searchParams.get('defaultExerciseId');
   const action = searchParams.get('action');
   const nextExerciseParam = searchParams.get('nextExerciseId');
+
+  // Helper function to convert CurriculumExercise to Exercise
+  const convertCurriculumExerciseToExercise = (curriculumExercise: CurriculumExercise): Exercise => {
+    return {
+      id: curriculumExercise.id,
+      title: curriculumExercise.title,
+      text: curriculumExercise.text,
+      language: settings.selectedLanguage,
+      tags: curriculumExercise.tags,
+      directoryId: null,
+      createdAt: new Date(curriculumExercise.createdAt),
+      completionCount: curriculumExercise.completionCount,
+      isCompleted: curriculumExercise.status === 'completed'
+    };
+  };
 
   // Refresh data when the component mounts
   useEffect(() => {
@@ -55,7 +73,7 @@ const CurriculumPage: React.FC = () => {
             .find(ex => ex.id === defaultExerciseId);
           
           if (exerciseToOpen) {
-            setExerciseToPractice(exerciseToOpen);
+            setExerciseToPractice(convertCurriculumExerciseToExercise(exerciseToOpen));
             setNextExerciseId(nextExerciseParam);
             setIsPracticeModalOpen(true);
             
@@ -72,7 +90,7 @@ const CurriculumPage: React.FC = () => {
     if (!loading && Object.keys(exercisesByTag).length > 0) {
       handleExerciseFromURL();
     }
-  }, [defaultExerciseId, action, nextExerciseParam, exercisesByTag, loading, navigate]);
+  }, [defaultExerciseId, action, nextExerciseParam, exercisesByTag, loading, navigate, settings.selectedLanguage]);
 
   // Handle tab change
   const handleTabChange = (value: string) => {
@@ -116,7 +134,7 @@ const CurriculumPage: React.FC = () => {
       }
     }
     
-    setExerciseToPractice(exercise);
+    setExerciseToPractice(convertCurriculumExerciseToExercise(exercise));
     setNextExerciseId(nextExercise?.id || null);
     setIsPracticeModalOpen(true);
   };
@@ -170,7 +188,7 @@ const CurriculumPage: React.FC = () => {
         }
       }
       
-      setExerciseToPractice(nextExercise);
+      setExerciseToPractice(convertCurriculumExerciseToExercise(nextExercise));
       setNextExerciseId(nextNextExercise?.id || null);
       // Keep the modal open for the next exercise
     }
