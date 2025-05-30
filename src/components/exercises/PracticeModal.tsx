@@ -66,7 +66,7 @@ const MobileVirtualKeyboard: React.FC<{
   showResults,
 }) => {
   return (
-    <div className="bg-gray-100 dark:bg-gray-800 p-3 border-t">
+    <div className="bg-gray-100 dark:bg-gray-800 p-3 border-t w-full">
       {/* Audio Controls Row */}
       <div className="grid grid-cols-5 gap-2 mb-3">
         <Button
@@ -217,9 +217,9 @@ const MobileDictationPractice: React.FC<{
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full w-full bg-background">
       {/* Header */}
-      <div className="p-4 border-b bg-background/95 backdrop-blur">
+      <div className="p-4 border-b bg-background/95 backdrop-blur flex-shrink-0">
         <h2 className="text-lg font-semibold mb-1">{exercise.title}</h2>
         <p className="text-sm text-muted-foreground">Listen and type what you hear</p>
       </div>
@@ -234,7 +234,7 @@ const MobileDictationPractice: React.FC<{
       />
 
       {/* Content Area */}
-      <div className="flex-1 p-4 overflow-y-auto">
+      <div className="flex-1 p-4 overflow-y-auto min-h-0">
         {showResults ? (
           <div className="space-y-4">
             <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
@@ -285,18 +285,20 @@ const MobileDictationPractice: React.FC<{
       </div>
 
       {/* Virtual Keyboard */}
-      <MobileVirtualKeyboard
-        onSubmit={handleSubmit}
-        onPlay={handlePlay}
-        onPause={handlePause}
-        onRewind={handleRewind}
-        onSkipBack={handleSkipBack}
-        onSkipForward={handleSkipForward}
-        onClear={handleClear}
-        onTryAgain={handleTryAgainLocal}
-        isPlaying={isPlaying}
-        showResults={showResults}
-      />
+      <div className="flex-shrink-0">
+        <MobileVirtualKeyboard
+          onSubmit={handleSubmit}
+          onPlay={handlePlay}
+          onPause={handlePause}
+          onRewind={handleRewind}
+          onSkipBack={handleSkipBack}
+          onSkipForward={handleSkipForward}
+          onClear={handleClear}
+          onTryAgain={handleTryAgainLocal}
+          isPlaying={isPlaying}
+          showResults={showResults}
+        />
+      </div>
     </div>
   )
 }
@@ -316,6 +318,36 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   const { exercises, hasReadingAnalysis } = useExerciseContext()
   const { user } = useAuth()
   const { subscription } = useSubscription()
+
+  // Prevent body scroll on mobile when modal is open
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      const originalStyle = window.getComputedStyle(document.body).overflow
+      const originalPosition = window.getComputedStyle(document.body).position
+
+      document.body.style.overflow = "hidden"
+      document.body.style.position = "fixed"
+      document.body.style.width = "100%"
+      document.body.style.height = "100%"
+      document.body.style.top = "0"
+      document.body.style.left = "0"
+
+      // Prevent scrolling on the document element as well
+      document.documentElement.style.overflow = "hidden"
+      document.documentElement.style.height = "100%"
+
+      return () => {
+        document.body.style.overflow = originalStyle
+        document.body.style.position = originalPosition
+        document.body.style.width = ""
+        document.body.style.height = ""
+        document.body.style.top = ""
+        document.body.style.left = ""
+        document.documentElement.style.overflow = ""
+        document.documentElement.style.height = ""
+      }
+    }
+  }, [isMobile, isOpen])
 
   // Update exercise state when prop or context changes
   useEffect(() => {
@@ -445,8 +477,25 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
       <DialogContent
         className={
           isMobile
-            ? "fixed inset-0 w-screen h-screen max-w-none max-h-none m-0 p-0 border-0 rounded-none bg-background flex flex-col z-50 overflow-hidden"
+            ? "fixed inset-0 w-screen h-screen max-w-none max-h-none m-0 p-0 border-0 rounded-none bg-background flex flex-col z-50"
             : "max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+        }
+        style={
+          isMobile
+            ? {
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: "100vw",
+                height: "100vh",
+                maxWidth: "100vw",
+                maxHeight: "100vh",
+                minWidth: "100vw",
+                minHeight: "100vh",
+              }
+            : undefined
         }
       >
         <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
