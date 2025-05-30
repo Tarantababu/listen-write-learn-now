@@ -25,6 +25,7 @@ import {
   RefreshCw,
   X,
   ArrowLeft,
+  VolumeX,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -55,12 +56,16 @@ const MobileModalWrapper: React.FC<{
       document.body.style.position = "fixed"
       document.body.style.width = "100%"
       document.body.style.height = "100%"
-      
+      document.body.style.top = "0"
+      document.body.style.left = "0"
+
       return () => {
         document.body.style.overflow = ""
         document.body.style.position = ""
         document.body.style.width = ""
         document.body.style.height = ""
+        document.body.style.top = ""
+        document.body.style.left = ""
       }
     }
   }, [isOpen])
@@ -68,8 +73,8 @@ const MobileModalWrapper: React.FC<{
   if (!isOpen) return null
 
   return (
-    <div 
-      className="fixed inset-0 z-50 bg-white dark:bg-gray-900"
+    <div
+      className="fixed inset-0 z-50 bg-white dark:bg-gray-900 flex flex-col"
       style={{
         position: "fixed",
         top: 0,
@@ -78,6 +83,8 @@ const MobileModalWrapper: React.FC<{
         bottom: 0,
         width: "100vw",
         height: "100vh",
+        maxWidth: "100vw",
+        maxHeight: "100vh",
       }}
     >
       {children}
@@ -92,26 +99,67 @@ const MobileHeader: React.FC<{
   subtitle?: string
 }> = ({ title, onClose, subtitle }) => {
   return (
-    <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 min-h-[60px]">
+    <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 min-h-[60px] w-full">
       <div className="flex items-center space-x-3 flex-1 min-w-0">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClose}
-          className="h-10 w-10 p-0 flex-shrink-0"
-          type="button"
-        >
+        <Button variant="ghost" size="sm" onClick={onClose} className="h-10 w-10 p-0 flex-shrink-0" type="button">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-semibold truncate text-gray-900 dark:text-white">{title}</h1>
-          {subtitle && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{subtitle}</p>
-          )}
+          {subtitle && <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{subtitle}</p>}
         </div>
       </div>
     </div>
   )
+}
+
+// Audio Player Component
+const AudioPlayer: React.FC<{
+  audioUrl: string
+  onPlayStateChange: (isPlaying: boolean) => void
+  onReady: () => void
+  onError: () => void
+}> = ({ audioUrl, onPlayStateChange, onReady, onError }) => {
+  const audioRef = useRef<HTMLAudioElement>(null)
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  useEffect(() => {
+    const audioElement = audioRef.current
+
+    if (audioElement) {
+      const handleCanPlay = () => {
+        setIsLoaded(true)
+        onReady()
+      }
+
+      const handlePlay = () => onPlayStateChange(true)
+      const handlePause = () => onPlayStateChange(false)
+      const handleEnded = () => onPlayStateChange(false)
+      const handleError = () => {
+        console.error("Audio error:", audioElement.error)
+        onError()
+      }
+
+      audioElement.addEventListener("canplay", handleCanPlay)
+      audioElement.addEventListener("play", handlePlay)
+      audioElement.addEventListener("pause", handlePause)
+      audioElement.addEventListener("ended", handleEnded)
+      audioElement.addEventListener("error", handleError)
+
+      // Preload the audio
+      audioElement.load()
+
+      return () => {
+        audioElement.removeEventListener("canplay", handleCanPlay)
+        audioElement.removeEventListener("play", handlePlay)
+        audioElement.removeEventListener("pause", handlePause)
+        audioElement.removeEventListener("ended", handleEnded)
+        audioElement.removeEventListener("error", handleError)
+      }
+    }
+  }, [audioUrl, onPlayStateChange, onReady, onError])
+
+  return <audio ref={audioRef} src={audioUrl} preload="auto" className="hidden" controls={false} />
 }
 
 // Mobile Virtual Keyboard Component
@@ -126,6 +174,8 @@ const MobileVirtualKeyboard: React.FC<{
   onTryAgain: () => void
   isPlaying: boolean
   showResults: boolean
+  audioLoaded: boolean
+  audioError: boolean
 }> = ({
   onSubmit,
   onPlay,
@@ -137,9 +187,11 @@ const MobileVirtualKeyboard: React.FC<{
   onTryAgain,
   isPlaying,
   showResults,
+  audioLoaded,
+  audioError,
 }) => {
   return (
-    <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4">
+    <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4 w-full">
       {/* Audio Controls Row */}
       <div className="grid grid-cols-5 gap-2 mb-3">
         <Button
@@ -148,6 +200,7 @@ const MobileVirtualKeyboard: React.FC<{
           onClick={onSkipBack}
           className="h-12 flex flex-col items-center justify-center p-1 text-xs border-gray-300 dark:border-gray-600"
           type="button"
+          disabled={!audioLoaded || audioError}
         >
           <SkipBack className="h-4 w-4" />
           <span className="text-xs mt-1">-10s</span>
@@ -159,6 +212,7 @@ const MobileVirtualKeyboard: React.FC<{
           onClick={onRewind}
           className="h-12 flex flex-col items-center justify-center p-1 text-xs border-gray-300 dark:border-gray-600"
           type="button"
+          disabled={!audioLoaded || audioError}
         >
           <RotateCcw className="h-4 w-4" />
           <span className="text-xs mt-1">Restart</span>
@@ -170,6 +224,7 @@ const MobileVirtualKeyboard: React.FC<{
           onClick={isPlaying ? onPause : onPlay}
           className="h-12 flex flex-col items-center justify-center p-1 bg-blue-600 hover:bg-blue-700 text-white text-xs"
           type="button"
+          disabled={!audioLoaded || audioError}
         >
           {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
           <span className="text-xs mt-1">{isPlaying ? "Pause" : "Play"}</span>
@@ -181,6 +236,7 @@ const MobileVirtualKeyboard: React.FC<{
           onClick={onSkipForward}
           className="h-12 flex flex-col items-center justify-center p-1 text-xs border-gray-300 dark:border-gray-600"
           type="button"
+          disabled={!audioLoaded || audioError}
         >
           <SkipForward className="h-4 w-4" />
           <span className="text-xs mt-1">+10s</span>
@@ -201,18 +257,32 @@ const MobileVirtualKeyboard: React.FC<{
       {/* Action Buttons Row */}
       <div className="grid grid-cols-2 gap-3">
         {showResults ? (
-          <Button onClick={onTryAgain} className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium" type="button">
+          <Button
+            onClick={onTryAgain}
+            className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+            type="button"
+          >
             <RefreshCw className="h-4 w-4 mr-2" />
             Try Again
           </Button>
         ) : (
-          <Button onClick={onSubmit} className="h-12 bg-green-600 hover:bg-green-700 text-white font-medium" type="button">
+          <Button
+            onClick={onSubmit}
+            className="h-12 bg-green-600 hover:bg-green-700 text-white font-medium"
+            type="button"
+          >
             <Check className="h-4 w-4 mr-2" />
             Check Answer
           </Button>
         )}
 
-        <Button variant="outline" onClick={onRewind} className="h-12 border-gray-300 dark:border-gray-600" type="button">
+        <Button
+          variant="outline"
+          onClick={onRewind}
+          className="h-12 border-gray-300 dark:border-gray-600"
+          type="button"
+          disabled={!audioLoaded || audioError}
+        >
           <Volume2 className="h-4 w-4 mr-2" />
           Replay Audio
         </Button>
@@ -232,28 +302,41 @@ const MobileDictationPractice: React.FC<{
   const [userInput, setUserInput] = useState("")
   const [isPlaying, setIsPlaying] = useState(false)
   const [accuracy, setAccuracy] = useState(0)
+  const [audioLoaded, setAudioLoaded] = useState(false)
+  const [audioError, setAudioError] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Audio controls
   const handlePlay = () => {
-    setIsPlaying(true)
     if (audioRef.current) {
-      audioRef.current.play()
+      const playPromise = audioRef.current.play()
+
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsPlaying(true)
+          })
+          .catch((error) => {
+            console.error("Audio play error:", error)
+            setAudioError(true)
+          })
+      }
     }
   }
 
   const handlePause = () => {
-    setIsPlaying(false)
     if (audioRef.current) {
       audioRef.current.pause()
+      setIsPlaying(false)
     }
   }
 
   const handleRewind = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = 0
+      setIsPlaying(false)
     }
-    setIsPlaying(false)
   }
 
   const handleSkipBack = () => {
@@ -264,12 +347,15 @@ const MobileDictationPractice: React.FC<{
 
   const handleSkipForward = () => {
     if (audioRef.current) {
-      audioRef.current.currentTime = audioRef.current.currentTime + 10
+      audioRef.current.currentTime = Math.min(audioRef.current.duration, audioRef.current.currentTime + 10)
     }
   }
 
   const handleClear = () => {
     setUserInput("")
+    if (textareaRef.current) {
+      textareaRef.current.focus()
+    }
   }
 
   const handleSubmit = () => {
@@ -283,61 +369,152 @@ const MobileDictationPractice: React.FC<{
     setUserInput("")
     setAccuracy(0)
     onTryAgain()
+
+    // Focus on textarea after reset
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus()
+      }
+    }, 100)
+  }
+
+  const handleAudioReady = () => {
+    setAudioLoaded(true)
+    setAudioError(false)
+  }
+
+  const handleAudioError = () => {
+    setAudioError(true)
+    setAudioLoaded(false)
+    toast({
+      title: "Audio Error",
+      description: "There was a problem loading the audio. Please try again.",
+      variant: "destructive",
+    })
   }
 
   // Simple similarity calculation
   const calculateSimilarity = (input: string, correct: string): number => {
     if (!input || !correct) return 0
-    const inputWords = input.toLowerCase().split(/\s+/)
-    const correctWords = correct.toLowerCase().split(/\s+/)
-    const matches = inputWords.filter((word) => correctWords.includes(word))
-    return Math.round((matches.length / correctWords.length) * 100)
+
+    // Normalize both texts
+    const normalizedInput = input.toLowerCase().trim()
+    const normalizedCorrect = correct.toLowerCase().trim()
+
+    // Split into words
+    const inputWords = normalizedInput.split(/\s+/).filter((word) => word.length > 0)
+    const correctWords = normalizedCorrect.split(/\s+/).filter((word) => word.length > 0)
+
+    if (inputWords.length === 0 || correctWords.length === 0) return 0
+
+    // Count matching words
+    let matches = 0
+    for (const inputWord of inputWords) {
+      if (correctWords.includes(inputWord)) {
+        matches++
+      }
+    }
+
+    // Calculate accuracy percentage
+    return Math.round((matches / correctWords.length) * 100)
   }
 
+  // Focus textarea on mount
+  useEffect(() => {
+    if (!showResults && textareaRef.current) {
+      setTimeout(() => {
+        textareaRef.current?.focus()
+      }, 300)
+    }
+  }, [showResults])
+
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
+    <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
       {/* Mobile Header */}
-      <MobileHeader
-        title={exercise.title}
-        subtitle="Listen and type what you hear"
-        onClose={onClose}
-      />
+      <MobileHeader title={exercise.title} subtitle="Listen and type what you hear" onClose={onClose} />
 
       {/* Audio Element */}
       <audio
         ref={audioRef}
         src={exercise.audioUrl}
-        onEnded={() => setIsPlaying(false)}
+        preload="auto"
+        onCanPlay={() => setAudioLoaded(true)}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
+        onEnded={() => setIsPlaying(false)}
+        onError={handleAudioError}
       />
 
       {/* Content Area - Scrollable */}
       <div className="flex-1 overflow-y-auto p-4">
         {showResults ? (
           <div className="space-y-4">
-            <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-              <h3 className="font-semibold text-green-800 dark:text-green-200 mb-3">
-                Results: {accuracy}% Accuracy
-              </h3>
-              <div className="space-y-3">
+            <div
+              className={`p-4 rounded-lg border ${accuracy >= 80 ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"}`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h3
+                  className={`font-semibold text-lg ${accuracy >= 80 ? "text-green-800 dark:text-green-200" : "text-amber-800 dark:text-amber-200"}`}
+                >
+                  Results
+                </h3>
+                <span
+                  className={`text-sm font-bold px-2 py-1 rounded ${accuracy >= 80 ? "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200" : "bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200"}`}
+                >
+                  {accuracy}% Accuracy
+                </span>
+              </div>
+
+              <div className="space-y-4">
                 <div>
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Answer:</p>
-                  <div className="bg-white dark:bg-gray-800 p-3 rounded border text-sm">
+                  <div className="bg-white dark:bg-gray-800 p-3 rounded border text-sm min-h-[60px]">
                     {userInput || <span className="text-gray-400 italic">No answer provided</span>}
                   </div>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Correct Answer:</p>
-                  <div className="bg-white dark:bg-gray-800 p-3 rounded border text-sm">
-                    {exercise.text}
-                  </div>
+                  <div className="bg-white dark:bg-gray-800 p-3 rounded border text-sm">{exercise.text}</div>
                 </div>
               </div>
+
+              {accuracy >= 80 ? (
+                <div className="mt-4 bg-green-100 dark:bg-green-900/30 p-3 rounded text-sm text-green-800 dark:text-green-200">
+                  Great job! You've successfully completed this dictation exercise.
+                </div>
+              ) : (
+                <div className="mt-4 bg-amber-100 dark:bg-amber-900/30 p-3 rounded text-sm text-amber-800 dark:text-amber-200">
+                  Keep practicing! Try listening again and focus on the words you missed.
+                </div>
+              )}
             </div>
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Audio Status */}
+            <div
+              className={`p-3 rounded-lg flex items-center justify-center ${audioError ? "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300" : audioLoaded ? "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300" : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
+            >
+              {audioError ? (
+                <>
+                  <VolumeX className="h-5 w-5 mr-2" />
+                  <span className="text-sm font-medium">Audio failed to load</span>
+                </>
+              ) : !audioLoaded ? (
+                <>
+                  <div className="h-5 w-5 mr-2 rounded-full border-2 border-t-transparent border-blue-500 animate-spin" />
+                  <span className="text-sm">Loading audio...</span>
+                </>
+              ) : (
+                <>
+                  <Volume2 className="h-5 w-5 mr-2" />
+                  <span className="text-sm font-medium">
+                    {isPlaying ? "Audio is playing..." : "Audio ready to play"}
+                  </span>
+                </>
+              )}
+            </div>
+
             {/* Progress Indicator */}
             <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
               <div className="flex items-center justify-between text-sm">
@@ -348,10 +525,9 @@ const MobileDictationPractice: React.FC<{
 
             {/* Text Input */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Type what you hear:
-              </label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Type what you hear:</label>
               <textarea
+                ref={textareaRef}
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 placeholder="Start typing here..."
@@ -360,12 +536,12 @@ const MobileDictationPractice: React.FC<{
               />
             </div>
 
-            {/* Audio Status */}
-            <div className="flex items-center justify-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <Volume2 className="h-5 w-5 mr-2 text-gray-600 dark:text-gray-400" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                {isPlaying ? "Audio is playing..." : "Audio ready to play"}
-              </span>
+            {/* Instructions */}
+            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Press <span className="font-medium">Play</span> to listen to the audio, then type what you hear. When
+                you're ready, click <span className="font-medium">Check Answer</span>.
+              </p>
             </div>
           </div>
         )}
@@ -383,6 +559,8 @@ const MobileDictationPractice: React.FC<{
         onTryAgain={handleTryAgainLocal}
         isPlaying={isPlaying}
         showResults={showResults}
+        audioLoaded={audioLoaded}
+        audioError={audioError}
       />
     </div>
   )
@@ -530,10 +708,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   // Mobile view - completely custom fullscreen implementation
   if (isMobile) {
     return (
-      <MobileModalWrapper 
-        isOpen={isOpen} 
-        onClose={() => handleOpenChange(false)}
-      >
+      <MobileModalWrapper isOpen={isOpen} onClose={() => handleOpenChange(false)}>
         <MobileDictationPractice
           exercise={updatedExercise}
           onComplete={handleComplete}
