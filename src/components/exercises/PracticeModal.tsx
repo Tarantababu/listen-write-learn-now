@@ -824,6 +824,8 @@ const MobileDictationPractice: React.FC<{
   )
 }
 
+// Replace the current MobileResultsScreen component with this updated version that properly handles vocabulary analysis
+
 // Mobile Results Screen with Tabs
 const MobileResultsScreen: React.FC<{
   exercise: Exercise
@@ -847,16 +849,11 @@ const MobileResultsScreen: React.FC<{
   showConfetti,
 }) => {
   const [resultsTab, setResultsTab] = useState<ResultsTab>(ResultsTab.SUMMARY)
-
-  // Extract vocabulary from the text
-  const extractVocabulary = (text: string) => {
-    const words = text
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((word) => word.length > 2)
-    const uniqueWords = [...new Set(words)]
-    return uniqueWords.slice(0, 10) // Limit to 10 words for mobile display
-  }
+  const [vocabularyItems, setVocabularyItems] = useState<
+    Array<{ word: string; translation: string; partOfSpeech: string }>
+  >([])
+  const [isLoadingVocabulary, setIsLoadingVocabulary] = useState(false)
+  const [vocabularyError, setVocabularyError] = useState<string | null>(null)
 
   // Compare user input with correct text
   const getComparison = () => {
@@ -882,8 +879,74 @@ const MobileResultsScreen: React.FC<{
     return comparison
   }
 
-  const vocabulary = extractVocabulary(exercise.text)
   const comparison = getComparison()
+
+  // Load vocabulary when the vocabulary tab is selected
+  useEffect(() => {
+    const fetchVocabulary = async () => {
+      if (resultsTab !== ResultsTab.VOCABULARY) return
+
+      try {
+        setIsLoadingVocabulary(true)
+        setVocabularyError(null)
+
+        // Get vocabulary from the exercise text
+        const text = exercise.text
+        if (!text) {
+          setVocabularyError("No text available for vocabulary analysis")
+          return
+        }
+
+        // Extract unique words (similar to desktop implementation)
+        const words = text
+          .toLowerCase()
+          .replace(/[.,!?;:()[\]{}""'']/g, "")
+          .split(/\s+/)
+          .filter((word) => word.length > 2)
+          .filter((word, index, self) => self.indexOf(word) === index)
+          .slice(0, 15) // Limit to 15 words for mobile display
+
+        // Fetch vocabulary data from API (simulating what desktop does)
+        const { data: vocabularyData, error } = await supabase
+          .from("vocabulary")
+          .select("word, translation, part_of_speech")
+          .in("word", words)
+          .eq("language", exercise.language)
+
+        if (error) {
+          console.error("Error fetching vocabulary:", error)
+          setVocabularyError("Failed to load vocabulary data")
+          return
+        }
+
+        // If we have vocabulary data, use it
+        if (vocabularyData && vocabularyData.length > 0) {
+          setVocabularyItems(
+            vocabularyData.map((item) => ({
+              word: item.word,
+              translation: item.translation || "No translation available",
+              partOfSpeech: item.part_of_speech || "unknown",
+            })),
+          )
+        } else {
+          // Fallback: Generate basic vocabulary items
+          const basicVocabulary = words.map((word) => ({
+            word,
+            translation: "Translation not available",
+            partOfSpeech: "unknown",
+          }))
+          setVocabularyItems(basicVocabulary)
+        }
+      } catch (error) {
+        console.error("Error in vocabulary processing:", error)
+        setVocabularyError("An error occurred while processing vocabulary")
+      } finally {
+        setIsLoadingVocabulary(false)
+      }
+    }
+
+    fetchVocabulary()
+  }, [resultsTab, exercise])
 
   return (
     <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
@@ -1038,18 +1101,40 @@ const MobileResultsScreen: React.FC<{
           <div className="space-y-4">
             <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
               <h3 className="font-semibold text-lg mb-3 text-gray-900 dark:text-white">Key Vocabulary</h3>
-              <div className="grid grid-cols-1 gap-2">
-                {vocabulary.map((word, index) => (
-                  <div key={index} className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                    <div className="font-medium text-blue-800 dark:text-blue-200">{word}</div>
-                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      {comparison.find((c) => c.correct.toLowerCase() === word)?.isMatch
-                        ? "✓ Correctly identified"
-                        : "⚠ Review this word"}
+
+              {isLoadingVocabulary ? (
+                <div className="py-8 flex flex-col items-center justify-center">
+                  <div className="h-8 w-8 rounded-full border-2 border-t-transparent border-blue-500 animate-spin mb-3"></div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Loading vocabulary...</p>
+                </div>
+              ) : vocabularyError ? (
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 rounded-lg">
+                  <p>{vocabularyError}</p>
+                </div>
+              ) : vocabularyItems.length === 0 ? (
+                <div className="p-4 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg">
+                  <p>No vocabulary items available for this exercise.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {vocabularyItems.map((item, index) => (
+                    <div key={index} className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium text-blue-800 dark:text-blue-200">{item.word}</div>
+                        <div className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
+                          {item.partOfSpeech}
+                        </div>
+                      </div>
+                      <div className="text-sm text-blue-600 dark:text-blue-400 mt-1">{item.translation}</div>
+                      <div className="text-xs text-blue-500 dark:text-blue-400 mt-2">
+                        {comparison.find((c) => c.correct.toLowerCase() === item.word.toLowerCase())?.isMatch
+                          ? "✓ Correctly identified"
+                          : "⚠ Review this word"}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
