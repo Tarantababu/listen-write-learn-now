@@ -221,17 +221,25 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
       <DialogContent 
         className={`
           ${isMobile 
-            ? 'w-full h-full max-w-none max-h-none rounded-none m-0 p-0 border-0' 
+            ? 'w-full h-[100dvh] max-w-none max-h-none rounded-none m-0 p-0 border-0' 
             : 'max-w-4xl max-h-[90vh]'
           } 
-          overflow-hidden flex flex-col
+          flex flex-col
         `}
+        style={isMobile ? { 
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 50
+        } : {}}
       >
         <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
         
         {/* Conditionally render based on practice stage */}
         {practiceStage === PracticeStage.PROMPT && (
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             <div className={`${isMobile ? 'px-4 py-4' : 'px-6 py-8'} space-y-4 md:space-y-6`}>
               <DialogHeader className="mb-2 md:mb-4">
                 <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold mb-1 md:mb-2`}>
@@ -316,7 +324,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         )}
         
         {practiceStage === PracticeStage.READING && (
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col">
             <ReadingAnalysis 
               exercise={updatedExercise} 
               onComplete={handleStartDictation} 
@@ -326,7 +334,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         )}
         
         {practiceStage === PracticeStage.DICTATION && (
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col">
             <DictationPractice 
               exercise={updatedExercise} 
               onComplete={handleComplete} 
