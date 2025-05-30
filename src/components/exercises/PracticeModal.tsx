@@ -1,286 +1,278 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Exercise } from '@/types';
-import DictationPractice from '@/components/DictationPractice';
-import ReadingAnalysis from '@/components/ReadingAnalysis';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { useExerciseContext } from '@/contexts/ExerciseContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSubscription } from '@/contexts/SubscriptionContext';
-import { toast } from '@/hooks/use-toast';
-import { AlertTriangle, BookOpen, Search, Headphones } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { useIsMobile } from '@/hooks/use-mobile';
+import type React from "react"
+import { useState, useEffect, useRef } from "react"
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import type { Exercise } from "@/types"
+import DictationPractice from "@/components/DictationPractice"
+import ReadingAnalysis from "@/components/ReadingAnalysis"
+import { useUserSettingsContext } from "@/contexts/UserSettingsContext"
+import { useExerciseContext } from "@/contexts/ExerciseContext"
+import { supabase } from "@/integrations/supabase/client"
+import { useAuth } from "@/contexts/AuthContext"
+import { useSubscription } from "@/contexts/SubscriptionContext"
+import { toast } from "@/hooks/use-toast"
+import { AlertTriangle, Search, Headphones } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface PracticeModalProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  exercise: Exercise | null;
-  onComplete: (accuracy: number) => void;
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
+  exercise: Exercise | null
+  onComplete: (accuracy: number) => void
 }
 
 enum PracticeStage {
-  PROMPT,    // Ask user if they want Reading Analysis
-  READING,   // Reading Analysis mode
-  DICTATION, // Dictation Practice mode
+  PROMPT = 0, // Ask user if they want Reading Analysis
+  READING = 1, // Reading Analysis mode
+  DICTATION = 2, // Dictation Practice mode
 }
 
-const PracticeModal: React.FC<PracticeModalProps> = ({
-  isOpen,
-  onOpenChange,
-  exercise,
-  onComplete
-}) => {
-  const [showResults, setShowResults] = useState(false);
-  const [updatedExercise, setUpdatedExercise] = useState<Exercise | null>(exercise);
-  const [practiceStage, setPracticeStage] = useState<PracticeStage>(PracticeStage.PROMPT);
-  const [hasExistingAnalysis, setHasExistingAnalysis] = useState<boolean>(false);
-  const [analysisId, setAnalysisId] = useState<string | null>(null);
-  const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true);
-  const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false);
-  const [keyboardVisible, setKeyboardVisible] = useState<boolean>(false);
-  const hasInitializedRef = useRef<boolean>(false);
-  const isMobile = useIsMobile();
-  const initialViewportHeight = useRef<number>(0);
-  
-  const {
-    settings
-  } = useUserSettingsContext();
-  
-  const {
-    exercises,
-    hasReadingAnalysis
-  } = useExerciseContext();
-  
-  const {
-    user
-  } = useAuth();
-  
-  const {
-    subscription
-  } = useSubscription();
+const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exercise, onComplete }) => {
+  const [showResults, setShowResults] = useState(false)
+  const [updatedExercise, setUpdatedExercise] = useState<Exercise | null>(exercise)
+  const [practiceStage, setPracticeStage] = useState<PracticeStage>(PracticeStage.PROMPT)
+  const [hasExistingAnalysis, setHasExistingAnalysis] = useState<boolean>(false)
+  const [analysisId, setAnalysisId] = useState<string | null>(null)
+  const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true)
+  const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false)
+  const [keyboardVisible, setKeyboardVisible] = useState<boolean>(false)
+  const hasInitializedRef = useRef<boolean>(false)
+  const isMobile = useIsMobile()
+  const initialViewportHeight = useRef<number>(0)
+
+  const { settings } = useUserSettingsContext()
+
+  const { exercises, hasReadingAnalysis } = useExerciseContext()
+
+  const { user } = useAuth()
+
+  const { subscription } = useSubscription()
 
   // Mobile keyboard detection
   useEffect(() => {
-    if (!isMobile) return;
+    if (!isMobile) return
 
     // Store initial viewport height
-    initialViewportHeight.current = window.visualViewport?.height || window.innerHeight;
+    initialViewportHeight.current = window.visualViewport?.height || window.innerHeight
 
     const handleViewportChange = () => {
       if (window.visualViewport) {
-        const currentHeight = window.visualViewport.height;
-        const heightDifference = initialViewportHeight.current - currentHeight;
-        
+        const currentHeight = window.visualViewport.height
+        const heightDifference = initialViewportHeight.current - currentHeight
+
         // Consider keyboard visible if height decreased by more than 150px
-        const isKeyboardVisible = heightDifference > 150;
-        setKeyboardVisible(isKeyboardVisible);
+        const isKeyboardVisible = heightDifference > 150
+        setKeyboardVisible(isKeyboardVisible)
       }
-    };
+    }
 
     // Use visualViewport API if available (better support)
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleViewportChange);
+      window.visualViewport.addEventListener("resize", handleViewportChange)
       return () => {
-        window.visualViewport?.removeEventListener('resize', handleViewportChange);
-      };
+        window.visualViewport?.removeEventListener("resize", handleViewportChange)
+      }
     } else {
       // Fallback to window resize
       const handleResize = () => {
-        const currentHeight = window.innerHeight;
-        const heightDifference = initialViewportHeight.current - currentHeight;
-        const isKeyboardVisible = heightDifference > 150;
-        setKeyboardVisible(isKeyboardVisible);
-      };
+        const currentHeight = window.innerHeight
+        const heightDifference = initialViewportHeight.current - currentHeight
+        const isKeyboardVisible = heightDifference > 150
+        setKeyboardVisible(isKeyboardVisible)
+      }
 
-      window.addEventListener('resize', handleResize);
+      window.addEventListener("resize", handleResize)
       return () => {
-        window.removeEventListener('resize', handleResize);
-      };
+        window.removeEventListener("resize", handleResize)
+      }
     }
-  }, [isMobile]);
+  }, [isMobile])
 
   // Reset keyboard state when modal closes
   useEffect(() => {
     if (!isOpen) {
-      setKeyboardVisible(false);
+      setKeyboardVisible(false)
     }
-  }, [isOpen]);
+  }, [isOpen])
 
-  // Update the local exercise state immediately when the prop changes or when exercises are updated 
+  // Update the local exercise state immediately when the prop changes or when exercises are updated
   useEffect(() => {
     if (exercise) {
       // If there's an exercise, find the latest version from the exercises context
-      const latestExerciseData = exercises.find(ex => ex.id === exercise.id);
-      setUpdatedExercise(latestExerciseData || exercise);
+      const latestExerciseData = exercises.find((ex) => ex.id === exercise.id)
+      setUpdatedExercise(latestExerciseData || exercise)
     } else {
-      setUpdatedExercise(null);
+      setUpdatedExercise(null)
     }
-  }, [exercise, exercises]);
+  }, [exercise, exercises])
 
   // Check if the user has an existing reading analysis for this exercise
   // ONLY do this check when the modal opens initially, not on every render
   useEffect(() => {
     const checkExistingAnalysis = async () => {
-      if (!exercise || !user || !isOpen) return;
-      
+      if (!exercise || !user || !isOpen) return
+
       try {
-        setLoadingAnalysisCheck(true);
-        console.log('Checking for existing analysis for exercise:', exercise.id, 'user:', user.id);
-        
+        setLoadingAnalysisCheck(true)
+        console.log("Checking for existing analysis for exercise:", exercise.id, "user:", user.id)
+
         // Use the hasReadingAnalysis function from the ExerciseContext
-        const hasAnalysis = await hasReadingAnalysis(exercise.id);
-        console.log('Analysis check result:', hasAnalysis);
-        
+        const hasAnalysis = await hasReadingAnalysis(exercise.id)
+        console.log("Analysis check result:", hasAnalysis)
+
         if (hasAnalysis) {
-          console.log('Existing analysis found');
-          setHasExistingAnalysis(true);
-          
+          console.log("Existing analysis found")
+          setHasExistingAnalysis(true)
+
           // Get the analysis ID
-          const {
-            data: analysisData,
-            error: analysisError
-          } = await supabase.from('reading_analyses')
-            .select('id')
-            .eq('exercise_id', exercise.id)
-            .eq('user_id', user.id)
-            .maybeSingle();
-            
+          const { data: analysisData, error: analysisError } = await supabase
+            .from("reading_analyses")
+            .select("id")
+            .eq("exercise_id", exercise.id)
+            .eq("user_id", user.id)
+            .maybeSingle()
+
           if (!analysisError && analysisData) {
-            setAnalysisId(analysisData.id);
-            console.log('Existing analysis ID:', analysisData.id);
+            setAnalysisId(analysisData.id)
+            console.log("Existing analysis ID:", analysisData.id)
           }
-          
-          // If user has done reading analysis before, skip to dictation directly
-          setPracticeStage(PracticeStage.DICTATION);
+
+          // On mobile, skip directly to dictation regardless of existing analysis
+          // On desktop, skip to dictation if user has done reading analysis before
+          setPracticeStage(isMobile ? PracticeStage.DICTATION : PracticeStage.DICTATION)
         } else {
-          console.log('No existing analysis found');
-          setHasExistingAnalysis(false);
-          setAnalysisId(null);
+          console.log("No existing analysis found")
+          setHasExistingAnalysis(false)
+          setAnalysisId(null)
 
           // For free users, check if they've reached their limit
           if (!subscription.isSubscribed) {
-            const {
-              data: profileData,
-              error: profileError
-            } = await supabase.from('profiles').select('reading_analyses_count').eq('id', user.id).maybeSingle();
-            
+            const { data: profileData, error: profileError } = await supabase
+              .from("profiles")
+              .select("reading_analyses_count")
+              .eq("id", user.id)
+              .maybeSingle()
+
             if (profileError) {
-              console.error('Error checking profile:', profileError);
-              return;
+              console.error("Error checking profile:", profileError)
+              return
             }
 
             // Free users are limited to 5 analyses
             if (profileData && profileData.reading_analyses_count >= 5) {
-              setAnalysisAllowed(false);
+              setAnalysisAllowed(false)
               toast({
                 title: "Free user limit reached",
                 description: "Free users are limited to 5 reading analyses. Upgrade to premium for unlimited analyses.",
-                variant: "destructive"
-              });
+                variant: "destructive",
+              })
               // We still show the prompt, but the reading analysis option will be disabled
             }
           }
-          
-          setPracticeStage(PracticeStage.PROMPT);
+
+          // On mobile, go directly to dictation. On desktop, show prompt
+          setPracticeStage(isMobile ? PracticeStage.DICTATION : PracticeStage.PROMPT)
         }
       } catch (error) {
-        console.error('Error in analysis check:', error);
+        console.error("Error in analysis check:", error)
       } finally {
-        setLoadingAnalysisCheck(false);
+        setLoadingAnalysisCheck(false)
       }
-    };
-    
+    }
+
     // Only check when modal opens AND we haven't initialized yet
     if (isOpen && !hasInitializedRef.current) {
-      checkExistingAnalysis();
-      hasInitializedRef.current = true;
+      checkExistingAnalysis()
+      hasInitializedRef.current = true
     }
-    
+
     // Reset the initialization ref when modal closes
     if (!isOpen) {
-      hasInitializedRef.current = false;
+      hasInitializedRef.current = false
     }
-  }, [exercise, user, isOpen, subscription.isSubscribed, hasReadingAnalysis]);
-  
+  }, [exercise, user, isOpen, subscription.isSubscribed, hasReadingAnalysis, isMobile])
+
   const handleComplete = (accuracy: number) => {
     // Update progress and show results
-    onComplete(accuracy);
-    setShowResults(true);
+    onComplete(accuracy)
+    setShowResults(true)
 
     // Update local exercise state to reflect progress immediately
     if (updatedExercise && accuracy >= 95) {
-      const newCompletionCount = Math.min(3, updatedExercise.completionCount + 1);
-      const isCompleted = newCompletionCount >= 3;
+      const newCompletionCount = Math.min(3, updatedExercise.completionCount + 1)
+      const isCompleted = newCompletionCount >= 3
       setUpdatedExercise({
         ...updatedExercise,
         completionCount: newCompletionCount,
-        isCompleted
-      });
+        isCompleted,
+      })
     }
-  };
+  }
 
   // Only reset the state when the modal opens, not during interactions
   useEffect(() => {
     if (isOpen) {
       // Refresh exercise data when modal opens
-      const latestExerciseData = exercises.find(ex => ex?.id === exercise?.id);
-      setUpdatedExercise(latestExerciseData || exercise);
+      const latestExerciseData = exercises.find((ex) => ex?.id === exercise?.id)
+      setUpdatedExercise(latestExerciseData || exercise)
       // We don't reset practiceStage or showResults here to preserve state during the session
     } else {
       // Reset showResults when modal is fully closed to prepare for next opening
-      setShowResults(false);
+      setShowResults(false)
     }
-  }, [isOpen, exercise, exercises]);
+  }, [isOpen, exercise, exercises])
 
   // Safe handling of modal open state change
   const handleOpenChange = (open: boolean) => {
     // If closing, we just pass it through without resetting states
     // This ensures dictation results remain visible until the modal fully closes
-    onOpenChange(open);
-  };
-  
+    onOpenChange(open)
+  }
+
   const handleStartDictation = () => {
-    setPracticeStage(PracticeStage.DICTATION);
-  };
-  
+    setPracticeStage(PracticeStage.DICTATION)
+  }
+
   const handleStartReadingAnalysis = () => {
-    setPracticeStage(PracticeStage.READING);
-  };
-  
+    setPracticeStage(PracticeStage.READING)
+  }
+
   const handleViewReadingAnalysis = () => {
     // If we're already in dictation mode, we need to switch to reading analysis
     if (practiceStage === PracticeStage.DICTATION) {
-      setPracticeStage(PracticeStage.READING);
+      setPracticeStage(PracticeStage.READING)
     }
-  };
+  }
 
   const handleTryAgain = () => {
-    setShowResults(false);
+    setShowResults(false)
     // Important: Don't reset to prompt stage here - stay in dictation mode
-  };
+  }
 
   // If the exercise doesn't match the selected language, don't render
-  if (!updatedExercise || updatedExercise.language !== settings.selectedLanguage) return null;
-  
+  if (!updatedExercise || updatedExercise.language !== settings.selectedLanguage) return null
+
   // Dynamic styles for mobile keyboard handling
-  const mobileKeyboardStyles = isMobile && keyboardVisible ? {
-    height: window.visualViewport?.height || window.innerHeight,
-    maxHeight: window.visualViewport?.height || window.innerHeight,
-  } : {};
-  
+  const mobileKeyboardStyles =
+    isMobile && keyboardVisible
+      ? {
+          height: window.visualViewport?.height || window.innerHeight,
+          maxHeight: window.visualViewport?.height || window.innerHeight,
+        }
+      : {}
+
   return (
     <>
       {/* Add global CSS for mobile keyboard handling */}
       {isMobile && (
-        <style dangerouslySetInnerHTML={{
-          __html: `
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
             @media (max-width: 768px) {
               .keyboard-visible {
-                height: ${keyboardVisible ? (window.visualViewport?.height || window.innerHeight) + 'px' : '100vh'} !important;
-                max-height: ${keyboardVisible ? (window.visualViewport?.height || window.innerHeight) + 'px' : '100vh'} !important;
+                height: ${keyboardVisible ? (window.visualViewport?.height || window.innerHeight) + "px" : "100vh"} !important;
+                max-height: ${keyboardVisible ? (window.visualViewport?.height || window.innerHeight) + "px" : "100vh"} !important;
               }
               
               .keyboard-visible > div {
@@ -296,134 +288,128 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
                 -webkit-overflow-scrolling: touch;
               }
             }
-          `
-        }} />
+          `,
+          }}
+        />
       )}
-      
+
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent 
+        <DialogContent
           className={`
-            ${isMobile 
-              ? 'w-[100vw] h-[100vh] max-w-none max-h-none rounded-none m-0 p-0 border-0' 
-              : 'max-w-4xl max-h-[90vh]'
+            ${
+              isMobile
+                ? "w-[100vw] h-[100vh] max-w-none max-h-none rounded-none m-0 p-0 border-0"
+                : "max-w-4xl max-h-[90vh]"
             } 
             overflow-hidden flex flex-col
-            ${isMobile && keyboardVisible ? 'keyboard-visible' : ''}
+            ${isMobile && keyboardVisible ? "keyboard-visible" : ""}
           `}
           style={mobileKeyboardStyles}
         >
-        <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
-        
-        {/* Conditionally render based on practice stage */}
-        {practiceStage === PracticeStage.PROMPT && (
-          <div className={`${isMobile ? 'px-4 py-4' : 'px-6 py-8'} space-y-4 md:space-y-6 flex-1 overflow-y-auto practice-content`}>
-            <DialogHeader className="mb-2 md:mb-4">
-              <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold mb-1 md:mb-2`}>
-                {updatedExercise.title}
-              </h2>
-              <DialogDescription className="text-sm md:text-base">
-                <p className={`${isMobile ? 'text-base' : 'text-lg'} font-medium mb-1 md:mb-2`}>
-                  Boost Your Understanding Before You Start
-                </p>
-                <p className={`${isMobile ? 'text-sm' : 'text-base'}`}>
-                  Dive into a Reading Analysis to see how words and grammar work — or skip straight to dictation.
-                </p>
-                {loadingAnalysisCheck && (
-                  <div className="mt-2 text-sm font-medium">
-                    Checking for existing analysis...
-                  </div>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className={`grid grid-cols-1 ${isMobile ? 'gap-3 mt-4' : 'md:grid-cols-2 gap-6 mt-6'}`}>
-              <Card className="border-muted overflow-hidden hover:bg-muted/5 transition-colors dark:hover:bg-muted/10">
-                <CardContent className="p-0">
-                  <Button 
-                    onClick={handleStartReadingAnalysis} 
-                    variant="ghost" 
-                    disabled={!analysisAllowed || loadingAnalysisCheck} 
-                    className={`h-auto ${isMobile ? 'py-4 px-3' : 'py-8 px-6'} w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent`}
-                  >
-                    <div className="flex flex-col items-center text-center space-y-2 md:space-y-3">
-                      <div className={`flex items-center justify-center bg-primary/10 ${isMobile ? 'w-10 h-10' : 'w-12 h-12'} rounded-full`}>
-                        <Search className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-primary`} />
-                      </div>
-                      <div className={`font-semibold ${isMobile ? 'text-base' : 'text-lg'}`}>
-                        🔍 Start with Reading Analysis
-                      </div>
-                      <p className="text-xs md:text-sm text-muted-foreground px-2">
-                        Explore vocabulary and grammar with AI explanations
-                      </p>
-                    </div>
-                  </Button>
-                </CardContent>
-              </Card>
-              
-              <Card className="overflow-hidden border border-muted hover:bg-muted/5 transition-all dark:hover:bg-muted/10">
-                <CardContent className="p-0">
-                  <Button 
-                    onClick={handleStartDictation} 
-                    variant="ghost" 
-                    className={`h-auto ${isMobile ? 'py-4 px-3' : 'py-8 px-6'} w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent`}
-                  >
-                    <div className="flex flex-col items-center text-center space-y-2 md:space-y-3">
-                      <div className={`flex items-center justify-center bg-muted/40 ${isMobile ? 'w-10 h-10' : 'w-12 h-12'} rounded-full`}>
-                        <Headphones className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-muted-foreground`} />
-                      </div>
-                      <div className={`font-semibold ${isMobile ? 'text-base' : 'text-lg'}`}>
-                        🎧 Start Dictation Now
-                      </div>
-                      <p className="text-xs md:text-sm text-muted-foreground px-2">
-                        Practice listening and transcription skills with audio
-                      </p>
-                    </div>
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-            
-            {!analysisAllowed && !subscription.isSubscribed && (
-              <div className={`bg-amber-50 border border-amber-200 text-amber-800 p-3 md:p-4 rounded-md flex items-start ${isMobile ? 'mt-4' : 'mt-6'} dark:bg-amber-950/20 dark:border-amber-800/40 dark:text-amber-300`}>
-                <AlertTriangle className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-amber-600 dark:text-amber-400 mr-2 md:mr-3 flex-shrink-0 mt-0.5`} />
-                <div>
-                  <p className={`font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>Free user limit reached</p>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} mt-1`}>
-                    You've reached the limit of 5 reading analyses for free users. 
-                    Upgrade to premium for unlimited analyses.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        
-        {practiceStage === PracticeStage.READING && (
-          <div className={`flex-1 overflow-hidden practice-content ${isMobile && keyboardVisible ? 'h-full' : ''}`}>
-            <ReadingAnalysis 
-              exercise={updatedExercise} 
-              onComplete={handleStartDictation} 
-              existingAnalysisId={analysisId || undefined} 
-            />
-          </div>
-        )}
-        
-        {practiceStage === PracticeStage.DICTATION && (
-          <div className={`flex-1 overflow-hidden practice-content ${isMobile && keyboardVisible ? 'h-full' : ''}`}>
-            <DictationPractice 
-              exercise={updatedExercise} 
-              onComplete={handleComplete} 
-              showResults={showResults} 
-              onTryAgain={handleTryAgain} 
-              hasReadingAnalysis={hasExistingAnalysis} 
-              onViewReadingAnalysis={hasExistingAnalysis ? handleViewReadingAnalysis : undefined}
-            />
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-    </>
-  );
-};
+          <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
 
-export default PracticeModal;
+          {/* Desktop: Conditionally render based on practice stage */}
+          {/* Mobile: Always show dictation directly */}
+          {!isMobile && practiceStage === PracticeStage.PROMPT && (
+            <div className="px-6 py-8 space-y-4 md:space-y-6 flex-1 overflow-y-auto practice-content">
+              <DialogHeader className="mb-2 md:mb-4">
+                <h2 className="text-2xl font-bold mb-1 md:mb-2">{updatedExercise.title}</h2>
+                <DialogDescription className="text-sm md:text-base">
+                  <p className="text-lg font-medium mb-1 md:mb-2">Boost Your Understanding Before You Start</p>
+                  <p className="text-base">
+                    Dive into a Reading Analysis to see how words and grammar work — or skip straight to dictation.
+                  </p>
+                  {loadingAnalysisCheck && (
+                    <div className="mt-2 text-sm font-medium">Checking for existing analysis...</div>
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="md:grid-cols-2 gap-6 mt-6 grid grid-cols-1">
+                <Card className="border-muted overflow-hidden hover:bg-muted/5 transition-colors dark:hover:bg-muted/10">
+                  <CardContent className="p-0">
+                    <Button
+                      onClick={handleStartReadingAnalysis}
+                      variant="ghost"
+                      disabled={!analysisAllowed || loadingAnalysisCheck}
+                      className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent"
+                    >
+                      <div className="flex flex-col items-center text-center space-y-2 md:space-y-3">
+                        <div className="flex items-center justify-center bg-primary/10 w-12 h-12 rounded-full">
+                          <Search className="h-6 w-6 text-primary" />
+                        </div>
+                        <div className="font-semibold text-lg">🔍 Start with Reading Analysis</div>
+                        <p className="text-xs md:text-sm text-muted-foreground px-2">
+                          Explore vocabulary and grammar with AI explanations
+                        </p>
+                      </div>
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border border-muted hover:bg-muted/5 transition-all dark:hover:bg-muted/10">
+                  <CardContent className="p-0">
+                    <Button
+                      onClick={handleStartDictation}
+                      variant="ghost"
+                      className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent"
+                    >
+                      <div className="flex flex-col items-center text-center space-y-2 md:space-y-3">
+                        <div className="flex items-center justify-center bg-muted/40 w-12 h-12 rounded-full">
+                          <Headphones className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <div className="font-semibold text-lg">🎧 Start Dictation Now</div>
+                        <p className="text-xs md:text-sm text-muted-foreground px-2">
+                          Practice listening and transcription skills with audio
+                        </p>
+                      </div>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {!analysisAllowed && !subscription.isSubscribed && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 md:p-4 rounded-md flex items-start mt-6 dark:bg-amber-950/20 dark:border-amber-800/40 dark:text-amber-300">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-2 md:mr-3 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-base">Free user limit reached</p>
+                    <p className="text-sm mt-1">
+                      You've reached the limit of 5 reading analyses for free users. Upgrade to premium for unlimited
+                      analyses.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!isMobile && practiceStage === PracticeStage.READING && (
+            <div className="flex-1 overflow-hidden practice-content">
+              <ReadingAnalysis
+                exercise={updatedExercise}
+                onComplete={handleStartDictation}
+                existingAnalysisId={analysisId || undefined}
+              />
+            </div>
+          )}
+
+          {/* Show dictation for both mobile (always) and desktop (when in dictation stage) */}
+          {(isMobile || practiceStage === PracticeStage.DICTATION) && (
+            <div className={`flex-1 overflow-hidden practice-content ${isMobile && keyboardVisible ? "h-full" : ""}`}>
+              <DictationPractice
+                exercise={updatedExercise}
+                onComplete={handleComplete}
+                showResults={showResults}
+                onTryAgain={handleTryAgain}
+                hasReadingAnalysis={hasExistingAnalysis}
+                onViewReadingAnalysis={!isMobile && hasExistingAnalysis ? handleViewReadingAnalysis : undefined}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+export default PracticeModal
