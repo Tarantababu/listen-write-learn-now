@@ -1046,9 +1046,9 @@ const MobileResultsScreen: React.FC<{
     })
   }
 
-  // Add word to vocabulary (using localStorage)
+  // Add word to vocabulary (using the same logic as desktop view)
   const addToVocabulary = async () => {
-    if (!selectedWord) return
+    if (!selectedWord || !user) return
 
     setIsAddingToVocab(true)
 
@@ -1064,18 +1064,59 @@ const MobileResultsScreen: React.FC<{
         return
       }
 
-      // Add word to saved words
-      const updatedWords = [...savedWords, selectedWord]
-      setSavedWords(updatedWords)
+      // Call the vocabulary generation API
+      const response = await fetch("/api/generate-vocabulary-info", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          word: selectedWord,
+          language: exercise.language,
+          context: exercise.text,
+        }),
+      })
 
-      // Save to localStorage
-      const savedWordsKey = `saved_words_${exercise.language}`
-      localStorage.setItem(savedWordsKey, JSON.stringify(updatedWords))
+      if (!response.ok) {
+        throw new Error("Failed to generate vocabulary info")
+      }
+
+      const vocabularyData = await response.json()
+
+      // Save the vocabulary entry to the database
+      const { data: vocabEntry, error: vocabError } = await supabase
+        .from("user_vocabulary")
+        .insert({
+          user_id: user.id,
+          word: selectedWord,
+          definition: vocabularyData.definition,
+          part_of_speech: vocabularyData.partOfSpeech,
+          example_sentence: vocabularyData.exampleSentence,
+          example_audio_url: vocabularyData.exampleAudioUrl,
+          translation: vocabularyData.translation,
+          language: exercise.language,
+          source_exercise_id: exercise.id,
+        })
+        .select()
+        .single()
+
+      if (vocabError) {
+        console.error("Error saving vocabulary:", vocabError)
+        // Fallback to localStorage if database fails
+        const updatedWords = [...savedWords, selectedWord]
+        setSavedWords(updatedWords)
+        const savedWordsKey = `saved_words_${exercise.language}`
+        localStorage.setItem(savedWordsKey, JSON.stringify(updatedWords))
+      } else {
+        // Add to local state
+        const updatedWords = [...savedWords, selectedWord]
+        setSavedWords(updatedWords)
+      }
 
       setAddSuccess(true)
       toast({
         title: "Added to vocabulary",
-        description: `"${selectedWord}" has been added to your vocabulary list.`,
+        description: `"${selectedWord}" has been added to your vocabulary with definition and example sentence.`,
         variant: "default",
       })
 
@@ -1088,9 +1129,19 @@ const MobileResultsScreen: React.FC<{
       console.error("Error adding word to vocabulary:", error)
       toast({
         title: "Failed to add word",
-        description: "There was a problem adding this word to your vocabulary.",
+        description: "There was a problem generating vocabulary info. The word was saved without additional details.",
         variant: "destructive",
       })
+
+      // Fallback: save basic word to localStorage
+      try {
+        const updatedWords = [...savedWords, selectedWord]
+        setSavedWords(updatedWords)
+        const savedWordsKey = `saved_words_${exercise.language}`
+        localStorage.setItem(savedWordsKey, JSON.stringify(updatedWords))
+      } catch (fallbackError) {
+        console.error("Even fallback failed:", fallbackError)
+      }
     } finally {
       setIsAddingToVocab(false)
     }
@@ -1098,20 +1149,47 @@ const MobileResultsScreen: React.FC<{
 
   // Load saved words on component mount
   useEffect(() => {
-    const loadSavedWords = () => {
+    const loadSavedWords = async () => {
+      if (!user) return
+
       try {
-        const savedWordsKey = `saved_words_${exercise.language}`
-        const stored = localStorage.getItem(savedWordsKey)
-        if (stored) {
-          setSavedWords(JSON.parse(stored))
+        // Load from database first
+        const { data: userVocab, error } = await supabase
+          .from("user_vocabulary")
+          .select("word")
+          .eq("user_id", user.id)
+          .eq("language", exercise.language)
+
+        if (error) {
+          console.error("Error loading vocabulary from database:", error)
+          // Fallback to localStorage
+          const savedWordsKey = `saved_words_${exercise.language}`
+          const stored = localStorage.getItem(savedWordsKey)
+          if (stored) {
+            setSavedWords(JSON.parse(stored))
+          }
+        } else {
+          // Set words from database
+          const words = userVocab.map((item) => item.word)
+          setSavedWords(words)
         }
       } catch (error) {
         console.error("Error loading saved words:", error)
+        // Fallback to localStorage
+        try {
+          const savedWordsKey = `saved_words_${exercise.language}`
+          const stored = localStorage.getItem(savedWordsKey)
+          if (stored) {
+            setSavedWords(JSON.parse(stored))
+          }
+        } catch (fallbackError) {
+          console.error("Fallback loading failed:", fallbackError)
+        }
       }
     }
 
     loadSavedWords()
-  }, [exercise.language])
+  }, [user, exercise.language])
 
   return (
     <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
@@ -1346,12 +1424,16 @@ const MobileResultsScreen: React.FC<{
                     {savedWords.map((word, index) => (
                       <span
                         key={index}
-                        className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full"
+                        className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full flex items-center space-x-1"
                       >
-                        {word}
+                        <span>{word}</span>
+                        <BookMarked className="h-3 w-3" />
                       </span>
                     ))}
                   </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Words are saved with definitions, examples, and audio pronunciation.
+                  </p>
                 </div>
               )}
             </div>
