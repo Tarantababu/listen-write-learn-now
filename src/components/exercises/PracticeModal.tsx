@@ -1299,6 +1299,16 @@ const MobileResultsScreen: React.FC<{
           </Button>
         </div>
       </div>
+      {/* Vocabulary Builder Modal */}
+      {showVocabBuilder && (
+        <div className="absolute inset-0 z-50">
+          <TextSelectionVocabulary
+            text={exercise.text}
+            language={exercise.language}
+            onClose={() => setShowVocabBuilder(false)}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -1312,7 +1322,28 @@ const TextSelectionVocabulary: React.FC<{
   const [selectedWord, setSelectedWord] = useState<string>("")
   const [isAddingToVocab, setIsAddingToVocab] = useState(false)
   const [addSuccess, setAddSuccess] = useState(false)
+  const [savedWords, setSavedWords] = useState<string[]>([])
   const { user } = useAuth()
+
+  // Load user's saved words on component mount
+  useEffect(() => {
+    const loadSavedWords = async () => {
+      if (!user) return
+
+      try {
+        // Try to get saved words from user preferences or a simple storage approach
+        const savedWordsKey = `saved_words_${user.id}_${language}`
+        const stored = localStorage.getItem(savedWordsKey)
+        if (stored) {
+          setSavedWords(JSON.parse(stored))
+        }
+      } catch (error) {
+        console.error("Error loading saved words:", error)
+      }
+    }
+
+    loadSavedWords()
+  }, [user, language])
 
   // Handle text selection
   const handleTextSelection = () => {
@@ -1322,25 +1353,17 @@ const TextSelectionVocabulary: React.FC<{
     }
   }
 
-  // Add word to vocabulary
+  // Add word to vocabulary (using localStorage for now)
   const addToVocabulary = async () => {
     if (!selectedWord || !user) return
 
     setIsAddingToVocab(true)
 
     try {
-      // First check if the word already exists in the user's vocabulary
-      const { data: existingWord } = await supabase
-        .from("user_vocabulary")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("word", selectedWord)
-        .eq("language", language)
-        .maybeSingle()
-
-      if (existingWord) {
+      // Check if word is already saved
+      if (savedWords.includes(selectedWord)) {
         toast({
-          title: "Word already in vocabulary",
+          title: "Word already saved",
           description: `"${selectedWord}" is already in your vocabulary list.`,
           variant: "default",
         })
@@ -1348,23 +1371,19 @@ const TextSelectionVocabulary: React.FC<{
         return
       }
 
-      // Add the word to user's vocabulary
-      const { error } = await supabase.from("user_vocabulary").insert({
-        user_id: user.id,
-        word: selectedWord,
-        language: language,
-        added_at: new Date().toISOString(),
-      })
+      // Add word to saved words
+      const updatedWords = [...savedWords, selectedWord]
+      setSavedWords(updatedWords)
 
-      if (error) {
-        throw error
-      }
+      // Save to localStorage
+      const savedWordsKey = `saved_words_${user.id}_${language}`
+      localStorage.setItem(savedWordsKey, JSON.stringify(updatedWords))
 
       setAddSuccess(true)
       toast({
         title: "Added to vocabulary",
         description: `"${selectedWord}" has been added to your vocabulary list.`,
-        variant: "success",
+        variant: "default",
       })
 
       // Reset selection after a short delay
@@ -1405,12 +1424,13 @@ const TextSelectionVocabulary: React.FC<{
         </div>
 
         <div
-          className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 leading-relaxed"
+          className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 leading-relaxed select-text"
           onMouseUp={handleTextSelection}
           onTouchEnd={handleTextSelection}
+          style={{ userSelect: "text", WebkitUserSelect: "text" }}
         >
           {text.split("\n").map((paragraph, index) => (
-            <p key={index} className="mb-3">
+            <p key={index} className="mb-3 select-text">
               {paragraph}
             </p>
           ))}
@@ -1445,6 +1465,29 @@ const TextSelectionVocabulary: React.FC<{
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Tap on any word in the text above to select it, or type a word manually.
           </p>
+
+          {savedWords.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Your Saved Words ({savedWords.length}):
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {savedWords.slice(-10).map((word, index) => (
+                  <span
+                    key={index}
+                    className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full"
+                  >
+                    {word}
+                  </span>
+                ))}
+                {savedWords.length > 10 && (
+                  <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs rounded-full">
+                    +{savedWords.length - 10} more
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
