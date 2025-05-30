@@ -340,9 +340,9 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     `;
   };
   
-  // Mobile swipe gesture handling
+  // Mobile swipe gesture handling for audio control during dictation
   useEffect(() => {
-    if (!isMobile || !isOpen) return;
+    if (!isMobile || !isOpen || practiceStage !== PracticeStage.DICTATION) return;
 
     let touchStartX = 0;
     let touchStartY = 0;
@@ -350,17 +350,29 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     let touchEndY = 0;
 
     const handleTouchStart = (e: TouchEvent) => {
+      // Only handle swipes outside of input/textarea elements
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true') {
+        return;
+      }
+
       touchStartX = e.changedTouches[0].screenX;
       touchStartY = e.changedTouches[0].screenY;
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
+      // Only handle swipes outside of input/textarea elements
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true') {
+        return;
+      }
+
       touchEndX = e.changedTouches[0].screenX;
       touchEndY = e.changedTouches[0].screenY;
-      handleSwipeGesture();
+      handleAudioSwipeGesture();
     };
 
-    const handleSwipeGesture = () => {
+    const handleAudioSwipeGesture = () => {
       const swipeThreshold = 50; // Minimum distance for a swipe
       const maxVerticalDistance = 100; // Maximum vertical movement to still count as horizontal swipe
       
@@ -370,45 +382,69 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
       // Only process horizontal swipes
       if (Math.abs(horizontalDistance) > swipeThreshold && verticalDistance < maxVerticalDistance) {
         if (horizontalDistance > 0) {
-          // Swipe right → Go back to previous stage/close modal
-          handleSwipeBack();
+          // Swipe right → Seek forward in audio (or next audio segment)
+          handleAudioSwipeRight();
         } else {
-          // Swipe left → Go forward to next stage
-          handleSwipeForward();
+          // Swipe left → Seek backward in audio (or previous audio segment)
+          handleAudioSwipeLeft();
         }
       }
     };
 
-    const handleSwipeBack = () => {
-      // Navigate backwards through the modal stages
-      if (practiceStage === PracticeStage.DICTATION && !showResults) {
-        if (hasExistingAnalysis) {
-          // If user has existing analysis, go back to reading analysis
-          setPracticeStage(PracticeStage.READING);
-        } else {
-          // Otherwise go back to prompt
-          setPracticeStage(PracticeStage.PROMPT);
+    const handleAudioSwipeRight = () => {
+      // Seek forward in audio or go to next segment
+      const audioElement = document.querySelector('audio') as HTMLAudioElement;
+      if (audioElement) {
+        // Skip forward by 5 seconds
+        audioElement.currentTime = Math.min(audioElement.currentTime + 5, audioElement.duration);
+        
+        // Provide haptic feedback if available
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
         }
-      } else if (practiceStage === PracticeStage.READING) {
-        setPracticeStage(PracticeStage.PROMPT);
-      } else if (practiceStage === PracticeStage.PROMPT) {
-        // Close modal
-        handleOpenChange(false);
+        
+        // Visual feedback
+        showAudioFeedback('⏭️ +5s');
       }
     };
 
-    const handleSwipeForward = () => {
-      // Navigate forwards through the modal stages
-      if (practiceStage === PracticeStage.PROMPT) {
-        // Default forward action is to start dictation
-        setPracticeStage(PracticeStage.DICTATION);
-      } else if (practiceStage === PracticeStage.READING) {
-        setPracticeStage(PracticeStage.DICTATION);
+    const handleAudioSwipeLeft = () => {
+      // Seek backward in audio or go to previous segment
+      const audioElement = document.querySelector('audio') as HTMLAudioElement;
+      if (audioElement) {
+        // Skip backward by 5 seconds
+        audioElement.currentTime = Math.max(audioElement.currentTime - 5, 0);
+        
+        // Provide haptic feedback if available
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
+        
+        // Visual feedback
+        showAudioFeedback('⏮️ -5s');
       }
-      // No forward action from dictation stage
     };
 
-    // Add touch event listeners to the modal content
+    const showAudioFeedback = (message: string) => {
+      // Create or update feedback element
+      let feedbackElement = document.getElementById('audio-swipe-feedback');
+      if (!feedbackElement) {
+        feedbackElement = document.createElement('div');
+        feedbackElement.id = 'audio-swipe-feedback';
+        feedbackElement.className = 'audio-swipe-feedback';
+        document.body.appendChild(feedbackElement);
+      }
+      
+      feedbackElement.textContent = message;
+      feedbackElement.classList.add('show');
+      
+      // Hide after 1.5 seconds
+      setTimeout(() => {
+        feedbackElement?.classList.remove('show');
+      }, 1500);
+    };
+
+    // Add touch event listeners to the modal content (but not input elements)
     const modalElement = document.querySelector('[data-modal-content]');
     if (modalElement) {
       modalElement.addEventListener('touchstart', handleTouchStart, { passive: true });
@@ -420,8 +456,14 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         modalElement.removeEventListener('touchstart', handleTouchStart);
         modalElement.removeEventListener('touchend', handleTouchEnd);
       }
+      
+      // Clean up feedback element
+      const feedbackElement = document.getElementById('audio-swipe-feedback');
+      if (feedbackElement) {
+        feedbackElement.remove();
+      }
     };
-  }, [isMobile, isOpen, practiceStage, showResults, hasExistingAnalysis]);
+  }, [isMobile, isOpen, practiceStage]);
 
   // Inject mobile-specific styles
   useEffect(() => {
@@ -461,9 +503,65 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         -webkit-overflow-scrolling: touch !important;
       }
 
-      /* Swipe gesture visual feedback */
+      /* Audio swipe gesture optimization */
       .mobile-modal-content {
         touch-action: pan-y pinch-zoom;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      
+      /* Allow text selection in input areas */
+      .mobile-modal-content input,
+      .mobile-modal-content textarea,
+      .mobile-modal-content [contenteditable] {
+        touch-action: manipulation;
+        user-select: text;
+        -webkit-user-select: text;
+      }
+
+      /* Audio swipe feedback styles */
+      .audio-swipe-feedback {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        z-index: 9999;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+      }
+      
+      .audio-swipe-feedback.show {
+        opacity: 1;
+      }
+
+      /* Improve dictation text area experience */
+      .mobile-modal-content textarea,
+      .mobile-modal-content input[type="text"] {
+        /* Prevent autocorrect/autocomplete during dictation */
+        autocomplete: off;
+        autocapitalize: off;
+        autocorrect: off;
+        spellcheck: false;
+        
+        /* Better focus styles for mobile */
+        outline: none;
+        border: 2px solid transparent;
+        transition: border-color 0.2s ease;
+      }
+      
+      .mobile-modal-content textarea:focus,
+      .mobile-modal-content input[type="text"]:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
       }
     `;
 
