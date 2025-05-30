@@ -581,7 +581,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
             </div>
           )}
 
-          {/* Mobile Audio Player */}
+          {/* Mobile Audio Player - Fixed to remove duplicate slider */}
           {isMobile && (
             <div ref={mainAudioControlsRef}>
               {autoplayBlocked && (
@@ -595,22 +595,48 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
               )}
               
               <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <AudioControls />
-                
-                <div className="mt-3">
-                  <Slider
-                    value={[currentTime]}
-                    max={duration || 100}
-                    step={0.1}
-                    onValueChange={handleSeek}
-                    onValueCommit={handleSeekEnd}
-                    onPointerDown={handleSeekStart}
-                    className="w-full"
-                    disabled={!exercise.audioUrl}
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration)}</span>
+                <div className="flex flex-col items-center justify-center">
+                  <div className="flex items-center justify-center gap-4 mb-4">
+                    <button 
+                      className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
+                      onClick={handleSkipBack}
+                    >
+                      <SkipBack className="h-5 w-5 text-gray-700" />
+                    </button>
+                    
+                    <button 
+                      className="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center"
+                      onClick={togglePlay}
+                    >
+                      {isPlaying ? 
+                        <Pause className="h-8 w-8 text-white" /> : 
+                        <Play className="h-8 w-8 text-white ml-1" />
+                      }
+                    </button>
+                    
+                    <button 
+                      className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
+                      onClick={handleSkipForward}
+                    >
+                      <SkipForward className="h-5 w-5 text-gray-700" />
+                    </button>
+                  </div>
+                  
+                  <div className="w-full max-w-md space-y-2">
+                    <Slider
+                      value={[currentTime]}
+                      max={duration || 100}
+                      step={0.1}
+                      onValueChange={handleSeek}
+                      onValueCommit={handleSeekEnd}
+                      onPointerDown={handleSeekStart}
+                      className="w-full"
+                      disabled={!exercise.audioUrl}
+                    />
+                    <div className="flex justify-between text-sm text-gray-500">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
