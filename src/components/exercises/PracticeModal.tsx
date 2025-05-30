@@ -5,7 +5,11 @@ import { Button } from "@/components/ui/button"
 import type { Exercise } from "@/types"
 import DictationPractice from "@/components/DictationPractice"
 import ReadingAnalysis from "@/components/ReadingAnalysis"
+import { useUserSettingsContext } from "@/contexts/UserSettingsContext"
+import { useExerciseContext } from "@/contexts/ExerciseContext"
 import { supabase } from "@/integrations/supabase/client"
+import { useAuth } from "@/contexts/AuthContext"
+import { useSubscription } from "@/contexts/SubscriptionContext"
 import { toast } from "@/hooks/use-toast"
 import {
   AlertTriangle,
@@ -31,10 +35,6 @@ import {
   BookMarked,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
-import { useUserSettingsContext } from "@/contexts/UserSettingsContext"
-import { useExerciseContext } from "@/contexts/ExerciseContext"
-import { useAuth } from "@/contexts/AuthContext"
-import { useSubscription } from "@/contexts/SubscriptionContext"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 interface PracticeModalProps {
@@ -840,8 +840,6 @@ const MobileDictationPractice: React.FC<{
   )
 }
 
-// Replace the current MobileResultsScreen component with this updated version that properly handles vocabulary analysis
-
 // Mobile Results Screen with Tabs
 const MobileResultsScreen: React.FC<{
   exercise: Exercise
@@ -941,22 +939,55 @@ const MobileResultsScreen: React.FC<{
         try {
           const words = basicVocabulary.map((item) => item.word)
 
+          // Use correct column names - let's try common variations
           const { data: vocabularyData, error } = await supabase
             .from("vocabulary")
-            .select("word, translation, part_of_speech")
+            .select("word, meaning, pos")
             .in("word", words)
             .eq("language", exercise.language)
 
           if (error) {
             console.error("Database error:", error)
-            // Continue with basic vocabulary
+            // Try alternative column names
+            const { data: altVocabularyData, error: altError } = await supabase
+              .from("vocabulary")
+              .select("word, definition, part_of_speech")
+              .in("word", words)
+              .eq("language", exercise.language)
+
+            if (altError) {
+              console.error("Alternative database error:", altError)
+              // Continue with basic vocabulary
+            } else if (altVocabularyData && altVocabularyData.length > 0) {
+              // Create a map for quick lookup
+              const vocabMap = new Map()
+              altVocabularyData.forEach((item: any) => {
+                vocabMap.set(item.word, {
+                  translation: item.definition || "",
+                  partOfSpeech: item.part_of_speech || "",
+                })
+              })
+
+              // Enhance basic vocabulary with database data where available
+              const enhancedVocabulary = basicVocabulary.map((item) => {
+                const dbData = vocabMap.get(item.word)
+                return {
+                  word: item.word,
+                  translation: dbData?.translation || "Translation not available",
+                  partOfSpeech: dbData?.partOfSpeech || "unknown",
+                }
+              })
+
+              setVocabularyItems(enhancedVocabulary)
+              return
+            }
           } else if (vocabularyData && vocabularyData.length > 0) {
             // Create a map for quick lookup
             const vocabMap = new Map()
-            vocabularyData.forEach((item) => {
+            vocabularyData.forEach((item: any) => {
               vocabMap.set(item.word, {
-                translation: item.translation || "",
-                partOfSpeech: item.part_of_speech || "",
+                translation: item.meaning || "",
+                partOfSpeech: item.pos || "",
               })
             })
 
@@ -1254,10 +1285,6 @@ const MobileResultsScreen: React.FC<{
     </div>
   )
 }
-
-// Update the MobileDictationPractice component to pass showResults to MobileHeader
-
-// Update the MobileReadingAnalysisWrapper component to pass showResults to MobileHeader
 
 const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exercise, onComplete }) => {
   const [showResults, setShowResults] = useState(false)
