@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -41,8 +40,10 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true);
   const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false);
+  const [keyboardVisible, setKeyboardVisible] = useState<boolean>(false);
   const hasInitializedRef = useRef<boolean>(false);
   const isMobile = useIsMobile();
+  const initialViewportHeight = useRef<number>(0);
   
   const {
     settings
@@ -60,6 +61,53 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   const {
     subscription
   } = useSubscription();
+
+  // Mobile keyboard detection
+  useEffect(() => {
+    if (!isMobile) return;
+
+    // Store initial viewport height
+    initialViewportHeight.current = window.visualViewport?.height || window.innerHeight;
+
+    const handleViewportChange = () => {
+      if (window.visualViewport) {
+        const currentHeight = window.visualViewport.height;
+        const heightDifference = initialViewportHeight.current - currentHeight;
+        
+        // Consider keyboard visible if height decreased by more than 150px
+        const isKeyboardVisible = heightDifference > 150;
+        setKeyboardVisible(isKeyboardVisible);
+      }
+    };
+
+    // Use visualViewport API if available (better support)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportChange);
+      return () => {
+        window.visualViewport?.removeEventListener('resize', handleViewportChange);
+      };
+    } else {
+      // Fallback to window resize
+      const handleResize = () => {
+        const currentHeight = window.innerHeight;
+        const heightDifference = initialViewportHeight.current - currentHeight;
+        const isKeyboardVisible = heightDifference > 150;
+        setKeyboardVisible(isKeyboardVisible);
+      };
+
+      window.addEventListener('resize', handleResize);
+      return () => {
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, [isMobile]);
+
+  // Reset keyboard state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setKeyboardVisible(false);
+    }
+  }, [isOpen]);
 
   // Update the local exercise state immediately when the prop changes or when exercises are updated 
   useEffect(() => {
@@ -217,15 +265,25 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   // If the exercise doesn't match the selected language, don't render
   if (!updatedExercise || updatedExercise.language !== settings.selectedLanguage) return null;
   
+  // Dynamic styles for mobile keyboard handling
+  const mobileKeyboardStyles = isMobile && keyboardVisible ? {
+    height: window.visualViewport?.height || window.innerHeight,
+    maxHeight: window.visualViewport?.height || window.innerHeight,
+  } : {};
+  
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className={`
-        ${isMobile 
-          ? 'w-[100vw] h-[100vh] max-w-none max-h-none rounded-none m-0 p-0 border-0' 
-          : 'max-w-4xl max-h-[90vh]'
-        } 
-        overflow-hidden flex flex-col
-      `}>
+      <DialogContent 
+        className={`
+          ${isMobile 
+            ? 'w-[100vw] h-[100vh] max-w-none max-h-none rounded-none m-0 p-0 border-0' 
+            : 'max-w-4xl max-h-[90vh]'
+          } 
+          overflow-hidden flex flex-col
+          ${isMobile && keyboardVisible ? 'keyboard-visible' : ''}
+        `}
+        style={mobileKeyboardStyles}
+      >
         <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
         
         {/* Conditionally render based on practice stage */}
@@ -313,24 +371,58 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         )}
         
         {practiceStage === PracticeStage.READING && (
-          <ReadingAnalysis 
-            exercise={updatedExercise} 
-            onComplete={handleStartDictation} 
-            existingAnalysisId={analysisId || undefined} 
-          />
+          <div className={`flex-1 overflow-hidden ${isMobile && keyboardVisible ? 'h-full' : ''}`}>
+            <ReadingAnalysis 
+              exercise={updatedExercise} 
+              onComplete={handleStartDictation} 
+              existingAnalysisId={analysisId || undefined} 
+            />
+          </div>
         )}
         
         {practiceStage === PracticeStage.DICTATION && (
-          <DictationPractice 
-            exercise={updatedExercise} 
-            onComplete={handleComplete} 
-            showResults={showResults} 
-            onTryAgain={handleTryAgain} 
-            hasReadingAnalysis={hasExistingAnalysis} 
-            onViewReadingAnalysis={hasExistingAnalysis ? handleViewReadingAnalysis : undefined} 
-          />
+          <div className={`flex-1 overflow-hidden ${isMobile && keyboardVisible ? 'h-full' : ''}`}>
+            <DictationPractice 
+              exercise={updatedExercise} 
+              onComplete={handleComplete} 
+              showResults={showResults} 
+              onTryAgain={handleTryAgain} 
+              hasReadingAnalysis={hasExistingAnalysis} 
+              onViewReadingAnalysis={hasExistingAnalysis ? handleViewReadingAnalysis : undefined}
+              keyboardVisible={isMobile ? keyboardVisible : false}
+            />
+          </div>
         )}
       </DialogContent>
+      
+      {/* Add custom CSS for mobile keyboard handling */}
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .keyboard-visible {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            transform: none !important;
+          }
+          
+          /* Ensure content is scrollable when keyboard is visible */
+          .keyboard-visible > div {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+          }
+          
+          /* Prevent body scroll when modal is open on mobile */
+          body:has([data-state="open"]) {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+          }
+        }
+      `}</style>
     </Dialog>
   );
 };
