@@ -31,6 +31,11 @@ import {
   BookMarked,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { useUserSettingsContext } from "@/contexts/UserSettingsContext"
+import { useExerciseContext } from "@/contexts/ExerciseContext"
+import { useAuth } from "@/contexts/AuthContext"
+import { useSubscription } from "@/contexts/SubscriptionContext"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface PracticeModalProps {
   isOpen: boolean
@@ -1251,98 +1256,14 @@ const MobileResultsScreen: React.FC<{
 }
 
 // Update the MobileDictationPractice component to pass showResults to MobileHeader
-const MobileDictationPractice: React.FC<{
-  exercise: Exercise
-  onComplete: (accuracy: number) => void
-  showResults: boolean
-  onTryAgain: () => void
-  activeTab: MobileTab
-  onTabChange: (tab: MobileTab) => void
-  onClose: () => void
-  hasReadingAnalysis: boolean
-  userInput: string
-  setUserInput: (input: string) => void
-  accuracy: number
-}> = ({
-  exercise,
-  onComplete,
-  showResults,
-  onTryAgain,
-  activeTab,
-  onTabChange,
-  onClose,
-  hasReadingAnalysis,
-  userInput,
-  setUserInput,
-  accuracy,
-}) => {
-  // Rest of the component remains the same...
-
-  return (
-    <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
-      <MobileHeader
-        title={exercise.title}
-        subtitle="Listen and type what you hear"
-        onClose={onClose}
-        showTabs={true}
-        activeTab={activeTab}
-        onTabChange={onTabChange}
-        hasReadingAnalysis={hasReadingAnalysis}
-        completionCount={exercise.completionCount}
-        isCompleted={exercise.isCompleted}
-        showResults={showResults}
-      />
-
-      {/* Rest of the component remains the same... */}
-}
 
 // Update the MobileReadingAnalysisWrapper component to pass showResults to MobileHeader
-const MobileReadingAnalysisWrapper: React.FC<{\
-  exercise: Exercise\
-  onComplete: () => void\
-  existingAnalysisId?: string
-  activeTab: MobileTab\
-  onTabChange: (tab: MobileTab) => void\
-  onClose: () => void
-  hasReadingAnalysis: boolean\
-  showResults?: boolean
-}> = ({ 
-  exercise, 
-  onComplete, 
-  existingAnalysisId, 
-  activeTab, 
-  onTabChange, 
-  onClose, 
-  hasReadingAnalysis,
-  showResults = false
-}) => {\
-  return (
-    <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
-      <MobileHeader
-        title={exercise.title}
-        subtitle="Reading Analysis"
-        onClose={onClose}
-        showTabs={true}
-        activeTab={activeTab}
-        onTabChange={onTabChange}
-        hasReadingAnalysis={hasReadingAnalysis}
-        completionCount={exercise.completionCount}
-        isCompleted={exercise.isCompleted}
-        showResults={showResults}
-      />
 
-      <div className="flex-1 overflow-hidden">
-        <ReadingAnalysis exercise={exercise} onComplete={onComplete} existingAnalysisId={existingAnalysisId} />
-      </div>
-    </div>
-  )
-}
-
-const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exercise, onComplete }) => {\
-  const [showResults, setShowResults] = useState(false)\
+const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exercise, onComplete }) => {
+  const [showResults, setShowResults] = useState(false)
   const [updatedExercise, setUpdatedExercise] = useState<Exercise | null>(exercise)
   const [practiceStage, setPracticeStage] = useState<PracticeStage>(PracticeStage.PROMPT)
-  const [hasExistingAnalysis, setHasExistingAnalysis] = useState<boolean>(false)\
+  const [hasExistingAnalysis, setHasExistingAnalysis] = useState<boolean>(false)
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true)
   const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false)
@@ -1361,8 +1282,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   const { subscription } = useSubscription()
 
   // Update exercise state when prop or context changes
-  useEffect(() => {\
-    if (exercise) {\
+  useEffect(() => {
+    if (exercise) {
       const latestExerciseData = exercises.find((ex) => ex.id === exercise.id)
       setUpdatedExercise(latestExerciseData || exercise)
     } else {
@@ -1371,18 +1292,18 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   }, [exercise, exercises])
 
   // Check for existing analysis when modal opens
-  useEffect(() => {\
-    const checkExistingAnalysis = async () => {\
+  useEffect(() => {
+    const checkExistingAnalysis = async () => {
       if (!exercise || !user || !isOpen) return
 
       try {
         setLoadingAnalysisCheck(true)
-\
+
         const hasAnalysis = await hasReadingAnalysis(exercise.id)
 
         if (hasAnalysis) {
           setHasExistingAnalysis(true)
-\
+
           const { data: analysisData } = await supabase
             .from("reading_analyses")
             .select("id")
@@ -1400,10 +1321,10 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
             setPracticeStage(PracticeStage.DICTATION)
           }
         } else {
-          setHasExistingAnalysis(false)\
+          setHasExistingAnalysis(false)
           setAnalysisId(null)
 
-          if (!subscription.isSubscribed) {\
+          if (!subscription.isSubscribed) {
             const { data: profileData } = await supabase
               .from("profiles")
               .select("reading_analyses_count")
@@ -1411,9 +1332,9 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
               .maybeSingle()
 
             if (profileData && profileData.reading_analyses_count >= 5) {
-              setAnalysisAllowed(false)\
+              setAnalysisAllowed(false)
               toast({
-                title: \"Free user limit reached",
+                title: "Free user limit reached",
                 description: "Free users are limited to 5 reading analyses. Upgrade to premium for unlimited analyses.",
                 variant: "destructive",
               })
@@ -1434,7 +1355,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
     }
 
     if (isOpen && !hasInitializedRef.current) {
-      checkExistingAnalysis()\
+      checkExistingAnalysis()
       hasInitializedRef.current = true
     }
 
@@ -1444,34 +1365,34 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   }, [exercise, user, isOpen, subscription.isSubscribed, hasReadingAnalysis, isMobile])
 
   const handleComplete = (accuracyScore: number) => {
-    setAccuracy(accuracyScore)\
+    setAccuracy(accuracyScore)
     onComplete(accuracyScore)
     setShowResults(true)
 
-    if (updatedExercise && accuracyScore >= 95) {\
+    if (updatedExercise && accuracyScore >= 95) {
       const newCompletionCount = Math.min(3, updatedExercise.completionCount + 1)
       const isCompleted = newCompletionCount >= 3
 
       // Show confetti if exercise is completed (3/3)
       if (isCompleted && !updatedExercise.isCompleted) {
-        setShowConfetti(true)\
+        setShowConfetti(true)
         setTimeout(() => setShowConfetti(false), 5000) // Hide confetti after 5 seconds
       }
 
       setUpdatedExercise({
-        ...updatedExercise,\
+        ...updatedExercise,
         completionCount: newCompletionCount,
         isCompleted,
       })
     }
   }
 
-  useEffect(() => {\
-    if (isOpen) {\
+  useEffect(() => {
+    if (isOpen) {
       const latestExerciseData = exercises.find((ex) => ex?.id === exercise?.id)
       setUpdatedExercise(latestExerciseData || exercise)
     } else {
-      setShowResults(false)\
+      setShowResults(false)
       setUserInput("")
       setAccuracy(0)
       setShowConfetti(false)
@@ -1485,7 +1406,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
     onOpenChange(open)
   }
 
-  const handleStartDictation = () => {\
+  const handleStartDictation = () => {
     if (isMobile) {
       setMobileTab(MobileTab.DICTATION)
     } else {
@@ -1493,7 +1414,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
     }
   }
 
-  const handleStartReadingAnalysis = () => {\
+  const handleStartReadingAnalysis = () => {
     if (isMobile) {
       setMobileTab(MobileTab.READING)
     } else {
