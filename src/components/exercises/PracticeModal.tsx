@@ -395,8 +395,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
       // Seek forward in audio or go to next segment
       const audioElement = document.querySelector('audio') as HTMLAudioElement;
       if (audioElement) {
-        // Skip forward by 5 seconds
-        audioElement.currentTime = Math.min(audioElement.currentTime + 5, audioElement.duration);
+        // Skip forward by 2 seconds
+        audioElement.currentTime = Math.min(audioElement.currentTime + 2, audioElement.duration);
         
         // Provide haptic feedback if available
         if ('vibrate' in navigator) {
@@ -404,7 +404,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         }
         
         // Visual feedback
-        showAudioFeedback('⏭️ +5s');
+        showAudioFeedback('⏭️ +2s');
       }
     };
 
@@ -412,8 +412,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
       // Seek backward in audio or go to previous segment
       const audioElement = document.querySelector('audio') as HTMLAudioElement;
       if (audioElement) {
-        // Skip backward by 5 seconds
-        audioElement.currentTime = Math.max(audioElement.currentTime - 5, 0);
+        // Skip backward by 2 seconds
+        audioElement.currentTime = Math.max(audioElement.currentTime - 2, 0);
         
         // Provide haptic feedback if available
         if ('vibrate' in navigator) {
@@ -421,7 +421,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         }
         
         // Visual feedback
-        showAudioFeedback('⏮️ -5s');
+        showAudioFeedback('⏮️ -2s');
       }
     };
 
