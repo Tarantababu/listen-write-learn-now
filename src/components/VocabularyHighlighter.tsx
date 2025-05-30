@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,19 +7,21 @@ import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Book, Loader2, Volume2 } from 'lucide-react';
+import { Book, Loader2, Volume2, Crown } from 'lucide-react';
+import UpgradePrompt from '@/components/UpgradePrompt';
 
 interface VocabularyHighlighterProps {
   exercise: Exercise;
 }
 
 const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise }) => {
-  const { addVocabularyItem } = useVocabularyContext();
+  const { addVocabularyItem, canCreateMore, vocabularyLimit } = useVocabularyContext();
   const [selectedWord, setSelectedWord] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isGeneratingInfo, setIsGeneratingInfo] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [generatedInfo, setGeneratedInfo] = useState<{
     definition: string;
     exampleSentence: string;
@@ -147,6 +150,12 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
   const handleAddToVocabulary = async () => {
     if (!selectedWord) return;
     
+    // Check if user can create more vocabulary items before generating info
+    if (!canCreateMore) {
+      setShowUpgradePrompt(true);
+      return;
+    }
+    
     setIsDialogOpen(true);
     const info = await generateVocabularyInfo(selectedWord, exercise.language);
     
@@ -207,10 +216,16 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
       setAudioElement(null);
     } catch (error) {
       console.error('Error saving vocabulary item:', error);
-      toast("Error", {
-        description: "Failed to add word to vocabulary",
-        variant: "destructive"
-      });
+      // Check if it's a vocabulary limit error
+      if (error instanceof Error && error.message === 'Vocabulary limit reached') {
+        setIsDialogOpen(false);
+        setShowUpgradePrompt(true);
+      } else {
+        toast("Error", {
+          description: "Failed to add word to vocabulary",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -263,12 +278,25 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
                 Loading...
               </>
             ) : (
-              'Add to Vocabulary'
+              <>
+                {!canCreateMore && <Crown className="mr-2 h-4 w-4" />}
+                Add to Vocabulary
+              </>
             )}
           </Button>
         </div>
+        
+        {!canCreateMore && (
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-800 text-center">
+              You've reached the limit of {vocabularyLimit} vocabulary items. 
+              <span className="font-medium"> Upgrade to premium for unlimited vocabulary!</span>
+            </p>
+          </div>
+        )}
       </div>
       
+      {/* Vocabulary Generation Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -335,6 +363,26 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
               Failed to generate information
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Upgrade Prompt Dialog */}
+      <Dialog open={showUpgradePrompt} onOpenChange={setShowUpgradePrompt}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-amber-500" />
+              Vocabulary Limit Reached
+            </DialogTitle>
+            <DialogDescription>
+              You've reached the maximum of {vocabularyLimit} vocabulary items for free accounts.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <UpgradePrompt
+            title=""
+            message="Upgrade to premium to add unlimited vocabulary items and unlock all premium features!"
+          />
         </DialogContent>
       </Dialog>
     </div>
