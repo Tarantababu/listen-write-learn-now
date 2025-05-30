@@ -215,18 +215,17 @@ const MobileSelectionScreen: React.FC<{
 
         <div className="space-y-4">
           {/* Reading Analysis Card */}
-          <Card className="border-2 border-blue-200 dark:border-blue-800">
-            <CardContent className="p-0">
-              <Button
-                onClick={onSelectReading}
-                variant="ghost"
-                disabled={!analysisAllowed || loadingAnalysisCheck}
-                className="h-auto py-6 px-4 w-full rounded-lg flex items-center space-x-4 bg-transparent hover:bg-blue-50 dark:hover:bg-blue-950/20"
-              >
+          <div className="border-2 border-blue-200 dark:border-blue-800 rounded-lg overflow-hidden">
+            <button
+              onClick={onSelectReading}
+              disabled={!analysisAllowed || loadingAnalysisCheck}
+              className="w-full p-4 text-left bg-white dark:bg-gray-900 hover:bg-blue-50 dark:hover:bg-blue-950/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <div className="flex items-center space-x-4">
                 <div className="flex items-center justify-center bg-blue-100 dark:bg-blue-900 w-12 h-12 rounded-full flex-shrink-0">
                   <Search className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div className="text-left flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="font-semibold text-lg text-gray-900 dark:text-white mb-1">
                     🔍 Start with Reading Analysis
                   </div>
@@ -234,30 +233,29 @@ const MobileSelectionScreen: React.FC<{
                     Explore vocabulary and grammar with AI explanations
                   </p>
                 </div>
-              </Button>
-            </CardContent>
-          </Card>
+              </div>
+            </button>
+          </div>
 
           {/* Dictation Card */}
-          <Card className="border-2 border-green-200 dark:border-green-800">
-            <CardContent className="p-0">
-              <Button
-                onClick={onSelectDictation}
-                variant="ghost"
-                className="h-auto py-6 px-4 w-full rounded-lg flex items-center space-x-4 bg-transparent hover:bg-green-50 dark:hover:bg-green-950/20"
-              >
+          <div className="border-2 border-green-200 dark:border-green-800 rounded-lg overflow-hidden">
+            <button
+              onClick={onSelectDictation}
+              className="w-full p-4 text-left bg-white dark:bg-gray-900 hover:bg-green-50 dark:hover:bg-green-950/20 transition-colors"
+            >
+              <div className="flex items-center space-x-4">
                 <div className="flex items-center justify-center bg-green-100 dark:bg-green-900 w-12 h-12 rounded-full flex-shrink-0">
                   <Headphones className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
-                <div className="text-left flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="font-semibold text-lg text-gray-900 dark:text-white mb-1">🎧 Start Dictation Now</div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Practice listening and transcription skills with audio
                   </p>
                 </div>
-              </Button>
-            </CardContent>
-          </Card>
+              </div>
+            </button>
+          </div>
         </div>
 
         {/* Warning Message */}
