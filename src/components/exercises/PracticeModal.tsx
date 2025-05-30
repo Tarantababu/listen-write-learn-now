@@ -1,6 +1,6 @@
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import type { Exercise } from "@/types"
 import DictationPractice from "@/components/DictationPractice"
@@ -42,6 +42,78 @@ enum PracticeStage {
   DICTATION = 2,
 }
 
+// Mobile-specific fullscreen modal wrapper
+const MobileModalWrapper: React.FC<{
+  isOpen: boolean
+  onClose: () => void
+  children: React.ReactNode
+}> = ({ isOpen, onClose, children }) => {
+  useEffect(() => {
+    if (isOpen) {
+      // Prevent body scroll
+      document.body.style.overflow = "hidden"
+      document.body.style.position = "fixed"
+      document.body.style.width = "100%"
+      document.body.style.height = "100%"
+      
+      return () => {
+        document.body.style.overflow = ""
+        document.body.style.position = ""
+        document.body.style.width = ""
+        document.body.style.height = ""
+      }
+    }
+  }, [isOpen])
+
+  if (!isOpen) return null
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 bg-white dark:bg-gray-900"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: "100vw",
+        height: "100vh",
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+// Mobile Header Component
+const MobileHeader: React.FC<{
+  title: string
+  onClose: () => void
+  subtitle?: string
+}> = ({ title, onClose, subtitle }) => {
+  return (
+    <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 min-h-[60px]">
+      <div className="flex items-center space-x-3 flex-1 min-w-0">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClose}
+          className="h-10 w-10 p-0 flex-shrink-0"
+          type="button"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg font-semibold truncate text-gray-900 dark:text-white">{title}</h1>
+          {subtitle && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{subtitle}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Mobile Virtual Keyboard Component
 const MobileVirtualKeyboard: React.FC<{
   onSubmit: () => void
@@ -67,14 +139,14 @@ const MobileVirtualKeyboard: React.FC<{
   showResults,
 }) => {
   return (
-    <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4 safe-area-bottom">
+    <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4">
       {/* Audio Controls Row */}
       <div className="grid grid-cols-5 gap-2 mb-3">
         <Button
           variant="outline"
           size="sm"
           onClick={onSkipBack}
-          className="h-12 flex flex-col items-center justify-center p-1 text-xs"
+          className="h-12 flex flex-col items-center justify-center p-1 text-xs border-gray-300 dark:border-gray-600"
           type="button"
         >
           <SkipBack className="h-4 w-4" />
@@ -85,7 +157,7 @@ const MobileVirtualKeyboard: React.FC<{
           variant="outline"
           size="sm"
           onClick={onRewind}
-          className="h-12 flex flex-col items-center justify-center p-1 text-xs"
+          className="h-12 flex flex-col items-center justify-center p-1 text-xs border-gray-300 dark:border-gray-600"
           type="button"
         >
           <RotateCcw className="h-4 w-4" />
@@ -93,10 +165,10 @@ const MobileVirtualKeyboard: React.FC<{
         </Button>
 
         <Button
-          variant="outline"
+          variant="default"
           size="sm"
           onClick={isPlaying ? onPause : onPlay}
-          className="h-12 flex flex-col items-center justify-center p-1 bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
+          className="h-12 flex flex-col items-center justify-center p-1 bg-blue-600 hover:bg-blue-700 text-white text-xs"
           type="button"
         >
           {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
@@ -107,7 +179,7 @@ const MobileVirtualKeyboard: React.FC<{
           variant="outline"
           size="sm"
           onClick={onSkipForward}
-          className="h-12 flex flex-col items-center justify-center p-1 text-xs"
+          className="h-12 flex flex-col items-center justify-center p-1 text-xs border-gray-300 dark:border-gray-600"
           type="button"
         >
           <SkipForward className="h-4 w-4" />
@@ -118,7 +190,7 @@ const MobileVirtualKeyboard: React.FC<{
           variant="outline"
           size="sm"
           onClick={onClear}
-          className="h-12 flex flex-col items-center justify-center p-1 text-xs"
+          className="h-12 flex flex-col items-center justify-center p-1 text-xs border-gray-300 dark:border-gray-600"
           type="button"
         >
           <X className="h-4 w-4" />
@@ -140,39 +212,10 @@ const MobileVirtualKeyboard: React.FC<{
           </Button>
         )}
 
-        <Button variant="outline" onClick={onRewind} className="h-12" type="button">
+        <Button variant="outline" onClick={onRewind} className="h-12 border-gray-300 dark:border-gray-600" type="button">
           <Volume2 className="h-4 w-4 mr-2" />
           Replay Audio
         </Button>
-      </div>
-    </div>
-  )
-}
-
-// Mobile Header Component
-const MobileHeader: React.FC<{
-  title: string
-  onClose: () => void
-  subtitle?: string
-}> = ({ title, onClose, subtitle }) => {
-  return (
-    <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 safe-area-top">
-      <div className="flex items-center space-x-3 flex-1 min-w-0">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClose}
-          className="h-8 w-8 p-0 flex-shrink-0"
-          type="button"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-semibold truncate">{title}</h1>
-          {subtitle && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{subtitle}</p>
-          )}
-        </div>
       </div>
     </div>
   )
@@ -252,7 +295,7 @@ const MobileDictationPractice: React.FC<{
   }
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
       {/* Mobile Header */}
       <MobileHeader
         title={exercise.title}
@@ -270,7 +313,7 @@ const MobileDictationPractice: React.FC<{
       />
 
       {/* Content Area - Scrollable */}
-      <div className="flex-1 overflow-y-auto p-4 pb-0">
+      <div className="flex-1 overflow-y-auto p-4">
         {showResults ? (
           <div className="space-y-4">
             <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
@@ -312,7 +355,7 @@ const MobileDictationPractice: React.FC<{
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 placeholder="Start typing here..."
-                className="w-full h-40 p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white text-base"
+                className="w-full h-48 p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white text-base"
                 autoFocus
               />
             </div>
@@ -360,16 +403,6 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   const { exercises, hasReadingAnalysis } = useExerciseContext()
   const { user } = useAuth()
   const { subscription } = useSubscription()
-
-  // Mobile body scroll prevention - simplified
-  useEffect(() => {
-    if (isMobile && isOpen) {
-      document.body.style.overflow = "hidden"
-      return () => {
-        document.body.style.overflow = ""
-      }
-    }
-  }, [isMobile, isOpen])
 
   // Update exercise state when prop or context changes
   useEffect(() => {
@@ -494,25 +527,25 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
 
   if (!updatedExercise || updatedExercise.language !== settings.selectedLanguage) return null
 
-  // Mobile view - simplified fullscreen modal
+  // Mobile view - completely custom fullscreen implementation
   if (isMobile) {
     return (
-      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="fixed inset-0 w-full h-full max-w-none max-h-none m-0 p-0 border-0 rounded-none">
-          <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
-          <MobileDictationPractice
-            exercise={updatedExercise}
-            onComplete={handleComplete}
-            showResults={showResults}
-            onTryAgain={handleTryAgain}
-            onClose={() => handleOpenChange(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      <MobileModalWrapper 
+        isOpen={isOpen} 
+        onClose={() => handleOpenChange(false)}
+      >
+        <MobileDictationPractice
+          exercise={updatedExercise}
+          onComplete={handleComplete}
+          showResults={showResults}
+          onTryAgain={handleTryAgain}
+          onClose={() => handleOpenChange(false)}
+        />
+      </MobileModalWrapper>
     )
   }
 
-  // Desktop view - original implementation
+  // Desktop view - original Dialog implementation
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -520,9 +553,9 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
 
         {practiceStage === PracticeStage.PROMPT && (
           <div className="px-6 py-8 space-y-4 md:space-y-6 flex-1 overflow-y-auto">
-            <DialogHeader className="mb-2 md:mb-4">
+            <div className="mb-2 md:mb-4">
               <h2 className="text-2xl font-bold mb-1 md:mb-2">{updatedExercise.title}</h2>
-              <DialogDescription className="text-sm md:text-base">
+              <div className="text-sm md:text-base">
                 <p className="text-lg font-medium mb-1 md:mb-2">Boost Your Understanding Before You Start</p>
                 <p className="text-base">
                   Dive into a Reading Analysis to see how words and grammar work — or skip straight to dictation.
@@ -530,8 +563,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
                 {loadingAnalysisCheck && (
                   <div className="mt-2 text-sm font-medium">Checking for existing analysis...</div>
                 )}
-              </DialogDescription>
-            </DialogHeader>
+              </div>
+            </div>
 
             <div className="md:grid-cols-2 gap-6 mt-6 grid grid-cols-1">
               <Card className="border-muted overflow-hidden hover:bg-muted/5 transition-colors dark:hover:bg-muted/10">
