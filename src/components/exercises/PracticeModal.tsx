@@ -340,38 +340,56 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     `;
   };
   
-  return (
-    <>
-      {/* Mobile-specific styles */}
-      {isMobile && (
-        <style jsx global>{`
-          .keyboard-open {
-            /* Optimize for keyboard interaction */
-            transform: translate3d(0, 0, 0);
-            backface-visibility: hidden;
-          }
-          
-          /* Prevent zoom on input focus for iOS */
-          input[type="text"],
-          textarea {
-            font-size: 16px !important;
-            transform: translate3d(0, 0, 0);
-          }
-          
-          /* Smooth transitions for viewport changes */
-          .mobile-modal-content {
-            transition: height 0.2s ease-out;
-          }
-          
-          /* Prevent overscroll bounce on iOS */
-          .mobile-modal-content {
-            overscroll-behavior: none;
-            -webkit-overflow-scrolling: touch;
-          }
-        `}</style>
-      )}
+  // Inject mobile-specific styles
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const styleId = 'practice-modal-mobile-styles';
+    let styleElement = document.getElementById(styleId) as HTMLStyleElement;
+    
+    if (!styleElement) {
+      styleElement = document.createElement('style');
+      styleElement.id = styleId;
+      document.head.appendChild(styleElement);
+    }
+
+    styleElement.textContent = `
+      .keyboard-open {
+        /* Optimize for keyboard interaction */
+        transform: translate3d(0, 0, 0) !important;
+        backface-visibility: hidden !important;
+      }
       
-      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      /* Prevent zoom on input focus for iOS */
+      input[type="text"],
+      textarea {
+        font-size: 16px !important;
+        transform: translate3d(0, 0, 0) !important;
+      }
+      
+      /* Smooth transitions for viewport changes */
+      .mobile-modal-content {
+        transition: height 0.2s ease-out !important;
+      }
+      
+      /* Prevent overscroll bounce on iOS */
+      .mobile-modal-content {
+        overscroll-behavior: none !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+    `;
+
+    return () => {
+      // Clean up styles when component unmounts
+      const existingStyle = document.getElementById(styleId);
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+    };
+  }, [isMobile]);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent 
           className={`
             ${getMobileDialogClasses()} 
@@ -498,8 +516,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
           )}
         </DialogContent>
       </Dialog>
-    </>
-  );
+    );
 };
 
 export default PracticeModal;
