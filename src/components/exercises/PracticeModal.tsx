@@ -340,6 +340,89 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
     `;
   };
   
+  // Mobile swipe gesture handling
+  useEffect(() => {
+    if (!isMobile || !isOpen) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      touchEndX = e.changedTouches[0].screenX;
+      touchEndY = e.changedTouches[0].screenY;
+      handleSwipeGesture();
+    };
+
+    const handleSwipeGesture = () => {
+      const swipeThreshold = 50; // Minimum distance for a swipe
+      const maxVerticalDistance = 100; // Maximum vertical movement to still count as horizontal swipe
+      
+      const horizontalDistance = touchEndX - touchStartX;
+      const verticalDistance = Math.abs(touchEndY - touchStartY);
+      
+      // Only process horizontal swipes
+      if (Math.abs(horizontalDistance) > swipeThreshold && verticalDistance < maxVerticalDistance) {
+        if (horizontalDistance > 0) {
+          // Swipe right → Go back to previous stage/close modal
+          handleSwipeBack();
+        } else {
+          // Swipe left → Go forward to next stage
+          handleSwipeForward();
+        }
+      }
+    };
+
+    const handleSwipeBack = () => {
+      // Navigate backwards through the modal stages
+      if (practiceStage === PracticeStage.DICTATION && !showResults) {
+        if (hasExistingAnalysis) {
+          // If user has existing analysis, go back to reading analysis
+          setPracticeStage(PracticeStage.READING);
+        } else {
+          // Otherwise go back to prompt
+          setPracticeStage(PracticeStage.PROMPT);
+        }
+      } else if (practiceStage === PracticeStage.READING) {
+        setPracticeStage(PracticeStage.PROMPT);
+      } else if (practiceStage === PracticeStage.PROMPT) {
+        // Close modal
+        handleOpenChange(false);
+      }
+    };
+
+    const handleSwipeForward = () => {
+      // Navigate forwards through the modal stages
+      if (practiceStage === PracticeStage.PROMPT) {
+        // Default forward action is to start dictation
+        setPracticeStage(PracticeStage.DICTATION);
+      } else if (practiceStage === PracticeStage.READING) {
+        setPracticeStage(PracticeStage.DICTATION);
+      }
+      // No forward action from dictation stage
+    };
+
+    // Add touch event listeners to the modal content
+    const modalElement = document.querySelector('[data-modal-content]');
+    if (modalElement) {
+      modalElement.addEventListener('touchstart', handleTouchStart, { passive: true });
+      modalElement.addEventListener('touchend', handleTouchEnd, { passive: true });
+    }
+
+    return () => {
+      if (modalElement) {
+        modalElement.removeEventListener('touchstart', handleTouchStart);
+        modalElement.removeEventListener('touchend', handleTouchEnd);
+      }
+    };
+  }, [isMobile, isOpen, practiceStage, showResults, hasExistingAnalysis]);
+
   // Inject mobile-specific styles
   useEffect(() => {
     if (!isMobile) return;
@@ -377,6 +460,11 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         overscroll-behavior: none !important;
         -webkit-overflow-scrolling: touch !important;
       }
+
+      /* Swipe gesture visual feedback */
+      .mobile-modal-content {
+        touch-action: pan-y pinch-zoom;
+      }
     `;
 
     return () => {
@@ -391,6 +479,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent 
+          data-modal-content
           className={`
             ${getMobileDialogClasses()} 
             overflow-hidden flex flex-col
