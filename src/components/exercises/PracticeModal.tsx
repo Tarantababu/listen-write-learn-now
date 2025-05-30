@@ -26,6 +26,8 @@ import {
   X,
   ArrowLeft,
   VolumeX,
+  BookOpen,
+  Mic,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -41,6 +43,13 @@ enum PracticeStage {
   PROMPT = 0,
   READING = 1,
   DICTATION = 2,
+}
+
+enum MobileTab {
+  SELECTION = 0,
+  READING = 1,
+  DICTATION = 2,
+  RESULTS = 3,
 }
 
 // Mobile-specific fullscreen modal wrapper
@@ -97,69 +106,205 @@ const MobileHeader: React.FC<{
   title: string
   onClose: () => void
   subtitle?: string
-}> = ({ title, onClose, subtitle }) => {
+  showTabs?: boolean
+  activeTab?: MobileTab
+  onTabChange?: (tab: MobileTab) => void
+  hasReadingAnalysis?: boolean
+}> = ({ title, onClose, subtitle, showTabs, activeTab, onTabChange, hasReadingAnalysis }) => {
   return (
-    <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 min-h-[60px] w-full">
-      <div className="flex items-center space-x-3 flex-1 min-w-0">
-        <Button variant="ghost" size="sm" onClick={onClose} className="h-10 w-10 p-0 flex-shrink-0" type="button">
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-semibold truncate text-gray-900 dark:text-white">{title}</h1>
-          {subtitle && <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{subtitle}</p>}
+    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 min-h-[60px] w-full">
+        <div className="flex items-center space-x-3 flex-1 min-w-0">
+          <Button variant="ghost" size="sm" onClick={onClose} className="h-10 w-10 p-0 flex-shrink-0" type="button">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-semibold truncate text-gray-900 dark:text-white">{title}</h1>
+            {subtitle && <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{subtitle}</p>}
+          </div>
         </div>
+      </div>
+
+      {/* Tabs */}
+      {showTabs && (
+        <div className="flex border-t border-gray-200 dark:border-gray-700">
+          {hasReadingAnalysis && (
+            <button
+              onClick={() => onTabChange?.(MobileTab.READING)}
+              className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === MobileTab.READING
+                  ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20"
+                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              }`}
+            >
+              <div className="flex items-center justify-center space-x-2">
+                <BookOpen className="h-4 w-4" />
+                <span>Reading</span>
+              </div>
+            </button>
+          )}
+          <button
+            onClick={() => onTabChange?.(MobileTab.DICTATION)}
+            className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === MobileTab.DICTATION
+                ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20"
+                : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            }`}
+          >
+            <div className="flex items-center justify-center space-x-2">
+              <Mic className="h-4 w-4" />
+              <span>Dictation</span>
+            </div>
+          </button>
+          <button
+            onClick={() => onTabChange?.(MobileTab.RESULTS)}
+            className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === MobileTab.RESULTS
+                ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20"
+                : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            }`}
+          >
+            <div className="flex items-center justify-center space-x-2">
+              <Check className="h-4 w-4" />
+              <span>Results</span>
+            </div>
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Mobile Selection Screen
+const MobileSelectionScreen: React.FC<{
+  exercise: Exercise
+  onSelectReading: () => void
+  onSelectDictation: () => void
+  onClose: () => void
+  analysisAllowed: boolean
+  loadingAnalysisCheck: boolean
+  subscription: any
+}> = ({
+  exercise,
+  onSelectReading,
+  onSelectDictation,
+  onClose,
+  analysisAllowed,
+  loadingAnalysisCheck,
+  subscription,
+}) => {
+  return (
+    <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
+      <MobileHeader title={exercise.title} subtitle="Choose your practice mode" onClose={onClose} />
+
+      <div className="flex-1 p-4 space-y-4">
+        <div className="text-center mb-6">
+          <h2 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">
+            Boost Your Understanding Before You Start
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Dive into a Reading Analysis to see how words and grammar work — or skip straight to dictation.
+          </p>
+          {loadingAnalysisCheck && (
+            <div className="mt-2 text-sm font-medium text-blue-600 dark:text-blue-400">
+              Checking for existing analysis...
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          {/* Reading Analysis Card */}
+          <Card className="border-2 border-blue-200 dark:border-blue-800">
+            <CardContent className="p-0">
+              <Button
+                onClick={onSelectReading}
+                variant="ghost"
+                disabled={!analysisAllowed || loadingAnalysisCheck}
+                className="h-auto py-6 px-4 w-full rounded-lg flex items-center space-x-4 bg-transparent hover:bg-blue-50 dark:hover:bg-blue-950/20"
+              >
+                <div className="flex items-center justify-center bg-blue-100 dark:bg-blue-900 w-12 h-12 rounded-full flex-shrink-0">
+                  <Search className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="text-left flex-1">
+                  <div className="font-semibold text-lg text-gray-900 dark:text-white mb-1">
+                    🔍 Start with Reading Analysis
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Explore vocabulary and grammar with AI explanations
+                  </p>
+                </div>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Dictation Card */}
+          <Card className="border-2 border-green-200 dark:border-green-800">
+            <CardContent className="p-0">
+              <Button
+                onClick={onSelectDictation}
+                variant="ghost"
+                className="h-auto py-6 px-4 w-full rounded-lg flex items-center space-x-4 bg-transparent hover:bg-green-50 dark:hover:bg-green-950/20"
+              >
+                <div className="flex items-center justify-center bg-green-100 dark:bg-green-900 w-12 h-12 rounded-full flex-shrink-0">
+                  <Headphones className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="text-left flex-1">
+                  <div className="font-semibold text-lg text-gray-900 dark:text-white mb-1">🎧 Start Dictation Now</div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Practice listening and transcription skills with audio
+                  </p>
+                </div>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Warning Message */}
+        {!analysisAllowed && !subscription.isSubscribed && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-md flex items-start dark:bg-amber-950/20 dark:border-amber-800/40 dark:text-amber-300">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-3 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-sm">Free user limit reached</p>
+              <p className="text-xs mt-1">
+                You've reached the limit of 5 reading analyses for free users. Upgrade to premium for unlimited
+                analyses.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-// Audio Player Component
-const AudioPlayer: React.FC<{
-  audioUrl: string
-  onPlayStateChange: (isPlaying: boolean) => void
-  onReady: () => void
-  onError: () => void
-}> = ({ audioUrl, onPlayStateChange, onReady, onError }) => {
-  const audioRef = useRef<HTMLAudioElement>(null)
-  const [isLoaded, setIsLoaded] = useState(false)
+// Mobile Reading Analysis Wrapper
+const MobileReadingAnalysisWrapper: React.FC<{
+  exercise: Exercise
+  onComplete: () => void
+  existingAnalysisId?: string
+  activeTab: MobileTab
+  onTabChange: (tab: MobileTab) => void
+  onClose: () => void
+  hasReadingAnalysis: boolean
+}> = ({ exercise, onComplete, existingAnalysisId, activeTab, onTabChange, onClose, hasReadingAnalysis }) => {
+  return (
+    <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
+      <MobileHeader
+        title={exercise.title}
+        subtitle="Reading Analysis"
+        onClose={onClose}
+        showTabs={true}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        hasReadingAnalysis={hasReadingAnalysis}
+      />
 
-  useEffect(() => {
-    const audioElement = audioRef.current
-
-    if (audioElement) {
-      const handleCanPlay = () => {
-        setIsLoaded(true)
-        onReady()
-      }
-
-      const handlePlay = () => onPlayStateChange(true)
-      const handlePause = () => onPlayStateChange(false)
-      const handleEnded = () => onPlayStateChange(false)
-      const handleError = () => {
-        console.error("Audio error:", audioElement.error)
-        onError()
-      }
-
-      audioElement.addEventListener("canplay", handleCanPlay)
-      audioElement.addEventListener("play", handlePlay)
-      audioElement.addEventListener("pause", handlePause)
-      audioElement.addEventListener("ended", handleEnded)
-      audioElement.addEventListener("error", handleError)
-
-      // Preload the audio
-      audioElement.load()
-
-      return () => {
-        audioElement.removeEventListener("canplay", handleCanPlay)
-        audioElement.removeEventListener("play", handlePlay)
-        audioElement.removeEventListener("pause", handlePause)
-        audioElement.removeEventListener("ended", handleEnded)
-        audioElement.removeEventListener("error", handleError)
-      }
-    }
-  }, [audioUrl, onPlayStateChange, onReady, onError])
-
-  return <audio ref={audioRef} src={audioUrl} preload="auto" className="hidden" controls={false} />
+      <div className="flex-1 overflow-hidden">
+        <ReadingAnalysis exercise={exercise} onComplete={onComplete} existingAnalysisId={existingAnalysisId} />
+      </div>
+    </div>
+  )
 }
 
 // Mobile Virtual Keyboard Component
@@ -297,11 +442,27 @@ const MobileDictationPractice: React.FC<{
   onComplete: (accuracy: number) => void
   showResults: boolean
   onTryAgain: () => void
+  activeTab: MobileTab
+  onTabChange: (tab: MobileTab) => void
   onClose: () => void
-}> = ({ exercise, onComplete, showResults, onTryAgain, onClose }) => {
-  const [userInput, setUserInput] = useState("")
+  hasReadingAnalysis: boolean
+  userInput: string
+  setUserInput: (input: string) => void
+  accuracy: number
+}> = ({
+  exercise,
+  onComplete,
+  showResults,
+  onTryAgain,
+  activeTab,
+  onTabChange,
+  onClose,
+  hasReadingAnalysis,
+  userInput,
+  setUserInput,
+  accuracy,
+}) => {
   const [isPlaying, setIsPlaying] = useState(false)
-  const [accuracy, setAccuracy] = useState(0)
   const [audioLoaded, setAudioLoaded] = useState(false)
   const [audioError, setAudioError] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -361,13 +522,12 @@ const MobileDictationPractice: React.FC<{
   const handleSubmit = () => {
     const correctText = exercise.text || ""
     const similarity = calculateSimilarity(userInput.trim(), correctText)
-    setAccuracy(similarity)
     onComplete(similarity)
+    onTabChange(MobileTab.RESULTS)
   }
 
   const handleTryAgainLocal = () => {
     setUserInput("")
-    setAccuracy(0)
     onTryAgain()
 
     // Focus on textarea after reset
@@ -376,11 +536,6 @@ const MobileDictationPractice: React.FC<{
         textareaRef.current.focus()
       }
     }, 100)
-  }
-
-  const handleAudioReady = () => {
-    setAudioLoaded(true)
-    setAudioError(false)
   }
 
   const handleAudioError = () => {
@@ -430,8 +585,15 @@ const MobileDictationPractice: React.FC<{
 
   return (
     <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
-      {/* Mobile Header */}
-      <MobileHeader title={exercise.title} subtitle="Listen and type what you hear" onClose={onClose} />
+      <MobileHeader
+        title={exercise.title}
+        subtitle="Listen and type what you hear"
+        onClose={onClose}
+        showTabs={true}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        hasReadingAnalysis={hasReadingAnalysis}
+      />
 
       {/* Audio Element */}
       <audio
@@ -447,104 +609,58 @@ const MobileDictationPractice: React.FC<{
 
       {/* Content Area - Scrollable */}
       <div className="flex-1 overflow-y-auto p-4">
-        {showResults ? (
-          <div className="space-y-4">
-            <div
-              className={`p-4 rounded-lg border ${accuracy >= 80 ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"}`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <h3
-                  className={`font-semibold text-lg ${accuracy >= 80 ? "text-green-800 dark:text-green-200" : "text-amber-800 dark:text-amber-200"}`}
-                >
-                  Results
-                </h3>
-                <span
-                  className={`text-sm font-bold px-2 py-1 rounded ${accuracy >= 80 ? "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200" : "bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200"}`}
-                >
-                  {accuracy}% Accuracy
-                </span>
-              </div>
+        <div className="space-y-4">
+          {/* Audio Status */}
+          <div
+            className={`p-3 rounded-lg flex items-center justify-center ${audioError ? "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300" : audioLoaded ? "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300" : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
+          >
+            {audioError ? (
+              <>
+                <VolumeX className="h-5 w-5 mr-2" />
+                <span className="text-sm font-medium">Audio failed to load</span>
+              </>
+            ) : !audioLoaded ? (
+              <>
+                <div className="h-5 w-5 mr-2 rounded-full border-2 border-t-transparent border-blue-500 animate-spin" />
+                <span className="text-sm">Loading audio...</span>
+              </>
+            ) : (
+              <>
+                <Volume2 className="h-5 w-5 mr-2" />
+                <span className="text-sm font-medium">{isPlaying ? "Audio is playing..." : "Audio ready to play"}</span>
+              </>
+            )}
+          </div>
 
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Answer:</p>
-                  <div className="bg-white dark:bg-gray-800 p-3 rounded border text-sm min-h-[60px]">
-                    {userInput || <span className="text-gray-400 italic">No answer provided</span>}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Correct Answer:</p>
-                  <div className="bg-white dark:bg-gray-800 p-3 rounded border text-sm">{exercise.text}</div>
-                </div>
-              </div>
-
-              {accuracy >= 80 ? (
-                <div className="mt-4 bg-green-100 dark:bg-green-900/30 p-3 rounded text-sm text-green-800 dark:text-green-200">
-                  Great job! You've successfully completed this dictation exercise.
-                </div>
-              ) : (
-                <div className="mt-4 bg-amber-100 dark:bg-amber-900/30 p-3 rounded text-sm text-amber-800 dark:text-amber-200">
-                  Keep practicing! Try listening again and focus on the words you missed.
-                </div>
-              )}
+          {/* Progress Indicator */}
+          <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-blue-700 dark:text-blue-300 font-medium">Dictation Practice</span>
+              <span className="text-blue-600 dark:text-blue-400">{userInput.length} characters</span>
             </div>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Audio Status */}
-            <div
-              className={`p-3 rounded-lg flex items-center justify-center ${audioError ? "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300" : audioLoaded ? "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300" : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
-            >
-              {audioError ? (
-                <>
-                  <VolumeX className="h-5 w-5 mr-2" />
-                  <span className="text-sm font-medium">Audio failed to load</span>
-                </>
-              ) : !audioLoaded ? (
-                <>
-                  <div className="h-5 w-5 mr-2 rounded-full border-2 border-t-transparent border-blue-500 animate-spin" />
-                  <span className="text-sm">Loading audio...</span>
-                </>
-              ) : (
-                <>
-                  <Volume2 className="h-5 w-5 mr-2" />
-                  <span className="text-sm font-medium">
-                    {isPlaying ? "Audio is playing..." : "Audio ready to play"}
-                  </span>
-                </>
-              )}
-            </div>
 
-            {/* Progress Indicator */}
-            <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-blue-700 dark:text-blue-300 font-medium">Dictation Practice</span>
-                <span className="text-blue-600 dark:text-blue-400">{userInput.length} characters</span>
-              </div>
-            </div>
-
-            {/* Text Input */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Type what you hear:</label>
-              <textarea
-                ref={textareaRef}
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                placeholder="Start typing here..."
-                className="w-full h-48 p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white text-base"
-                autoFocus
-              />
-            </div>
-
-            {/* Instructions */}
-            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Press <span className="font-medium">Play</span> to listen to the audio, then type what you hear. When
-                you're ready, click <span className="font-medium">Check Answer</span>.
-              </p>
-            </div>
+          {/* Text Input */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Type what you hear:</label>
+            <textarea
+              ref={textareaRef}
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              placeholder="Start typing here..."
+              className="w-full h-48 p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white text-base"
+              autoFocus
+            />
           </div>
-        )}
+
+          {/* Instructions */}
+          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Press <span className="font-medium">Play</span> to listen to the audio, then type what you hear. When
+              you're ready, click <span className="font-medium">Check Answer</span>.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Virtual Keyboard - Fixed at bottom */}
@@ -566,6 +682,96 @@ const MobileDictationPractice: React.FC<{
   )
 }
 
+// Mobile Results Screen
+const MobileResultsScreen: React.FC<{
+  exercise: Exercise
+  userInput: string
+  accuracy: number
+  onTryAgain: () => void
+  activeTab: MobileTab
+  onTabChange: (tab: MobileTab) => void
+  onClose: () => void
+  hasReadingAnalysis: boolean
+}> = ({ exercise, userInput, accuracy, onTryAgain, activeTab, onTabChange, onClose, hasReadingAnalysis }) => {
+  return (
+    <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
+      <MobileHeader
+        title={exercise.title}
+        subtitle="Dictation Results"
+        onClose={onClose}
+        showTabs={true}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        hasReadingAnalysis={hasReadingAnalysis}
+      />
+
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="space-y-4">
+          <div
+            className={`p-4 rounded-lg border ${accuracy >= 80 ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"}`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3
+                className={`font-semibold text-lg ${accuracy >= 80 ? "text-green-800 dark:text-green-200" : "text-amber-800 dark:text-amber-200"}`}
+              >
+                Results
+              </h3>
+              <span
+                className={`text-sm font-bold px-2 py-1 rounded ${accuracy >= 80 ? "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200" : "bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200"}`}
+              >
+                {accuracy}% Accuracy
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Answer:</p>
+                <div className="bg-white dark:bg-gray-800 p-3 rounded border text-sm min-h-[60px]">
+                  {userInput || <span className="text-gray-400 italic">No answer provided</span>}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Correct Answer:</p>
+                <div className="bg-white dark:bg-gray-800 p-3 rounded border text-sm">{exercise.text}</div>
+              </div>
+            </div>
+
+            {accuracy >= 80 ? (
+              <div className="mt-4 bg-green-100 dark:bg-green-900/30 p-3 rounded text-sm text-green-800 dark:text-green-200">
+                Great job! You've successfully completed this dictation exercise.
+              </div>
+            ) : (
+              <div className="mt-4 bg-amber-100 dark:bg-amber-900/30 p-3 rounded text-sm text-amber-800 dark:text-amber-200">
+                Keep practicing! Try listening again and focus on the words you missed.
+              </div>
+            )}
+          </div>
+
+          <div className="flex space-x-3">
+            <Button
+              onClick={onTryAgain}
+              className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+              type="button"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+            <Button
+              onClick={() => onTabChange(MobileTab.DICTATION)}
+              variant="outline"
+              className="flex-1 h-12 border-gray-300 dark:border-gray-600"
+              type="button"
+            >
+              <Mic className="h-4 w-4 mr-2" />
+              Back to Practice
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exercise, onComplete }) => {
   const [showResults, setShowResults] = useState(false)
   const [updatedExercise, setUpdatedExercise] = useState<Exercise | null>(exercise)
@@ -576,6 +782,11 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false)
   const hasInitializedRef = useRef<boolean>(false)
   const isMobile = useIsMobile()
+
+  // Mobile-specific state
+  const [mobileTab, setMobileTab] = useState<MobileTab>(MobileTab.SELECTION)
+  const [userInput, setUserInput] = useState("")
+  const [accuracy, setAccuracy] = useState(0)
 
   const { settings } = useUserSettingsContext()
   const { exercises, hasReadingAnalysis } = useExerciseContext()
@@ -616,7 +827,11 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
             setAnalysisId(analysisData.id)
           }
 
-          setPracticeStage(isMobile ? PracticeStage.DICTATION : PracticeStage.DICTATION)
+          if (isMobile) {
+            setMobileTab(MobileTab.DICTATION)
+          } else {
+            setPracticeStage(PracticeStage.DICTATION)
+          }
         } else {
           setHasExistingAnalysis(false)
           setAnalysisId(null)
@@ -638,7 +853,11 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
             }
           }
 
-          setPracticeStage(isMobile ? PracticeStage.DICTATION : PracticeStage.PROMPT)
+          if (isMobile) {
+            setMobileTab(MobileTab.SELECTION)
+          } else {
+            setPracticeStage(PracticeStage.PROMPT)
+          }
         }
       } catch (error) {
         console.error("Error checking analysis:", error)
@@ -657,11 +876,12 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
     }
   }, [exercise, user, isOpen, subscription.isSubscribed, hasReadingAnalysis, isMobile])
 
-  const handleComplete = (accuracy: number) => {
-    onComplete(accuracy)
+  const handleComplete = (accuracyScore: number) => {
+    setAccuracy(accuracyScore)
+    onComplete(accuracyScore)
     setShowResults(true)
 
-    if (updatedExercise && accuracy >= 95) {
+    if (updatedExercise && accuracyScore >= 95) {
       const newCompletionCount = Math.min(3, updatedExercise.completionCount + 1)
       const isCompleted = newCompletionCount >= 3
       setUpdatedExercise({
@@ -678,29 +898,53 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
       setUpdatedExercise(latestExerciseData || exercise)
     } else {
       setShowResults(false)
+      setUserInput("")
+      setAccuracy(0)
+      if (isMobile) {
+        setMobileTab(MobileTab.SELECTION)
+      }
     }
-  }, [isOpen, exercise, exercises])
+  }, [isOpen, exercise, exercises, isMobile])
 
   const handleOpenChange = (open: boolean) => {
     onOpenChange(open)
   }
 
   const handleStartDictation = () => {
-    setPracticeStage(PracticeStage.DICTATION)
+    if (isMobile) {
+      setMobileTab(MobileTab.DICTATION)
+    } else {
+      setPracticeStage(PracticeStage.DICTATION)
+    }
   }
 
   const handleStartReadingAnalysis = () => {
-    setPracticeStage(PracticeStage.READING)
+    if (isMobile) {
+      setMobileTab(MobileTab.READING)
+    } else {
+      setPracticeStage(PracticeStage.READING)
+    }
   }
 
   const handleViewReadingAnalysis = () => {
-    if (practiceStage === PracticeStage.DICTATION) {
+    if (isMobile) {
+      setMobileTab(MobileTab.READING)
+    } else if (practiceStage === PracticeStage.DICTATION) {
       setPracticeStage(PracticeStage.READING)
     }
   }
 
   const handleTryAgain = () => {
     setShowResults(false)
+    setUserInput("")
+    setAccuracy(0)
+    if (isMobile) {
+      setMobileTab(MobileTab.DICTATION)
+    }
+  }
+
+  const handleMobileTabChange = (tab: MobileTab) => {
+    setMobileTab(tab)
   }
 
   if (!updatedExercise || updatedExercise.language !== settings.selectedLanguage) return null
@@ -709,13 +953,58 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   if (isMobile) {
     return (
       <MobileModalWrapper isOpen={isOpen} onClose={() => handleOpenChange(false)}>
-        <MobileDictationPractice
-          exercise={updatedExercise}
-          onComplete={handleComplete}
-          showResults={showResults}
-          onTryAgain={handleTryAgain}
-          onClose={() => handleOpenChange(false)}
-        />
+        {mobileTab === MobileTab.SELECTION && (
+          <MobileSelectionScreen
+            exercise={updatedExercise}
+            onSelectReading={handleStartReadingAnalysis}
+            onSelectDictation={handleStartDictation}
+            onClose={() => handleOpenChange(false)}
+            analysisAllowed={analysisAllowed}
+            loadingAnalysisCheck={loadingAnalysisCheck}
+            subscription={subscription}
+          />
+        )}
+
+        {mobileTab === MobileTab.READING && (
+          <MobileReadingAnalysisWrapper
+            exercise={updatedExercise}
+            onComplete={handleStartDictation}
+            existingAnalysisId={analysisId || undefined}
+            activeTab={mobileTab}
+            onTabChange={handleMobileTabChange}
+            onClose={() => handleOpenChange(false)}
+            hasReadingAnalysis={hasExistingAnalysis}
+          />
+        )}
+
+        {mobileTab === MobileTab.DICTATION && (
+          <MobileDictationPractice
+            exercise={updatedExercise}
+            onComplete={handleComplete}
+            showResults={showResults}
+            onTryAgain={handleTryAgain}
+            activeTab={mobileTab}
+            onTabChange={handleMobileTabChange}
+            onClose={() => handleOpenChange(false)}
+            hasReadingAnalysis={hasExistingAnalysis}
+            userInput={userInput}
+            setUserInput={setUserInput}
+            accuracy={accuracy}
+          />
+        )}
+
+        {mobileTab === MobileTab.RESULTS && (
+          <MobileResultsScreen
+            exercise={updatedExercise}
+            userInput={userInput}
+            accuracy={accuracy}
+            onTryAgain={handleTryAgain}
+            activeTab={mobileTab}
+            onTabChange={handleMobileTabChange}
+            onClose={() => handleOpenChange(false)}
+            hasReadingAnalysis={hasExistingAnalysis}
+          />
+        )}
       </MobileModalWrapper>
     )
   }
