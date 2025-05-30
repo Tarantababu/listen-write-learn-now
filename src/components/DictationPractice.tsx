@@ -23,6 +23,7 @@ import { useSession } from '@/hooks/use-session';
 import { getLanguageShortcuts, applyShortcuts } from '@/utils/specialCharacters';
 import ConfettiCelebration from '@/components/ConfettiCelebration';
 import { ArrowRightIcon } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DictationPracticeProps {
   exercise: Exercise;
@@ -36,6 +37,7 @@ interface DictationPracticeProps {
   autoPlay?: boolean; // Prop to control auto-playing audio
   onNextExercise?: () => void; // New prop for next exercise navigation
   hasNextExercise?: boolean; // New prop to indicate if there's a next exercise
+  isFromLearningPlan?: boolean; // New prop to indicate if this is from learning plan
 }
 
 const DictationPractice: React.FC<DictationPracticeProps> = ({
@@ -49,7 +51,8 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   keepResultsVisible = false, // Default to false for backward compatibility
   autoPlay = false, // Default to false for backward compatibility
   onNextExercise,
-  hasNextExercise = false
+  hasNextExercise = false,
+  isFromLearningPlan = false
 }) => {
   const [userInput, setUserInput] = useState('');
   const [accuracy, setAccuracy] = useState<number | null>(null);
@@ -78,6 +81,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   const [progressValue, setProgressValue] = useState((exercise.completionCount / 3) * 100);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showMasteryMessage, setShowMasteryMessage] = useState(false);
+  const isMobile = useIsMobile();
   
   // Get shortcuts for the current language
   const shortcuts = getLanguageShortcuts(exercise.language);
@@ -375,24 +379,24 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       />
 
       {/* Header with exercise title and progress */}
-      <div className="p-4 border-b">
+      <div className={`p-4 border-b ${isMobile ? 'px-3' : ''}`}>
         <div className="flex justify-between items-center mb-2">
-          <h1 className="text-2xl font-bold">{exercise.title}</h1>
+          <h1 className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold`}>{exercise.title}</h1>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">Progress: {exercise.completionCount}/3</span>
+            <span className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600`}>Progress: {exercise.completionCount}/3</span>
             <Progress 
               value={progressValue} 
-              className="w-32 h-2" 
+              className={`${isMobile ? 'w-20 h-1.5' : 'w-32 h-2'}`}
               indicatorClassName="bg-indigo-600"
             />
           </div>
         </div>
         <div className="flex gap-2">
-          <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full capitalize">
+          <span className={`${isMobile ? 'text-xs px-1.5 py-0.5' : 'text-xs px-2 py-0.5'} bg-blue-100 text-blue-800 rounded-full capitalize`}>
             {exercise.language}
           </span>
           {exercise.tags.length > 0 && (
-            <span className="text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded-full">
+            <span className={`${isMobile ? 'text-xs px-1.5 py-0.5' : 'text-xs px-2 py-0.5'} bg-green-100 text-green-800 rounded-full`}>
               {exercise.tags[0]}
             </span>
           )}
@@ -400,7 +404,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
       </div>
       
       {!internalShowResults ? (
-        <div className="p-6 space-y-8">
+        <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-8`}>
           {/* Audio player */}
           <div className="flex flex-col items-center justify-center">
             {exercise.audioUrl && <audio ref={audioRef} src={exercise.audioUrl} />}
@@ -418,27 +422,27 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
             
             <div className="flex items-center justify-center gap-4 mb-4">
               <button 
-                className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
+                className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} rounded-full bg-gray-100 flex items-center justify-center`}
                 onClick={handleSkipBack}
               >
-                <SkipBack className="h-5 w-5 text-gray-700" />
+                <SkipBack className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-700`} />
               </button>
               
               <button 
-                className="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center"
+                className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} rounded-full bg-indigo-600 flex items-center justify-center`}
                 onClick={togglePlay}
               >
                 {isPlaying ? 
-                  <Pause className="h-8 w-8 text-white" /> : 
-                  <Play className="h-8 w-8 text-white ml-1" />
+                  <Pause className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} /> : 
+                  <Play className={`${isMobile ? 'h-6 w-6 ml-0.5' : 'h-8 w-8 ml-1'} text-white`} />
                 }
               </button>
               
               <button 
-                className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
+                className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} rounded-full bg-gray-100 flex items-center justify-center`}
                 onClick={handleSkipForward}
               >
-                <SkipForward className="h-5 w-5 text-gray-700" />
+                <SkipForward className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-gray-700`} />
               </button>
             </div>
             
@@ -453,7 +457,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
                 className="w-full"
                 disabled={!exercise.audioUrl}
               />
-              <div className="flex justify-between text-sm text-gray-500">
+              <div className={`flex justify-between ${isMobile ? 'text-xs' : 'text-sm'} text-gray-500`}>
                 <span>{formatTime(currentTime)}</span>
                 <span>{formatTime(duration)}</span>
               </div>
@@ -468,13 +472,13 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
               onChange={handleTextChange}
               onKeyDown={handleKeyDown}
               placeholder="Type what you hear..."
-              className="min-h-32 rounded-xl border-gray-200 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+              className={`${isMobile ? 'min-h-24' : 'min-h-32'} rounded-xl border-gray-200 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50`}
             />
             
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm text-gray-500">
-                  Press <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Shift</span> + <span className="px-2 py-1 bg-gray-100 rounded text-xs font-mono">Space</span> to play/pause
+                <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-500`}>
+                  Press <span className={`px-1.5 py-0.5 bg-gray-100 rounded ${isMobile ? 'text-xs' : 'text-xs'} font-mono`}>Shift</span> + <span className={`px-1.5 py-0.5 bg-gray-100 rounded ${isMobile ? 'text-xs' : 'text-xs'} font-mono`}>Space</span> to play/pause
                 </p>
                 
                 <SpecialCharacterHints language={exercise.language} />
@@ -497,7 +501,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
           <div className="flex justify-center items-center gap-4">
             <Button
               onClick={handleSubmit}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2 rounded-lg text-base"
+              className={`bg-indigo-600 hover:bg-indigo-700 text-white ${isMobile ? 'px-6 py-2 text-sm' : 'px-8 py-2 text-base'} rounded-lg`}
               disabled={!userInput.trim()}
             >
               Check Answer
@@ -507,10 +511,10 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
               <Button
                 onClick={onViewReadingAnalysis}
                 variant="outline"
-                className="flex items-center gap-2"
+                className={`flex items-center gap-2 ${isMobile ? 'text-sm' : ''}`}
               >
                 <BookOpen className="h-4 w-4" />
-                View Reading Analysis
+                {!isMobile && "View Reading Analysis"}
               </Button>
             )}
           </div>
@@ -520,24 +524,24 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
         <div className="overflow-hidden">
           {/* Show mastery celebration message if exercise was just mastered */}
           {showMasteryMessage && exercise.completionCount >= 3 && (
-            <div className="px-6 pt-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+            <div className={`${isMobile ? 'px-3 pt-2' : 'px-6 pt-4'}`}>
+              <div className={`bg-green-50 border border-green-200 rounded-lg ${isMobile ? 'p-3 mb-3' : 'p-4 mb-4'}`}>
                 <div className="flex items-center gap-3">
-                  <div className="text-2xl">🎉</div>
-                  <div>
-                    <h3 className="font-semibold text-green-800">Exercise Mastered!</h3>
-                    <p className="text-sm text-green-600">
+                  <div className={`${isMobile ? 'text-xl' : 'text-2xl'}`}>🎉</div>
+                  <div className="flex-1">
+                    <h3 className={`font-semibold text-green-800 ${isMobile ? 'text-sm' : ''}`}>Exercise Mastered!</h3>
+                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-green-600`}>
                       Congratulations! You've completed this exercise 3 times with high accuracy.
                     </p>
                   </div>
                 </div>
                 
-                {/* Show next exercise button if available */}
-                {hasNextExercise && onNextExercise && (
-                  <div className="mt-3 flex justify-end">
+                {/* Show next exercise button if available and from learning plan */}
+                {isFromLearningPlan && hasNextExercise && onNextExercise && (
+                  <div className={`${isMobile ? 'mt-2 flex justify-end' : 'mt-3 flex justify-end'}`}>
                     <Button
                       onClick={onNextExercise}
-                      className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                      className={`bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 ${isMobile ? 'text-sm px-3 py-1.5' : ''}`}
                     >
                       Next Exercise
                       <ArrowRightIcon className="h-4 w-4" />
@@ -549,27 +553,27 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
           )}
 
           <Tabs defaultValue="summary" className="w-full">
-            <div className="px-6 pt-4">
+            <div className={`${isMobile ? 'px-3 pt-2' : 'px-6 pt-4'}`}>
               <TabsList className={cn(
                 "w-full border border-gray-200 p-1 rounded-lg bg-gray-50", 
                 hideVocabularyTab ? "grid-cols-2" : "grid-cols-3"
               )}>
                 <TabsTrigger 
                   value="summary" 
-                  className="rounded-md py-2.5 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=active]:font-semibold"
+                  className={`rounded-md ${isMobile ? 'py-1.5 text-xs' : 'py-2.5 text-sm'} font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=active]:font-semibold`}
                 >
                   Summary
                 </TabsTrigger>
                 <TabsTrigger 
                   value="comparison" 
-                  className="rounded-md py-2.5 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=active]:font-semibold"
+                  className={`rounded-md ${isMobile ? 'py-1.5 text-xs' : 'py-2.5 text-sm'} font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=active]:font-semibold`}
                 >
                   Comparison
                 </TabsTrigger>
                 {!hideVocabularyTab && (
                   <TabsTrigger 
                     value="vocabulary" 
-                    className="rounded-md py-2.5 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=active]:font-semibold"
+                    className={`rounded-md ${isMobile ? 'py-1.5 text-xs' : 'py-2.5 text-sm'} font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=active]:font-semibold`}
                   >
                     Vocabulary
                   </TabsTrigger>
@@ -578,20 +582,20 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
             </div>
 
             <TabsContent value="summary" className="mt-0">
-              <ScrollArea className="h-[65vh] p-6">
+              <ScrollArea className={`${isMobile ? 'h-[60vh]' : 'h-[65vh]'} ${isMobile ? 'p-3' : 'p-6'}`}>
                 <div className="space-y-4">
                   {/* Stats section with cards layout */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div className={`grid grid-cols-1 ${isMobile ? 'gap-3 mb-4' : 'md:grid-cols-2 gap-4 mb-6'}`}>
                     {/* Accuracy card */}
                     <div className={cn(
-                      "p-6 rounded-lg border text-center flex flex-col items-center justify-center",
+                      `${isMobile ? 'p-4' : 'p-6'} rounded-lg border text-center flex flex-col items-center justify-center`,
                       accuracy && accuracy >= 95 ? "bg-success/10 border-success/50" :
                       accuracy && accuracy >= 70 ? "bg-amber-500/10 border-amber-500/50" :
                       "bg-destructive/10 border-destructive/50"
                     )}>
-                      <h3 className="font-medium mb-1 text-gray-600">Accuracy</h3>
+                      <h3 className={`font-medium mb-1 text-gray-600 ${isMobile ? 'text-sm' : ''}`}>Accuracy</h3>
                       <div className={cn(
-                        "text-4xl font-bold",
+                        `${isMobile ? 'text-2xl' : 'text-4xl'} font-bold`,
                         accuracy && accuracy >= 95 ? "text-success" :
                         accuracy && accuracy >= 70 ? "text-amber-500" :
                         "text-destructive"
@@ -600,95 +604,95 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
                       </div>
                       
                       {accuracy && accuracy >= 95 ? (
-                        <p className="text-sm text-success mt-2">
+                        <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-success mt-2`}>
                           Great job! This attempt counts toward your progress.
                         </p>
                       ) : (
-                        <p className="text-sm mt-2 text-muted-foreground">
+                        <p className={`${isMobile ? 'text-xs' : 'text-sm'} mt-2 text-muted-foreground`}>
                           You need at least 95% accuracy for it to count toward progress.
                         </p>
                       )}
                     </div>
 
                     {/* Stats breakdown card */}
-                    <div className="p-6 rounded-lg border bg-muted/30">
-                      <h3 className="font-medium mb-3 text-gray-600">Statistics</h3>
-                      <div className="grid grid-cols-5 gap-2">
-                        <div className={cn("p-2 rounded flex flex-col items-center", stats.correct > 0 ? "bg-success/20" : "bg-muted")}>
-                          <div className="text-xl font-bold">{stats.correct}</div>
-                          <div className="text-xs">Correct</div>
+                    <div className={`${isMobile ? 'p-4' : 'p-6'} rounded-lg border bg-muted/30`}>
+                      <h3 className={`font-medium mb-3 text-gray-600 ${isMobile ? 'text-sm' : ''}`}>Statistics</h3>
+                      <div className={`grid grid-cols-5 ${isMobile ? 'gap-1' : 'gap-2'}`}>
+                        <div className={cn(`${isMobile ? 'p-1.5' : 'p-2'} rounded flex flex-col items-center`, stats.correct > 0 ? "bg-success/20" : "bg-muted")}>
+                          <div className={`${isMobile ? 'text-base' : 'text-xl'} font-bold`}>{stats.correct}</div>
+                          <div className={`${isMobile ? 'text-xs' : 'text-xs'}`}>Correct</div>
                         </div>
-                        <div className={cn("p-2 rounded flex flex-col items-center", stats.almost > 0 ? "bg-amber-500/20" : "bg-muted")}>
-                          <div className="text-xl font-bold">{stats.almost}</div>
-                          <div className="text-xs">Almost</div>
+                        <div className={cn(`${isMobile ? 'p-1.5' : 'p-2'} rounded flex flex-col items-center`, stats.almost > 0 ? "bg-amber-500/20" : "bg-muted")}>
+                          <div className={`${isMobile ? 'text-base' : 'text-xl'} font-bold`}>{stats.almost}</div>
+                          <div className={`${isMobile ? 'text-xs' : 'text-xs'}`}>Almost</div>
                         </div>
-                        <div className={cn("p-2 rounded flex flex-col items-center", stats.incorrect > 0 ? "bg-destructive/20" : "bg-muted")}>
-                          <div className="text-xl font-bold">{stats.incorrect}</div>
-                          <div className="text-xs">Incorrect</div>
+                        <div className={cn(`${isMobile ? 'p-1.5' : 'p-2'} rounded flex flex-col items-center`, stats.incorrect > 0 ? "bg-destructive/20" : "bg-muted")}>
+                          <div className={`${isMobile ? 'text-base' : 'text-xl'} font-bold`}>{stats.incorrect}</div>
+                          <div className={`${isMobile ? 'text-xs' : 'text-xs'}`}>Incorrect</div>
                         </div>
-                        <div className={cn("p-2 rounded flex flex-col items-center", stats.missing > 0 ? "bg-blue-500/20" : "bg-muted")}>
-                          <div className="text-xl font-bold">{stats.missing}</div>
-                          <div className="text-xs">Missing</div>
+                        <div className={cn(`${isMobile ? 'p-1.5' : 'p-2'} rounded flex flex-col items-center`, stats.missing > 0 ? "bg-blue-500/20" : "bg-muted")}>
+                          <div className={`${isMobile ? 'text-base' : 'text-xl'} font-bold`}>{stats.missing}</div>
+                          <div className={`${isMobile ? 'text-xs' : 'text-xs'}`}>Missing</div>
                         </div>
-                        <div className={cn("p-2 rounded flex flex-col items-center", stats.extra > 0 ? "bg-purple-500/20" : "bg-muted")}>
-                          <div className="text-xl font-bold">{stats.extra}</div>
-                          <div className="text-xs">Extra</div>
+                        <div className={cn(`${isMobile ? 'p-1.5' : 'p-2'} rounded flex flex-col items-center`, stats.extra > 0 ? "bg-purple-500/20" : "bg-muted")}>
+                          <div className={`${isMobile ? 'text-base' : 'text-xl'} font-bold`}>{stats.extra}</div>
+                          <div className={`${isMobile ? 'text-xs' : 'text-xs'}`}>Extra</div>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Your Answer section */}
-                  <div className="border rounded-lg p-4">
-                    <h3 className="font-medium mb-3">Your Answer</h3>
+                  <div className={`border rounded-lg ${isMobile ? 'p-3' : 'p-4'}`}>
+                    <h3 className={`font-medium mb-3 ${isMobile ? 'text-sm' : ''}`}>Your Answer</h3>
                     <p 
-                      className="text-sm whitespace-pre-wrap p-3 bg-background rounded"
+                      className={`${isMobile ? 'text-xs' : 'text-sm'} whitespace-pre-wrap p-3 bg-background rounded`}
                       dangerouslySetInnerHTML={{ __html: highlightedErrors }}
                     ></p>
                   </div>
 
                   {/* Legend */}
-                  <div className="border rounded-lg p-4 bg-muted/20">
-                    <h3 className="font-medium mb-2">Legend</h3>
-                    <div className="grid grid-cols-2 gap-2">
+                  <div className={`border rounded-lg ${isMobile ? 'p-3' : 'p-4'} bg-muted/20`}>
+                    <h3 className={`font-medium mb-2 ${isMobile ? 'text-sm' : ''}`}>Legend</h3>
+                    <div className={`grid grid-cols-2 ${isMobile ? 'gap-1' : 'gap-2'}`}>
                       <div className="flex items-center gap-2">
                         <span className="w-3 h-3 rounded-full bg-success"></span>
-                        <span className="text-sm">Correct words</span>
+                        <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Correct words</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-3 h-3 rounded-full bg-amber-500"></span>
-                        <span className="text-sm">Almost correct (minor typos)</span>
+                        <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Almost correct</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-3 h-3 rounded-full bg-destructive"></span>
-                        <span className="text-sm">Incorrect words</span>
+                        <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Incorrect words</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                        <span className="text-sm">Missing words</span>
+                        <span className={`${isMobile ? 'text-xs' : 'text-sm'}`}>Missing words</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-between pt-4">
+                  <div className={`flex ${isMobile ? 'flex-col gap-2' : 'justify-between'} pt-4`}>
                     <div>
                       {hasReadingAnalysis && onViewReadingAnalysis && (
                         <Button
                           onClick={onViewReadingAnalysis}
                           variant="outline"
-                          className="flex items-center gap-2"
+                          className={`flex items-center gap-2 ${isMobile ? 'w-full text-sm' : ''}`}
                         >
                           <BookOpen className="h-4 w-4" />
                           View Reading Analysis
                         </Button>
                       )}
                     </div>
-                    <div className="flex gap-2">
-                      {/* Show next exercise button if mastered and available */}
-                      {showMasteryMessage && hasNextExercise && onNextExercise && (
+                    <div className={`flex ${isMobile ? 'flex-col' : ''} gap-2`}>
+                      {/* Show next exercise button if mastered and available and from learning plan */}
+                      {showMasteryMessage && isFromLearningPlan && hasNextExercise && onNextExercise && (
                         <Button
                           onClick={onNextExercise}
-                          className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                          className={`bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 ${isMobile ? 'w-full text-sm' : ''}`}
                         >
                           Next Exercise
                           <ArrowRightIcon className="h-4 w-4" />
@@ -696,7 +700,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
                       )}
                       <Button
                         onClick={handleTryAgain}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                        className={`bg-indigo-600 hover:bg-indigo-700 text-white ${isMobile ? 'w-full text-sm' : ''}`}
                       >
                         Try Again
                       </Button>
@@ -707,7 +711,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
             </TabsContent>
 
             <TabsContent value="comparison" className="mt-0">
-              <ScrollArea className="h-[65vh] p-6">
+              <ScrollArea className={`${isMobile ? 'h-[60vh]' : 'h-[65vh]'} ${isMobile ? 'p-3' : 'p-6'}`}>
                 <div className="space-y-4">
                   {/* Detailed comparison */}
                   <div className="border rounded-lg p-4">
@@ -756,7 +760,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
 
             {!hideVocabularyTab && (
               <TabsContent value="vocabulary" className="mt-0">
-                <ScrollArea className="h-[65vh]">
+                <ScrollArea className={`${isMobile ? 'h-[60vh]' : 'h-[65vh]'}`}>
                   <VocabularyHighlighter exercise={exercise} />
                 </ScrollArea>
               </TabsContent>

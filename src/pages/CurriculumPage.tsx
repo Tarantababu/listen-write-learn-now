@@ -1,5 +1,4 @@
-
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useCurriculumExercises } from '@/hooks/use-curriculum-exercises';
 import { toast } from 'sonner';
@@ -7,10 +6,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import UnitAccordion from '@/components/curriculum/UnitAccordion';
 import CurriculumSidebar from '@/components/curriculum/CurriculumSidebar';
+import PracticeModal from '@/components/exercises/PracticeModal';
+import { Exercise } from '@/types';
 
 const CurriculumPage: React.FC = () => {
   const {
-    copyDefaultExercise
+    copyDefaultExercise,
+    markProgress
   } = useExerciseContext();
   const {
     exercisesByTag,
@@ -22,15 +24,55 @@ const CurriculumPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Practice modal state
+  const [isPracticeModalOpen, setIsPracticeModalOpen] = useState(false);
+  const [exerciseToPractice, setExerciseToPractice] = useState<Exercise | null>(null);
+  const [nextExerciseId, setNextExerciseId] = useState<string | null>(null);
+
   // Get URL parameters
   const tabParam = searchParams.get('tab') || 'learning-plan';
   const openTagParam = searchParams.get('openTag');
+  const defaultExerciseId = searchParams.get('defaultExerciseId');
+  const action = searchParams.get('action');
+  const nextExerciseParam = searchParams.get('nextExerciseId');
 
   // Refresh data when the component mounts
   useEffect(() => {
     console.log("CurriculumPage: Refreshing data on mount");
     refreshData();
   }, [refreshData]);
+
+  // Handle URL parameters for practicing exercises
+  useEffect(() => {
+    const handleExerciseFromURL = async () => {
+      if (defaultExerciseId && action === 'practice') {
+        try {
+          console.log(`Processing exercise from URL: ${defaultExerciseId}, next: ${nextExerciseParam}`);
+          
+          // Find the exercise in the exercises list
+          const exerciseToOpen = Object.values(exercisesByTag)
+            .flat()
+            .find(ex => ex.id === defaultExerciseId);
+          
+          if (exerciseToOpen) {
+            setExerciseToPractice(exerciseToOpen);
+            setNextExerciseId(nextExerciseParam);
+            setIsPracticeModalOpen(true);
+            
+            // Clear the URL parameters
+            navigate('/dashboard/learning-plan', { replace: true });
+          }
+        } catch (error) {
+          console.error('Error processing exercise from URL:', error);
+          toast.error('Failed to open the exercise');
+        }
+      }
+    };
+    
+    if (!loading && Object.keys(exercisesByTag).length > 0) {
+      handleExerciseFromURL();
+    }
+  }, [defaultExerciseId, action, nextExerciseParam, exercisesByTag, loading, navigate]);
 
   // Handle tab change
   const handleTabChange = (value: string) => {
@@ -54,26 +96,29 @@ const CurriculumPage: React.FC = () => {
   const handlePracticeExercise = async (id: string, tag?: string) => {
     console.log(`Opening practice for exercise with ID: ${id}`);
     
+    // Find the exercise
+    const exercise = Object.values(exercisesByTag)
+      .flat()
+      .find(ex => ex.id === id);
+    
+    if (!exercise) {
+      toast.error('Exercise not found');
+      return;
+    }
+
     // Find if there's a next exercise for navigation
-    let nextExerciseId = null;
+    let nextExercise = null;
     if (tag) {
-      const nextExercise = findNextExercise(id, tag);
-      if (nextExercise && nextExercise.status === 'not-started') {
-        nextExerciseId = nextExercise.id;
+      nextExercise = findNextExercise(id, tag);
+      // Only show next if it's not started
+      if (nextExercise && nextExercise.status !== 'not-started') {
+        nextExercise = null;
       }
     }
     
-    // Navigate to exercises page with the exercise ID and next exercise info
-    const params = new URLSearchParams({
-      defaultExerciseId: id,
-      action: 'practice'
-    });
-    
-    if (nextExerciseId) {
-      params.set('nextExerciseId', nextExerciseId);
-    }
-    
-    navigate(`/dashboard/exercises?${params.toString()}`);
+    setExerciseToPractice(exercise);
+    setNextExerciseId(nextExercise?.id || null);
+    setIsPracticeModalOpen(true);
   };
 
   const handleAddExercise = async (id: string) => {
@@ -85,6 +130,65 @@ const CurriculumPage: React.FC = () => {
     } catch (error) {
       console.error('Error copying exercise:', error);
       toast.error('Failed to add exercise to your list');
+    }
+  };
+
+  const handlePracticeComplete = (accuracy: number) => {
+    if (!exerciseToPractice) return;
+    markProgress(exerciseToPractice.id, accuracy);
+    
+    if (accuracy >= 95) {
+      const updatedCompletionCount = exerciseToPractice.completionCount + 1;
+      if (updatedCompletionCount >= 3 && !exerciseToPractice.isCompleted) {
+        toast.success('Congratulations! You have mastered this exercise!');
+      } else {
+        toast.success(`Great job! ${3 - updatedCompletionCount} more successful attempts until mastery.`);
+      }
+    }
+  };
+
+  const handleNextExercise = () => {
+    if (!nextExerciseId) return;
+    
+    // Find the next exercise
+    const nextExercise = Object.values(exercisesByTag)
+      .flat()
+      .find(ex => ex.id === nextExerciseId);
+    
+    if (nextExercise) {
+      // Find the tag for next exercise navigation
+      const nextExerciseTag = Object.keys(exercisesByTag).find(tag => 
+        exercisesByTag[tag].some(ex => ex.id === nextExerciseId)
+      );
+      
+      // Find the next exercise after this one
+      let nextNextExercise = null;
+      if (nextExerciseTag) {
+        nextNextExercise = findNextExercise(nextExerciseId, nextExerciseTag);
+        if (nextNextExercise && nextNextExercise.status !== 'not-started') {
+          nextNextExercise = null;
+        }
+      }
+      
+      setExerciseToPractice(nextExercise);
+      setNextExerciseId(nextNextExercise?.id || null);
+      // Keep the modal open for the next exercise
+    }
+  };
+
+  const handlePracticeModalClose = (open: boolean) => {
+    setIsPracticeModalOpen(open);
+    if (!open) {
+      setTimeout(() => {
+        setExerciseToPractice(null);
+        setNextExerciseId(null);
+        refreshData();
+        
+        // Navigate to in-progress tab if exercise was completed from learning plan
+        if (exerciseToPractice && exerciseToPractice.completionCount < 3) {
+          setSearchParams({ tab: 'in-progress' });
+        }
+      }, 300);
     }
   };
 
@@ -121,9 +225,6 @@ const CurriculumPage: React.FC = () => {
   const hasInProgressExercises = Object.keys(inProgressTagMap).length > 0;
   
   return <div className="container mx-auto px-4 py-8">
-      {/* Greeting Section */}
-      
-      
       {/* Tabs */}
       <Tabs value={tabParam} onValueChange={handleTabChange} className="mb-8">
         <TabsList>
@@ -189,6 +290,19 @@ const CurriculumPage: React.FC = () => {
           </div>
         </TabsContent>
       </Tabs>
+      
+      {/* Practice Modal */}
+      {exerciseToPractice && (
+        <PracticeModal
+          isOpen={isPracticeModalOpen}
+          onOpenChange={handlePracticeModalClose}
+          exercise={exerciseToPractice}
+          onComplete={handlePracticeComplete}
+          onNextExercise={nextExerciseId ? handleNextExercise : undefined}
+          hasNextExercise={!!nextExerciseId}
+          isFromLearningPlan={true}
+        />
+      )}
     </div>;
 };
 
