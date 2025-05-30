@@ -5,11 +5,7 @@ import { Button } from "@/components/ui/button"
 import type { Exercise } from "@/types"
 import DictationPractice from "@/components/DictationPractice"
 import ReadingAnalysis from "@/components/ReadingAnalysis"
-import { useUserSettingsContext } from "@/contexts/UserSettingsContext"
-import { useExerciseContext } from "@/contexts/ExerciseContext"
 import { supabase } from "@/integrations/supabase/client"
-import { useAuth } from "@/contexts/AuthContext"
-import { useSubscription } from "@/contexts/SubscriptionContext"
 import { toast } from "@/hooks/use-toast"
 import {
   AlertTriangle,
@@ -35,7 +31,6 @@ import {
   BookMarked,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
-import { useIsMobile } from "@/hooks/use-mobile"
 
 interface PracticeModalProps {
   isOpen: boolean
@@ -231,6 +226,7 @@ const MobileHeader: React.FC<{
   hasReadingAnalysis?: boolean
   completionCount?: number
   isCompleted?: boolean
+  showResults?: boolean
 }> = ({
   title,
   onClose,
@@ -241,6 +237,7 @@ const MobileHeader: React.FC<{
   hasReadingAnalysis,
   completionCount = 0,
   isCompleted = false,
+  showResults = false,
 }) => {
   return (
     <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
@@ -291,19 +288,21 @@ const MobileHeader: React.FC<{
               <span>Dictation</span>
             </div>
           </button>
-          <button
-            onClick={() => onTabChange?.(MobileTab.RESULTS)}
-            className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === MobileTab.RESULTS
-                ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20"
-                : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-            }`}
-          >
-            <div className="flex items-center justify-center space-x-2">
-              <Check className="h-4 w-4" />
-              <span>Results</span>
-            </div>
-          </button>
+          {showResults && (
+            <button
+              onClick={() => onTabChange?.(MobileTab.RESULTS)}
+              className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === MobileTab.RESULTS
+                  ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20"
+                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              }`}
+            >
+              <div className="flex items-center justify-center space-x-2">
+                <Check className="h-4 w-4" />
+                <span>Results</span>
+              </div>
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -425,7 +424,17 @@ const MobileReadingAnalysisWrapper: React.FC<{
   onTabChange: (tab: MobileTab) => void
   onClose: () => void
   hasReadingAnalysis: boolean
-}> = ({ exercise, onComplete, existingAnalysisId, activeTab, onTabChange, onClose, hasReadingAnalysis }) => {
+  showResults?: boolean
+}> = ({
+  exercise,
+  onComplete,
+  existingAnalysisId,
+  activeTab,
+  onTabChange,
+  onClose,
+  hasReadingAnalysis,
+  showResults = false,
+}) => {
   return (
     <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
       <MobileHeader
@@ -438,6 +447,7 @@ const MobileReadingAnalysisWrapper: React.FC<{
         hasReadingAnalysis={hasReadingAnalysis}
         completionCount={exercise.completionCount}
         isCompleted={exercise.isCompleted}
+        showResults={showResults}
       />
 
       <div className="flex-1 overflow-hidden">
@@ -735,6 +745,7 @@ const MobileDictationPractice: React.FC<{
         hasReadingAnalysis={hasReadingAnalysis}
         completionCount={exercise.completionCount}
         isCompleted={exercise.isCompleted}
+        showResults={showResults}
       />
 
       {/* Audio Element */}
@@ -854,6 +865,7 @@ const MobileResultsScreen: React.FC<{
   >([])
   const [isLoadingVocabulary, setIsLoadingVocabulary] = useState(false)
   const [vocabularyError, setVocabularyError] = useState<string | null>(null)
+  const [savedWords, setSavedWords] = useState<string[]>([])
 
   // Compare user input with correct text
   const getComparison = () => {
@@ -881,6 +893,26 @@ const MobileResultsScreen: React.FC<{
 
   const comparison = getComparison()
 
+  // Extract vocabulary directly from text
+  const extractVocabularyFromText = (text: string) => {
+    // Remove punctuation and split into words
+    const words = text
+      .toLowerCase()
+      .replace(/[.,!?;:()[\]{}""'']/g, "")
+      .split(/\s+/)
+      .filter((word) => word.length > 2)
+
+    // Get unique words
+    const uniqueWords = [...new Set(words)]
+
+    // Create vocabulary items
+    return uniqueWords.slice(0, 15).map((word) => ({
+      word,
+      translation: "", // Will be filled if available from database
+      partOfSpeech: "", // Will be filled if available from database
+    }))
+  }
+
   // Load vocabulary when the vocabulary tab is selected
   useEffect(() => {
     const fetchVocabulary = async () => {
@@ -897,46 +929,58 @@ const MobileResultsScreen: React.FC<{
           return
         }
 
-        // Extract unique words (similar to desktop implementation)
-        const words = text
-          .toLowerCase()
-          .replace(/[.,!?;:()[\]{}""'']/g, "")
-          .split(/\s+/)
-          .filter((word) => word.length > 2)
-          .filter((word, index, self) => self.indexOf(word) === index)
-          .slice(0, 15) // Limit to 15 words for mobile display
+        // First, extract basic vocabulary from text
+        const basicVocabulary = extractVocabularyFromText(text)
 
-        // Fetch vocabulary data from API (simulating what desktop does)
-        const { data: vocabularyData, error } = await supabase
-          .from("vocabulary")
-          .select("word, translation, part_of_speech")
-          .in("word", words)
-          .eq("language", exercise.language)
+        // Try to fetch enhanced vocabulary data from database
+        try {
+          const words = basicVocabulary.map((item) => item.word)
 
-        if (error) {
-          console.error("Error fetching vocabulary:", error)
-          setVocabularyError("Failed to load vocabulary data")
-          return
+          const { data: vocabularyData, error } = await supabase
+            .from("vocabulary")
+            .select("word, translation, part_of_speech")
+            .in("word", words)
+            .eq("language", exercise.language)
+
+          if (error) {
+            console.error("Database error:", error)
+            // Continue with basic vocabulary
+          } else if (vocabularyData && vocabularyData.length > 0) {
+            // Create a map for quick lookup
+            const vocabMap = new Map()
+            vocabularyData.forEach((item) => {
+              vocabMap.set(item.word, {
+                translation: item.translation || "",
+                partOfSpeech: item.part_of_speech || "",
+              })
+            })
+
+            // Enhance basic vocabulary with database data where available
+            const enhancedVocabulary = basicVocabulary.map((item) => {
+              const dbData = vocabMap.get(item.word)
+              return {
+                word: item.word,
+                translation: dbData?.translation || "Translation not available",
+                partOfSpeech: dbData?.partOfSpeech || "unknown",
+              }
+            })
+
+            setVocabularyItems(enhancedVocabulary)
+            return
+          }
+        } catch (dbError) {
+          console.error("Error fetching from database:", dbError)
+          // Continue with basic vocabulary
         }
 
-        // If we have vocabulary data, use it
-        if (vocabularyData && vocabularyData.length > 0) {
-          setVocabularyItems(
-            vocabularyData.map((item) => ({
-              word: item.word,
-              translation: item.translation || "No translation available",
-              partOfSpeech: item.part_of_speech || "unknown",
-            })),
-          )
-        } else {
-          // Fallback: Generate basic vocabulary items
-          const basicVocabulary = words.map((word) => ({
-            word,
+        // If we reach here, use the basic vocabulary
+        setVocabularyItems(
+          basicVocabulary.map((item) => ({
+            ...item,
             translation: "Translation not available",
             partOfSpeech: "unknown",
-          }))
-          setVocabularyItems(basicVocabulary)
-        }
+          })),
+        )
       } catch (error) {
         console.error("Error in vocabulary processing:", error)
         setVocabularyError("An error occurred while processing vocabulary")
@@ -947,6 +991,17 @@ const MobileResultsScreen: React.FC<{
 
     fetchVocabulary()
   }, [resultsTab, exercise])
+
+  // Handle saving words to vocabulary list
+  const toggleSaveWord = (word: string) => {
+    setSavedWords((prev) => {
+      if (prev.includes(word)) {
+        return prev.filter((w) => w !== word)
+      } else {
+        return [...prev, word]
+      }
+    })
+  }
 
   return (
     <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
@@ -962,6 +1017,7 @@ const MobileResultsScreen: React.FC<{
         hasReadingAnalysis={hasReadingAnalysis}
         completionCount={exercise.completionCount}
         isCompleted={exercise.isCompleted}
+        showResults={true}
       />
 
       {/* Results Sub-tabs */}
@@ -1117,29 +1173,54 @@ const MobileResultsScreen: React.FC<{
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {vocabularyItems.map((item, index) => (
-                    <div key={index} className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div className="font-medium text-blue-800 dark:text-blue-200">{item.word}</div>
-                        <div className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
-                          {item.partOfSpeech}
+                  {vocabularyItems.map((item, index) => {
+                    const isCorrect = comparison.some(
+                      (c) => c.correct.toLowerCase() === item.word.toLowerCase() && c.isMatch,
+                    )
+                    const isSaved = savedWords.includes(item.word)
+
+                    return (
+                      <div key={index} className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium text-blue-800 dark:text-blue-200">{item.word}</div>
+                          <div className="flex items-center space-x-2">
+                            {item.partOfSpeech !== "unknown" && (
+                              <div className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
+                                {item.partOfSpeech}
+                              </div>
+                            )}
+                            <button
+                              onClick={() => toggleSaveWord(item.word)}
+                              className={`p-1 rounded-full ${isSaved ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-900 dark:text-yellow-300" : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"}`}
+                            >
+                              <Star className={`h-4 w-4 ${isSaved ? "fill-yellow-500" : ""}`} />
+                            </button>
+                          </div>
+                        </div>
+                        {item.translation !== "Translation not available" && (
+                          <div className="text-sm text-blue-600 dark:text-blue-400 mt-1">{item.translation}</div>
+                        )}
+                        <div className="text-xs text-blue-500 dark:text-blue-400 mt-2 flex items-center">
+                          {isCorrect ? (
+                            <>
+                              <Check className="h-3 w-3 mr-1" /> Correctly identified
+                            </>
+                          ) : (
+                            <>
+                              <AlertTriangle className="h-3 w-3 mr-1" /> Review this word
+                            </>
+                          )}
                         </div>
                       </div>
-                      <div className="text-sm text-blue-600 dark:text-blue-400 mt-1">{item.translation}</div>
-                      <div className="text-xs text-blue-500 dark:text-blue-400 mt-2">
-                        {comparison.find((c) => c.correct.toLowerCase() === item.word.toLowerCase())?.isMatch
-                          ? "✓ Correctly identified"
-                          : "⚠ Review this word"}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
 
             <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Focus on practicing these key vocabulary words to improve your listening comprehension.
+                Tap the star icon to save words to your vocabulary list for future practice.
               </p>
             </div>
           </div>
@@ -1169,11 +1250,99 @@ const MobileResultsScreen: React.FC<{
   )
 }
 
-const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exercise, onComplete }) => {
-  const [showResults, setShowResults] = useState(false)
+// Update the MobileDictationPractice component to pass showResults to MobileHeader
+const MobileDictationPractice: React.FC<{
+  exercise: Exercise
+  onComplete: (accuracy: number) => void
+  showResults: boolean
+  onTryAgain: () => void
+  activeTab: MobileTab
+  onTabChange: (tab: MobileTab) => void
+  onClose: () => void
+  hasReadingAnalysis: boolean
+  userInput: string
+  setUserInput: (input: string) => void
+  accuracy: number
+}> = ({
+  exercise,
+  onComplete,
+  showResults,
+  onTryAgain,
+  activeTab,
+  onTabChange,
+  onClose,
+  hasReadingAnalysis,
+  userInput,
+  setUserInput,
+  accuracy,
+}) => {
+  // Rest of the component remains the same...
+
+  return (
+    <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
+      <MobileHeader
+        title={exercise.title}
+        subtitle="Listen and type what you hear"
+        onClose={onClose}
+        showTabs={true}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        hasReadingAnalysis={hasReadingAnalysis}
+        completionCount={exercise.completionCount}
+        isCompleted={exercise.isCompleted}
+        showResults={showResults}
+      />
+
+      {/* Rest of the component remains the same... */}
+}
+
+// Update the MobileReadingAnalysisWrapper component to pass showResults to MobileHeader
+const MobileReadingAnalysisWrapper: React.FC<{\
+  exercise: Exercise\
+  onComplete: () => void\
+  existingAnalysisId?: string
+  activeTab: MobileTab\
+  onTabChange: (tab: MobileTab) => void\
+  onClose: () => void
+  hasReadingAnalysis: boolean\
+  showResults?: boolean
+}> = ({ 
+  exercise, 
+  onComplete, 
+  existingAnalysisId, 
+  activeTab, 
+  onTabChange, 
+  onClose, 
+  hasReadingAnalysis,
+  showResults = false
+}) => {\
+  return (
+    <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
+      <MobileHeader
+        title={exercise.title}
+        subtitle="Reading Analysis"
+        onClose={onClose}
+        showTabs={true}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        hasReadingAnalysis={hasReadingAnalysis}
+        completionCount={exercise.completionCount}
+        isCompleted={exercise.isCompleted}
+        showResults={showResults}
+      />
+
+      <div className="flex-1 overflow-hidden">
+        <ReadingAnalysis exercise={exercise} onComplete={onComplete} existingAnalysisId={existingAnalysisId} />
+      </div>
+    </div>
+  )
+}
+
+const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exercise, onComplete }) => {\
+  const [showResults, setShowResults] = useState(false)\
   const [updatedExercise, setUpdatedExercise] = useState<Exercise | null>(exercise)
   const [practiceStage, setPracticeStage] = useState<PracticeStage>(PracticeStage.PROMPT)
-  const [hasExistingAnalysis, setHasExistingAnalysis] = useState<boolean>(false)
+  const [hasExistingAnalysis, setHasExistingAnalysis] = useState<boolean>(false)\
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true)
   const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false)
@@ -1192,8 +1361,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   const { subscription } = useSubscription()
 
   // Update exercise state when prop or context changes
-  useEffect(() => {
-    if (exercise) {
+  useEffect(() => {\
+    if (exercise) {\
       const latestExerciseData = exercises.find((ex) => ex.id === exercise.id)
       setUpdatedExercise(latestExerciseData || exercise)
     } else {
@@ -1202,18 +1371,18 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   }, [exercise, exercises])
 
   // Check for existing analysis when modal opens
-  useEffect(() => {
-    const checkExistingAnalysis = async () => {
+  useEffect(() => {\
+    const checkExistingAnalysis = async () => {\
       if (!exercise || !user || !isOpen) return
 
       try {
         setLoadingAnalysisCheck(true)
-
+\
         const hasAnalysis = await hasReadingAnalysis(exercise.id)
 
         if (hasAnalysis) {
           setHasExistingAnalysis(true)
-
+\
           const { data: analysisData } = await supabase
             .from("reading_analyses")
             .select("id")
@@ -1231,10 +1400,10 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
             setPracticeStage(PracticeStage.DICTATION)
           }
         } else {
-          setHasExistingAnalysis(false)
+          setHasExistingAnalysis(false)\
           setAnalysisId(null)
 
-          if (!subscription.isSubscribed) {
+          if (!subscription.isSubscribed) {\
             const { data: profileData } = await supabase
               .from("profiles")
               .select("reading_analyses_count")
@@ -1242,9 +1411,9 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
               .maybeSingle()
 
             if (profileData && profileData.reading_analyses_count >= 5) {
-              setAnalysisAllowed(false)
+              setAnalysisAllowed(false)\
               toast({
-                title: "Free user limit reached",
+                title: \"Free user limit reached",
                 description: "Free users are limited to 5 reading analyses. Upgrade to premium for unlimited analyses.",
                 variant: "destructive",
               })
@@ -1265,7 +1434,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
     }
 
     if (isOpen && !hasInitializedRef.current) {
-      checkExistingAnalysis()
+      checkExistingAnalysis()\
       hasInitializedRef.current = true
     }
 
@@ -1275,34 +1444,34 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   }, [exercise, user, isOpen, subscription.isSubscribed, hasReadingAnalysis, isMobile])
 
   const handleComplete = (accuracyScore: number) => {
-    setAccuracy(accuracyScore)
+    setAccuracy(accuracyScore)\
     onComplete(accuracyScore)
     setShowResults(true)
 
-    if (updatedExercise && accuracyScore >= 95) {
+    if (updatedExercise && accuracyScore >= 95) {\
       const newCompletionCount = Math.min(3, updatedExercise.completionCount + 1)
       const isCompleted = newCompletionCount >= 3
 
       // Show confetti if exercise is completed (3/3)
       if (isCompleted && !updatedExercise.isCompleted) {
-        setShowConfetti(true)
+        setShowConfetti(true)\
         setTimeout(() => setShowConfetti(false), 5000) // Hide confetti after 5 seconds
       }
 
       setUpdatedExercise({
-        ...updatedExercise,
+        ...updatedExercise,\
         completionCount: newCompletionCount,
         isCompleted,
       })
     }
   }
 
-  useEffect(() => {
-    if (isOpen) {
+  useEffect(() => {\
+    if (isOpen) {\
       const latestExerciseData = exercises.find((ex) => ex?.id === exercise?.id)
       setUpdatedExercise(latestExerciseData || exercise)
     } else {
-      setShowResults(false)
+      setShowResults(false)\
       setUserInput("")
       setAccuracy(0)
       setShowConfetti(false)
@@ -1316,7 +1485,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
     onOpenChange(open)
   }
 
-  const handleStartDictation = () => {
+  const handleStartDictation = () => {\
     if (isMobile) {
       setMobileTab(MobileTab.DICTATION)
     } else {
@@ -1324,7 +1493,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
     }
   }
 
-  const handleStartReadingAnalysis = () => {
+  const handleStartReadingAnalysis = () => {\
     if (isMobile) {
       setMobileTab(MobileTab.READING)
     } else {
@@ -1381,6 +1550,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
             onTabChange={handleMobileTabChange}
             onClose={() => handleOpenChange(false)}
             hasReadingAnalysis={hasExistingAnalysis}
+            showResults={showResults}
           />
         )}
 
@@ -1400,7 +1570,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
           />
         )}
 
-        {mobileTab === MobileTab.RESULTS && (
+        {mobileTab === MobileTab.RESULTS && showResults && (
           <MobileResultsScreen
             exercise={updatedExercise}
             userInput={userInput}
