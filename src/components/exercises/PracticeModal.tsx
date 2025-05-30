@@ -28,6 +28,11 @@ import {
   VolumeX,
   BookOpen,
   Mic,
+  Star,
+  Trophy,
+  FileText,
+  GitCompare,
+  BookMarked,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -50,6 +55,99 @@ enum MobileTab {
   READING = 1,
   DICTATION = 2,
   RESULTS = 3,
+}
+
+enum ResultsTab {
+  SUMMARY = 0,
+  COMPARISON = 1,
+  VOCABULARY = 2,
+}
+
+// Confetti Component
+const Confetti: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    const confetti: Array<{
+      x: number
+      y: number
+      vx: number
+      vy: number
+      color: string
+      size: number
+      rotation: number
+      rotationSpeed: number
+    }> = []
+
+    const colors = ["#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ffeaa7", "#dda0dd", "#98d8c8"]
+
+    // Create confetti pieces
+    for (let i = 0; i < 100; i++) {
+      confetti.push({
+        x: Math.random() * canvas.width,
+        y: -10,
+        vx: (Math.random() - 0.5) * 6,
+        vy: Math.random() * 3 + 2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: Math.random() * 8 + 4,
+        rotation: Math.random() * 360,
+        rotationSpeed: (Math.random() - 0.5) * 10,
+      })
+    }
+
+    let animationId: number
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      confetti.forEach((piece, index) => {
+        piece.x += piece.vx
+        piece.y += piece.vy
+        piece.rotation += piece.rotationSpeed
+
+        ctx.save()
+        ctx.translate(piece.x, piece.y)
+        ctx.rotate((piece.rotation * Math.PI) / 180)
+        ctx.fillStyle = piece.color
+        ctx.fillRect(-piece.size / 2, -piece.size / 2, piece.size, piece.size)
+        ctx.restore()
+
+        // Remove confetti that's off screen
+        if (piece.y > canvas.height + 10) {
+          confetti.splice(index, 1)
+        }
+      })
+
+      if (confetti.length > 0) {
+        animationId = requestAnimationFrame(animate)
+      }
+    }
+
+    animate()
+
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId)
+      }
+    }
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 pointer-events-none z-50"
+      style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh" }}
+    />
+  )
 }
 
 // Mobile-specific fullscreen modal wrapper
@@ -101,6 +199,27 @@ const MobileModalWrapper: React.FC<{
   )
 }
 
+// Progress Component
+const ProgressIndicator: React.FC<{
+  completionCount: number
+  isCompleted: boolean
+}> = ({ completionCount, isCompleted }) => {
+  const stars = Array.from({ length: 3 }, (_, i) => i < completionCount)
+
+  return (
+    <div className="flex items-center space-x-1">
+      {stars.map((filled, index) => (
+        <Star
+          key={index}
+          className={`h-4 w-4 ${filled ? "text-yellow-500 fill-yellow-500" : "text-gray-300 dark:text-gray-600"}`}
+        />
+      ))}
+      <span className="text-xs text-gray-600 dark:text-gray-400 ml-2">{completionCount}/3</span>
+      {isCompleted && <Trophy className="h-4 w-4 text-yellow-500 ml-1" />}
+    </div>
+  )
+}
+
 // Mobile Header Component
 const MobileHeader: React.FC<{
   title: string
@@ -110,7 +229,19 @@ const MobileHeader: React.FC<{
   activeTab?: MobileTab
   onTabChange?: (tab: MobileTab) => void
   hasReadingAnalysis?: boolean
-}> = ({ title, onClose, subtitle, showTabs, activeTab, onTabChange, hasReadingAnalysis }) => {
+  completionCount?: number
+  isCompleted?: boolean
+}> = ({
+  title,
+  onClose,
+  subtitle,
+  showTabs,
+  activeTab,
+  onTabChange,
+  hasReadingAnalysis,
+  completionCount = 0,
+  isCompleted = false,
+}) => {
   return (
     <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
       {/* Header */}
@@ -123,6 +254,9 @@ const MobileHeader: React.FC<{
             <h1 className="text-lg font-semibold truncate text-gray-900 dark:text-white">{title}</h1>
             {subtitle && <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{subtitle}</p>}
           </div>
+        </div>
+        <div className="flex-shrink-0">
+          <ProgressIndicator completionCount={completionCount} isCompleted={isCompleted} />
         </div>
       </div>
 
@@ -196,7 +330,13 @@ const MobileSelectionScreen: React.FC<{
 }) => {
   return (
     <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
-      <MobileHeader title={exercise.title} subtitle="Choose your practice mode" onClose={onClose} />
+      <MobileHeader
+        title={exercise.title}
+        subtitle="Choose your practice mode"
+        onClose={onClose}
+        completionCount={exercise.completionCount}
+        isCompleted={exercise.isCompleted}
+      />
 
       <div className="flex-1 p-4 space-y-4">
         <div className="text-center mb-6">
@@ -296,6 +436,8 @@ const MobileReadingAnalysisWrapper: React.FC<{
         activeTab={activeTab}
         onTabChange={onTabChange}
         hasReadingAnalysis={hasReadingAnalysis}
+        completionCount={exercise.completionCount}
+        isCompleted={exercise.isCompleted}
       />
 
       <div className="flex-1 overflow-hidden">
@@ -591,6 +733,8 @@ const MobileDictationPractice: React.FC<{
         activeTab={activeTab}
         onTabChange={onTabChange}
         hasReadingAnalysis={hasReadingAnalysis}
+        completionCount={exercise.completionCount}
+        isCompleted={exercise.isCompleted}
       />
 
       {/* Audio Element */}
@@ -680,7 +824,7 @@ const MobileDictationPractice: React.FC<{
   )
 }
 
-// Mobile Results Screen
+// Mobile Results Screen with Tabs
 const MobileResultsScreen: React.FC<{
   exercise: Exercise
   userInput: string
@@ -690,9 +834,61 @@ const MobileResultsScreen: React.FC<{
   onTabChange: (tab: MobileTab) => void
   onClose: () => void
   hasReadingAnalysis: boolean
-}> = ({ exercise, userInput, accuracy, onTryAgain, activeTab, onTabChange, onClose, hasReadingAnalysis }) => {
+  showConfetti: boolean
+}> = ({
+  exercise,
+  userInput,
+  accuracy,
+  onTryAgain,
+  activeTab,
+  onTabChange,
+  onClose,
+  hasReadingAnalysis,
+  showConfetti,
+}) => {
+  const [resultsTab, setResultsTab] = useState<ResultsTab>(ResultsTab.SUMMARY)
+
+  // Extract vocabulary from the text
+  const extractVocabulary = (text: string) => {
+    const words = text
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => word.length > 2)
+    const uniqueWords = [...new Set(words)]
+    return uniqueWords.slice(0, 10) // Limit to 10 words for mobile display
+  }
+
+  // Compare user input with correct text
+  const getComparison = () => {
+    const userWords = userInput
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => word.length > 0)
+    const correctWords = exercise.text
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => word.length > 0)
+
+    const comparison = correctWords.map((correctWord, index) => {
+      const userWord = userWords[index] || ""
+      return {
+        correct: correctWord,
+        user: userWord,
+        isMatch: correctWord === userWord,
+        index,
+      }
+    })
+
+    return comparison
+  }
+
+  const vocabulary = extractVocabulary(exercise.text)
+  const comparison = getComparison()
+
   return (
     <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
+      {showConfetti && <Confetti />}
+
       <MobileHeader
         title={exercise.title}
         subtitle="Dictation Results"
@@ -701,69 +897,187 @@ const MobileResultsScreen: React.FC<{
         activeTab={activeTab}
         onTabChange={onTabChange}
         hasReadingAnalysis={hasReadingAnalysis}
+        completionCount={exercise.completionCount}
+        isCompleted={exercise.isCompleted}
       />
 
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="space-y-4">
-          <div
-            className={`p-4 rounded-lg border ${accuracy >= 80 ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"}`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3
-                className={`font-semibold text-lg ${accuracy >= 80 ? "text-green-800 dark:text-green-200" : "text-amber-800 dark:text-amber-200"}`}
-              >
-                Results
-              </h3>
-              <span
-                className={`text-sm font-bold px-2 py-1 rounded ${accuracy >= 80 ? "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200" : "bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200"}`}
-              >
-                {accuracy}% Accuracy
-              </span>
-            </div>
+      {/* Results Sub-tabs */}
+      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <button
+          onClick={() => setResultsTab(ResultsTab.SUMMARY)}
+          className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+            resultsTab === ResultsTab.SUMMARY
+              ? "border-green-500 text-green-600 dark:text-green-400 bg-white dark:bg-gray-900"
+              : "border-transparent text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          <div className="flex items-center justify-center space-x-2">
+            <FileText className="h-4 w-4" />
+            <span>Summary</span>
+          </div>
+        </button>
+        <button
+          onClick={() => setResultsTab(ResultsTab.COMPARISON)}
+          className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+            resultsTab === ResultsTab.COMPARISON
+              ? "border-green-500 text-green-600 dark:text-green-400 bg-white dark:bg-gray-900"
+              : "border-transparent text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          <div className="flex items-center justify-center space-x-2">
+            <GitCompare className="h-4 w-4" />
+            <span>Comparison</span>
+          </div>
+        </button>
+        <button
+          onClick={() => setResultsTab(ResultsTab.VOCABULARY)}
+          className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+            resultsTab === ResultsTab.VOCABULARY
+              ? "border-green-500 text-green-600 dark:text-green-400 bg-white dark:bg-gray-900"
+              : "border-transparent text-gray-500 dark:text-gray-400"
+          }`}
+        >
+          <div className="flex items-center justify-center space-x-2">
+            <BookMarked className="h-4 w-4" />
+            <span>Vocabulary</span>
+          </div>
+        </button>
+      </div>
 
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Answer:</p>
-                <div className="bg-white dark:bg-gray-800 p-3 rounded border text-sm min-h-[60px]">
-                  {userInput || <span className="text-gray-400 italic">No answer provided</span>}
+      <div className="flex-1 overflow-y-auto p-4">
+        {resultsTab === ResultsTab.SUMMARY && (
+          <div className="space-y-4">
+            <div
+              className={`p-4 rounded-lg border ${accuracy >= 80 ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"}`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h3
+                  className={`font-semibold text-lg ${accuracy >= 80 ? "text-green-800 dark:text-green-200" : "text-amber-800 dark:text-amber-200"}`}
+                >
+                  Performance Summary
+                </h3>
+                <span
+                  className={`text-sm font-bold px-2 py-1 rounded ${accuracy >= 80 ? "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200" : "bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200"}`}
+                >
+                  {accuracy}% Accuracy
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Words Correct:</span>
+                  <span className="font-medium">
+                    {comparison.filter((c) => c.isMatch).length}/{comparison.length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Character Count:</span>
+                  <span className="font-medium">{userInput.length} characters</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Progress:</span>
+                  <ProgressIndicator completionCount={exercise.completionCount} isCompleted={exercise.isCompleted} />
                 </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Correct Answer:</p>
-                <div className="bg-white dark:bg-gray-800 p-3 rounded border text-sm">{exercise.text}</div>
+
+              {accuracy >= 80 ? (
+                <div className="mt-4 bg-green-100 dark:bg-green-900/30 p-3 rounded text-sm text-green-800 dark:text-green-200">
+                  {exercise.isCompleted ? (
+                    <div className="flex items-center">
+                      <Trophy className="h-4 w-4 mr-2" />
+                      Congratulations! You've mastered this exercise!
+                    </div>
+                  ) : (
+                    "Great job! You've successfully completed this dictation exercise."
+                  )}
+                </div>
+              ) : (
+                <div className="mt-4 bg-amber-100 dark:bg-amber-900/30 p-3 rounded text-sm text-amber-800 dark:text-amber-200">
+                  Keep practicing! Try listening again and focus on the words you missed.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {resultsTab === ResultsTab.COMPARISON && (
+          <div className="space-y-4">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
+              <h3 className="font-semibold text-lg mb-3 text-gray-900 dark:text-white">Word-by-Word Comparison</h3>
+              <div className="space-y-2">
+                {comparison.map((item, index) => (
+                  <div key={index} className="flex items-center space-x-2 p-2 rounded">
+                    <span className="text-xs text-gray-500 w-8">{index + 1}.</span>
+                    <div className="flex-1 grid grid-cols-2 gap-2">
+                      <div
+                        className={`p-2 rounded text-sm ${item.isMatch ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200" : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200"}`}
+                      >
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Your answer:</div>
+                        <div className="font-medium">
+                          {item.user || <span className="italic text-gray-400">missing</span>}
+                        </div>
+                      </div>
+                      <div className="p-2 rounded text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Correct:</div>
+                        <div className="font-medium">{item.correct}</div>
+                      </div>
+                    </div>
+                    {item.isMatch ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <X className="h-4 w-4 text-red-500" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {resultsTab === ResultsTab.VOCABULARY && (
+          <div className="space-y-4">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
+              <h3 className="font-semibold text-lg mb-3 text-gray-900 dark:text-white">Key Vocabulary</h3>
+              <div className="grid grid-cols-1 gap-2">
+                {vocabulary.map((word, index) => (
+                  <div key={index} className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                    <div className="font-medium text-blue-800 dark:text-blue-200">{word}</div>
+                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      {comparison.find((c) => c.correct.toLowerCase() === word)?.isMatch
+                        ? "✓ Correctly identified"
+                        : "⚠ Review this word"}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {accuracy >= 80 ? (
-              <div className="mt-4 bg-green-100 dark:bg-green-900/30 p-3 rounded text-sm text-green-800 dark:text-green-200">
-                Great job! You've successfully completed this dictation exercise.
-              </div>
-            ) : (
-              <div className="mt-4 bg-amber-100 dark:bg-amber-900/30 p-3 rounded text-sm text-amber-800 dark:text-amber-200">
-                Keep practicing! Try listening again and focus on the words you missed.
-              </div>
-            )}
+            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Focus on practicing these key vocabulary words to improve your listening comprehension.
+              </p>
+            </div>
           </div>
+        )}
 
-          <div className="flex space-x-3">
-            <Button
-              onClick={onTryAgain}
-              className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium"
-              type="button"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Try Again
-            </Button>
-            <Button
-              onClick={() => onTabChange(MobileTab.DICTATION)}
-              variant="outline"
-              className="flex-1 h-12 border-gray-300 dark:border-gray-600"
-              type="button"
-            >
-              <Mic className="h-4 w-4 mr-2" />
-              Back to Practice
-            </Button>
-          </div>
+        <div className="flex space-x-3 mt-6">
+          <Button
+            onClick={onTryAgain}
+            className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+            type="button"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
+          <Button
+            onClick={() => onTabChange(MobileTab.DICTATION)}
+            variant="outline"
+            className="flex-1 h-12 border-gray-300 dark:border-gray-600"
+            type="button"
+          >
+            <Mic className="h-4 w-4 mr-2" />
+            Back to Practice
+          </Button>
         </div>
       </div>
     </div>
@@ -785,6 +1099,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   const [mobileTab, setMobileTab] = useState<MobileTab>(MobileTab.SELECTION)
   const [userInput, setUserInput] = useState("")
   const [accuracy, setAccuracy] = useState(0)
+  const [showConfetti, setShowConfetti] = useState(false)
 
   const { settings } = useUserSettingsContext()
   const { exercises, hasReadingAnalysis } = useExerciseContext()
@@ -882,6 +1197,13 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
     if (updatedExercise && accuracyScore >= 95) {
       const newCompletionCount = Math.min(3, updatedExercise.completionCount + 1)
       const isCompleted = newCompletionCount >= 3
+
+      // Show confetti if exercise is completed (3/3)
+      if (isCompleted && !updatedExercise.isCompleted) {
+        setShowConfetti(true)
+        setTimeout(() => setShowConfetti(false), 5000) // Hide confetti after 5 seconds
+      }
+
       setUpdatedExercise({
         ...updatedExercise,
         completionCount: newCompletionCount,
@@ -898,6 +1220,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
       setShowResults(false)
       setUserInput("")
       setAccuracy(0)
+      setShowConfetti(false)
       if (isMobile) {
         setMobileTab(MobileTab.SELECTION)
       }
@@ -936,6 +1259,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
     setShowResults(false)
     setUserInput("")
     setAccuracy(0)
+    setShowConfetti(false)
     if (isMobile) {
       setMobileTab(MobileTab.DICTATION)
     }
@@ -1001,6 +1325,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
             onTabChange={handleMobileTabChange}
             onClose={() => handleOpenChange(false)}
             hasReadingAnalysis={hasExistingAnalysis}
+            showConfetti={showConfetti}
           />
         )}
       </MobileModalWrapper>
