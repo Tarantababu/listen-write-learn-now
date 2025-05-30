@@ -24,6 +24,7 @@ import {
   SkipForward,
   RefreshCw,
   X,
+  ArrowLeft,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -66,14 +67,15 @@ const MobileVirtualKeyboard: React.FC<{
   showResults,
 }) => {
   return (
-    <div className="bg-gray-100 dark:bg-gray-800 p-3 border-t w-full">
+    <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4 safe-area-bottom">
       {/* Audio Controls Row */}
       <div className="grid grid-cols-5 gap-2 mb-3">
         <Button
           variant="outline"
           size="sm"
           onClick={onSkipBack}
-          className="h-12 flex flex-col items-center justify-center p-1"
+          className="h-12 flex flex-col items-center justify-center p-1 text-xs"
+          type="button"
         >
           <SkipBack className="h-4 w-4" />
           <span className="text-xs mt-1">-10s</span>
@@ -83,7 +85,8 @@ const MobileVirtualKeyboard: React.FC<{
           variant="outline"
           size="sm"
           onClick={onRewind}
-          className="h-12 flex flex-col items-center justify-center p-1"
+          className="h-12 flex flex-col items-center justify-center p-1 text-xs"
+          type="button"
         >
           <RotateCcw className="h-4 w-4" />
           <span className="text-xs mt-1">Restart</span>
@@ -93,7 +96,8 @@ const MobileVirtualKeyboard: React.FC<{
           variant="outline"
           size="sm"
           onClick={isPlaying ? onPause : onPlay}
-          className="h-12 flex flex-col items-center justify-center p-1 bg-primary/10"
+          className="h-12 flex flex-col items-center justify-center p-1 bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
+          type="button"
         >
           {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
           <span className="text-xs mt-1">{isPlaying ? "Pause" : "Play"}</span>
@@ -103,7 +107,8 @@ const MobileVirtualKeyboard: React.FC<{
           variant="outline"
           size="sm"
           onClick={onSkipForward}
-          className="h-12 flex flex-col items-center justify-center p-1"
+          className="h-12 flex flex-col items-center justify-center p-1 text-xs"
+          type="button"
         >
           <SkipForward className="h-4 w-4" />
           <span className="text-xs mt-1">+10s</span>
@@ -113,7 +118,8 @@ const MobileVirtualKeyboard: React.FC<{
           variant="outline"
           size="sm"
           onClick={onClear}
-          className="h-12 flex flex-col items-center justify-center p-1"
+          className="h-12 flex flex-col items-center justify-center p-1 text-xs"
+          type="button"
         >
           <X className="h-4 w-4" />
           <span className="text-xs mt-1">Clear</span>
@@ -123,21 +129,50 @@ const MobileVirtualKeyboard: React.FC<{
       {/* Action Buttons Row */}
       <div className="grid grid-cols-2 gap-3">
         {showResults ? (
-          <Button onClick={onTryAgain} className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium">
+          <Button onClick={onTryAgain} className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium" type="button">
             <RefreshCw className="h-4 w-4 mr-2" />
             Try Again
           </Button>
         ) : (
-          <Button onClick={onSubmit} className="h-12 bg-green-600 hover:bg-green-700 text-white font-medium">
+          <Button onClick={onSubmit} className="h-12 bg-green-600 hover:bg-green-700 text-white font-medium" type="button">
             <Check className="h-4 w-4 mr-2" />
             Check Answer
           </Button>
         )}
 
-        <Button variant="outline" onClick={onRewind} className="h-12">
+        <Button variant="outline" onClick={onRewind} className="h-12" type="button">
           <Volume2 className="h-4 w-4 mr-2" />
           Replay Audio
         </Button>
+      </div>
+    </div>
+  )
+}
+
+// Mobile Header Component
+const MobileHeader: React.FC<{
+  title: string
+  onClose: () => void
+  subtitle?: string
+}> = ({ title, onClose, subtitle }) => {
+  return (
+    <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 safe-area-top">
+      <div className="flex items-center space-x-3 flex-1 min-w-0">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClose}
+          className="h-8 w-8 p-0 flex-shrink-0"
+          type="button"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg font-semibold truncate">{title}</h1>
+          {subtitle && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{subtitle}</p>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -149,13 +184,14 @@ const MobileDictationPractice: React.FC<{
   onComplete: (accuracy: number) => void
   showResults: boolean
   onTryAgain: () => void
-}> = ({ exercise, onComplete, showResults, onTryAgain }) => {
+  onClose: () => void
+}> = ({ exercise, onComplete, showResults, onTryAgain, onClose }) => {
   const [userInput, setUserInput] = useState("")
   const [isPlaying, setIsPlaying] = useState(false)
   const [accuracy, setAccuracy] = useState(0)
   const audioRef = useRef<HTMLAudioElement>(null)
 
-  // Mock audio controls - replace with actual audio implementation
+  // Audio controls
   const handlePlay = () => {
     setIsPlaying(true)
     if (audioRef.current) {
@@ -194,7 +230,6 @@ const MobileDictationPractice: React.FC<{
   }
 
   const handleSubmit = () => {
-    // Calculate accuracy - replace with actual logic
     const correctText = exercise.text || ""
     const similarity = calculateSimilarity(userInput.trim(), correctText)
     setAccuracy(similarity)
@@ -207,7 +242,7 @@ const MobileDictationPractice: React.FC<{
     onTryAgain()
   }
 
-  // Simple similarity calculation - replace with actual implementation
+  // Simple similarity calculation
   const calculateSimilarity = (input: string, correct: string): number => {
     if (!input || !correct) return 0
     const inputWords = input.toLowerCase().split(/\s+/)
@@ -217,12 +252,13 @@ const MobileDictationPractice: React.FC<{
   }
 
   return (
-    <div className="flex flex-col h-full w-full bg-background">
-      {/* Header */}
-      <div className="p-4 border-b bg-background/95 backdrop-blur flex-shrink-0">
-        <h2 className="text-lg font-semibold mb-1">{exercise.title}</h2>
-        <p className="text-sm text-muted-foreground">Listen and type what you hear</p>
-      </div>
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+      {/* Mobile Header */}
+      <MobileHeader
+        title={exercise.title}
+        subtitle="Listen and type what you hear"
+        onClose={onClose}
+      />
 
       {/* Audio Element */}
       <audio
@@ -233,20 +269,26 @@ const MobileDictationPractice: React.FC<{
         onPause={() => setIsPlaying(false)}
       />
 
-      {/* Content Area */}
-      <div className="flex-1 p-4 overflow-y-auto min-h-0">
+      {/* Content Area - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-4 pb-0">
         {showResults ? (
           <div className="space-y-4">
             <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-              <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">Results: {accuracy}% Accuracy</h3>
-              <div className="space-y-2">
+              <h3 className="font-semibold text-green-800 dark:text-green-200 mb-3">
+                Results: {accuracy}% Accuracy
+              </h3>
+              <div className="space-y-3">
                 <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Your Answer:</p>
-                  <p className="text-sm bg-white dark:bg-gray-800 p-2 rounded border">{userInput}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Answer:</p>
+                  <div className="bg-white dark:bg-gray-800 p-3 rounded border text-sm">
+                    {userInput || <span className="text-gray-400 italic">No answer provided</span>}
+                  </div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Correct Answer:</p>
-                  <p className="text-sm bg-white dark:bg-gray-800 p-2 rounded border">{exercise.text}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Correct Answer:</p>
+                  <div className="bg-white dark:bg-gray-800 p-3 rounded border text-sm">
+                    {exercise.text}
+                  </div>
                 </div>
               </div>
             </div>
@@ -256,19 +298,21 @@ const MobileDictationPractice: React.FC<{
             {/* Progress Indicator */}
             <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-blue-700 dark:text-blue-300">Dictation Practice</span>
+                <span className="text-blue-700 dark:text-blue-300 font-medium">Dictation Practice</span>
                 <span className="text-blue-600 dark:text-blue-400">{userInput.length} characters</span>
               </div>
             </div>
 
             {/* Text Input */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Type what you hear:</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Type what you hear:
+              </label>
               <textarea
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 placeholder="Start typing here..."
-                className="w-full h-32 p-3 border rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full h-40 p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white text-base"
                 autoFocus
               />
             </div>
@@ -284,21 +328,19 @@ const MobileDictationPractice: React.FC<{
         )}
       </div>
 
-      {/* Virtual Keyboard */}
-      <div className="flex-shrink-0">
-        <MobileVirtualKeyboard
-          onSubmit={handleSubmit}
-          onPlay={handlePlay}
-          onPause={handlePause}
-          onRewind={handleRewind}
-          onSkipBack={handleSkipBack}
-          onSkipForward={handleSkipForward}
-          onClear={handleClear}
-          onTryAgain={handleTryAgainLocal}
-          isPlaying={isPlaying}
-          showResults={showResults}
-        />
-      </div>
+      {/* Virtual Keyboard - Fixed at bottom */}
+      <MobileVirtualKeyboard
+        onSubmit={handleSubmit}
+        onPlay={handlePlay}
+        onPause={handlePause}
+        onRewind={handleRewind}
+        onSkipBack={handleSkipBack}
+        onSkipForward={handleSkipForward}
+        onClear={handleClear}
+        onTryAgain={handleTryAgainLocal}
+        isPlaying={isPlaying}
+        showResults={showResults}
+      />
     </div>
   )
 }
@@ -319,32 +361,12 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   const { user } = useAuth()
   const { subscription } = useSubscription()
 
-  // Prevent body scroll on mobile when modal is open
+  // Mobile body scroll prevention - simplified
   useEffect(() => {
     if (isMobile && isOpen) {
-      const originalStyle = window.getComputedStyle(document.body).overflow
-      const originalPosition = window.getComputedStyle(document.body).position
-
       document.body.style.overflow = "hidden"
-      document.body.style.position = "fixed"
-      document.body.style.width = "100%"
-      document.body.style.height = "100%"
-      document.body.style.top = "0"
-      document.body.style.left = "0"
-
-      // Prevent scrolling on the document element as well
-      document.documentElement.style.overflow = "hidden"
-      document.documentElement.style.height = "100%"
-
       return () => {
-        document.body.style.overflow = originalStyle
-        document.body.style.position = originalPosition
-        document.body.style.width = ""
-        document.body.style.height = ""
-        document.body.style.top = ""
-        document.body.style.left = ""
-        document.documentElement.style.overflow = ""
-        document.documentElement.style.height = ""
+        document.body.style.overflow = ""
       }
     }
   }, [isMobile, isOpen])
@@ -472,36 +494,31 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
 
   if (!updatedExercise || updatedExercise.language !== settings.selectedLanguage) return null
 
+  // Mobile view - simplified fullscreen modal
+  if (isMobile) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+        <DialogContent className="fixed inset-0 w-full h-full max-w-none max-h-none m-0 p-0 border-0 rounded-none">
+          <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
+          <MobileDictationPractice
+            exercise={updatedExercise}
+            onComplete={handleComplete}
+            showResults={showResults}
+            onTryAgain={handleTryAgain}
+            onClose={() => handleOpenChange(false)}
+          />
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  // Desktop view - original implementation
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent
-        className={
-          isMobile
-            ? "fixed inset-0 w-screen h-screen max-w-none max-h-none m-0 p-0 border-0 rounded-none bg-background flex flex-col z-50"
-            : "max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
-        }
-        style={
-          isMobile
-            ? {
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                width: "100vw",
-                height: "100vh",
-                maxWidth: "100vw",
-                maxHeight: "100vh",
-                minWidth: "100vw",
-                minHeight: "100vh",
-              }
-            : undefined
-        }
-      >
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
 
-        {/* Desktop: Full experience with prompt and reading analysis */}
-        {!isMobile && practiceStage === PracticeStage.PROMPT && (
+        {practiceStage === PracticeStage.PROMPT && (
           <div className="px-6 py-8 space-y-4 md:space-y-6 flex-1 overflow-y-auto">
             <DialogHeader className="mb-2 md:mb-4">
               <h2 className="text-2xl font-bold mb-1 md:mb-2">{updatedExercise.title}</h2>
@@ -574,7 +591,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
           </div>
         )}
 
-        {!isMobile && practiceStage === PracticeStage.READING && (
+        {practiceStage === PracticeStage.READING && (
           <div className="flex-1 overflow-hidden">
             <ReadingAnalysis
               exercise={updatedExercise}
@@ -584,8 +601,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
           </div>
         )}
 
-        {/* Desktop: Original dictation practice */}
-        {!isMobile && practiceStage === PracticeStage.DICTATION && (
+        {practiceStage === PracticeStage.DICTATION && (
           <div className="flex-1 overflow-hidden">
             <DictationPractice
               exercise={updatedExercise}
@@ -596,16 +612,6 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
               onViewReadingAnalysis={hasExistingAnalysis ? handleViewReadingAnalysis : undefined}
             />
           </div>
-        )}
-
-        {/* Mobile: Custom dictation practice with virtual keyboard */}
-        {isMobile && (
-          <MobileDictationPractice
-            exercise={updatedExercise}
-            onComplete={handleComplete}
-            showResults={showResults}
-            onTryAgain={handleTryAgain}
-          />
         )}
       </DialogContent>
     </Dialog>
