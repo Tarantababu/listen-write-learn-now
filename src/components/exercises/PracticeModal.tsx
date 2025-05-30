@@ -20,9 +20,6 @@ interface PracticeModalProps {
   onOpenChange: (open: boolean) => void;
   exercise: Exercise | null;
   onComplete: (accuracy: number) => void;
-  onNextExercise?: () => void; // New prop for next exercise navigation
-  hasNextExercise?: boolean; // New prop to indicate if there's a next exercise
-  isFromLearningPlan?: boolean; // New prop to indicate if this is from learning plan
 }
 
 enum PracticeStage {
@@ -35,10 +32,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   isOpen,
   onOpenChange,
   exercise,
-  onComplete,
-  onNextExercise,
-  hasNextExercise = false,
-  isFromLearningPlan = false
+  onComplete
 }) => {
   const [showResults, setShowResults] = useState(false);
   const [updatedExercise, setUpdatedExercise] = useState<Exercise | null>(exercise);
@@ -333,10 +327,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
             showResults={showResults} 
             onTryAgain={handleTryAgain} 
             hasReadingAnalysis={hasExistingAnalysis} 
-            onViewReadingAnalysis={hasExistingAnalysis ? handleViewReadingAnalysis : undefined}
-            onNextExercise={onNextExercise}
-            hasNextExercise={hasNextExercise}
-            isFromLearningPlan={isFromLearningPlan}
+            onViewReadingAnalysis={hasExistingAnalysis ? handleViewReadingAnalysis : undefined} 
           />
         )}
       </DialogContent>
