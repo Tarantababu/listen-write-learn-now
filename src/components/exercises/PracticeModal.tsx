@@ -48,35 +48,30 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   useEffect(() => {
     if (isMobile && isOpen) {
       const originalStyle = window.getComputedStyle(document.body).overflow
+      const originalPosition = window.getComputedStyle(document.body).position
+      const originalWidth = window.getComputedStyle(document.body).width
+      const originalHeight = window.getComputedStyle(document.body).height
+
       document.body.style.overflow = "hidden"
       document.body.style.position = "fixed"
       document.body.style.width = "100%"
       document.body.style.height = "100%"
+      document.body.style.top = "0"
+      document.body.style.left = "0"
+
+      // Prevent scrolling on the document element as well
+      document.documentElement.style.overflow = "hidden"
+      document.documentElement.style.height = "100%"
 
       return () => {
         document.body.style.overflow = originalStyle
-        document.body.style.position = ""
-        document.body.style.width = ""
-        document.body.style.height = ""
-      }
-    }
-  }, [isMobile, isOpen])
-
-  // Handle mobile viewport height changes
-  useEffect(() => {
-    if (isMobile && isOpen) {
-      const setVH = () => {
-        const vh = window.innerHeight * 0.01
-        document.documentElement.style.setProperty("--vh", `${vh}px`)
-      }
-
-      setVH()
-      window.addEventListener("resize", setVH)
-      window.addEventListener("orientationchange", setVH)
-
-      return () => {
-        window.removeEventListener("resize", setVH)
-        window.removeEventListener("orientationchange", setVH)
+        document.body.style.position = originalPosition
+        document.body.style.width = originalWidth
+        document.body.style.height = originalHeight
+        document.body.style.top = ""
+        document.body.style.left = ""
+        document.documentElement.style.overflow = ""
+        document.documentElement.style.height = ""
       }
     }
   }, [isMobile, isOpen])
@@ -210,19 +205,25 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
-        className={`
-  ${
-    isMobile
-      ? "fixed inset-0 w-full h-full max-w-none max-h-none rounded-none m-0 p-0 border-0 bg-background"
-      : "max-w-4xl max-h-[90vh]"
-  } 
-  overflow-hidden flex flex-col z-50
-`}
+        className={
+          isMobile
+            ? "fixed inset-0 w-screen h-screen max-w-none max-h-none m-0 p-0 border-0 rounded-none bg-background flex flex-col z-50 overflow-hidden"
+            : "max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+        }
         style={
           isMobile
             ? {
-                height: "calc(var(--vh, 1vh) * 100)",
-                minHeight: "-webkit-fill-available",
+                height: "100vh",
+                minHeight: "100vh",
+                maxHeight: "100vh",
+                width: "100vw",
+                minWidth: "100vw",
+                maxWidth: "100vw",
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
                 WebkitOverflowScrolling: "touch",
               }
             : undefined
