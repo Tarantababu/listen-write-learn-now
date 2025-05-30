@@ -272,23 +272,51 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   } : {};
   
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent 
-        className={`
-          ${isMobile 
-            ? 'w-[100vw] h-[100vh] max-w-none max-h-none rounded-none m-0 p-0 border-0' 
-            : 'max-w-4xl max-h-[90vh]'
-          } 
-          overflow-hidden flex flex-col
-          ${isMobile && keyboardVisible ? 'keyboard-visible' : ''}
-        `}
-        style={mobileKeyboardStyles}
-      >
+    <>
+      {/* Add global CSS for mobile keyboard handling */}
+      {isMobile && (
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            @media (max-width: 768px) {
+              .keyboard-visible {
+                height: ${keyboardVisible ? (window.visualViewport?.height || window.innerHeight) + 'px' : '100vh'} !important;
+                max-height: ${keyboardVisible ? (window.visualViewport?.height || window.innerHeight) + 'px' : '100vh'} !important;
+              }
+              
+              .keyboard-visible > div {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                overflow: hidden;
+              }
+              
+              .keyboard-visible .practice-content {
+                flex: 1;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+              }
+            }
+          `
+        }} />
+      )}
+      
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+        <DialogContent 
+          className={`
+            ${isMobile 
+              ? 'w-[100vw] h-[100vh] max-w-none max-h-none rounded-none m-0 p-0 border-0' 
+              : 'max-w-4xl max-h-[90vh]'
+            } 
+            overflow-hidden flex flex-col
+            ${isMobile && keyboardVisible ? 'keyboard-visible' : ''}
+          `}
+          style={mobileKeyboardStyles}
+        >
         <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
         
         {/* Conditionally render based on practice stage */}
         {practiceStage === PracticeStage.PROMPT && (
-          <div className={`${isMobile ? 'px-4 py-4' : 'px-6 py-8'} space-y-4 md:space-y-6 flex-1 overflow-y-auto`}>
+          <div className={`${isMobile ? 'px-4 py-4' : 'px-6 py-8'} space-y-4 md:space-y-6 flex-1 overflow-y-auto practice-content`}>
             <DialogHeader className="mb-2 md:mb-4">
               <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold mb-1 md:mb-2`}>
                 {updatedExercise.title}
@@ -371,7 +399,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         )}
         
         {practiceStage === PracticeStage.READING && (
-          <div className={`flex-1 overflow-hidden ${isMobile && keyboardVisible ? 'h-full' : ''}`}>
+          <div className={`flex-1 overflow-hidden practice-content ${isMobile && keyboardVisible ? 'h-full' : ''}`}>
             <ReadingAnalysis 
               exercise={updatedExercise} 
               onComplete={handleStartDictation} 
@@ -381,7 +409,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         )}
         
         {practiceStage === PracticeStage.DICTATION && (
-          <div className={`flex-1 overflow-hidden ${isMobile && keyboardVisible ? 'h-full' : ''}`}>
+          <div className={`flex-1 overflow-hidden practice-content ${isMobile && keyboardVisible ? 'h-full' : ''}`}>
             <DictationPractice 
               exercise={updatedExercise} 
               onComplete={handleComplete} 
@@ -389,41 +417,12 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
               onTryAgain={handleTryAgain} 
               hasReadingAnalysis={hasExistingAnalysis} 
               onViewReadingAnalysis={hasExistingAnalysis ? handleViewReadingAnalysis : undefined}
-              keyboardVisible={isMobile ? keyboardVisible : false}
             />
           </div>
         )}
       </DialogContent>
-      
-      {/* Add custom CSS for mobile keyboard handling */}
-      <style jsx>{`
-        @media (max-width: 768px) {
-          .keyboard-visible {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            transform: none !important;
-          }
-          
-          /* Ensure content is scrollable when keyboard is visible */
-          .keyboard-visible > div {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow: hidden;
-          }
-          
-          /* Prevent body scroll when modal is open on mobile */
-          body:has([data-state="open"]) {
-            overflow: hidden;
-            position: fixed;
-            width: 100%;
-          }
-        }
-      `}</style>
     </Dialog>
+    </>
   );
 };
 
