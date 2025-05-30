@@ -869,6 +869,9 @@ const MobileResultsScreen: React.FC<{
   const [isLoadingVocabulary, setIsLoadingVocabulary] = useState(false)
   const [vocabularyError, setVocabularyError] = useState<string | null>(null)
   const [savedWords, setSavedWords] = useState<string[]>([])
+  const [showTextSelection, setShowTextSelection] = useState(false)
+  // Add this to the MobileResultsScreen component state variables
+  const [showVocabBuilder, setShowVocabBuilder] = useState(false)
 
   // Compare user input with correct text
   const getComparison = () => {
@@ -1252,6 +1255,20 @@ const MobileResultsScreen: React.FC<{
                   })}
                 </div>
               )}
+
+              {/* Add the button to open vocabulary builder */}
+              <div className="mt-6">
+                <Button
+                  onClick={() => setShowVocabBuilder(true)}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3"
+                >
+                  <BookMarked className="h-4 w-4 mr-2" />
+                  Select Words from Text
+                </Button>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                  Select any word or phrase from the exercise text to add to your vocabulary.
+                </p>
+              </div>
             </div>
 
             <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
@@ -1280,6 +1297,154 @@ const MobileResultsScreen: React.FC<{
             <Mic className="h-4 w-4 mr-2" />
             Back to Practice
           </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Text Selection Vocabulary Component
+const TextSelectionVocabulary: React.FC<{
+  text: string
+  language: string
+  onClose: () => void
+}> = ({ text, language, onClose }) => {
+  const [selectedWord, setSelectedWord] = useState<string>("")
+  const [isAddingToVocab, setIsAddingToVocab] = useState(false)
+  const [addSuccess, setAddSuccess] = useState(false)
+  const { user } = useAuth()
+
+  // Handle text selection
+  const handleTextSelection = () => {
+    const selection = window.getSelection()
+    if (selection && selection.toString().trim()) {
+      setSelectedWord(selection.toString().trim())
+    }
+  }
+
+  // Add word to vocabulary
+  const addToVocabulary = async () => {
+    if (!selectedWord || !user) return
+
+    setIsAddingToVocab(true)
+
+    try {
+      // First check if the word already exists in the user's vocabulary
+      const { data: existingWord } = await supabase
+        .from("user_vocabulary")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("word", selectedWord)
+        .eq("language", language)
+        .maybeSingle()
+
+      if (existingWord) {
+        toast({
+          title: "Word already in vocabulary",
+          description: `"${selectedWord}" is already in your vocabulary list.`,
+          variant: "default",
+        })
+        setIsAddingToVocab(false)
+        return
+      }
+
+      // Add the word to user's vocabulary
+      const { error } = await supabase.from("user_vocabulary").insert({
+        user_id: user.id,
+        word: selectedWord,
+        language: language,
+        added_at: new Date().toISOString(),
+      })
+
+      if (error) {
+        throw error
+      }
+
+      setAddSuccess(true)
+      toast({
+        title: "Added to vocabulary",
+        description: `"${selectedWord}" has been added to your vocabulary list.`,
+        variant: "success",
+      })
+
+      // Reset selection after a short delay
+      setTimeout(() => {
+        setSelectedWord("")
+        setAddSuccess(false)
+      }, 2000)
+    } catch (error) {
+      console.error("Error adding word to vocabulary:", error)
+      toast({
+        title: "Failed to add word",
+        description: "There was a problem adding this word to your vocabulary.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsAddingToVocab(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col h-screen w-full bg-white dark:bg-gray-900">
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center space-x-3">
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-10 w-10 p-0" type="button">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Vocabulary Building</h1>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg">
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            Select any word or phrase from the text to add it to your vocabulary:
+          </p>
+        </div>
+
+        <div
+          className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 leading-relaxed"
+          onMouseUp={handleTextSelection}
+          onTouchEnd={handleTextSelection}
+        >
+          {text.split("\n").map((paragraph, index) => (
+            <p key={index} className="mb-3">
+              {paragraph}
+            </p>
+          ))}
+        </div>
+
+        <div className="mt-6 space-y-3">
+          <div className="flex items-center space-x-3">
+            <div className="flex-1">
+              <input
+                type="text"
+                value={selectedWord}
+                onChange={(e) => setSelectedWord(e.target.value)}
+                placeholder="Selected word or phrase"
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+            <Button
+              onClick={addToVocabulary}
+              disabled={!selectedWord || isAddingToVocab}
+              className={`px-4 py-2 ${addSuccess ? "bg-green-600" : "bg-indigo-600"} text-white font-medium rounded-lg transition-colors`}
+            >
+              {isAddingToVocab ? (
+                <div className="h-5 w-5 rounded-full border-2 border-t-transparent border-white animate-spin"></div>
+              ) : addSuccess ? (
+                <Check className="h-5 w-5" />
+              ) : (
+                "Add to Vocabulary"
+              )}
+            </Button>
+          </div>
+
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Tap on any word in the text above to select it, or type a word manually.
+          </p>
         </div>
       </div>
     </div>
