@@ -40,10 +40,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true);
   const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false);
-  const [keyboardVisible, setKeyboardVisible] = useState<boolean>(false);
   const hasInitializedRef = useRef<boolean>(false);
   const isMobile = useIsMobile();
-  const initialViewportHeight = useRef<number>(0);
   
   const {
     settings
@@ -61,93 +59,6 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   const {
     subscription
   } = useSubscription();
-
-  // Mobile keyboard detection with enhanced handling
-  useEffect(() => {
-    if (!isMobile) return;
-
-    // Store initial viewport height
-    initialViewportHeight.current = window.visualViewport?.height || window.innerHeight;
-
-    const handleViewportChange = () => {
-      if (window.visualViewport) {
-        const currentHeight = window.visualViewport.height;
-        const heightDifference = initialViewportHeight.current - currentHeight;
-        
-        // Consider keyboard visible if height decreased by more than 100px (more sensitive)
-        const isKeyboardVisible = heightDifference > 100;
-        setKeyboardVisible(isKeyboardVisible);
-        
-        // Force a small delay to ensure proper rendering
-        if (isKeyboardVisible) {
-          setTimeout(() => {
-            // Scroll to keep input visible if needed
-            const activeElement = document.activeElement;
-            if (activeElement && activeElement.tagName === 'TEXTAREA') {
-              activeElement.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'center' 
-              });
-            }
-          }, 100);
-        }
-      }
-    };
-
-    // Use visualViewport API if available (better support)
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleViewportChange);
-      return () => {
-        window.visualViewport?.removeEventListener('resize', handleViewportChange);
-      };
-    } else {
-      // Fallback to window resize with focus detection
-      const handleResize = () => {
-        const currentHeight = window.innerHeight;
-        const heightDifference = initialViewportHeight.current - currentHeight;
-        const isKeyboardVisible = heightDifference > 100;
-        setKeyboardVisible(isKeyboardVisible);
-      };
-
-      const handleFocusIn = () => {
-        // Additional keyboard detection via focus events
-        setTimeout(() => {
-          const currentHeight = window.innerHeight;
-          const heightDifference = initialViewportHeight.current - currentHeight;
-          if (heightDifference > 100) {
-            setKeyboardVisible(true);
-          }
-        }, 300);
-      };
-
-      const handleFocusOut = () => {
-        setTimeout(() => {
-          const currentHeight = window.innerHeight;
-          const heightDifference = initialViewportHeight.current - currentHeight;
-          if (heightDifference <= 100) {
-            setKeyboardVisible(false);
-          }
-        }, 300);
-      };
-
-      window.addEventListener('resize', handleResize);
-      document.addEventListener('focusin', handleFocusIn);
-      document.addEventListener('focusout', handleFocusOut);
-      
-      return () => {
-        window.removeEventListener('resize', handleResize);
-        document.removeEventListener('focusin', handleFocusIn);
-        document.removeEventListener('focusout', handleFocusOut);
-      };
-    }
-  }, [isMobile]);
-
-  // Reset keyboard state when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setKeyboardVisible(false);
-    }
-  }, [isOpen]);
 
   // Update the local exercise state immediately when the prop changes or when exercises are updated 
   useEffect(() => {
@@ -305,231 +216,107 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
   // If the exercise doesn't match the selected language, don't render
   if (!updatedExercise || updatedExercise.language !== settings.selectedLanguage) return null;
   
-  // Dynamic styles for mobile keyboard handling with better optimization
-  const mobileKeyboardStyles = isMobile && keyboardVisible ? {
-    height: `${window.visualViewport?.height || window.innerHeight}px`,
-    maxHeight: `${window.visualViewport?.height || window.innerHeight}px`,
-    position: 'fixed' as const,
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    transform: 'none',
-  } : {};
-  
   return (
-    <>
-      {/* Enhanced CSS for mobile keyboard handling */}
-      {isMobile && (
-        <style dangerouslySetInnerHTML={{
-          __html: `
-            @media (max-width: 768px) {
-              /* Enhanced keyboard visible state */
-              .keyboard-visible {
-                height: ${keyboardVisible ? (window.visualViewport?.height || window.innerHeight) + 'px' : '100vh'} !important;
-                max-height: ${keyboardVisible ? (window.visualViewport?.height || window.innerHeight) + 'px' : '100vh'} !important;
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                transform: none !important;
-                z-index: 50 !important;
-              }
-              
-              /* Optimize content layout when keyboard is visible */
-              .keyboard-visible > div {
-                display: flex;
-                flex-direction: column;
-                height: 100%;
-                overflow: hidden;
-              }
-              
-              /* Enhanced scrolling for practice content */
-              .keyboard-visible .practice-content {
-                flex: 1;
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-                overscroll-behavior: contain;
-                padding-bottom: 10px;
-              }
-              
-              /* Optimize audio controls when keyboard is visible */
-              .keyboard-visible .audio-controls {
-                flex-shrink: 0;
-                padding: 8px 16px;
-                background: rgba(255, 255, 255, 0.95);
-                backdrop-filter: blur(10px);
-                border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-              }
-              
-              /* Optimize input areas when keyboard is visible */
-              .keyboard-visible textarea {
-                min-height: 60px !important;
-                max-height: 120px !important;
-                font-size: 16px !important; /* Prevent zoom on iOS */
-              }
-              
-              /* Optimize buttons when keyboard is visible */
-              .keyboard-visible .action-buttons {
-                flex-shrink: 0;
-                padding: 8px 16px;
-                background: rgba(255, 255, 255, 0.95);
-                backdrop-filter: blur(10px);
-                border-top: 1px solid rgba(0, 0, 0, 0.1);
-                position: sticky;
-                bottom: 0;
-                z-index: 10;
-              }
-              
-              /* Compact spacing when keyboard is visible */
-              .keyboard-visible .compact-spacing > * + * {
-                margin-top: 8px !important;
-              }
-              
-              /* Hide less important elements when space is limited */
-              .keyboard-visible .hide-on-keyboard {
-                display: none;
-              }
-              
-              /* Optimize progress indicators */
-              .keyboard-visible .progress-indicator {
-                padding: 4px 16px;
-                background: rgba(255, 255, 255, 0.9);
-                border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-              }
-              
-              /* Prevent body scroll when modal is open */
-              body:has([data-state="open"]) {
-                overflow: hidden !important;
-                position: fixed !important;
-                width: 100% !important;
-                height: 100% !important;
-              }
-              
-              /* Ensure viewport meta tag behavior */
-              .keyboard-visible {
-                -webkit-transform: translateZ(0);
-                transform: translateZ(0);
-              }
-            }
-            
-            /* Dark mode adjustments */
-            @media (max-width: 768px) and (prefers-color-scheme: dark) {
-              .keyboard-visible .audio-controls,
-              .keyboard-visible .action-buttons {
-                background: rgba(0, 0, 0, 0.95);
-                border-color: rgba(255, 255, 255, 0.1);
-              }
-              
-              .keyboard-visible .progress-indicator {
-                background: rgba(0, 0, 0, 0.9);
-                border-color: rgba(255, 255, 255, 0.1);
-              }
-            }
-          `
-        }} />
-      )}
-      
-      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent 
-          className={`
-            ${isMobile 
-              ? `w-[100vw] h-[100vh] max-w-none max-h-none rounded-none m-0 p-0 border-0 ${keyboardVisible ? 'keyboard-visible' : ''}` 
-              : 'max-w-4xl max-h-[90vh]'
-            } 
-            overflow-hidden flex flex-col
-          `}
-          style={mobileKeyboardStyles}
-        >
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent 
+        className={`
+          ${isMobile 
+            ? 'w-full h-full max-w-none max-h-none rounded-none m-0 p-0 border-0' 
+            : 'max-w-4xl max-h-[90vh]'
+          } 
+          overflow-hidden flex flex-col
+        `}
+      >
         <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
         
         {/* Conditionally render based on practice stage */}
         {practiceStage === PracticeStage.PROMPT && (
-          <div className={`${isMobile ? 'px-4 py-4' : 'px-6 py-8'} space-y-4 md:space-y-6 flex-1 overflow-y-auto practice-content ${keyboardVisible ? 'compact-spacing' : ''}`}>
-            <DialogHeader className="mb-2 md:mb-4">
-              <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold mb-1 md:mb-2`}>
-                {updatedExercise.title}
-              </h2>
-              <DialogDescription className="text-sm md:text-base">
-                <p className={`${isMobile ? 'text-base' : 'text-lg'} font-medium mb-1 md:mb-2`}>
-                  Boost Your Understanding Before You Start
-                </p>
-                <p className={`${isMobile ? 'text-sm' : 'text-base'}`}>
-                  Dive into a Reading Analysis to see how words and grammar work — or skip straight to dictation.
-                </p>
-                {loadingAnalysisCheck && (
-                  <div className="mt-2 text-sm font-medium">
-                    Checking for existing analysis...
-                  </div>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className={`grid grid-cols-1 ${isMobile ? 'gap-3 mt-4' : 'md:grid-cols-2 gap-6 mt-6'}`}>
-              <Card className="border-muted overflow-hidden hover:bg-muted/5 transition-colors dark:hover:bg-muted/10">
-                <CardContent className="p-0">
-                  <Button 
-                    onClick={handleStartReadingAnalysis} 
-                    variant="ghost" 
-                    disabled={!analysisAllowed || loadingAnalysisCheck} 
-                    className={`h-auto ${isMobile ? 'py-4 px-3' : 'py-8 px-6'} w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent`}
-                  >
-                    <div className="flex flex-col items-center text-center space-y-2 md:space-y-3">
-                      <div className={`flex items-center justify-center bg-primary/10 ${isMobile ? 'w-10 h-10' : 'w-12 h-12'} rounded-full`}>
-                        <Search className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-primary`} />
-                      </div>
-                      <div className={`font-semibold ${isMobile ? 'text-base' : 'text-lg'}`}>
-                        🔍 Start with Reading Analysis
-                      </div>
-                      <p className="text-xs md:text-sm text-muted-foreground px-2">
-                        Explore vocabulary and grammar with AI explanations
-                      </p>
-                    </div>
-                  </Button>
-                </CardContent>
-              </Card>
-              
-              <Card className="overflow-hidden border border-muted hover:bg-muted/5 transition-all dark:hover:bg-muted/10">
-                <CardContent className="p-0">
-                  <Button 
-                    onClick={handleStartDictation} 
-                    variant="ghost" 
-                    className={`h-auto ${isMobile ? 'py-4 px-3' : 'py-8 px-6'} w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent`}
-                  >
-                    <div className="flex flex-col items-center text-center space-y-2 md:space-y-3">
-                      <div className={`flex items-center justify-center bg-muted/40 ${isMobile ? 'w-10 h-10' : 'w-12 h-12'} rounded-full`}>
-                        <Headphones className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-muted-foreground`} />
-                      </div>
-                      <div className={`font-semibold ${isMobile ? 'text-base' : 'text-lg'}`}>
-                        🎧 Start Dictation Now
-                      </div>
-                      <p className="text-xs md:text-sm text-muted-foreground px-2">
-                        Practice listening and transcription skills with audio
-                      </p>
-                    </div>
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-            
-            {!analysisAllowed && !subscription.isSubscribed && (
-              <div className={`bg-amber-50 border border-amber-200 text-amber-800 p-3 md:p-4 rounded-md flex items-start ${isMobile ? 'mt-4' : 'mt-6'} dark:bg-amber-950/20 dark:border-amber-800/40 dark:text-amber-300`}>
-                <AlertTriangle className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-amber-600 dark:text-amber-400 mr-2 md:mr-3 flex-shrink-0 mt-0.5`} />
-                <div>
-                  <p className={`font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>Free user limit reached</p>
-                  <p className={`${isMobile ? 'text-xs' : 'text-sm'} mt-1`}>
-                    You've reached the limit of 5 reading analyses for free users. 
-                    Upgrade to premium for unlimited analyses.
+          <div className="flex-1 overflow-y-auto">
+            <div className={`${isMobile ? 'px-4 py-4' : 'px-6 py-8'} space-y-4 md:space-y-6`}>
+              <DialogHeader className="mb-2 md:mb-4">
+                <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold mb-1 md:mb-2`}>
+                  {updatedExercise.title}
+                </h2>
+                <DialogDescription className="text-sm md:text-base">
+                  <p className={`${isMobile ? 'text-base' : 'text-lg'} font-medium mb-1 md:mb-2`}>
+                    Boost Your Understanding Before You Start
                   </p>
-                </div>
+                  <p className={`${isMobile ? 'text-sm' : 'text-base'}`}>
+                    Dive into a Reading Analysis to see how words and grammar work — or skip straight to dictation.
+                  </p>
+                  {loadingAnalysisCheck && (
+                    <div className="mt-2 text-sm font-medium">
+                      Checking for existing analysis...
+                    </div>
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className={`grid grid-cols-1 ${isMobile ? 'gap-3 mt-4' : 'md:grid-cols-2 gap-6 mt-6'}`}>
+                <Card className="border-muted overflow-hidden hover:bg-muted/5 transition-colors dark:hover:bg-muted/10">
+                  <CardContent className="p-0">
+                    <Button 
+                      onClick={handleStartReadingAnalysis} 
+                      variant="ghost" 
+                      disabled={!analysisAllowed || loadingAnalysisCheck} 
+                      className={`h-auto ${isMobile ? 'py-4 px-3' : 'py-8 px-6'} w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent`}
+                    >
+                      <div className="flex flex-col items-center text-center space-y-2 md:space-y-3">
+                        <div className={`flex items-center justify-center bg-primary/10 ${isMobile ? 'w-10 h-10' : 'w-12 h-12'} rounded-full`}>
+                          <Search className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-primary`} />
+                        </div>
+                        <div className={`font-semibold ${isMobile ? 'text-base' : 'text-lg'}`}>
+                          🔍 Start with Reading Analysis
+                        </div>
+                        <p className="text-xs md:text-sm text-muted-foreground px-2">
+                          Explore vocabulary and grammar with AI explanations
+                        </p>
+                      </div>
+                    </Button>
+                  </CardContent>
+                </Card>
+                
+                <Card className="overflow-hidden border border-muted hover:bg-muted/5 transition-all dark:hover:bg-muted/10">
+                  <CardContent className="p-0">
+                    <Button 
+                      onClick={handleStartDictation} 
+                      variant="ghost" 
+                      className={`h-auto ${isMobile ? 'py-4 px-3' : 'py-8 px-6'} w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent`}
+                    >
+                      <div className="flex flex-col items-center text-center space-y-2 md:space-y-3">
+                        <div className={`flex items-center justify-center bg-muted/40 ${isMobile ? 'w-10 h-10' : 'w-12 h-12'} rounded-full`}>
+                          <Headphones className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-muted-foreground`} />
+                        </div>
+                        <div className={`font-semibold ${isMobile ? 'text-base' : 'text-lg'}`}>
+                          🎧 Start Dictation Now
+                        </div>
+                        <p className="text-xs md:text-sm text-muted-foreground px-2">
+                          Practice listening and transcription skills with audio
+                        </p>
+                      </div>
+                    </Button>
+                  </CardContent>
+                </Card>
               </div>
-            )}
+              
+              {!analysisAllowed && !subscription.isSubscribed && (
+                <div className={`bg-amber-50 border border-amber-200 text-amber-800 p-3 md:p-4 rounded-md flex items-start ${isMobile ? 'mt-4' : 'mt-6'} dark:bg-amber-950/20 dark:border-amber-800/40 dark:text-amber-300`}>
+                  <AlertTriangle className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-amber-600 dark:text-amber-400 mr-2 md:mr-3 flex-shrink-0 mt-0.5`} />
+                  <div>
+                    <p className={`font-medium ${isMobile ? 'text-sm' : 'text-base'}`}>Free user limit reached</p>
+                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} mt-1`}>
+                      You've reached the limit of 5 reading analyses for free users. 
+                      Upgrade to premium for unlimited analyses.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
         
         {practiceStage === PracticeStage.READING && (
-          <div className={`flex-1 overflow-hidden practice-content ${keyboardVisible ? 'compact-spacing' : ''}`}>
+          <div className="flex-1 overflow-hidden">
             <ReadingAnalysis 
               exercise={updatedExercise} 
               onComplete={handleStartDictation} 
@@ -539,7 +326,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         )}
         
         {practiceStage === PracticeStage.DICTATION && (
-          <div className={`flex-1 overflow-hidden practice-content ${keyboardVisible ? 'compact-spacing' : ''}`}>
+          <div className="flex-1 overflow-hidden">
             <DictationPractice 
               exercise={updatedExercise} 
               onComplete={handleComplete} 
@@ -552,7 +339,6 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
         )}
       </DialogContent>
     </Dialog>
-    </>
   );
 };
 
