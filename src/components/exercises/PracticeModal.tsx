@@ -1,3 +1,4 @@
+
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
@@ -37,62 +38,160 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true)
   const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false)
   const [keyboardVisible, setKeyboardVisible] = useState<boolean>(false)
+  const [mobileLayoutState, setMobileLayoutState] = useState<{
+    safeAreaHeight: number
+    viewportHeight: number
+    keyboardHeight: number
+    isLandscape: boolean
+  }>({
+    safeAreaHeight: 0,
+    viewportHeight: 0,
+    keyboardHeight: 0,
+    isLandscape: false
+  })
+  
   const hasInitializedRef = useRef<boolean>(false)
   const isMobile = useIsMobile()
   const initialViewportHeight = useRef<number>(0)
+  const resizeTimeoutRef = useRef<NodeJS.Timeout>()
+  const orientationChangeTimeoutRef = useRef<NodeJS.Timeout>()
 
   const { settings } = useUserSettingsContext()
-
   const { exercises, hasReadingAnalysis } = useExerciseContext()
-
   const { user } = useAuth()
-
   const { subscription } = useSubscription()
 
-  // Mobile keyboard detection
+  // Enhanced mobile keyboard and viewport detection
   useEffect(() => {
     if (!isMobile) return
 
-    // Store initial viewport height
-    initialViewportHeight.current = window.visualViewport?.height || window.innerHeight
+    // Store initial viewport measurements
+    const initialHeight = window.visualViewport?.height || window.innerHeight
+    const initialScreenHeight = window.screen?.height || initialHeight
+    initialViewportHeight.current = initialHeight
 
-    const handleViewportChange = () => {
-      if (window.visualViewport) {
-        const currentHeight = window.visualViewport.height
-        const heightDifference = initialViewportHeight.current - currentHeight
-
-        // Consider keyboard visible if height decreased by more than 150px
-        const isKeyboardVisible = heightDifference > 150
-        setKeyboardVisible(isKeyboardVisible)
+    const updateMobileLayout = () => {
+      // Clear any pending timeout
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current)
       }
+
+      // Debounce rapid changes
+      resizeTimeoutRef.current = setTimeout(() => {
+        const currentViewportHeight = window.visualViewport?.height || window.innerHeight
+        const currentScreenHeight = window.screen?.height || currentViewportHeight
+        const currentInnerHeight = window.innerHeight
+        
+        // Detect orientation
+        const isCurrentlyLandscape = window.screen?.orientation?.angle === 90 || 
+                                   window.screen?.orientation?.angle === -90 || 
+                                   window.innerWidth > window.innerHeight
+
+        // Calculate keyboard height using multiple methods for accuracy
+        const heightDifferenceFromInitial = initialViewportHeight.current - currentViewportHeight
+        const heightDifferenceFromScreen = currentScreenHeight - currentViewportHeight
+        const heightDifferenceFromInner = currentInnerHeight - currentViewportHeight
+
+        // Use the most reliable measurement
+        let keyboardHeight = Math.max(
+          heightDifferenceFromInitial,
+          heightDifferenceFromScreen,
+          heightDifferenceFromInner
+        )
+
+        // Minimum threshold for keyboard detection (more reliable than 150px)
+        const keyboardThreshold = isCurrentlyLandscape ? 100 : 200
+        const isKeyboardCurrentlyVisible = keyboardHeight > keyboardThreshold
+
+        // Safe area calculations
+        const safeAreaHeight = Math.min(currentViewportHeight, currentInnerHeight)
+
+        setMobileLayoutState({
+          safeAreaHeight,
+          viewportHeight: currentViewportHeight,
+          keyboardHeight: Math.max(0, keyboardHeight),
+          isLandscape: isCurrentlyLandscape
+        })
+
+        setKeyboardVisible(isKeyboardCurrentlyVisible)
+
+        console.log('Mobile layout update:', {
+          isKeyboardVisible: isKeyboardCurrentlyVisible,
+          keyboardHeight,
+          safeAreaHeight,
+          isLandscape: isCurrentlyLandscape,
+          currentViewportHeight,
+          threshold: keyboardThreshold
+        })
+      }, 100)
     }
 
-    // Use visualViewport API if available (better support)
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", handleViewportChange)
-      return () => {
-        window.visualViewport?.removeEventListener("resize", handleViewportChange)
-      }
-    } else {
-      // Fallback to window resize
-      const handleResize = () => {
-        const currentHeight = window.innerHeight
-        const heightDifference = initialViewportHeight.current - currentHeight
-        const isKeyboardVisible = heightDifference > 150
-        setKeyboardVisible(isKeyboardVisible)
-      }
+    // Multiple event listeners for comprehensive detection
+    const eventListeners: Array<{ target: any, event: string, handler: () => void }> = []
 
-      window.addEventListener("resize", handleResize)
-      return () => {
-        window.removeEventListener("resize", handleResize)
+    // Visual Viewport API (most reliable when available)
+    if (window.visualViewport) {
+      const handler = () => updateMobileLayout()
+      window.visualViewport.addEventListener("resize", handler)
+      eventListeners.push({ target: window.visualViewport, event: "resize", handler })
+    }
+
+    // Window resize fallback
+    const windowResizeHandler = () => updateMobileLayout()
+    window.addEventListener("resize", windowResizeHandler)
+    eventListeners.push({ target: window, event: "resize", handler: windowResizeHandler })
+
+    // Orientation change detection
+    const orientationHandler = () => {
+      if (orientationChangeTimeoutRef.current) {
+        clearTimeout(orientationChangeTimeoutRef.current)
       }
+      // Delay to allow for orientation change to complete
+      orientationChangeTimeoutRef.current = setTimeout(updateMobileLayout, 300)
+    }
+
+    if (window.screen?.orientation) {
+      window.screen.orientation.addEventListener("change", orientationHandler)
+      eventListeners.push({ target: window.screen.orientation, event: "change", handler: orientationHandler })
+    }
+
+    // Focus/blur detection for input elements
+    const focusHandler = () => {
+      setTimeout(updateMobileLayout, 300) // Delay for keyboard animation
+    }
+    const blurHandler = () => {
+      setTimeout(updateMobileLayout, 100)
+    }
+
+    document.addEventListener("focusin", focusHandler)
+    document.addEventListener("focusout", blurHandler)
+    eventListeners.push({ target: document, event: "focusin", handler: focusHandler })
+    eventListeners.push({ target: document, event: "focusout", handler: blurHandler })
+
+    // Initial measurement
+    updateMobileLayout()
+
+    // Cleanup function
+    return () => {
+      if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current)
+      if (orientationChangeTimeoutRef.current) clearTimeout(orientationChangeTimeoutRef.current)
+      
+      eventListeners.forEach(({ target, event, handler }) => {
+        target?.removeEventListener(event, handler)
+      })
     }
   }, [isMobile])
 
-  // Reset keyboard state when modal closes
+  // Reset states when modal closes
   useEffect(() => {
     if (!isOpen) {
       setKeyboardVisible(false)
+      setMobileLayoutState({
+        safeAreaHeight: 0,
+        viewportHeight: 0,
+        keyboardHeight: 0,
+        isLandscape: false
+      })
     }
   }, [isOpen])
 
@@ -253,39 +352,89 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   // If the exercise doesn't match the selected language, don't render
   if (!updatedExercise || updatedExercise.language !== settings.selectedLanguage) return null
 
-  // Dynamic styles for mobile keyboard handling
-  const mobileKeyboardStyles =
-    isMobile && keyboardVisible
-      ? {
-          height: window.visualViewport?.height || window.innerHeight,
-          maxHeight: window.visualViewport?.height || window.innerHeight,
-        }
-      : {}
+  // Enhanced mobile styling calculations
+  const getMobileStyles = () => {
+    if (!isMobile) return {}
+
+    const { safeAreaHeight, keyboardHeight, isLandscape } = mobileLayoutState
+
+    if (keyboardVisible && safeAreaHeight > 0) {
+      // Calculate optimal height considering keyboard and safe areas
+      const availableHeight = safeAreaHeight
+      const minHeight = isLandscape ? 300 : 400 // Minimum usable height
+      const optimalHeight = Math.max(minHeight, availableHeight - 20) // 20px margin
+
+      return {
+        height: `${optimalHeight}px`,
+        maxHeight: `${optimalHeight}px`,
+        transition: 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      }
+    }
+
+    return {
+      height: '100vh',
+      maxHeight: '100vh',
+      transition: 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    }
+  }
 
   return (
     <>
-      {/* Add global CSS for mobile keyboard handling */}
+      {/* Enhanced mobile CSS for better keyboard handling */}
       {isMobile && (
         <style
           dangerouslySetInnerHTML={{
             __html: `
             @media (max-width: 768px) {
-              .keyboard-visible {
-                height: ${keyboardVisible ? (window.visualViewport?.height || window.innerHeight) + "px" : "100vh"} !important;
-                max-height: ${keyboardVisible ? (window.visualViewport?.height || window.innerHeight) + "px" : "100vh"} !important;
+              .mobile-practice-modal {
+                position: fixed !important;
+                inset: 0 !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+                border: none !important;
+                background: var(--background) !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow: hidden !important;
+                transform: none !important;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
               }
               
-              .keyboard-visible > div {
-                display: flex;
-                flex-direction: column;
-                height: 100%;
-                overflow: hidden;
+              .mobile-practice-content {
+                flex: 1 !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                -webkit-overflow-scrolling: touch !important;
+                scroll-behavior: smooth !important;
+                padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0) !important;
               }
               
-              .keyboard-visible .practice-content {
-                flex: 1;
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
+              .mobile-keyboard-adjusted {
+                padding-bottom: ${keyboardVisible ? '20px' : 'env(safe-area-inset-bottom, 0)'} !important;
+              }
+              
+              /* Improved scroll handling for keyboard scenarios */
+              .mobile-practice-content:focus-within {
+                scroll-padding-bottom: 100px !important;
+              }
+              
+              /* Better input focus behavior */
+              .mobile-practice-content textarea:focus,
+              .mobile-practice-content input:focus {
+                scroll-margin-bottom: 120px !important;
+              }
+              
+              /* Smooth keyboard transitions */
+              .mobile-practice-modal * {
+                transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+              }
+              
+              /* Optimize for landscape mode */
+              @media (orientation: landscape) {
+                .mobile-practice-content {
+                  padding-top: 8px !important;
+                  padding-bottom: ${keyboardVisible ? '12px' : '8px'} !important;
+                }
               }
             }
           `,
@@ -298,13 +447,12 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
           className={`
             ${
               isMobile
-                ? "w-[100vw] h-[100vh] max-w-none max-h-none rounded-none m-0 p-0 border-0"
+                ? "mobile-practice-modal"
                 : "max-w-4xl max-h-[90vh]"
             } 
             overflow-hidden flex flex-col
-            ${isMobile && keyboardVisible ? "keyboard-visible" : ""}
           `}
-          style={mobileKeyboardStyles}
+          style={getMobileStyles()}
         >
           <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
 
@@ -395,7 +543,10 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
 
           {/* Show dictation for both mobile (always) and desktop (when in dictation stage) */}
           {(isMobile || practiceStage === PracticeStage.DICTATION) && (
-            <div className={`flex-1 overflow-hidden practice-content ${isMobile && keyboardVisible ? "h-full" : ""}`}>
+            <div className={`
+              flex-1 overflow-hidden 
+              ${isMobile ? 'mobile-practice-content mobile-keyboard-adjusted' : 'practice-content'}
+            `}>
               <DictationPractice
                 exercise={updatedExercise}
                 onComplete={handleComplete}
