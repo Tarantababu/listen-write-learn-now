@@ -284,12 +284,12 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   
   const handleSkipBack = () => {
     if (!audioRef.current) return;
-    audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+    audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 1);
   };
   
   const handleSkipForward = () => {
     if (!audioRef.current) return;
-    audioRef.current.currentTime = Math.min(audioRef.current.duration, audioRef.current.currentTime + 10);
+    audioRef.current.currentTime = Math.min(audioRef.current.duration, audioRef.current.currentTime + 1);
   };
 
   // Handle seeking with slider
