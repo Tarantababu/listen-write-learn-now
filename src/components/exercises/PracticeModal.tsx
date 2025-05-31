@@ -1,4 +1,3 @@
-
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
@@ -362,7 +361,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
       // Calculate optimal height considering keyboard and safe areas
       const availableHeight = safeAreaHeight
       const minHeight = isLandscape ? 300 : 400 // Minimum usable height
-      const optimalHeight = Math.max(minHeight, availableHeight - 20) // 20px margin
+      const optimalHeight = Math.max(minHeight, availableHeight - 10) // Reduced margin
 
       return {
         height: `${optimalHeight}px`,
@@ -406,34 +405,96 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
                 overflow-x: hidden !important;
                 -webkit-overflow-scrolling: touch !important;
                 scroll-behavior: smooth !important;
-                padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0) !important;
+                padding: 8px 12px !important;
+                margin: 0 !important;
               }
               
               .mobile-keyboard-adjusted {
-                padding-bottom: ${keyboardVisible ? '20px' : 'env(safe-area-inset-bottom, 0)'} !important;
+                padding-bottom: ${keyboardVisible ? '8px' : 'env(safe-area-inset-bottom, 0)'} !important;
               }
               
-              /* Improved scroll handling for keyboard scenarios */
-              .mobile-practice-content:focus-within {
-                scroll-padding-bottom: 100px !important;
+              /* Compact mobile layout overrides */
+              .mobile-practice-content .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+                margin-top: 12px !important;
               }
               
-              /* Better input focus behavior */
+              .mobile-practice-content .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+                margin-top: 8px !important;
+              }
+              
+              .mobile-practice-content .space-y-2 > :not([hidden]) ~ :not([hidden]) {
+                margin-top: 6px !important;
+              }
+              
+              /* Reduce padding on cards and containers */
+              .mobile-practice-content .p-6 {
+                padding: 12px !important;
+              }
+              
+              .mobile-practice-content .p-4 {
+                padding: 8px !important;
+              }
+              
+              .mobile-practice-content .p-3 {
+                padding: 6px !important;
+              }
+              
+              .mobile-practice-content .py-8 {
+                padding-top: 12px !important;
+                padding-bottom: 12px !important;
+              }
+              
+              .mobile-practice-content .py-6 {
+                padding-top: 8px !important;
+                padding-bottom: 8px !important;
+              }
+              
+              .mobile-practice-content .py-4 {
+                padding-top: 6px !important;
+                padding-bottom: 6px !important;
+              }
+              
+              .mobile-practice-content .px-6 {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+              }
+              
+              .mobile-practice-content .px-4 {
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+              }
+              
+              /* Optimize margins */
+              .mobile-practice-content .mb-6 {
+                margin-bottom: 12px !important;
+              }
+              
+              .mobile-practice-content .mb-4 {
+                margin-bottom: 8px !important;
+              }
+              
+              .mobile-practice-content .mt-6 {
+                margin-top: 12px !important;
+              }
+              
+              .mobile-practice-content .mt-4 {
+                margin-top: 8px !important;
+              }
+              
+              /* Improve input focus behavior */
               .mobile-practice-content textarea:focus,
               .mobile-practice-content input:focus {
-                scroll-margin-bottom: 120px !important;
-              }
-              
-              /* Smooth keyboard transitions */
-              .mobile-practice-modal * {
-                transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1), margin 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                scroll-margin-bottom: 60px !important;
               }
               
               /* Optimize for landscape mode */
               @media (orientation: landscape) {
                 .mobile-practice-content {
-                  padding-top: 8px !important;
-                  padding-bottom: ${keyboardVisible ? '12px' : '8px'} !important;
+                  padding: 4px 8px !important;
+                }
+                
+                .mobile-keyboard-adjusted {
+                  padding-bottom: ${keyboardVisible ? '4px' : '4px'} !important;
                 }
               }
             }
