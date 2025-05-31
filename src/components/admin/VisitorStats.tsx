@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,60 +28,6 @@ type ReferrerCount = {
 };
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#FF6666'];
-
-// Custom Bar component for conditional styling
-const CustomBar = (props) => {
-  const { fill, x, y, width, height, payload } = props;
-  const barColor = payload?.hasData ? '#8884d8' : '#e5e5e5';
-  const opacity = payload?.hasData ? 1 : 0.5;
-  
-  return (
-    <rect 
-      x={x} 
-      y={y} 
-      width={width} 
-      height={height} 
-      fill={barColor}
-      opacity={opacity}
-    />
-  );
-};
-
-// Custom tooltip for better data display
-const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    const hasData = data?.hasData;
-    
-    return (
-      <div className="bg-white p-3 border rounded shadow-lg">
-        <p className="font-medium">{`Date: ${label}`}</p>
-        <p className="text-blue-600">
-          {`Visitors: ${hasData ? payload[0].value : 'No data collected yet'}`}
-        </p>
-        {!hasData && (
-          <p className="text-xs text-gray-500 mt-1">Data collection hadn't started</p>
-        )}
-      </div>
-    );
-  }
-  return null;
-};
-
-// Custom pie chart tooltip
-const PieTooltip = ({ active, payload }) => {
-  if (active && payload && payload.length) {
-    const data = payload[0];
-    return (
-      <div className="bg-white p-3 border rounded shadow-lg">
-        <p className="font-medium">{data.name}</p>
-        <p className="text-blue-600">{`${data.value} visits`}</p>
-        <p className="text-xs text-gray-500">{`${((data.value / payload[0].payload.total) * 100 || 0).toFixed(1)}%`}</p>
-      </div>
-    );
-  }
-  return null;
-};
 
 export function VisitorStats() {
   const [visitorCounts, setVisitorCounts] = useState<VisitorCount[]>([]);
@@ -247,19 +194,14 @@ export function VisitorStats() {
         if (pageData) {
           pageData.forEach((visitor) => {
             if (visitor.page) {
-              // Clean up page names for better display
-              const cleanPage = visitor.page.replace(/^\/+|\/+$/g, '') || 'Home';
-              pages[cleanPage] = (pages[cleanPage] || 0) + 1;
+              pages[visitor.page] = (pages[visitor.page] || 0) + 1;
             }
           });
         }
         
         // Convert to array format for chart and sort by count
         const pagesArray = Object.entries(pages)
-          .map(([page, count]) => ({ 
-            page: page.length > 20 ? page.substring(0, 20) + '...' : page, 
-            count 
-          }))
+          .map(([page, count]) => ({ page, count }))
           .sort((a, b) => b.count - a.count)
           .slice(0, 10); // Limit to top 10 pages for better visualization
         
@@ -277,27 +219,14 @@ export function VisitorStats() {
         
         if (referrerData) {
           referrerData.forEach((visitor) => {
-            let referer = visitor.referer || 'Direct / None';
-            
-            // Clean up referrer names for better display
-            if (referer !== 'Direct / None') {
-              try {
-                const url = new URL(referer);
-                referer = url.hostname.replace('www.', '');
-              } catch (e) {
-                // If URL parsing fails, truncate long referrers
-                referer = referer.length > 30 ? referer.substring(0, 30) + '...' : referer;
-              }
-            }
-            
+            const referer = visitor.referer || 'Direct / None';
             referrers[referer] = (referrers[referer] || 0) + 1;
           });
         }
         
         // Convert to array format for chart, filter out empty entries and sort
-        const totalReferrerCount = Object.values(referrers).reduce((sum, count) => sum + count, 0);
         const referrersArray = Object.entries(referrers)
-          .map(([name, value]) => ({ name, value, total: totalReferrerCount }))
+          .map(([name, value]) => ({ name, value }))
           .sort((a, b) => b.value - a.value)
           .slice(0, 8); // Limit to top 8 referrers for better visualization
         
@@ -336,92 +265,50 @@ export function VisitorStats() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Visitor Statistics</CardTitle>
-            <CardDescription>Loading your analytics data...</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-center items-center h-40">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="ml-3 text-gray-600">Loading visitor statistics...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Visitor Statistics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center items-center h-40">
+            <p>Loading visitor statistics...</p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <Alert className="border-red-200 bg-red-50">
-          <Info className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-800">
-            <strong>Error loading statistics:</strong> {error}
-          </AlertDescription>
-        </Alert>
-        <Card>
-          <CardHeader>
-            <CardTitle>Visitor Statistics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-center items-center h-40 text-red-500">
-              <div className="text-center">
-                <p className="font-medium">{error}</p>
-                <p className="text-sm mt-2">Please check your database connection and permissions.</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Visitor Statistics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center items-center h-40 text-red-500">
+            <p>{error}</p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
-  // Fallback empty state check
-  const hasAnyData = totalVisitors > 0 || uniqueVisitors > 0 || todayVisitors > 0;
+  // Configure chart colors with explicit values instead of CSS variables
+  const chartConfig = {
+    visitors: { 
+      color: '#8884d8' // Using direct color instead of CSS variable
+    },
+    inactive: {
+      color: '#e5e5e5' // Light gray for dates before data collection
+    },
+    pages: { 
+      color: '#82ca9d' // Using direct color instead of CSS variable
+    },
+    sources: {}
+  };
 
-  if (!hasAnyData) {
-    return (
-      <div className="space-y-6">
-        <Alert className="border-blue-200 bg-blue-50">
-          <Info className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
-            No visitor data has been collected yet. Visit your site to start seeing statistics!
-          </AlertDescription>
-        </Alert>
-        <Card>
-          <CardHeader>
-            <CardTitle>Visitor Statistics</CardTitle>
-            <CardDescription>Your analytics will appear here once data is collected</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3 mb-6">
-              <StatsCard
-                title="Total Page Views"
-                value={0}
-                icon={<Activity className="h-4 w-4" />}
-                description="No page views yet"
-              />
-              
-              <StatsCard
-                title="Unique Visitors"
-                value={0}
-                icon={<Users className="h-4 w-4" />}
-                description="No unique visitors yet"
-              />
-              
-              <StatsCard
-                title="Today's Visitors"
-                value={0}
-                description="No visitors today"
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  for (let i = 0; i < referrerCounts.length; i++) {
+    chartConfig.sources[`source${i}`] = { color: COLORS[i % COLORS.length] };
   }
 
   return (
@@ -460,87 +347,103 @@ export function VisitorStats() {
           )}
         </CardHeader>
         <CardContent>
-          <div className="h-80 w-full">
+          <div className="h-80">
             {visitorCounts.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={visitorCounts}
-                  margin={{
-                    top: 20,
-                    right: 30,
-                    left: 20,
-                    bottom: 60,
-                  }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="date"
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                    fontSize={12}
-                    stroke="#666"
-                  />
-                  <YAxis 
-                    fontSize={12}
-                    stroke="#666"
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar 
-                    dataKey="count" 
-                    name="Visitors"
-                    shape={<CustomBar />}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              <ChartContainer config={chartConfig} className="w-full h-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={visitorCounts}
+                    margin={{
+                      top: 20,
+                      right: 30,
+                      left: 20,
+                      bottom: 50,
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="date"
+                      angle={-45}
+                      textAnchor="end"
+                      height={70}
+                    />
+                    <YAxis />
+                    <ChartTooltip 
+                      content={
+                        <ChartTooltipContent 
+                          formatter={(value, name, props) => {
+                            const entry = props.payload;
+                            if (!entry?.hasData) {
+                              return ["No data collected yet", "Visitors"];
+                            }
+                            return [value, "Visitors"];
+                          }}
+                          labelFormatter={(label) => `Date: ${label}`}
+                        />
+                      } 
+                    />
+                    <Bar 
+                      dataKey="count" 
+                      name="Visitors" 
+                      fill={chartConfig.visitors.color}
+                      shape={(props) => {
+                        const { fill, x, y, width, height } = props;
+                        const customProps = props.payload?.hasData ? 
+                          { fill: chartConfig.visitors.color } : 
+                          { fill: chartConfig.inactive.color, fillOpacity: 0.5 };
+                        return <rect x={x} y={y} width={width} height={height} {...customProps} />;
+                      }}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             ) : (
               <div className="flex justify-center items-center h-full">
-                <p className="text-gray-500">No visitor data available for the last 30 days</p>
+                <p className="text-muted-foreground">No visitor data available for the last 30 days</p>
               </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Traffic Sources</CardTitle>
             <CardDescription>Visitors grouped by referrer</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80 w-full">
+            <div className="h-80">
               {referrerCounts.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={referrerCounts}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                      nameKey="name"
-                    >
-                      {referrerCounts.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={COLORS[index % COLORS.length]} 
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<PieTooltip />} />
-                    <Legend 
-                      wrapperStyle={{ fontSize: '12px' }}
-                      iconType="circle"
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                <ChartContainer config={chartConfig} className="w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={referrerCounts}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={true}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        nameKey="name"
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {referrerCounts.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={COLORS[index % COLORS.length]} 
+                          />
+                        ))}
+                      </Pie>
+                      <ChartTooltip formatter={(value) => [`${value} views`, 'Count']} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
               ) : (
                 <div className="flex justify-center items-center h-full">
-                  <p className="text-gray-500">No referrer data available</p>
+                  <p className="text-muted-foreground">No referrer data available</p>
                 </div>
               )}
             </div>
@@ -549,53 +452,49 @@ export function VisitorStats() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Top Pages</CardTitle>
-            <CardDescription>Most visited pages</CardDescription>
+            <CardTitle>Pages Visited</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-80 w-full">
+            <div className="h-80">
               {pageCounts.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={pageCounts}
-                    layout="vertical"
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis type="number" fontSize={12} stroke="#666" />
-                    <YAxis 
-                      dataKey="page" 
-                      type="category" 
-                      width={100}
-                      fontSize={11}
-                      stroke="#666"
-                      tick={{ width: 100 }}
-                    />
-                    <Tooltip 
-                      formatter={(value) => [`${value} views`, 'Page Views']}
-                      labelStyle={{ color: '#333' }}
-                      contentStyle={{ 
-                        backgroundColor: 'white', 
-                        border: '1px solid #ccc',
-                        borderRadius: '4px'
+                <ChartContainer config={chartConfig} className="w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={pageCounts}
+                      layout="vertical"
+                      margin={{
+                        top: 20,
+                        right: 30,
+                        left: 100,
+                        bottom: 5,
                       }}
-                    />
-                    <Bar 
-                      dataKey="count" 
-                      name="Views" 
-                      fill="#82ca9d"
-                      radius={[0, 4, 4, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis 
+                        dataKey="page" 
+                        type="category" 
+                        width={80}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <ChartTooltip 
+                        content={
+                          <ChartTooltipContent 
+                            formatter={(value, name) => [`${value} views`, name]}
+                          />
+                        }
+                      />
+                      <Bar 
+                        dataKey="count" 
+                        name="Views" 
+                        fill={chartConfig.pages.color}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
               ) : (
                 <div className="flex justify-center items-center h-full">
-                  <p className="text-gray-500">No page visit data available</p>
+                  <p className="text-muted-foreground">No page visit data available</p>
                 </div>
               )}
             </div>
