@@ -1,84 +1,115 @@
 
-import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { Toaster } from '@/components/ui/toaster';
-import Layout from '@/components/Layout';
-import Index from '@/pages/Index';
-import LoginPage from '@/pages/LoginPage';
-import SignUpPage from '@/pages/SignUpPage';
-import SettingsPage from '@/pages/SettingsPage';
-import AdminPage from '@/pages/AdminPage';
-import ExercisesPage from '@/pages/ExercisesPage';
-import VocabularyPage from '@/pages/VocabularyPage';
-import CurriculumPage from '@/pages/CurriculumPage';
-import SubscriptionPage from '@/pages/SubscriptionPage';
-import BlogPage from '@/pages/BlogPage';
-import BlogPostPage from '@/pages/BlogPostPage';
-import TutorialPage from '@/pages/TutorialPage';
-import NotFound from '@/pages/NotFound';
-import '@/index.css';
-import { generateAndSaveSitemap } from '@/utils/generateSitemap';
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom"; 
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ExerciseProvider } from './contexts/ExerciseContext';
+import { UserSettingsProvider } from './contexts/UserSettingsContext';
+import { VocabularyProvider } from './contexts/VocabularyContext';
+import { DirectoryProvider } from './contexts/DirectoryContext';
+import { SubscriptionProvider } from './contexts/SubscriptionContext';
+import { HelmetProvider } from 'react-helmet-async';
+import { ThemeProvider } from './contexts/ThemeContext';
+
+import Layout from "@/components/Layout";
+import Index from "@/pages/Index";
+import HomePage from "@/pages/HomePage";
+import ExercisesPage from "@/pages/ExercisesPage";
+import VocabularyPage from "@/pages/VocabularyPage";
+import CurriculumPage from "@/pages/CurriculumPage"; 
+import SettingsPage from "@/pages/SettingsPage";
+import SubscriptionPage from "@/pages/SubscriptionPage";
+import AdminPage from "@/pages/AdminPage";
+import TutorialPage from "@/pages/TutorialPage";
+import NotFound from "@/pages/NotFound";
+import LoginPage from "@/pages/LoginPage";
+import SignUpPage from "@/pages/SignUpPage";
+import LanguageSelectionPage from "@/pages/LanguageSelectionPage";
+import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsOfService from "@/pages/TermsOfService";
+import CookiePolicy from "@/pages/CookiePolicy";
+import BlogPostEditor from "@/components/blog/admin/BlogPostEditor";
+
+// Create Blog-related pages
+import BlogPage from "@/pages/BlogPage"; 
+import BlogPostPage from "@/pages/BlogPostPage";
 
 const queryClient = new QueryClient();
 
 function App() {
-  useEffect(() => {
-    // Check for ad blockers
-    const adBlockEnabled = false; // Replace with actual ad blocker detection logic if needed
-
-    if (adBlockEnabled) {
-      alert("Please disable your ad blocker to ensure the best experience.");
-    }
-  }, []);
-
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SubscriptionProvider>
-          <ThemeProvider>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignUpPage />} />
-                
-                {/* Main Layout with Header and Session Warning */}
-                <Route path="/dashboard" element={<Layout />}>
-                  <Route index element={<ExercisesPage />} />
-                  <Route path="settings" element={<SettingsPage />} />
-                  <Route path="subscription" element={<SubscriptionPage />} />
-                  <Route path="exercises" element={<ExercisesPage />} />
-                  <Route path="vocabulary" element={<VocabularyPage />} />
-                  <Route path="curriculum" element={<CurriculumPage />} />
-                  <Route path="tutorial" element={<TutorialPage />} />
-                  <Route path="admin" element={<AdminPage />} />
-                  <Route path="*" element={<NotFound />} />
-                </Route>
-
-                <Route path="/blog" element={<BlogPage />} />
-                <Route path="/blog/:slug" element={<BlogPostPage />} />
-                
-                {/* Catch-all route for 404 */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-            <Toaster />
-            <ReactQueryDevtools initialIsOpen={false} />
-          </ThemeProvider>
-        </SubscriptionProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <div className="min-h-screen flex flex-col">
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <HelmetProvider>
+            <AuthProvider>
+              <ThemeProvider>
+                <SubscriptionProvider>
+                  <UserSettingsProvider>
+                    <ExerciseProvider>
+                      <DirectoryProvider>
+                        <VocabularyProvider>
+                          <TooltipProvider>
+                            <Toaster />
+                            <div className="min-h-screen flex flex-col">
+                              <Routes>
+                                {/* Public Routes */}
+                                <Route path="/" element={<Index />} />
+                                <Route path="/login" element={<LoginPage />} />
+                                <Route path="/language-selection" element={<LanguageSelectionPage />} />
+                                <Route path="/signup" element={<SignUpPage />} />
+                                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                                <Route path="/terms-of-service" element={<TermsOfService />} />
+                                <Route path="/cookie-policy" element={<CookiePolicy />} />
+                                
+                                {/* Public Blog Routes */}
+                                <Route path="/blog" element={<BlogPage />} />
+                                <Route path="/blog/:slug" element={<BlogPostPage />} />
+                                
+                                {/* Protected Routes - Regular User Access */}
+                                <Route element={<ProtectedRoute />}>
+                                  <Route path="/dashboard" element={<Layout />}>
+                                    <Route index element={<HomePage />} />
+                                    <Route path="exercises" element={<ExercisesPage />} />
+                                    <Route path="curriculum" element={<CurriculumPage />} />
+                                    <Route path="vocabulary" element={<VocabularyPage />} />
+                                    <Route path="settings" element={<SettingsPage />} />
+                                    <Route path="subscription" element={<SubscriptionPage />} />
+                                    <Route path="tutorial" element={<TutorialPage />} />
+                                  </Route>
+                                </Route>
+                                
+                                {/* Protected Routes - Admin Only */}
+                                <Route element={<ProtectedRoute requireAdmin={true} />}>
+                                  <Route path="/dashboard" element={<Layout />}>
+                                    <Route path="admin" element={<AdminPage />} />
+                                    <Route path="admin/blog/new" element={<BlogPostEditor />} />
+                                    <Route path="admin/blog/edit/:id" element={<BlogPostEditor />} />
+                                  </Route>
+                                </Route>
+                                
+                                <Route path="*" element={<NotFound />} />
+                              </Routes>
+                            </div>
+                          </TooltipProvider>
+                        </VocabularyProvider>
+                      </DirectoryProvider>
+                    </ExerciseProvider>
+                  </UserSettingsProvider>
+                </SubscriptionProvider>
+              </ThemeProvider>
+            </AuthProvider>
+          </HelmetProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </div>
   );
-}
-
-// Generate sitemap on app load (development only)
-if (import.meta.env.DEV) {
-  generateAndSaveSitemap();
 }
 
 export default App;
