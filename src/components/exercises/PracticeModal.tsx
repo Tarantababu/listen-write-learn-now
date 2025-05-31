@@ -36,7 +36,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true)
   const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false)
-  const [keyboardVisible, setKeyboardVisible] = useState<boolean>(false)
+  // Removed keyboard state - we ignore virtual keyboard completely
   
   const hasInitializedRef = useRef<boolean>(false)
   const isMobile = useIsMobile()
@@ -48,63 +48,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   const { user } = useAuth()
   const { subscription } = useSubscription()
 
-  // Simplified mobile keyboard detection
-  useEffect(() => {
-    if (!isMobile) return
-
-    // Store initial viewport height
-    initialViewportHeight.current = window.visualViewport?.height || window.innerHeight
-
-    const updateKeyboardState = () => {
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current)
-      }
-
-      resizeTimeoutRef.current = setTimeout(() => {
-        const currentHeight = window.visualViewport?.height || window.innerHeight
-        const heightDifference = initialViewportHeight.current - currentHeight
-        
-        // More reliable keyboard detection threshold
-        const keyboardThreshold = window.innerWidth > window.innerHeight ? 100 : 200
-        const isKeyboardOpen = heightDifference > keyboardThreshold
-
-        setKeyboardVisible(isKeyboardOpen)
-        
-        console.log('Keyboard state:', {
-          isKeyboardOpen,
-          heightDifference,
-          currentHeight,
-          initialHeight: initialViewportHeight.current
-        })
-      }, 150)
-    }
-
-    // Visual Viewport API (most reliable)
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", updateKeyboardState)
-    }
-
-    // Fallback for older devices
-    window.addEventListener("resize", updateKeyboardState)
-
-    // Initial check
-    updateKeyboardState()
-
-    return () => {
-      if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current)
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", updateKeyboardState)
-      }
-      window.removeEventListener("resize", updateKeyboardState)
-    }
-  }, [isMobile])
-
-  // Reset keyboard state when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setKeyboardVisible(false)
-    }
-  }, [isOpen])
+  // No keyboard detection needed - we ignore virtual keyboard completely
 
   // Update the local exercise state immediately when the prop changes or when exercises are updated
   useEffect(() => {
@@ -283,7 +227,9 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
                 overflow: hidden !important;
                 transform: none !important;
                 box-shadow: none !important;
-                /* Removed explicit height constraints that were causing issues */
+                /* Fixed height - ignore virtual keyboard */
+                height: 100vh !important;
+                height: 100dvh !important; /* Use dynamic viewport height where supported */
               }
               
               .mobile-practice-content {
@@ -295,23 +241,17 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
                 padding: 16px !important;
                 margin: 0 !important;
                 background: hsl(var(--background)) !important;
-                /* Use viewport units that automatically adjust for keyboard */
                 min-height: 0 !important;
+                /* Ensure content remains scrollable regardless of keyboard */
+                position: relative !important;
               }
               
-              /* Keyboard-specific adjustments */
-              .mobile-keyboard-active .mobile-practice-content {
-                padding-bottom: 8px !important;
-                /* Allow content to scroll naturally when keyboard is open */
-                max-height: calc(100vh - 100px) !important;
-              }
-              
-              /* Ensure input fields scroll into view properly */
+              /* Enhanced input focus for better accessibility without layout changes */
               .mobile-practice-content textarea:focus,
               .mobile-practice-content input:focus {
-                scroll-margin-bottom: 120px !important;
                 outline: 2px solid hsl(var(--ring)) !important;
                 outline-offset: 2px !important;
+                /* Remove scroll margin - let browser handle natural scrolling */
               }
               
               /* Minimalistic spacing overrides */
@@ -382,15 +322,10 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
                 margin-top: 12px !important;
               }
               
-              /* Landscape optimization */
+              /* Landscape optimization - no keyboard adjustments */
               @media (orientation: landscape) {
                 .mobile-practice-content {
                   padding: 12px !important;
-                }
-                
-                .mobile-keyboard-active .mobile-practice-content {
-                  padding-bottom: 6px !important;
-                  max-height: calc(100vh - 80px) !important;
                 }
               }
             }
@@ -404,12 +339,11 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
           className={`
             ${
               isMobile
-                ? `mobile-practice-modal ${keyboardVisible ? 'mobile-keyboard-active' : ''}`
+                ? "mobile-practice-modal"
                 : "max-w-4xl max-h-[90vh]"
             } 
             overflow-hidden flex flex-col
           `}
-          /* Removed getMobileStyles() that was causing conflicts */
         >
           <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
 
