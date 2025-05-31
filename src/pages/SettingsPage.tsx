@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +18,6 @@ import { getLanguageFlagCode, capitalizeLanguage } from '@/utils/languageUtils';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FlagIcon } from 'react-flag-kit';
-
 const SettingsPage: React.FC = () => {
   const {
     settings,
@@ -32,8 +30,9 @@ const SettingsPage: React.FC = () => {
   const availableLanguages: Language[] = ['english', 'german', 'spanish', 'french', 'portuguese', 'italian', 'turkish', 'swedish', 'dutch', 'norwegian'];
   const [updatingLanguage, setUpdatingLanguage] = useState<string | null>(null);
   const isMobile = useIsMobile();
-  const { theme } = useTheme();
-  
+  const {
+    theme
+  } = useTheme();
   const handleLanguageToggle = async (language: Language, isChecked: boolean) => {
     try {
       setUpdatingLanguage(language);
@@ -51,7 +50,6 @@ const SettingsPage: React.FC = () => {
       setUpdatingLanguage(null);
     }
   };
-  
   const handleLanguageSelect = async (language: Language) => {
     try {
       setUpdatingLanguage(language);
@@ -64,7 +62,6 @@ const SettingsPage: React.FC = () => {
       setUpdatingLanguage(null);
     }
   };
-  
   if (loading) {
     return <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
         <div className="flex flex-col items-center">
@@ -73,7 +70,6 @@ const SettingsPage: React.FC = () => {
         </div>
       </div>;
   }
-  
   return <div className="container mx-auto px-4 py-6 max-w-3xl">
       <div className="mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent flex items-center">
@@ -107,25 +103,7 @@ const SettingsPage: React.FC = () => {
           </CardContent>
         </Card>
         
-        <Card className="gradient-card animate-fade-in">
-          <CardHeader className="pb-2 sm:pb-4">
-            <CardTitle className="flex items-center text-lg sm:text-xl">
-              <Moon className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-              Appearance
-            </CardTitle>
-            <CardDescription>
-              Customize the appearance of the application
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="flex items-center justify-between">
-              <ThemeToggle showLabel={true} />
-              <p className="text-xs text-muted-foreground">
-                {theme === 'dark' ? 'Dark mode is enabled' : 'Light mode is enabled'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        
         
         <Card className="gradient-card animate-fade-in">
           <CardHeader className="pb-2 sm:pb-4">
@@ -199,5 +177,4 @@ const SettingsPage: React.FC = () => {
       </div>
     </div>;
 };
-
 export default SettingsPage;
