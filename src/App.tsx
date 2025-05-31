@@ -1,18 +1,18 @@
+
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
-import { ThemeProvider } from '@/components/ThemeProvider';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { Toaster } from '@/components/ui/toaster';
 import Layout from '@/components/Layout';
 import Index from '@/pages/Index';
-import Login from '@/pages/Login';
-import SignUp from '@/pages/SignUp';
-import Dashboard from '@/pages/Dashboard';
-import Settings from '@/pages/Settings';
-import AdminDashboard from '@/pages/AdminDashboard';
+import LoginPage from '@/pages/LoginPage';
+import SignUpPage from '@/pages/SignUpPage';
+import SettingsPage from '@/pages/SettingsPage';
+import AdminPage from '@/pages/AdminPage';
 import ExercisesPage from '@/pages/ExercisesPage';
 import VocabularyPage from '@/pages/VocabularyPage';
 import CurriculumPage from '@/pages/CurriculumPage';
@@ -40,23 +40,23 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <SubscriptionProvider>
-          <ThemeProvider defaultTheme="system" storageKey="vite-react-theme">
+          <ThemeProvider>
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<Index />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<SignUp />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignUpPage />} />
                 
                 {/* Main Layout with Header and Session Warning */}
                 <Route path="/dashboard" element={<Layout />}>
-                  <Route index element={<Dashboard />} />
-                  <Route path="settings" element={<Settings />} />
+                  <Route index element={<ExercisesPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
                   <Route path="subscription" element={<SubscriptionPage />} />
                   <Route path="exercises" element={<ExercisesPage />} />
                   <Route path="vocabulary" element={<VocabularyPage />} />
                   <Route path="curriculum" element={<CurriculumPage />} />
                   <Route path="tutorial" element={<TutorialPage />} />
-                  <Route path="admin" element={<AdminDashboard />} />
+                  <Route path="admin" element={<AdminPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>
 
