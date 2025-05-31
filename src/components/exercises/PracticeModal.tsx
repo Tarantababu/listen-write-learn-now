@@ -379,7 +379,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
 
   return (
     <>
-      {/* Enhanced mobile CSS for better keyboard handling */}
+      {/* Enhanced mobile CSS for elegant and minimalistic design */}
       {isMobile && (
         <style
           dangerouslySetInnerHTML={{
@@ -391,12 +391,13 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
                 margin: 0 !important;
                 border-radius: 0 !important;
                 border: none !important;
-                background: var(--background) !important;
+                background: hsl(var(--background)) !important;
                 display: flex !important;
                 flex-direction: column !important;
                 overflow: hidden !important;
                 transform: none !important;
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                box-shadow: none !important;
               }
               
               .mobile-practice-content {
@@ -405,96 +406,99 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
                 overflow-x: hidden !important;
                 -webkit-overflow-scrolling: touch !important;
                 scroll-behavior: smooth !important;
-                padding: 8px 12px !important;
+                padding: 16px !important;
                 margin: 0 !important;
+                background: hsl(var(--background)) !important;
               }
               
               .mobile-keyboard-adjusted {
-                padding-bottom: ${keyboardVisible ? '8px' : 'env(safe-area-inset-bottom, 0)'} !important;
+                padding-bottom: ${keyboardVisible ? '8px' : 'env(safe-area-inset-bottom, 16px)'} !important;
               }
               
-              /* Compact mobile layout overrides */
+              /* Minimalistic spacing overrides */
               .mobile-practice-content .space-y-4 > :not([hidden]) ~ :not([hidden]) {
-                margin-top: 12px !important;
+                margin-top: 16px !important;
               }
               
               .mobile-practice-content .space-y-3 > :not([hidden]) ~ :not([hidden]) {
-                margin-top: 8px !important;
+                margin-top: 12px !important;
               }
               
               .mobile-practice-content .space-y-2 > :not([hidden]) ~ :not([hidden]) {
-                margin-top: 6px !important;
+                margin-top: 8px !important;
               }
               
-              /* Reduce padding on cards and containers */
+              /* Clean padding and margins */
               .mobile-practice-content .p-6 {
-                padding: 12px !important;
+                padding: 16px !important;
               }
               
               .mobile-practice-content .p-4 {
-                padding: 8px !important;
+                padding: 12px !important;
               }
               
               .mobile-practice-content .p-3 {
-                padding: 6px !important;
+                padding: 8px !important;
               }
               
               .mobile-practice-content .py-8 {
+                padding-top: 16px !important;
+                padding-bottom: 16px !important;
+              }
+              
+              .mobile-practice-content .py-6 {
                 padding-top: 12px !important;
                 padding-bottom: 12px !important;
               }
               
-              .mobile-practice-content .py-6 {
+              .mobile-practice-content .py-4 {
                 padding-top: 8px !important;
                 padding-bottom: 8px !important;
               }
               
-              .mobile-practice-content .py-4 {
-                padding-top: 6px !important;
-                padding-bottom: 6px !important;
+              .mobile-practice-content .px-6 {
+                padding-left: 16px !important;
+                padding-right: 16px !important;
               }
               
-              .mobile-practice-content .px-6 {
+              .mobile-practice-content .px-4 {
                 padding-left: 12px !important;
                 padding-right: 12px !important;
               }
               
-              .mobile-practice-content .px-4 {
-                padding-left: 8px !important;
-                padding-right: 8px !important;
-              }
-              
-              /* Optimize margins */
+              /* Elegant margins */
               .mobile-practice-content .mb-6 {
-                margin-bottom: 12px !important;
+                margin-bottom: 16px !important;
               }
               
               .mobile-practice-content .mb-4 {
-                margin-bottom: 8px !important;
+                margin-bottom: 12px !important;
               }
               
               .mobile-practice-content .mt-6 {
-                margin-top: 12px !important;
+                margin-top: 16px !important;
               }
               
               .mobile-practice-content .mt-4 {
-                margin-top: 8px !important;
+                margin-top: 12px !important;
               }
               
-              /* Improve input focus behavior */
+              /* Clean input focus behavior */
               .mobile-practice-content textarea:focus,
               .mobile-practice-content input:focus {
                 scroll-margin-bottom: 60px !important;
+                outline: 2px solid hsl(var(--ring)) !important;
+                outline-offset: 2px !important;
               }
               
-              /* Optimize for landscape mode */
+              /* Landscape optimization */
               @media (orientation: landscape) {
                 .mobile-practice-content {
-                  padding: 4px 8px !important;
+                  padding: 12px !important;
                 }
                 
                 .mobile-keyboard-adjusted {
-                  padding-bottom: ${keyboardVisible ? '4px' : '4px'} !important;
+                  padding-bottom: ${keyboardVisible ? '6px' : '12px'} !important;
                 }
               }
             }
