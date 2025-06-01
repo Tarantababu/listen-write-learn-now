@@ -1,4 +1,3 @@
-
 // Utility to generate sitemap data for SEO
 export const generateSitemapUrls = () => {
   const baseUrl = 'https://lwlnow.com';
@@ -22,6 +21,33 @@ export const generateSitemapUrls = () => {
   }));
 };
 
+import { supabase } from '@/integrations/supabase/client';
+
+// New function to fetch blog posts for sitemap
+export const generateBlogSitemapUrls = async () => {
+  const baseUrl = 'https://lwlnow.com';
+  
+  try {
+    const { data: posts, error } = await supabase
+      .from('blog_posts')
+      .select('slug, updated_at, published_at')
+      .eq('status', 'published')
+      .order('published_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    return posts?.map(post => ({
+      url: `${baseUrl}/blog/${post.slug}`,
+      lastmod: post.updated_at || post.published_at || new Date().toISOString(),
+      changefreq: 'monthly',
+      priority: 0.7
+    })) || [];
+  } catch (error) {
+    console.error('Error fetching blog posts for sitemap:', error);
+    return [];
+  }
+};
+
 export const generateSitemapXml = (urls: Array<{url: string, priority: number, changefreq: string, lastmod: string}>) => {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -34,8 +60,15 @@ ${urls.map(url => `  <url>
 </urlset>`;
 };
 
-// Function to generate and return the complete sitemap XML
-export const generateCompleteSitemap = () => {
-  const urls = generateSitemapUrls();
-  return generateSitemapXml(urls);
+// Enhanced function to generate complete sitemap with blog posts
+export const generateCompleteSitemap = async () => {
+  const staticUrls = generateSitemapUrls();
+  const blogUrls = await generateBlogSitemapUrls();
+  const allUrls = [...staticUrls, ...blogUrls];
+  return generateSitemapXml(allUrls);
+};
+
+// Function specifically for generating dynamic sitemap (for API endpoints)
+export const generateDynamicSitemap = async () => {
+  return await generateCompleteSitemap();
 };

@@ -18,6 +18,7 @@ import { useNavigate as useRouterNavigate } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
 import type { BlogPost } from "@/types"
 import { useQuery } from "@tanstack/react-query"
+import BlogManagement from '@/components/admin/BlogManagement';
 
 const AdminPage: React.FC = () => {
   const { isAdmin, loading } = useAdmin()
@@ -77,7 +78,7 @@ const AdminPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+    <div className="container mx-auto px-4 py-8">
       <div className="flex items-center mb-4 sm:mb-6">
         <Button variant="outline" size="sm" className="mr-2 shrink-0" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4 mr-1 sm:mr-2" />
@@ -95,34 +96,36 @@ const AdminPage: React.FC = () => {
         </CardHeader>
       </Card>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4 sm:mb-8">
-        <div className="overflow-x-auto">
-          <TabsList className="mb-4 w-max min-w-full grid grid-cols-6 h-auto p-1">
-            <TabsTrigger value="default-exercises" className="text-xs sm:text-sm px-2 py-2 whitespace-nowrap">
-              <span className="hidden sm:inline">Default Exercises</span>
-              <span className="sm:hidden">Exercises</span>
-            </TabsTrigger>
-            <TabsTrigger value="messages" className="text-xs sm:text-sm px-2 py-2 whitespace-nowrap">
-              Messages
-            </TabsTrigger>
-            <TabsTrigger value="statistics" className="text-xs sm:text-sm px-2 py-2 whitespace-nowrap">
-              <span className="hidden sm:inline">Statistics</span>
-              <span className="sm:hidden">Stats</span>
-            </TabsTrigger>
-            <TabsTrigger value="feedback" className="text-xs sm:text-sm px-2 py-2 whitespace-nowrap">
-              Feedback
-            </TabsTrigger>
-            <TabsTrigger value="users" className="text-xs sm:text-sm px-2 py-2 whitespace-nowrap">
-              <span className="hidden sm:inline">User Roles</span>
-              <span className="sm:hidden">Users</span>
-            </TabsTrigger>
-            <TabsTrigger value="blog" className="text-xs sm:text-sm px-2 py-2 whitespace-nowrap">
-              Blog
-            </TabsTrigger>
-          </TabsList>
-        </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="stats">Statistics</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="exercises">Exercises</TabsTrigger>
+          <TabsTrigger value="feedback">Feedback</TabsTrigger>
+          <TabsTrigger value="blog">Blog</TabsTrigger>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
+        </TabsList>
 
-        <TabsContent value="default-exercises" className="space-y-6 sm:space-y-8">
+        <TabsContent value="stats">
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Admin Statistics</h2>
+            <AdminStatsDashboard />
+          </div>
+
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Visitor Analytics</h2>
+            <VisitorStats />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="users">
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">User Role Management</h2>
+            <UserRoleManagement />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="exercises">
           <div className="mb-6 sm:mb-8">
             <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Create Default Exercise</h2>
             <Card>
@@ -138,7 +141,18 @@ const AdminPage: React.FC = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="messages" className="space-y-6 sm:space-y-8">
+        <TabsContent value="feedback">
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">User Feedback</h2>
+            <FeedbackList />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="blog" className="space-y-6">
+          <BlogManagement />
+        </TabsContent>
+
+        <TabsContent value="messages" className="space-y-6">
           <div className="mb-6 sm:mb-8">
             <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Create New Message</h2>
             <AdminMessagesForm />
@@ -147,85 +161,6 @@ const AdminPage: React.FC = () => {
           <div>
             <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Message History</h2>
             <AdminMessagesList />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="statistics">
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Admin Statistics</h2>
-            <AdminStatsDashboard />
-          </div>
-
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Visitor Analytics</h2>
-            <VisitorStats />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="feedback">
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">User Feedback</h2>
-            <FeedbackList />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="users">
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">User Role Management</h2>
-            <UserRoleManagement />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="blog">
-          <div className="space-y-4 sm:space-y-6">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <h2 className="text-lg sm:text-xl font-semibold">Blog Posts</h2>
-              <Button onClick={() => routerNavigate("/dashboard/admin/blog/new")} className="w-full sm:w-auto">
-                Create New Post
-              </Button>
-            </div>
-
-            {loadingPosts ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : blogPosts && blogPosts.length > 0 ? (
-              <div className="space-y-3 sm:space-y-4">
-                {blogPosts.map((post) => (
-                  <Card
-                    key={post.id}
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => routerNavigate(`/dashboard/admin/blog/edit/${post.id}`)}
-                  >
-                    <CardContent className="p-3 sm:p-4">
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-medium text-sm sm:text-base truncate">{post.title}</h3>
-                          <p className="text-xs sm:text-sm text-muted-foreground">
-                            Status:{" "}
-                            <span className={`${post.status === "published" ? "text-green-500" : "text-amber-500"}`}>
-                              {post.status === "published" ? "Published" : "Draft"}
-                            </span>
-                          </p>
-                        </div>
-                        <div className="text-xs sm:text-sm text-muted-foreground shrink-0">
-                          {new Date(post.updated_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="p-6 sm:p-8 text-center">
-                  <p className="text-muted-foreground mb-4 text-sm sm:text-base">No blog posts yet</p>
-                  <Button onClick={() => routerNavigate("/dashboard/admin/blog/new")} className="w-full sm:w-auto">
-                    Create Your First Post
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
           </div>
         </TabsContent>
       </Tabs>
