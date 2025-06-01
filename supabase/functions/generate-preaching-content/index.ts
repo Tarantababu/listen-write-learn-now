@@ -8,15 +8,15 @@ const corsHeaders = {
 
 const DIFFICULTY_PROMPTS = {
   simple: {
-    nouns: "Generate common, everyday German nouns that beginners should know (household items, basic animals, food). Focus on the most frequently used words.",
+    nouns: "Generate common, everyday German nouns that beginners should know (household items, basic animals, food, family members, body parts, clothing, colors as nouns, basic nature words). Focus on the most frequently used words that beginners encounter first. Vary your selection to include different categories.",
     patterns: "Create simple sentence patterns using 'Das ist ein/eine' structure. Keep vocabulary basic and sentences short."
   },
   normal: {
-    nouns: "Generate intermediate German nouns including abstract concepts, workplace items, and more specific categories. Mix common and moderately challenging words.",
+    nouns: "Generate intermediate German nouns including abstract concepts, workplace items, more specific categories (technology terms, hobby-related words, travel vocabulary, emotions as nouns, academic subjects, city/countryside terms). Mix common and moderately challenging words from various domains.",
     patterns: "Create sentence patterns with possessive articles (mein/meine) and basic verbs. Include some compound sentences."
   },
   complex: {
-    nouns: "Generate advanced German nouns including technical terms, literary vocabulary, and complex abstract concepts. Challenge the learner.",
+    nouns: "Generate advanced German nouns including technical terms, literary vocabulary, complex abstract concepts (philosophical terms, scientific vocabulary, business/economics terms, cultural concepts, specialized professions, compound words with multiple parts). Challenge the learner with sophisticated vocabulary.",
     patterns: "Create complex sentence patterns with multiple cases, adjective declensions, and subordinate clauses."
   }
 };
@@ -48,7 +48,7 @@ serve(async (req) => {
       case 'nouns':
         prompt = `${DIFFICULTY_PROMPTS[difficulty].nouns}
 
-Generate exactly ${count} German nouns with their articles and English meanings.
+Generate exactly ${count} different German nouns with their articles and English meanings. Make sure to select RANDOM words each time, not the same common examples.
 
 Return a JSON array with this exact format:
 [
@@ -61,7 +61,13 @@ Return a JSON array with this exact format:
   }
 ]
 
-Ensure variety in articles (der, die, das) and make sure all words are appropriate for ${difficulty} level learners.`;
+Requirements:
+- Generate ${count} unique German nouns
+- Include proper articles (der, die, das)
+- Ensure good distribution of all three articles
+- Make words appropriate for ${difficulty} level
+- Use DIFFERENT words each time this is called - vary your selection
+- Avoid repeating the same common examples (Lampe, Tisch, Buch, etc.)`;
         responseFormat = 'Return only valid JSON without markdown formatting or code blocks. No additional text or explanations.';
         break;
 
@@ -131,7 +137,7 @@ Be encouraging but precise about errors.`;
         'Authorization': `Bearer ${openAIKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
+              body: JSON.stringify({
         model: 'gpt-4o',
         messages: [
           {
@@ -143,7 +149,7 @@ Be encouraging but precise about errors.`;
             content: prompt
           }
         ],
-        temperature: 0.7,
+        temperature: 0.8, // Increased for more variety in word selection
         max_tokens: 1000,
       }),
     });
