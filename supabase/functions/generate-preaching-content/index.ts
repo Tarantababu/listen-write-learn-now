@@ -96,33 +96,28 @@ serve(async (req) => {
 
     switch (type) {
       case 'nouns':
-        prompt = `${DIFFICULTY_PROMPTS[difficulty].nouns}
+        prompt = `Generate exactly ${count} different German nouns with their articles and English meanings for ${difficulty} level learners.
 
-Session ID: ${sessionId || 'default'} - Seed: ${seed}
+${DIFFICULTY_PROMPTS[difficulty].nouns}
 
-Generate exactly ${count} different German nouns with their articles and English meanings. 
+CRITICAL: Avoid common textbook words like Tisch, Lampe, Buch, Stuhl, Katze, Haus.
 
-CRITICAL REQUIREMENTS:
-- Use this seed (${seed}) to ensure randomness and avoid repetition
-- NEVER use common examples like: der Tisch, die Lampe, das Buch, der Stuhl, die Katze, das Haus
-- Each request must return completely different words
-- Ensure authentic variety across all three genders (der, die, das)
-- Focus on practical, real-world vocabulary appropriate for ${difficulty} level
-- Mix different semantic categories (objects, concepts, living things, abstract terms)
+You must respond with a JSON object containing a "nouns" array:
 
-Return a JSON array with this exact format:
-[
-  {
-    "id": "noun_1", 
-    "word": "[German word]",
-    "article": "[der/die/das]",
-    "meaning": "[English translation]",
-    "difficulty": "${difficulty}"
-  }
-]
+{
+  "nouns": [
+    {
+      "id": "noun_1",
+      "word": "German_word",
+      "article": "der/die/das",
+      "meaning": "English_meaning",
+      "difficulty": "${difficulty}"
+    }
+  ]
+}
 
-Generate ${count} completely unique German nouns that are different from typical textbook examples.`;
-        responseFormat = 'Return only valid JSON without markdown formatting or code blocks. No additional text or explanations.';
+Generate ${count} unique German nouns with varied genders and categories.`;
+        responseFormat = 'Return only a JSON object with a "nouns" array. No markdown, no explanations, just valid JSON.';
         break;
 
       case 'pattern':
@@ -134,29 +129,24 @@ Generate ${count} completely unique German nouns that are different from typical
         const usedPatterns = previousPatterns && previousPatterns.length > 0 ? 
           `\nAvoid these previously used patterns: ${previousPatterns.join(', ')}` : '';
         
-        prompt = `${DIFFICULTY_PROMPTS[difficulty].patterns}
+        prompt = `Create a sentence pattern drill using these German nouns: ${nounList}${usedPatterns}
 
-Available nouns from current session: ${nounList}${usedPatterns}
+${DIFFICULTY_PROMPTS[difficulty].patterns}
 
-Create a sentence pattern drill where the user fills in blanks with the appropriate article and noun from the provided list.
+You must respond with this JSON structure:
 
-REQUIREMENTS:
-- Use ONLY the nouns provided in the list above
-- Create varied, interesting sentence patterns appropriate for ${difficulty} level
-- Generate blanks that test article usage and noun selection
-- Provide multiple correct example answers using different nouns from the list
-
-Return JSON in this exact format:
 {
-  "id": "drill_${seed}",
-  "pattern": "[sentence with ___ blanks]",
-  "blanks": ["article", "noun"],
-  "difficulty": "${difficulty}",
-  "expectedAnswers": ["[example 1]", "[example 2]", "[example 3]"]
+  "drill": {
+    "id": "drill_${seed}",
+    "pattern": "sentence with ___ blanks",
+    "blanks": ["article", "noun"],
+    "difficulty": "${difficulty}",
+    "expectedAnswers": ["answer1", "answer2", "answer3"]
+  }
 }
 
-Generate 3-5 expected answers using different nouns from the provided list only.`;
-        responseFormat = 'Return only valid JSON without markdown formatting or code blocks. No additional text or explanations.';
+Use only the provided nouns and create 3-5 example answers.`;
+        responseFormat = 'Return only a JSON object with a "drill" property. No markdown, no explanations.';
         break;
 
       case 'explanation':
@@ -185,26 +175,21 @@ Format: Provide a clear, direct explanation without introductory phrases.`;
         prompt = `Evaluate this German speech attempt:
 
 Pattern: "${pattern}"
-Expected: "${expectedAnswer}"
+Expected: "${expectedAnswer}"  
 User said: "${userSpeech}"
 
-Analyze the user's response for:
-1. Grammar correctness (article usage, word order)
-2. Vocabulary accuracy
-3. Missing or incorrect elements
-4. Overall comprehension
+You must respond with this JSON structure:
 
-Provide constructive, encouraging feedback that helps the learner improve.
-
-Return JSON in this exact format:
 {
-  "isCorrect": [true/false],
-  "feedback": "[Encouraging feedback message]",
-  "corrections": ["[specific correction 1]", "[specific correction 2]"]
+  "evaluation": {
+    "isCorrect": true/false,
+    "feedback": "encouraging message",
+    "corrections": ["correction1", "correction2"]
+  }
 }
 
-Be supportive and specific about what they did well and what needs improvement.`;
-        responseFormat = 'Return only valid JSON without markdown formatting or code blocks. No additional text or explanations.';
+Analyze grammar, article usage, word order, and vocabulary accuracy.`;
+        responseFormat = 'Return only a JSON object with an "evaluation" property. No markdown, no explanations.';
         break;
 
       case 'loading-status':
@@ -264,47 +249,81 @@ Be supportive and specific about what they did well and what needs improvement.`
           timestamp: Date.now()
         };
       } else if (type === 'nouns') {
-        const parsedNouns = safeJsonParse(content, 'nouns');
+        const parsedResponse = safeJsonParse(content, 'nouns');
         
-        // Validate that we got the expected number of nouns
-        if (!Array.isArray(parsedNouns) || parsedNouns.length !== count) {
-          console.warn(`Expected ${count} nouns, got ${parsedNouns?.length || 0}`);
-          // If we got some nouns but not the exact count, still proceed
-          if (Array.isArray(parsedNouns) && parsedNouns.length > 0) {
-            console.log('Using available nouns despite count mismatch');
-          } else {
-            throw new Error('Invalid noun array returned from API');
-          }
+        // Handle both array and object responses
+        let nounsArray;
+        if (Array.isArray(parsedResponse)) {
+          nounsArray = parsedResponse;
+        } else if (parsedResponse.nouns && Array.isArray(parsedResponse.nouns)) {
+          nounsArray = parsedResponse.nouns;
+        } else {
+          throw new Error('Response must contain either an array or an object with a "nouns" array property');
+        }
+        
+        // Validate that we got some nouns
+        if (!nounsArray || nounsArray.length === 0) {
+          throw new Error('No nouns found in API response');
+        }
+        
+        // Validate noun structure
+        const validNouns = nounsArray.filter(noun => 
+          noun && typeof noun === 'object' && 
+          noun.word && noun.article && noun.meaning
+        );
+        
+        if (validNouns.length === 0) {
+          throw new Error('No valid nouns found in API response');
         }
         
         result = { 
-          nouns: parsedNouns,
+          nouns: validNouns,
           generated: Date.now(),
           seed: seed
         };
       } else if (type === 'pattern') {
-        const parsedDrill = safeJsonParse(content, 'pattern');
+        const parsedResponse = safeJsonParse(content, 'pattern');
+        
+        // Handle both direct drill and wrapped drill responses
+        let drillData;
+        if (parsedResponse.drill) {
+          drillData = parsedResponse.drill;
+        } else if (parsedResponse.pattern) {
+          drillData = parsedResponse;
+        } else {
+          throw new Error('Response must contain drill data');
+        }
         
         // Validate drill structure
-        if (!parsedDrill || !parsedDrill.pattern || !parsedDrill.expectedAnswers) {
-          throw new Error('Invalid drill structure returned from API');
+        if (!drillData.pattern || !drillData.expectedAnswers) {
+          throw new Error('Invalid drill structure: missing pattern or expectedAnswers');
         }
         
         result = { 
-          drill: parsedDrill,
+          drill: drillData,
           generated: Date.now(),
           seed: seed
         };
       } else if (type === 'evaluation') {
-        const parsedEval = safeJsonParse(content, 'evaluation');
+        const parsedResponse = safeJsonParse(content, 'evaluation');
+        
+        // Handle both direct evaluation and wrapped evaluation responses
+        let evalData;
+        if (parsedResponse.evaluation) {
+          evalData = parsedResponse.evaluation;
+        } else if (typeof parsedResponse.isCorrect === 'boolean') {
+          evalData = parsedResponse;
+        } else {
+          throw new Error('Response must contain evaluation data');
+        }
         
         // Validate evaluation structure
-        if (!parsedEval || typeof parsedEval.isCorrect !== 'boolean') {
-          throw new Error('Invalid evaluation structure returned from API');
+        if (typeof evalData.isCorrect !== 'boolean') {
+          throw new Error('Invalid evaluation structure: isCorrect must be boolean');
         }
         
         result = { 
-          evaluation: parsedEval,
+          evaluation: evalData,
           processed: Date.now()
         };
       }
