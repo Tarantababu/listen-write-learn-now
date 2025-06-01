@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -21,6 +20,13 @@ const DIFFICULTY_PROMPTS = {
     patterns: "Create complex sentence patterns with multiple cases, adjective declensions, and subordinate clauses."
   }
 };
+
+// Helper function to clean JSON response from markdown
+function cleanJsonResponse(content: string): string {
+  // Remove markdown code blocks if present
+  const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  return cleaned;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -56,7 +62,7 @@ Return a JSON array with this exact format:
 ]
 
 Ensure variety in articles (der, die, das) and make sure all words are appropriate for ${difficulty} level learners.`;
-        responseFormat = 'Return only valid JSON, no additional text.';
+        responseFormat = 'Return only valid JSON without markdown formatting or code blocks. No additional text or explanations.';
         break;
 
       case 'pattern':
@@ -79,7 +85,7 @@ Return JSON in this exact format:
 }
 
 Generate 3-5 expected answers using different nouns from the list.`;
-        responseFormat = 'Return only valid JSON, no additional text.';
+        responseFormat = 'Return only valid JSON without markdown formatting or code blocks. No additional text or explanations.';
         break;
 
       case 'explanation':
@@ -88,7 +94,7 @@ Generate 3-5 expected answers using different nouns from the list.`;
 Keep the explanation under 50 words and focus on practical rules or patterns that help remember the gender.
 
 Example format: "Most nouns ending in -e are feminine (die), so 'Lampe' takes 'die'."`;
-        responseFormat = 'Return only the explanation text, no JSON.';
+        responseFormat = 'Return only the explanation text, no JSON, no markdown formatting.';
         break;
 
       case 'evaluation':
@@ -112,7 +118,7 @@ Return JSON in this exact format:
 }
 
 Be encouraging but precise about errors.`;
-        responseFormat = 'Return only valid JSON, no additional text.';
+        responseFormat = 'Return only valid JSON without markdown formatting or code blocks. No additional text or explanations.';
         break;
 
       default:
@@ -153,11 +159,17 @@ Be encouraging but precise about errors.`;
     if (type === 'explanation') {
       result = { explanation: content };
     } else if (type === 'nouns') {
-      result = { nouns: JSON.parse(content) };
+      // Clean and parse JSON response
+      const cleanedContent = cleanJsonResponse(content);
+      result = { nouns: JSON.parse(cleanedContent) };
     } else if (type === 'pattern') {
-      result = { drill: JSON.parse(content) };
+      // Clean and parse JSON response
+      const cleanedContent = cleanJsonResponse(content);
+      result = { drill: JSON.parse(cleanedContent) };
     } else if (type === 'evaluation') {
-      result = { evaluation: JSON.parse(content) };
+      // Clean and parse JSON response
+      const cleanedContent = cleanJsonResponse(content);
+      result = { evaluation: JSON.parse(cleanedContent) };
     }
 
     return new Response(JSON.stringify(result), {
