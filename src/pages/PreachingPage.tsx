@@ -1,50 +1,34 @@
-
 import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import PreachingSession from '@/components/preaching/PreachingSession';
-
 const PreachingPage: React.FC = () => {
   const navigate = useNavigate();
   const [sessionActive, setSessionActive] = useState(false);
-
   const handleStartSession = () => {
     setSessionActive(true);
   };
-
   const handleSessionComplete = () => {
     setSessionActive(false);
     // Could show completion modal or redirect
   };
-
   const handleExit = () => {
     setSessionActive(false);
     navigate('/dashboard');
   };
-
   if (sessionActive) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 py-8">
+    return <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 py-8">
         <div className="container mx-auto px-4">
-          <PreachingSession 
-            onComplete={handleSessionComplete}
-            onExit={handleExit}
-          />
+          <PreachingSession onComplete={handleSessionComplete} onExit={handleExit} />
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
+  return <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center mb-6">
-          <Button variant="outline" size="sm" className="mr-4" onClick={() => navigate('/dashboard')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Button>
+          
           <h1 className="text-3xl font-bold">Preaching - Speaking Practice</h1>
         </div>
 
@@ -155,8 +139,6 @@ const PreachingPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default PreachingPage;
