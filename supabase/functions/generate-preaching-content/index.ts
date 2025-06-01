@@ -21,10 +21,55 @@ const DIFFICULTY_PROMPTS = {
   }
 };
 
-// Helper function to clean JSON response from markdown
+// Helper function to clean and extract JSON from response
 function cleanJsonResponse(content: string): string {
-  const cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  return cleaned;
+  // Remove markdown code blocks
+  let cleaned = content.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+  
+  // Remove any text before the first [ or {
+  const jsonStart = Math.min(
+    cleaned.indexOf('[') === -1 ? Infinity : cleaned.indexOf('['),
+    cleaned.indexOf('{') === -1 ? Infinity : cleaned.indexOf('{')
+  );
+  
+  if (jsonStart !== Infinity && jsonStart > 0) {
+    cleaned = cleaned.substring(jsonStart);
+  }
+  
+  // Remove any text after the last ] or }
+  const lastBracket = Math.max(cleaned.lastIndexOf(']'), cleaned.lastIndexOf('}'));
+  if (lastBracket !== -1 && lastBracket < cleaned.length - 1) {
+    cleaned = cleaned.substring(0, lastBracket + 1);
+  }
+  
+  return cleaned.trim();
+}
+
+// Helper function to attempt JSON parsing with fallback
+function safeJsonParse(content: string, type: string): any {
+  try {
+    const cleaned = cleanJsonResponse(content);
+    return JSON.parse(cleaned);
+  } catch (error) {
+    console.error(`JSON parsing failed for type ${type}:`, error);
+    console.error('Cleaned content:', cleanJsonResponse(content));
+    console.error('Raw content:', content);
+    
+    // Try to extract JSON manually for common patterns
+    if (type === 'nouns' && content.includes('"word"')) {
+      // Attempt to extract array from malformed response
+      const match = content.match(/\[[\s\S]*\]/);
+      if (match) {
+        try {
+          return JSON.parse(match[0]);
+        } catch (e) {
+          console.error('Manual extraction failed:', e);
+        }
+      }
+    }
+    
+    throw new Error(`Invalid JSON response from OpenAI: ${error.message}`);
+  }
 }
 
 // Helper function to generate unique timestamp-based seed for variety
@@ -183,22 +228,23 @@ Be supportive and specific about what they did well and what needs improvement.`
         'Authorization': `Bearer ${openAIKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
+        body: JSON.stringify({
         model: 'gpt-4o',
         messages: [
           {
             role: 'system',
-            content: `You are a German language learning assistant specializing in generating varied, authentic vocabulary. ${responseFormat} Always ensure maximum variety and avoid repetitive examples.`
+            content: `You are a German language learning assistant. ${responseFormat} CRITICAL: Your response must be valid JSON only. Do not include any explanations, markdown formatting, or additional text outside the JSON structure.`
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.9, // High temperature for maximum variety
+        temperature: 0.7, // Reduced slightly for more consistent JSON formatting
         max_tokens: 1200,
-        presence_penalty: 0.6, // Discourage repetitive content
-        frequency_penalty: 0.8, // Further reduce repetition
+        presence_penalty: 0.6,
+        frequency_penalty: 0.8,
+        response_format: type !== 'explanation' ? { type: "json_object" } : undefined, // Force JSON mode for structured responses
       }),
     });
 
@@ -218,12 +264,17 @@ Be supportive and specific about what they did well and what needs improvement.`
           timestamp: Date.now()
         };
       } else if (type === 'nouns') {
-        const cleanedContent = cleanJsonResponse(content);
-        const parsedNouns = JSON.parse(cleanedContent);
+        const parsedNouns = safeJsonParse(content, 'nouns');
         
         // Validate that we got the expected number of nouns
         if (!Array.isArray(parsedNouns) || parsedNouns.length !== count) {
-          throw new Error('Invalid noun count returned from API');
+          console.warn(`Expected ${count} nouns, got ${parsedNouns?.length || 0}`);
+          // If we got some nouns but not the exact count, still proceed
+          if (Array.isArray(parsedNouns) && parsedNouns.length > 0) {
+            console.log('Using available nouns despite count mismatch');
+          } else {
+            throw new Error('Invalid noun array returned from API');
+          }
         }
         
         result = { 
@@ -232,8 +283,12 @@ Be supportive and specific about what they did well and what needs improvement.`
           seed: seed
         };
       } else if (type === 'pattern') {
-        const cleanedContent = cleanJsonResponse(content);
-        const parsedDrill = JSON.parse(cleanedContent);
+        const parsedDrill = safeJsonParse(content, 'pattern');
+        
+        // Validate drill structure
+        if (!parsedDrill || !parsedDrill.pattern || !parsedDrill.expectedAnswers) {
+          throw new Error('Invalid drill structure returned from API');
+        }
         
         result = { 
           drill: parsedDrill,
@@ -241,8 +296,12 @@ Be supportive and specific about what they did well and what needs improvement.`
           seed: seed
         };
       } else if (type === 'evaluation') {
-        const cleanedContent = cleanJsonResponse(content);
-        const parsedEval = JSON.parse(cleanedContent);
+        const parsedEval = safeJsonParse(content, 'evaluation');
+        
+        // Validate evaluation structure
+        if (!parsedEval || typeof parsedEval.isCorrect !== 'boolean') {
+          throw new Error('Invalid evaluation structure returned from API');
+        }
         
         result = { 
           evaluation: parsedEval,
@@ -252,7 +311,9 @@ Be supportive and specific about what they did well and what needs improvement.`
     } catch (parseError) {
       console.error('JSON parsing error:', parseError);
       console.error('Raw content:', content);
-      throw new Error(`Failed to parse API response: ${parseError.message}`);
+      
+      // Return a more informative error
+      throw new Error(`Failed to parse API response for ${type}: ${parseError.message}. Check server logs for full content.`);
     }
 
     return new Response(JSON.stringify(result), {
