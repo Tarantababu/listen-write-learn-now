@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
@@ -33,18 +34,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isNewUser, setIsNewUser] = useState(false);
+  const [processedUsers, setProcessedUsers] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
     // First set up auth state listener to avoid missing auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         console.log('Auth state change:', event, session?.user?.id);
         
         setSession(session);
         setUser(session?.user ?? null);
         
         if (event === 'SIGNED_IN' && session?.user) {
+          // Check if this is a new user by looking at the created_at timestamp
+          // If the user was created within the last 10 seconds, consider them new
+          const userCreatedAt = new Date(session.user.created_at);
+          const now = new Date();
+          const timeDiff = now.getTime() - userCreatedAt.getTime();
+          const isRecentlyCreated = timeDiff < 10000; // 10 seconds
+          
+          // Only process each user once per session to avoid duplicates
+          if (isRecentlyCreated && !processedUsers.has(session.user.id)) {
+            setProcessedUsers(prev => new Set(prev).add(session.user.id));
+            
+            try {
+              console.log('New user detected, sending welcome email and creating Resend contact');
+              
+              // Send welcome email
+              await EmailService.sendWelcomeEmail({
+                email: session.user.email || '',
+                name: session.user.user_metadata?.name || session.user.user_metadata?.full_name
+              });
+              console.log('Welcome email sent successfully for OAuth user');
+              
+              // Create contact in Resend
+              await ResendContactService.createContact({
+                email: session.user.email || '',
+                firstName: session.user.user_metadata?.given_name || session.user.user_metadata?.first_name,
+                lastName: session.user.user_metadata?.family_name || session.user.user_metadata?.last_name
+              });
+              console.log('Resend contact created successfully for OAuth user');
+            } catch (emailError) {
+              console.error('Failed to send welcome email or create Resend contact for OAuth user:', emailError);
+            }
+          }
+          
           // Initialize user profile on sign in
           setTimeout(() => {
             initializeUserProfile(session.user.id);
@@ -65,6 +100,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (event === 'SIGNED_OUT') {
+          // Clear processed users on sign out
+          setProcessedUsers(new Set());
+          
           // Only redirect if not already on login/public pages
           const currentPath = window.location.pathname;
           if (currentPath.startsWith('/dashboard')) {
