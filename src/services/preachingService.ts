@@ -77,13 +77,24 @@ class PreachingService {
     return data.evaluation;
   }
 
-  // Save session progress (optional)
+  // Save session progress (in local storage for now)
   async saveSessionProgress(sessionData: any): Promise<void> {
-    const { error } = await supabase
-      .from('preaching_sessions')
-      .upsert(sessionData);
+    try {
+      localStorage.setItem('preaching-session', JSON.stringify(sessionData));
+    } catch (error) {
+      console.warn('Failed to save session progress to localStorage:', error);
+    }
+  }
 
-    if (error) throw error;
+  // Load session progress (from local storage)
+  loadSessionProgress(): any {
+    try {
+      const data = localStorage.getItem('preaching-session');
+      return data ? JSON.parse(data) : null;
+    } catch (error) {
+      console.warn('Failed to load session progress from localStorage:', error);
+      return null;
+    }
   }
 }
 
