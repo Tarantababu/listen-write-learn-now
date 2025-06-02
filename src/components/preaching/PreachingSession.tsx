@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Mic, Volume2, ChevronRight, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { preachingService } from '@/services/preachingService';
+import { useUserSettings } from '@/contexts/UserSettingsContext';
 import type { 
   Noun, 
   PreachingSession as Session, 
@@ -27,6 +28,7 @@ interface PreachingSessionProps {
 }
 
 const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit }) => {
+  const { userSettings } = useUserSettings();
   const [session, setSession] = useState<Session | null>(null);
   const [currentStep, setCurrentStep] = useState<PreachingStep>('memorizing');
   const [difficulty, setDifficulty] = useState<PreachingDifficulty>('simple');
@@ -37,14 +39,17 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  // Get the user's selected language or default to German
+  const selectedLanguage = userSettings?.selectedLanguage || 'german';
+
   useEffect(() => {
     initializeSession();
-  }, []);
+  }, [selectedLanguage]);
 
   const initializeSession = async () => {
     setLoading(true);
     try {
-      const generatedNouns = await preachingService.generateNouns(difficulty);
+      const generatedNouns = await preachingService.generateNouns(difficulty, selectedLanguage);
       setNouns(generatedNouns);
       setGenderTests(generatedNouns.map(noun => ({ noun })));
       
@@ -63,7 +68,7 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
       setSession(newSession);
     } catch (error) {
       console.error('Failed to initialize session:', error);
-      toast.error('Failed to start preaching session');
+      toast.error(`Failed to start ${selectedLanguage} preaching session`);
     } finally {
       setLoading(false);
     }
@@ -93,9 +98,9 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
 
   const getStepTitle = (step: PreachingStep): string => {
     switch (step) {
-      case 'memorizing': return 'Memorizing Gender';
-      case 'testing': return 'Testing Gender';
-      case 'drilling': return 'Pattern Drill';
+      case 'memorizing': return `Memorizing ${selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)} Grammar`;
+      case 'testing': return `Testing ${selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)} Knowledge`;
+      case 'drilling': return `${selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)} Pattern Drill`;
       case 'feedback': return 'Feedback & Results';
     }
   };
@@ -105,7 +110,7 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
       return (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2">Preparing your session...</span>
+          <span className="ml-2">Preparing your {selectedLanguage} session...</span>
         </div>
       );
     }
@@ -115,6 +120,7 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
         return (
           <MemorizingStep 
             nouns={nouns} 
+            language={selectedLanguage}
             onComplete={() => handleStepComplete({})} 
           />
         );
@@ -122,6 +128,7 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
         return (
           <TestingStep 
             nouns={nouns} 
+            language={selectedLanguage}
             onComplete={handleStepComplete}
           />
         );
@@ -130,6 +137,7 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
           <DrillingStep 
             nouns={nouns} 
             difficulty={difficulty}
+            language={selectedLanguage}
             onComplete={handleStepComplete}
           />
         );
@@ -138,6 +146,7 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
           <FeedbackStep 
             genderTests={genderTests}
             drillAttempts={drillAttempts}
+            language={selectedLanguage}
             onComplete={() => handleStepComplete({})}
             onRestart={initializeSession}
           />
@@ -150,7 +159,7 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
       <Card className="max-w-md mx-auto">
         <CardContent className="pt-6">
           <div className="text-center space-y-4">
-            <h3 className="text-lg font-semibold">Choose Difficulty</h3>
+            <h3 className="text-lg font-semibold">Choose Difficulty for {selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)}</h3>
             <div className="space-y-2">
               {(['simple', 'normal', 'complex'] as PreachingDifficulty[]).map((level) => (
                 <Button
@@ -164,7 +173,7 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
               ))}
             </div>
             <Button onClick={initializeSession} className="w-full">
-              Start Preaching Session
+              Start {selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)} Preaching Session
             </Button>
           </div>
         </CardContent>
@@ -183,6 +192,9 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
                 <span>{getStepTitle(currentStep)}</span>
                 <Badge variant="secondary" className="capitalize">
                   {difficulty}
+                </Badge>
+                <Badge variant="outline" className="capitalize">
+                  {selectedLanguage}
                 </Badge>
               </CardTitle>
             </div>

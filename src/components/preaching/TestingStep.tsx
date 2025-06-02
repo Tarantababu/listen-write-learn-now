@@ -7,13 +7,15 @@ import { CheckCircle, XCircle, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { preachingService } from '@/services/preachingService';
 import type { Noun, GenderTest } from '@/types/preaching';
+import type { Language } from '@/types';
 
 interface TestingStepProps {
   nouns: Noun[];
+  language: Language;
   onComplete: (data: { tests: GenderTest[] }) => void;
 }
 
-const TestingStep: React.FC<TestingStepProps> = ({ nouns, onComplete }) => {
+const TestingStep: React.FC<TestingStepProps> = ({ nouns, language, onComplete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [tests, setTests] = useState<GenderTest[]>([]);
   const [selectedArticle, setSelectedArticle] = useState<'der' | 'die' | 'das' | null>(null);
@@ -50,7 +52,7 @@ const TestingStep: React.FC<TestingStepProps> = ({ nouns, onComplete }) => {
     if (!isCorrect) {
       setLoadingExplanation(true);
       try {
-        const explanationText = await preachingService.getGenderExplanation(currentNoun);
+        const explanationText = await preachingService.getGenderExplanation(currentNoun, language);
         setExplanation(explanationText);
         updatedTests[currentIndex].explanation = explanationText;
         setTests(updatedTests);

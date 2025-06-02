@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { Noun, PatternDrill, PreachingDifficulty, DrillAttempt } from '@/types/preaching';
+import type { Language } from '@/types';
 
 class PreachingService {
   private static instance: PreachingService;
@@ -13,11 +14,12 @@ class PreachingService {
   }
 
   // Generate nouns for the session
-  async generateNouns(difficulty: PreachingDifficulty): Promise<Noun[]> {
+  async generateNouns(difficulty: PreachingDifficulty, language: Language = 'german'): Promise<Noun[]> {
     const { data, error } = await supabase.functions.invoke('generate-preaching-content', {
       body: {
         type: 'nouns',
         difficulty,
+        language,
         count: difficulty === 'simple' ? 5 : difficulty === 'normal' ? 7 : 10
       }
     });
@@ -30,12 +32,14 @@ class PreachingService {
   async generatePatternDrill(
     nouns: Noun[], 
     difficulty: PreachingDifficulty,
+    language: Language = 'german',
     previousPatterns: string[] = []
   ): Promise<PatternDrill> {
     const { data, error } = await supabase.functions.invoke('generate-preaching-content', {
       body: {
         type: 'pattern',
         difficulty,
+        language,
         nouns,
         previousPatterns
       }
@@ -46,10 +50,11 @@ class PreachingService {
   }
 
   // Get gender explanation
-  async getGenderExplanation(noun: Noun): Promise<string> {
+  async getGenderExplanation(noun: Noun, language: Language = 'german'): Promise<string> {
     const { data, error } = await supabase.functions.invoke('generate-preaching-content', {
       body: {
         type: 'explanation',
+        language,
         noun
       }
     });
@@ -62,14 +67,16 @@ class PreachingService {
   async evaluateSpeech(
     expectedAnswer: string,
     userSpeech: string,
-    pattern: string
+    pattern: string,
+    language: Language = 'german'
   ): Promise<{ isCorrect: boolean; feedback: string; corrections: string[] }> {
     const { data, error } = await supabase.functions.invoke('generate-preaching-content', {
       body: {
         type: 'evaluation',
         expectedAnswer,
         userSpeech,
-        pattern
+        pattern,
+        language
       }
     });
 

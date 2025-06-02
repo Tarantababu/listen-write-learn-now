@@ -124,7 +124,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
     recognitionInstance.lang = getLanguageCode(language);
     
     // Handle recognition results
-    recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
+    recognitionInstance.onresult = (event) => {
       let interimTranscript = '';
       let finalTranscript = '';
       
