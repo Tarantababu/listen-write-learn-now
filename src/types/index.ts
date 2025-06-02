@@ -1,4 +1,5 @@
 
+
 import type { LucideIcon } from 'lucide-react';
 
 export type NavItem = {
@@ -108,6 +109,7 @@ export interface Exercise {
   isCompleted: boolean;
   directoryId?: string | null;
   default_exercise_id?: string | null;
+  archived?: boolean;
 }
 
 // Directory types
@@ -131,18 +133,20 @@ export interface VocabularyItem {
   userId: string;
   createdAt: string;
   updatedAt: string;
+  exerciseId?: string;
 }
 
 // User Settings types
 export interface UserSettings {
-  id: string;
-  userId: string;
+  id?: string;
+  userId?: string;
   selectedLanguage: Language;
-  aiAssistanceEnabled: boolean;
-  pushNotificationsEnabled: boolean;
-  darkModeEnabled: boolean;
-  createdAt: string;
-  updatedAt: string;
+  aiAssistanceEnabled?: boolean;
+  pushNotificationsEnabled?: boolean;
+  darkModeEnabled?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  learningLanguages: Language[];
 }
 
 // Blog types
@@ -159,18 +163,19 @@ export interface BlogPost {
   updatedAt: string;
   tags: string[];
   featuredImage?: string;
+  metaTitle?: string;
+  metaDescription?: string;
 }
 
-// Language Level types
-export interface LanguageLevel {
-  level: string;
-  title: string;
-  description: string;
-  cefrEquivalent: string;
-  minWords: number;
-  maxWords: number | null;
-  color: string;
-}
+// Language Level types - changed to union type instead of interface
+export type LanguageLevel = 
+  | 'Level 1' 
+  | 'Level 2' 
+  | 'Level 3' 
+  | 'Level 4' 
+  | 'Level 5' 
+  | 'Level 6' 
+  | 'Level 7';
 
 // Roadmap types
 export interface RoadmapNode {
@@ -184,7 +189,12 @@ export interface RoadmapNode {
   prerequisites: string[];
   exerciseCount: number;
   type: 'exercise' | 'milestone' | 'checkpoint';
+  roadmapId?: string;
+  isBonus?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // JSON type for generic JSON data
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+

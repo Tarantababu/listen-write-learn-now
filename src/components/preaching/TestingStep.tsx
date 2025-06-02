@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,7 +40,8 @@ const TestingStep: React.FC<TestingStepProps> = ({ nouns, language, onComplete }
       chinese: ['没有冠词'], // No articles in Chinese
       japanese: ['助詞なし'], // No articles in Japanese
       korean: ['관사 없음'], // No articles in Korean
-      hindi: ['कोई आर्टिकल नहीं'] // No articles in Hindi
+      hindi: ['कोई आर्टिकल नहीं'], // No articles in Hindi
+      arabic: ['لا يوجد أدوات تعريف'] // No articles in Arabic
     };
     return articleMap[lang] || ['der', 'die', 'das'];
   };

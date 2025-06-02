@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserSettings, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';

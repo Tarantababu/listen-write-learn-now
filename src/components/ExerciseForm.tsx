@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -210,7 +211,8 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     'chinese': 'Chinese (中文)',
     'japanese': 'Japanese (日本語)',
     'korean': 'Korean (한국어)',
-    'arabic': 'Arabic (العربية)'
+    'arabic': 'Arabic (العربية)',
+    'hindi': 'Hindi (हिन्दी)'
   };
 
   return (

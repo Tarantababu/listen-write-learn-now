@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,85 +8,6 @@ import { toast } from 'sonner';
 import { preachingService } from '@/services/preachingService';
 import type { Noun, PatternDrill, DrillAttempt, PreachingDifficulty } from '@/types/preaching';
 import type { Language } from '@/types';
-
-// Speech Recognition types
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  grammars: SpeechGrammarList;
-  interimResults: boolean;
-  lang: string;
-  maxAlternatives: number;
-  serviceURI: string;
-  
-  start(): void;
-  stop(): void;
-  abort(): void;
-  
-  onaudiostart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onaudioend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
-  onnomatch: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
-  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
-  onsoundstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onsoundend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onspeechstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onspeechend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-}
-
-declare var SpeechRecognition: {
-  prototype: SpeechRecognition;
-  new(): SpeechRecognition;
-};
-
-interface SpeechRecognitionErrorEvent extends Event {
-  readonly error: string;
-  readonly message: string;
-}
-
-interface SpeechRecognitionEvent extends Event {
-  readonly resultIndex: number;
-  readonly results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionResultList {
-  readonly length: number;
-  item(index: number): SpeechRecognitionResult;
-  [index: number]: SpeechRecognitionResult;
-}
-
-interface SpeechRecognitionResult {
-  readonly isFinal: boolean;
-  readonly length: number;
-  item(index: number): SpeechRecognitionAlternative;
-  [index: number]: SpeechRecognitionAlternative;
-}
-
-interface SpeechRecognitionAlternative {
-  readonly transcript: string;
-  readonly confidence: number;
-}
-
-interface SpeechGrammarList {
-  readonly length: number;
-  addFromString(string: string, weight?: number): void;
-  addFromURI(src: string, weight?: number): void;
-  item(index: number): SpeechGrammar;
-  [index: number]: SpeechGrammar;
-}
-
-interface SpeechGrammar {
-  src: string;
-  weight: number;
-}
 
 interface DrillingStepProps {
   nouns: Noun[];
@@ -106,7 +28,7 @@ const DrillingStep: React.FC<DrillingStepProps> = ({ nouns, difficulty, language
   const [usedPatterns, setUsedPatterns] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any>(null);
   const targetAttempts = difficulty === 'simple' ? 3 : difficulty === 'normal' ? 5 : 7;
 
   useEffect(() => {
@@ -116,7 +38,7 @@ const DrillingStep: React.FC<DrillingStepProps> = ({ nouns, difficulty, language
 
   const initializeSpeechRecognition = () => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       
       // Set language based on the selected language
@@ -140,13 +62,13 @@ const DrillingStep: React.FC<DrillingStepProps> = ({ nouns, difficulty, language
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = false;
 
-      recognitionRef.current.onresult = (event) => {
+      recognitionRef.current.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setUserSpeech(transcript);
         setIsRecording(false);
       };
 
-      recognitionRef.current.onerror = (event) => {
+      recognitionRef.current.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setIsRecording(false);
         toast.error('Speech recognition failed. Please try again.');
