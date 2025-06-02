@@ -17,6 +17,7 @@ import type {
   PatternDrill,
   DrillAttempt 
 } from '@/types/preaching';
+import type { Language } from '@/types';
 import MemorizingStep from './MemorizingStep';
 import TestingStep from './TestingStep';
 import DrillingStep from './DrillingStep';
@@ -28,7 +29,7 @@ interface PreachingSessionProps {
 }
 
 const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit }) => {
-  const { userSettings } = useUserSettings();
+  const { settings } = useUserSettings();
   const [session, setSession] = useState<Session | null>(null);
   const [currentStep, setCurrentStep] = useState<PreachingStep>('memorizing');
   const [difficulty, setDifficulty] = useState<PreachingDifficulty>('simple');
@@ -40,7 +41,7 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
   const [progress, setProgress] = useState(0);
 
   // Get the user's selected language or default to German
-  const selectedLanguage = userSettings?.selectedLanguage || 'german';
+  const selectedLanguage: Language = settings?.selectedLanguage || 'german';
 
   useEffect(() => {
     initializeSession();

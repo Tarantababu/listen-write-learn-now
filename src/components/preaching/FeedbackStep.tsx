@@ -6,10 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, XCircle, Trophy, RotateCcw, Target, Volume2 } from 'lucide-react';
 import type { GenderTest, DrillAttempt } from '@/types/preaching';
+import type { Language } from '@/types';
 
 interface FeedbackStepProps {
   genderTests: GenderTest[];
   drillAttempts: DrillAttempt[];
+  language: Language;
   onComplete: () => void;
   onRestart: () => void;
 }
@@ -17,6 +19,7 @@ interface FeedbackStepProps {
 const FeedbackStep: React.FC<FeedbackStepProps> = ({ 
   genderTests, 
   drillAttempts, 
+  language,
   onComplete, 
   onRestart 
 }) => {
@@ -46,7 +49,23 @@ const FeedbackStep: React.FC<FeedbackStepProps> = ({
   const speakWord = (text: string) => {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'de-DE';
+      // Set language based on the selected language
+      switch (language) {
+        case 'german':
+          utterance.lang = 'de-DE';
+          break;
+        case 'spanish':
+          utterance.lang = 'es-ES';
+          break;
+        case 'french':
+          utterance.lang = 'fr-FR';
+          break;
+        case 'italian':
+          utterance.lang = 'it-IT';
+          break;
+        default:
+          utterance.lang = 'de-DE';
+      }
       speechSynthesis.speak(utterance);
     }
   };

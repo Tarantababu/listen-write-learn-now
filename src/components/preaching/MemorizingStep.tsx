@@ -5,13 +5,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, Volume2 } from 'lucide-react';
 import type { Noun } from '@/types/preaching';
+import type { Language } from '@/types';
 
 interface MemorizingStepProps {
   nouns: Noun[];
+  language: Language;
   onComplete: () => void;
 }
 
-const MemorizingStep: React.FC<MemorizingStepProps> = ({ nouns, onComplete }) => {
+const MemorizingStep: React.FC<MemorizingStepProps> = ({ nouns, language, onComplete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
 
@@ -32,7 +34,23 @@ const MemorizingStep: React.FC<MemorizingStepProps> = ({ nouns, onComplete }) =>
   const speakWord = (word: string) => {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(word);
-      utterance.lang = 'de-DE';
+      // Set language based on the selected language
+      switch (language) {
+        case 'german':
+          utterance.lang = 'de-DE';
+          break;
+        case 'spanish':
+          utterance.lang = 'es-ES';
+          break;
+        case 'french':
+          utterance.lang = 'fr-FR';
+          break;
+        case 'italian':
+          utterance.lang = 'it-IT';
+          break;
+        default:
+          utterance.lang = 'de-DE';
+      }
       speechSynthesis.speak(utterance);
     }
   };

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserSettings, Language } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,6 +21,14 @@ const defaultSettings: UserSettings = {
 };
 
 const UserSettingsContext = createContext<UserSettingsContextProps | undefined>(undefined);
+
+export const useUserSettings = () => {
+  const context = useContext(UserSettingsContext);
+  if (!context) {
+    throw new Error('useUserSettings must be used within a UserSettingsProvider');
+  }
+  return context;
+};
 
 export const useUserSettingsContext = () => {
   const context = useContext(UserSettingsContext);

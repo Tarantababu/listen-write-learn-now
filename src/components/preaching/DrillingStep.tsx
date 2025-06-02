@@ -7,14 +7,16 @@ import { Mic, MicOff, Volume2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { preachingService } from '@/services/preachingService';
 import type { Noun, PatternDrill, DrillAttempt, PreachingDifficulty } from '@/types/preaching';
+import type { Language } from '@/types';
 
 interface DrillingStepProps {
   nouns: Noun[];
   difficulty: PreachingDifficulty;
+  language: Language;
   onComplete: (data: { attempts: DrillAttempt[] }) => void;
 }
 
-const DrillingStep: React.FC<DrillingStepProps> = ({ nouns, difficulty, onComplete }) => {
+const DrillingStep: React.FC<DrillingStepProps> = ({ nouns, difficulty, language, onComplete }) => {
   const [currentDrill, setCurrentDrill] = useState<PatternDrill | null>(null);
   const [attempts, setAttempts] = useState<DrillAttempt[]>([]);
   const [currentAttemptIndex, setCurrentAttemptIndex] = useState(0);
@@ -38,7 +40,25 @@ const DrillingStep: React.FC<DrillingStepProps> = ({ nouns, difficulty, onComple
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.lang = 'de-DE';
+      
+      // Set language based on the selected language
+      switch (language) {
+        case 'german':
+          recognitionRef.current.lang = 'de-DE';
+          break;
+        case 'spanish':
+          recognitionRef.current.lang = 'es-ES';
+          break;
+        case 'french':
+          recognitionRef.current.lang = 'fr-FR';
+          break;
+        case 'italian':
+          recognitionRef.current.lang = 'it-IT';
+          break;
+        default:
+          recognitionRef.current.lang = 'de-DE';
+      }
+      
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = false;
 
@@ -63,7 +83,7 @@ const DrillingStep: React.FC<DrillingStepProps> = ({ nouns, difficulty, onComple
   const generateNewDrill = async () => {
     setLoading(true);
     try {
-      const drill = await preachingService.generatePatternDrill(nouns, difficulty, usedPatterns);
+      const drill = await preachingService.generatePatternDrill(nouns, difficulty, language, usedPatterns);
       setCurrentDrill(drill);
       setUsedPatterns(prev => [...prev, drill.pattern]);
     } catch (error) {
@@ -100,7 +120,8 @@ const DrillingStep: React.FC<DrillingStepProps> = ({ nouns, difficulty, onComple
       const evaluation = await preachingService.evaluateSpeech(
         expectedAnswer,
         userSpeech,
-        currentDrill.pattern
+        currentDrill.pattern,
+        language
       );
 
       const attempt: DrillAttempt = {
@@ -138,7 +159,23 @@ const DrillingStep: React.FC<DrillingStepProps> = ({ nouns, difficulty, onComple
   const speakPattern = (text: string) => {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'de-DE';
+      // Set language based on the selected language
+      switch (language) {
+        case 'german':
+          utterance.lang = 'de-DE';
+          break;
+        case 'spanish':
+          utterance.lang = 'es-ES';
+          break;
+        case 'french':
+          utterance.lang = 'fr-FR';
+          break;
+        case 'italian':
+          utterance.lang = 'it-IT';
+          break;
+        default:
+          utterance.lang = 'de-DE';
+      }
       speechSynthesis.speak(utterance);
     }
   };
