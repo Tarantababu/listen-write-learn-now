@@ -26,6 +26,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { email, firstName, lastName }: CreateContactRequest = await req.json();
 
     if (!email) {
+      console.error("Email is required but not provided");
       return new Response(
         JSON.stringify({ error: "Email is required" }),
         {
@@ -36,13 +37,25 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log(`Creating Resend contact for: ${email}`);
-    console.log(`First name: ${firstName || 'null'}, Last name: ${lastName || 'null'}`);
+    console.log(`First name: ${firstName || 'not provided'}, Last name: ${lastName || 'not provided'}`);
 
     // Check if resend.contacts exists
     if (!resend.contacts) {
       console.error("Resend contacts API not available");
       return new Response(
         JSON.stringify({ error: "Resend contacts API not available" }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Check if Resend API key is configured
+    if (!Deno.env.get("RESEND_API_KEY")) {
+      console.error("RESEND_API_KEY environment variable not set");
+      return new Response(
+        JSON.stringify({ error: "Resend API key not configured" }),
         {
           status: 500,
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -73,7 +86,35 @@ const handler = async (req: Request): Promise<Response> => {
     });
   } catch (error: any) {
     console.error("Error in create-resend-contact function:", error);
-    console.error("Error details:", error.message, error.stack);
+    console.error("Error details:", error.message);
+    console.error("Error stack:", error.stack);
+    
+    // Handle specific Resend API errors
+    if (error.message && error.message.includes('Invalid API key')) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid Resend API key",
+          details: "Please check your Resend API key configuration"
+        }),
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    if (error.message && error.message.includes('audience')) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid audience ID",
+          details: "The specified audience ID is not valid"
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
     
     return new Response(
       JSON.stringify({ 

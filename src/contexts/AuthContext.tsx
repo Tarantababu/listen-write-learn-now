@@ -68,11 +68,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
               console.log('Welcome email sent successfully for OAuth user');
               
-              // Create contact in Resend
+              // Create contact in Resend - handle Google OAuth metadata properly
+              const firstName = session.user.user_metadata?.given_name || 
+                              session.user.user_metadata?.first_name || 
+                              null;
+              const lastName = session.user.user_metadata?.family_name || 
+                             session.user.user_metadata?.last_name || 
+                             null;
+              
+              console.log('Google OAuth metadata:', {
+                given_name: session.user.user_metadata?.given_name,
+                family_name: session.user.user_metadata?.family_name,
+                first_name: session.user.user_metadata?.first_name,
+                last_name: session.user.user_metadata?.last_name,
+                full_name: session.user.user_metadata?.full_name,
+                name: session.user.user_metadata?.name
+              });
+              
               await ResendContactService.createContact({
                 email: session.user.email || '',
-                firstName: session.user.user_metadata?.given_name || session.user.user_metadata?.first_name,
-                lastName: session.user.user_metadata?.family_name || session.user.user_metadata?.last_name
+                firstName: firstName,
+                lastName: lastName
               });
               console.log('Resend contact created successfully for OAuth user');
             } catch (emailError) {
