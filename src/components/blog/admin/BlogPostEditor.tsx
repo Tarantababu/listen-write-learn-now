@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -26,9 +25,9 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
   const [slug, setSlug] = useState(post?.slug || '');
   const [content, setContent] = useState(post?.content || '');
   const [excerpt, setExcerpt] = useState(post?.excerpt || '');
-  const [featuredImageUrl, setFeaturedImageUrl] = useState(post?.featured_image_url || '');
-  const [metaTitle, setMetaTitle] = useState(post?.meta_title || '');
-  const [metaDescription, setMetaDescription] = useState(post?.meta_description || '');
+  const [featuredImageUrl, setFeaturedImageUrl] = useState(post?.featuredImage || '');
+  const [metaTitle, setMetaTitle] = useState(post?.metaTitle || '');
+  const [metaDescription, setMetaDescription] = useState(post?.metaDescription || '');
   const [status, setStatus] = useState<'draft' | 'published'>(post?.status as ('draft' | 'published') || 'draft');
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);

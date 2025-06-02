@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Book, Loader2, Volume2, Crown } from 'lucide-react';
 import UpgradePrompt from '@/components/UpgradePrompt';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface VocabularyHighlighterProps {
   exercise: Exercise;
@@ -16,6 +17,7 @@ interface VocabularyHighlighterProps {
 
 const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise }) => {
   const { addVocabularyItem, canCreateMore, vocabularyLimit } = useVocabularyContext();
+  const { user } = useAuth();
   const [selectedWord, setSelectedWord] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isGeneratingInfo, setIsGeneratingInfo] = useState(false);
@@ -192,20 +194,25 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
   };
 
   const handleSaveVocabularyItem = async () => {
-    if (!generatedInfo) return;
+    if (!generatedInfo || !user) return;
     
     setIsSaving(true);
     try {
+      const currentTime = new Date().toISOString();
       await addVocabularyItem({
         word: selectedWord,
         definition: generatedInfo.definition,
         exampleSentence: generatedInfo.exampleSentence,
         audioUrl: generatedInfo.audioUrl,
         exerciseId: exercise.id,
-        language: exercise.language
+        language: exercise.language,
+        userId: user.id,
+        createdAt: currentTime,
+        updatedAt: currentTime
       });
       
-      toast("Success", {
+      toast({
+        title: "Success",
         description: "Word added to your vocabulary!"
       });
       
@@ -221,7 +228,8 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
         setIsDialogOpen(false);
         setShowUpgradePrompt(true);
       } else {
-        toast("Error", {
+        toast({
+          title: "Error",
           description: "Failed to add word to vocabulary",
           variant: "destructive"
         });
