@@ -1,171 +1,161 @@
-import type React from "react"
-import { useState, useEffect } from "react"
-import { Navigate, useNavigate, useLocation } from "react-router-dom"
-import { useAdmin } from "@/hooks/use-admin"
-import { VisitorStats } from "@/components/admin/VisitorStats"
-import { AdminStatsDashboard } from "@/components/admin/AdminStatsDashboard"
-import { FeedbackList } from "@/components/admin/FeedbackList"
-import { UserRoleManagement } from "@/components/admin/UserRoleManagement"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft, Loader2 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import DefaultExerciseForm from "@/components/admin/DefaultExerciseForm"
-import DefaultExercisesList from "@/components/admin/DefaultExercisesList"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import AdminMessagesForm from "@/components/admin/AdminMessagesForm"
-import AdminMessagesList from "@/components/admin/AdminMessagesList"
-import { useNavigate as useRouterNavigate } from "react-router-dom"
-import { supabase } from "@/integrations/supabase/client"
-import type { BlogPost } from "@/types"
-import { useQuery } from "@tanstack/react-query"
+
+import React, { useState } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import AdminStatsDashboard from '@/components/admin/AdminStatsDashboard';
+import UserRoleManagement from '@/components/admin/UserRoleManagement';
 import BlogManagement from '@/components/admin/BlogManagement';
+import FeedbackList from '@/components/admin/FeedbackList';
+import AdminMessagesList from '@/components/admin/AdminMessagesList';
+import AdminMessagesForm from '@/components/admin/AdminMessagesForm';
+import DefaultExercisesList from '@/components/admin/DefaultExercisesList';
+import DefaultExerciseForm from '@/components/admin/DefaultExerciseForm';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { transformBlogPostsFromDatabase } from '@/utils/blogPostUtils';
 
 const AdminPage: React.FC = () => {
-  const { isAdmin, loading } = useAdmin()
-  const navigate = useNavigate()
-  const routerNavigate = useRouterNavigate()
-  const location = useLocation()
+  const [refreshList, setRefreshList] = useState(0);
 
-  // Get tab from URL query parameter
-  const searchParams = new URLSearchParams(location.search)
-  const tabParam = searchParams.get("tab")
-
-  // Set initial active tab based on URL parameter or default to 'default-exercises'
-  const [activeTab, setActiveTab] = useState(tabParam || "default-exercises")
-
-  // Update URL when active tab changes
-  useEffect(() => {
-    const newSearchParams = new URLSearchParams(location.search)
-    if (activeTab) {
-      newSearchParams.set("tab", activeTab)
-      navigate(
-        {
-          pathname: location.pathname,
-          search: newSearchParams.toString(),
-        },
-        { replace: true },
-      )
-    }
-  }, [activeTab, navigate, location.pathname, location.search])
-
-  // Query to fetch blog posts for the admin panel
-  const { data: blogPosts, isLoading: loadingPosts } = useQuery({
-    queryKey: ["admin-blog-posts"],
+  const { data: blogPosts = [], isLoading: loadingBlogs } = useQuery({
+    queryKey: ['admin-blog-posts'],
     queryFn: async () => {
-      const { data, error } = await supabase.from("blog_posts").select("*").order("created_at", { ascending: false })
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return transformBlogPostsFromDatabase(data || []);
+    }
+  });
 
-      if (error) throw error
-      return data as BlogPost[]
-    },
-    enabled: activeTab === "blog",
-  })
-
-  // Show loading state while checking admin status
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8 flex justify-center items-center min-h-[60vh]">
-        <div className="flex flex-col items-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-          <p className="text-sm text-center">Verifying admin access...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // If user is not an admin, redirect to home
-  if (!isAdmin) {
-    return <Navigate to="/" replace />
-  }
+  const handleExerciseCreated = () => {
+    setRefreshList(prev => prev + 1);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center mb-4 sm:mb-6">
-        <Button variant="outline" size="sm" className="mr-2 shrink-0" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-1 sm:mr-2" />
-          <span className="hidden sm:inline">Back</span>
-        </Button>
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">Admin Dashboard</h1>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <p className="text-gray-600 mt-2">Manage your application settings and content</p>
       </div>
 
-      <Card className="mb-4 sm:mb-6">
-        <CardHeader className="pb-3 sm:pb-6">
-          <CardTitle className="text-lg sm:text-xl">Welcome to the Admin Dashboard</CardTitle>
-          <CardDescription className="text-sm">
-            Here you can monitor visitor statistics and manage your site
-          </CardDescription>
-        </CardHeader>
-      </Card>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="stats">Statistics</TabsTrigger>
+      <Tabs defaultValue="stats" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-7">
+          <TabsTrigger value="stats">Analytics</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="blog">Blog</TabsTrigger>
           <TabsTrigger value="exercises">Exercises</TabsTrigger>
           <TabsTrigger value="feedback">Feedback</TabsTrigger>
-          <TabsTrigger value="blog">Blog</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
+          <TabsTrigger value="message-form">Send Message</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stats">
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Admin Statistics</h2>
-            <AdminStatsDashboard />
-          </div>
-
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Visitor Analytics</h2>
-            <VisitorStats />
-          </div>
+          <AdminStatsDashboard />
         </TabsContent>
 
         <TabsContent value="users">
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">User Role Management</h2>
-            <UserRoleManagement />
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>User Management</CardTitle>
+              <CardDescription>
+                Manage user roles and permissions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UserRoleManagement />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="blog">
+          <Card>
+            <CardHeader>
+              <CardTitle>Blog Management</CardTitle>
+              <CardDescription>
+                Create and manage blog posts
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BlogManagement posts={blogPosts} loading={loadingBlogs} />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="exercises">
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Create Default Exercise</h2>
+          <div className="space-y-6">
             <Card>
-              <CardContent className="pt-4 sm:pt-6">
-                <DefaultExerciseForm />
+              <CardHeader>
+                <CardTitle>Create Default Exercise</CardTitle>
+                <CardDescription>
+                  Add new default exercises for all users
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DefaultExerciseForm onSuccess={handleExerciseCreated} />
               </CardContent>
             </Card>
-          </div>
 
-          <div>
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Default Exercises</h2>
-            <DefaultExercisesList />
+            <Card>
+              <CardHeader>
+                <CardTitle>Default Exercises</CardTitle>
+                <CardDescription>
+                  Manage existing default exercises
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DefaultExercisesList key={refreshList} />
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
         <TabsContent value="feedback">
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">User Feedback</h2>
-            <FeedbackList />
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>User Feedback</CardTitle>
+              <CardDescription>
+                Review feedback from users
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FeedbackList />
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="blog" className="space-y-6">
-          <BlogManagement />
+        <TabsContent value="messages">
+          <Card>
+            <CardHeader>
+              <CardTitle>User Messages</CardTitle>
+              <CardDescription>
+                View all sent messages
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AdminMessagesList />
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="messages" className="space-y-6">
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Create New Message</h2>
-            <AdminMessagesForm />
-          </div>
-
-          <div>
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Message History</h2>
-            <AdminMessagesList />
-          </div>
+        <TabsContent value="message-form">
+          <Card>
+            <CardHeader>
+              <CardTitle>Send Message to Users</CardTitle>
+              <CardDescription>
+                Create and send messages to all users
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AdminMessagesForm />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
-  )
-}
+  );
+};
 
-export default AdminPage
+export default AdminPage;

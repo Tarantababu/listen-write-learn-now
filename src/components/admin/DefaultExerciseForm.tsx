@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import { defaultExerciseService } from '@/services/defaultExerciseService';
 import { Language, LanguageLevel } from '@/types';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
@@ -63,7 +64,7 @@ const DefaultExerciseForm: React.FC<DefaultExerciseFormProps> = ({ onSuccess }) 
   const onSubmit = async (data: FormData) => {
     try {
       setIsGeneratingAudio(true);
-      toast.info(`Generating audio file...`);
+      toast('Generating audio file...');
 
       const { data: audioData, error: audioError } = await supabase.functions.invoke('text-to-speech', {
         body: { text: data.text, language: data.language }
@@ -97,7 +98,7 @@ const DefaultExerciseForm: React.FC<DefaultExerciseFormProps> = ({ onSuccess }) 
         .from('audio')
         .getPublicUrl(fileName);
 
-      toast.success(`Audio file generated successfully`);
+      toast('Audio file generated successfully');
 
       await defaultExerciseService.createDefaultExercise({
         title: data.title,
@@ -108,11 +109,11 @@ const DefaultExerciseForm: React.FC<DefaultExerciseFormProps> = ({ onSuccess }) 
         audioUrl: publicUrl
       });
 
-      toast.success('Default exercise created successfully');
+      toast('Default exercise created successfully');
       onSuccess();
     } catch (error) {
       console.error('Error creating default exercise:', error);
-      toast.error('Failed to create the default exercise');
+      toast('Failed to create the default exercise');
     } finally {
       setIsGeneratingAudio(false);
     }

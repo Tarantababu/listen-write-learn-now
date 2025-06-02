@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -49,11 +50,36 @@ const TestingStep: React.FC<TestingStepProps> = ({ nouns, language, onComplete }
   const languageArticles = getLanguageArticles(language);
 
   useEffect(() => {
-    setTests(nouns.map(noun => ({ noun })));
+    if (nouns && nouns.length > 0) {
+      setTests(nouns.map(noun => ({ noun })));
+    }
   }, [nouns]);
+
+  // Safety check - return loading state if no nouns or invalid index
+  if (!nouns || nouns.length === 0 || currentIndex >= nouns.length) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <p className="text-gray-600">Loading vocabulary...</p>
+        </div>
+      </div>
+    );
+  }
 
   const currentNoun = nouns[currentIndex];
   const currentTest = tests[currentIndex];
+
+  // Additional safety check
+  if (!currentNoun) {
+    console.error('Current noun is undefined at index:', currentIndex, 'Total nouns:', nouns.length);
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <p className="text-red-600">Error loading vocabulary item. Please try refreshing.</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleArticleSelect = (article: string) => {
     setSelectedArticle(article);
