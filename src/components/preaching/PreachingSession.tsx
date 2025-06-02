@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -94,10 +93,19 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({
   };
 
   const handleStepComplete = (stepData: any) => {
+    // Check if we should skip gender testing for this language
+    const shouldSkipTesting = preachingService.shouldSkipGenderTesting(selectedLanguage);
+    
     switch (currentStep) {
       case 'memorizing':
-        setCurrentStep('testing');
-        setProgress(25);
+        if (shouldSkipTesting) {
+          // Skip testing step and go directly to drilling
+          setCurrentStep('drilling');
+          setProgress(50);
+        } else {
+          setCurrentStep('testing');
+          setProgress(25);
+        }
         break;
       case 'testing':
         setGenderTests(stepData.tests);
@@ -116,11 +124,12 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({
   };
 
   const getStepTitle = (step: PreachingStep): string => {
+    const langName = selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1);
     switch (step) {
-      case 'memorizing': return `Memorizing ${selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)} Grammar`;
-      case 'testing': return `Testing ${selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)} Knowledge`;
-      case 'drilling': return `${selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)} Pattern Drill`;
-      case 'feedback': return 'Feedback & Results';
+      case 'memorizing': return `Learning ${langName} Vocabulary`;
+      case 'testing': return `Testing ${langName} Grammar`;
+      case 'drilling': return `${langName} Pattern Practice`;
+      case 'feedback': return 'Results & Feedback';
     }
   };
 
@@ -134,6 +143,8 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({
       );
     }
 
+    const shouldSkipTesting = preachingService.shouldSkipGenderTesting(selectedLanguage);
+
     switch (currentStep) {
       case 'memorizing':
         return (
@@ -146,6 +157,10 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({
           />
         );
       case 'testing':
+        // Only render testing step if the language has gender
+        if (shouldSkipTesting) {
+          return null; // This shouldn't happen due to step logic, but safety check
+        }
         return (
           <TestingStep 
             nouns={nouns} 
@@ -194,7 +209,7 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({
               ))}
             </div>
             <Button onClick={initializeSession} className="w-full">
-              Start {selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)} Preaching Session
+              Start {selectedLanguage.charAt(0).toUpperCase() + selectedLanguage.slice(1)} Practice Session
             </Button>
           </div>
         </CardContent>

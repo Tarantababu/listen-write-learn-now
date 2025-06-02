@@ -18,10 +18,29 @@ interface TestingStepProps {
 const TestingStep: React.FC<TestingStepProps> = ({ nouns, language, onComplete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [tests, setTests] = useState<GenderTest[]>([]);
-  const [selectedArticle, setSelectedArticle] = useState<'der' | 'die' | 'das' | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [explanation, setExplanation] = useState<string>('');
   const [loadingExplanation, setLoadingExplanation] = useState(false);
+
+  // Get language-specific articles
+  const getLanguageArticles = (lang: Language): string[] => {
+    const articleMap: Record<Language, string[]> = {
+      german: ['der', 'die', 'das'],
+      french: ['le', 'la', 'les'],
+      spanish: ['el', 'la', 'los', 'las'],
+      italian: ['il', 'lo', 'la', 'gli', 'le'],
+      portuguese: ['o', 'a', 'os', 'as'],
+      dutch: ['de', 'het'],
+      swedish: ['en', 'ett'],
+      norwegian: ['en', 'ei', 'et'],
+      english: ['the', 'a', 'an'],
+      turkish: [] // No articles in Turkish
+    };
+    return articleMap[lang] || ['der', 'die', 'das'];
+  };
+
+  const languageArticles = getLanguageArticles(language);
 
   useEffect(() => {
     setTests(nouns.map(noun => ({ noun })));
@@ -30,7 +49,7 @@ const TestingStep: React.FC<TestingStepProps> = ({ nouns, language, onComplete }
   const currentNoun = nouns[currentIndex];
   const currentTest = tests[currentIndex];
 
-  const handleArticleSelect = (article: 'der' | 'die' | 'das') => {
+  const handleArticleSelect = (article: string) => {
     setSelectedArticle(article);
   };
 
@@ -40,7 +59,7 @@ const TestingStep: React.FC<TestingStepProps> = ({ nouns, language, onComplete }
     const isCorrect = selectedArticle === currentNoun.article;
     const updatedTest = {
       ...currentTest,
-      userAnswer: selectedArticle,
+      userAnswer: selectedArticle as any,
       isCorrect
     };
 
@@ -77,12 +96,43 @@ const TestingStep: React.FC<TestingStepProps> = ({ nouns, language, onComplete }
   };
 
   const getArticleColor = (article: string) => {
-    switch (article) {
-      case 'der': return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
-      case 'die': return 'bg-red-100 text-red-800 hover:bg-red-200';
-      case 'das': return 'bg-green-100 text-green-800 hover:bg-green-200';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+    // Color mapping for different languages
+    const colorMap: Record<string, string> = {
+      // German
+      'der': 'bg-blue-100 text-blue-800 hover:bg-blue-200',
+      'die': 'bg-red-100 text-red-800 hover:bg-red-200',
+      'das': 'bg-green-100 text-green-800 hover:bg-green-200',
+      // French
+      'le': 'bg-blue-100 text-blue-800 hover:bg-blue-200',
+      'la': 'bg-red-100 text-red-800 hover:bg-red-200',
+      'les': 'bg-purple-100 text-purple-800 hover:bg-purple-200',
+      // Spanish
+      'el': 'bg-blue-100 text-blue-800 hover:bg-blue-200',
+      'los': 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200',
+      'las': 'bg-pink-100 text-pink-800 hover:bg-pink-200',
+      // Italian
+      'il': 'bg-blue-100 text-blue-800 hover:bg-blue-200',
+      'lo': 'bg-cyan-100 text-cyan-800 hover:bg-cyan-200',
+      'gli': 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200',
+      // Portuguese
+      'o': 'bg-blue-100 text-blue-800 hover:bg-blue-200',
+      'a': 'bg-red-100 text-red-800 hover:bg-red-200',
+      'os': 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200',
+      'as': 'bg-pink-100 text-pink-800 hover:bg-pink-200',
+      // Dutch
+      'de': 'bg-blue-100 text-blue-800 hover:bg-blue-200',
+      'het': 'bg-green-100 text-green-800 hover:bg-green-200',
+      // Swedish
+      'en': 'bg-blue-100 text-blue-800 hover:bg-blue-200',
+      'ett': 'bg-green-100 text-green-800 hover:bg-green-200',
+      // Norwegian
+      'ei': 'bg-red-100 text-red-800 hover:bg-red-200',
+      'et': 'bg-green-100 text-green-800 hover:bg-green-200',
+      // Default
+      'default': 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+    };
+    
+    return colorMap[article] || colorMap['default'];
   };
 
   const getSelectedStyle = (article: string) => {
@@ -122,15 +172,15 @@ const TestingStep: React.FC<TestingStepProps> = ({ nouns, language, onComplete }
           </div>
 
           {/* Article Options */}
-          <div className="flex justify-center space-x-4">
-            {(['der', 'die', 'das'] as const).map((article) => (
+          <div className="flex justify-center flex-wrap gap-3">
+            {languageArticles.map((article) => (
               <Button
                 key={article}
                 variant="outline"
                 size="lg"
                 onClick={() => handleArticleSelect(article)}
                 disabled={showResult}
-                className={`${getArticleColor(article)} ${getSelectedStyle(article)} text-xl px-8 py-4`}
+                className={`${getArticleColor(article)} ${getSelectedStyle(article)} text-xl px-6 py-3`}
               >
                 {article}
               </Button>
