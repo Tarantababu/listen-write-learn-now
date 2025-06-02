@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,10 +6,13 @@ import { getUserStreak, StreakData } from '@/services/streakService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { cn } from '@/lib/utils';
-
 export function StreakIndicator() {
-  const { user } = useAuth();
-  const { settings } = useUserSettingsContext();
+  const {
+    user
+  } = useAuth();
+  const {
+    settings
+  } = useUserSettingsContext();
   const [streakData, setStreakData] = useState<StreakData>({
     currentStreak: 0,
     longestStreak: 0,
@@ -19,16 +21,13 @@ export function StreakIndicator() {
   });
   const [showCalendar, setShowCalendar] = useState(false);
   const [loading, setLoading] = useState(false);
-
   useEffect(() => {
     if (user) {
       loadStreakData();
     }
   }, [user, settings.selectedLanguage]);
-
   const loadStreakData = async () => {
     if (!user) return;
-    
     setLoading(true);
     try {
       const data = await getUserStreak(user.id, settings.selectedLanguage);
@@ -39,7 +38,6 @@ export function StreakIndicator() {
       setLoading(false);
     }
   };
-
   const getStreakLevel = (streak: number) => {
     if (streak >= 30) return 'legendary';
     if (streak >= 14) return 'fire';
@@ -47,7 +45,6 @@ export function StreakIndicator() {
     if (streak >= 3) return 'warm';
     return 'cold';
   };
-
   const getStreakVisuals = (level: string, active: boolean) => {
     if (!active) {
       return {
@@ -58,7 +55,6 @@ export function StreakIndicator() {
         glowEffect: ''
       };
     }
-
     switch (level) {
       case 'legendary':
         return {
@@ -102,71 +98,33 @@ export function StreakIndicator() {
         };
     }
   };
-
   if (!user || loading) {
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled
-        className="flex items-center gap-2 opacity-50 bg-gray-50 border border-gray-200"
-      >
+    return <Button variant="ghost" size="sm" disabled className="flex items-center gap-2 opacity-50 bg-gray-50 border border-gray-200">
         <Flame className="h-4 w-4 text-gray-400" />
         <span className="font-medium text-gray-400">-</span>
-      </Button>
-    );
+      </Button>;
   }
-
   const streakLevel = getStreakLevel(streakData.currentStreak);
   const visuals = getStreakVisuals(streakLevel, streakData.streakActive);
-
-  return (
-    <>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setShowCalendar(true)}
-        className={cn(
-          "flex items-center gap-2 transition-all duration-300 hover:scale-105 border-2 font-medium relative overflow-hidden",
-          visuals.buttonStyle
-        )}
-        title={`Current streak: ${streakData.currentStreak} days${streakData.longestStreak > 0 ? ` | Best: ${streakData.longestStreak} days` : ''}`}
-      >
+  return <>
+      <Button variant="ghost" size="sm" onClick={() => setShowCalendar(true)} className={cn("flex items-center gap-2 transition-all duration-300 hover:scale-105 border-2 font-medium relative overflow-hidden", visuals.buttonStyle)} title={`Current streak: ${streakData.currentStreak} days${streakData.longestStreak > 0 ? ` | Best: ${streakData.longestStreak} days` : ''}`}>
         {/* Background accent for legendary streak */}
-        {streakLevel === 'legendary' && streakData.streakActive && (
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-200/20 to-transparent -skew-x-12 transform translate-x-full opacity-75" />
-        )}
+        {streakLevel === 'legendary' && streakData.streakActive && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-200/20 to-transparent -skew-x-12 transform translate-x-full opacity-75" />}
         
         <div className="relative flex items-center gap-2">
           <div className="relative">
-            <Flame 
-              className={cn(
-                "h-5 w-5 transition-all duration-300",
-                visuals.flameColor,
-                visuals.glowEffect
-              )} 
-            />
-            {streakLevel === 'legendary' && streakData.streakActive && (
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full shadow-lg shadow-purple-300/50" />
-            )}
+            <Flame className={cn("h-5 w-5 transition-all duration-300", visuals.flameColor, visuals.glowEffect)} />
+            {streakLevel === 'legendary' && streakData.streakActive && <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full shadow-lg shadow-purple-300/50" />}
           </div>
           
           <span className={cn("text-sm transition-all duration-300", visuals.textColor)}>
             {streakData.currentStreak}
           </span>
 
-          {streakData.streakActive && visuals.emoji && (
-            <span className="text-sm ml-1">
-              {visuals.emoji}
-            </span>
-          )}
+          {streakData.streakActive && visuals.emoji}
         </div>
       </Button>
       
-      <StreakCalendar 
-        isOpen={showCalendar}
-        onOpenChange={setShowCalendar}
-      />
-    </>
-  );
+      <StreakCalendar isOpen={showCalendar} onOpenChange={setShowCalendar} />
+    </>;
 }
