@@ -1,158 +1,196 @@
 
+import { Language, Exercise } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
-import type { Language, LanguageLevel, Exercise } from '@/types';
+import { toast } from 'sonner';
+import { mapExerciseFromDb } from './exerciseService';
 
-interface CreateDefaultExerciseData {
-  title: string;
-  text: string;
-  language: Language;
-  level: LanguageLevel;
-  tags: string;
-  audioUrl: string;
-}
-
-class DefaultExerciseService {
-  private static instance: DefaultExerciseService;
-
-  static getInstance(): DefaultExerciseService {
-    if (!DefaultExerciseService.instance) {
-      DefaultExerciseService.instance = new DefaultExerciseService();
-    }
-    return DefaultExerciseService.instance;
+/**
+ * Ensures that the audio storage bucket exists
+ */
+export const ensureAudioBucket = async () => {
+  try {
+    await supabase.functions.invoke('ensure-audio-bucket');
+  } catch (error) {
+    console.warn('Audio bucket check failed, but this is non-blocking:', error);
   }
+};
 
-  async createDefaultExercise(data: CreateDefaultExerciseData) {
-    const tagsArray = data.tags.split(',').map(tag => tag.trim()).filter(Boolean);
+/**
+ * Fetches all default exercises from Supabase
+ */
+export const fetchDefaultExercises = async () => {
+  const { data, error } = await supabase
+    .from('default_exercises')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  
+  return data || [];
+};
+
+/**
+ * Creates a default exercise in Supabase
+ */
+export const createDefaultExercise = async (
+  userId: string,
+  exercise: {
+    title: string;
+    text: string;
+    language: Language;
+    tags?: string[];
+    audioUrl?: string;
+  }
+) => {
+  // First ensure the audio bucket exists
+  await ensureAudioBucket();
+
+  const { data, error } = await supabase
+    .from('default_exercises')
+    .insert({
+      title: exercise.title,
+      text: exercise.text,
+      language: exercise.language,
+      tags: exercise.tags || [],
+      audio_url: exercise.audioUrl,
+      created_by: userId
+    })
+    .select('*')
+    .single();
+
+  if (error) throw error;
+
+  return data;
+};
+
+/**
+ * Updates a default exercise in Supabase
+ */
+export const updateDefaultExercise = async (
+  id: string,
+  updates: {
+    title?: string;
+    text?: string;
+    language?: Language;
+    tags?: string[];
+    audioUrl?: string;
+  }
+) => {
+  // Create an object with only the database fields
+  const updateData: Record<string, any> = {};
+  
+  if (updates.title !== undefined) updateData.title = updates.title;
+  if (updates.text !== undefined) updateData.text = updates.text;
+  if (updates.language !== undefined) updateData.language = updates.language;
+  if (updates.tags !== undefined) updateData.tags = updates.tags;
+  if (updates.audioUrl !== undefined) updateData.audio_url = updates.audioUrl;
+  updateData.updated_at = new Date();
+
+  const { error } = await supabase
+    .from('default_exercises')
+    .update(updateData)
+    .eq('id', id);
+
+  if (error) throw error;
+};
+
+/**
+ * Checks if a default exercise is referenced by any user exercises
+ */
+export const checkDefaultExerciseUsage = async (id: string): Promise<number> => {
+  const { count, error } = await supabase
+    .from('exercises')
+    .select('*', { count: 'exact', head: true })
+    .eq('default_exercise_id', id);
+
+  if (error) throw error;
+  
+  return count || 0;
+};
+
+/**
+ * Deletes a default exercise from Supabase
+ * Note: This will first nullify any references in user exercises
+ * to avoid foreign key constraint violations
+ */
+export const deleteDefaultExercise = async (id: string) => {
+  // Start a transaction to handle the delete properly
+  try {
+    // First, check if any exercises reference this default exercise
+    const referenceCount = await checkDefaultExerciseUsage(id);
     
-    const { data: exercise, error } = await supabase
-      .from('default_exercises')
-      .insert({
-        title: data.title,
-        text: data.text,
-        language: data.language,
-        level: data.level,
-        tags: tagsArray,
-        audio_url: data.audioUrl
-      })
-      .select()
-      .single();
-
-    if (error) {
-      throw error;
+    if (referenceCount > 0) {
+      // If there are references, update all user exercises to remove the reference
+      const { error: updateError } = await supabase
+        .from('exercises')
+        .update({ default_exercise_id: null })
+        .eq('default_exercise_id', id);
+      
+      if (updateError) {
+        console.error('Error removing references to default exercise:', updateError);
+        throw updateError;
+      }
+      
+      console.log(`Updated ${referenceCount} user exercises to remove reference to default exercise ${id}`);
     }
-
-    return exercise;
-  }
-
-  async getDefaultExercises() {
-    const { data, error } = await supabase
-      .from('default_exercises')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      throw error;
-    }
-
-    return data;
-  }
-
-  async fetchDefaultExercises() {
-    return this.getDefaultExercises();
-  }
-
-  async deleteDefaultExercise(exerciseId: string) {
-    // First, update any user exercises that reference this default exercise
-    const { error: updateError } = await supabase
-      .from('exercises')
-      .update({ default_exercise_id: null })
-      .eq('default_exercise_id', exerciseId);
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    // Then delete the default exercise
+    
+    // Now safe to delete the default exercise
     const { error } = await supabase
       .from('default_exercises')
       .delete()
-      .eq('id', exerciseId);
+      .eq('id', id);
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
+    
+    return true;
+  } catch (error) {
+    console.error('Error in delete default exercise transaction:', error);
+    throw error;
   }
+};
 
-  async checkDefaultExerciseUsage(exerciseId: string): Promise<number> {
-    const { count, error } = await supabase
-      .from('exercises')
-      .select('*', { count: 'exact', head: true })
-      .eq('default_exercise_id', exerciseId);
+/**
+ * Maps a default exercise to a normal exercise
+ */
+export const mapToExercise = (defaultEx: any): Omit<Exercise, 'id' | 'createdAt' | 'completionCount' | 'isCompleted'> => ({
+  title: defaultEx.title,
+  text: defaultEx.text,
+  language: defaultEx.language as Language,
+  tags: defaultEx.tags || [],
+  audioUrl: defaultEx.audio_url,
+  directoryId: null,
+  default_exercise_id: defaultEx.id
+});
 
-    if (error) {
-      throw error;
-    }
+/**
+ * Copies a default exercise to a user's exercise list
+ */
+export const copyDefaultExerciseToUser = async (defaultExerciseId: string, userId: string) => {
+  // First, fetch the default exercise
+  const { data: defaultExercise, error: fetchError } = await supabase
+    .from('default_exercises')
+    .select('*')
+    .eq('id', defaultExerciseId)
+    .single();
 
-    return count || 0;
-  }
+  if (fetchError) throw fetchError;
 
-  async copyDefaultExerciseToUser(defaultExerciseId: string, userId: string): Promise<Exercise> {
-    // First get the default exercise
-    const { data: defaultExercise, error: fetchError } = await supabase
-      .from('default_exercises')
-      .select('*')
-      .eq('id', defaultExerciseId)
-      .single();
+  // Then create a new exercise for the user based on the default exercise
+  const { data, error } = await supabase
+    .from('exercises')
+    .insert({
+      title: defaultExercise.title,
+      text: defaultExercise.text,
+      language: defaultExercise.language,
+      tags: defaultExercise.tags,
+      audio_url: defaultExercise.audio_url,
+      user_id: userId,
+      default_exercise_id: defaultExerciseId
+    })
+    .select('*')
+    .single();
 
-    if (fetchError) {
-      throw fetchError;
-    }
+  if (error) throw error;
 
-    // Create a new user exercise based on the default exercise
-    const { data: userExercise, error: createError } = await supabase
-      .from('exercises')
-      .insert({
-        title: defaultExercise.title,
-        text: defaultExercise.text,
-        language: defaultExercise.language,
-        tags: defaultExercise.tags || [],
-        audio_url: defaultExercise.audio_url,
-        user_id: userId,
-        default_exercise_id: defaultExerciseId
-      })
-      .select()
-      .single();
-
-    if (createError) {
-      throw createError;
-    }
-
-    return this.mapToExercise(userExercise);
-  }
-
-  mapToExercise(dbExercise: any): Exercise {
-    return {
-      id: dbExercise.id,
-      title: dbExercise.title,
-      text: dbExercise.text,
-      language: dbExercise.language,
-      tags: dbExercise.tags || [],
-      audioUrl: dbExercise.audio_url,
-      createdAt: dbExercise.created_at,
-      completionCount: dbExercise.completion_count || 0,
-      isCompleted: dbExercise.is_completed || false,
-      directoryId: dbExercise.directory_id,
-      default_exercise_id: dbExercise.default_exercise_id,
-      archived: dbExercise.archived || false
-    };
-  }
-}
-
-export const defaultExerciseService = DefaultExerciseService.getInstance();
-
-// Export the individual functions
-export const fetchDefaultExercises = () => defaultExerciseService.fetchDefaultExercises();
-export const deleteDefaultExercise = (id: string) => defaultExerciseService.deleteDefaultExercise(id);
-export const checkDefaultExerciseUsage = (id: string) => defaultExerciseService.checkDefaultExerciseUsage(id);
-export const copyDefaultExerciseToUser = (defaultId: string, userId: string) => defaultExerciseService.copyDefaultExerciseToUser(defaultId, userId);
-export const mapToExercise = (dbExercise: any) => defaultExerciseService.mapToExercise(dbExercise);
+  return mapExerciseFromDb(data);
+};

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -15,26 +16,25 @@ import { useAuth } from '@/contexts/AuthContext';
 interface BlogPostEditorProps {
   post?: BlogPost;
   onSave?: () => void;
-  onCancel?: () => void;
 }
 
-const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, onCancel }) => {
+const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { user } = useAuth();
-  
+  const { user } = useAuth(); // Get the current user
   const [title, setTitle] = useState(post?.title || '');
   const [slug, setSlug] = useState(post?.slug || '');
   const [content, setContent] = useState(post?.content || '');
   const [excerpt, setExcerpt] = useState(post?.excerpt || '');
-  const [featuredImageUrl, setFeaturedImageUrl] = useState(post?.featuredImage || '');
-  const [metaTitle, setMetaTitle] = useState(post?.metaTitle || '');
-  const [metaDescription, setMetaDescription] = useState(post?.metaDescription || '');
+  const [featuredImageUrl, setFeaturedImageUrl] = useState(post?.featured_image_url || '');
+  const [metaTitle, setMetaTitle] = useState(post?.meta_title || '');
+  const [metaDescription, setMetaDescription] = useState(post?.meta_description || '');
   const [status, setStatus] = useState<'draft' | 'published'>(post?.status as ('draft' | 'published') || 'draft');
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [loading, setLoading] = useState(!!id);
 
+  // Fetch post data if editing an existing post
   useEffect(() => {
     if (id) {
       fetchPostData();
@@ -60,6 +60,7 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, onCancel 
         setFeaturedImageUrl(data.featured_image_url || '');
         setMetaTitle(data.meta_title || '');
         setMetaDescription(data.meta_description || '');
+        // Type check to ensure status is either 'draft' or 'published'
         const postStatus = data.status === 'published' ? 'published' : 'draft';
         setStatus(postStatus);
       }
@@ -75,6 +76,7 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, onCancel 
     }
   };
 
+  // Generate slug from title
   useEffect(() => {
     if (!post && title && !slug) {
       const generatedSlug = title
@@ -150,9 +152,10 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, onCancel 
         meta_title: metaTitle || title,
         meta_description: metaDescription || excerpt,
         updated_at: currentTime,
-        author_id: user.id,
+        author_id: user.id, // Set the author_id to the current user's ID
       };
 
+      // If we're publishing for the first time, set the published_at date
       if (publishStatus === 'published' && (!post || post.status !== 'published')) {
         postData.published_at = currentTime;
       }
@@ -160,11 +163,13 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, onCancel 
       let result;
 
       if (id) {
+        // Update existing post
         result = await supabase
           .from('blog_posts')
           .update(postData)
           .eq('id', id);
       } else {
+        // Create new post
         result = await supabase
           .from('blog_posts')
           .insert([postData])
@@ -185,6 +190,7 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, onCancel 
       if (onSave) {
         onSave();
       } else {
+        // Redirect to the admin page with blog tab selected
         navigate('/dashboard/admin?tab=blog');
       }
 
@@ -198,14 +204,6 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, onCancel 
     } finally {
       setIsSaving(false);
       setIsPublishing(false);
-    }
-  };
-
-  const handleCancel = () => {
-    if (onCancel) {
-      onCancel();
-    } else {
-      navigate('/dashboard/admin?tab=blog');
     }
   };
 
@@ -224,7 +222,7 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, onCancel 
           variant="outline"
           size="sm"
           className="mr-2"
-          onClick={handleCancel}
+          onClick={() => navigate('/dashboard/admin?tab=blog')}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Blog Posts

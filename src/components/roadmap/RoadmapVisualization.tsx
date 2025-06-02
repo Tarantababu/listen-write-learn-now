@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useRoadmap } from '@/hooks/use-roadmap';
-import { RoadmapNode } from '@/types'; // Use the main types instead of features/roadmap/types
+import { RoadmapNode } from '@/features/roadmap/types';
 import { Check, Lock, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ import NewRoadmapVisualization from '@/features/roadmap/components/RoadmapVisual
 interface RoadmapNodeProps {
   node: RoadmapNode;
   status: 'completed' | 'current' | 'locked' | 'available';
-  progress?: number;
+  progress?: number; // Add progress (completion count)
   onNodeClick: (node: RoadmapNode) => void;
 }
 
@@ -40,6 +40,7 @@ const RoadmapNodeComponent: React.FC<RoadmapNodeProps> = ({ node, status, progre
     return null;
   };
 
+  // Display progress badge if there is progress but not completed
   const showProgressBadge = progress > 0 && status !== 'completed';
 
   return (
@@ -59,7 +60,7 @@ const RoadmapNodeComponent: React.FC<RoadmapNodeProps> = ({ node, status, progre
               )}
             >
               {getNodeIcon()}
-              <span className="text-xs font-bold mt-1">{node.position.x + 1}</span>
+              <span className="text-xs font-bold mt-1">{node.position + 1}</span>
             </Button>
             
             {showProgressBadge && (
@@ -171,15 +172,7 @@ const RoadmapVisualization: React.FC<RoadmapVisualizationProps> = ({ onNodeSelec
     return progressInfo?.completionCount || 0;
   };
 
-  // Convert nodes to the expected format with proper position handling
-  const convertedNodes = nodes.map(node => ({
-    ...node,
-    position: typeof node.position === 'number' ? { x: node.position, y: 0 } : node.position,
-    roadmapId: node.roadmapId || currentRoadmap.roadmapId || '',
-    isBonus: node.isBonus || false
-  }));
-
-  const sortedNodes = [...convertedNodes].sort((a, b) => a.position.x - b.position.x);
+  const sortedNodes = [...nodes].sort((a, b) => a.position - b.position);
   
   // Group nodes by "rows" of 5 for display
   const nodeRows: RoadmapNode[][] = [];

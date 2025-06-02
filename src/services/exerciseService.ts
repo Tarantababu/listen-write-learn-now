@@ -352,7 +352,7 @@ export const mapExerciseFromDb = (ex: any): Exercise => ({
   tags: ex.tags || [],
   audioUrl: ex.audio_url,
   directoryId: ex.directory_id,
-  createdAt: ex.created_at,
+  createdAt: new Date(ex.created_at),
   completionCount: ex.completion_count || 0,
   isCompleted: ex.is_completed || false,
   archived: ex.archived || false,

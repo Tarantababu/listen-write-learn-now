@@ -1,12 +1,15 @@
 
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Language } from '@/types';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
+import { createDefaultExercise } from '@/services/defaultExerciseService';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Select,
   SelectContent,
@@ -14,72 +17,105 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { defaultExerciseService } from '@/services/defaultExerciseService';
-import { Language, LanguageLevel } from '@/types';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
+import PopoverHint from '@/components/PopoverHint';
 
-const formSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  text: z.string().min(10, 'Text must be at least 10 characters'),
-  language: z.enum(['english', 'german', 'french', 'spanish', 'italian', 'portuguese', 'dutch', 'swedish', 'norwegian', 'turkish', 'russian', 'polish', 'chinese', 'japanese', 'korean', 'hindi', 'arabic']),
-  level: z.enum(['Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6', 'Level 7']),
-  tags: z.string().optional(),
-});
+const languages: Language[] = [
+  'english',
+  'german',
+  'spanish',
+  'french',
+  'portuguese',
+  'italian',
+  'turkish',
+  'swedish',
+  'dutch',
+  'norwegian',
+  'russian',
+  'polish',
+  'chinese',
+  'japanese',
+  'korean',
+  'arabic'
+];
 
-type FormData = z.infer<typeof formSchema>;
+// Language display names
+const languageDisplayNames: Record<Language, string> = {
+  'english': 'English',
+  'german': 'German (Deutsch)',
+  'french': 'French (Français)',
+  'spanish': 'Spanish (Español)',
+  'portuguese': 'Portuguese (Português)',
+  'italian': 'Italian (Italiano)',
+  'dutch': 'Dutch (Nederlands)',
+  'turkish': 'Turkish (Türkçe)',
+  'swedish': 'Swedish (Svenska)',
+  'norwegian': 'Norwegian (Norsk)',
+  'russian': 'Russian (Русский)',
+  'polish': 'Polish (Polski)',
+  'chinese': 'Chinese (中文)',
+  'japanese': 'Japanese (日本語)',
+  'korean': 'Korean (한국어)',
+  'arabic': 'Arabic (العربية)'
+};
 
-interface DefaultExerciseFormProps {
-  onSuccess: () => void;
-}
-
-const DefaultExerciseForm: React.FC<DefaultExerciseFormProps> = ({ onSuccess }) => {
+const DefaultExerciseForm: React.FC = () => {
+  const { user } = useAuth();
+  const [title, setTitle] = useState('');
+  const [text, setText] = useState('');
+  const [language, setLanguage] = useState<Language>('english');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  
-  const languageDisplayNames: Record<Language, string> = {
-    'english': 'English',
-    'german': 'German (Deutsch)',
-    'french': 'French (Français)',
-    'spanish': 'Spanish (Español)',
-    'portuguese': 'Portuguese (Português)',
-    'italian': 'Italian (Italiano)',
-    'dutch': 'Dutch (Nederlands)',
-    'turkish': 'Turkish (Türkçe)',
-    'swedish': 'Swedish (Svenska)',
-    'norwegian': 'Norwegian (Norsk)',
-    'russian': 'Russian (Русский)',
-    'polish': 'Polish (Polski)',
-    'chinese': 'Chinese (中文)',
-    'japanese': 'Japanese (日本語)',
-    'korean': 'Korean (한국어)',
-    'hindi': 'Hindi (हिन्दी)',
-    'arabic': 'Arabic (العربية)'
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!title.trim()) {
+      newErrors.title = 'Title is required';
+    }
+    
+    if (!text.trim()) {
+      newErrors.text = 'Text is required';
+    } else if (text.trim().length < 10) {
+      newErrors.text = 'Text must be at least 10 characters';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-  });
+  const handleAddTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput('');
+    }
+  };
 
-  const onSubmit = async (data: FormData) => {
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  const generateAudio = async (text: string, language: Language): Promise<string | null> => {
     try {
       setIsGeneratingAudio(true);
-      toast('Generating audio file...');
+      toast.info(`Generating audio file...`);
 
-      const { data: audioData, error: audioError } = await supabase.functions.invoke('text-to-speech', {
-        body: { text: data.text, language: data.language }
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: { text, language }
       });
 
-      if (audioError) {
-        console.error('Error invoking text-to-speech function:', audioError);
-        throw audioError;
+      if (error) {
+        console.error('Error invoking text-to-speech function:', error);
+        throw error;
       }
 
-      if (!audioData || !audioData.audioContent) {
+      if (!data || !data.audioContent) {
         throw new Error('No audio content received');
       }
 
-      const audioContent = audioData.audioContent;
+      const audioContent = data.audioContent;
       const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
       
       const fileName = `default_exercise_${Date.now()}.mp3`;
@@ -98,108 +134,164 @@ const DefaultExerciseForm: React.FC<DefaultExerciseFormProps> = ({ onSuccess }) 
         .from('audio')
         .getPublicUrl(fileName);
 
-      toast('Audio file generated successfully');
-
-      await defaultExerciseService.createDefaultExercise({
-        title: data.title,
-        text: data.text,
-        language: data.language,
-        level: data.level,
-        tags: data.tags || '',
-        audioUrl: publicUrl
-      });
-
-      toast('Default exercise created successfully');
-      onSuccess();
+      toast.success(`Audio file generated successfully`);
+      return publicUrl;
     } catch (error) {
-      console.error('Error creating default exercise:', error);
-      toast('Failed to create the default exercise');
+      console.error('Error generating audio:', error);
+      toast.error(`Failed to generate audio for the exercise`);
+      return null;
     } finally {
       setIsGeneratingAudio(false);
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm() || !user) return;
+
+    try {
+      setIsLoading(true);
+
+      // Generate audio - passing the selected language for database association
+      // but TTS function will use English voice regardless
+      const audioUrl = await generateAudio(text, language);
+      
+      await createDefaultExercise(user.id, {
+        title,
+        text,
+        language,
+        tags,
+        audioUrl
+      });
+      
+      toast.success('Default exercise created successfully');
+      
+      // Reset form
+      setTitle('');
+      setText('');
+      setLanguage('english');
+      setTags([]);
+      setTagInput('');
+    } catch (error: any) {
+      console.error('Error creating default exercise:', error);
+      toast.error('Failed to create default exercise: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <Label htmlFor="title">Exercise Title</Label>
         <Input
           id="title"
-          placeholder="Enter a title for your exercise"
-          {...register('title')}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Enter a title for the default exercise"
           className={errors.title ? "border-destructive" : ""}
+          disabled={isLoading || isGeneratingAudio}
         />
         {errors.title && (
-          <p className="text-xs text-destructive mt-1">{errors.title.message}</p>
+          <p className="text-xs text-destructive mt-1">{errors.title}</p>
         )}
       </div>
-
+      
       <div>
-        <Label htmlFor="language">Language</Label>
-        <Select>
-          <SelectTrigger>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="language">Language</Label>
+          <PopoverHint side="top" align="start" className="w-80">
+            <p className="text-sm">
+              Select the language for this exercise. The audio will be generated using English voices for optimal quality,
+              but the exercise will be categorized under the selected language.
+            </p>
+          </PopoverHint>
+        </div>
+        <Select
+          value={language}
+          onValueChange={(value) => setLanguage(value as Language)}
+          disabled={isLoading || isGeneratingAudio}
+        >
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Select a language" />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(languageDisplayNames).map(([lang, displayName]) => (
-              <SelectItem key={lang} value={lang as Language} {...register('language')}>
-                {displayName}
+            {languages.map((lang) => (
+              <SelectItem key={lang} value={lang}>
+                {languageDisplayNames[lang] || lang.charAt(0).toUpperCase() + lang.slice(1)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        {errors.language && (
-          <p className="text-xs text-destructive mt-1">{errors.language.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label htmlFor="level">Level</Label>
-        <Select>
-          <SelectTrigger>
-            <SelectValue placeholder="Select a level" />
-          </SelectTrigger>
-          <SelectContent>
-            {['Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Level 6', 'Level 7'].map(level => (
-              <SelectItem key={level} value={level} {...register('level')}>
-                {level}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {errors.level && (
-          <p className="text-xs text-destructive mt-1">{errors.level.message}</p>
-        )}
       </div>
       
       <div>
         <Label htmlFor="text">Exercise Text</Label>
         <Textarea
           id="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
           placeholder="Enter the text for dictation practice"
           className={`min-h-32 ${errors.text ? "border-destructive" : ""}`}
-          {...register('text')}
+          disabled={isLoading || isGeneratingAudio}
         />
         {errors.text && (
-          <p className="text-xs text-destructive mt-1">{errors.text.message}</p>
+          <p className="text-xs text-destructive mt-1">{errors.text}</p>
         )}
       </div>
       
       <div>
         <Label htmlFor="tags">Tags</Label>
-        <Input
-          id="tags"
-          placeholder="Add tags (e.g., travel, grammar)"
-          {...register('tags')}
-        />
+        <div className="flex gap-2">
+          <Input
+            id="tags"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            placeholder="Add tags (e.g., beginner, grammar)"
+            disabled={isLoading || isGeneratingAudio}
+          />
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleAddTag}
+            disabled={isLoading || isGeneratingAudio}
+          >
+            Add
+          </Button>
+        </div>
+        
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {tags.map(tag => (
+              <div
+                key={tag}
+                className="bg-muted px-2 py-1 rounded-md text-xs flex items-center gap-1"
+              >
+                <span>{tag}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveTag(tag)}
+                  className="text-muted-foreground hover:text-destructive"
+                  disabled={isLoading || isGeneratingAudio}
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       
       <div className="flex justify-end">
-        <Button type="submit" disabled={isGeneratingAudio}>
-          {isGeneratingAudio && (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          )}
-          {isGeneratingAudio ? 'Generating Audio...' : 'Create Exercise'}
+        <Button type="submit" disabled={isLoading || isGeneratingAudio}>
+          {(isLoading || isGeneratingAudio) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isGeneratingAudio 
+            ? 'Generating Audio...' 
+            : isLoading 
+              ? 'Creating...' 
+              : 'Create Default Exercise'
+          }
         </Button>
       </div>
     </form>

@@ -42,13 +42,10 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const savedDirectories = localStorage.getItem('directories');
         if (savedDirectories) {
           try {
-            const parsedDirs = JSON.parse(savedDirectories).map((dir: any) => ({
+            setDirectories(JSON.parse(savedDirectories).map((dir: any) => ({
               ...dir,
-              userId: 'local',
-              createdAt: typeof dir.createdAt === 'string' ? dir.createdAt : new Date(dir.createdAt).toISOString(),
-              updatedAt: dir.updatedAt || new Date().toISOString()
-            }));
-            setDirectories(parsedDirs);
+              createdAt: new Date(dir.createdAt)
+            })));
           } catch (error) {
             console.error('Error parsing stored directories:', error);
             setDirectories([]);
@@ -76,9 +73,7 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             id: dir.id,
             name: dir.name,
             parentId: dir.parent_id,
-            userId: dir.user_id,
-            createdAt: dir.created_at,
-            updatedAt: dir.created_at // Use created_at since updated_at doesn't exist in the schema
+            createdAt: new Date(dir.created_at)
           })));
         }
       } catch (error) {
@@ -104,14 +99,11 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       if (!user) {
         // Handle non-authenticated user
-        const currentTime = new Date().toISOString();
         const newDirectory: Directory = {
           id: crypto.randomUUID(),
           name,
           parentId: parentId || null,
-          userId: 'local',
-          createdAt: currentTime,
-          updatedAt: currentTime
+          createdAt: new Date()
         };
         
         setDirectories(prev => [...prev, newDirectory]);
@@ -135,9 +127,7 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         id: data.id,
         name: data.name,
         parentId: data.parent_id,
-        userId: data.user_id,
-        createdAt: data.created_at,
-        updatedAt: data.created_at // Use created_at since updated_at doesn't exist
+        createdAt: new Date(data.created_at)
       };
 
       setDirectories(prev => [...prev, newDirectory]);
@@ -153,7 +143,7 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (!user) {
         // Handle non-authenticated user
         setDirectories(directories.map(dir => 
-          dir.id === id ? { ...dir, name, updatedAt: new Date().toISOString() } : dir
+          dir.id === id ? { ...dir, name } : dir
         ));
         return;
       }
@@ -168,7 +158,7 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (error) throw error;
 
       setDirectories(directories.map(dir => 
-        dir.id === id ? { ...dir, name, updatedAt: new Date().toISOString() } : dir
+        dir.id === id ? { ...dir, name } : dir
       ));
     } catch (error: any) {
       toast.error('Failed to update directory: ' + error.message);

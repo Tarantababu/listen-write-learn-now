@@ -22,7 +22,6 @@ import SettingsPage from "@/pages/SettingsPage";
 import SubscriptionPage from "@/pages/SubscriptionPage";
 import AdminPage from "@/pages/AdminPage";
 import TutorialPage from "@/pages/TutorialPage";
-import PreachingPage from "@/pages/PreachingPage";
 import NotFound from "@/pages/NotFound";
 import LoginPage from "@/pages/LoginPage";
 import SignUpPage from "@/pages/SignUpPage";
@@ -80,7 +79,6 @@ function App() {
                                     <Route path="exercises" element={<ExercisesPage />} />
                                     <Route path="curriculum" element={<CurriculumPage />} />
                                     <Route path="vocabulary" element={<VocabularyPage />} />
-                                    <Route path="preaching" element={<PreachingPage />} />
                                     <Route path="settings" element={<SettingsPage />} />
                                     <Route path="subscription" element={<SubscriptionPage />} />
                                     <Route path="tutorial" element={<TutorialPage />} />

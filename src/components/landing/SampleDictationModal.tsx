@@ -40,7 +40,7 @@ export function SampleDictationModal({
     tags: ['sample', 'beginner'],
     completionCount: 0,
     isCompleted: false,
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(),
     directoryId: null
   };
   const handleComplete = (accuracy: number) => {

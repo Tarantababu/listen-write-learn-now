@@ -22,7 +22,7 @@ const LevelBadge: React.FC<LevelBadgeProps> = ({ masteredWords, level, className
   
   if (level !== undefined) {
     // Use direct level value for the new level system
-    const levelColors: Record<string, string> = {
+    const levelColors: Record<LanguageLevel, string> = {
       'Level 1': 'bg-slate-400',
       'Level 2': 'bg-green-400',
       'Level 3': 'bg-blue-400',
@@ -33,7 +33,7 @@ const LevelBadge: React.FC<LevelBadgeProps> = ({ masteredWords, level, className
     };
     
     return (
-      <Badge className={`${levelColors[level] || 'bg-slate-400'} font-semibold ${className}`}>
+      <Badge className={`${levelColors[level]} font-semibold ${className}`}>
         {level}
       </Badge>
     );

@@ -1,101 +1,21 @@
-
-import type { LucideIcon } from 'lucide-react';
-
-export type NavItem = {
-  title: string;
-  href: string;
-  disabled?: boolean;
-  external?: boolean;
-  icon?: string;
-  label?: string;
-};
-
-export type SiteConfig = {
-  name: string;
-  description: string;
-  url: string;
-  ogImage: string;
-  links: {
-    twitter: string;
-    github: string;
-  };
-};
-
-export type DocsConfig = {
-  mainNav: NavItem[];
-  sidebarNav: SidebarNavItem[];
-};
-
-export type SidebarNavItem = {
-  title: string;
-  disabled?: boolean;
-  external?: boolean;
-  icon?: string;
-} & (
-  | {
-      href: string;
-      items?: never;
-    }
-  | {
-      href?: string;
-      items: NavLink[];
-    }
-);
-
-export type NavLink = {
-  title: string;
-  href: string;
-  disabled?: boolean;
-  external?: boolean;
-  label?: string;
-};
-
-export type MainNavItem = NavItem;
-
-export type User = {
-  id: string;
-  name?: string | null;
-  email?: string | null;
-  image?: string | null;
-};
-
-export interface Option {
-  label: string;
-  value: string;
-  icon?: LucideIcon;
-}
-
-export type SettingsConfig = {
-  name: string;
-  description: string;
-  motto: string;
-  features: {
-    darkMode: boolean;
-    pushNotifications: boolean;
-    aiAssistance: boolean;
-  };
-};
-
 export type Language = 
-  | 'german' 
-  | 'french' 
-  | 'spanish' 
-  | 'italian' 
-  | 'portuguese' 
   | 'english' 
-  | 'dutch' 
-  | 'swedish' 
-  | 'norwegian'
+  | 'german' 
+  | 'spanish' 
+  | 'french' 
+  | 'portuguese' 
+  | 'italian'
   | 'turkish'
+  | 'swedish'
+  | 'dutch'
+  | 'norwegian'
   | 'russian'
   | 'polish'
   | 'chinese'
   | 'japanese'
   | 'korean'
-  | 'hindi'
   | 'arabic';
 
-// Exercise types
 export interface Exercise {
   id: string;
   title: string;
@@ -103,96 +23,140 @@ export interface Exercise {
   language: Language;
   tags: string[];
   audioUrl?: string;
-  createdAt: string; // Changed from Date to string
+  directoryId: string | null;
+  createdAt: Date;
   completionCount: number;
   isCompleted: boolean;
-  directoryId?: string | null;
-  default_exercise_id?: string | null;
   archived?: boolean;
+  default_exercise_id?: string;  // Add this line to include the default exercise ID
 }
 
-// Directory types
 export interface Directory {
   id: string;
   name: string;
   parentId?: string | null;
-  userId: string;
-  createdAt: string; // Changed from Date to string
-  updatedAt: string; // Added updatedAt field
+  createdAt: Date;
 }
 
-// Vocabulary types
 export interface VocabularyItem {
   id: string;
   word: string;
   definition: string;
   exampleSentence: string;
-  language: Language;
   audioUrl?: string;
-  userId: string;
-  createdAt: string; // Changed from Date to string
-  updatedAt: string; // Changed from Date to string
-  exerciseId?: string;
+  exerciseId: string;
+  language: Language;
 }
 
-// User Settings types
 export interface UserSettings {
-  id?: string;
-  userId?: string;
-  selectedLanguage: Language;
-  aiAssistanceEnabled?: boolean;
-  pushNotificationsEnabled?: boolean;
-  darkModeEnabled?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
   learningLanguages: Language[];
+  selectedLanguage: Language;
 }
 
-// Blog types
+// Add the new Roadmap types
+export type LanguageLevel = 'Level 1' | 'Level 2' | 'Level 3' | 'Level 4' | 'Level 5' | 'Level 6' | 'Level 7';
+
+export interface Roadmap {
+  id: string;
+  name: string;
+  level: LanguageLevel;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  languages?: Language[]; // Added languages array
+}
+
+export interface RoadmapNode {
+  id: string;
+  roadmapId: string;
+  defaultExerciseId?: string;
+  title: string;
+  description?: string;
+  position: number;
+  isBonus: boolean;
+  language?: Language; // Added language field
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RoadmapLanguage {
+  id: string;
+  roadmapId: string;
+  language: Language;
+  createdAt: Date;
+}
+
+export interface UserRoadmap {
+  id: string;
+  userId: string;
+  roadmapId: string;
+  language: Language;
+  currentNodeId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RoadmapProgress {
+  id: string;
+  userId: string;
+  roadmapId: string;
+  nodeId: string;
+  completed: boolean;
+  completedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Add new RoadmapNodeProgress type
+export interface RoadmapNodeProgress {
+  id: string;
+  userId: string;
+  roadmapId: string;
+  nodeId: string;
+  language: Language;
+  completionCount: number;
+  isCompleted: boolean;
+  lastPracticedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Add BlogPost type for the blog functionality
 export interface BlogPost {
   id: string;
   title: string;
-  content: string;
-  excerpt: string;
   slug: string;
-  status: 'draft' | 'published' | 'archived';
-  authorId: string;
-  publishedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  tags: string[];
-  featuredImage?: string;
-  metaTitle?: string;
-  metaDescription?: string;
+  content: string;
+  excerpt?: string;
+  featured_image_url?: string;
+  status: 'draft' | 'published';
+  author_id: string;
+  created_at: string;
+  updated_at: string;
+  published_at?: string;
+  meta_title?: string;
+  meta_description?: string;
 }
 
-// Language Level types - changed to union type instead of interface
-export type LanguageLevel = 
-  | 'Level 1' 
-  | 'Level 2' 
-  | 'Level 3' 
-  | 'Level 4' 
-  | 'Level 5' 
-  | 'Level 6' 
-  | 'Level 7';
+// Add Json type for compatibility with Supabase
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
 
-// Roadmap types - Updated to match features/roadmap types
-export interface RoadmapNode {
-  id: string;
-  title: string;
-  description: string;
-  level: string;
-  position: { x: number; y: number };
-  isCompleted: boolean;
-  isUnlocked: boolean;
-  prerequisites: string[];
-  exerciseCount: number;
-  type: 'exercise' | 'milestone' | 'checkpoint';
-  roadmapId?: string; // Made optional to match features/roadmap types
-  isBonus?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
+export interface ExerciseContextType {
+  exercises: Exercise[];
+  defaultExercises: any[]; // Changed from DefaultExercise[] to any[]
+  exercisesLoading: boolean;
+  defaultExercisesLoading: boolean;
+  addExercise: (exercise: Omit<Exercise, 'id' | 'createdAt' | 'completionCount' | 'isCompleted'>) => Promise<Exercise>;
+  updateExercise: (id: string, updates: Partial<Exercise>) => Promise<void>;
+  deleteExercise: (id: string) => Promise<void>;
+  recordCompletion: (exerciseId: string, accuracy: number, isCompleted: boolean) => Promise<void>;
+  copyDefaultExercise: (id: string) => Promise<void>;
+  refreshExercises: () => Promise<void>;
 }
-
-// JSON type for generic JSON data
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];

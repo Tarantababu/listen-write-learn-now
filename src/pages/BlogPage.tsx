@@ -1,18 +1,19 @@
 
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Calendar, Clock, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { transformBlogPostsFromDatabase } from '@/utils/blogPostUtils';
-import { format } from 'date-fns';
+import { BlogPost } from '@/types';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Footer } from '@/components/landing/Footer';
+import { LandingHeader } from '@/components/landing/LandingHeader';
+import { Loader2, Calendar, ArrowRight, BookOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import SEO from '@/components/SEO';
 
 const BlogPage: React.FC = () => {
-  const { data: posts = [], isLoading } = useQuery({
+  const { data: posts, isLoading, error } = useQuery({
     queryKey: ['blog-posts'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -22,203 +23,235 @@ const BlogPage: React.FC = () => {
         .order('published_at', { ascending: false });
       
       if (error) throw error;
-      return transformBlogPostsFromDatabase(data || []);
+      return data as BlogPost[];
     }
   });
 
-  const featuredPost = posts[0];
-  const recentPosts = posts.slice(1, 4);
-  const olderPosts = posts.slice(4);
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">Loading blog posts...</div>
-      </div>
-    );
-  }
+  const featuredPost = posts?.[0];
+  const regularPosts = posts?.slice(1) || [];
 
   return (
     <>
-      <SEO 
-        title="Language Learning Blog - Tips, Tricks & Insights"
-        description="Discover expert language learning tips, study techniques, and insights to accelerate your language learning journey."
+      <SEO
+        title="Language Learning Blog - Expert Tips & Techniques"
+        description="Discover proven language learning techniques, dictation methods, and educational insights. Get expert tips on vocabulary building, pronunciation, and mastering new languages faster."
+        keywords="language learning blog, dictation techniques, language education, learning tips, vocabulary building, foreign language articles, pronunciation guide, language practice"
+        url="https://lwlnow.com/blog"
+        type="website"
       />
       
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-        <div className="container mx-auto px-4 py-12">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Language Learning Blog
-            </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Expert tips, proven techniques, and insights to accelerate your language learning journey
-            </p>
-          </div>
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted/20">
+        <LandingHeader />
+        
+        <main className="flex-1 container mx-auto px-4 py-16 mt-10">
+          <div className="max-w-6xl mx-auto">
+            {/* Hero Section */}
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-4">
+                <BookOpen className="h-4 w-4" />
+                Language Learning Insights
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                Master Languages Faster
+              </h1>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                Expert insights, proven techniques, and practical tips to accelerate your language learning journey through dictation and active practice.
+              </p>
+            </div>
 
-          {/* Featured Post */}
-          {featuredPost && (
-            <div className="mb-16">
-              <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-                <div className="md:flex">
-                  {featuredPost.featuredImage && (
-                    <div className="md:w-1/2">
-                      <img 
-                        src={featuredPost.featuredImage} 
-                        alt={featuredPost.title}
-                        className="w-full h-64 md:h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <div className={featuredPost.featuredImage ? "md:w-1/2 p-8" : "p-8"}>
-                    <div className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
-                      <Calendar className="h-4 w-4" />
-                      <span>
-                        {featuredPost.publishedAt && format(new Date(featuredPost.publishedAt), 'MMMM d, yyyy')}
-                      </span>
-                      <Clock className="h-4 w-4 ml-4" />
-                      <span>{Math.ceil(featuredPost.content.split(' ').length / 200)} min read</span>
-                    </div>
-                    
-                    <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                      {featuredPost.title}
-                    </h2>
-                    
-                    <p className="text-gray-600 text-lg mb-6 leading-relaxed">
-                      {featuredPost.excerpt}
-                    </p>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-wrap gap-2">
-                        {featuredPost.tags.slice(0, 3).map((tag) => (
-                          <Badge key={tag} variant="secondary">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                      
-                      <Button asChild>
-                        <Link to={`/blog/${featuredPost.slug}`}>
-                          Read Article
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
+            {/* Navigation Breadcrumbs */}
+            <nav className="flex items-center space-x-2 text-sm text-muted-foreground mb-8">
+              <Link to="/" className="hover:text-primary transition-colors">Home</Link>
+              <span>/</span>
+              <span className="text-foreground">Blog</span>
+            </nav>
+            
+            {isLoading ? (
+              <div className="flex justify-center py-20">
+                <div className="text-center space-y-4">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+                  <p className="text-muted-foreground">Loading latest articles...</p>
                 </div>
-              </Card>
-            </div>
-          )}
-
-          {/* Recent Posts */}
-          {recentPosts.length > 0 && (
-            <div className="mb-16">
-              <h3 className="text-2xl font-bold text-gray-900 mb-8">Recent Articles</h3>
-              <div className="grid md:grid-cols-3 gap-8">
-                {recentPosts.map((post) => (
-                  <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                    {post.featuredImage && (
-                      <div className="aspect-video overflow-hidden">
-                        <img 
-                          src={post.featuredImage} 
-                          alt={post.title}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                        />
-                      </div>
-                    )}
-                    <CardContent className="p-6">
-                      <div className="flex items-center space-x-2 text-sm text-gray-500 mb-3">
-                        <Calendar className="h-4 w-4" />
-                        <span>
-                          {post.publishedAt && format(new Date(post.publishedAt), 'MMM d, yyyy')}
-                        </span>
-                      </div>
-                      
-                      <h4 className="text-xl font-semibold text-gray-900 mb-3 line-clamp-2">
-                        {post.title}
-                      </h4>
-                      
-                      <p className="text-gray-600 mb-4 line-clamp-3">
-                        {post.excerpt}
-                      </p>
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="flex flex-wrap gap-1">
-                          {post.tags.slice(0, 2).map((tag) => (
-                            <Badge key={tag} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                        
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/blog/${post.slug}`}>
-                            Read More
-                          </Link>
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
               </div>
-            </div>
-          )}
-
-          {/* Older Posts */}
-          {olderPosts.length > 0 && (
-            <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-8">More Articles</h3>
-              <div className="space-y-6">
-                {olderPosts.map((post) => (
-                  <Card key={post.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-                            <Calendar className="h-4 w-4" />
-                            <span>
-                              {post.publishedAt && format(new Date(post.publishedAt), 'MMM d, yyyy')}
-                            </span>
-                          </div>
-                          
-                          <h4 className="text-xl font-semibold text-gray-900 mb-2">
-                            {post.title}
-                          </h4>
-                          
-                          <p className="text-gray-600 mb-3 line-clamp-2">
-                            {post.excerpt}
-                          </p>
-                          
-                          <div className="flex flex-wrap gap-2">
-                            {post.tags.slice(0, 3).map((tag) => (
-                              <Badge key={tag} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        <Button variant="ghost" asChild className="ml-4">
-                          <Link to={`/blog/${post.slug}`}>
-                            Read
-                            <ArrowRight className="ml-1 h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+            ) : error ? (
+              <div className="text-center py-20">
+                <div className="max-w-md mx-auto space-y-4">
+                  <div className="text-red-500 text-lg font-medium">Unable to load articles</div>
+                  <p className="text-muted-foreground">Please try again later or check your connection.</p>
+                  <Button asChild>
+                    <Link to="/">Return Home</Link>
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
+            ) : posts && posts.length > 0 ? (
+              <div className="space-y-12">
+                {/* Featured Article */}
+                {featuredPost && (
+                  <section className="mb-16">
+                    <div className="flex items-center gap-2 mb-6">
+                      <Badge variant="secondary" className="text-sm">Featured Article</Badge>
+                    </div>
+                    <Card className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-card to-card/80">
+                      <div className="grid md:grid-cols-2 gap-0">
+                        {featuredPost.featured_image_url ? (
+                          <div className="relative overflow-hidden">
+                            <Link to={`/blog/${featuredPost.slug}`}>
+                              <img 
+                                src={featuredPost.featured_image_url} 
+                                alt={featuredPost.title}
+                                className="w-full h-64 md:h-full object-cover hover:scale-105 transition-transform duration-500" 
+                              />
+                            </Link>
+                          </div>
+                        ) : (
+                          <div className="bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+                            <BookOpen className="h-16 w-16 text-primary/30" />
+                          </div>
+                        )}
+                        
+                        <CardContent className="p-8 flex flex-col justify-center">
+                          <CardTitle className="text-2xl mb-4 leading-tight">
+                            <Link 
+                              to={`/blog/${featuredPost.slug}`} 
+                              className="hover:text-primary transition-colors story-link"
+                            >
+                              {featuredPost.title}
+                            </Link>
+                          </CardTitle>
+                          
+                          {featuredPost.excerpt && (
+                            <CardDescription className="text-base mb-6 leading-relaxed">
+                              {featuredPost.excerpt}
+                            </CardDescription>
+                          )}
+                          
+                          <div className="flex items-center justify-between">
+                            {featuredPost.published_at && (
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Calendar className="h-4 w-4 mr-2" />
+                                <time dateTime={featuredPost.published_at}>
+                                  {new Date(featuredPost.published_at).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}
+                                </time>
+                              </div>
+                            )}
+                            
+                            <Button asChild variant="outline" className="group">
+                              <Link to={`/blog/${featuredPost.slug}`}>
+                                Read Article
+                                <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                              </Link>
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </div>
+                    </Card>
+                  </section>
+                )}
 
-          {posts.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-600 text-lg">No blog posts available yet.</p>
-            </div>
-          )}
-        </div>
+                {/* Regular Articles Grid */}
+                {regularPosts.length > 0 && (
+                  <section>
+                    <h2 className="text-2xl font-bold mb-8">Latest Articles</h2>
+                    <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                      {regularPosts.map((post) => (
+                        <Card key={post.id} className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-0 shadow-md">
+                          {post.featured_image_url && (
+                            <div className="relative overflow-hidden rounded-t-lg">
+                              <Link to={`/blog/${post.slug}`}>
+                                <img 
+                                  src={post.featured_image_url} 
+                                  alt={post.title}
+                                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500" 
+                                />
+                              </Link>
+                            </div>
+                          )}
+                          
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-lg leading-tight">
+                              <Link 
+                                to={`/blog/${post.slug}`} 
+                                className="hover:text-primary transition-colors story-link"
+                              >
+                                {post.title}
+                              </Link>
+                            </CardTitle>
+                          </CardHeader>
+                          
+                          {post.excerpt && (
+                            <CardContent className="pt-0 pb-3">
+                              <CardDescription className="leading-relaxed">
+                                {post.excerpt.length > 120 ? `${post.excerpt.substring(0, 120)}...` : post.excerpt}
+                              </CardDescription>
+                            </CardContent>
+                          )}
+                          
+                          <CardFooter className="pt-0 flex items-center justify-between">
+                            {post.published_at && (
+                              <div className="flex items-center text-xs text-muted-foreground">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                <time dateTime={post.published_at}>
+                                  {new Date(post.published_at).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </time>
+                              </div>
+                            )}
+                            
+                            <Button asChild variant="ghost" size="sm" className="group p-0 h-auto">
+                              <Link to={`/blog/${post.slug}`}>
+                                Read more
+                                <ArrowRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform" />
+                              </Link>
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* Call to Action */}
+                <section className="mt-16 text-center bg-gradient-to-r from-primary/5 to-primary/10 rounded-2xl p-8">
+                  <h2 className="text-2xl font-bold mb-4">Ready to Start Your Language Journey?</h2>
+                  <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
+                    Join thousands of learners who are mastering new languages through our proven dictation-based approach.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <Button asChild size="lg">
+                      <Link to="/signup">Start Learning Free</Link>
+                    </Button>
+                    <Button asChild variant="outline" size="lg">
+                      <Link to="/">Learn More</Link>
+                    </Button>
+                  </div>
+                </section>
+              </div>
+            ) : (
+              <div className="text-center py-20">
+                <div className="max-w-md mx-auto space-y-6">
+                  <BookOpen className="h-16 w-16 text-muted-foreground/50 mx-auto" />
+                  <div>
+                    <h2 className="text-2xl font-bold mb-2">Coming Soon!</h2>
+                    <p className="text-muted-foreground">
+                      We're preparing exciting language learning content for you. Check back soon for expert tips and insights.
+                    </p>
+                  </div>
+                  <Button asChild>
+                    <Link to="/signup">Get Notified When We Publish</Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+        
+        <Footer />
       </div>
     </>
   );
