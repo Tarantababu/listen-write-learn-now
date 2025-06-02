@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import AdminStatsDashboard from '@/components/admin/AdminStatsDashboard';
-import UserRoleManagement from '@/components/admin/UserRoleManagement';
+import { AdminStatsDashboard } from '@/components/admin/AdminStatsDashboard';
+import { UserRoleManagement } from '@/components/admin/UserRoleManagement';
 import BlogManagement from '@/components/admin/BlogManagement';
-import FeedbackList from '@/components/admin/FeedbackList';
+import { FeedbackList } from '@/components/admin/FeedbackList';
 import AdminMessagesList from '@/components/admin/AdminMessagesList';
 import AdminMessagesForm from '@/components/admin/AdminMessagesForm';
 import DefaultExercisesList from '@/components/admin/DefaultExercisesList';

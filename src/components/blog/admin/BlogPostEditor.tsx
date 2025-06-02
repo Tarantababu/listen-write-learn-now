@@ -15,12 +15,14 @@ import { useAuth } from '@/contexts/AuthContext';
 interface BlogPostEditorProps {
   post?: BlogPost;
   onSave?: () => void;
+  onCancel?: () => void;
 }
 
-const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
+const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, onCancel }) => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { user } = useAuth(); // Get the current user
+  const { user } = useAuth();
+  
   const [title, setTitle] = useState(post?.title || '');
   const [slug, setSlug] = useState(post?.slug || '');
   const [content, setContent] = useState(post?.content || '');
@@ -33,7 +35,6 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [loading, setLoading] = useState(!!id);
 
-  // Fetch post data if editing an existing post
   useEffect(() => {
     if (id) {
       fetchPostData();
@@ -59,7 +60,6 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
         setFeaturedImageUrl(data.featured_image_url || '');
         setMetaTitle(data.meta_title || '');
         setMetaDescription(data.meta_description || '');
-        // Type check to ensure status is either 'draft' or 'published'
         const postStatus = data.status === 'published' ? 'published' : 'draft';
         setStatus(postStatus);
       }
@@ -75,7 +75,6 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
     }
   };
 
-  // Generate slug from title
   useEffect(() => {
     if (!post && title && !slug) {
       const generatedSlug = title
@@ -151,10 +150,9 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
         meta_title: metaTitle || title,
         meta_description: metaDescription || excerpt,
         updated_at: currentTime,
-        author_id: user.id, // Set the author_id to the current user's ID
+        author_id: user.id,
       };
 
-      // If we're publishing for the first time, set the published_at date
       if (publishStatus === 'published' && (!post || post.status !== 'published')) {
         postData.published_at = currentTime;
       }
@@ -162,13 +160,11 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
       let result;
 
       if (id) {
-        // Update existing post
         result = await supabase
           .from('blog_posts')
           .update(postData)
           .eq('id', id);
       } else {
-        // Create new post
         result = await supabase
           .from('blog_posts')
           .insert([postData])
@@ -189,7 +185,6 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
       if (onSave) {
         onSave();
       } else {
-        // Redirect to the admin page with blog tab selected
         navigate('/dashboard/admin?tab=blog');
       }
 
@@ -203,6 +198,14 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
     } finally {
       setIsSaving(false);
       setIsPublishing(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    } else {
+      navigate('/dashboard/admin?tab=blog');
     }
   };
 
@@ -221,7 +224,7 @@ const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave }) => {
           variant="outline"
           size="sm"
           className="mr-2"
-          onClick={() => navigate('/dashboard/admin?tab=blog')}
+          onClick={handleCancel}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Blog Posts
