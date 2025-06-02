@@ -1,5 +1,4 @@
 
-
 import type { LucideIcon } from 'lucide-react';
 
 export type NavItem = {
@@ -104,7 +103,7 @@ export interface Exercise {
   language: Language;
   tags: string[];
   audioUrl?: string;
-  createdAt: string;
+  createdAt: string; // Changed from Date to string
   completionCount: number;
   isCompleted: boolean;
   directoryId?: string | null;
@@ -118,8 +117,8 @@ export interface Directory {
   name: string;
   parentId?: string | null;
   userId: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string; // Changed from Date to string
+  updatedAt: string; // Added updatedAt field
 }
 
 // Vocabulary types
@@ -131,8 +130,8 @@ export interface VocabularyItem {
   language: Language;
   audioUrl?: string;
   userId: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string; // Changed from Date to string
+  updatedAt: string; // Changed from Date to string
   exerciseId?: string;
 }
 
@@ -177,7 +176,7 @@ export type LanguageLevel =
   | 'Level 6' 
   | 'Level 7';
 
-// Roadmap types
+// Roadmap types - Updated to match features/roadmap types
 export interface RoadmapNode {
   id: string;
   title: string;
@@ -189,7 +188,7 @@ export interface RoadmapNode {
   prerequisites: string[];
   exerciseCount: number;
   type: 'exercise' | 'milestone' | 'checkpoint';
-  roadmapId?: string;
+  roadmapId?: string; // Made optional to match features/roadmap types
   isBonus?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -197,4 +196,3 @@ export interface RoadmapNode {
 
 // JSON type for generic JSON data
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
-

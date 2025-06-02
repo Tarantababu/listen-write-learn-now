@@ -48,7 +48,13 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const savedVocabulary = localStorage.getItem('vocabulary');
         if (savedVocabulary) {
           try {
-            setVocabulary(JSON.parse(savedVocabulary));
+            const parsedVocab = JSON.parse(savedVocabulary).map((item: any) => ({
+              ...item,
+              userId: 'local',
+              createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date(item.createdAt).toISOString(),
+              updatedAt: item.updatedAt || new Date().toISOString()
+            }));
+            setVocabulary(parsedVocab);
           } catch (error) {
             console.error('Error parsing stored vocabulary:', error);
             setVocabulary([]);
@@ -78,7 +84,10 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             exampleSentence: item.example_sentence,
             audioUrl: item.audio_url,
             exerciseId: item.exercise_id || '',
-            language: item.language as Language
+            language: item.language as Language,
+            userId: item.user_id,
+            createdAt: item.created_at,
+            updatedAt: item.updated_at || item.created_at
           })));
         }
       } catch (error) {
@@ -110,9 +119,13 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       if (!user) {
         // Handle non-authenticated user
+        const currentTime = new Date().toISOString();
         const newItem: VocabularyItem = {
           ...item,
           id: crypto.randomUUID(),
+          userId: 'local',
+          createdAt: currentTime,
+          updatedAt: currentTime
         };
         
         setVocabulary(prev => [newItem, ...prev]);
@@ -143,7 +156,10 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         exampleSentence: data.example_sentence,
         audioUrl: data.audio_url,
         exerciseId: data.exercise_id || '',
-        language: data.language as Language
+        language: data.language as Language,
+        userId: data.user_id,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at || data.created_at
       };
 
       setVocabulary(prev => [newItem, ...prev]);

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Exercise } from '@/types';
 
@@ -14,7 +15,7 @@ export const useLocalExercises = () => {
       try {
         setExercises(JSON.parse(savedExercises).map((ex: any) => ({
           ...ex,
-          createdAt: new Date(ex.createdAt)
+          createdAt: typeof ex.createdAt === 'string' ? ex.createdAt : new Date(ex.createdAt).toISOString()
         })));
       } catch (error) {
         console.error('Error parsing stored exercises:', error);
@@ -34,7 +35,7 @@ export const useLocalExercises = () => {
     const newExercise: Exercise = {
       ...exercise,
       id: crypto.randomUUID(),
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
       completionCount: 0,
       isCompleted: false
     };
