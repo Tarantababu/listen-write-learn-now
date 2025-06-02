@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,7 +8,6 @@ import { toast } from 'sonner';
 import { preachingService } from '@/services/preachingService';
 import type { Noun, PatternDrill, DrillAttempt, PreachingDifficulty } from '@/types/preaching';
 import type { Language } from '@/types';
-import '@/types/speech';
 
 interface DrillingStepProps {
   nouns: Noun[];
