@@ -78,7 +78,7 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             parentId: dir.parent_id,
             userId: dir.user_id,
             createdAt: dir.created_at,
-            updatedAt: dir.updated_at || dir.created_at
+            updatedAt: dir.created_at // Use created_at since updated_at doesn't exist in the schema
           })));
         }
       } catch (error) {
@@ -137,7 +137,7 @@ export const DirectoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         parentId: data.parent_id,
         userId: data.user_id,
         createdAt: data.created_at,
-        updatedAt: data.updated_at || data.created_at
+        updatedAt: data.created_at // Use created_at since updated_at doesn't exist
       };
 
       setDirectories(prev => [...prev, newDirectory]);

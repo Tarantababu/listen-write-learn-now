@@ -13,7 +13,7 @@ interface VocabularyContextProps {
   getVocabularyByExercise: (exerciseId: string) => VocabularyItem[];
   getVocabularyByLanguage: (language: Language) => VocabularyItem[];
   loading: boolean;
-  isLoading: boolean; // Add this property for compatibility
+  isLoading: boolean;
   canCreateMore: boolean;
   vocabularyLimit: number;
 }
@@ -34,10 +34,7 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const { user } = useAuth();
   const { subscription } = useSubscription();
   
-  // Define the vocabulary limit for non-premium users
   const vocabularyLimit = 5;
-  
-  // Determine if user can create more vocabulary items
   const canCreateMore = subscription.isSubscribed || vocabulary.length < vocabularyLimit;
 
   // Load vocabulary from Supabase when user changes
@@ -87,7 +84,7 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             language: item.language as Language,
             userId: item.user_id,
             createdAt: item.created_at,
-            updatedAt: item.updated_at || item.created_at
+            updatedAt: item.created_at // Use created_at since updated_at doesn't exist in vocabulary table
           })));
         }
       } catch (error) {
@@ -159,7 +156,7 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         language: data.language as Language,
         userId: data.user_id,
         createdAt: data.created_at,
-        updatedAt: data.updated_at || data.created_at
+        updatedAt: data.created_at // Use created_at since updated_at doesn't exist
       };
 
       setVocabulary(prev => [newItem, ...prev]);
@@ -209,7 +206,7 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     getVocabularyByExercise,
     getVocabularyByLanguage,
     loading,
-    isLoading: loading, // Add this for compatibility
+    isLoading: loading,
     canCreateMore,
     vocabularyLimit
   };

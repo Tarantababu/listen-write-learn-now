@@ -19,7 +19,7 @@ import NewRoadmapVisualization from '@/features/roadmap/components/RoadmapVisual
 interface RoadmapNodeProps {
   node: RoadmapNode;
   status: 'completed' | 'current' | 'locked' | 'available';
-  progress?: number; // Add progress (completion count)
+  progress?: number;
   onNodeClick: (node: RoadmapNode) => void;
 }
 
@@ -40,7 +40,6 @@ const RoadmapNodeComponent: React.FC<RoadmapNodeProps> = ({ node, status, progre
     return null;
   };
 
-  // Display progress badge if there is progress but not completed
   const showProgressBadge = progress > 0 && status !== 'completed';
 
   return (
