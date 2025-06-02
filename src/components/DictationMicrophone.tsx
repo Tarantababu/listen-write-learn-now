@@ -105,7 +105,7 @@ const DictationMicrophone: React.FC<DictationMicrophoneProps> = ({
   // Initialize Web Speech Recognition
   const initSpeechRecognition = () => {
     // Check if browser supports speech recognition
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
       toast({
         title: "Speech Recognition Not Supported",
         description: "Your browser doesn't support speech recognition. Try using a modern browser like Chrome.",
