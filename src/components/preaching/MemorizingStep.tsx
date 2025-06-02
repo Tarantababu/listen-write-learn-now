@@ -31,7 +31,34 @@ const MemorizingStep: React.FC<MemorizingStepProps> = ({
   const [selectedWords, setSelectedWords] = useState<Set<string>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Handle empty nouns array
+  if (!nouns || nouns.length === 0) {
+    return (
+      <div className="text-center space-y-4">
+        <p className="text-gray-600">No nouns available. Please try refreshing the session.</p>
+        <Button onClick={onComplete} variant="outline">
+          Continue Anyway
+        </Button>
+      </div>
+    );
+  }
+
   const currentNoun = nouns[currentIndex];
+
+  // Additional safety check for currentNoun
+  if (!currentNoun) {
+    return (
+      <div className="text-center space-y-4">
+        <p className="text-gray-600">Error loading noun data. Please try again.</p>
+        <Button onClick={() => setCurrentIndex(0)} variant="outline">
+          Reset to First Noun
+        </Button>
+        <Button onClick={onComplete}>
+          Continue to Testing
+        </Button>
+      </div>
+    );
+  }
 
   const handleNext = () => {
     if (currentIndex < nouns.length - 1) {
