@@ -35,7 +35,13 @@ const TestingStep: React.FC<TestingStepProps> = ({ nouns, language, onComplete }
       swedish: ['en', 'ett'],
       norwegian: ['en', 'ei', 'et'],
       english: ['the', 'a', 'an'],
-      turkish: [] // No articles in Turkish
+      turkish: [], // No articles in Turkish
+      russian: ['нет артиклей'], // No articles in Russian
+      polish: ['nет артыклоў'], // No articles in Polish  
+      chinese: ['没有冠词'], // No articles in Chinese
+      japanese: ['助詞なし'], // No articles in Japanese
+      korean: ['관사 없음'], // No articles in Korean
+      hindi: ['कोई आर्टिकल नहीं'] // No articles in Hindi
     };
     return articleMap[lang] || ['der', 'die', 'das'];
   };
