@@ -3,19 +3,33 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Volume2 } from 'lucide-react';
-import type { Noun } from '@/types/preaching';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ChevronLeft, ChevronRight, Volume2, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { preachingService } from '@/services/preachingService';
+import LoadingVisualization from './LoadingVisualization';
+import type { Noun, PreachingDifficulty } from '@/types/preaching';
 import type { Language } from '@/types';
 
 interface MemorizingStepProps {
   nouns: Noun[];
+  difficulty: PreachingDifficulty;
   language: Language;
   onComplete: () => void;
+  onNounsUpdate: (nouns: Noun[]) => void;
 }
 
-const MemorizingStep: React.FC<MemorizingStepProps> = ({ nouns, language, onComplete }) => {
+const MemorizingStep: React.FC<MemorizingStepProps> = ({ 
+  nouns, 
+  difficulty,
+  language, 
+  onComplete, 
+  onNounsUpdate 
+}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
+  const [selectedWords, setSelectedWords] = useState<Set<string>>(new Set());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const currentNoun = nouns[currentIndex];
 
@@ -55,6 +69,49 @@ const MemorizingStep: React.FC<MemorizingStepProps> = ({ nouns, language, onComp
     }
   };
 
+  const handleWordSelection = (wordId: string, checked: boolean) => {
+    const newSelectedWords = new Set(selectedWords);
+    if (checked) {
+      newSelectedWords.add(wordId);
+    } else {
+      newSelectedWords.delete(wordId);
+    }
+    setSelectedWords(newSelectedWords);
+  };
+
+  const handleRefreshWords = async () => {
+    if (selectedWords.size === 0) {
+      toast.error('Please select at least one word to refresh');
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      // Generate new words to replace selected ones
+      const newWordsCount = selectedWords.size;
+      const newWords = await preachingService.generateNouns(difficulty, language, newWordsCount);
+      
+      // Create updated nouns array
+      const updatedNouns = nouns.map(noun => {
+        if (selectedWords.has(noun.id)) {
+          // Replace with new word (find matching index)
+          const replacementIndex = Array.from(selectedWords).indexOf(noun.id);
+          return newWords[replacementIndex] || noun;
+        }
+        return noun;
+      });
+
+      onNounsUpdate(updatedNouns);
+      setSelectedWords(new Set());
+      toast.success(`Refreshed ${newWordsCount} word${newWordsCount > 1 ? 's' : ''}`);
+    } catch (error) {
+      console.error('Failed to refresh words:', error);
+      toast.error('Failed to refresh words. Please try again.');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const getArticleColor = (article: string) => {
     switch (article) {
       case 'der': return 'bg-blue-100 text-blue-800';
@@ -64,12 +121,16 @@ const MemorizingStep: React.FC<MemorizingStepProps> = ({ nouns, language, onComp
     }
   };
 
+  if (isRefreshing) {
+    return <LoadingVisualization type="words" message="Generating fresh vocabulary..." />;
+  }
+
   if (viewMode === 'list') {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-semibold">Study These Nouns</h3>
-          <div className="space-x-2">
+          <div className="flex items-center space-x-2">
             <Button
               variant="outline"
               size="sm"
@@ -77,10 +138,24 @@ const MemorizingStep: React.FC<MemorizingStepProps> = ({ nouns, language, onComp
             >
               Card View
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshWords}
+              disabled={selectedWords.size === 0}
+              className="flex items-center space-x-1"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>Refresh Selected</span>
+            </Button>
             <Button onClick={onComplete}>
               Continue to Testing
             </Button>
           </div>
+        </div>
+
+        <div className="text-sm text-gray-600 mb-4">
+          Select words you want to refresh with new vocabulary
         </div>
 
         <div className="grid gap-3">
@@ -88,6 +163,13 @@ const MemorizingStep: React.FC<MemorizingStepProps> = ({ nouns, language, onComp
             <Card key={noun.id} className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
+                  <Checkbox
+                    id={`word-${noun.id}`}
+                    checked={selectedWords.has(noun.id)}
+                    onCheckedChange={(checked) => 
+                      handleWordSelection(noun.id, checked as boolean)
+                    }
+                  />
                   <Badge className={getArticleColor(noun.article)}>
                     {noun.article}
                   </Badge>
@@ -105,6 +187,14 @@ const MemorizingStep: React.FC<MemorizingStepProps> = ({ nouns, language, onComp
             </Card>
           ))}
         </div>
+
+        {selectedWords.size > 0 && (
+          <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700">
+              {selectedWords.size} word{selectedWords.size > 1 ? 's' : ''} selected for refresh
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -113,7 +203,7 @@ const MemorizingStep: React.FC<MemorizingStepProps> = ({ nouns, language, onComp
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-semibold">Study These Nouns</h3>
-        <div className="space-x-2">
+        <div className="flex items-center space-x-2">
           <Button
             variant="outline"
             size="sm"

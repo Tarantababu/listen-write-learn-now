@@ -14,13 +14,19 @@ class PreachingService {
   }
 
   // Generate nouns for the session
-  async generateNouns(difficulty: PreachingDifficulty, language: Language = 'german'): Promise<Noun[]> {
+  async generateNouns(
+    difficulty: PreachingDifficulty, 
+    language: Language = 'german',
+    count?: number
+  ): Promise<Noun[]> {
+    const nounsCount = count || (difficulty === 'simple' ? 5 : difficulty === 'normal' ? 7 : 10);
+    
     const { data, error } = await supabase.functions.invoke('generate-preaching-content', {
       body: {
         type: 'nouns',
         difficulty,
         language,
-        count: difficulty === 'simple' ? 5 : difficulty === 'normal' ? 7 : 10
+        count: nounsCount
       }
     });
 

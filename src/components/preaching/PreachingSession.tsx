@@ -22,17 +22,25 @@ import MemorizingStep from './MemorizingStep';
 import TestingStep from './TestingStep';
 import DrillingStep from './DrillingStep';
 import FeedbackStep from './FeedbackStep';
+import LoadingVisualization from './LoadingVisualization';
 
 interface PreachingSessionProps {
+  initialDifficulty?: PreachingDifficulty;
+  autoStart?: boolean;
   onComplete?: () => void;
   onExit?: () => void;
 }
 
-const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit }) => {
+const PreachingSession: React.FC<PreachingSessionProps> = ({ 
+  initialDifficulty,
+  autoStart = false,
+  onComplete, 
+  onExit 
+}) => {
   const { settings } = useUserSettings();
   const [session, setSession] = useState<Session | null>(null);
   const [currentStep, setCurrentStep] = useState<PreachingStep>('memorizing');
-  const [difficulty, setDifficulty] = useState<PreachingDifficulty>('simple');
+  const [difficulty, setDifficulty] = useState<PreachingDifficulty>(initialDifficulty || 'simple');
   const [nouns, setNouns] = useState<Noun[]>([]);
   const [genderTests, setGenderTests] = useState<GenderTest[]>([]);
   const [drillAttempts, setDrillAttempts] = useState<DrillAttempt[]>([]);
@@ -44,8 +52,10 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
   const selectedLanguage: Language = settings?.selectedLanguage || 'german';
 
   useEffect(() => {
-    initializeSession();
-  }, [selectedLanguage]);
+    if (autoStart || initialDifficulty) {
+      initializeSession();
+    }
+  }, [selectedLanguage, autoStart, initialDifficulty]);
 
   const initializeSession = async () => {
     setLoading(true);
@@ -72,6 +82,14 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
       toast.error(`Failed to start ${selectedLanguage} preaching session`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleNounsUpdate = (updatedNouns: Noun[]) => {
+    setNouns(updatedNouns);
+    setGenderTests(updatedNouns.map(noun => ({ noun })));
+    if (session) {
+      setSession({ ...session, nouns: updatedNouns });
     }
   };
 
@@ -109,10 +127,10 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
   const renderCurrentStep = () => {
     if (loading) {
       return (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2">Preparing your {selectedLanguage} session...</span>
-        </div>
+        <LoadingVisualization 
+          type="session" 
+          message={`Preparing your ${selectedLanguage} session...`}
+        />
       );
     }
 
@@ -121,8 +139,10 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
         return (
           <MemorizingStep 
             nouns={nouns} 
+            difficulty={difficulty}
             language={selectedLanguage}
             onComplete={() => handleStepComplete({})} 
+            onNounsUpdate={handleNounsUpdate}
           />
         );
       case 'testing':
@@ -155,7 +175,7 @@ const PreachingSession: React.FC<PreachingSessionProps> = ({ onComplete, onExit 
     }
   };
 
-  if (!session) {
+  if (!session && !autoStart) {
     return (
       <Card className="max-w-md mx-auto">
         <CardContent className="pt-6">
