@@ -48,13 +48,20 @@ export function PromotionalBannerForm({ onSuccess }: PromotionalBannerFormProps)
     setIsSubmitting(true);
     
     try {
+      const bannerData = {
+        title: data.title,
+        content: data.content,
+        promo_code: data.promo_code || null,
+        target_route: data.target_route,
+        priority: data.priority,
+        is_active: data.is_active,
+        start_date: data.start_date ? new Date(data.start_date).toISOString() : null,
+        end_date: data.end_date ? new Date(data.end_date).toISOString() : null,
+      };
+
       const { error } = await supabase
         .from('promotional_banners')
-        .insert({
-          ...data,
-          start_date: data.start_date ? new Date(data.start_date).toISOString() : null,
-          end_date: data.end_date ? new Date(data.end_date).toISOString() : null,
-        });
+        .insert(bannerData);
 
       if (error) throw error;
 

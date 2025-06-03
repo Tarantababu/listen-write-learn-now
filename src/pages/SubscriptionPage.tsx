@@ -17,11 +17,12 @@ const SubscriptionPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { 
-    subscribed, 
-    subscriptionTier, 
-    checkSubscription, 
+    subscription,
     selectedCurrency,
-    setCurrency 
+    setSelectedCurrency,
+    checkSubscription,
+    createCheckoutSession,
+    openCustomerPortal
   } = useSubscription();
   
   const [loading, setLoading] = useState<string | null>(null);
@@ -30,15 +31,15 @@ const SubscriptionPage: React.FC = () => {
   const [discountType, setDiscountType] = useState<'amount' | 'percent' | null>(null);
 
   useEffect(() => {
-    const subscription = searchParams.get('subscription');
+    const subscriptionParam = searchParams.get('subscription');
     const plan = searchParams.get('plan');
     
-    if (subscription === 'success') {
+    if (subscriptionParam === 'success') {
       toast.success(`Successfully subscribed to ${plan || 'premium'}!`);
       setTimeout(() => {
         checkSubscription();
       }, 2000);
-    } else if (subscription === 'canceled') {
+    } else if (subscriptionParam === 'canceled') {
       toast.error('Subscription canceled');
     }
   }, [searchParams, checkSubscription]);
@@ -115,11 +116,10 @@ const SubscriptionPage: React.FC = () => {
     setLoading('manage');
     
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
-      
-      if (error) throw error;
-      
-      window.open(data.url, '_blank');
+      const url = await openCustomerPortal();
+      if (url) {
+        window.open(url, '_blank');
+      }
     } catch (error) {
       console.error('Error opening customer portal:', error);
       toast.error('Failed to open subscription management');
@@ -129,16 +129,16 @@ const SubscriptionPage: React.FC = () => {
   };
 
   const isCurrentPlan = (planId: string) => {
-    if (!subscribed) return false;
+    if (!subscription.isSubscribed) return false;
     
     const tierMap = {
-      'monthly': 'Premium',
-      'quarterly': 'Premium', 
-      'annual': 'Premium',
-      'lifetime': 'Lifetime'
+      'monthly': 'premium',
+      'quarterly': 'premium', 
+      'annual': 'premium',
+      'lifetime': 'premium'
     };
     
-    return subscriptionTier === tierMap[planId as keyof typeof tierMap];
+    return subscription.subscriptionTier === tierMap[planId as keyof typeof tierMap];
   };
 
   return (
