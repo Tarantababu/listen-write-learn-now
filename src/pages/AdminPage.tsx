@@ -1,4 +1,3 @@
-
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Navigate, useNavigate, useLocation } from "react-router-dom"
@@ -20,16 +19,12 @@ import { supabase } from "@/integrations/supabase/client"
 import type { BlogPost } from "@/types"
 import { useQuery } from "@tanstack/react-query"
 import BlogManagement from '@/components/admin/BlogManagement';
-import { PromotionalBannerForm } from "@/components/admin/PromotionalBannerForm"
-import { PromotionalBannersList } from "@/components/admin/PromotionalBannersList"
-import { PromoCodeUsageList } from "@/components/admin/PromoCodeUsageList"
 
 const AdminPage: React.FC = () => {
   const { isAdmin, loading } = useAdmin()
   const navigate = useNavigate()
   const routerNavigate = useRouterNavigate()
   const location = useLocation()
-  const [bannerRefreshTrigger, setBannerRefreshTrigger] = useState(0)
 
   // Get tab from URL query parameter
   const searchParams = new URLSearchParams(location.search)
@@ -82,10 +77,6 @@ const AdminPage: React.FC = () => {
     return <Navigate to="/" replace />
   }
 
-  const handleBannerSuccess = () => {
-    setBannerRefreshTrigger(prev => prev + 1)
-  }
-
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center mb-4 sm:mb-6">
@@ -106,14 +97,13 @@ const AdminPage: React.FC = () => {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="stats">Statistics</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="exercises">Exercises</TabsTrigger>
           <TabsTrigger value="feedback">Feedback</TabsTrigger>
           <TabsTrigger value="blog">Blog</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
-          <TabsTrigger value="promos">Promos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stats">
@@ -171,23 +161,6 @@ const AdminPage: React.FC = () => {
           <div>
             <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Message History</h2>
             <AdminMessagesList />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="promos" className="space-y-6">
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Create Promotional Banner</h2>
-            <PromotionalBannerForm onSuccess={handleBannerSuccess} />
-          </div>
-
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Promotional Banners</h2>
-            <PromotionalBannersList refreshTrigger={bannerRefreshTrigger} />
-          </div>
-
-          <div>
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Promo Code Usage</h2>
-            <PromoCodeUsageList />
           </div>
         </TabsContent>
       </Tabs>

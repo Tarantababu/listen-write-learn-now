@@ -60,9 +60,8 @@ serve(async (req) => {
     const requestData = await req.json().catch(() => ({}));
     const planId = requestData.planId || 'monthly';
     const currency = requestData.currency || 'usd';
-    const promoCode = requestData.promoCode;
     
-    logStep("Request data", { planId, currency, promoCode });
+    logStep("Request data", { planId, currency });
 
     // Get Stripe key
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -106,68 +105,74 @@ serve(async (req) => {
     if (!plan) throw new Error(`Invalid plan ID: ${planId}`);
     logStep("Plan selected", { plan: planId });
 
-    // Prepare session configuration
-    const sessionConfig: any = {
-      customer: customerId,
-      customer_email: customerId ? undefined : user.email,
-      line_items: [
-        {
-          price_data: {
-            currency: currency.toLowerCase(),
-            product_data: {
-              name: plan.name,
-              description: plan.description,
+    // Create checkout session based on plan type
+    let session;
+    
+    if (plan.isOneTime) {
+      // Create one-time payment session for lifetime plan
+      session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        customer_email: customerId ? undefined : user.email,
+        line_items: [
+          {
+            price_data: {
+              currency: currency.toLowerCase(),
+              product_data: {
+                name: plan.name,
+                description: plan.description,
+              },
+              unit_amount: plan.unit_amount,
             },
-            unit_amount: plan.unit_amount,
-            ...(plan.isOneTime ? {} : {
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: `${req.headers.get("origin")}/dashboard?subscription=success&plan=${planId}`,
+        cancel_url: `${req.headers.get("origin")}/dashboard?subscription=canceled`,
+      });
+      
+      logStep("One-time payment checkout session created", { 
+        sessionId: session.id,
+        planId,
+        mode: "payment" 
+      });
+    } else {
+      // Create subscription session for recurring plans
+      session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        customer_email: customerId ? undefined : user.email,
+        line_items: [
+          {
+            price_data: {
+              currency: currency.toLowerCase(),
+              product_data: {
+                name: plan.name,
+                description: plan.description,
+              },
+              unit_amount: plan.unit_amount,
               recurring: {
                 interval: plan.interval,
                 interval_count: plan.interval_count,
               },
-            }),
+            },
+            quantity: 1,
           },
-          quantity: 1,
+        ],
+        mode: "subscription",
+        subscription_data: {
+          trial_period_days: plan.trial_period_days,
         },
-      ],
-      mode: plan.isOneTime ? "payment" : "subscription",
-      success_url: `${req.headers.get("origin")}/dashboard?subscription=success&plan=${planId}`,
-      cancel_url: `${req.headers.get("origin")}/dashboard?subscription=canceled`,
-    };
-
-    // Add subscription-specific configuration
-    if (!plan.isOneTime) {
-      sessionConfig.subscription_data = {
-        trial_period_days: plan.trial_period_days,
-      };
-    }
-
-    // Add promo code if provided
-    if (promoCode) {
-      // Find the promotion code in Stripe
-      const promotionCodes = await stripe.promotionCodes.list({
-        code: promoCode,
-        limit: 1,
+        success_url: `${req.headers.get("origin")}/dashboard?subscription=success&plan=${planId}`,
+        cancel_url: `${req.headers.get("origin")}/dashboard?subscription=canceled`,
       });
-
-      if (promotionCodes.data.length > 0 && promotionCodes.data[0].active) {
-        sessionConfig.discounts = [{
-          promotion_code: promotionCodes.data[0].id,
-        }];
-        logStep("Promo code applied", { promoCode, promotionCodeId: promotionCodes.data[0].id });
-      } else {
-        logStep("Invalid or inactive promo code", { promoCode });
-      }
+      
+      logStep("Subscription checkout session created", { 
+        sessionId: session.id, 
+        planId,
+        trialDays: plan.trial_period_days,
+        mode: "subscription"
+      });
     }
-
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create(sessionConfig);
-    
-    logStep("Checkout session created", { 
-      sessionId: session.id,
-      planId,
-      mode: sessionConfig.mode,
-      promoCodeApplied: !!promoCode
-    });
 
     // Use service role for secure write operations
     const supabaseService = createClient(
