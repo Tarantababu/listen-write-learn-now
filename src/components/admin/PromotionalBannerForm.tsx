@@ -17,6 +17,7 @@ const bannerSchema = z.object({
   content: z.string().min(1, 'Content is required'),
   promo_code: z.string().optional(),
   target_route: z.string().default('/dashboard/subscription'),
+  linked_promotion_app_id: z.string().optional(),
   start_date: z.string().optional(),
   end_date: z.string().optional(),
   priority: z.number().min(1).max(10).default(1),
@@ -39,6 +40,7 @@ export function PromotionalBannerForm({ onSuccess }: PromotionalBannerFormProps)
       content: '',
       promo_code: '',
       target_route: '/dashboard/subscription',
+      linked_promotion_app_id: '',
       priority: 1,
       is_active: true,
     },
@@ -53,6 +55,7 @@ export function PromotionalBannerForm({ onSuccess }: PromotionalBannerFormProps)
         content: data.content,
         promo_code: data.promo_code || null,
         target_route: data.target_route,
+        linked_promotion_app_id: data.linked_promotion_app_id || null,
         priority: data.priority,
         is_active: data.is_active,
         start_date: data.start_date ? new Date(data.start_date).toISOString() : null,
@@ -134,6 +137,20 @@ export function PromotionalBannerForm({ onSuccess }: PromotionalBannerFormProps)
                   <FormLabel>Target Route</FormLabel>
                   <FormControl>
                     <Input placeholder="/dashboard/subscription" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="linked_promotion_app_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Linked Promotion App ID (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., APP_2024_SUMMER" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

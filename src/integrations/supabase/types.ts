@@ -638,6 +638,7 @@ export type Database = {
           end_date: string | null
           id: string
           is_active: boolean
+          linked_promotion_app_id: string | null
           priority: number
           promo_code: string | null
           start_date: string | null
@@ -652,6 +653,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           is_active?: boolean
+          linked_promotion_app_id?: string | null
           priority?: number
           promo_code?: string | null
           start_date?: string | null
@@ -666,6 +668,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           is_active?: boolean
+          linked_promotion_app_id?: string | null
           priority?: number
           promo_code?: string | null
           start_date?: string | null
@@ -1213,6 +1216,10 @@ export type Database = {
         Returns: undefined
       }
       is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_admin_user: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }

@@ -14,6 +14,7 @@ interface PromotionalBanner {
   content: string;
   promo_code?: string;
   target_route: string;
+  linked_promotion_app_id?: string;
   start_date?: string;
   end_date?: string;
   priority: number;
@@ -106,7 +107,7 @@ export function PromotionalBannersList({ refreshTrigger }: PromotionalBannersLis
               <div className="flex items-start justify-between">
                 <div>
                   <CardTitle className="text-lg">{banner.title}</CardTitle>
-                  <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
                     <Badge variant={banner.is_active ? "default" : "secondary"}>
                       {banner.is_active ? "Active" : "Inactive"}
                     </Badge>
@@ -114,6 +115,11 @@ export function PromotionalBannersList({ refreshTrigger }: PromotionalBannersLis
                     {banner.promo_code && (
                       <Badge variant="secondary">
                         Code: {banner.promo_code}
+                      </Badge>
+                    )}
+                    {banner.linked_promotion_app_id && (
+                      <Badge variant="outline">
+                        App ID: {banner.linked_promotion_app_id}
                       </Badge>
                     )}
                   </div>
@@ -139,6 +145,9 @@ export function PromotionalBannersList({ refreshTrigger }: PromotionalBannersLis
               </p>
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>Target: {banner.target_route}</p>
+                {banner.linked_promotion_app_id && (
+                  <p>Linked App ID: {banner.linked_promotion_app_id}</p>
+                )}
                 {banner.start_date && (
                   <p>Start: {new Date(banner.start_date).toLocaleString()}</p>
                 )}
