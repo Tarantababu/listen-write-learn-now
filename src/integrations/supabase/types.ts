@@ -600,6 +600,81 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_code_usage: {
+        Row: {
+          created_at: string
+          discount_amount: number | null
+          email: string
+          id: string
+          promo_code: string
+          stripe_session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          discount_amount?: number | null
+          email: string
+          id?: string
+          promo_code: string
+          stripe_session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          discount_amount?: number | null
+          email?: string
+          id?: string
+          promo_code?: string
+          stripe_session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      promotional_banners: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean
+          priority: number
+          promo_code: string | null
+          start_date: string | null
+          target_route: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: number
+          promo_code?: string | null
+          start_date?: string | null
+          target_route?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: number
+          promo_code?: string | null
+          start_date?: string | null
+          target_route?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reading_analyses: {
         Row: {
           content: Json
