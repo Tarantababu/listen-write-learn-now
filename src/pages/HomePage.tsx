@@ -1,9 +1,11 @@
+
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import UserStatistics from '@/components/UserStatistics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import SubscriptionBanner from '@/components/SubscriptionBanner';
+import { PromotionalBanner } from '@/components/PromotionalBanner';
 import { ExerciseProvider } from '@/contexts/ExerciseContext';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { useAuth } from '@/contexts/AuthContext';
@@ -56,6 +58,10 @@ const HomePage = () => {
   
   return (
     <div className="container mx-auto px-4 py-8">
+      <div className="mb-6">
+        <PromotionalBanner />
+      </div>
+      
       {shouldShowSubscriptionBanner && <SubscriptionBanner />}
       
       <div className="flex flex-col gap-6">

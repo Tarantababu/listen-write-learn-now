@@ -1,3 +1,4 @@
+
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Navigate, useNavigate, useLocation } from "react-router-dom"
@@ -6,6 +7,7 @@ import { VisitorStats } from "@/components/admin/VisitorStats"
 import { AdminStatsDashboard } from "@/components/admin/AdminStatsDashboard"
 import { FeedbackList } from "@/components/admin/FeedbackList"
 import { UserRoleManagement } from "@/components/admin/UserRoleManagement"
+import { PromotionalBannerManagement } from "@/components/admin/PromotionalBannerManagement"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -97,13 +99,14 @@ const AdminPage: React.FC = () => {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="stats">Statistics</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="exercises">Exercises</TabsTrigger>
           <TabsTrigger value="feedback">Feedback</TabsTrigger>
           <TabsTrigger value="blog">Blog</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
+          <TabsTrigger value="banners">Banners</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stats">
@@ -161,6 +164,13 @@ const AdminPage: React.FC = () => {
           <div>
             <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Message History</h2>
             <AdminMessagesList />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="banners" className="space-y-6">
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Promotional Banner Management</h2>
+            <PromotionalBannerManagement />
           </div>
         </TabsContent>
       </Tabs>
