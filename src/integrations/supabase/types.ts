@@ -632,6 +632,10 @@ export type Database = {
       }
       promotional_banners: {
         Row: {
+          background_color: string | null
+          banner_type: string | null
+          button_text: string | null
+          button_url: string | null
           content: string
           created_at: string
           created_by: string | null
@@ -643,10 +647,15 @@ export type Database = {
           promo_code: string | null
           start_date: string | null
           target_route: string
+          text_color: string | null
           title: string
           updated_at: string
         }
         Insert: {
+          background_color?: string | null
+          banner_type?: string | null
+          button_text?: string | null
+          button_url?: string | null
           content: string
           created_at?: string
           created_by?: string | null
@@ -658,10 +667,15 @@ export type Database = {
           promo_code?: string | null
           start_date?: string | null
           target_route?: string
+          text_color?: string | null
           title: string
           updated_at?: string
         }
         Update: {
+          background_color?: string | null
+          banner_type?: string | null
+          button_text?: string | null
+          button_url?: string | null
           content?: string
           created_at?: string
           created_by?: string | null
@@ -673,6 +687,7 @@ export type Database = {
           promo_code?: string | null
           start_date?: string | null
           target_route?: string
+          text_color?: string | null
           title?: string
           updated_at?: string
         }
