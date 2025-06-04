@@ -40,7 +40,13 @@ export function PromotionalBanner() {
         return;
       }
 
-      setBanners(data || []);
+      // Type assertion to ensure banner_type is properly typed
+      const typedBanners = (data || []).map(banner => ({
+        ...banner,
+        banner_type: (banner.banner_type as 'info' | 'warning' | 'success' | 'error') || 'info'
+      }));
+
+      setBanners(typedBanners);
     } catch (error) {
       console.error('Error fetching banners:', error);
     }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -453,54 +452,4 @@ export function PromotionalBannerManagement() {
       </Card>
     </div>
   );
-
-  function handleEdit(banner: PromotionalBanner) {
-    setFormData({
-      title: banner.title,
-      content: banner.content,
-      button_text: banner.button_text || '',
-      button_url: banner.button_url || '',
-      target_route: banner.target_route,
-      background_color: banner.background_color || '#3b82f6',
-      text_color: banner.text_color || '#ffffff',
-      banner_type: banner.banner_type || 'info',
-      priority: banner.priority,
-      is_active: banner.is_active,
-      start_date: banner.start_date || '',
-      end_date: banner.end_date || '',
-      promo_code: banner.promo_code || '',
-    });
-    setEditingId(banner.id);
-  }
-
-  async function handleDelete(id: string) {
-    if (!confirm('Are you sure you want to delete this banner?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('promotional_banners')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: 'Promotional banner deleted successfully',
-      });
-      fetchBanners();
-    } catch (error) {
-      console.error('Error deleting banner:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to delete promotional banner',
-      });
-    }
-  }
-
-  function handleCancel() {
-    setFormData(initialFormData);
-    setEditingId(null);
-  }
 }
