@@ -1192,6 +1192,21 @@ export type Database = {
         Args: { user_id_param: string; curriculum_id_param: string }
         Returns: string
       }
+      get_active_banners_for_route: {
+        Args: { route_param: string }
+        Returns: {
+          id: string
+          title: string
+          content: string
+          button_text: string
+          button_url: string
+          background_color: string
+          text_color: string
+          banner_type: string
+          priority: number
+          promo_code: string
+        }[]
+      }
       get_available_curriculum_nodes: {
         Args: { user_id_param: string; curriculum_id_param: string }
         Returns: {
