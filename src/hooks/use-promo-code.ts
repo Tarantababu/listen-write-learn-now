@@ -30,7 +30,7 @@ export const usePromoCode = () => {
 
     try {
       const { data, error } = await supabase
-        .from('promo_codes' as any)
+        .from('promo_codes')
         .select('*')
         .eq('code', code.toUpperCase())
         .eq('is_active', true)
@@ -40,7 +40,7 @@ export const usePromoCode = () => {
         return { isValid: false, discount: 0, error: 'Invalid promo code' };
       }
 
-      const promoCode = data as PromoCode;
+      const promoCode = data as unknown as PromoCode;
 
       // Check if expired
       if (promoCode.valid_until && new Date(promoCode.valid_until) < new Date()) {
@@ -97,8 +97,9 @@ export const usePromoCode = () => {
 
   const incrementPromoCodeUsage = async (promoCodeId: string): Promise<void> => {
     try {
-      const { error } = await supabase.rpc('increment_promo_code_usage', {
-        promo_code_id: promoCodeId
+      // Use the edge function directly instead of RPC
+      const { error } = await supabase.functions.invoke('increment-promo-usage', {
+        body: { promo_code_id: promoCodeId }
       });
       
       if (error) {

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,12 +48,12 @@ const PromoCodeManagement: React.FC = () => {
     queryKey: ['admin-promo-codes'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('promo_codes' as any)
+        .from('promo_codes')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as PromoCode[];
+      return data as unknown as PromoCode[];
     }
   });
 
@@ -62,7 +61,7 @@ const PromoCodeManagement: React.FC = () => {
   const createPromoMutation = useMutation({
     mutationFn: async (data: PromoCodeFormData) => {
       const { error } = await supabase
-        .from('promo_codes' as any)
+        .from('promo_codes')
         .insert({
           code: data.code.toUpperCase(),
           discount_percentage: data.discount_percentage,
@@ -88,7 +87,7 @@ const PromoCodeManagement: React.FC = () => {
   const updatePromoMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: PromoCodeFormData }) => {
       const { error } = await supabase
-        .from('promo_codes' as any)
+        .from('promo_codes')
         .update({
           code: data.code.toUpperCase(),
           discount_percentage: data.discount_percentage,
@@ -115,7 +114,7 @@ const PromoCodeManagement: React.FC = () => {
   const deletePromoMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('promo_codes' as any)
+        .from('promo_codes')
         .delete()
         .eq('id', id);
       

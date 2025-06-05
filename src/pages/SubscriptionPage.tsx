@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,7 +60,7 @@ const SubscriptionPage: React.FC = () => {
     }, 60000); // Check every minute
     
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, checkSubscription]);
 
   const handleSubscribe = async (planId: string) => {
     setIsProcessing(true);
@@ -71,11 +70,7 @@ const SubscriptionPage: React.FC = () => {
       const originalPrice = convertPrice(plan.price, selectedCurrency);
       const finalPrice = appliedPromoCode ? calculateDiscountedPrice(originalPrice) : originalPrice;
       
-      const checkoutUrl = await createCheckoutSession(planId, {
-        currency: selectedCurrency,
-        discountedPrice: finalPrice,
-        promoCode: appliedPromoCode?.code
-      });
+      const checkoutUrl = await createCheckoutSession(planId);
       
       if (checkoutUrl) {
         // Record promo code usage if applied
