@@ -29,6 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import PromoCodeInput from '@/components/subscription/PromoCodeInput';
 import { usePromoCode } from '@/hooks/use-promo-code';
+import { supabase } from '@/integrations/supabase/client';
 
 const SubscriptionPage: React.FC = () => {
   const { 
