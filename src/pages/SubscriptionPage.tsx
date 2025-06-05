@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,6 +28,8 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import PromoCodeInput from '@/components/subscription/PromoCodeInput';
+import { usePromoCode } from '@/hooks/use-promo-code';
 
 const SubscriptionPage: React.FC = () => {
   const { 
@@ -41,6 +44,13 @@ const SubscriptionPage: React.FC = () => {
   const { user } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState('plans');
+  
+  const {
+    appliedPromoCode,
+    calculateDiscountedPrice,
+    getDiscountAmount,
+    incrementPromoCodeUsage
+  } = usePromoCode();
 
   // Auto-refresh subscription status
   useEffect(() => {
@@ -56,8 +66,23 @@ const SubscriptionPage: React.FC = () => {
   const handleSubscribe = async (planId: string) => {
     setIsProcessing(true);
     try {
-      const checkoutUrl = await createCheckoutSession(planId);
+      // Calculate discounted price if promo code is applied
+      const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
+      const originalPrice = convertPrice(plan.price, selectedCurrency);
+      const finalPrice = appliedPromoCode ? calculateDiscountedPrice(originalPrice) : originalPrice;
+      
+      const checkoutUrl = await createCheckoutSession(planId, {
+        currency: selectedCurrency,
+        discountedPrice: finalPrice,
+        promoCode: appliedPromoCode?.code
+      });
+      
       if (checkoutUrl) {
+        // Record promo code usage if applied
+        if (appliedPromoCode) {
+          await incrementPromoCodeUsage(appliedPromoCode.id);
+        }
+        
         window.location.href = checkoutUrl;
       }
     } finally {
@@ -185,6 +210,11 @@ const SubscriptionPage: React.FC = () => {
         </TabsList>
         
         <TabsContent value="plans" className="pt-6">
+          {/* Promo Code Input */}
+          <div className="mb-8 max-w-md">
+            <PromoCodeInput />
+          </div>
+
           {/* Plans grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Monthly Plan */}
@@ -194,6 +224,9 @@ const SubscriptionPage: React.FC = () => {
               currentPlan={subscription.planType}
               onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.MONTHLY.id)}
               isProcessing={isProcessing}
+              appliedPromoCode={appliedPromoCode}
+              calculateDiscountedPrice={calculateDiscountedPrice}
+              getDiscountAmount={getDiscountAmount}
             />
             
             {/* Quarterly Plan */}
@@ -204,6 +237,9 @@ const SubscriptionPage: React.FC = () => {
               onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.QUARTERLY.id)}
               isProcessing={isProcessing}
               featured={true}
+              appliedPromoCode={appliedPromoCode}
+              calculateDiscountedPrice={calculateDiscountedPrice}
+              getDiscountAmount={getDiscountAmount}
             />
             
             {/* Annual Plan */}
@@ -213,6 +249,9 @@ const SubscriptionPage: React.FC = () => {
               currentPlan={subscription.planType}
               onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.ANNUAL.id)}
               isProcessing={isProcessing}
+              appliedPromoCode={appliedPromoCode}
+              calculateDiscountedPrice={calculateDiscountedPrice}
+              getDiscountAmount={getDiscountAmount}
             />
             
             {/* Lifetime Plan */}
@@ -222,6 +261,9 @@ const SubscriptionPage: React.FC = () => {
               currentPlan={subscription.planType}
               onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.LIFETIME.id)}
               isProcessing={isProcessing}
+              appliedPromoCode={appliedPromoCode}
+              calculateDiscountedPrice={calculateDiscountedPrice}
+              getDiscountAmount={getDiscountAmount}
             />
           </div>
           
@@ -619,6 +661,9 @@ interface PlanCardProps {
   onSubscribe: () => void;
   isProcessing: boolean;
   featured?: boolean;
+  appliedPromoCode?: any;
+  calculateDiscountedPrice: (price: number) => number;
+  getDiscountAmount: (price: number) => number;
 }
 
 const PlanCard: React.FC<PlanCardProps> = ({ 
@@ -627,10 +672,17 @@ const PlanCard: React.FC<PlanCardProps> = ({
   currentPlan, 
   onSubscribe, 
   isProcessing,
-  featured = false 
+  featured = false,
+  appliedPromoCode,
+  calculateDiscountedPrice,
+  getDiscountAmount
 }) => {
   const isActive = currentPlan === plan.id;
-  const convertedPrice = convertPrice(plan.price, currency);
+  const originalPrice = convertPrice(plan.price, currency);
+  const discountedPrice = appliedPromoCode ? calculateDiscountedPrice(originalPrice) : originalPrice;
+  const discountAmount = appliedPromoCode ? getDiscountAmount(originalPrice) : 0;
+  const hasDiscount = appliedPromoCode && discountAmount > 0;
+  
   const isOneTime = 'oneTime' in plan && plan.oneTime;
   const billing = 'billing' in plan ? plan.billing : undefined;
   const trialDays = 'trialDays' in plan ? plan.trialDays : undefined;
@@ -668,14 +720,27 @@ const PlanCard: React.FC<PlanCardProps> = ({
       <CardContent className="flex-grow">
         <div className="space-y-4">
           <div>
-            <div className="flex items-baseline">
-              <span className="text-3xl font-bold">
-                {formatPrice(convertedPrice, currency)}
+            <div className="flex items-baseline gap-2">
+              {hasDiscount && (
+                <span className="text-lg line-through text-muted-foreground">
+                  {formatPrice(originalPrice, currency)}
+                </span>
+              )}
+              <span className={`text-3xl font-bold ${hasDiscount ? 'text-green-600' : ''}`}>
+                {formatPrice(discountedPrice, currency)}
               </span>
               <span className="text-muted-foreground ml-2">
                 {isOneTime ? 'one-time' : `/${billing}`}
               </span>
             </div>
+            
+            {hasDiscount && (
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  Save {formatPrice(discountAmount, currency)} with {appliedPromoCode.code}
+                </Badge>
+              </div>
+            )}
             
             {(plan.savePercent > 0) && (
               <p className="text-sm text-primary font-medium mt-1">
