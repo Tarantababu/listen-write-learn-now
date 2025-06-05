@@ -83,16 +83,20 @@ export const usePromoCode = () => {
   };
 
   const calculateDiscountedPrice = (originalPrice: number): number => {
-    if (!appliedPromoCode) return originalPrice;
+    if (!appliedPromoCode || originalPrice <= 0) return originalPrice;
     
     const discountAmount = (originalPrice * appliedPromoCode.discount_percentage) / 100;
-    return Math.max(0, originalPrice - discountAmount);
+    const discountedPrice = originalPrice - discountAmount;
+    
+    // Ensure the discounted price is never negative and has proper precision
+    return Math.max(0, Math.round(discountedPrice * 100) / 100);
   };
 
   const getDiscountAmount = (originalPrice: number): number => {
-    if (!appliedPromoCode) return 0;
+    if (!appliedPromoCode || originalPrice <= 0) return 0;
     
-    return (originalPrice * appliedPromoCode.discount_percentage) / 100;
+    const discountAmount = (originalPrice * appliedPromoCode.discount_percentage) / 100;
+    return Math.round(discountAmount * 100) / 100;
   };
 
   const incrementPromoCodeUsage = async (promoCodeId: string): Promise<void> => {
@@ -104,9 +108,11 @@ export const usePromoCode = () => {
       
       if (error) {
         console.error('Error incrementing promo code usage:', error);
+        throw new Error(`Failed to update promo code usage: ${error.message}`);
       }
     } catch (error) {
       console.error('Error incrementing promo code usage:', error);
+      throw error;
     }
   };
 

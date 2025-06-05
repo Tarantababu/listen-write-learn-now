@@ -47,6 +47,7 @@ const SubscriptionPage: React.FC = () => {
     appliedPromoCode,
     calculateDiscountedPrice,
     getDiscountAmount,
+    validatePromoCode,
     incrementPromoCodeUsage
   } = usePromoCode();
 
@@ -69,10 +70,34 @@ const SubscriptionPage: React.FC = () => {
 
     setIsProcessing(true);
     try {
+      // Re-validate promo code if applied (to ensure it's still valid)
+      if (appliedPromoCode) {
+        const validation = await validatePromoCode(appliedPromoCode.code);
+        if (!validation.isValid) {
+          toast.error(validation.error || 'Promo code is no longer valid');
+          setIsProcessing(false);
+          return;
+        }
+      }
+
       // Calculate discounted price if promo code is applied
       const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
+      if (!plan) {
+        toast.error('Invalid subscription plan selected');
+        setIsProcessing(false);
+        return;
+      }
+
       const originalPrice = convertPrice(plan.price, selectedCurrency);
       const finalPrice = appliedPromoCode ? calculateDiscountedPrice(originalPrice) : originalPrice;
+      
+      // Ensure final price is valid
+      if (finalPrice < 0 || !isFinite(finalPrice)) {
+        console.error('Invalid final price calculated:', { originalPrice, finalPrice, appliedPromoCode });
+        toast.error('Error calculating subscription price');
+        setIsProcessing(false);
+        return;
+      }
       
       console.log('Creating checkout with:', {
         planId,
@@ -95,46 +120,59 @@ const SubscriptionPage: React.FC = () => {
       if (error) {
         console.error('Error creating checkout session:', error);
         toast.error(`Failed to create checkout session: ${error.message || 'Unknown error'}`);
+        setIsProcessing(false);
         return;
       }
 
-      if (data?.url) {
-        // Record promo code usage if applied
-        if (appliedPromoCode) {
-          await incrementPromoCodeUsage(appliedPromoCode.id);
-        }
-        
-        window.location.href = data.url;
-      } else {
+      if (!data || !data.url) {
         console.error('No checkout URL received:', data);
-        toast.error('No checkout URL received');
+        toast.error('No checkout URL received from payment processor');
+        setIsProcessing(false);
+        return;
       }
+
+      // Only increment promo code usage after successful checkout creation
+      // Note: The actual usage will be tracked when the payment is completed via the checkout success webhook
+      console.log('Checkout session created successfully, redirecting to:', data.url);
+      window.location.href = data.url;
+      
     } catch (error) {
       console.error('Error in checkout process:', error);
-      toast.error(`Failed to create checkout session: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to create checkout session: ${errorMessage}`);
       setIsProcessing(false);
     }
   };
 
   const handleManageSubscription = async () => {
+    if (!user) {
+      toast.error('Please log in to manage your subscription');
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal');
       
       if (error) {
         console.error('Error opening customer portal:', error);
-        toast.error('Failed to open subscription management portal');
+        toast.error(`Failed to open subscription management: ${error.message || 'Unknown error'}`);
+        setIsProcessing(false);
         return;
       }
       
-      if (data?.url) {
-        window.location.href = data.url;
+      if (!data || !data.url) {
+        console.error('No portal URL received:', data);
+        toast.error('Unable to access subscription management portal');
+        setIsProcessing(false);
+        return;
       }
+      
+      window.location.href = data.url;
     } catch (error) {
       console.error('Error opening customer portal:', error);
-      toast.error('Failed to open subscription management portal');
-    } finally {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to open subscription management: ${errorMessage}`);
       setIsProcessing(false);
     }
   };
