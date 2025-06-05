@@ -62,6 +62,11 @@ const SubscriptionPage: React.FC = () => {
   }, [user, checkSubscription]);
 
   const handleSubscribe = async (planId: string) => {
+    if (!user) {
+      toast.error('Please log in to subscribe');
+      return;
+    }
+
     setIsProcessing(true);
     try {
       // Calculate discounted price if promo code is applied
@@ -89,7 +94,7 @@ const SubscriptionPage: React.FC = () => {
 
       if (error) {
         console.error('Error creating checkout session:', error);
-        toast.error('Failed to create checkout session');
+        toast.error(`Failed to create checkout session: ${error.message || 'Unknown error'}`);
         return;
       }
 
@@ -101,11 +106,12 @@ const SubscriptionPage: React.FC = () => {
         
         window.location.href = data.url;
       } else {
+        console.error('No checkout URL received:', data);
         toast.error('No checkout URL received');
       }
     } catch (error) {
       console.error('Error in checkout process:', error);
-      toast.error('Failed to create checkout session');
+      toast.error(`Failed to create checkout session: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsProcessing(false);
     }
@@ -753,14 +759,14 @@ const PlanCard: React.FC<PlanCardProps> = ({
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
               {hasDiscount && (
-                <span className="text-lg line-through text-muted-foreground order-1">
+                <span className="text-lg line-through text-muted-foreground">
                   {formatPrice(originalPrice, currency)}
                 </span>
               )}
-              <span className={`text-3xl font-bold ${hasDiscount ? 'text-green-600 order-2' : 'order-1'}`}>
+              <span className={`text-3xl font-bold ${hasDiscount ? 'text-green-600' : ''}`}>
                 {formatPrice(discountedPrice, currency)}
               </span>
-              <span className="text-muted-foreground order-3">
+              <span className="text-muted-foreground">
                 {isOneTime ? 'one-time' : `/${billing}`}
               </span>
             </div>
