@@ -35,8 +35,6 @@ const SubscriptionPage: React.FC = () => {
   const { 
     subscription, 
     checkSubscription, 
-    createCheckoutSession, 
-    openCustomerPortal,
     selectedCurrency,
     setSelectedCurrency
   } = useSubscription();
@@ -71,16 +69,43 @@ const SubscriptionPage: React.FC = () => {
       const originalPrice = convertPrice(plan.price, selectedCurrency);
       const finalPrice = appliedPromoCode ? calculateDiscountedPrice(originalPrice) : originalPrice;
       
-      const checkoutUrl = await createCheckoutSession(planId);
+      console.log('Creating checkout with:', {
+        planId,
+        currency: selectedCurrency,
+        originalPrice,
+        finalPrice,
+        discountedPrice: appliedPromoCode ? finalPrice : undefined,
+        promoCode: appliedPromoCode?.code
+      });
       
-      if (checkoutUrl) {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: {
+          planId: planId,
+          currency: selectedCurrency,
+          discountedPrice: appliedPromoCode ? finalPrice : undefined,
+          promoCode: appliedPromoCode?.code
+        },
+      });
+
+      if (error) {
+        console.error('Error creating checkout session:', error);
+        toast.error('Failed to create checkout session');
+        return;
+      }
+
+      if (data?.url) {
         // Record promo code usage if applied
         if (appliedPromoCode) {
           await incrementPromoCodeUsage(appliedPromoCode.id);
         }
         
-        window.location.href = checkoutUrl;
+        window.location.href = data.url;
+      } else {
+        toast.error('No checkout URL received');
       }
+    } catch (error) {
+      console.error('Error in checkout process:', error);
+      toast.error('Failed to create checkout session');
     } finally {
       setIsProcessing(false);
     }
@@ -89,10 +114,20 @@ const SubscriptionPage: React.FC = () => {
   const handleManageSubscription = async () => {
     setIsProcessing(true);
     try {
-      const portalUrl = await openCustomerPortal();
-      if (portalUrl) {
-        window.location.href = portalUrl;
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+      
+      if (error) {
+        console.error('Error opening customer portal:', error);
+        toast.error('Failed to open subscription management portal');
+        return;
       }
+      
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Error opening customer portal:', error);
+      toast.error('Failed to open subscription management portal');
     } finally {
       setIsProcessing(false);
     }
@@ -716,22 +751,22 @@ const PlanCard: React.FC<PlanCardProps> = ({
       <CardContent className="flex-grow">
         <div className="space-y-4">
           <div>
-            <div className="flex items-baseline gap-2">
+            <div className="flex items-baseline gap-2 flex-wrap">
               {hasDiscount && (
-                <span className="text-lg line-through text-muted-foreground">
+                <span className="text-lg line-through text-muted-foreground order-1">
                   {formatPrice(originalPrice, currency)}
                 </span>
               )}
-              <span className={`text-3xl font-bold ${hasDiscount ? 'text-green-600' : ''}`}>
+              <span className={`text-3xl font-bold ${hasDiscount ? 'text-green-600 order-2' : 'order-1'}`}>
                 {formatPrice(discountedPrice, currency)}
               </span>
-              <span className="text-muted-foreground ml-2">
+              <span className="text-muted-foreground order-3">
                 {isOneTime ? 'one-time' : `/${billing}`}
               </span>
             </div>
             
             {hasDiscount && (
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-2">
                 <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                   Save {formatPrice(discountAmount, currency)} with {appliedPromoCode.code}
                 </Badge>
