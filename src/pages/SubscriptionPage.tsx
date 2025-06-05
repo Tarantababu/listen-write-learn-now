@@ -27,14 +27,13 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import PromoCodeInput from '@/components/subscription/PromoCodeInput';
-import { usePromoCode } from '@/hooks/use-promo-code';
-import { supabase } from '@/integrations/supabase/client';
 
 const SubscriptionPage: React.FC = () => {
   const { 
     subscription, 
     checkSubscription, 
+    createCheckoutSession, 
+    openCustomerPortal,
     selectedCurrency,
     setSelectedCurrency
   } = useSubscription();
@@ -42,14 +41,6 @@ const SubscriptionPage: React.FC = () => {
   const { user } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState('plans');
-  
-  const {
-    appliedPromoCode,
-    calculateDiscountedPrice,
-    getDiscountAmount,
-    validatePromoCode,
-    incrementPromoCodeUsage
-  } = usePromoCode();
 
   // Auto-refresh subscription status
   useEffect(() => {
@@ -60,119 +51,28 @@ const SubscriptionPage: React.FC = () => {
     }, 60000); // Check every minute
     
     return () => clearInterval(interval);
-  }, [user, checkSubscription]);
+  }, [user]);
 
   const handleSubscribe = async (planId: string) => {
-    if (!user) {
-      toast.error('Please log in to subscribe');
-      return;
-    }
-
     setIsProcessing(true);
     try {
-      // Re-validate promo code if applied (to ensure it's still valid)
-      if (appliedPromoCode) {
-        const validation = await validatePromoCode(appliedPromoCode.code);
-        if (!validation.isValid) {
-          toast.error(validation.error || 'Promo code is no longer valid');
-          setIsProcessing(false);
-          return;
-        }
+      const checkoutUrl = await createCheckoutSession(planId);
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
       }
-
-      // Calculate discounted price if promo code is applied
-      const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
-      if (!plan) {
-        toast.error('Invalid subscription plan selected');
-        setIsProcessing(false);
-        return;
-      }
-
-      const originalPrice = convertPrice(plan.price, selectedCurrency);
-      const finalPrice = appliedPromoCode ? calculateDiscountedPrice(originalPrice) : originalPrice;
-      
-      // Ensure final price is valid
-      if (finalPrice < 0 || !isFinite(finalPrice)) {
-        console.error('Invalid final price calculated:', { originalPrice, finalPrice, appliedPromoCode });
-        toast.error('Error calculating subscription price');
-        setIsProcessing(false);
-        return;
-      }
-      
-      console.log('Creating checkout with:', {
-        planId,
-        currency: selectedCurrency,
-        originalPrice,
-        finalPrice,
-        discountedPrice: appliedPromoCode ? finalPrice : undefined,
-        promoCode: appliedPromoCode?.code
-      });
-      
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: {
-          planId: planId,
-          currency: selectedCurrency,
-          discountedPrice: appliedPromoCode ? finalPrice : undefined,
-          promoCode: appliedPromoCode?.code
-        },
-      });
-
-      if (error) {
-        console.error('Error creating checkout session:', error);
-        toast.error(`Failed to create checkout session: ${error.message || 'Unknown error'}`);
-        setIsProcessing(false);
-        return;
-      }
-
-      if (!data || !data.url) {
-        console.error('No checkout URL received:', data);
-        toast.error('No checkout URL received from payment processor');
-        setIsProcessing(false);
-        return;
-      }
-
-      // Only increment promo code usage after successful checkout creation
-      // Note: The actual usage will be tracked when the payment is completed via the checkout success webhook
-      console.log('Checkout session created successfully, redirecting to:', data.url);
-      window.location.href = data.url;
-      
-    } catch (error) {
-      console.error('Error in checkout process:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      toast.error(`Failed to create checkout session: ${errorMessage}`);
+    } finally {
       setIsProcessing(false);
     }
   };
 
   const handleManageSubscription = async () => {
-    if (!user) {
-      toast.error('Please log in to manage your subscription');
-      return;
-    }
-
     setIsProcessing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
-      
-      if (error) {
-        console.error('Error opening customer portal:', error);
-        toast.error(`Failed to open subscription management: ${error.message || 'Unknown error'}`);
-        setIsProcessing(false);
-        return;
+      const portalUrl = await openCustomerPortal();
+      if (portalUrl) {
+        window.location.href = portalUrl;
       }
-      
-      if (!data || !data.url) {
-        console.error('No portal URL received:', data);
-        toast.error('Unable to access subscription management portal');
-        setIsProcessing(false);
-        return;
-      }
-      
-      window.location.href = data.url;
-    } catch (error) {
-      console.error('Error opening customer portal:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      toast.error(`Failed to open subscription management: ${errorMessage}`);
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -285,11 +185,6 @@ const SubscriptionPage: React.FC = () => {
         </TabsList>
         
         <TabsContent value="plans" className="pt-6">
-          {/* Promo Code Input */}
-          <div className="mb-8 max-w-md">
-            <PromoCodeInput />
-          </div>
-
           {/* Plans grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Monthly Plan */}
@@ -299,9 +194,6 @@ const SubscriptionPage: React.FC = () => {
               currentPlan={subscription.planType}
               onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.MONTHLY.id)}
               isProcessing={isProcessing}
-              appliedPromoCode={appliedPromoCode}
-              calculateDiscountedPrice={calculateDiscountedPrice}
-              getDiscountAmount={getDiscountAmount}
             />
             
             {/* Quarterly Plan */}
@@ -312,9 +204,6 @@ const SubscriptionPage: React.FC = () => {
               onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.QUARTERLY.id)}
               isProcessing={isProcessing}
               featured={true}
-              appliedPromoCode={appliedPromoCode}
-              calculateDiscountedPrice={calculateDiscountedPrice}
-              getDiscountAmount={getDiscountAmount}
             />
             
             {/* Annual Plan */}
@@ -324,9 +213,6 @@ const SubscriptionPage: React.FC = () => {
               currentPlan={subscription.planType}
               onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.ANNUAL.id)}
               isProcessing={isProcessing}
-              appliedPromoCode={appliedPromoCode}
-              calculateDiscountedPrice={calculateDiscountedPrice}
-              getDiscountAmount={getDiscountAmount}
             />
             
             {/* Lifetime Plan */}
@@ -336,9 +222,6 @@ const SubscriptionPage: React.FC = () => {
               currentPlan={subscription.planType}
               onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.LIFETIME.id)}
               isProcessing={isProcessing}
-              appliedPromoCode={appliedPromoCode}
-              calculateDiscountedPrice={calculateDiscountedPrice}
-              getDiscountAmount={getDiscountAmount}
             />
           </div>
           
@@ -736,9 +619,6 @@ interface PlanCardProps {
   onSubscribe: () => void;
   isProcessing: boolean;
   featured?: boolean;
-  appliedPromoCode?: any;
-  calculateDiscountedPrice: (price: number) => number;
-  getDiscountAmount: (price: number) => number;
 }
 
 const PlanCard: React.FC<PlanCardProps> = ({ 
@@ -747,17 +627,10 @@ const PlanCard: React.FC<PlanCardProps> = ({
   currentPlan, 
   onSubscribe, 
   isProcessing,
-  featured = false,
-  appliedPromoCode,
-  calculateDiscountedPrice,
-  getDiscountAmount
+  featured = false 
 }) => {
   const isActive = currentPlan === plan.id;
-  const originalPrice = convertPrice(plan.price, currency);
-  const discountedPrice = appliedPromoCode ? calculateDiscountedPrice(originalPrice) : originalPrice;
-  const discountAmount = appliedPromoCode ? getDiscountAmount(originalPrice) : 0;
-  const hasDiscount = appliedPromoCode && discountAmount > 0;
-  
+  const convertedPrice = convertPrice(plan.price, currency);
   const isOneTime = 'oneTime' in plan && plan.oneTime;
   const billing = 'billing' in plan ? plan.billing : undefined;
   const trialDays = 'trialDays' in plan ? plan.trialDays : undefined;
@@ -795,27 +668,14 @@ const PlanCard: React.FC<PlanCardProps> = ({
       <CardContent className="flex-grow">
         <div className="space-y-4">
           <div>
-            <div className="flex items-baseline gap-2 flex-wrap">
-              {hasDiscount && (
-                <span className="text-lg line-through text-muted-foreground">
-                  {formatPrice(originalPrice, currency)}
-                </span>
-              )}
-              <span className={`text-3xl font-bold ${hasDiscount ? 'text-green-600' : ''}`}>
-                {formatPrice(discountedPrice, currency)}
+            <div className="flex items-baseline">
+              <span className="text-3xl font-bold">
+                {formatPrice(convertedPrice, currency)}
               </span>
-              <span className="text-muted-foreground">
+              <span className="text-muted-foreground ml-2">
                 {isOneTime ? 'one-time' : `/${billing}`}
               </span>
             </div>
-            
-            {hasDiscount && (
-              <div className="flex items-center gap-2 mt-2">
-                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                  Save {formatPrice(discountAmount, currency)} with {appliedPromoCode.code}
-                </Badge>
-              </div>
-            )}
             
             {(plan.savePercent > 0) && (
               <p className="text-sm text-primary font-medium mt-1">

@@ -8,7 +8,6 @@ import { AdminStatsDashboard } from "@/components/admin/AdminStatsDashboard"
 import { FeedbackList } from "@/components/admin/FeedbackList"
 import { UserRoleManagement } from "@/components/admin/UserRoleManagement"
 import { PromotionalBannerManagement } from "@/components/admin/PromotionalBannerManagement"
-import PromoCodeManagement from "@/components/admin/PromoCodeManagement"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -100,7 +99,7 @@ const AdminPage: React.FC = () => {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="stats">Statistics</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="exercises">Exercises</TabsTrigger>
@@ -108,7 +107,6 @@ const AdminPage: React.FC = () => {
           <TabsTrigger value="blog">Blog</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="banners">Banners</TabsTrigger>
-          <TabsTrigger value="promo-codes">Promo Codes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stats">
@@ -174,10 +172,6 @@ const AdminPage: React.FC = () => {
             <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Promotional Banner Management</h2>
             <PromotionalBannerManagement />
           </div>
-        </TabsContent>
-
-        <TabsContent value="promo-codes" className="space-y-6">
-          <PromoCodeManagement />
         </TabsContent>
       </Tabs>
     </div>

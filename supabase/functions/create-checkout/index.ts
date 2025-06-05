@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -59,10 +60,8 @@ serve(async (req) => {
     const requestData = await req.json().catch(() => ({}));
     const planId = requestData.planId || 'monthly';
     const currency = requestData.currency || 'usd';
-    const discountedPrice = requestData.discountedPrice;
-    const promoCode = requestData.promoCode;
     
-    logStep("Request data", { planId, currency, discountedPrice, promoCode });
+    logStep("Request data", { planId, currency });
 
     // Get Stripe key
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -106,10 +105,6 @@ serve(async (req) => {
     if (!plan) throw new Error(`Invalid plan ID: ${planId}`);
     logStep("Plan selected", { plan: planId });
 
-    // Use discounted price if provided, otherwise use original price
-    const finalPrice = discountedPrice !== undefined ? Math.round(discountedPrice * 100) : plan.unit_amount;
-    logStep("Price calculation", { originalPrice: plan.unit_amount, finalPrice, hasDiscount: discountedPrice !== undefined });
-
     // Create checkout session based on plan type
     let session;
     
@@ -126,7 +121,7 @@ serve(async (req) => {
                 name: plan.name,
                 description: plan.description,
               },
-              unit_amount: finalPrice,
+              unit_amount: plan.unit_amount,
             },
             quantity: 1,
           },
@@ -134,15 +129,12 @@ serve(async (req) => {
         mode: "payment",
         success_url: `${req.headers.get("origin")}/dashboard?subscription=success&plan=${planId}`,
         cancel_url: `${req.headers.get("origin")}/dashboard?subscription=canceled`,
-        metadata: promoCode ? { promo_code: promoCode } : {},
       });
       
       logStep("One-time payment checkout session created", { 
         sessionId: session.id,
         planId,
-        mode: "payment",
-        finalPrice,
-        promoCode: promoCode || 'none'
+        mode: "payment" 
       });
     } else {
       // Create subscription session for recurring plans
@@ -157,7 +149,7 @@ serve(async (req) => {
                 name: plan.name,
                 description: plan.description,
               },
-              unit_amount: finalPrice,
+              unit_amount: plan.unit_amount,
               recurring: {
                 interval: plan.interval,
                 interval_count: plan.interval_count,
@@ -169,20 +161,16 @@ serve(async (req) => {
         mode: "subscription",
         subscription_data: {
           trial_period_days: plan.trial_period_days,
-          metadata: promoCode ? { promo_code: promoCode } : {},
         },
         success_url: `${req.headers.get("origin")}/dashboard?subscription=success&plan=${planId}`,
         cancel_url: `${req.headers.get("origin")}/dashboard?subscription=canceled`,
-        metadata: promoCode ? { promo_code: promoCode } : {},
       });
       
       logStep("Subscription checkout session created", { 
         sessionId: session.id, 
         planId,
         trialDays: plan.trial_period_days,
-        mode: "subscription",
-        finalPrice,
-        promoCode: promoCode || 'none'
+        mode: "subscription"
       });
     }
 
@@ -193,7 +181,7 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Upsert subscriber record with promo code info
+    // Upsert subscriber record
     await supabaseService.from("subscribers").upsert({
       email: user.email,
       user_id: user.id,
@@ -202,19 +190,6 @@ serve(async (req) => {
       pending_plan: planId,
       updated_at: new Date().toISOString()
     }, { onConflict: 'email' });
-
-    // Record promo code usage if applicable
-    if (promoCode) {
-      await supabaseService.from("promo_code_usage").insert({
-        user_id: user.id,
-        email: user.email,
-        promo_code: promoCode,
-        stripe_session_id: session.id,
-        discount_amount: plan.unit_amount - finalPrice
-      });
-      
-      logStep("Promo code usage recorded", { promoCode, discountAmount: plan.unit_amount - finalPrice });
-    }
 
     logStep("Subscriber record updated with pending plan", { planId });
 
