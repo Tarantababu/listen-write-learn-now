@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PromoCode {
@@ -31,7 +30,7 @@ export const usePromoCode = () => {
 
     try {
       const { data, error } = await supabase
-        .from('promo_codes')
+        .from('promo_codes' as any)
         .select('*')
         .eq('code', code.toUpperCase())
         .eq('is_active', true)

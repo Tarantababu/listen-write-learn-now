@@ -26,10 +26,21 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // First get the current uses count
+    const { data: currentPromo, error: fetchError } = await supabaseClient
+      .from("promo_codes")
+      .select("uses")
+      .eq("id", promo_code_id)
+      .single();
+
+    if (fetchError) {
+      throw fetchError;
+    }
+
     // Increment the usage count
     const { error } = await supabaseClient
       .from("promo_codes")
-      .update({ uses: supabaseClient.sql`uses + 1` })
+      .update({ uses: (currentPromo.uses || 0) + 1 })
       .eq("id", promo_code_id);
 
     if (error) {

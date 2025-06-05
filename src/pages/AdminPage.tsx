@@ -100,7 +100,7 @@ const AdminPage: React.FC = () => {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="stats">Statistics</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="exercises">Exercises</TabsTrigger>
@@ -108,6 +108,7 @@ const AdminPage: React.FC = () => {
           <TabsTrigger value="blog">Blog</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="banners">Banners</TabsTrigger>
+          <TabsTrigger value="promo-codes">Promo Codes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stats">
@@ -173,6 +174,10 @@ const AdminPage: React.FC = () => {
             <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Promotional Banner Management</h2>
             <PromotionalBannerManagement />
           </div>
+        </TabsContent>
+
+        <TabsContent value="promo-codes" className="space-y-6">
+          <PromoCodeManagement />
         </TabsContent>
       </Tabs>
     </div>
