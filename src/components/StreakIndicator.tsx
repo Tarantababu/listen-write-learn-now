@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Flame, Clock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+// Storage key to track shown streak alerts by streak ID
+const STREAK_ALERT_SHOWN_KEY = 'lwl_streak_alert_shown';
 
 export function StreakIndicator() {
   const { user } = useAuth();
@@ -28,19 +30,44 @@ export function StreakIndicator() {
     }
   }, [user, settings.selectedLanguage]);
 
-  // Show risk notification when streak is at risk
+  // Function to check if we've already shown an alert for this streak risk
+  const hasAlertBeenShown = (userId: string, currentStreak: number, hoursRemaining?: number) => {
+    if (!hoursRemaining) return true; // No hours remaining, so no need to show
+    
+    const streakAlertKey = `${userId}_${currentStreak}_${Math.floor(hoursRemaining/6)}`; // Group similar hour ranges
+    const shownAlerts = JSON.parse(localStorage.getItem(STREAK_ALERT_SHOWN_KEY) || '{}');
+    return !!shownAlerts[streakAlertKey];
+  };
+
+  // Function to mark an alert as shown
+  const markAlertAsShown = (userId: string, currentStreak: number, hoursRemaining?: number) => {
+    if (!hoursRemaining) return;
+    
+    const streakAlertKey = `${userId}_${currentStreak}_${Math.floor(hoursRemaining/6)}`;
+    const shownAlerts = JSON.parse(localStorage.getItem(STREAK_ALERT_SHOWN_KEY) || '{}');
+    shownAlerts[streakAlertKey] = true;
+    localStorage.setItem(STREAK_ALERT_SHOWN_KEY, JSON.stringify(shownAlerts));
+  };
+
+  // Show risk notification when streak is at risk - only once per risk period
   useEffect(() => {
-    if (streakData.isAtRisk && streakData.riskHoursRemaining) {
-      const hoursText = streakData.riskHoursRemaining === 1 ? 'hour' : 'hours';
-      toast.warning(`Streak Alert! Complete an exercise within ${streakData.riskHoursRemaining} ${hoursText} to maintain your ${streakData.currentStreak}-day streak!`, {
-        duration: 10000,
-        action: {
-          label: 'Practice Now',
-          onClick: () => window.location.href = '/dashboard/exercises'
-        }
-      });
+    if (user && streakData.isAtRisk && streakData.riskHoursRemaining) {
+      // Check if we've already shown this alert
+      if (!hasAlertBeenShown(user.id, streakData.currentStreak, streakData.riskHoursRemaining)) {
+        const hoursText = streakData.riskHoursRemaining === 1 ? 'hour' : 'hours';
+        toast.warning(`Streak Alert! Complete an exercise within ${streakData.riskHoursRemaining} ${hoursText} to maintain your ${streakData.currentStreak}-day streak!`, {
+          duration: 10000,
+          action: {
+            label: 'Practice Now',
+            onClick: () => window.location.href = '/dashboard/exercises'
+          }
+        });
+        
+        // Mark this alert as shown
+        markAlertAsShown(user.id, streakData.currentStreak, streakData.riskHoursRemaining);
+      }
     }
-  }, [streakData.isAtRisk, streakData.riskHoursRemaining, streakData.currentStreak]);
+  }, [streakData.isAtRisk, streakData.riskHoursRemaining, streakData.currentStreak, user]);
 
   const loadStreakData = async () => {
     if (!user) return;
