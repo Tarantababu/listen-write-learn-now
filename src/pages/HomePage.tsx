@@ -6,6 +6,7 @@ import UserStatistics from '@/components/UserStatistics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import SubscriptionBanner from '@/components/SubscriptionBanner';
 import { PromotionalBanner } from '@/components/PromotionalBanner';
+import { StreakRiskBanner } from '@/components/StreakRiskBanner';
 import { ExerciseProvider } from '@/contexts/ExerciseContext';
 import { useRoadmap } from '@/hooks/use-roadmap';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,12 +17,8 @@ const HomePage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const {
-    subscription
-  } = useSubscription();
-  const {
-    isAdmin
-  } = useAdmin();
+  const { subscription } = useSubscription();
+  const { isAdmin } = useAdmin();
 
   // React to redirect messages (e.g., access denied)
   useEffect(() => {
@@ -61,6 +58,13 @@ const HomePage = () => {
       <div className="mb-6">
         <PromotionalBanner />
       </div>
+      
+      {/* Streak Risk Banner - only show for authenticated users */}
+      {user && (
+        <div className="mb-6">
+          <StreakRiskBanner />
+        </div>
+      )}
       
       {shouldShowSubscriptionBanner && <SubscriptionBanner />}
       

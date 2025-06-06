@@ -251,6 +251,12 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // Only save completion record if not resetting
         if (!reset && accuracy > 0) {
           await recordCompletion(user.id, id, accuracy, isCompleted);
+          
+          // Update streak when user completes an exercise with good accuracy
+          if (accuracy >= 70) { // Lower threshold for streak counting
+            const { updateStreak } = await import('@/services/streakService');
+            await updateStreak(user.id, exercise.language);
+          }
         }
       } else {
         // Fix: Check if the hook's markProgress supports the reset parameter
