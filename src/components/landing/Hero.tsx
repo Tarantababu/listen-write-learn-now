@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, Globe } from 'lucide-react';
@@ -156,9 +154,6 @@ export function Hero() {
                   }}>
                     <iframe 
                       src="https://jumpshare.com/embed/2IdJM81se3H7J5JXNFiX" 
-                      frameBorder="0" 
-                      webkitallowfullscreen="true"
-                      mozallowfullscreen="true"
                       allowFullScreen 
                       style={{
                         position: 'absolute',
@@ -169,7 +164,7 @@ export function Hero() {
                       }}
                       title="Language learning demonstration"
                       className="rounded-lg"
-                    ></iframe>
+                    />
                   </div>
                 </div>
               </AnimatedGroup>
@@ -263,4 +258,3 @@ export function Hero() {
       <SampleDictationModal open={sampleModalOpen} onOpenChange={setSampleModalOpen} />
     </>;
 }
-
