@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, Globe } from 'lucide-react';
@@ -145,16 +144,11 @@ export function Hero() {
             <div className="flex justify-center lg:justify-end">
               <AnimatedGroup variants={transitionVariants}>
                 <div className="max-w-md w-full">
-                  <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
-                    <iframe 
-                      id="js_video_iframe" 
-                      src="https://jumpshare.com/embed/2IdJM81se3H7J5JXNFiX" 
-                      allowFullScreen 
-                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                      title="Language learning demonstration"
-                      className="rounded-lg shadow-xl"
-                    />
-                  </div>
+                  <img 
+                    src="/lovable-uploads/e1e8d5b6-2bcd-4fe7-bf0f-1090e33675da.png" 
+                    alt="Language learning through dictation - illustration of person with headphones practicing on laptop"
+                    className="w-full h-auto object-contain"
+                  />
                 </div>
               </AnimatedGroup>
             </div>
