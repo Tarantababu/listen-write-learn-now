@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, Globe } from 'lucide-react';
@@ -145,14 +146,27 @@ export function Hero() {
             <div className="flex justify-center lg:justify-end">
               <AnimatedGroup variants={transitionVariants}>
                 <div className="max-w-md w-full">
-                  <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);">
+                  <div style={{
+                    position: 'relative',
+                    paddingBottom: '56.25%',
+                    height: 0,
+                    overflow: 'hidden',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)'
+                  }}>
                     <iframe 
                       src="https://jumpshare.com/embed/2IdJM81se3H7J5JXNFiX" 
                       frameBorder="0" 
                       webkitallowfullscreen="true"
                       mozallowfullscreen="true"
                       allowFullScreen 
-                      style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%'
+                      }}
                       title="Language learning demonstration"
                       className="rounded-lg"
                     ></iframe>
@@ -249,3 +263,4 @@ export function Hero() {
       <SampleDictationModal open={sampleModalOpen} onOpenChange={setSampleModalOpen} />
     </>;
 }
+
