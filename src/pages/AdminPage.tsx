@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client"
 import type { BlogPost } from "@/types"
 import { useQuery } from "@tanstack/react-query"
 import BlogManagement from '@/components/admin/BlogManagement';
+import FileUploadManagement from '@/components/admin/FileUploadManagement';
 
 const AdminPage: React.FC = () => {
   const { isAdmin, loading } = useAdmin()
@@ -99,7 +100,7 @@ const AdminPage: React.FC = () => {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="stats">Statistics</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="exercises">Exercises</TabsTrigger>
@@ -107,6 +108,7 @@ const AdminPage: React.FC = () => {
           <TabsTrigger value="blog">Blog</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="banners">Banners</TabsTrigger>
+          <TabsTrigger value="files">Files</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stats">
@@ -171,6 +173,13 @@ const AdminPage: React.FC = () => {
           <div className="mb-6 sm:mb-8">
             <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Promotional Banner Management</h2>
             <PromotionalBannerManagement />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="files" className="space-y-6">
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">File Upload Management</h2>
+            <FileUploadManagement />
           </div>
         </TabsContent>
       </Tabs>
