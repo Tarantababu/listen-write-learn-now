@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Brain, BookOpen, Trophy, Lock, ArrowDown } from 'lucide-react';
+import { Plus, Brain, BookOpen, Trophy, Lock, ArrowDown, CheckCircle2 } from 'lucide-react';
 import { FlagIcon } from 'react-flag-kit';
 import { BidirectionalExerciseCard } from '@/components/bidirectional/BidirectionalExerciseCard';
 import { BidirectionalPracticeModal } from '@/components/bidirectional/BidirectionalPracticeModal';
@@ -229,19 +229,39 @@ const BidirectionalPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Due Reviews Section */}
-      {dueReviews.length > 0 && (
-        <Card className="mb-6 sm:mb-8 border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200 text-lg">
-              <Brain className="h-4 w-4 sm:h-5 sm:w-5" />
-              Reviews Due ({dueReviews.length})
-            </CardTitle>
-            <CardDescription className="text-sm">
-              Complete these reviews to maintain your learning progress for {getLanguageLabel(targetLanguage)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+      {/* Enhanced Due Reviews Section */}
+      <Card className={`mb-6 sm:mb-8 ${
+        dueReviews.length > 0 
+          ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800' 
+          : 'border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800'
+      }`}>
+        <CardHeader className="pb-3">
+          <CardTitle className={`flex items-center gap-2 text-lg ${
+            dueReviews.length > 0 
+              ? 'text-yellow-800 dark:text-yellow-200' 
+              : 'text-green-800 dark:text-green-200'
+          }`}>
+            {dueReviews.length > 0 ? (
+              <>
+                <Brain className="h-4 w-4 sm:h-5 sm:w-5" />
+                Reviews Due ({dueReviews.length})
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                Reviews Status
+              </>
+            )}
+          </CardTitle>
+          <CardDescription className="text-sm">
+            {dueReviews.length > 0 
+              ? `Complete these reviews to maintain your learning progress for ${getLanguageLabel(targetLanguage)}`
+              : `No reviews due today for ${getLanguageLabel(targetLanguage)}. Great job staying on top of your learning!`
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {dueReviews.length > 0 ? (
             <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {dueReviews.map((dueReview, index) => (
                 <div key={`${dueReview.exercise.id}-${dueReview.review_type}`} className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg border">
@@ -259,9 +279,21 @@ const BidirectionalPage: React.FC = () => {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="text-center py-8">
+              <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+              </div>
+              <h3 className="text-lg font-medium text-green-800 dark:text-green-200 mb-2">
+                Nothing to review
+              </h3>
+              <p className="text-sm text-green-700 dark:text-green-300">
+                You're all caught up! Complete some learning exercises to add more items to your review schedule.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Create Exercise Section */}
       <Card className="mb-6 sm:mb-8">
