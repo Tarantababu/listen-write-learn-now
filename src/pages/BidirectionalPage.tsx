@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Brain, BookOpen, Trophy } from 'lucide-react';
+import { Plus, Brain, BookOpen, Trophy, Lock } from 'lucide-react';
 import { BidirectionalExerciseCard } from '@/components/bidirectional/BidirectionalExerciseCard';
 import { BidirectionalPracticeModal } from '@/components/bidirectional/BidirectionalPracticeModal';
 import { BidirectionalReviewModal } from '@/components/bidirectional/BidirectionalReviewModal';
@@ -30,11 +31,13 @@ const SUPPORTED_LANGUAGES = [
 
 const BidirectionalPage: React.FC = () => {
   const { user } = useAuth();
+  const { settings } = useUserSettingsContext();
   const { toast } = useToast();
 
   // State for exercise creation
   const [originalSentence, setOriginalSentence] = useState('');
-  const [targetLanguage, setTargetLanguage] = useState('spanish');
+  // Target language now comes from user settings and cannot be changed
+  const targetLanguage = settings.selectedLanguage;
   const [supportLanguage, setSupportLanguage] = useState('english');
   const [isCreating, setIsCreating] = useState(false);
 
@@ -155,6 +158,12 @@ const BidirectionalPage: React.FC = () => {
     setReviewType(dueReview.review_type);
   };
 
+  // Get the display label for the current target language
+  const getLanguageLabel = (languageValue: string) => {
+    const lang = SUPPORTED_LANGUAGES.find(l => l.value === languageValue);
+    return lang ? lang.label : languageValue;
+  };
+
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
@@ -235,18 +244,24 @@ const BidirectionalPage: React.FC = () => {
               <label className="block text-sm font-medium mb-2">
                 Target Language (sentence language):
               </label>
-              <Select value={targetLanguage} onValueChange={setTargetLanguage}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPORTED_LANGUAGES.map(lang => (
-                    <SelectItem key={lang.value} value={lang.value}>
-                      {lang.label}
+              <div className="relative">
+                <Select value={targetLanguage} disabled>
+                  <SelectTrigger className="bg-muted cursor-not-allowed opacity-60">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={targetLanguage}>
+                      {getLanguageLabel(targetLanguage)}
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Language is set from your account settings
+              </p>
             </div>
             
             <div>
