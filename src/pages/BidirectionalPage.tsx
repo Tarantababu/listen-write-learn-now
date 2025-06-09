@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -8,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Brain, BookOpen, Trophy, Lock } from 'lucide-react';
+import { Plus, Brain, BookOpen, Trophy, Lock, ArrowDown } from 'lucide-react';
 import { FlagIcon } from 'react-flag-kit';
 import { BidirectionalExerciseCard } from '@/components/bidirectional/BidirectionalExerciseCard';
 import { BidirectionalPracticeModal } from '@/components/bidirectional/BidirectionalPracticeModal';
@@ -18,6 +17,7 @@ import { BidirectionalService } from '@/services/bidirectionalService';
 import type { BidirectionalExercise } from '@/types/bidirectional';
 import { useToast } from '@/hooks/use-toast';
 import { getLanguageFlagCode } from '@/utils/languageUtils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const SUPPORTED_LANGUAGES = [
   { value: 'english', label: 'English' },
@@ -51,6 +51,7 @@ const BidirectionalPage: React.FC = () => {
   const { user } = useAuth();
   const { settings } = useUserSettingsContext();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   // State for exercise creation
   const [originalSentence, setOriginalSentence] = useState('');
@@ -216,10 +217,10 @@ const BidirectionalPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Bidirectional Method</h1>
-        <p className="text-muted-foreground">
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-full overflow-x-hidden">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">Bidirectional Method</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Practice translation in both directions with spaced repetition for{' '}
           <span className="inline-flex items-center gap-1 font-medium">
             <FlagIcon code={getLanguageFlagCode(targetLanguage)} size={16} />
@@ -230,28 +231,28 @@ const BidirectionalPage: React.FC = () => {
 
       {/* Due Reviews Section */}
       {dueReviews.length > 0 && (
-        <Card className="mb-8 border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
-              <Brain className="h-5 w-5" />
+        <Card className="mb-6 sm:mb-8 border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200 text-lg">
+              <Brain className="h-4 w-4 sm:h-5 sm:w-5" />
               Reviews Due ({dueReviews.length})
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm">
               Complete these reviews to maintain your learning progress for {getLanguageLabel(targetLanguage)}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {dueReviews.map((dueReview, index) => (
-                <div key={`${dueReview.exercise.id}-${dueReview.review_type}`} className="p-4 bg-white dark:bg-gray-800 rounded-lg border">
-                  <p className="font-medium mb-2">{dueReview.exercise.original_sentence}</p>
-                  <p className="text-sm text-muted-foreground mb-3">
+                <div key={`${dueReview.exercise.id}-${dueReview.review_type}`} className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg border">
+                  <p className="font-medium mb-2 text-sm sm:text-base break-words">{dueReview.exercise.original_sentence}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-3">
                     {dueReview.review_type === 'forward' ? 'Forward' : 'Backward'} translation
                   </p>
                   <Button
                     size="sm"
                     onClick={() => handleReviewFromDue(dueReview)}
-                    className="w-full"
+                    className="w-full text-sm"
                   >
                     Review Now
                   </Button>
@@ -263,13 +264,13 @@ const BidirectionalPage: React.FC = () => {
       )}
 
       {/* Create Exercise Section */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5" />
+      <Card className="mb-6 sm:mb-8">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
             Create New Exercise for {getLanguageLabel(targetLanguage)}
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Add a sentence to practice with the bidirectional method
           </CardDescription>
         </CardHeader>
@@ -283,58 +284,69 @@ const BidirectionalPage: React.FC = () => {
               onChange={(e) => setOriginalSentence(e.target.value)}
               placeholder={`Enter a sentence in ${getLanguageLabel(targetLanguage)}...`}
               rows={2}
+              className="text-sm sm:text-base"
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Target Language (sentence language):
-              </label>
-              <div className="relative">
-                <Select value={targetLanguage} disabled>
-                  <SelectTrigger className="bg-muted cursor-not-allowed opacity-60">
-                    <SelectValue>
-                      <div className="flex items-center gap-2">
-                        <FlagIcon 
-                          code={getLanguageFlagCode(targetLanguage)} 
-                          size={16} 
-                        />
-                        <span>{getLanguageLabel(targetLanguage)}</span>
-                      </div>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={targetLanguage}>
-                      <div className="flex items-center gap-2">
-                        <FlagIcon 
-                          code={getLanguageFlagCode(targetLanguage)} 
-                          size={16} 
-                        />
-                        <span>{getLanguageLabel(targetLanguage)}</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                  <Lock className="h-4 w-4 text-muted-foreground" />
+          <div className="space-y-4">
+            {/* Target Language - Mobile: Full width, Desktop: Half width */}
+            <div className={isMobile ? 'w-full' : 'grid grid-cols-2 gap-4'}>
+              <div className={isMobile ? 'mb-4' : ''}>
+                <label className="block text-sm font-medium mb-2">
+                  Target Language (sentence language):
+                </label>
+                <div className="relative">
+                  <Select value={targetLanguage} disabled>
+                    <SelectTrigger className="bg-muted cursor-not-allowed opacity-60">
+                      <SelectValue>
+                        <div className="flex items-center gap-2">
+                          <FlagIcon 
+                            code={getLanguageFlagCode(targetLanguage)} 
+                            size={16} 
+                          />
+                          <span className="text-sm">{getLanguageLabel(targetLanguage)}</span>
+                        </div>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={targetLanguage}>
+                        <div className="flex items-center gap-2">
+                          <FlagIcon 
+                            code={getLanguageFlagCode(targetLanguage)} 
+                            size={16} 
+                          />
+                          <span>{getLanguageLabel(targetLanguage)}</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                    <Lock className="h-4 w-4 text-muted-foreground" />
+                  </div>
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Language is set from your account settings
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Language is set from your account settings
-              </p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Support Language (translation language):
-              </label>
-              <LanguageSelectWithFlag
-                value={supportLanguage}
-                onValueChange={setSupportLanguage}
-                options={SUPPORTED_LANGUAGES}
-                placeholder="Select support language"
-              />
+              
+              {/* Mobile: Add visual separator */}
+              {isMobile && (
+                <div className="flex items-center justify-center my-3">
+                  <ArrowDown className="h-4 w-4 text-muted-foreground" />
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Support Language (translation language):
+                </label>
+                <LanguageSelectWithFlag
+                  value={supportLanguage}
+                  onValueChange={setSupportLanguage}
+                  options={SUPPORTED_LANGUAGES}
+                  placeholder="Select support language"
+                />
+              </div>
             </div>
           </div>
 
@@ -342,6 +354,7 @@ const BidirectionalPage: React.FC = () => {
             onClick={handleCreateExercise}
             disabled={isCreating || !originalSentence.trim()}
             className="w-full"
+            size={isMobile ? "default" : "lg"}
           >
             {isCreating ? 'Creating...' : 'Create Exercise'}
           </Button>
@@ -349,19 +362,28 @@ const BidirectionalPage: React.FC = () => {
       </Card>
 
       {/* Exercises Tabs */}
-      <Tabs defaultValue="learning" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="learning" className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4" />
-            Learning ({learningExercises.length})
+      <Tabs defaultValue="learning" className="space-y-4 sm:space-y-6">
+        <TabsList className={`grid w-full ${isMobile ? 'grid-cols-1 h-auto p-1' : 'grid-cols-3'}`}>
+          <TabsTrigger 
+            value="learning" 
+            className={`flex items-center gap-2 ${isMobile ? 'w-full justify-start px-4 py-3 mb-1' : ''}`}
+          >
+            <BookOpen className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="text-sm">Learning ({learningExercises.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="reviewing" className="flex items-center gap-2">
-            <Brain className="h-4 w-4" />
-            Reviewing ({reviewingExercises.length})
+          <TabsTrigger 
+            value="reviewing" 
+            className={`flex items-center gap-2 ${isMobile ? 'w-full justify-start px-4 py-3 mb-1' : ''}`}
+          >
+            <Brain className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="text-sm">Reviewing ({reviewingExercises.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="mastered" className="flex items-center gap-2">
-            <Trophy className="h-4 w-4" />
-            Mastered ({masteredExercises.length})
+          <TabsTrigger 
+            value="mastered" 
+            className={`flex items-center gap-2 ${isMobile ? 'w-full justify-start px-4 py-3' : ''}`}
+          >
+            <Trophy className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="text-sm">Mastered ({masteredExercises.length})</span>
           </TabsTrigger>
         </TabsList>
 
@@ -369,7 +391,7 @@ const BidirectionalPage: React.FC = () => {
           {isLoading ? (
             <div className="text-center py-8">Loading exercises...</div>
           ) : learningExercises.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {learningExercises.map(exercise => (
                 <BidirectionalExerciseCard
                   key={exercise.id}
@@ -381,7 +403,7 @@ const BidirectionalPage: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground text-sm sm:text-base">
               No learning exercises yet for {getLanguageLabel(targetLanguage)}. Create your first exercise above!
             </div>
           )}
@@ -391,7 +413,7 @@ const BidirectionalPage: React.FC = () => {
           {isLoading ? (
             <div className="text-center py-8">Loading exercises...</div>
           ) : reviewingExercises.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {reviewingExercises.map(exercise => (
                 <BidirectionalExerciseCard
                   key={exercise.id}
@@ -403,7 +425,7 @@ const BidirectionalPage: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground text-sm sm:text-base">
               No exercises in review phase yet for {getLanguageLabel(targetLanguage)}. Complete some learning exercises first!
             </div>
           )}
@@ -413,7 +435,7 @@ const BidirectionalPage: React.FC = () => {
           {isLoading ? (
             <div className="text-center py-8">Loading exercises...</div>
           ) : masteredExercises.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {masteredExercises.map(exercise => (
                 <BidirectionalExerciseCard
                   key={exercise.id}
@@ -424,7 +446,7 @@ const BidirectionalPage: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground text-sm sm:text-base">
               No mastered exercises yet for {getLanguageLabel(targetLanguage)}. Keep practicing!
             </div>
           )}
