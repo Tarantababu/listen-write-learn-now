@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
@@ -21,9 +22,6 @@ interface MobileBidirectionalReviewDrawerProps {
   getPromptText: () => string;
   getSourceText: () => string;
   getExpectedAnswer: () => string;
-  formatInterval: (interval: any) => string;
-  correctInterval: any;
-  incorrectInterval: any;
   handlePlayAudio: () => void;
 }
 
@@ -42,12 +40,62 @@ export const MobileBidirectionalReviewDrawer: React.FC<MobileBidirectionalReview
   getPromptText,
   getSourceText,
   getExpectedAnswer,
-  formatInterval,
-  correctInterval,
-  incorrectInterval,
   handlePlayAudio
 }) => {
   if (!exercise) return null;
+
+  // Use the same interval calculation as BidirectionalService.calculateNextReviewDate
+  const calculateNextReviewInterval = (isCorrect: boolean, reviewRound: number = 1) => {
+    if (!isCorrect) {
+      // If incorrect, reset to 30 seconds
+      return { days: 0, hours: 0, minutes: 0, seconds: 30 };
+    }
+
+    // Match the exact progression from BidirectionalService: 30s → 10m → 1h → 1d → 3d → 7d → mastered
+    switch (reviewRound) {
+      case 1:
+        // First review after 30 seconds
+        return { days: 0, hours: 0, minutes: 0, seconds: 30 };
+      case 2:
+        // Second review after 10 minutes
+        return { days: 0, hours: 0, minutes: 10, seconds: 0 };
+      case 3:
+        // Third review after 1 hour
+        return { days: 0, hours: 1, minutes: 0, seconds: 0 };
+      case 4:
+        // Fourth review after 1 day
+        return { days: 1, hours: 0, minutes: 0, seconds: 0 };
+      case 5:
+        // Fifth review after 3 days
+        return { days: 3, hours: 0, minutes: 0, seconds: 0 };
+      case 6:
+        // Sixth review after 7 days
+        return { days: 7, hours: 0, minutes: 0, seconds: 0 };
+      default:
+        // After 6th review, mark as mastered
+        return { days: 0, hours: 0, minutes: 0, seconds: 0, mastered: true };
+    }
+  };
+
+  // Format interval for display
+  const formatInterval = (interval: { days: number; hours: number; minutes: number; seconds: number; mastered?: boolean }) => {
+    if (interval.mastered) {
+      return 'Mastered!';
+    }
+    if (interval.days > 0) {
+      return `${interval.days}d`;
+    } else if (interval.hours > 0) {
+      return `${interval.hours}h`;
+    } else if (interval.minutes > 0) {
+      return `${interval.minutes}m`;
+    } else {
+      return `${interval.seconds}s`;
+    }
+  };
+
+  // Calculate intervals for button display - use the next round for correct, round 1 for incorrect
+  const correctInterval = calculateNextReviewInterval(true, currentReviewRound + 1);
+  const incorrectInterval = calculateNextReviewInterval(false, 1);
 
   return (
     <Drawer open={isOpen} onOpenChange={onClose}>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -54,29 +55,35 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
     }
   };
 
-  // Calculate next review intervals: 30s, 1d, 3d, 7d, 14d, 30d, then mastered
+  // Use the same interval calculation as BidirectionalService.calculateNextReviewDate
   const calculateNextReviewInterval = (isCorrect: boolean, reviewRound: number = 1) => {
     if (!isCorrect) {
-      // Incorrect answer - back to 30 seconds
+      // If incorrect, reset to 30 seconds
       return { days: 0, hours: 0, minutes: 0, seconds: 30 };
     }
 
-    // Correct answer - follow the progression
+    // Match the exact progression from BidirectionalService: 30s → 10m → 1h → 1d → 3d → 7d → mastered
     switch (reviewRound) {
       case 1:
+        // First review after 30 seconds
         return { days: 0, hours: 0, minutes: 0, seconds: 30 };
       case 2:
-        return { days: 1, hours: 0, minutes: 0, seconds: 0 };
+        // Second review after 10 minutes
+        return { days: 0, hours: 0, minutes: 10, seconds: 0 };
       case 3:
-        return { days: 3, hours: 0, minutes: 0, seconds: 0 };
+        // Third review after 1 hour
+        return { days: 0, hours: 1, minutes: 0, seconds: 0 };
       case 4:
-        return { days: 7, hours: 0, minutes: 0, seconds: 0 };
+        // Fourth review after 1 day
+        return { days: 1, hours: 0, minutes: 0, seconds: 0 };
       case 5:
-        return { days: 14, hours: 0, minutes: 0, seconds: 0 };
+        // Fifth review after 3 days
+        return { days: 3, hours: 0, minutes: 0, seconds: 0 };
       case 6:
-        return { days: 30, hours: 0, minutes: 0, seconds: 0 };
+        // Sixth review after 7 days
+        return { days: 7, hours: 0, minutes: 0, seconds: 0 };
       default:
-        // After 6th review, it becomes mastered
+        // After 6th review, mark as mastered
         return { days: 0, hours: 0, minutes: 0, seconds: 0, mastered: true };
     }
   };
@@ -129,7 +136,8 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
       });
 
       // Calculate the actual next interval based on the current review round
-      const nextInterval = calculateNextReviewInterval(isCorrect, isCorrect ? currentReviewRound + 1 : 1);
+      const nextRound = isCorrect ? currentReviewRound + 1 : 1;
+      const nextInterval = calculateNextReviewInterval(isCorrect, nextRound);
       const intervalText = formatInterval(nextInterval);
       
       toast({
@@ -188,7 +196,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
 
   if (!exercise) return null;
 
-  // Calculate intervals for button display based on current review round
+  // Calculate intervals for button display - use the next round for correct, round 1 for incorrect
   const correctInterval = calculateNextReviewInterval(true, currentReviewRound + 1);
   const incorrectInterval = calculateNextReviewInterval(false, 1);
 
