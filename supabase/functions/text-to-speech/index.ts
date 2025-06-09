@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -143,7 +142,7 @@ serve(async (req) => {
 
 // Function to determine voice settings based on language
 function getVoiceSettingsForLanguage(language: string) {
-  const model = 'gpt-4o-mini-tts'; // New model for all languages
+  const model = 'tts-1'; // Corrected model name
   let voice = 'nova';  // Default voice
   let speed = 1.0;     // Default speed
   
