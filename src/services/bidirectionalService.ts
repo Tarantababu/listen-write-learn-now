@@ -30,7 +30,7 @@ export class BidirectionalService {
       .single();
 
     if (error) throw error;
-    return exercise;
+    return exercise as BidirectionalExercise;
   }
 
   // Get user's bidirectional exercises
@@ -47,7 +47,7 @@ export class BidirectionalService {
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as BidirectionalExercise[];
   }
 
   // Update exercise with user translations
@@ -124,7 +124,7 @@ export class BidirectionalService {
       .single();
 
     if (error) throw error;
-    return review;
+    return review as BidirectionalReview;
   }
 
   // Get exercises due for review
@@ -146,6 +146,8 @@ export class BidirectionalService {
     const dueExercises: { exercise: BidirectionalExercise; review_type: 'forward' | 'backward' }[] = [];
 
     for (const exercise of exercises || []) {
+      const typedExercise = exercise as BidirectionalExercise;
+      
       // Check if forward review is due
       const { data: forwardReviews } = await supabase
         .from('bidirectional_reviews')
@@ -157,7 +159,7 @@ export class BidirectionalService {
 
       const lastForwardReview = forwardReviews?.[0];
       if (!lastForwardReview || lastForwardReview.due_date <= today) {
-        dueExercises.push({ exercise, review_type: 'forward' });
+        dueExercises.push({ exercise: typedExercise, review_type: 'forward' });
       }
 
       // Check if backward review is due
@@ -171,7 +173,7 @@ export class BidirectionalService {
 
       const lastBackwardReview = backwardReviews?.[0];
       if (!lastBackwardReview || lastBackwardReview.due_date <= today) {
-        dueExercises.push({ exercise, review_type: 'backward' });
+        dueExercises.push({ exercise: typedExercise, review_type: 'backward' });
       }
     }
 
@@ -215,7 +217,7 @@ export class BidirectionalService {
     const { data, error } = await query.order('mastered_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as BidirectionalMasteredWord[];
   }
 
   // Get exercise by ID
@@ -230,7 +232,7 @@ export class BidirectionalService {
       if (error.code === 'PGRST116') return null; // No rows returned
       throw error;
     }
-    return data;
+    return data as BidirectionalExercise;
   }
 
   // Delete an exercise
