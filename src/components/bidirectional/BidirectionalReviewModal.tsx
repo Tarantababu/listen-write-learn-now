@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,22 @@ interface BidirectionalReviewModalProps {
   onReviewComplete: () => void;
 }
 
+// Standardized interval calculation with clear documentation
+interface ReviewInterval {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  mastered?: boolean;
+}
+
+// Review state management
+interface ReviewState {
+  currentRound: number;
+  hasClickedAgain: boolean;
+  lastActionWasAgain: boolean;
+}
+
 export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> = ({
   exercise,
   reviewType,
@@ -30,14 +45,23 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
   const [userRecall, setUserRecall] = useState('');
   const [showAnswer, setShowAnswer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentReviewRound, setCurrentReviewRound] = useState(1);
-  const [hasClickedAgain, setHasClickedAgain] = useState(false);
+  
+  // Enhanced state management
+  const [reviewState, setReviewState] = useState<ReviewState>({
+    currentRound: 1,
+    hasClickedAgain: false,
+    lastActionWasAgain: false
+  });
 
   React.useEffect(() => {
     if (isOpen && exercise) {
       setUserRecall('');
       setShowAnswer(false);
-      setHasClickedAgain(false);
+      setReviewState({
+        currentRound: 1,
+        hasClickedAgain: false,
+        lastActionWasAgain: false
+      });
       loadCurrentReviewRound();
     }
   }, [isOpen, exercise, reviewType]);
@@ -50,42 +74,55 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
         exercise.id, 
         reviewType
       );
-      setCurrentReviewRound((previousReviews?.length || 0) + 1);
+      const currentRound = (previousReviews?.length || 0) + 1;
+      setReviewState(prev => ({
+        ...prev,
+        currentRound
+      }));
     } catch (error) {
       console.error('Error loading review round:', error);
-      setCurrentReviewRound(1);
+      setReviewState(prev => ({
+        ...prev,
+        currentRound: 1
+      }));
     }
   };
 
-  // Updated interval calculation to match the new schedule: again, 1d, 3d, 7d, mastered
-  const calculateNextReviewInterval = (isCorrect: boolean, reviewRound: number = 1) => {
+  // Standardized interval calculation with clear spaced repetition logic
+  const calculateReviewInterval = (isCorrect: boolean, reviewRound: number): ReviewInterval => {
     if (!isCorrect) {
-      // If incorrect, reset to 30 seconds
+      // Always reset to 30 seconds for incorrect answers
       return { days: 0, hours: 0, minutes: 0, seconds: 30 };
     }
 
-    // New progression: 30s → 1d → 3d → 7d → mastered
+    // Spaced repetition schedule: 30s → 1d → 3d → 7d → mastered
     switch (reviewRound) {
       case 1:
-        // First review after 30 seconds
         return { days: 0, hours: 0, minutes: 0, seconds: 30 };
       case 2:
-        // Second review after 1 day
         return { days: 1, hours: 0, minutes: 0, seconds: 0 };
       case 3:
-        // Third review after 3 days
         return { days: 3, hours: 0, minutes: 0, seconds: 0 };
       case 4:
-        // Fourth review after 7 days
         return { days: 7, hours: 0, minutes: 0, seconds: 0 };
       default:
-        // After 4th review, mark as mastered
         return { days: 0, hours: 0, minutes: 0, seconds: 0, mastered: true };
     }
   };
 
+  // Smart button labeling logic
+  const getGoodButtonInterval = (): ReviewInterval => {
+    // If user clicked "Again" in this session, the next "Good" will be round 1
+    if (reviewState.hasClickedAgain || reviewState.lastActionWasAgain) {
+      return calculateReviewInterval(true, 1);
+    }
+    
+    // Otherwise, show the interval for the current round
+    return calculateReviewInterval(true, reviewState.currentRound);
+  };
+
   // Format interval for display
-  const formatInterval = (interval: { days: number; hours: number; minutes: number; seconds: number; mastered?: boolean }) => {
+  const formatInterval = (interval: ReviewInterval): string => {
     if (interval.mastered) {
       return 'Mastered!';
     }
@@ -121,10 +158,12 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
       return;
     }
 
-    // Track when "Again" is clicked
-    if (!isCorrect) {
-      setHasClickedAgain(true);
-    }
+    // Update state based on user action
+    setReviewState(prev => ({
+      ...prev,
+      hasClickedAgain: prev.hasClickedAgain || !isCorrect,
+      lastActionWasAgain: !isCorrect
+    }));
 
     setIsLoading(true);
     try {
@@ -136,9 +175,9 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
         feedback: isCorrect ? "Correct!" : "Needs more practice"
       });
 
-      // Calculate the actual next interval based on the current review round
-      const nextRound = isCorrect ? currentReviewRound + 1 : 1;
-      const nextInterval = calculateNextReviewInterval(isCorrect, nextRound);
+      // Calculate the actual next interval for feedback
+      const nextRound = isCorrect ? reviewState.currentRound + 1 : 1;
+      const nextInterval = calculateReviewInterval(isCorrect, nextRound);
       const intervalText = formatInterval(nextInterval);
       
       toast({
@@ -201,9 +240,8 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
 
   if (!exercise) return null;
 
-  // Calculate intervals for button display - if "Again" was clicked, use round 1, otherwise use current round
-  const effectiveRoundForGoodButton = hasClickedAgain ? 1 : currentReviewRound;
-  const correctInterval = calculateNextReviewInterval(true, effectiveRoundForGoodButton);
+  // Get the smart interval for the Good button
+  const goodButtonInterval = getGoodButtonInterval();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -217,7 +255,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
             isMobile ? 'text-base' : 'text-lg'
           }`}>
             <ArrowLeft className="h-4 w-4" />
-            {reviewType === 'forward' ? 'Forward' : 'Backward'} Review (Round {currentReviewRound})
+            {reviewType === 'forward' ? 'Forward' : 'Backward'} Review (Round {reviewState.currentRound})
           </DialogTitle>
         </DialogHeader>
 
@@ -307,6 +345,13 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                   </div>
                 </div>
 
+                {/* State indicator for debugging/transparency */}
+                {reviewState.hasClickedAgain && (
+                  <div className="text-xs text-muted-foreground text-center bg-muted p-2 rounded">
+                    Note: Since you clicked "Again", the next "Good" will restart the interval.
+                  </div>
+                )}
+
                 <div className={`text-center space-y-3 ${isMobile ? 'space-y-2' : 'space-y-4'}`}>
                   <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
                     How did you do?
@@ -324,7 +369,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                       size={isMobile ? "default" : "default"}
                     >
                       <XCircle className="h-4 w-4" />
-                      Again
+                      Again (30s)
                     </Button>
                     <Button
                       onClick={() => handleMarkResult(true)}
@@ -335,7 +380,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                       size={isMobile ? "default" : "default"}
                     >
                       <CheckCircle className="h-4 w-4" />
-                      Good ({formatInterval(correctInterval)})
+                      Good ({formatInterval(goodButtonInterval)})
                     </Button>
                   </div>
                 </div>
