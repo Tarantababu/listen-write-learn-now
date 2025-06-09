@@ -25,9 +25,9 @@ const ExercisesPage: React.FC = () => {
     addExercise,
     updateExercise,
     deleteExercise,
-    recordCompletion,
+    markProgress,
     refreshExercises,
-    exercisesLoading,
+    loading,
   } = useExerciseContext();
   const { directories } = useDirectoryContext();
 
@@ -86,12 +86,12 @@ const ExercisesPage: React.FC = () => {
   };
 
   const handleMoveExercise = (exercise) => {
-    setMoveExerciseData({ exercise });
+    setMoveExerciseData(exercise);
   };
 
   const confirmMoveExercise = async (directoryId) => {
     if (moveExerciseData) {
-      await updateExercise(moveExerciseData.exercise.id, { directoryId });
+      await updateExercise(moveExerciseData.id, { directoryId });
       setMoveExerciseData(null);
     }
   };
@@ -102,7 +102,7 @@ const ExercisesPage: React.FC = () => {
 
   const onCompleteExercise = async (accuracy) => {
     if (practiceExercise) {
-      await recordCompletion(practiceExercise.id, accuracy, accuracy >= 95);
+      await markProgress(practiceExercise.id, accuracy);
       setPracticeExercise(null);
     }
   };
@@ -178,11 +178,10 @@ const ExercisesPage: React.FC = () => {
       />
 
       <MoveExerciseModal
+        exercise={moveExerciseData}
         isOpen={!!moveExerciseData}
-        onClose={() => setMoveExerciseData(null)}
-        onMove={confirmMoveExercise}
-        directories={directories}
-        currentDirectoryId={moveExerciseData?.exercise.directory_id}
+        onOpenChange={(open) => !open && setMoveExerciseData(null)}
+        onSuccess={() => setMoveExerciseData(null)}
       />
 
       <DeleteExerciseDialog

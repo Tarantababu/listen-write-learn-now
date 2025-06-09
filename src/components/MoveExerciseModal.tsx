@@ -15,7 +15,7 @@ import { Folder, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MoveExerciseModalProps {
-  exercise: Exercise;
+  exercise: Exercise | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
@@ -41,6 +41,11 @@ const MoveExerciseModal: React.FC<MoveExerciseModalProps> = ({
       setSelectedDirectoryId(null);
     }
   }, [isOpen]);
+  
+  // Early return if no exercise
+  if (!exercise) {
+    return null;
+  }
   
   // Get current directory based on browsePath
   let currentDirectories = getRootDirectories();
@@ -72,7 +77,7 @@ const MoveExerciseModal: React.FC<MoveExerciseModalProps> = ({
   };
   
   const handleMove = async () => {
-    if (isMoving) return; // Prevent double submission
+    if (isMoving || !exercise) return; // Prevent double submission
     
     try {
       setIsMoving(true);
