@@ -3,11 +3,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useBidirectionalReviews } from '@/hooks/use-bidirectional-reviews';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { Plus, Archive, Move, Edit, Trash2, Play, ArrowLeftRight, Mic } from 'lucide-react';
 import { ExerciseFormModal } from '@/components/exercises/ExerciseFormModal';
 import PracticeModal from '@/components/exercises/PracticeModal';
@@ -32,6 +34,7 @@ const ExercisesPage: React.FC = () => {
   } = useExerciseContext();
   const { directories } = useDirectoryContext();
   const { settings } = useUserSettingsContext();
+  const { dueReviewsCount } = useBidirectionalReviews();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -135,9 +138,14 @@ const ExercisesPage: React.FC = () => {
             <Mic className="h-4 w-4" />
             Dictation Method
           </TabsTrigger>
-          <TabsTrigger value="bidirectional" className="flex items-center gap-2">
+          <TabsTrigger value="bidirectional" className="flex items-center gap-2 relative">
             <ArrowLeftRight className="h-4 w-4" />
             Bidirectional Method
+            {dueReviewsCount > 0 && (
+              <Badge variant="destructive" className="ml-2 h-5 min-w-5 text-xs">
+                {dueReviewsCount}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
