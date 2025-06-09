@@ -142,7 +142,7 @@ export function Hero() {
                 <div className="max-w-md w-full relative">
                   {/* Curved Arrow pointing to the image */}
                   <div className="absolute -left-16 top-8 hidden lg:block animate-pulse">
-                    <svg width="80" height="60" viewBox="0 0 80 60" fill="none" className="text-brand-primary">
+                    <svg width="80" height="60" viewBox="0 0 80 60" fill="none" className="text-brand-primary mx-0 my-[29px] py-0 px-0">
                       <path d="M10 50 Q40 10 70 30" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
                       <path d="M65 25 L70 30 L65 35" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
