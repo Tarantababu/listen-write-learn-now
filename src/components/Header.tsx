@@ -15,7 +15,6 @@ import { UserMessages } from '@/components/UserMessages';
 import ThemeToggle from './ThemeToggle';
 import { Logo } from './landing/Logo';
 import { StreakIndicator } from './StreakIndicator';
-import { LanguageSelectionDropdown } from './LanguageSelectionDropdown';
 
 const Header: React.FC = () => {
   const {
@@ -85,11 +84,6 @@ const Header: React.FC = () => {
           {/* Add StreakIndicator for logged-in users */}
           {user && <div className="hidden sm:block">
               <StreakIndicator />
-            </div>}
-          
-          {/* Language Selection Dropdown for logged-in users */}
-          {user && <div className="hidden md:block">
-              <LanguageSelectionDropdown />
             </div>}
           
           {/* Theme Toggle Added Here */}
