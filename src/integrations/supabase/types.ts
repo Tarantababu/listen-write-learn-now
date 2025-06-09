@@ -1281,6 +1281,10 @@ export type Database = {
           status: string
         }[]
       }
+      get_user_bidirectional_exercise_count: {
+        Args: { user_id_param: string; target_language_param: string }
+        Returns: number
+      }
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean

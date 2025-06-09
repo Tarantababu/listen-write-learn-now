@@ -9,6 +9,31 @@ const DEFAULT_SRS_CONFIG: SpacedRepetitionConfig = {
 };
 
 export class BidirectionalService {
+  // Check if user can create more exercises (free users limited to 3 per language)
+  static async canCreateExercise(userId: string, targetLanguage: string, isSubscribed: boolean): Promise<{ canCreate: boolean; currentCount: number; limit: number }> {
+    if (isSubscribed) {
+      return { canCreate: true, currentCount: 0, limit: -1 }; // Unlimited for premium users
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('get_user_bidirectional_exercise_count', {
+        user_id_param: userId,
+        target_language_param: targetLanguage
+      });
+
+      if (error) throw error;
+
+      const currentCount = data || 0;
+      const limit = 3;
+      const canCreate = currentCount < limit;
+
+      return { canCreate, currentCount, limit };
+    } catch (error) {
+      console.error('Error checking exercise count:', error);
+      return { canCreate: false, currentCount: 0, limit: 3 };
+    }
+  }
+
   // Create a new bidirectional exercise
   static async createExercise(data: {
     original_sentence: string;

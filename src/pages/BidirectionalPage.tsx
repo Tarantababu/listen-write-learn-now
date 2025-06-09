@@ -1,13 +1,15 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Brain, BookOpen, Trophy, Lock, ArrowDown, CheckCircle2 } from 'lucide-react';
+import { Plus, Brain, BookOpen, Trophy, Lock, ArrowDown, CheckCircle2, Crown } from 'lucide-react';
 import { FlagIcon } from 'react-flag-kit';
 import { BidirectionalExerciseCard } from '@/components/bidirectional/BidirectionalExerciseCard';
 import { BidirectionalPracticeModal } from '@/components/bidirectional/BidirectionalPracticeModal';
@@ -51,6 +53,7 @@ const SUPPORTED_LANGUAGES = [
 const BidirectionalPage: React.FC = () => {
   const { user } = useAuth();
   const { settings } = useUserSettingsContext();
+  const { subscription } = useSubscription();
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -60,6 +63,9 @@ const BidirectionalPage: React.FC = () => {
   const targetLanguage = settings.selectedLanguage;
   const [supportLanguage, setSupportLanguage] = useState('english');
   const [isCreating, setIsCreating] = useState(false);
+
+  // State for exercise limits
+  const [exerciseLimit, setExerciseLimit] = useState({ canCreate: true, currentCount: 0, limit: 3 });
 
   // State for exercises - now filtered by target language
   const [learningExercises, setLearningExercises] = useState<BidirectionalExercise[]>([]);
@@ -77,8 +83,24 @@ const BidirectionalPage: React.FC = () => {
   useEffect(() => {
     if (user && targetLanguage) {
       loadExercises();
+      checkExerciseLimit();
     }
-  }, [user, targetLanguage]);
+  }, [user, targetLanguage, subscription.isSubscribed]);
+
+  const checkExerciseLimit = async () => {
+    if (!user || !targetLanguage) return;
+
+    try {
+      const limitInfo = await BidirectionalService.canCreateExercise(
+        user.id, 
+        targetLanguage, 
+        subscription.isSubscribed
+      );
+      setExerciseLimit(limitInfo);
+    } catch (error) {
+      console.error('Error checking exercise limit:', error);
+    }
+  };
 
   const loadExercises = async () => {
     if (!user || !targetLanguage) return;
@@ -129,6 +151,16 @@ const BidirectionalPage: React.FC = () => {
       return;
     }
 
+    // Check exercise limit before creating
+    if (!exerciseLimit.canCreate && !subscription.isSubscribed) {
+      toast({
+        title: "Exercise Limit Reached",
+        description: `You've reached the limit of ${exerciseLimit.limit} exercises for ${getLanguageLabel(targetLanguage)}. Upgrade to premium for unlimited exercises.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsCreating(true);
     try {
       await BidirectionalService.createExercise({
@@ -143,7 +175,8 @@ const BidirectionalPage: React.FC = () => {
         description: "Exercise created successfully!"
       });
       
-      loadExercises();
+      // Refresh exercises and check limit again
+      await Promise.all([loadExercises(), checkExerciseLimit()]);
     } catch (error) {
       console.error('Error creating exercise:', error);
       toast({
@@ -172,7 +205,8 @@ const BidirectionalPage: React.FC = () => {
         title: "Success",
         description: "Exercise deleted successfully."
       });
-      loadExercises();
+      // Refresh exercises and check limit again
+      await Promise.all([loadExercises(), checkExerciseLimit()]);
     } catch (error) {
       console.error('Error deleting exercise:', error);
       toast({
@@ -295,12 +329,41 @@ const BidirectionalPage: React.FC = () => {
           <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
             <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
             Create New Exercise for {getLanguageLabel(targetLanguage)}
+            {!subscription.isSubscribed && (
+              <span className="text-sm text-muted-foreground">
+                ({exerciseLimit.currentCount}/{exerciseLimit.limit})
+              </span>
+            )}
           </CardTitle>
           <CardDescription className="text-sm">
             Add a sentence to practice with the bidirectional method
+            {!subscription.isSubscribed && !exerciseLimit.canCreate && (
+              <span className="block mt-1 text-orange-600 dark:text-orange-400 font-medium">
+                Exercise limit reached. Upgrade to premium for unlimited exercises.
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {!subscription.isSubscribed && !exerciseLimit.canCreate && (
+            <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Crown className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                <h4 className="font-medium text-orange-800 dark:text-orange-200">
+                  Exercise Limit Reached
+                </h4>
+              </div>
+              <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
+                You've created {exerciseLimit.limit} exercises for {getLanguageLabel(targetLanguage)}. 
+                Upgrade to premium to create unlimited exercises and unlock all features.
+              </p>
+              <Button variant="outline" className="text-orange-600 border-orange-300 hover:bg-orange-50">
+                <Crown className="h-4 w-4 mr-2" />
+                Upgrade to Premium
+              </Button>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium mb-2">
               Sentence to translate:
@@ -311,6 +374,7 @@ const BidirectionalPage: React.FC = () => {
               placeholder={`Enter a sentence in ${getLanguageLabel(targetLanguage)}...`}
               rows={2}
               className="text-sm sm:text-base"
+              disabled={!subscription.isSubscribed && !exerciseLimit.canCreate}
             />
           </div>
           
@@ -371,6 +435,7 @@ const BidirectionalPage: React.FC = () => {
                   onValueChange={setSupportLanguage}
                   options={SUPPORTED_LANGUAGES}
                   placeholder="Select support language"
+                  disabled={!subscription.isSubscribed && !exerciseLimit.canCreate}
                 />
               </div>
             </div>
@@ -378,7 +443,7 @@ const BidirectionalPage: React.FC = () => {
 
           <Button
             onClick={handleCreateExercise}
-            disabled={isCreating || !originalSentence.trim()}
+            disabled={isCreating || !originalSentence.trim() || (!subscription.isSubscribed && !exerciseLimit.canCreate)}
             className="w-full"
             size={isMobile ? "default" : "lg"}
           >
