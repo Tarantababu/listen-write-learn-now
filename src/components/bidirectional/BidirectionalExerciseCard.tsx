@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Play, BookOpen, Brain, Trash2, Clock } from 'lucide-react';
 import { BidirectionalService } from '@/services/bidirectionalService';
 import type { BidirectionalExercise } from '@/types/bidirectional';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BidirectionalExerciseCardProps {
   exercise: BidirectionalExercise;
@@ -20,6 +21,7 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
   onReview,
   onDelete
 }) => {
+  const isMobile = useIsMobile();
   const [reviewTimes, setReviewTimes] = useState<{
     forward?: string;
     backward?: string;
@@ -85,17 +87,21 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
 
   return (
     <Card className="w-full">
-      <CardHeader className="pb-3">
+      <CardHeader className={isMobile ? 'pb-2' : 'pb-3'}>
         <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg mb-2">
+          <div className="flex-1 min-w-0">
+            <CardTitle className={`mb-2 break-words ${
+              isMobile ? 'text-base leading-snug' : 'text-lg'
+            }`}>
               {exercise.original_sentence}
             </CardTitle>
-            <CardDescription className="text-sm">
+            <CardDescription className={isMobile ? 'text-xs' : 'text-sm'}>
               {getLanguageLabel(exercise.target_language)} → {getLanguageLabel(exercise.support_language)}
             </CardDescription>
           </div>
-          <Badge className={getStatusColor(exercise.status)}>
+          <Badge className={`${getStatusColor(exercise.status)} ${
+            isMobile ? 'text-xs ml-2 flex-shrink-0' : 'ml-2'
+          }`}>
             {exercise.status}
           </Badge>
         </div>
@@ -103,29 +109,35 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
       
       <CardContent className="pt-0">
         {exercise.normal_translation && (
-          <div className="mb-3">
-            <p className="text-sm text-muted-foreground mb-1">Translation:</p>
-            <p className="text-sm">{exercise.normal_translation}</p>
+          <div className={isMobile ? 'mb-2' : 'mb-3'}>
+            <p className={`text-muted-foreground mb-1 ${
+              isMobile ? 'text-xs' : 'text-sm'
+            }`}>Translation:</p>
+            <p className={isMobile ? 'text-xs' : 'text-sm'}>{exercise.normal_translation}</p>
           </div>
         )}
         
         {exercise.user_forward_translation && (
-          <div className="mb-3">
-            <p className="text-sm text-muted-foreground mb-1">Your Translation:</p>
-            <p className="text-sm">{exercise.user_forward_translation}</p>
+          <div className={isMobile ? 'mb-2' : 'mb-3'}>
+            <p className={`text-muted-foreground mb-1 ${
+              isMobile ? 'text-xs' : 'text-sm'
+            }`}>Your Translation:</p>
+            <p className={isMobile ? 'text-xs' : 'text-sm'}>{exercise.user_forward_translation}</p>
           </div>
         )}
 
         {/* Review Times Display */}
         {exercise.status === 'reviewing' && (reviewTimes.forward || reviewTimes.backward) && (
-          <div className="mb-3 p-2 bg-muted rounded-md">
-            <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+          <div className={`p-2 bg-muted rounded-md ${isMobile ? 'mb-2' : 'mb-3'}`}>
+            <p className={`text-muted-foreground mb-1 flex items-center gap-1 ${
+              isMobile ? 'text-xs' : 'text-xs'
+            }`}>
               <Clock className="h-3 w-3" />
               Next Reviews:
             </p>
             <div className="space-y-1">
               {reviewTimes.forward && (
-                <div className="flex justify-between text-xs">
+                <div className={`flex justify-between ${isMobile ? 'text-xs' : 'text-xs'}`}>
                   <span>Forward:</span>
                   <span className={reviewTimes.forward === 'Due now' ? 'text-red-600 font-medium' : ''}>
                     {reviewTimes.forward}
@@ -133,7 +145,7 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
                 </div>
               )}
               {reviewTimes.backward && (
-                <div className="flex justify-between text-xs">
+                <div className={`flex justify-between ${isMobile ? 'text-xs' : 'text-xs'}`}>
                   <span>Backward:</span>
                   <span className={reviewTimes.backward === 'Due now' ? 'text-red-600 font-medium' : ''}>
                     {reviewTimes.backward}
@@ -144,15 +156,17 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2 mt-4">
+        <div className={`flex flex-wrap gap-2 ${isMobile ? 'mt-3' : 'mt-4'}`}>
           {exercise.status === 'learning' && (
             <Button
               size="sm"
               onClick={() => onPractice(exercise)}
-              className="flex items-center gap-1"
+              className={`flex items-center gap-1 ${
+                isMobile ? 'flex-1 min-w-0 justify-center' : ''
+              }`}
             >
               <BookOpen className="h-3 w-3" />
-              Practice
+              <span className={isMobile ? 'text-xs' : ''}>Practice</span>
             </Button>
           )}
           
@@ -160,10 +174,12 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
             <Button
               size="sm"
               onClick={() => onReview(exercise)}
-              className="flex items-center gap-1"
+              className={`flex items-center gap-1 ${
+                isMobile ? 'flex-1 min-w-0 justify-center' : ''
+              }`}
             >
               <Brain className="h-3 w-3" />
-              Review
+              <span className={isMobile ? 'text-xs' : ''}>Review</span>
             </Button>
           )}
 
@@ -175,10 +191,12 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
                 const audio = new Audio(exercise.original_audio_url);
                 audio.play();
               }}
-              className="flex items-center gap-1"
+              className={`flex items-center gap-1 ${
+                isMobile ? 'flex-1 min-w-0 justify-center' : ''
+              }`}
             >
               <Play className="h-3 w-3" />
-              Play
+              <span className={isMobile ? 'text-xs' : ''}>Play</span>
             </Button>
           )}
 
@@ -187,10 +205,12 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
               size="sm"
               variant="outline"
               onClick={() => onDelete(exercise.id)}
-              className="flex items-center gap-1 text-red-600 hover:text-red-700"
+              className={`flex items-center gap-1 text-red-600 hover:text-red-700 ${
+                isMobile ? 'flex-1 min-w-0 justify-center' : ''
+              }`}
             >
               <Trash2 className="h-3 w-3" />
-              Delete
+              <span className={isMobile ? 'text-xs' : ''}>Delete</span>
             </Button>
           )}
         </div>

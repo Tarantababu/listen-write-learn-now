@@ -8,6 +8,7 @@ import { Play, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { BidirectionalService } from '@/services/bidirectionalService';
 import type { BidirectionalExercise } from '@/types/bidirectional';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BidirectionalReviewModalProps {
   exercise: BidirectionalExercise | null;
@@ -25,6 +26,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
   onReviewComplete
 }) => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [userRecall, setUserRecall] = useState('');
   const [showAnswer, setShowAnswer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -187,29 +189,45 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className={`${
+        isMobile 
+          ? 'max-w-[95vw] max-h-[90vh] w-full h-full m-2' 
+          : 'max-w-3xl max-h-[80vh]'
+      } overflow-y-auto`}>
+        <DialogHeader className={isMobile ? 'pb-2' : ''}>
+          <DialogTitle className={`flex items-center gap-2 ${
+            isMobile ? 'text-base' : 'text-lg'
+          }`}>
             <ArrowLeft className="h-4 w-4" />
             {reviewType === 'forward' ? 'Forward' : 'Backward'} Review (Round {currentReviewRound})
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className={`space-y-4 ${isMobile ? 'space-y-3' : 'space-y-6'}`}>
           {/* Prompt */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">{getPromptText()}</CardTitle>
+            <CardHeader className={isMobile ? 'pb-2' : ''}>
+              <CardTitle className={isMobile ? 'text-base' : 'text-lg'}>
+                {getPromptText()}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4">
-                <p className="text-xl font-medium flex-1">{getSourceText()}</p>
+              <div className={`flex items-center gap-2 sm:gap-4 ${
+                isMobile ? 'flex-col items-start' : ''
+              }`}>
+                <p className={`font-medium flex-1 ${
+                  isMobile ? 'text-lg w-full mb-2' : 'text-xl'
+                }`}>
+                  {getSourceText()}
+                </p>
                 {reviewType === 'forward' && exercise.original_audio_url && (
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handlePlayAudio}
-                    className="flex items-center gap-1"
+                    className={`flex items-center gap-1 ${
+                      isMobile ? 'w-full justify-center' : ''
+                    }`}
                   >
                     <Play className="h-3 w-3" />
                     Play
@@ -221,16 +239,19 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
 
           {/* User Input */}
           <Card>
-            <CardHeader>
-              <CardTitle>Your Translation</CardTitle>
+            <CardHeader className={isMobile ? 'pb-2' : ''}>
+              <CardTitle className={isMobile ? 'text-base' : 'text-lg'}>
+                Your Translation
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className={`space-y-3 ${isMobile ? 'space-y-2' : 'space-y-4'}`}>
               <Textarea
                 value={userRecall}
                 onChange={(e) => setUserRecall(e.target.value)}
                 placeholder="Enter your translation..."
-                rows={3}
+                rows={isMobile ? 2 : 3}
                 disabled={showAnswer}
+                className={isMobile ? 'text-base' : ''}
               />
               
               {!showAnswer && (
@@ -238,6 +259,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                   onClick={handleShowAnswer}
                   disabled={!userRecall.trim()}
                   className="w-full"
+                  size={isMobile ? "default" : "default"}
                 >
                   Show Answer
                 </Button>
@@ -248,29 +270,40 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
           {/* Answer Comparison */}
           {showAnswer && (
             <Card>
-              <CardHeader>
-                <CardTitle>Compare Your Answer</CardTitle>
+              <CardHeader className={isMobile ? 'pb-2' : ''}>
+                <CardTitle className={isMobile ? 'text-base' : 'text-lg'}>
+                  Compare Your Answer
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-md">
-                    <p className="text-sm text-muted-foreground mb-2">Your Translation:</p>
-                    <p className="font-medium">{userRecall}</p>
+              <CardContent className={`space-y-3 ${isMobile ? 'space-y-2' : 'space-y-4'}`}>
+                <div className={`grid gap-3 ${
+                  isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 gap-4'
+                }`}>
+                  <div className={`p-3 border rounded-md ${isMobile ? 'p-2' : 'p-4'}`}>
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-2">Your Translation:</p>
+                    <p className={`font-medium ${isMobile ? 'text-sm' : ''}`}>{userRecall}</p>
                   </div>
-                  <div className="p-4 border rounded-md bg-muted">
-                    <p className="text-sm text-muted-foreground mb-2">Expected Answer:</p>
-                    <p className="font-medium">{getExpectedAnswer()}</p>
+                  <div className={`p-3 border rounded-md bg-muted ${isMobile ? 'p-2' : 'p-4'}`}>
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-2">Expected Answer:</p>
+                    <p className={`font-medium ${isMobile ? 'text-sm' : ''}`}>{getExpectedAnswer()}</p>
                   </div>
                 </div>
 
-                <div className="text-center space-y-4">
-                  <p className="text-muted-foreground">How did you do?</p>
-                  <div className="flex gap-4 justify-center">
+                <div className={`text-center space-y-3 ${isMobile ? 'space-y-2' : 'space-y-4'}`}>
+                  <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
+                    How did you do?
+                  </p>
+                  <div className={`flex gap-3 justify-center ${
+                    isMobile ? 'flex-col gap-2' : 'gap-4'
+                  }`}>
                     <Button
                       onClick={() => handleMarkResult(false)}
                       disabled={isLoading}
                       variant="destructive"
-                      className="flex items-center gap-2"
+                      className={`flex items-center gap-2 ${
+                        isMobile ? 'w-full justify-center' : ''
+                      }`}
+                      size={isMobile ? "default" : "default"}
                     >
                       <XCircle className="h-4 w-4" />
                       Again ({formatInterval(incorrectInterval)})
@@ -278,7 +311,10 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                     <Button
                       onClick={() => handleMarkResult(true)}
                       disabled={isLoading}
-                      className="flex items-center gap-2"
+                      className={`flex items-center gap-2 ${
+                        isMobile ? 'w-full justify-center' : ''
+                      }`}
+                      size={isMobile ? "default" : "default"}
                     >
                       <CheckCircle className="h-4 w-4" />
                       Good ({formatInterval(correctInterval)})
