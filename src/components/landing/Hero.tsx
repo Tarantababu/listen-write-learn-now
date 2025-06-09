@@ -129,7 +129,7 @@ export function Hero() {
                   {/* Large Curved Arrow connecting button to GIF */}
                   <div className="absolute top-0 left-full ml-8 hidden lg:block animate-pulse z-10">
                     
-                    <div className="text-brand-primary font-bold text-lg mt-2 text-center py-px my-[23px] mx-[240px] px-[176px] rounded-3xl">Let's Try</div>
+                    
                   </div>
                 </div>
                 
