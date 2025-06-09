@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -37,13 +36,16 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
   // Helper function to create Exercise-compatible objects for VocabularyHighlighter
   const createExerciseForVocabulary = (text: string, language: string): Exercise => ({
     id: exercise?.id || '',
+    title: `Bidirectional Exercise - ${language}`,
     text: text,
     language: language as Language,
-    user_id: '',
-    created_at: '',
-    updated_at: '',
-    level: 'A1',
-    status: 'learning'
+    tags: [],
+    audioUrl: undefined,
+    directoryId: null,
+    createdAt: new Date(),
+    completionCount: 0,
+    isCompleted: false,
+    archived: false
   });
 
   React.useEffect(() => {
