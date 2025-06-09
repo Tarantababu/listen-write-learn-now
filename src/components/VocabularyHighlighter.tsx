@@ -41,7 +41,11 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
   const generateVocabularyInfo = async (word: string, language: Language) => {
     setIsGeneratingInfo(true);
     setIsGeneratingAudio(false);
+    setGeneratedInfo(null);
+    
     try {
+      console.log('Generating vocabulary info for:', word, 'in language:', language);
+      
       toast("Generating Info", {
         description: "Generating vocabulary information..."
       });
@@ -74,10 +78,12 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
       setIsGeneratingInfo(false);
 
       // After successfully getting definition and example, generate audio
+      console.log('Starting audio generation for example sentence:', exampleSentence);
+      setIsGeneratingAudio(true);
+      
       toast("Generating Audio", {
         description: "Generating audio for example sentence..."
       });
-      setIsGeneratingAudio(true);
       
       const audioUrl = await generateExampleAudio(exampleSentence, language);
       
@@ -102,7 +108,7 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
   // Generate audio for example sentence
   const generateExampleAudio = async (text: string, language: Language): Promise<string | undefined> => {
     try {
-      console.log('Generating audio for text:', text, 'in language:', language);
+      console.log('Calling text-to-speech function for:', text.substring(0, 50) + '...');
       
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { text, language }
@@ -113,52 +119,59 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
         throw error;
       }
 
-      console.log('Text-to-speech response:', data);
+      console.log('Text-to-speech response received:', !!data);
 
-      if (!data || !data.audioContent) {
-        console.warn('No audio content received from text-to-speech function');
+      if (!data) {
+        console.warn('No data received from text-to-speech function');
         return undefined;
       }
 
-      // If the function returned an audioUrl directly from storage, use it
+      // Check if we got a direct audioUrl from storage
       if (data.audioUrl) {
-        console.log('Using direct audioUrl from storage:', data.audioUrl);
+        console.log('Using audioUrl from storage:', data.audioUrl);
         toast("Success", {
-          description: "Audio generated successfully"
+          description: "Audio generated and linked successfully!"
         });
         return data.audioUrl;
       }
 
-      // Otherwise, upload the base64 audio content to storage
-      const audioContent = data.audioContent;
-      console.log('Converting base64 audio content to blob...');
-      
-      const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
-      
-      const fileName = `vocab_${Date.now()}.mp3`;
-      console.log('Uploading audio file:', fileName);
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('audio')
-        .upload(fileName, blob, {
-          contentType: 'audio/mp3'
-        });
+      // Fallback: if no audioUrl but we have audioContent, handle it locally
+      if (data.audioContent) {
+        console.log('No audioUrl received, using audioContent fallback');
+        
+        // Create blob from base64 content
+        const blob = await fetch(`data:audio/mp3;base64,${data.audioContent}`).then(res => res.blob());
+        
+        // Upload to storage manually as fallback
+        const fileName = `vocabulary/fallback_${Date.now()}.mp3`;
+        console.log('Uploading fallback audio file:', fileName);
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('audio')
+          .upload(fileName, blob, {
+            contentType: 'audio/mp3'
+          });
 
-      if (uploadError) {
-        console.error('Error uploading audio:', uploadError);
-        throw uploadError;
+        if (uploadError) {
+          console.error('Fallback upload error:', uploadError);
+          throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('audio')
+          .getPublicUrl(fileName);
+
+        console.log('Fallback audio uploaded successfully:', publicUrl);
+        
+        toast("Success", {
+          description: "Audio generated and linked successfully!"
+        });
+        return publicUrl;
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('audio')
-        .getPublicUrl(fileName);
-
-      console.log('Generated audio URL:', publicUrl);
+      console.warn('No audio content or URL received');
+      return undefined;
       
-      toast("Success", {
-        description: "Audio generated successfully"
-      });
-      return publicUrl;
     } catch (error) {
       console.error('Error generating audio:', error);
       toast("Warning", {
@@ -191,6 +204,8 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
     
     setIsSaving(true);
     try {
+      console.log('Saving vocabulary item with audio URL:', generatedInfo.audioUrl);
+      
       await addVocabularyItem({
         word: selectedWord,
         definition: generatedInfo.definition,

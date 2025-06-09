@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, language, exerciseId, audioType } = await req.json();
+    const { text, language } = await req.json();
 
     if (!text || !language) {
       throw new Error('Text and language are required');
@@ -65,46 +65,46 @@ serve(async (req) => {
       finalAudio = concatUint8Arrays(audioBuffers);
     }
 
-    // Store audio file in Supabase storage if exerciseId and audioType are provided
+    // Always store audio file in Supabase storage
     let audioUrl = null;
-    if (exerciseId && audioType) {
-      try {
-        // Initialize Supabase client with service role key to bypass RLS
-        const supabase = createClient(
-          Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        );
+    try {
+      // Initialize Supabase client with service role key to bypass RLS
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
 
-        // Generate filename
-        const filename = `${exerciseId}/${audioType}_${Date.now()}.mp3`;
-        
-        // Upload audio file directly without checking bucket existence
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('audio')
-          .upload(filename, finalAudio, {
-            contentType: 'audio/mpeg',
-            upsert: true
-          });
+      // Generate filename with timestamp for uniqueness
+      const filename = `vocabulary/vocab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp3`;
+      
+      console.log(`Uploading audio file: ${filename}`);
+      
+      // Upload audio file to the existing audio bucket
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('audio')
+        .upload(filename, finalAudio, {
+          contentType: 'audio/mpeg',
+          upsert: false
+        });
 
-        if (uploadError) {
-          console.error('Storage upload error:', uploadError);
-          console.log('Proceeding without storage, returning base64 audio only');
-        } else {
-          // Get public URL
-          const { data: urlData } = supabase.storage
-            .from('audio')
-            .getPublicUrl(filename);
-          
-          audioUrl = urlData.publicUrl;
-          console.log(`Audio stored successfully: ${audioUrl}`);
-        }
-      } catch (storageError) {
-        console.error('Storage operation failed:', storageError);
-        console.log('Proceeding without storage, returning base64 audio only');
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw uploadError;
       }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('audio')
+        .getPublicUrl(filename);
+      
+      audioUrl = urlData.publicUrl;
+      console.log(`Audio stored successfully: ${audioUrl}`);
+    } catch (storageError) {
+      console.error('Storage operation failed:', storageError);
+      // Still return base64 audio as fallback
     }
     
-    // Convert to base64 string safely for backward compatibility
+    // Convert to base64 string for backward compatibility
     let binaryString = '';
     finalAudio.forEach(byte => {
       binaryString += String.fromCharCode(byte);
