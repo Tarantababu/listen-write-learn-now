@@ -25,15 +25,13 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
   const { toast } = useToast();
   const [userTranslation, setUserTranslation] = useState('');
   const [userBackTranslation, setUserBackTranslation] = useState('');
-  const [reflectionNotes, setReflectionNotes] = useState('');
-  const [currentStep, setCurrentStep] = useState<'forward' | 'backward' | 'reflection' | 'complete'>('forward');
+  const [currentStep, setCurrentStep] = useState<'forward' | 'backward' | 'complete'>('forward');
   const [isLoading, setIsLoading] = useState(false);
 
   React.useEffect(() => {
     if (exercise && isOpen) {
       setUserTranslation(exercise.user_forward_translation || '');
       setUserBackTranslation(exercise.user_back_translation || '');
-      setReflectionNotes(exercise.reflection_notes || '');
       setCurrentStep('forward');
     }
   }, [exercise, isOpen]);
@@ -51,9 +49,6 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
         setCurrentStep('backward');
         break;
       case 'backward':
-        setCurrentStep('reflection');
-        break;
-      case 'reflection':
         setCurrentStep('complete');
         break;
     }
@@ -66,8 +61,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
     try {
       await BidirectionalService.updateExerciseTranslations(exercise.id, {
         user_forward_translation: userTranslation,
-        user_back_translation: userBackTranslation,
-        reflection_notes: reflectionNotes
+        user_back_translation: userBackTranslation
       });
 
       if (currentStep === 'complete') {
@@ -180,29 +174,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                   placeholder="Translate back to the original language..."
                   rows={3}
                 />
-                <Button 
-                  onClick={handleSaveAndContinue}
-                  disabled={!userBackTranslation.trim() || isLoading}
-                  className="w-full flex items-center gap-2"
-                >
-                  <ArrowRight className="h-4 w-4" />
-                  Continue to Reflection
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Reflection Step */}
-          {currentStep === 'reflection' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Step 3: Reflection</CardTitle>
-                <p className="text-muted-foreground">
-                  Compare your translations and note any differences or insights
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                   <div className="p-3 bg-muted rounded-md">
                     <p className="text-sm text-muted-foreground mb-1">Original:</p>
                     <p className="font-medium">{exercise.original_sentence}</p>
@@ -212,15 +184,9 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                     <p className="font-medium">{userBackTranslation}</p>
                   </div>
                 </div>
-                <Textarea
-                  value={reflectionNotes}
-                  onChange={(e) => setReflectionNotes(e.target.value)}
-                  placeholder="What differences do you notice? What did you learn?"
-                  rows={4}
-                />
                 <Button 
                   onClick={handleSaveAndContinue}
-                  disabled={isLoading}
+                  disabled={!userBackTranslation.trim() || isLoading}
                   className="w-full flex items-center gap-2"
                 >
                   <CheckCircle className="h-4 w-4" />

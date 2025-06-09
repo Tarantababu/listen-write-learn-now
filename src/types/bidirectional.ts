@@ -13,7 +13,6 @@ export interface BidirectionalExercise {
   original_audio_url?: string;
   normal_translation_audio_url?: string;
   literal_translation_audio_url?: string;
-  reflection_notes?: string;
   created_at: string;
   updated_at: string;
 }
@@ -28,6 +27,7 @@ export interface BidirectionalReview {
   feedback?: string;
   due_date: string;
   completed_at?: string;
+  review_round?: number;
   created_at: string;
 }
 

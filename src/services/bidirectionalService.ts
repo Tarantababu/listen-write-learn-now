@@ -150,7 +150,6 @@ export class BidirectionalService {
     data: {
       user_forward_translation?: string;
       user_back_translation?: string;
-      reflection_notes?: string;
     }
   ): Promise<void> {
     const { error } = await supabase
@@ -197,7 +196,7 @@ export class BidirectionalService {
   // Calculate next review date based on spaced repetition (1 → 3 → 7 days)
   static calculateNextReviewDate(
     isCorrect: boolean,
-    reviewNumber: number = 1
+    reviewRound: number = 1
   ): Date {
     const nextDate = new Date();
     
@@ -208,7 +207,7 @@ export class BidirectionalService {
     }
 
     // Spaced repetition: 1 → 3 → 7 days
-    switch (reviewNumber) {
+    switch (reviewRound) {
       case 1:
         nextDate.setDate(nextDate.getDate() + 1);
         break;
@@ -246,8 +245,8 @@ export class BidirectionalService {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    const reviewNumber = (previousReviews?.length || 0) + 1;
-    const nextReviewDate = this.calculateNextReviewDate(data.is_correct, reviewNumber);
+    const reviewRound = (previousReviews?.length || 0) + 1;
+    const nextReviewDate = this.calculateNextReviewDate(data.is_correct, reviewRound);
 
     const { data: review, error } = await supabase
       .from('bidirectional_reviews')
@@ -255,7 +254,8 @@ export class BidirectionalService {
         ...data,
         user_id: user.id,
         due_date: nextReviewDate.toISOString().split('T')[0],
-        completed_at: new Date().toISOString()
+        completed_at: new Date().toISOString(),
+        review_round: reviewRound
       })
       .select()
       .single();
@@ -268,8 +268,8 @@ export class BidirectionalService {
       // Record language activity for streak system
       await this.recordLanguageActivity(user.id, exercise.target_language);
 
-      // If this is day 7 review and correct, add mastered words
-      if (data.is_correct && reviewNumber >= 3) {
+      // If this is round 3 review and correct, add mastered words
+      if (data.is_correct && reviewRound >= 3) {
         await this.extractAndMarkMasteredWords(data.exercise_id, exercise);
         
         // Mark exercise as mastered if both directions are complete
@@ -284,59 +284,19 @@ export class BidirectionalService {
     exerciseId: string,
     exercise: BidirectionalExercise
   ): Promise<void> {
-    const words = exercise.original_sentence
-      .toLowerCase()
-      .replace(/[^\w\s]/g, '')
-      .split(/\s+/)
-      .filter(word => word.length > 2); // Only words longer than 2 characters
-
-    if (words.length === 0) return;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // Add to bidirectional mastered words using upsert
-    const masteredWords = words.map(word => ({
-      user_id: user.id,
-      exercise_id: exerciseId,
-      word,
-      language: exercise.target_language
-    }));
-
     try {
-      await supabase
-        .from('bidirectional_mastered_words')
-        .upsert(masteredWords, { 
-          onConflict: 'user_id,word,language',
-          ignoreDuplicates: true 
-        });
-    } catch (error) {
-      console.error('Error upserting bidirectional mastered words:', error);
-    }
+      await supabase.rpc('extract_bidirectional_mastered_words', {
+        exercise_id_param: exerciseId
+      });
 
-    // Also add to main vocabulary system using upsert
-    for (const word of words) {
-      try {
-        await supabase
-          .from('vocabulary')
-          .upsert({
-            user_id: user.id,
-            exercise_id: exerciseId,
-            word,
-            language: exercise.target_language,
-            definition: `From bidirectional exercise: ${exercise.original_sentence}`,
-            example_sentence: exercise.original_sentence
-          }, { 
-            onConflict: 'user_id,word,language',
-            ignoreDuplicates: true 
-          });
-      } catch (error) {
-        console.error('Error upserting vocabulary word:', error);
+      // Record mastered words for streak system
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await this.recordLanguageActivity(user.id, exercise.target_language);
       }
+    } catch (error) {
+      console.error('Error extracting mastered words:', error);
     }
-
-    // Record mastered words for streak system
-    await this.recordLanguageActivity(user.id, exercise.target_language);
   }
 
   static async checkAndMarkAsMastered(exerciseId: string): Promise<void> {

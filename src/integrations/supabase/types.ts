@@ -91,7 +91,6 @@ export type Database = {
           normal_translation_audio_url: string | null
           original_audio_url: string | null
           original_sentence: string
-          reflection_notes: string | null
           status: string
           support_language: string
           target_language: string
@@ -109,7 +108,6 @@ export type Database = {
           normal_translation_audio_url?: string | null
           original_audio_url?: string | null
           original_sentence: string
-          reflection_notes?: string | null
           status?: string
           support_language: string
           target_language: string
@@ -127,7 +125,6 @@ export type Database = {
           normal_translation_audio_url?: string | null
           original_audio_url?: string | null
           original_sentence?: string
-          reflection_notes?: string | null
           status?: string
           support_language?: string
           target_language?: string
@@ -182,6 +179,7 @@ export type Database = {
           feedback: string | null
           id: string
           is_correct: boolean
+          review_round: number | null
           review_type: string
           user_id: string
           user_recall_attempt: string
@@ -194,6 +192,7 @@ export type Database = {
           feedback?: string | null
           id?: string
           is_correct: boolean
+          review_round?: number | null
           review_type: string
           user_id: string
           user_recall_attempt: string
@@ -206,6 +205,7 @@ export type Database = {
           feedback?: string | null
           id?: string
           is_correct?: boolean
+          review_round?: number | null
           review_type?: string
           user_id?: string
           user_recall_attempt?: string
@@ -1247,6 +1247,10 @@ export type Database = {
       enroll_in_curriculum: {
         Args: { user_id_param: string; curriculum_id_param: string }
         Returns: string
+      }
+      extract_bidirectional_mastered_words: {
+        Args: { exercise_id_param: string }
+        Returns: undefined
       }
       extract_mastered_words: {
         Args: { exercise_id_param: string }
