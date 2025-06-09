@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Flame, Clock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,16 +12,11 @@ import { useGTM } from '@/hooks/use-gtm';
 
 // Storage key to track shown streak alerts by streak ID
 const STREAK_ALERT_SHOWN_KEY = 'lwl_streak_alert_shown';
+
 export function StreakIndicator() {
-  const {
-    user
-  } = useAuth();
-  const {
-    settings
-  } = useUserSettingsContext();
-  const {
-    trackFeatureUsed
-  } = useGTM();
+  const { user } = useAuth();
+  const { settings } = useUserSettingsContext();
+  const { trackFeatureUsed } = useGTM();
   const [streakData, setStreakData] = useState<StreakData>({
     currentStreak: 0,
     longestStreak: 0,
@@ -30,6 +26,7 @@ export function StreakIndicator() {
   });
   const [showCalendar, setShowCalendar] = useState(false);
   const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     if (user) {
       loadStreakData();
@@ -73,6 +70,7 @@ export function StreakIndicator() {
       }
     }
   }, [streakData.isAtRisk, streakData.riskHoursRemaining, streakData.currentStreak, user]);
+
   const loadStreakData = async () => {
     if (!user) return;
     setLoading(true);
@@ -85,6 +83,7 @@ export function StreakIndicator() {
       setLoading(false);
     }
   };
+
   const getStreakLevel = (streak: number) => {
     if (streak >= 30) return 'legendary';
     if (streak >= 14) return 'fire';
@@ -92,6 +91,7 @@ export function StreakIndicator() {
     if (streak >= 3) return 'warm';
     return 'cold';
   };
+
   const getStreakVisuals = (level: string, active: boolean, isAtRisk: boolean) => {
     if (!active) {
       return {
@@ -108,6 +108,7 @@ export function StreakIndicator() {
     const riskIndicator = isAtRisk ? <div className="hidden ">
         <AlertTriangle className="h-3 w-3 text-orange-500 animate-pulse" />
       </div> : null;
+
     switch (level) {
       case 'legendary':
         return {
@@ -156,6 +157,7 @@ export function StreakIndicator() {
         };
     }
   };
+
   const handleCalendarOpen = () => {
     setShowCalendar(true);
     trackFeatureUsed({
@@ -167,14 +169,23 @@ export function StreakIndicator() {
       }
     });
   };
+
+  // Handle loading and no user states without early returns
   if (!user || loading) {
-    return <Button variant="ghost" size="sm" disabled className="flex items-center gap-2 opacity-50 bg-gray-50 border border-gray-200">
-        <Flame className="h-4 w-4 text-gray-400" />
-        <span className="font-medium text-gray-400">-</span>
-      </Button>;
+    return (
+      <>
+        <Button variant="ghost" size="sm" disabled className="flex items-center gap-2 opacity-50 bg-gray-50 border border-gray-200">
+          <Flame className="h-4 w-4 text-gray-400" />
+          <span className="font-medium text-gray-400">-</span>
+        </Button>
+        <StreakCalendar isOpen={showCalendar} onOpenChange={setShowCalendar} />
+      </>
+    );
   }
+
   const streakLevel = getStreakLevel(streakData.currentStreak);
   const visuals = getStreakVisuals(streakLevel, streakData.streakActive, streakData.isAtRisk);
+  
   const getTooltipText = () => {
     let tooltip = `Current streak: ${streakData.currentStreak} days`;
     if (streakData.longestStreak > 0) {
@@ -186,16 +197,31 @@ export function StreakIndicator() {
     }
     return tooltip;
   };
-  return <>
-      <Button variant="ghost" size="sm" onClick={handleCalendarOpen} className={cn("flex items-center gap-2 transition-all duration-300 hover:scale-105 border-2 font-medium relative overflow-hidden", visuals.buttonStyle)} title={getTooltipText()} data-gtm-feature="streak_indicator" data-gtm-streak-level={getStreakLevel(streakData.currentStreak)} data-gtm-current-streak={streakData.currentStreak}>
+
+  return (
+    <>
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        onClick={handleCalendarOpen} 
+        className={cn("flex items-center gap-2 transition-all duration-300 hover:scale-105 border-2 font-medium relative overflow-hidden", visuals.buttonStyle)} 
+        title={getTooltipText()} 
+        data-gtm-feature="streak_indicator" 
+        data-gtm-streak-level={getStreakLevel(streakData.currentStreak)} 
+        data-gtm-current-streak={streakData.currentStreak}
+      >
         {/* Background accent for legendary streak */}
-        {streakLevel === 'legendary' && streakData.streakActive && !streakData.isAtRisk && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-200/20 to-transparent -skew-x-12 transform translate-x-full opacity-75" />}
+        {streakLevel === 'legendary' && streakData.streakActive && !streakData.isAtRisk && (
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-200/20 to-transparent -skew-x-12 transform translate-x-full opacity-75" />
+        )}
         
         <div className="relative flex items-center gap-2">
           <div className="relative">
             <Flame className={cn("h-5 w-5 transition-all duration-300", visuals.flameColor, visuals.glowEffect)} />
             {visuals.riskIndicator}
-            {streakLevel === 'legendary' && streakData.streakActive && !streakData.isAtRisk && <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full shadow-lg shadow-purple-300/50" />}
+            {streakLevel === 'legendary' && streakData.streakActive && !streakData.isAtRisk && (
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full shadow-lg shadow-purple-300/50" />
+            )}
           </div>
           
           <span className={cn("text-sm transition-all duration-300", visuals.textColor)}>
@@ -204,13 +230,16 @@ export function StreakIndicator() {
 
           {streakData.streakActive && visuals.emoji}
 
-          {streakData.isAtRisk && streakData.riskHoursRemaining && <div className="flex items-center gap-1 text-xs text-orange-600">
+          {streakData.isAtRisk && streakData.riskHoursRemaining && (
+            <div className="flex items-center gap-1 text-xs text-orange-600">
               <Clock className="h-3 w-3" />
               <span>{streakData.riskHoursRemaining}h</span>
-            </div>}
+            </div>
+          )}
         </div>
       </Button>
       
       <StreakCalendar isOpen={showCalendar} onOpenChange={setShowCalendar} />
-    </>;
+    </>
+  );
 }
