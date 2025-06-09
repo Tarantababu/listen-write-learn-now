@@ -18,6 +18,42 @@ interface BidirectionalCreateModalProps {
   onExerciseCreated: () => void;
 }
 
+// Define supported languages with their display names
+const SUPPORTED_LANGUAGES = [
+  { value: 'English', label: 'English' },
+  { value: 'Spanish', label: 'Spanish' },
+  { value: 'French', label: 'French' },
+  { value: 'German', label: 'German' },
+  { value: 'Italian', label: 'Italian' },
+  { value: 'Portuguese', label: 'Portuguese' },
+  { value: 'Dutch', label: 'Dutch' },
+  { value: 'Russian', label: 'Russian' },
+  { value: 'Chinese', label: 'Chinese' },
+  { value: 'Japanese', label: 'Japanese' },
+  { value: 'Korean', label: 'Korean' },
+  { value: 'Arabic', label: 'Arabic' },
+  { value: 'Turkish', label: 'Turkish' },
+  { value: 'Swedish', label: 'Swedish' },
+  { value: 'Norwegian', label: 'Norwegian' },
+  { value: 'Danish', label: 'Danish' },
+  { value: 'Finnish', label: 'Finnish' },
+  { value: 'Greek', label: 'Greek' },
+  { value: 'Polish', label: 'Polish' },
+  { value: 'Czech', label: 'Czech' },
+  { value: 'Hungarian', label: 'Hungarian' },
+  { value: 'Romanian', label: 'Romanian' },
+  { value: 'Bulgarian', label: 'Bulgarian' },
+  { value: 'Croatian', label: 'Croatian' },
+  { value: 'Serbian', label: 'Serbian' },
+  { value: 'Slovak', label: 'Slovak' },
+  { value: 'Slovenian', label: 'Slovenian' },
+  { value: 'Estonian', label: 'Estonian' },
+  { value: 'Latvian', label: 'Latvian' },
+  { value: 'Lithuanian', label: 'Lithuanian' },
+  { value: 'Ukrainian', label: 'Ukrainian' },
+  { value: 'Hindi', label: 'Hindi' }
+];
+
 export const BidirectionalCreateModal: React.FC<BidirectionalCreateModalProps> = ({
   isOpen,
   onClose,
@@ -98,6 +134,7 @@ export const BidirectionalCreateModal: React.FC<BidirectionalCreateModalProps> =
             <LanguageSelectWithFlag
               value={formData.target_language}
               onValueChange={(value) => setFormData(prev => ({ ...prev, target_language: value }))}
+              options={SUPPORTED_LANGUAGES}
             />
           </div>
 
@@ -106,6 +143,7 @@ export const BidirectionalCreateModal: React.FC<BidirectionalCreateModalProps> =
             <LanguageSelectWithFlag
               value={formData.support_language}
               onValueChange={(value) => setFormData(prev => ({ ...prev, support_language: value }))}
+              options={SUPPORTED_LANGUAGES}
             />
           </div>
 
