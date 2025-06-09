@@ -206,12 +206,15 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
     try {
       console.log('Saving vocabulary item with audio URL:', generatedInfo.audioUrl);
       
+      // Check if this is a bidirectional exercise (prefixed ID) and don't pass exerciseId
+      const isBidirectionalExercise = exercise.id.startsWith('bidirectional-');
+      
       await addVocabularyItem({
         word: selectedWord,
         definition: generatedInfo.definition,
         exampleSentence: generatedInfo.exampleSentence,
         audioUrl: generatedInfo.audioUrl,
-        exerciseId: exercise.id,
+        exerciseId: isBidirectionalExercise ? '' : exercise.id, // Empty string for bidirectional exercises
         language: exercise.language
       });
       

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -199,8 +198,9 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
   if (!exercise) return null;
 
   // Create a mock exercise object for VocabularyHighlighter compatibility
+  // Note: We don't pass the exerciseId since bidirectional exercises are in a different table
   const mockExercise = {
-    id: exercise.id,
+    id: `bidirectional-${exercise.id}`, // Use a prefixed ID to distinguish from regular exercises
     text: exercise.original_sentence,
     language: exercise.target_language as Language,
     title: 'Bidirectional Exercise',

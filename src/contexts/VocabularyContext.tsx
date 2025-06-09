@@ -120,6 +120,9 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       // Create vocabulary item in Supabase
+      // For bidirectional exercises, don't link to exercise_id (set to null)
+      const exerciseIdToSave = item.exerciseId && item.exerciseId.trim() !== '' ? item.exerciseId : null;
+      
       const { data, error } = await supabase
         .from('vocabulary')
         .insert({
@@ -128,7 +131,7 @@ export const VocabularyProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           definition: item.definition,
           example_sentence: item.exampleSentence,
           audio_url: item.audioUrl,
-          exercise_id: item.exerciseId,
+          exercise_id: exerciseIdToSave,
           language: item.language
         })
         .select('*')
