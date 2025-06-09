@@ -203,18 +203,13 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
     text: exercise.original_sentence,
     language: exercise.target_language,
     title: 'Bidirectional Exercise',
-    type: 'bidirectional' as const,
-    difficulty: 'intermediate' as const,
     tags: [],
-    archived: false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    userId: exercise.user_id,
+    audioUrl: exercise.original_audio_url,
     directoryId: null,
-    progress: 0,
-    accuracy: 0,
-    practiceCount: 0,
-    lastPracticedAt: null
+    createdAt: new Date(),
+    completionCount: 0,
+    isCompleted: false,
+    archived: false
   };
 
   return (
