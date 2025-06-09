@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useCurriculumExercises } from '@/hooks/use-curriculum-exercises';
 import { toast } from 'sonner';
@@ -7,10 +7,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import UnitAccordion from '@/components/curriculum/UnitAccordion';
 import CurriculumSidebar from '@/components/curriculum/CurriculumSidebar';
+import PracticeModal from '@/components/exercises/PracticeModal';
 
 const CurriculumPage: React.FC = () => {
   const {
-    copyDefaultExercise
+    copyDefaultExercise,
+    exercises,
+    markProgress
   } = useExerciseContext();
   const {
     exercisesByTag,
@@ -21,6 +24,7 @@ const CurriculumPage: React.FC = () => {
   } = useCurriculumExercises();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [practiceExercise, setPracticeExercise] = useState(null);
 
   // Get URL parameters
   const tabParam = searchParams.get('tab') || 'learning-plan';
@@ -54,26 +58,29 @@ const CurriculumPage: React.FC = () => {
   const handlePracticeExercise = async (id: string, tag?: string) => {
     console.log(`Opening practice for exercise with ID: ${id}`);
     
-    // Find if there's a next exercise for navigation
-    let nextExerciseId = null;
-    if (tag) {
-      const nextExercise = findNextExercise(id, tag);
-      if (nextExercise && nextExercise.status === 'not-started') {
-        nextExerciseId = nextExercise.id;
+    // Find the exercise from the user's exercises
+    const exercise = exercises.find(ex => ex.id === id);
+    
+    if (exercise) {
+      // Open the practice modal directly
+      setPracticeExercise(exercise);
+    } else {
+      // If exercise not found in user's exercises, navigate to exercises page as fallback
+      const params = new URLSearchParams({
+        defaultExerciseId: id,
+        action: 'practice'
+      });
+      
+      // Find if there's a next exercise for navigation
+      if (tag) {
+        const nextExercise = findNextExercise(id, tag);
+        if (nextExercise && nextExercise.status === 'not-started') {
+          params.set('nextExerciseId', nextExercise.id);
+        }
       }
+      
+      navigate(`/dashboard/exercises?${params.toString()}`);
     }
-    
-    // Navigate to exercises page with the exercise ID and next exercise info
-    const params = new URLSearchParams({
-      defaultExerciseId: id,
-      action: 'practice'
-    });
-    
-    if (nextExerciseId) {
-      params.set('nextExerciseId', nextExerciseId);
-    }
-    
-    navigate(`/dashboard/exercises?${params.toString()}`);
   };
 
   const handleAddExercise = async (id: string) => {
@@ -85,6 +92,15 @@ const CurriculumPage: React.FC = () => {
     } catch (error) {
       console.error('Error copying exercise:', error);
       toast.error('Failed to add exercise to your list');
+    }
+  };
+
+  const onCompleteExercise = async (accuracy: number) => {
+    if (practiceExercise) {
+      await markProgress(practiceExercise.id, accuracy);
+      // Don't close the modal here - let the user close it manually
+      // Refresh data to update the curriculum progress
+      refreshData();
     }
   };
 
@@ -120,23 +136,51 @@ const CurriculumPage: React.FC = () => {
   });
   const hasInProgressExercises = Object.keys(inProgressTagMap).length > 0;
   
-  return <div className="container mx-auto px-4 py-8">
-      {/* Greeting Section */}
-      
-      
-      {/* Tabs */}
-      <Tabs value={tabParam} onValueChange={handleTabChange} className="mb-8">
-        <TabsList>
-          <TabsTrigger value="learning-plan">Learning plan</TabsTrigger>
-          <TabsTrigger value="in-progress">In Progress</TabsTrigger>
-        </TabsList>
+  return (
+    <>
+      <div className="container mx-auto px-4 py-8">
+        {/* Greeting Section */}
         
-        <TabsContent value="learning-plan" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content - Units and Lessons */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Units */}
-              {Object.entries(exercisesByTag).map(([tag, exercises], index) => (
+        
+        {/* Tabs */}
+        <Tabs value={tabParam} onValueChange={handleTabChange} className="mb-8">
+          <TabsList>
+            <TabsTrigger value="learning-plan">Learning plan</TabsTrigger>
+            <TabsTrigger value="in-progress">In Progress</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="learning-plan" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Main Content - Units and Lessons */}
+              <div className="lg:col-span-2 space-y-8">
+                {/* Units */}
+                {Object.entries(exercisesByTag).map(([tag, exercises], index) => (
+                  <UnitAccordion 
+                    key={tag} 
+                    unitNumber={index + 1} 
+                    title={tag} 
+                    lessons={exercises} 
+                    onPracticeExercise={(id) => handlePracticeExercise(id, tag)}
+                    onAddExercise={handleAddExercise}
+                    defaultOpen={openTagParam === tag}
+                  />
+                ))}
+              </div>
+              
+              {/* Sidebar */}
+              <div className="lg:col-span-1">
+                <CurriculumSidebar totalLessons={totalLessons} completedLessons={completedLessons} language={selectedLanguage} />
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="in-progress" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Main Content - Units and Lessons */}
+              <div className="lg:col-span-2 space-y-8">
+                {hasInProgressExercises ?
+              // Units with in-progress exercises
+              Object.entries(inProgressTagMap).map(([tag, exercises], index) => (
                 <UnitAccordion 
                   key={tag} 
                   unitNumber={index + 1} 
@@ -146,50 +190,34 @@ const CurriculumPage: React.FC = () => {
                   onAddExercise={handleAddExercise}
                   defaultOpen={openTagParam === tag}
                 />
-              ))}
+              )) : <div className="text-center py-16">
+                    <p className="text-lg text-muted-foreground">
+                      You don't have any in-progress lessons yet.
+                    </p>
+                    <p className="text-muted-foreground mt-2">
+                      Start a lesson from the Learning Plan to see it here.
+                    </p>
+                  </div>}
+              </div>
+              
+              {/* Sidebar */}
+              <div className="lg:col-span-1">
+                <CurriculumSidebar totalLessons={totalLessons} completedLessons={completedLessons} language={selectedLanguage} />
+              </div>
             </div>
-            
-            {/* Sidebar */}
-            <div className="lg:col-span-1">
-              <CurriculumSidebar totalLessons={totalLessons} completedLessons={completedLessons} language={selectedLanguage} />
-            </div>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="in-progress" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content - Units and Lessons */}
-            <div className="lg:col-span-2 space-y-8">
-              {hasInProgressExercises ?
-            // Units with in-progress exercises
-            Object.entries(inProgressTagMap).map(([tag, exercises], index) => (
-              <UnitAccordion 
-                key={tag} 
-                unitNumber={index + 1} 
-                title={tag} 
-                lessons={exercises} 
-                onPracticeExercise={(id) => handlePracticeExercise(id, tag)}
-                onAddExercise={handleAddExercise}
-                defaultOpen={openTagParam === tag}
-              />
-            )) : <div className="text-center py-16">
-                  <p className="text-lg text-muted-foreground">
-                    You don't have any in-progress lessons yet.
-                  </p>
-                  <p className="text-muted-foreground mt-2">
-                    Start a lesson from the Learning Plan to see it here.
-                  </p>
-                </div>}
-            </div>
-            
-            {/* Sidebar */}
-            <div className="lg:col-span-1">
-              <CurriculumSidebar totalLessons={totalLessons} completedLessons={completedLessons} language={selectedLanguage} />
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>;
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Practice Modal */}
+      <PracticeModal
+        exercise={practiceExercise}
+        isOpen={!!practiceExercise}
+        onOpenChange={(open) => !open && setPracticeExercise(null)}
+        onComplete={onCompleteExercise}
+      />
+    </>
+  );
 };
 
 export default CurriculumPage;

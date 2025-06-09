@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -113,7 +114,8 @@ const ExercisesPage: React.FC = () => {
   const onCompleteExercise = async (accuracy) => {
     if (practiceExercise) {
       await markProgress(practiceExercise.id, accuracy);
-      setPracticeExercise(null);
+      // Don't close the modal here - let the user close it manually
+      // The modal will stay open to show results
     }
   };
 
