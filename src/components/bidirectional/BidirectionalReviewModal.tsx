@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -17,14 +18,6 @@ interface BidirectionalReviewModalProps {
   onReviewComplete: () => void;
 }
 
-// Review session state management
-interface ReviewSessionState {
-  currentRound: number;
-  hasClickedAgainInSession: boolean;
-  previousReviews: BidirectionalReview[];
-  isLoaded: boolean;
-}
-
 export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> = ({
   exercise,
   reviewType,
@@ -37,14 +30,9 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
   const [userRecall, setUserRecall] = useState('');
   const [showAnswer, setShowAnswer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Enhanced session state management
-  const [sessionState, setSessionState] = useState<ReviewSessionState>({
-    currentRound: 1,
-    hasClickedAgainInSession: false,
-    previousReviews: [],
-    isLoaded: false
-  });
+  const [previousReviews, setPreviousReviews] = useState<BidirectionalReview[]>([]);
+  const [currentRound, setCurrentRound] = useState(1);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   React.useEffect(() => {
     if (isOpen && exercise) {
@@ -58,29 +46,24 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
     if (!exercise) return;
 
     try {
-      const { data: previousReviews } = await BidirectionalService.getPreviousReviews(
+      const { data: reviewsData } = await BidirectionalService.getPreviousReviews(
         exercise.id, 
         reviewType
       );
       
-      const currentRound = (previousReviews?.length || 0) + 1;
+      const reviews = (reviewsData || []) as BidirectionalReview[];
+      const round = BidirectionalService.calculateActualReviewRound(reviews);
       
-      setSessionState({
-        currentRound,
-        hasClickedAgainInSession: false,
-        previousReviews: (previousReviews || []) as BidirectionalReview[],
-        isLoaded: true
-      });
+      setPreviousReviews(reviews);
+      setCurrentRound(round);
+      setIsLoaded(true);
 
-      console.log(`Loaded review session - Round: ${currentRound}, Previous reviews: ${previousReviews?.length || 0}`);
+      console.log(`Loaded review session - Round: ${round}, Previous reviews: ${reviews.length}`);
     } catch (error) {
       console.error('Error loading review session:', error);
-      setSessionState({
-        currentRound: 1,
-        hasClickedAgainInSession: false,
-        previousReviews: [],
-        isLoaded: true
-      });
+      setPreviousReviews([]);
+      setCurrentRound(1);
+      setIsLoaded(true);
     }
   };
 
@@ -100,25 +83,18 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
     }
   };
 
-  // Get the correct interval for the "Good" button based on current session state
+  // Get the correct interval for the "Good" button
   const getGoodButtonInterval = () => {
-    if (!exercise || !sessionState.isLoaded) {
+    if (!exercise || !isLoaded) {
       return { days: 0, hours: 0, minutes: 0, seconds: 30 };
     }
 
-    // Use the current session state to calculate the interval
-    const effectiveRound = BidirectionalService.getEffectiveReviewRound(
-      sessionState.previousReviews,
-      sessionState.hasClickedAgainInSession
-    );
-
-    console.log(`Calculating Good button interval - Effective round: ${effectiveRound}, Has clicked again: ${sessionState.hasClickedAgainInSession}`);
-
+    // Calculate what the interval would be for a correct answer
     return BidirectionalService.calculateGoodButtonInterval(
       exercise.id,
       reviewType,
-      sessionState.hasClickedAgainInSession,
-      sessionState.previousReviews
+      false, // Not using session state anymore
+      previousReviews
     );
   };
 
@@ -143,15 +119,6 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
       return;
     }
 
-    // IMMEDIATELY update session state when "Again" is clicked to sync the UI
-    if (!isCorrect) {
-      console.log('User clicked "Again" - updating session state immediately');
-      setSessionState(prev => ({
-        ...prev,
-        hasClickedAgainInSession: true
-      }));
-    }
-
     setIsLoading(true);
     try {
       await BidirectionalService.recordReview({
@@ -162,13 +129,13 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
         feedback: isCorrect ? "Correct!" : "Needs more practice"
       });
 
-      // Calculate the next interval for feedback using current state
+      // Calculate the next interval for feedback
       const nextInterval = isCorrect
         ? BidirectionalService.calculateGoodButtonInterval(
             exercise.id,
             reviewType,
-            sessionState.hasClickedAgainInSession, // Use current session state
-            sessionState.previousReviews
+            false,
+            previousReviews
           )
         : { days: 0, hours: 0, minutes: 0, seconds: 30 }; // "Again" always shows 30s
       
@@ -180,7 +147,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
           ? nextInterval.mastered 
             ? `Excellent! This exercise is now mastered.`
             : `Great job! Next review in ${intervalText}.`
-          : `Don't worry, you'll see this again in 30s.`,
+          : `This exercise has been reset to the beginning. You'll see it again in 30s.`,
         variant: isCorrect ? "default" : "destructive"
       });
 
@@ -249,7 +216,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
             isMobile ? 'text-base' : 'text-lg'
           }`}>
             <ArrowLeft className="h-4 w-4" />
-            {reviewType === 'forward' ? 'Forward' : 'Backward'} Review (Round {sessionState.currentRound})
+            {reviewType === 'forward' ? 'Forward' : 'Backward'} Review (Round {currentRound})
           </DialogTitle>
         </DialogHeader>
 
@@ -339,13 +306,6 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                   </div>
                 </div>
 
-                {/* Enhanced session state indicator */}
-                {sessionState.hasClickedAgainInSession && (
-                  <div className="text-xs text-amber-600 dark:text-amber-400 text-center bg-amber-50 dark:bg-amber-950/20 p-2 rounded border border-amber-200 dark:border-amber-800">
-                    ⚠️ Session restarted - Next "Good" will begin from round 1 (30s interval)
-                  </div>
-                )}
-
                 <div className={`text-center space-y-3 ${isMobile ? 'space-y-2' : 'space-y-4'}`}>
                   <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
                     How did you do?
@@ -363,7 +323,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                       size={isMobile ? "default" : "default"}
                     >
                       <XCircle className="h-4 w-4" />
-                      Again (30s)
+                      Again (30s - resets progress)
                     </Button>
                     <Button
                       onClick={() => handleMarkResult(true)}

@@ -305,6 +305,28 @@ export class BidirectionalService {
     return nextDate;
   }
 
+  // NEW: Calculate the actual review round based on consecutive correct reviews from the end
+  static calculateActualReviewRound(previousReviews: BidirectionalReview[]): number {
+    if (!previousReviews || previousReviews.length === 0) {
+      return 1; // First review
+    }
+
+    // Count consecutive correct reviews from the most recent backwards
+    let consecutiveCorrectCount = 0;
+    for (let i = previousReviews.length - 1; i >= 0; i--) {
+      if (previousReviews[i].is_correct) {
+        consecutiveCorrectCount++;
+      } else {
+        break; // Stop at first incorrect answer
+      }
+    }
+
+    // The next review round is one more than consecutive correct reviews
+    const nextRound = Math.min(consecutiveCorrectCount + 1, 5); // Cap at round 5 (mastered)
+    console.log(`Actual review round calculation - Previous correct: ${consecutiveCorrectCount}, Next round: ${nextRound}`);
+    return nextRound;
+  }
+
   // IMPROVED: Get the effective review round based on review history and session state
   static getEffectiveReviewRound(
     previousReviews: BidirectionalReview[], 
@@ -316,20 +338,8 @@ export class BidirectionalService {
       return 1;
     }
 
-    // Count successful consecutive reviews from the end
-    let consecutiveCorrectCount = 0;
-    for (let i = previousReviews.length - 1; i >= 0; i--) {
-      if (previousReviews[i].is_correct) {
-        consecutiveCorrectCount++;
-      } else {
-        break; // Stop at first incorrect answer
-      }
-    }
-
-    // The next review round is one more than consecutive correct reviews
-    const effectiveRound = Math.min(consecutiveCorrectCount + 1, 5); // Cap at round 5 (mastered)
-    console.log(`Effective review round calculation - Previous correct: ${consecutiveCorrectCount}, Effective round: ${effectiveRound}`);
-    return effectiveRound;
+    // Use the actual review round calculation
+    return this.calculateActualReviewRound(previousReviews);
   }
 
   // IMPROVED: Calculate what the interval would be for a "Good" response with better logging
@@ -387,24 +397,27 @@ export class BidirectionalService {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    // Calculate the current review round (the round being recorded now)
-    const currentRound = (previousReviews?.length || 0) + 1;
-
-    // Calculate next review round and interval
+    // FIXED: Calculate review round based on reset logic
+    let reviewRoundToRecord: number;
     let nextReviewRound: number;
+
     if (!data.is_correct) {
-      // If incorrect, next review will be round 1
+      // If incorrect ("Again"), reset to round 0 and next will be round 1
+      reviewRoundToRecord = 0;
       nextReviewRound = 1;
+      console.log('Recording "Again" - resetting to round 0, next review will be round 1');
     } else {
-      // If correct, increment to next round
-      nextReviewRound = currentRound + 1;
+      // If correct, calculate the actual round based on consecutive correct reviews
+      reviewRoundToRecord = this.calculateActualReviewRound(previousReviews || []);
+      nextReviewRound = reviewRoundToRecord + 1;
+      console.log(`Recording "Good" - current round: ${reviewRoundToRecord}, next round: ${nextReviewRound}`);
     }
 
     // Calculate next review date
-    const nextReviewDate = this.calculateNextReviewDate(data.is_correct, data.is_correct ? nextReviewRound : 1);
+    const nextReviewDate = this.calculateNextReviewDate(data.is_correct, nextReviewRound);
     const dueDate = nextReviewDate.toISOString();
 
-    console.log(`Recording review - Correct: ${data.is_correct}, Current Round: ${currentRound}, Next Round: ${nextReviewRound}, Next Due: ${nextReviewDate}`);
+    console.log(`Recording review - Correct: ${data.is_correct}, Recording Round: ${reviewRoundToRecord}, Next Round: ${nextReviewRound}, Next Due: ${nextReviewDate}`);
 
     const { data: review, error } = await supabase
       .from('bidirectional_reviews')
@@ -413,7 +426,7 @@ export class BidirectionalService {
         user_id: user.id,
         due_date: dueDate,
         completed_at: new Date().toISOString(),
-        review_round: currentRound // This is the current review round being recorded
+        review_round: reviewRoundToRecord // Record the actual round being completed
       })
       .select()
       .single();
@@ -427,7 +440,7 @@ export class BidirectionalService {
       await this.recordLanguageActivity(user.id, exercise.target_language);
 
       // If this is round 4 or later and correct, add mastered words and check for mastery
-      if (data.is_correct && currentRound >= 4) {
+      if (data.is_correct && reviewRoundToRecord >= 4) {
         await this.extractAndMarkMasteredWords(data.exercise_id, exercise);
         
         // Check and mark exercise as mastered if both directions are complete
