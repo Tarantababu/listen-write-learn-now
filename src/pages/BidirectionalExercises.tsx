@@ -371,9 +371,13 @@ const BidirectionalExercises: React.FC = () => {
               <CardContent className="text-center py-8">
                 <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No reviews due</h3>
-                <p className="text-muted-foreground">
-                  All caught up! Check back later for more reviews.
+                <p className="text-muted-foreground mb-4">
+                  You're all caught up! The spaced repetition system will remind you when it's time to review.
                 </p>
+                <div className="text-sm text-muted-foreground">
+                  <p className="font-medium mb-2">Spaced Repetition Schedule:</p>
+                  <p>Again (30s) → 1 day → 3 days → 7 days → mastered</p>
+                </div>
               </CardContent>
             </Card>
           )}

@@ -106,9 +106,13 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
       <h3 className="text-base sm:text-lg font-medium text-green-800 dark:text-green-200 mb-2">
         All reviews complete!
       </h3>
-      <p className="text-sm text-green-700 dark:text-green-300">
-        Refreshing to show updated progress...
+      <p className="text-sm text-green-700 dark:text-green-300 mb-4">
+        You're all caught up! The spaced repetition system will remind you when it's time to review.
       </p>
+      <div className="text-xs text-muted-foreground">
+        <p className="font-medium mb-1">Spaced Repetition Schedule:</p>
+        <p>Again (30s) → 1 day → 3 days → 7 days → mastered</p>
+      </div>
     </div>
   ), []);
 
