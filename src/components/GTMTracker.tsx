@@ -29,7 +29,7 @@ export const withGTMTracking = <P extends object>(
   Component: React.ComponentType<P>,
   trackingData?: Record<string, any>
 ) => {
-  const WrappedComponent = React.forwardRef<any, P>((props, ref) => {
+  const WrappedComponent = (props: P) => {
     const { gtmService } = useGTM();
 
     useEffect(() => {
@@ -42,8 +42,8 @@ export const withGTMTracking = <P extends object>(
       }
     }, []);
 
-    return <Component {...props} ref={ref} />;
-  });
+    return <Component {...props} />;
+  };
 
   WrappedComponent.displayName = `withGTMTracking(${Component.displayName || Component.name})`;
   
