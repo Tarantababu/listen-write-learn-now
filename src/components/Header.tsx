@@ -15,6 +15,7 @@ import { UserMessages } from '@/components/UserMessages';
 import ThemeToggle from './ThemeToggle';
 import { Logo } from './landing/Logo';
 import { StreakIndicator } from './StreakIndicator';
+import { LanguageSelectionDropdown } from './LanguageSelectionDropdown';
 
 const Header: React.FC = () => {
   const {
@@ -81,9 +82,12 @@ const Header: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-          {/* Add StreakIndicator for logged-in users */}
-          {user && <div className="hidden sm:block">
-              <StreakIndicator />
+          {/* StreakIndicator visible on both mobile and desktop */}
+          {user && <StreakIndicator />}
+          
+          {/* Language Selection Dropdown visible on desktop only */}
+          {user && <div className="hidden md:block">
+              <LanguageSelectionDropdown />
             </div>}
           
           {/* Theme Toggle Added Here */}
