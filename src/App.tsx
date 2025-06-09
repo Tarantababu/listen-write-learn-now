@@ -8,7 +8,7 @@ import { ExerciseProvider } from './contexts/ExerciseContext';
 import { UserSettingsProvider } from './contexts/UserSettingsContext';
 import { VocabularyProvider } from './contexts/VocabularyContext';
 import { DirectoryProvider } from './contexts/DirectoryContext';
-import { SubscriptionProvider } from './contexts/SubscriptionContext';
+import { SubscriptionProvider } from './contexts/SubscriptionProvider';
 import { HelmetProvider } from 'react-helmet-async';
 import { ThemeProvider } from './contexts/ThemeContext';
 
@@ -79,7 +79,7 @@ function App() {
                                   <Route path="/dashboard" element={<Layout />}>
                                     <Route index element={<HomePage />} />
                                     <Route path="exercises" element={<ExercisesPage />} />
-                                    <Route path="bidirectional" element={<BidirectionalPage />} />
+                                    <Route path="exercises/bidirectional" element={<BidirectionalPage />} />
                                     <Route path="curriculum" element={<CurriculumPage />} />
                                     <Route path="vocabulary" element={<VocabularyPage />} />
                                     <Route path="settings" element={<SettingsPage />} />

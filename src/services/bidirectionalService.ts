@@ -40,8 +40,12 @@ export class BidirectionalService {
 
     if (error) throw error;
 
-    // Generate and store audio for the sentence
-    await this.generateAndStoreAudio(exercise.id, data.original_sentence, data.target_language);
+    // Generate and store audio for all three versions
+    await Promise.all([
+      this.generateAndStoreAudio(exercise.id, data.original_sentence, data.target_language, 'original'),
+      this.generateAndStoreAudio(exercise.id, translations.normal, data.support_language, 'normal_translation'),
+      this.generateAndStoreAudio(exercise.id, translations.literal, data.support_language, 'literal_translation')
+    ]);
 
     return exercise as BidirectionalExercise;
   }
@@ -78,7 +82,8 @@ export class BidirectionalService {
   static async generateAndStoreAudio(
     exerciseId: string,
     text: string,
-    language: string
+    language: string,
+    audioType: 'original' | 'normal_translation' | 'literal_translation'
   ): Promise<void> {
     try {
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
@@ -91,13 +96,22 @@ export class BidirectionalService {
 
       if (error) throw error;
 
-      // Update exercise with audio URL
+      // Update exercise with audio URL based on type
+      const updateData: { [key: string]: string } = {};
+      if (audioType === 'original') {
+        updateData.original_audio_url = data.audioUrl;
+      } else if (audioType === 'normal_translation') {
+        updateData.normal_translation_audio_url = data.audioUrl;
+      } else if (audioType === 'literal_translation') {
+        updateData.literal_translation_audio_url = data.audioUrl;
+      }
+
       await supabase
         .from('bidirectional_exercises')
-        .update({ original_audio_url: data.audioUrl })
+        .update(updateData)
         .eq('id', exerciseId);
     } catch (error) {
-      console.error('Error generating audio:', error);
+      console.error(`Error generating ${audioType} audio:`, error);
     }
   }
 
@@ -131,7 +145,6 @@ export class BidirectionalService {
     return (data || []) as BidirectionalExercise[];
   }
 
-  // Update exercise with user translations
   static async updateExerciseTranslations(
     exerciseId: string,
     data: {
@@ -148,7 +161,6 @@ export class BidirectionalService {
     if (error) throw error;
   }
 
-  // Mark exercise as ready for reviewing and record initial completion for streaks
   static async promoteToReviewing(exerciseId: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -168,7 +180,6 @@ export class BidirectionalService {
     }
   }
 
-  // Record language activity for streak system integration
   static async recordLanguageActivity(userId: string, language: string): Promise<void> {
     try {
       await supabase.rpc('record_language_activity', {
@@ -216,7 +227,6 @@ export class BidirectionalService {
     return nextDate;
   }
 
-  // Record a review attempt with system integrations
   static async recordReview(data: {
     exercise_id: string;
     review_type: 'forward' | 'backward';
@@ -270,7 +280,6 @@ export class BidirectionalService {
     return review as BidirectionalReview;
   }
 
-  // Extract and mark words as mastered (Day 7+ reviews)
   static async extractAndMarkMasteredWords(
     exerciseId: string,
     exercise: BidirectionalExercise
@@ -330,7 +339,6 @@ export class BidirectionalService {
     await this.recordLanguageActivity(user.id, exercise.target_language);
   }
 
-  // Check if exercise should be marked as mastered
   static async checkAndMarkAsMastered(exerciseId: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -363,7 +371,6 @@ export class BidirectionalService {
     }
   }
 
-  // Get exercises due for review
   static async getExercisesDueForReview(userId: string): Promise<{
     exercise: BidirectionalExercise;
     review_type: 'forward' | 'backward';
@@ -416,7 +423,6 @@ export class BidirectionalService {
     return dueExercises;
   }
 
-  // Mark words as mastered
   static async markWordsAsMastered(
     exerciseId: string,
     words: string[],
@@ -439,7 +445,6 @@ export class BidirectionalService {
     if (error) throw error;
   }
 
-  // Get mastered words for a user
   static async getMasteredWords(userId: string, language?: string): Promise<BidirectionalMasteredWord[]> {
     let query = supabase
       .from('bidirectional_mastered_words')
@@ -456,7 +461,6 @@ export class BidirectionalService {
     return (data || []) as BidirectionalMasteredWord[];
   }
 
-  // Get exercise by ID
   static async getExerciseById(exerciseId: string): Promise<BidirectionalExercise | null> {
     const { data, error } = await supabase
       .from('bidirectional_exercises')
@@ -471,7 +475,6 @@ export class BidirectionalService {
     return data as BidirectionalExercise;
   }
 
-  // Delete an exercise
   static async deleteExercise(exerciseId: string): Promise<void> {
     // Delete related records first
     await supabase.from('bidirectional_reviews').delete().eq('exercise_id', exerciseId);

@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
@@ -6,6 +5,8 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts"
 interface RequestBody {
   text: string
   language: string
+  type?: string
+  supportLanguage?: string
 }
 
 interface AnalysisWord {
@@ -30,6 +31,11 @@ interface AnalysisContent {
   englishTranslation: string
 }
 
+interface BidirectionalTranslation {
+  normalTranslation: string
+  literalTranslation: string
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -37,7 +43,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, language } = await req.json() as RequestBody
+    const { text, language, type, supportLanguage } = await req.json() as RequestBody
 
     if (!text || !language) {
       return new Response(
@@ -49,7 +55,7 @@ serve(async (req) => {
       )
     }
 
-    console.log(`Generating reading analysis for "${text.substring(0, 20)}..." in ${language}`)
+    console.log(`Generating ${type || 'reading analysis'} for "${text.substring(0, 20)}..." in ${language}`)
 
     // Get OpenAI API key from environment
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
@@ -57,7 +63,19 @@ serve(async (req) => {
       throw new Error('OpenAI API key is not configured')
     }
 
-    // Split the text into sentences
+    // Handle bidirectional translation request
+    if (type === 'bidirectional_translation') {
+      const translation = await generateBidirectionalTranslation(text, language, supportLanguage || 'english', openAIApiKey)
+      return new Response(
+        JSON.stringify(translation),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
+
+    // Split the text into sentences for regular analysis
     const rawSentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0)
     
     // Process analysis using OpenAI
@@ -84,6 +102,70 @@ serve(async (req) => {
     )
   }
 })
+
+async function generateBidirectionalTranslation(
+  text: string,
+  sourceLanguage: string,
+  targetLanguage: string,
+  apiKey: string
+): Promise<BidirectionalTranslation> {
+  const prompt = `
+Translate this ${sourceLanguage} sentence into ${targetLanguage} in two different ways:
+
+1. Normal Translation: A natural, fluent translation that sounds native in ${targetLanguage}
+2. Literal Translation: A word-by-word translation that maintains the original sentence structure as much as possible
+
+Sentence: "${text}"
+
+Return the response as a valid JSON object with these fields:
+{
+  "normalTranslation": "The natural, fluent translation",
+  "literalTranslation": "The word-by-word translation"
+}
+`
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a professional translator that provides accurate translations. Always respond with valid JSON.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.2
+      })
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('OpenAI API error:', errorData)
+      throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText}`)
+    }
+
+    const data = await response.json()
+    const content = data.choices[0].message.content.trim()
+    
+    try {
+      return JSON.parse(content)
+    } catch (e) {
+      console.error('Failed to parse bidirectional translation response as JSON:', e)
+      console.log('Raw response:', content)
+      
+      return {
+        normalTranslation: "Translation could not be generated.",
+        literalTranslation: "Literal translation could not be generated."
+      }
+    }
+  } catch (error) {
+    console.error('Error generating bidirectional translation:', error)
+    throw error
+  }
+}
 
 async function generateFullAnalysis(
   fullText: string, 
