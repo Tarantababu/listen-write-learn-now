@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { SampleDictationModal } from './SampleDictationModal';
 import { FlagIcon, FlagIconCode } from "react-flag-kit";
+import { useGTM } from '@/hooks/use-gtm';
+
 const transitionVariants = {
   item: {
     hidden: {
@@ -79,11 +81,35 @@ const steps = [{
   title: "Track your progress",
   description: "Build your skills with each session and watch your comprehension improve."
 }];
+
 export function Hero() {
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
+  const { trackCTAClick, trackFeatureUsed } = useGTM();
+
   const handleOpenSample = () => {
     setSampleModalOpen(true);
+    trackFeatureUsed({
+      feature_name: 'sample_dictation_modal',
+      feature_category: 'other'
+    });
   };
+
+  const handleStartFreeClick = () => {
+    trackCTAClick({
+      cta_type: 'signup',
+      cta_location: 'hero_section',
+      cta_text: 'Start Free Today'
+    });
+  };
+
+  const handleStartLearningClick = () => {
+    trackCTAClick({
+      cta_type: 'signup',
+      cta_location: 'cta_section',
+      cta_text: 'Start Learning Now'
+    });
+  };
+
   return <>
       <section className="pt-8 pb-20 md:pt-12 relative overflow-hidden bg-gradient-to-br from-white to-brand-light/10">
         <div className="container px-4 md:px-6 mx-auto">
@@ -119,7 +145,14 @@ export function Hero() {
                 </div>
                 
                 <div className="mt-10 flex flex-col items-center justify-center lg:justify-start relative">
-                  <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+                  <Button 
+                    size="lg" 
+                    className="bg-brand-primary hover:bg-brand-secondary rounded-full px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+                    onClick={handleStartFreeClick}
+                    data-gtm-cta-type="signup"
+                    data-gtm-cta-location="hero_section"
+                    data-gtm-cta-text="Start Free Today"
+                  >
                     <Link to="/language-selection" className="flex items-center gap-2">
                       Start Free Today
                       <ArrowRight size={20} />
@@ -224,7 +257,14 @@ export function Hero() {
             <p className="text-xl text-muted-foreground mb-8">Join thousands of learners who have improved their language skills with our method.</p>
             
             <div className="flex flex-col items-center justify-center">
-              <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+              <Button 
+                size="lg" 
+                className="bg-brand-primary hover:bg-brand-secondary rounded-full px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+                onClick={handleStartLearningClick}
+                data-gtm-cta-type="signup"
+                data-gtm-cta-location="cta_section"
+                data-gtm-cta-text="Start Learning Now"
+              >
                 <Link to="/language-selection" className="flex items-center gap-2">
                   Start Learning Now
                   <ArrowRight size={20} />

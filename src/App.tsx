@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -11,6 +10,7 @@ import { DirectoryProvider } from './contexts/DirectoryContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import { HelmetProvider } from 'react-helmet-async';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { GTMTracker } from '@/components/GTMTracker';
 
 import Layout from "@/components/Layout";
 import Index from "@/pages/Index";
@@ -55,48 +55,50 @@ function App() {
                         <VocabularyProvider>
                           <TooltipProvider>
                             <Toaster />
-                            <div className="min-h-screen flex flex-col">
-                              <Routes>
-                                {/* Public Routes */}
-                                <Route path="/" element={<Index />} />
-                                <Route path="/login" element={<LoginPage />} />
-                                <Route path="/language-selection" element={<LanguageSelectionPage />} />
-                                <Route path="/signup" element={<SignUpPage />} />
-                                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                                <Route path="/terms-of-service" element={<TermsOfService />} />
-                                <Route path="/cookie-policy" element={<CookiePolicy />} />
-                                
-                                {/* Public Blog Routes */}
-                                <Route path="/blog" element={<BlogPage />} />
-                                <Route path="/blog/:slug" element={<BlogPostPage />} />
-                                
-                                {/* Protected Routes - Regular User Access */}
-                                <Route element={<ProtectedRoute />}>
-                                  <Route path="/dashboard" element={<Layout />}>
-                                    <Route index element={<HomePage />} />
-                                    <Route path="exercises" element={<ExercisesPage />} />
-                                    <Route path="curriculum" element={<CurriculumPage />} />
-                                    <Route path="vocabulary" element={<VocabularyPage />} />
-                                    <Route path="settings" element={<SettingsPage />} />
-                                    <Route path="subscription" element={<SubscriptionPage />} />
-                                    <Route path="tutorial" element={<TutorialPage />} />
+                            <GTMTracker>
+                              <div className="min-h-screen flex flex-col">
+                                <Routes>
+                                  {/* Public Routes */}
+                                  <Route path="/" element={<Index />} />
+                                  <Route path="/login" element={<LoginPage />} />
+                                  <Route path="/language-selection" element={<LanguageSelectionPage />} />
+                                  <Route path="/signup" element={<SignUpPage />} />
+                                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                                  <Route path="/reset-password" element={<ResetPasswordPage />} />
+                                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                                  <Route path="/terms-of-service" element={<TermsOfService />} />
+                                  <Route path="/cookie-policy" element={<CookiePolicy />} />
+                                  
+                                  {/* Public Blog Routes */}
+                                  <Route path="/blog" element={<BlogPage />} />
+                                  <Route path="/blog/:slug" element={<BlogPostPage />} />
+                                  
+                                  {/* Protected Routes - Regular User Access */}
+                                  <Route element={<ProtectedRoute />}>
+                                    <Route path="/dashboard" element={<Layout />}>
+                                      <Route index element={<HomePage />} />
+                                      <Route path="exercises" element={<ExercisesPage />} />
+                                      <Route path="curriculum" element={<CurriculumPage />} />
+                                      <Route path="vocabulary" element={<VocabularyPage />} />
+                                      <Route path="settings" element={<SettingsPage />} />
+                                      <Route path="subscription" element={<SubscriptionPage />} />
+                                      <Route path="tutorial" element={<TutorialPage />} />
+                                    </Route>
                                   </Route>
-                                </Route>
-                                
-                                {/* Protected Routes - Admin Only */}
-                                <Route element={<ProtectedRoute requireAdmin={true} />}>
-                                  <Route path="/dashboard" element={<Layout />}>
-                                    <Route path="admin" element={<AdminPage />} />
-                                    <Route path="admin/blog/new" element={<BlogPostEditor />} />
-                                    <Route path="admin/blog/edit/:id" element={<BlogPostEditor />} />
+                                  
+                                  {/* Protected Routes - Admin Only */}
+                                  <Route element={<ProtectedRoute requireAdmin={true} />}>
+                                    <Route path="/dashboard" element={<Layout />}>
+                                      <Route path="admin" element={<AdminPage />} />
+                                      <Route path="admin/blog/new" element={<BlogPostEditor />} />
+                                      <Route path="admin/blog/edit/:id" element={<BlogPostEditor />} />
+                                    </Route>
                                   </Route>
-                                </Route>
-                                
-                                <Route path="*" element={<NotFound />} />
-                              </Routes>
-                            </div>
+                                  
+                                  <Route path="*" element={<NotFound />} />
+                                </Routes>
+                              </div>
+                            </GTMTracker>
                           </TooltipProvider>
                         </VocabularyProvider>
                       </DirectoryProvider>

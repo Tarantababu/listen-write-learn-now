@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useGTM } from '@/hooks/use-gtm';
 
 // Storage key to track shown streak alerts by streak ID
 const STREAK_ALERT_SHOWN_KEY = 'lwl_streak_alert_shown';
@@ -17,6 +18,7 @@ export function StreakIndicator() {
   const {
     settings
   } = useUserSettingsContext();
+  const { trackFeatureUsed } = useGTM();
   const [streakData, setStreakData] = useState<StreakData>({
     currentStreak: 0,
     longestStreak: 0,
@@ -152,6 +154,17 @@ export function StreakIndicator() {
         };
     }
   };
+  const handleCalendarOpen = () => {
+    setShowCalendar(true);
+    trackFeatureUsed({
+      feature_name: 'streak_calendar',
+      feature_category: 'other',
+      additional_data: {
+        current_streak: streakData.currentStreak,
+        streak_active: streakData.streakActive
+      }
+    });
+  };
   if (!user || loading) {
     return <Button variant="ghost" size="sm" disabled className="flex items-center gap-2 opacity-50 bg-gray-50 border border-gray-200">
         <Flame className="h-4 w-4 text-gray-400" />
@@ -172,7 +185,16 @@ export function StreakIndicator() {
     return tooltip;
   };
   return <>
-      <Button variant="ghost" size="sm" onClick={() => setShowCalendar(true)} className={cn("flex items-center gap-2 transition-all duration-300 hover:scale-105 border-2 font-medium relative overflow-hidden", visuals.buttonStyle)} title={getTooltipText()}>
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        onClick={handleCalendarOpen} 
+        className={cn("flex items-center gap-2 transition-all duration-300 hover:scale-105 border-2 font-medium relative overflow-hidden", visuals.buttonStyle)} 
+        title={getTooltipText()}
+        data-gtm-feature="streak_indicator"
+        data-gtm-streak-level={getStreakLevel(streakData.currentStreak)}
+        data-gtm-current-streak={streakData.currentStreak}
+      >
         {/* Background accent for legendary streak */}
         {streakLevel === 'legendary' && streakData.streakActive && !streakData.isAtRisk && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-200/20 to-transparent -skew-x-12 transform translate-x-full opacity-75" />}
         

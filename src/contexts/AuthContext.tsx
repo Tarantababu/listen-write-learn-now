@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
@@ -7,6 +6,7 @@ import { toast } from 'sonner';
 import { hasTutorialBeenViewed } from '@/utils/visitorTracking';
 import { EmailService } from '@/services/emailService';
 import { ResendContactService } from '@/services/resendContactService';
+import { gtmService } from '@/services/gtmService';
 
 interface AuthContextProps {
   session: Session | null;
@@ -38,6 +38,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Initialize GTM service
+    gtmService.initialize();
+
     // First set up auth state listener to avoid missing auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -45,6 +48,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Update GTM with user data
+        gtmService.setUser(session?.user ?? null);
         
         if (event === 'SIGNED_IN' && session?.user) {
           // Check if this is a new user by looking at the created_at timestamp
@@ -54,46 +60,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const timeDiff = now.getTime() - userCreatedAt.getTime();
           const isRecentlyCreated = timeDiff < 10000; // 10 seconds
           
+          // Track login event
+          gtmService.trackUserLogin({
+            login_method: session.user.app_metadata?.provider === 'google' ? 'google' : 'email',
+            is_new_user: isRecentlyCreated
+          }, session.user);
+          
           // Only process each user once per session to avoid duplicates
           if (isRecentlyCreated && !processedUsers.has(session.user.id)) {
-            setProcessedUsers(prev => new Set(prev).add(session.user.id));
+            // Send welcome email
+            await EmailService.sendWelcomeEmail({
+              email: session.user.email || '',
+              name: session.user.user_metadata?.name || session.user.user_metadata?.full_name
+            });
+            console.log('Welcome email sent successfully for OAuth user');
             
-            try {
-              console.log('New user detected, sending welcome email and creating Resend contact');
-              
-              // Send welcome email
-              await EmailService.sendWelcomeEmail({
-                email: session.user.email || '',
-                name: session.user.user_metadata?.name || session.user.user_metadata?.full_name
-              });
-              console.log('Welcome email sent successfully for OAuth user');
-              
-              // Create contact in Resend - handle Google OAuth metadata properly
-              const firstName = session.user.user_metadata?.given_name || 
+            // Create contact in Resend - handle Google OAuth metadata properly
+            const firstName = session.user.user_metadata?.given_name || 
                               session.user.user_metadata?.first_name || 
                               null;
-              const lastName = session.user.user_metadata?.family_name || 
+            const lastName = session.user.user_metadata?.family_name || 
                              session.user.user_metadata?.last_name || 
                              null;
-              
-              console.log('Google OAuth metadata:', {
-                given_name: session.user.user_metadata?.given_name,
-                family_name: session.user.user_metadata?.family_name,
-                first_name: session.user.user_metadata?.first_name,
-                last_name: session.user.user_metadata?.last_name,
-                full_name: session.user.user_metadata?.full_name,
-                name: session.user.user_metadata?.name
-              });
-              
-              await ResendContactService.createContact({
-                email: session.user.email || '',
-                firstName: firstName,
-                lastName: lastName
-              });
-              console.log('Resend contact created successfully for OAuth user');
-            } catch (emailError) {
-              console.error('Failed to send welcome email or create Resend contact for OAuth user:', emailError);
-            }
+            
+            console.log('Google OAuth metadata:', {
+              given_name: session.user.user_metadata?.given_name,
+              family_name: session.user.user_metadata?.family_name,
+              first_name: session.user.user_metadata?.first_name,
+              last_name: session.user.user_metadata?.last_name,
+              full_name: session.user.user_metadata?.full_name,
+              name: session.user.user_metadata?.name
+            });
+            
+            await ResendContactService.createContact({
+              email: session.user.email || '',
+              firstName: firstName,
+              lastName: lastName
+            });
+            console.log('Resend contact created successfully for OAuth user');
           }
           
           // Initialize user profile on sign in
@@ -116,6 +120,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (event === 'SIGNED_OUT') {
+          // Track logout event
+          gtmService.trackUserLogout();
+          
           // Clear processed users on sign out
           setProcessedUsers(new Set());
           
@@ -133,6 +140,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      // Set GTM user data for existing session
+      gtmService.setUser(session?.user ?? null);
       
       if (session?.user) {
         setTimeout(() => {
