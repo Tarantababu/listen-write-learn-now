@@ -1,6 +1,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import type { BidirectionalExercise, BidirectionalReview, BidirectionalMasteredWord, SpacedRepetitionConfig, DEFAULT_SRS_CONFIG } from '@/types/bidirectional';
+import type { BidirectionalExercise, BidirectionalReview, BidirectionalMasteredWord, SpacedRepetitionConfig } from '@/types/bidirectional';
+
+const DEFAULT_SRS_CONFIG: SpacedRepetitionConfig = {
+  correctMultiplier: 2.5,
+  incorrectMultiplier: 0.8,
+  maxInterval: 365,
+  graduationInterval: 4
+};
 
 export class BidirectionalService {
   // Create a new bidirectional exercise
@@ -9,10 +16,14 @@ export class BidirectionalService {
     target_language: string;
     support_language: string;
   }): Promise<BidirectionalExercise> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     const { data: exercise, error } = await supabase
       .from('bidirectional_exercises')
       .insert({
         ...data,
+        user_id: user.id,
         status: 'learning'
       })
       .select()
@@ -96,12 +107,16 @@ export class BidirectionalService {
     is_correct: boolean;
     feedback?: string;
   }): Promise<BidirectionalReview> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     const nextReviewDate = this.calculateNextReviewDate(data.is_correct);
 
     const { data: review, error } = await supabase
       .from('bidirectional_reviews')
       .insert({
         ...data,
+        user_id: user.id,
         due_date: nextReviewDate.toISOString().split('T')[0],
         completed_at: new Date().toISOString()
       })
@@ -169,7 +184,11 @@ export class BidirectionalService {
     words: string[],
     language: string
   ): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     const masteredWords = words.map(word => ({
+      user_id: user.id,
       exercise_id: exerciseId,
       word,
       language

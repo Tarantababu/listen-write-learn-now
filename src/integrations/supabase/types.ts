@@ -81,6 +81,145 @@ export type Database = {
         }
         Relationships: []
       }
+      bidirectional_exercises: {
+        Row: {
+          created_at: string
+          id: string
+          literal_translation: string | null
+          literal_translation_audio_url: string | null
+          normal_translation: string | null
+          normal_translation_audio_url: string | null
+          original_audio_url: string | null
+          original_sentence: string
+          reflection_notes: string | null
+          status: string
+          support_language: string
+          target_language: string
+          updated_at: string
+          user_back_translation: string | null
+          user_forward_translation: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          literal_translation?: string | null
+          literal_translation_audio_url?: string | null
+          normal_translation?: string | null
+          normal_translation_audio_url?: string | null
+          original_audio_url?: string | null
+          original_sentence: string
+          reflection_notes?: string | null
+          status?: string
+          support_language: string
+          target_language: string
+          updated_at?: string
+          user_back_translation?: string | null
+          user_forward_translation?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          literal_translation?: string | null
+          literal_translation_audio_url?: string | null
+          normal_translation?: string | null
+          normal_translation_audio_url?: string | null
+          original_audio_url?: string | null
+          original_sentence?: string
+          reflection_notes?: string | null
+          status?: string
+          support_language?: string
+          target_language?: string
+          updated_at?: string
+          user_back_translation?: string | null
+          user_forward_translation?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      bidirectional_mastered_words: {
+        Row: {
+          exercise_id: string
+          id: string
+          language: string
+          mastered_at: string
+          user_id: string
+          word: string
+        }
+        Insert: {
+          exercise_id: string
+          id?: string
+          language: string
+          mastered_at?: string
+          user_id: string
+          word: string
+        }
+        Update: {
+          exercise_id?: string
+          id?: string
+          language?: string
+          mastered_at?: string
+          user_id?: string
+          word?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bidirectional_mastered_words_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "bidirectional_exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bidirectional_reviews: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          due_date: string
+          exercise_id: string
+          feedback: string | null
+          id: string
+          is_correct: boolean
+          review_type: string
+          user_id: string
+          user_recall_attempt: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          due_date: string
+          exercise_id: string
+          feedback?: string | null
+          id?: string
+          is_correct: boolean
+          review_type: string
+          user_id: string
+          user_recall_attempt: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string
+          exercise_id?: string
+          feedback?: string | null
+          id?: string
+          is_correct?: boolean
+          review_type?: string
+          user_id?: string
+          user_recall_attempt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bidirectional_reviews_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "bidirectional_exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blog_posts: {
         Row: {
           author_id: string
