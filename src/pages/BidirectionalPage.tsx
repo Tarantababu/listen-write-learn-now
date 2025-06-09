@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -58,7 +59,7 @@ const BidirectionalPage: React.FC = () => {
   const [supportLanguage, setSupportLanguage] = useState('english');
   const [isCreating, setIsCreating] = useState(false);
 
-  // State for exercises
+  // State for exercises - now filtered by target language
   const [learningExercises, setLearningExercises] = useState<BidirectionalExercise[]>([]);
   const [reviewingExercises, setReviewingExercises] = useState<BidirectionalExercise[]>([]);
   const [masteredExercises, setMasteredExercises] = useState<BidirectionalExercise[]>([]);
@@ -72,22 +73,23 @@ const BidirectionalPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
+    if (user && targetLanguage) {
       loadExercises();
     }
-  }, [user]);
+  }, [user, targetLanguage]);
 
   const loadExercises = async () => {
-    if (!user) return;
+    if (!user || !targetLanguage) return;
 
     try {
       setIsLoading(true);
       
+      // Load exercises filtered by the user's selected target language
       const [learning, reviewing, mastered, due] = await Promise.all([
-        BidirectionalService.getUserExercises(user.id, 'learning'),
-        BidirectionalService.getUserExercises(user.id, 'reviewing'),
-        BidirectionalService.getUserExercises(user.id, 'mastered'),
-        BidirectionalService.getExercisesDueForReview(user.id)
+        BidirectionalService.getUserExercises(user.id, targetLanguage, 'learning'),
+        BidirectionalService.getUserExercises(user.id, targetLanguage, 'reviewing'),
+        BidirectionalService.getUserExercises(user.id, targetLanguage, 'mastered'),
+        BidirectionalService.getExercisesDueForReview(user.id, targetLanguage)
       ]);
 
       setLearningExercises(learning);
@@ -111,6 +113,15 @@ const BidirectionalPage: React.FC = () => {
       toast({
         title: "Error",
         description: "Please enter a sentence to translate.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!targetLanguage) {
+      toast({
+        title: "Error",
+        description: "Please select a target language in your account settings.",
         variant: "destructive"
       });
       return;
@@ -189,12 +200,31 @@ const BidirectionalPage: React.FC = () => {
     );
   }
 
+  if (!targetLanguage) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <Card>
+          <CardHeader>
+            <CardTitle>No Target Language Selected</CardTitle>
+            <CardDescription>
+              Please select a target language in your account settings to use the Bidirectional Method.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Bidirectional Method</h1>
         <p className="text-muted-foreground">
-          Practice translation in both directions with spaced repetition
+          Practice translation in both directions with spaced repetition for{' '}
+          <span className="inline-flex items-center gap-1 font-medium">
+            <FlagIcon code={getLanguageFlagCode(targetLanguage)} size={16} />
+            {getLanguageLabel(targetLanguage)}
+          </span>
         </p>
       </div>
 
@@ -207,7 +237,7 @@ const BidirectionalPage: React.FC = () => {
               Reviews Due ({dueReviews.length})
             </CardTitle>
             <CardDescription>
-              Complete these reviews to maintain your learning progress
+              Complete these reviews to maintain your learning progress for {getLanguageLabel(targetLanguage)}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -237,7 +267,7 @@ const BidirectionalPage: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            Create New Exercise
+            Create New Exercise for {getLanguageLabel(targetLanguage)}
           </CardTitle>
           <CardDescription>
             Add a sentence to practice with the bidirectional method
@@ -251,7 +281,7 @@ const BidirectionalPage: React.FC = () => {
             <Textarea
               value={originalSentence}
               onChange={(e) => setOriginalSentence(e.target.value)}
-              placeholder="Enter a sentence in your target language..."
+              placeholder={`Enter a sentence in ${getLanguageLabel(targetLanguage)}...`}
               rows={2}
             />
           </div>
@@ -352,7 +382,7 @@ const BidirectionalPage: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No learning exercises yet. Create your first exercise above!
+              No learning exercises yet for {getLanguageLabel(targetLanguage)}. Create your first exercise above!
             </div>
           )}
         </TabsContent>
@@ -374,7 +404,7 @@ const BidirectionalPage: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No exercises in review phase yet. Complete some learning exercises first!
+              No exercises in review phase yet for {getLanguageLabel(targetLanguage)}. Complete some learning exercises first!
             </div>
           )}
         </TabsContent>
@@ -395,7 +425,7 @@ const BidirectionalPage: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No mastered exercises yet. Keep practicing!
+              No mastered exercises yet for {getLanguageLabel(targetLanguage)}. Keep practicing!
             </div>
           )}
         </TabsContent>

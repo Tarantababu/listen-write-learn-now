@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import type { BidirectionalExercise, BidirectionalReview, BidirectionalMasteredWord, SpacedRepetitionConfig } from '@/types/bidirectional';
 
@@ -154,12 +155,13 @@ export class BidirectionalService {
     return voiceMap[language] || 'alloy';
   }
 
-  // Get user's bidirectional exercises
-  static async getUserExercises(userId: string, status?: string): Promise<BidirectionalExercise[]> {
+  // Get user's bidirectional exercises filtered by target language
+  static async getUserExercises(userId: string, targetLanguage: string, status?: string): Promise<BidirectionalExercise[]> {
     let query = supabase
       .from('bidirectional_exercises')
       .select('*')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .eq('target_language', targetLanguage);
 
     if (status) {
       query = query.eq('status', status);
@@ -357,17 +359,19 @@ export class BidirectionalService {
     }
   }
 
-  static async getExercisesDueForReview(userId: string): Promise<{
+  // Get exercises due for review filtered by target language
+  static async getExercisesDueForReview(userId: string, targetLanguage: string): Promise<{
     exercise: BidirectionalExercise;
     review_type: 'forward' | 'backward';
   }[]> {
     const today = new Date().toISOString().split('T')[0];
 
-    // Get exercises that need reviewing
+    // Get exercises that need reviewing for the specific target language
     const { data: exercises, error: exerciseError } = await supabase
       .from('bidirectional_exercises')
       .select('*')
       .eq('user_id', userId)
+      .eq('target_language', targetLanguage)
       .eq('status', 'reviewing');
 
     if (exerciseError) throw exerciseError;
@@ -431,6 +435,7 @@ export class BidirectionalService {
     if (error) throw error;
   }
 
+  // Get mastered words filtered by language
   static async getMasteredWords(userId: string, language?: string): Promise<BidirectionalMasteredWord[]> {
     let query = supabase
       .from('bidirectional_mastered_words')
