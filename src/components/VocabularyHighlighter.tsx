@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Book, Loader2, Volume2, Crown } from 'lucide-react';
 import UpgradePrompt from '@/components/UpgradePrompt';
+import AudioPlayer from '@/components/AudioPlayer';
 
 interface VocabularyHighlighterProps {
   exercise: Exercise;
@@ -27,8 +27,6 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
     exampleSentence: string;
     audioUrl?: string;
   } | null>(null);
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   // Function to handle text selection
   const handleTextSelection = () => {
@@ -112,6 +110,15 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
         throw new Error('No audio content received');
       }
 
+      // If the function returned an audioUrl directly from storage, use it
+      if (data.audioUrl) {
+        toast("Success", {
+          description: "Audio generated successfully"
+        });
+        return data.audioUrl;
+      }
+
+      // Otherwise, upload the base64 audio content to storage
       const audioContent = data.audioContent;
       const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
       
@@ -161,33 +168,6 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
     
     if (info) {
       setGeneratedInfo(info);
-      
-      // Create audio element if URL is available
-      if (info.audioUrl) {
-        const audio = new Audio(info.audioUrl);
-        setAudioElement(audio);
-        
-        // Add event listeners to track playing state
-        audio.addEventListener('play', () => setIsPlaying(true));
-        audio.addEventListener('pause', () => setIsPlaying(false));
-        audio.addEventListener('ended', () => setIsPlaying(false));
-      }
-    }
-  };
-
-  const handlePlayAudio = () => {
-    if (audioElement) {
-      if (isPlaying) {
-        audioElement.pause();
-      } else {
-        audioElement.play().catch(error => {
-          console.error('Error playing audio:', error);
-          toast("Error", {
-            description: "Failed to play audio",
-            variant: "destructive"
-          });
-        });
-      }
     }
   };
 
@@ -213,7 +193,6 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
       setIsDialogOpen(false);
       setSelectedWord('');
       setGeneratedInfo(null);
-      setAudioElement(null);
     } catch (error) {
       console.error('Error saving vocabulary item:', error);
       // Check if it's a vocabulary limit error
@@ -232,11 +211,6 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
   };
 
   const handleDialogClose = () => {
-    // Clean up audio
-    if (audioElement) {
-      audioElement.pause();
-      setAudioElement(null);
-    }
     setIsDialogOpen(false);
   };
 
@@ -324,19 +298,12 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
               
               <div>
                 <h4 className="text-sm font-medium mb-1">Example:</h4>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm italic flex-grow">{generatedInfo.exampleSentence}</p>
-                  {generatedInfo.audioUrl && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handlePlayAudio}
-                      className="flex-shrink-0"
-                    >
-                      <Volume2 className={`h-4 w-4 ${isPlaying ? 'text-primary' : ''}`} />
-                    </Button>
-                  )}
-                </div>
+                <p className="text-sm italic mb-2">"{generatedInfo.exampleSentence}"</p>
+                {generatedInfo.audioUrl && (
+                  <div className="mt-2">
+                    <AudioPlayer audioUrl={generatedInfo.audioUrl} />
+                  </div>
+                )}
               </div>
               
               <div className="flex justify-end gap-2">
