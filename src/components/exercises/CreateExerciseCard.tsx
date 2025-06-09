@@ -11,7 +11,7 @@ interface CreateExerciseCardProps {
 const CreateExerciseCard: React.FC<CreateExerciseCardProps> = ({ onClick }) => {
   return (
     <Card 
-      className="border-dashed border-2 hover:border-primary/50 transition-all flex flex-col items-center justify-center h-full min-h-[280px] hover:shadow-md"
+      className="border-dashed border-2 hover:border-primary/50 transition-all flex flex-col items-center justify-center h-full min-h-[280px] hover:shadow-md cursor-pointer"
       onClick={onClick}
     >
       <CardContent className="flex flex-col items-center justify-center h-full text-center p-6">
@@ -22,7 +22,7 @@ const CreateExerciseCard: React.FC<CreateExerciseCardProps> = ({ onClick }) => {
         <p className="text-sm text-muted-foreground mb-4">
           Add your own text and generate audio for practice
         </p>
-        <Button className="mt-2" onClick={onClick} variant="outline">
+        <Button className="mt-2" variant="outline">
           <Plus className="h-4 w-4 mr-2" />
           Create Exercise
         </Button>

@@ -38,13 +38,11 @@ const ExerciseGrid: React.FC<ExerciseGridProps> = ({
           onPractice={() => onPractice(exercise)}
           onEdit={() => onEdit(exercise)}
           onDelete={() => onDelete(exercise)}
-          onMove={() => onMove(exercise)} // Moving is now available for all users
+          onMove={() => onMove(exercise)}
           canEdit={canEdit}
-          canMove={true} // Allow moving for all users
+          canMove={true}
         />
       ))}
-      
-      <CreateExerciseCard onClick={onCreateClick} />
       
       {fillers.map((_, index) => (
         <div 

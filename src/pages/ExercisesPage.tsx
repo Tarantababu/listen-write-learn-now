@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -6,64 +7,71 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Archive, Unarchive, Move, Edit, Trash2, Play } from 'lucide-react';
-import { ExerciseFormModal } from '@/components/ExerciseFormModal';
-import { PracticeModal } from '@/components/PracticeModal';
-import { MoveExerciseModal } from '@/components/MoveExerciseModal';
-import { DeleteExerciseDialog } from '@/components/DeleteExerciseDialog';
-import { PaginationControls } from '@/components/PaginationControls';
-import { FilterBar } from '@/components/FilterBar';
-import { ExerciseGrid } from '@/components/ExerciseGrid';
-import { CreateExerciseCard } from '@/components/exercises/CreateExerciseCard';
+import { Plus, Archive, Move, Edit, Trash2, Play } from 'lucide-react';
+import { ExerciseFormModal } from '@/components/exercises/ExerciseFormModal';
+import PracticeModal from '@/components/exercises/PracticeModal';
+import MoveExerciseModal from '@/components/MoveExerciseModal';
+import DeleteExerciseDialog from '@/components/exercises/DeleteExerciseDialog';
+import PaginationControls from '@/components/exercises/PaginationControls';
+import FilterBar from '@/components/exercises/FilterBar';
+import ExerciseGrid from '@/components/exercises/ExerciseGrid';
+import CreateExerciseCard from '@/components/exercises/CreateExerciseCard';
 import BidirectionalMethodLink from '@/components/exercises/BidirectionalMethodLink';
 
 const ExercisesPage: React.FC = () => {
   const { user } = useAuth();
   const {
     exercises,
-    createExercise,
+    addExercise,
     updateExercise,
     deleteExercise,
-    toggleArchiveExercise,
-    moveExercise,
-    startPractice,
-    completeExercise,
-    loadExercises,
+    recordCompletion,
+    refreshExercises,
+    exercisesLoading,
   } = useExerciseContext();
-  const { directories, loadDirectories } = useDirectoryContext();
+  const { directories } = useDirectoryContext();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedLanguage, setSelectedLanguage] = useState('');
-  const [selectedDirectory, setSelectedDirectory] = useState('');
-  const [showArchived, setShowArchived] = useState(false);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [editingExercise, setEditingExercise] = useState(null);
   const [practiceExercise, setPracticeExercise] = useState(null);
   const [moveExerciseData, setMoveExerciseData] = useState(null);
   const [deleteExerciseId, setDeleteExerciseId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isCreating, setIsCreating] = useState(false);
   const exercisesPerPage = 12;
 
   useEffect(() => {
     if (user) {
-      loadExercises(user.id, searchTerm, selectedLanguage, selectedDirectory, showArchived);
-      loadDirectories(user.id);
+      refreshExercises();
     }
-  }, [user, loadExercises, loadDirectories, searchTerm, selectedLanguage, selectedDirectory, showArchived]);
+  }, [user, refreshExercises]);
 
-  const availableLanguages = [...new Set(exercises.map(exercise => exercise.language))];
+  // Filter exercises based on search term and selected tag
+  const filteredExercises = exercises.filter(exercise => {
+    const matchesSearch = exercise.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         exercise.text.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesTag = !selectedTag || exercise.tags.includes(selectedTag);
+    return matchesSearch && matchesTag;
+  });
 
-  const onCreateExercise = async (newExercise) => {
-    if (user) {
-      await createExercise({ ...newExercise, user_id: user.id });
-    }
+  // Get all unique tags from exercises
+  const allTags = [...new Set(exercises.flatMap(exercise => exercise.tags))];
+
+  const onCreateExercise = () => {
+    setIsCreating(true);
   };
 
   const onSaveExercise = async (exerciseToSave) => {
-    await updateExercise(exerciseToSave);
+    if (exerciseToSave.id) {
+      await updateExercise(exerciseToSave.id, exerciseToSave);
+    } else {
+      await addExercise(exerciseToSave);
+    }
   };
 
-  const handleDeleteExercise = (exerciseId) => {
-    setDeleteExerciseId(exerciseId);
+  const handleDeleteExercise = (exercise) => {
+    setDeleteExerciseId(exercise.id);
   };
 
   const confirmDeleteExercise = async () => {
@@ -74,7 +82,7 @@ const ExercisesPage: React.FC = () => {
   };
 
   const handleToggleArchive = async (exercise) => {
-    await toggleArchiveExercise(exercise);
+    await updateExercise(exercise.id, { archived: !exercise.archived });
   };
 
   const handleMoveExercise = (exercise) => {
@@ -83,23 +91,24 @@ const ExercisesPage: React.FC = () => {
 
   const confirmMoveExercise = async (directoryId) => {
     if (moveExerciseData) {
-      await moveExercise(moveExerciseData.exercise, directoryId);
+      await updateExercise(moveExerciseData.exercise.id, { directoryId });
       setMoveExerciseData(null);
     }
   };
 
   const handlePractice = (exercise) => {
     setPracticeExercise(exercise);
-    startPractice(exercise);
   };
 
-  const onCompleteExercise = async (exercise) => {
-    await completeExercise(exercise);
-    setPracticeExercise(null);
+  const onCompleteExercise = async (accuracy) => {
+    if (practiceExercise) {
+      await recordCompletion(practiceExercise.id, accuracy, accuracy >= 95);
+      setPracticeExercise(null);
+    }
   };
 
-  const totalPages = Math.ceil(exercises.length / exercisesPerPage);
-  const paginatedExercises = exercises.slice(
+  const totalPages = Math.ceil(filteredExercises.length / exercisesPerPage);
+  const paginatedExercises = filteredExercises.slice(
     (currentPage - 1) * exercisesPerPage,
     currentPage * exercisesPerPage
   );
@@ -115,7 +124,7 @@ const ExercisesPage: React.FC = () => {
 
       {/* Exercise Types */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-        <CreateExerciseCard />
+        <CreateExerciseCard onClick={onCreateExercise} />
         <BidirectionalMethodLink />
         {/* Add more exercise type cards here as needed */}
       </div>
@@ -123,32 +132,22 @@ const ExercisesPage: React.FC = () => {
       {/* Search and Filter Bar */}
       <FilterBar
         searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        selectedLanguage={selectedLanguage}
-        onLanguageChange={setSelectedLanguage}
-        selectedDirectory={selectedDirectory}
-        onDirectoryChange={setSelectedDirectory}
-        directories={directories}
-        availableLanguages={availableLanguages}
-        showArchived={showArchived}
-        onShowArchivedChange={setShowArchived}
-      />
-
-      {/* Default Exercises Section */}
-      <CreateExerciseCard 
-        onCreateExercise={onCreateExercise}
-        selectedLanguage={selectedLanguage}
+        setSearchTerm={setSearchTerm}
+        selectedTag={selectedTag}
+        setSelectedTag={setSelectedTag}
+        allTags={allTags}
       />
 
       {/* Exercises Grid */}
       <ExerciseGrid
-        exercises={paginatedExercises}
+        paginatedExercises={paginatedExercises}
+        exercisesPerPage={exercisesPerPage}
+        onPractice={handlePractice}
         onEdit={setEditingExercise}
         onDelete={handleDeleteExercise}
-        onToggleArchive={handleToggleArchive}
         onMove={handleMoveExercise}
-        onPractice={handlePractice}
-        directories={directories}
+        onCreateClick={onCreateExercise}
+        canEdit={true}
       />
 
       {/* Pagination */}
@@ -160,17 +159,21 @@ const ExercisesPage: React.FC = () => {
 
       {/* Modals */}
       <ExerciseFormModal
-        isOpen={!!editingExercise}
-        onClose={() => setEditingExercise(null)}
-        exercise={editingExercise}
-        onSave={onSaveExercise}
-        directories={directories}
+        isOpen={isCreating || !!editingExercise}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsCreating(false);
+            setEditingExercise(null);
+          }
+        }}
+        initialValues={editingExercise}
+        mode={editingExercise ? 'edit' : 'create'}
       />
 
       <PracticeModal
         exercise={practiceExercise}
         isOpen={!!practiceExercise}
-        onClose={() => setPracticeExercise(null)}
+        onOpenChange={(open) => !open && setPracticeExercise(null)}
         onComplete={onCompleteExercise}
       />
 
@@ -184,7 +187,7 @@ const ExercisesPage: React.FC = () => {
 
       <DeleteExerciseDialog
         isOpen={!!deleteExerciseId}
-        onClose={() => setDeleteExerciseId(null)}
+        onOpenChange={(open) => !open && setDeleteExerciseId(null)}
         onConfirm={confirmDeleteExercise}
       />
     </div>

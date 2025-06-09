@@ -8,7 +8,7 @@ import { ExerciseProvider } from './contexts/ExerciseContext';
 import { UserSettingsProvider } from './contexts/UserSettingsContext';
 import { VocabularyProvider } from './contexts/VocabularyContext';
 import { DirectoryProvider } from './contexts/DirectoryContext';
-import { SubscriptionProvider } from './contexts/SubscriptionProvider';
+import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import { HelmetProvider } from 'react-helmet-async';
 import { ThemeProvider } from './contexts/ThemeContext';
 
