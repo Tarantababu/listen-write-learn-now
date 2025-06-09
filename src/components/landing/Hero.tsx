@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { SampleDictationModal } from './SampleDictationModal';
 import { FlagIcon, FlagIconCode } from "react-flag-kit";
+
 const transitionVariants = {
   item: {
     hidden: {
@@ -79,6 +80,7 @@ const steps = [{
   title: "Track your progress",
   description: "Build your skills with each session and watch your comprehension improve."
 }];
+
 export function Hero() {
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
   const handleOpenSample = () => {
@@ -118,13 +120,24 @@ export function Hero() {
                   </div>
                 </div>
                 
-                <div className="mt-10 flex flex-col items-center justify-center lg:justify-start">
+                <div className="mt-10 flex flex-col items-center justify-center lg:justify-start relative">
                   <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all">
                     <Link to="/language-selection" className="flex items-center gap-2">
                       Start My Free Trial
                       <ArrowRight size={20} />
                     </Link>
                   </Button>
+                  
+                  {/* Large Curved Arrow connecting button to GIF */}
+                  <div className="absolute top-0 left-full ml-8 hidden lg:block animate-pulse z-10">
+                    <svg width="200" height="160" viewBox="0 0 200 160" fill="none" className="text-brand-primary">
+                      <path d="M20 40 Q100 -20 180 80" stroke="currentColor" strokeWidth="4" fill="none" strokeLinecap="round" />
+                      <path d="M170 70 L180 80 L170 90" stroke="currentColor" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <div className="text-brand-primary font-bold text-lg mt-2 text-center">
+                      Try it now!
+                    </div>
+                  </div>
                 </div>
                 
                 {/* Product Hunt badge */}
@@ -136,20 +149,10 @@ export function Hero() {
               </AnimatedGroup>
             </div>
 
-            {/* Right Column - Hero Image with Arrow */}
+            {/* Right Column - Hero Image */}
             <div className="flex justify-center lg:justify-end relative">
               <AnimatedGroup variants={transitionVariants}>
                 <div className="max-w-md w-full relative">
-                  {/* Curved Arrow pointing to the image */}
-                  <div className="absolute -left-16 top-8 hidden lg:block animate-pulse">
-                    <svg width="80" height="60" viewBox="0 0 80 60" fill="none" className="text-brand-primary mx-0 my-[29px] py-0 px-0">
-                      <path d="M10 50 Q40 10 70 30" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
-                      <path d="M65 25 L70 30 L65 35" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <div className="text-brand-primary font-semibold text-sm mt-1 ml-2 my-0">
-                  </div>
-                  </div>
-                  
                   <img src="https://i.postimg.cc/kMzwjjDG/lwlnow-how-to-exercise-landing.gif" alt="Language learning through dictation - animated demonstration of the exercise interface" className="w-full h-auto object-contain" />
                 </div>
               </AnimatedGroup>
