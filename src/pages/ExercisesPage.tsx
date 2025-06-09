@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +31,7 @@ const ExercisesPage: React.FC = () => {
     loading,
   } = useExerciseContext();
   const { directories } = useDirectoryContext();
+  const { settings } = useUserSettingsContext();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -48,16 +49,21 @@ const ExercisesPage: React.FC = () => {
     }
   }, [user, refreshExercises]);
 
-  // Filter exercises based on search term and selected tag
+  // Filter exercises by selected language, search term and selected tag
   const filteredExercises = exercises.filter(exercise => {
+    const matchesLanguage = exercise.language === settings.selectedLanguage;
     const matchesSearch = exercise.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          exercise.text.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTag = !selectedTag || exercise.tags.includes(selectedTag);
-    return matchesSearch && matchesTag;
+    return matchesLanguage && matchesSearch && matchesTag;
   });
 
-  // Get all unique tags from exercises
-  const allTags = [...new Set(exercises.flatMap(exercise => exercise.tags))];
+  // Get all unique tags from exercises of the selected language
+  const allTags = [...new Set(
+    exercises
+      .filter(exercise => exercise.language === settings.selectedLanguage)
+      .flatMap(exercise => exercise.tags)
+  )];
 
   const onCreateExercise = () => {
     setIsCreating(true);
