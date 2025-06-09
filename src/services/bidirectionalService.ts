@@ -315,11 +315,11 @@ export class BidirectionalService {
       // Record language activity for streak system
       await this.recordLanguageActivity(user.id, exercise.target_language);
 
-      // If this is round 6 review and correct, add mastered words
+      // If this is round 6 or later and correct, add mastered words and check for mastery
       if (data.is_correct && reviewRound >= 6) {
         await this.extractAndMarkMasteredWords(data.exercise_id, exercise);
         
-        // Mark exercise as mastered if both directions are complete
+        // Check and mark exercise as mastered if both directions are complete
         await this.checkAndMarkAsMastered(data.exercise_id);
       }
     }
@@ -353,28 +353,45 @@ export class BidirectionalService {
     // Check if both forward and backward reviews have been completed successfully for 6 rounds
     const { data: forwardReviews } = await supabase
       .from('bidirectional_reviews')
-      .select('*')
+      .select('review_round, is_correct')
       .eq('exercise_id', exerciseId)
       .eq('review_type', 'forward')
       .eq('user_id', user.id)
-      .eq('is_correct', true);
+      .eq('is_correct', true)
+      .order('review_round', { ascending: false });
 
     const { data: backwardReviews } = await supabase
       .from('bidirectional_reviews')
-      .select('*')
+      .select('review_round, is_correct')
       .eq('exercise_id', exerciseId)
       .eq('review_type', 'backward')
       .eq('user_id', user.id)
-      .eq('is_correct', true);
+      .eq('is_correct', true)
+      .order('review_round', { ascending: false });
 
-    const forwardComplete = (forwardReviews?.length || 0) >= 6;
-    const backwardComplete = (backwardReviews?.length || 0) >= 6;
+    // Check if we have successful reviews at round 6 or higher for both directions
+    const forwardComplete = forwardReviews?.some(review => review.review_round >= 6) || false;
+    const backwardComplete = backwardReviews?.some(review => review.review_round >= 6) || false;
+
+    console.log(`Exercise ${exerciseId} mastery check:`, { 
+      forwardComplete, 
+      backwardComplete,
+      forwardReviews: forwardReviews?.length || 0,
+      backwardReviews: backwardReviews?.length || 0 
+    });
 
     if (forwardComplete && backwardComplete) {
-      await supabase
+      console.log(`Marking exercise ${exerciseId} as mastered`);
+      const { error } = await supabase
         .from('bidirectional_exercises')
         .update({ status: 'mastered' })
         .eq('id', exerciseId);
+      
+      if (error) {
+        console.error('Error marking exercise as mastered:', error);
+      } else {
+        console.log(`Successfully marked exercise ${exerciseId} as mastered`);
+      }
     }
   }
 
