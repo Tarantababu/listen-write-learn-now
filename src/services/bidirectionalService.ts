@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { BidirectionalExercise, BidirectionalReview, BidirectionalMasteredWord, SpacedRepetitionConfig } from '@/types/bidirectional';
 
@@ -40,14 +39,36 @@ export class BidirectionalService {
 
     if (error) throw error;
 
-    // Generate and store audio for all three versions
+    // Generate and store audio for all three versions with proper URLs
     await Promise.all([
-      this.generateAndStoreAudio(exercise.id, data.original_sentence, data.target_language, 'original'),
-      this.generateAndStoreAudio(exercise.id, translations.normal, data.support_language, 'normal_translation'),
-      this.generateAndStoreAudio(exercise.id, translations.literal, data.support_language, 'literal_translation')
+      this.generateAndStoreAudio(
+        exercise.id, 
+        data.original_sentence, 
+        data.target_language, 
+        'original'
+      ),
+      this.generateAndStoreAudio(
+        exercise.id, 
+        translations.normal, 
+        data.support_language, 
+        'normal_translation'
+      ),
+      this.generateAndStoreAudio(
+        exercise.id, 
+        translations.literal, 
+        data.support_language, 
+        'literal_translation'
+      )
     ]);
 
-    return exercise as BidirectionalExercise;
+    // Fetch the updated exercise with audio URLs
+    const { data: updatedExercise } = await supabase
+      .from('bidirectional_exercises')
+      .select('*')
+      .eq('id', exercise.id)
+      .single();
+
+    return updatedExercise as BidirectionalExercise;
   }
 
   // Generate translations using OpenAI
@@ -78,7 +99,7 @@ export class BidirectionalService {
     }
   }
 
-  // Generate and store audio using TTS
+  // Generate and store audio using TTS with proper URL storage
   static async generateAndStoreAudio(
     exerciseId: string,
     text: string,
@@ -90,26 +111,31 @@ export class BidirectionalService {
         body: {
           text,
           language,
-          voice: this.getVoiceForLanguage(language)
+          exerciseId,
+          audioType
         }
       });
 
       if (error) throw error;
 
-      // Update exercise with audio URL based on type
-      const updateData: { [key: string]: string } = {};
-      if (audioType === 'original') {
-        updateData.original_audio_url = data.audioUrl;
-      } else if (audioType === 'normal_translation') {
-        updateData.normal_translation_audio_url = data.audioUrl;
-      } else if (audioType === 'literal_translation') {
-        updateData.literal_translation_audio_url = data.audioUrl;
-      }
+      // Update exercise with audio URL
+      if (data.audioUrl) {
+        const updateData: { [key: string]: string } = {};
+        if (audioType === 'original') {
+          updateData.original_audio_url = data.audioUrl;
+        } else if (audioType === 'normal_translation') {
+          updateData.normal_translation_audio_url = data.audioUrl;
+        } else if (audioType === 'literal_translation') {
+          updateData.literal_translation_audio_url = data.audioUrl;
+        }
 
-      await supabase
-        .from('bidirectional_exercises')
-        .update(updateData)
-        .eq('id', exerciseId);
+        await supabase
+          .from('bidirectional_exercises')
+          .update(updateData)
+          .eq('id', exerciseId);
+        
+        console.log(`Updated exercise ${exerciseId} with ${audioType} audio URL: ${data.audioUrl}`);
+      }
     } catch (error) {
       console.error(`Error generating ${audioType} audio:`, error);
     }

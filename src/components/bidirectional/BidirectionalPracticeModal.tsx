@@ -309,6 +309,11 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                   <div className="p-3 bg-muted rounded-md">
                     <p className="text-sm text-muted-foreground mb-1">Original:</p>
                     <p className="font-medium">{exercise.original_sentence}</p>
+                    {exercise.original_audio_url && (
+                      <div className="mt-2">
+                        <AudioPlayer audioUrl={exercise.original_audio_url} />
+                      </div>
+                    )}
                   </div>
                   <div className="p-3 bg-muted rounded-md">
                     <p className="text-sm text-muted-foreground mb-1">Your back translation:</p>

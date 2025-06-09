@@ -1,5 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, language } = await req.json();
+    const { text, language, exerciseId, audioType } = await req.json();
 
     if (!text || !language) {
       throw new Error('Text and language are required');
@@ -65,8 +66,54 @@ serve(async (req) => {
       // This is simplified; in production use proper MP3 concatenation library
       finalAudio = concatUint8Arrays(audioBuffers);
     }
+
+    // Store audio file in Supabase storage if exerciseId and audioType are provided
+    let audioUrl = null;
+    if (exerciseId && audioType) {
+      // Initialize Supabase client
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+
+      // Create audio bucket if it doesn't exist
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const audioBucketExists = buckets?.some(bucket => bucket.name === 'audio');
+      
+      if (!audioBucketExists) {
+        await supabase.storage.createBucket('audio', {
+          public: true,
+          allowedMimeTypes: ['audio/mpeg', 'audio/mp3'],
+          fileSizeLimit: 52428800 // 50MB
+        });
+      }
+
+      // Generate filename
+      const filename = `${exerciseId}/${audioType}_${Date.now()}.mp3`;
+      
+      // Upload audio file
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('audio')
+        .upload(filename, finalAudio, {
+          contentType: 'audio/mpeg',
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw new Error(`Failed to store audio: ${uploadError.message}`);
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('audio')
+        .getPublicUrl(filename);
+      
+      audioUrl = urlData.publicUrl;
+      console.log(`Audio stored successfully: ${audioUrl}`);
+    }
     
-    // Convert to base64 string safely
+    // Convert to base64 string safely for backward compatibility
     let binaryString = '';
     finalAudio.forEach(byte => {
       binaryString += String.fromCharCode(byte);
@@ -74,7 +121,10 @@ serve(async (req) => {
     const base64Audio = btoa(binaryString);
 
     return new Response(
-      JSON.stringify({ audioContent: base64Audio }),
+      JSON.stringify({ 
+        audioContent: base64Audio,
+        audioUrl: audioUrl
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
