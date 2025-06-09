@@ -1,6 +1,6 @@
 
 "use client";
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Brain, ArrowRight, CheckCircle2 } from "lucide-react";
@@ -27,9 +27,14 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
   onAllComplete
 }) => {
   const isMobile = useIsMobile();
-  const CARD_OFFSET = isMobile ? 6 : 10;
-  const SCALE_FACTOR = isMobile ? 0.02 : 0.04;
-  const [cards, setCards] = useState<ReviewCard[]>(
+  
+  // Memoize constants to prevent recalculation
+  const { CARD_OFFSET, SCALE_FACTOR } = useMemo(() => ({
+    CARD_OFFSET: isMobile ? 6 : 10,
+    SCALE_FACTOR: isMobile ? 0.02 : 0.04
+  }), [isMobile]);
+
+  const [cards, setCards] = useState<ReviewCard[]>(() =>
     dueReviews.map((review, index) => ({
       id: `${review.exercise.id}-${review.review_type}`,
       exercise: review.exercise,
@@ -37,7 +42,7 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
     }))
   );
 
-  const handleReviewNow = (card: ReviewCard) => {
+  const handleReviewNow = useCallback((card: ReviewCard) => {
     onReview(card.exercise, card.review_type);
     
     // Remove the current card after review
@@ -48,22 +53,25 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
       }
       return newCards;
     });
-  };
+  }, [onReview, onAllComplete]);
+
+  // Memoize the empty state to prevent re-renders
+  const emptyState = useMemo(() => (
+    <div className="text-center py-6 sm:py-8">
+      <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+        <CheckCircle2 className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 dark:text-green-400" />
+      </div>
+      <h3 className="text-base sm:text-lg font-medium text-green-800 dark:text-green-200 mb-2">
+        All reviews complete!
+      </h3>
+      <p className="text-sm text-green-700 dark:text-green-300">
+        Redirecting to the main menu...
+      </p>
+    </div>
+  ), []);
 
   if (cards.length === 0) {
-    return (
-      <div className="text-center py-6 sm:py-8">
-        <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-3 sm:mb-4">
-          <CheckCircle2 className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 dark:text-green-400" />
-        </div>
-        <h3 className="text-base sm:text-lg font-medium text-green-800 dark:text-green-200 mb-2">
-          All reviews complete!
-        </h3>
-        <p className="text-sm text-green-700 dark:text-green-300">
-          Redirecting to the main menu...
-        </p>
-      </div>
-    );
+    return emptyState;
   }
 
   return (

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,8 @@ interface BidirectionalExerciseCardProps {
   onDelete?: (exerciseId: string) => void;
 }
 
-export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps> = ({
+// Memoized component to prevent unnecessary re-renders
+export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps> = React.memo(({
   exercise,
   onPractice,
   onReview,
@@ -27,13 +28,29 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
     backward?: string;
   }>({});
 
-  useEffect(() => {
-    if (exercise.status === 'reviewing') {
-      loadReviewTimes();
-    }
-  }, [exercise.id, exercise.status]);
+  // Memoize language mapping to prevent recreation on each render
+  const languageMap = useMemo(() => ({
+    'english': 'English',
+    'spanish': 'Spanish',
+    'french': 'French',
+    'german': 'German',
+    'italian': 'Italian',
+    'portuguese': 'Portuguese',
+    'russian': 'Russian',
+    'chinese': 'Chinese',
+    'japanese': 'Japanese',
+    'korean': 'Korean'
+  }), []);
 
-  const loadReviewTimes = async () => {
+  // Memoize status colors to prevent recreation
+  const statusColors = useMemo(() => ({
+    'learning': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+    'reviewing': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+    'mastered': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+    'default': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+  }), []);
+
+  const loadReviewTimes = useCallback(async () => {
     try {
       const [forwardDate, backwardDate] = await Promise.all([
         BidirectionalService.getNextReviewDate(exercise.id, 'forward'),
@@ -54,36 +71,68 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
     } catch (error) {
       console.error('Error loading review times:', error);
     }
-  };
+  }, [exercise.id]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'learning':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'reviewing':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'mastered':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+  useEffect(() => {
+    if (exercise.status === 'reviewing') {
+      loadReviewTimes();
     }
-  };
+  }, [exercise.id, exercise.status, loadReviewTimes]);
 
-  const getLanguageLabel = (language: string) => {
-    const languageMap: { [key: string]: string } = {
-      'english': 'English',
-      'spanish': 'Spanish',
-      'french': 'French',
-      'german': 'German',
-      'italian': 'Italian',
-      'portuguese': 'Portuguese',
-      'russian': 'Russian',
-      'chinese': 'Chinese',
-      'japanese': 'Japanese',
-      'korean': 'Korean'
-    };
-    return languageMap[language] || language;
-  };
+  const getStatusColor = useCallback((status: string) => {
+    return statusColors[status as keyof typeof statusColors] || statusColors.default;
+  }, [statusColors]);
+
+  const getLanguageLabel = useCallback((language: string) => {
+    return languageMap[language as keyof typeof languageMap] || language;
+  }, [languageMap]);
+
+  // Memoize handlers to prevent recreation
+  const handlePractice = useCallback(() => onPractice(exercise), [onPractice, exercise]);
+  const handleReview = useCallback(() => onReview(exercise), [onReview, exercise]);
+  const handleDelete = useCallback(() => onDelete?.(exercise.id), [onDelete, exercise.id]);
+  const handlePlayAudio = useCallback(() => {
+    if (exercise.original_audio_url) {
+      const audio = new Audio(exercise.original_audio_url);
+      audio.play();
+    }
+  }, [exercise.original_audio_url]);
+
+  // Memoize the review times display to prevent unnecessary re-renders
+  const reviewTimesDisplay = useMemo(() => {
+    if (exercise.status !== 'reviewing' || (!reviewTimes.forward && !reviewTimes.backward)) {
+      return null;
+    }
+
+    return (
+      <div className={`p-2 bg-muted rounded-md ${isMobile ? 'mb-2' : 'mb-3'}`}>
+        <p className={`text-muted-foreground mb-1 flex items-center gap-1 ${
+          isMobile ? 'text-xs' : 'text-xs'
+        }`}>
+          <Clock className="h-3 w-3" />
+          Next Reviews:
+        </p>
+        <div className="space-y-1">
+          {reviewTimes.forward && (
+            <div className={`flex justify-between ${isMobile ? 'text-xs' : 'text-xs'}`}>
+              <span>Forward:</span>
+              <span className={reviewTimes.forward === 'Due now' ? 'text-red-600 font-medium' : ''}>
+                {reviewTimes.forward}
+              </span>
+            </div>
+          )}
+          {reviewTimes.backward && (
+            <div className={`flex justify-between ${isMobile ? 'text-xs' : 'text-xs'}`}>
+              <span>Backward:</span>
+              <span className={reviewTimes.backward === 'Due now' ? 'text-red-600 font-medium' : ''}>
+                {reviewTimes.backward}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }, [exercise.status, reviewTimes, isMobile]);
 
   return (
     <Card className="w-full">
@@ -127,40 +176,13 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
         )}
 
         {/* Review Times Display */}
-        {exercise.status === 'reviewing' && (reviewTimes.forward || reviewTimes.backward) && (
-          <div className={`p-2 bg-muted rounded-md ${isMobile ? 'mb-2' : 'mb-3'}`}>
-            <p className={`text-muted-foreground mb-1 flex items-center gap-1 ${
-              isMobile ? 'text-xs' : 'text-xs'
-            }`}>
-              <Clock className="h-3 w-3" />
-              Next Reviews:
-            </p>
-            <div className="space-y-1">
-              {reviewTimes.forward && (
-                <div className={`flex justify-between ${isMobile ? 'text-xs' : 'text-xs'}`}>
-                  <span>Forward:</span>
-                  <span className={reviewTimes.forward === 'Due now' ? 'text-red-600 font-medium' : ''}>
-                    {reviewTimes.forward}
-                  </span>
-                </div>
-              )}
-              {reviewTimes.backward && (
-                <div className={`flex justify-between ${isMobile ? 'text-xs' : 'text-xs'}`}>
-                  <span>Backward:</span>
-                  <span className={reviewTimes.backward === 'Due now' ? 'text-red-600 font-medium' : ''}>
-                    {reviewTimes.backward}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {reviewTimesDisplay}
 
         <div className={`flex flex-wrap gap-2 ${isMobile ? 'mt-3' : 'mt-4'}`}>
           {exercise.status === 'learning' && (
             <Button
               size="sm"
-              onClick={() => onPractice(exercise)}
+              onClick={handlePractice}
               className={`flex items-center gap-1 ${
                 isMobile ? 'flex-1 min-w-0 justify-center' : ''
               }`}
@@ -173,7 +195,7 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
           {exercise.status === 'reviewing' && (
             <Button
               size="sm"
-              onClick={() => onReview(exercise)}
+              onClick={handleReview}
               className={`flex items-center gap-1 ${
                 isMobile ? 'flex-1 min-w-0 justify-center' : ''
               }`}
@@ -187,10 +209,7 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                const audio = new Audio(exercise.original_audio_url);
-                audio.play();
-              }}
+              onClick={handlePlayAudio}
               className={`flex items-center gap-1 ${
                 isMobile ? 'flex-1 min-w-0 justify-center' : ''
               }`}
@@ -204,7 +223,7 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => onDelete(exercise.id)}
+              onClick={handleDelete}
               className={`flex items-center gap-1 text-red-600 hover:text-red-700 ${
                 isMobile ? 'flex-1 min-w-0 justify-center' : ''
               }`}
@@ -217,4 +236,6 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
       </CardContent>
     </Card>
   );
-};
+});
+
+BidirectionalExerciseCard.displayName = 'BidirectionalExerciseCard';

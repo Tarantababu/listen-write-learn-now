@@ -15,7 +15,8 @@ interface ExerciseGridProps {
   canEdit: boolean;
 }
 
-const ExerciseGrid: React.FC<ExerciseGridProps> = ({
+// Memoized component to prevent unnecessary re-renders
+const ExerciseGrid: React.FC<ExerciseGridProps> = React.memo(({
   paginatedExercises,
   exercisesPerPage,
   onPractice,
@@ -25,9 +26,17 @@ const ExerciseGrid: React.FC<ExerciseGridProps> = ({
   onCreateClick,
   canEdit
 }) => {
-  // Fill array to maintain grid layout
-  const fillerCount = Math.max(0, exercisesPerPage - paginatedExercises.length - 1);
-  const fillers = Array(fillerCount).fill(null);
+  // Memoize filler count calculation
+  const fillerCount = React.useMemo(() => 
+    Math.max(0, exercisesPerPage - paginatedExercises.length - 1), 
+    [exercisesPerPage, paginatedExercises.length]
+  );
+  
+  // Memoize fillers array
+  const fillers = React.useMemo(() => 
+    Array(fillerCount).fill(null), 
+    [fillerCount]
+  );
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -52,6 +61,8 @@ const ExerciseGrid: React.FC<ExerciseGridProps> = ({
       ))}
     </div>
   );
-};
+});
+
+ExerciseGrid.displayName = 'ExerciseGrid';
 
 export default ExerciseGrid;

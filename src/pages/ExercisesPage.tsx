@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useDirectoryContext } from '@/contexts/DirectoryContext';
@@ -21,6 +22,12 @@ import ExerciseGrid from '@/components/exercises/ExerciseGrid';
 import CreateExerciseCard from '@/components/exercises/CreateExerciseCard';
 import BidirectionalPage from './BidirectionalPage';
 import PopoverHint from '@/components/PopoverHint';
+
+// Memoized components to prevent unnecessary re-renders
+const MemoizedExerciseGrid = React.memo(ExerciseGrid);
+const MemoizedBidirectionalPage = React.memo(BidirectionalPage);
+const MemoizedFilterBar = React.memo(FilterBar);
+const MemoizedPaginationControls = React.memo(PaginationControls);
 
 const ExercisesPage: React.FC = () => {
   const { user } = useAuth();
@@ -53,77 +60,105 @@ const ExercisesPage: React.FC = () => {
     }
   }, [user, refreshExercises]);
 
-  // Filter exercises by selected language, search term and selected tag
-  const filteredExercises = exercises.filter(exercise => {
-    const matchesLanguage = exercise.language === settings.selectedLanguage;
-    const matchesSearch = exercise.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         exercise.text.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTag = !selectedTag || exercise.tags.includes(selectedTag);
-    return matchesLanguage && matchesSearch && matchesTag;
-  });
+  // Memoize filtered exercises to prevent unnecessary recalculations
+  const filteredExercises = useMemo(() => {
+    return exercises.filter(exercise => {
+      const matchesLanguage = exercise.language === settings.selectedLanguage;
+      const matchesSearch = exercise.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           exercise.text.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesTag = !selectedTag || exercise.tags.includes(selectedTag);
+      return matchesLanguage && matchesSearch && matchesTag;
+    });
+  }, [exercises, settings.selectedLanguage, searchTerm, selectedTag]);
 
-  // Get all unique tags from exercises of the selected language
-  const allTags = [...new Set(
-    exercises
-      .filter(exercise => exercise.language === settings.selectedLanguage)
-      .flatMap(exercise => exercise.tags)
-  )];
+  // Memoize unique tags to prevent unnecessary recalculations
+  const allTags = useMemo(() => {
+    return [...new Set(
+      exercises
+        .filter(exercise => exercise.language === settings.selectedLanguage)
+        .flatMap(exercise => exercise.tags)
+    )];
+  }, [exercises, settings.selectedLanguage]);
 
-  const onCreateExercise = () => {
+  // Memoize pagination calculations
+  const { totalPages, paginatedExercises } = useMemo(() => {
+    const total = Math.ceil(filteredExercises.length / exercisesPerPage);
+    const paginated = filteredExercises.slice(
+      (currentPage - 1) * exercisesPerPage,
+      currentPage * exercisesPerPage
+    );
+    return { totalPages: total, paginatedExercises: paginated };
+  }, [filteredExercises, currentPage, exercisesPerPage]);
+
+  // Memoized event handlers to prevent unnecessary re-renders
+  const onCreateExercise = useCallback(() => {
     setIsCreating(true);
-  };
+  }, []);
 
-  const onSaveExercise = async (exerciseToSave) => {
+  const onSaveExercise = useCallback(async (exerciseToSave) => {
     if (exerciseToSave.id) {
       await updateExercise(exerciseToSave.id, exerciseToSave);
     } else {
       await addExercise(exerciseToSave);
     }
-  };
+  }, [updateExercise, addExercise]);
 
-  const handleDeleteExercise = (exercise) => {
+  const handleDeleteExercise = useCallback((exercise) => {
     setDeleteExerciseId(exercise.id);
-  };
+  }, []);
 
-  const confirmDeleteExercise = async () => {
+  const confirmDeleteExercise = useCallback(async () => {
     if (deleteExerciseId) {
       await deleteExercise(deleteExerciseId);
       setDeleteExerciseId(null);
     }
-  };
+  }, [deleteExerciseId, deleteExercise]);
 
-  const handleToggleArchive = async (exercise) => {
+  const handleToggleArchive = useCallback(async (exercise) => {
     await updateExercise(exercise.id, { archived: !exercise.archived });
-  };
+  }, [updateExercise]);
 
-  const handleMoveExercise = (exercise) => {
+  const handleMoveExercise = useCallback((exercise) => {
     setMoveExerciseData(exercise);
-  };
+  }, []);
 
-  const confirmMoveExercise = async (directoryId) => {
+  const confirmMoveExercise = useCallback(async (directoryId) => {
     if (moveExerciseData) {
       await updateExercise(moveExerciseData.id, { directoryId });
       setMoveExerciseData(null);
     }
-  };
+  }, [moveExerciseData, updateExercise]);
 
-  const handlePractice = (exercise) => {
+  const handlePractice = useCallback((exercise) => {
     setPracticeExercise(exercise);
-  };
+  }, []);
 
-  const onCompleteExercise = async (accuracy) => {
+  const onCompleteExercise = useCallback(async (accuracy) => {
     if (practiceExercise) {
       await markProgress(practiceExercise.id, accuracy);
       // Don't close the modal here - let the user close it manually
       // The modal will stay open to show results
     }
-  };
+  }, [practiceExercise, markProgress]);
 
-  const totalPages = Math.ceil(filteredExercises.length / exercisesPerPage);
-  const paginatedExercises = filteredExercises.slice(
-    (currentPage - 1) * exercisesPerPage,
-    currentPage * exercisesPerPage
-  );
+  // Memoized modal handlers
+  const handleModalClose = useCallback((modalType: string) => {
+    switch (modalType) {
+      case 'create':
+        setIsCreating(false);
+        setEditingExercise(null);
+        break;
+      case 'practice':
+        setPracticeExercise(null);
+        break;
+      case 'move':
+        setMoveExerciseData(null);
+        break;
+      case 'delete':
+        setDeleteExerciseId(null);
+        break;
+    }
+  }, []);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -180,7 +215,7 @@ const ExercisesPage: React.FC = () => {
           </div>
 
           {/* Search and Filter Bar */}
-          <FilterBar
+          <MemoizedFilterBar
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             selectedTag={selectedTag}
@@ -189,7 +224,7 @@ const ExercisesPage: React.FC = () => {
           />
 
           {/* Exercises Grid */}
-          <ExerciseGrid
+          <MemoizedExerciseGrid
             paginatedExercises={paginatedExercises}
             exercisesPerPage={exercisesPerPage}
             onPractice={handlePractice}
@@ -201,7 +236,7 @@ const ExercisesPage: React.FC = () => {
           />
 
           {/* Pagination */}
-          <PaginationControls
+          <MemoizedPaginationControls
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
@@ -209,19 +244,14 @@ const ExercisesPage: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="bidirectional">
-          <BidirectionalPage />
+          <MemoizedBidirectionalPage />
         </TabsContent>
       </Tabs>
 
       {/* Modals for Dictation Method */}
       <ExerciseFormModal
         isOpen={isCreating || !!editingExercise}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsCreating(false);
-            setEditingExercise(null);
-          }
-        }}
+        onOpenChange={(open) => !open && handleModalClose('create')}
         initialValues={editingExercise}
         mode={editingExercise ? 'edit' : 'create'}
       />
@@ -229,20 +259,20 @@ const ExercisesPage: React.FC = () => {
       <PracticeModal
         exercise={practiceExercise}
         isOpen={!!practiceExercise}
-        onOpenChange={(open) => !open && setPracticeExercise(null)}
+        onOpenChange={(open) => !open && handleModalClose('practice')}
         onComplete={onCompleteExercise}
       />
 
       <MoveExerciseModal
         exercise={moveExerciseData}
         isOpen={!!moveExerciseData}
-        onOpenChange={(open) => !open && setMoveExerciseData(null)}
+        onOpenChange={(open) => !open && handleModalClose('move')}
         onSuccess={() => setMoveExerciseData(null)}
       />
 
       <DeleteExerciseDialog
         isOpen={!!deleteExerciseId}
-        onOpenChange={(open) => !open && setDeleteExerciseId(null)}
+        onOpenChange={(open) => !open && handleModalClose('delete')}
         onConfirm={confirmDeleteExercise}
       />
     </div>
