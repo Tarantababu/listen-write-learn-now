@@ -513,4 +513,59 @@ export class BidirectionalService {
 
     if (error) throw error;
   }
+
+  // Get previous reviews for a specific exercise and review type
+  static async getPreviousReviews(exerciseId: string, reviewType: 'forward' | 'backward') {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('bidirectional_reviews')
+      .select('*')
+      .eq('exercise_id', exerciseId)
+      .eq('review_type', reviewType)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { data };
+  }
+
+  // Get the next review date for a specific exercise and review type
+  static async getNextReviewDate(exerciseId: string, reviewType: 'forward' | 'backward'): Promise<Date | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data: lastReview } = await supabase
+      .from('bidirectional_reviews')
+      .select('due_date')
+      .eq('exercise_id', exerciseId)
+      .eq('review_type', reviewType)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!lastReview?.due_date) return null;
+
+    return new Date(lastReview.due_date);
+  }
+
+  // Format time remaining until next review
+  static formatTimeRemaining(nextReviewDate: Date): string {
+    const now = new Date();
+    const diff = nextReviewDate.getTime() - now.getTime();
+
+    if (diff <= 0) return 'Due now';
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m`;
+    return `${seconds}s`;
+  }
 }

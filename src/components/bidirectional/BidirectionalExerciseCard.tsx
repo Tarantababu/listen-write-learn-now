@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, BookOpen, Brain, Trash2 } from 'lucide-react';
+import { Play, BookOpen, Brain, Trash2, Clock } from 'lucide-react';
+import { BidirectionalService } from '@/services/bidirectionalService';
 import type { BidirectionalExercise } from '@/types/bidirectional';
 
 interface BidirectionalExerciseCardProps {
@@ -19,6 +20,40 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
   onReview,
   onDelete
 }) => {
+  const [reviewTimes, setReviewTimes] = useState<{
+    forward?: string;
+    backward?: string;
+  }>({});
+
+  useEffect(() => {
+    if (exercise.status === 'reviewing') {
+      loadReviewTimes();
+    }
+  }, [exercise.id, exercise.status]);
+
+  const loadReviewTimes = async () => {
+    try {
+      const [forwardDate, backwardDate] = await Promise.all([
+        BidirectionalService.getNextReviewDate(exercise.id, 'forward'),
+        BidirectionalService.getNextReviewDate(exercise.id, 'backward')
+      ]);
+
+      const times: { forward?: string; backward?: string } = {};
+      
+      if (forwardDate) {
+        times.forward = BidirectionalService.formatTimeRemaining(forwardDate);
+      }
+      
+      if (backwardDate) {
+        times.backward = BidirectionalService.formatTimeRemaining(backwardDate);
+      }
+
+      setReviewTimes(times);
+    } catch (error) {
+      console.error('Error loading review times:', error);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'learning':
@@ -78,6 +113,34 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
           <div className="mb-3">
             <p className="text-sm text-muted-foreground mb-1">Your Translation:</p>
             <p className="text-sm">{exercise.user_forward_translation}</p>
+          </div>
+        )}
+
+        {/* Review Times Display */}
+        {exercise.status === 'reviewing' && (reviewTimes.forward || reviewTimes.backward) && (
+          <div className="mb-3 p-2 bg-muted rounded-md">
+            <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Next Reviews:
+            </p>
+            <div className="space-y-1">
+              {reviewTimes.forward && (
+                <div className="flex justify-between text-xs">
+                  <span>Forward:</span>
+                  <span className={reviewTimes.forward === 'Due now' ? 'text-red-600 font-medium' : ''}>
+                    {reviewTimes.forward}
+                  </span>
+                </div>
+              )}
+              {reviewTimes.backward && (
+                <div className="flex justify-between text-xs">
+                  <span>Backward:</span>
+                  <span className={reviewTimes.backward === 'Due now' ? 'text-red-600 font-medium' : ''}>
+                    {reviewTimes.backward}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

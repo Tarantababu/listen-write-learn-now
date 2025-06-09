@@ -28,13 +28,30 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
   const [userRecall, setUserRecall] = useState('');
   const [showAnswer, setShowAnswer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentReviewRound, setCurrentReviewRound] = useState(1);
 
   React.useEffect(() => {
-    if (isOpen) {
+    if (isOpen && exercise) {
       setUserRecall('');
       setShowAnswer(false);
+      loadCurrentReviewRound();
     }
   }, [isOpen, exercise, reviewType]);
+
+  const loadCurrentReviewRound = async () => {
+    if (!exercise) return;
+
+    try {
+      const { data: previousReviews } = await BidirectionalService.getPreviousReviews(
+        exercise.id, 
+        reviewType
+      );
+      setCurrentReviewRound((previousReviews?.length || 0) + 1);
+    } catch (error) {
+      console.error('Error loading review round:', error);
+      setCurrentReviewRound(1);
+    }
+  };
 
   // Calculate next review intervals: 30s, 1d, 3d, 7d, 14d, 30d, 60d
   const calculateNextReviewInterval = (isCorrect: boolean, reviewRound: number = 1) => {
@@ -106,8 +123,8 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
         feedback: isCorrect ? "Correct!" : "Needs more practice"
       });
 
-      // Get the next interval for display
-      const nextInterval = calculateNextReviewInterval(isCorrect, 1); // This will be calculated properly in the service
+      // Calculate the actual next interval based on the current review round
+      const nextInterval = calculateNextReviewInterval(isCorrect, isCorrect ? currentReviewRound + 1 : 1);
       const intervalText = formatInterval(nextInterval);
       
       toast({
@@ -164,9 +181,9 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
 
   if (!exercise) return null;
 
-  // Calculate intervals for button display (assuming this is first review for simplicity)
-  const correctInterval = calculateNextReviewInterval(true, 2); // Next correct interval
-  const incorrectInterval = calculateNextReviewInterval(false, 1); // Reset interval
+  // Calculate intervals for button display based on current review round
+  const correctInterval = calculateNextReviewInterval(true, currentReviewRound + 1);
+  const incorrectInterval = calculateNextReviewInterval(false, 1);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -174,7 +191,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
-            {reviewType === 'forward' ? 'Forward' : 'Backward'} Review
+            {reviewType === 'forward' ? 'Forward' : 'Backward'} Review (Round {currentReviewRound})
           </DialogTitle>
         </DialogHeader>
 
