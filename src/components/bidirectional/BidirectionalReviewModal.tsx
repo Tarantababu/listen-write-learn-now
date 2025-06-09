@@ -100,11 +100,19 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
     }
   };
 
-  // Get the correct interval for the "Good" button based on session state
+  // Get the correct interval for the "Good" button based on current session state
   const getGoodButtonInterval = () => {
     if (!exercise || !sessionState.isLoaded) {
       return { days: 0, hours: 0, minutes: 0, seconds: 30 };
     }
+
+    // Use the current session state to calculate the interval
+    const effectiveRound = BidirectionalService.getEffectiveReviewRound(
+      sessionState.previousReviews,
+      sessionState.hasClickedAgainInSession
+    );
+
+    console.log(`Calculating Good button interval - Effective round: ${effectiveRound}, Has clicked again: ${sessionState.hasClickedAgainInSession}`);
 
     return BidirectionalService.calculateGoodButtonInterval(
       exercise.id,
@@ -135,8 +143,9 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
       return;
     }
 
-    // Update session state immediately when "Again" is clicked
+    // IMMEDIATELY update session state when "Again" is clicked to sync the UI
     if (!isCorrect) {
+      console.log('User clicked "Again" - updating session state immediately');
       setSessionState(prev => ({
         ...prev,
         hasClickedAgainInSession: true
@@ -153,13 +162,15 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
         feedback: isCorrect ? "Correct!" : "Needs more practice"
       });
 
-      // Calculate the next interval for feedback using the updated service method
-      const nextInterval = BidirectionalService.calculateGoodButtonInterval(
-        exercise.id,
-        reviewType,
-        !isCorrect, // If they just answered incorrectly, they'll restart from round 1
-        sessionState.previousReviews
-      );
+      // Calculate the next interval for feedback using current state
+      const nextInterval = isCorrect
+        ? BidirectionalService.calculateGoodButtonInterval(
+            exercise.id,
+            reviewType,
+            sessionState.hasClickedAgainInSession, // Use current session state
+            sessionState.previousReviews
+          )
+        : { days: 0, hours: 0, minutes: 0, seconds: 30 }; // "Again" always shows 30s
       
       const intervalText = formatInterval(nextInterval);
       
@@ -223,7 +234,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
 
   if (!exercise) return null;
 
-  // Get the smart interval for the Good button
+  // Get the real-time interval for the Good button
   const goodButtonInterval = getGoodButtonInterval();
 
   return (
@@ -328,9 +339,9 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                   </div>
                 </div>
 
-                {/* Session state indicator for transparency */}
+                {/* Enhanced session state indicator */}
                 {sessionState.hasClickedAgainInSession && (
-                  <div className="text-xs text-muted-foreground text-center bg-muted p-2 rounded">
+                  <div className="text-xs text-amber-600 dark:text-amber-400 text-center bg-amber-50 dark:bg-amber-950/20 p-2 rounded border border-amber-200 dark:border-amber-800">
                     ⚠️ Session restarted - Next "Good" will begin from round 1 (30s interval)
                   </div>
                 )}

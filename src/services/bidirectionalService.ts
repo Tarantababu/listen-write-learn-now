@@ -305,13 +305,14 @@ export class BidirectionalService {
     return nextDate;
   }
 
-  // NEW: Get the effective review round based on review history and session state
+  // IMPROVED: Get the effective review round based on review history and session state
   static getEffectiveReviewRound(
     previousReviews: BidirectionalReview[], 
     hasClickedAgainInSession: boolean
   ): number {
     // If user clicked "Again" in this session, they restart from round 1
     if (hasClickedAgainInSession) {
+      console.log('Session restarted due to "Again" click - effective round: 1');
       return 1;
     }
 
@@ -326,10 +327,12 @@ export class BidirectionalService {
     }
 
     // The next review round is one more than consecutive correct reviews
-    return Math.min(consecutiveCorrectCount + 1, 5); // Cap at round 5 (mastered)
+    const effectiveRound = Math.min(consecutiveCorrectCount + 1, 5); // Cap at round 5 (mastered)
+    console.log(`Effective review round calculation - Previous correct: ${consecutiveCorrectCount}, Effective round: ${effectiveRound}`);
+    return effectiveRound;
   }
 
-  // NEW: Calculate what the interval would be for a "Good" response
+  // IMPROVED: Calculate what the interval would be for a "Good" response with better logging
   static calculateGoodButtonInterval(
     exerciseId: string,
     reviewType: 'forward' | 'backward',
@@ -337,6 +340,11 @@ export class BidirectionalService {
     previousReviews?: BidirectionalReview[]
   ): { days: number; hours: number; minutes: number; seconds: number; mastered?: boolean } {
     const effectiveRound = this.getEffectiveReviewRound(previousReviews || [], hasClickedAgainInSession);
+    
+    console.log(`Calculating Good button interval for exercise ${exerciseId}, review type ${reviewType}:`);
+    console.log(`- Has clicked again in session: ${hasClickedAgainInSession}`);
+    console.log(`- Previous reviews count: ${previousReviews?.length || 0}`);
+    console.log(`- Effective round: ${effectiveRound}`);
     
     // Calculate what the next interval would be if they answer correctly
     const nextDate = this.calculateNextReviewDate(true, effectiveRound);
@@ -348,13 +356,16 @@ export class BidirectionalService {
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
 
-    return {
+    const result = {
       days: Math.max(0, days),
       hours: Math.max(0, hours),
       minutes: Math.max(0, minutes),
       seconds: Math.max(0, seconds),
       mastered: effectiveRound >= 5
     };
+
+    console.log(`- Calculated interval:`, result);
+    return result;
   }
 
   static async recordReview(data: {
