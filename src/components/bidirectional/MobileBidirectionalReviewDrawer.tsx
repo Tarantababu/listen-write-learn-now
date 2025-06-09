@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
@@ -44,35 +43,29 @@ export const MobileBidirectionalReviewDrawer: React.FC<MobileBidirectionalReview
 }) => {
   if (!exercise) return null;
 
-  // Use the same interval calculation as BidirectionalService.calculateNextReviewDate
+  // Updated interval calculation to match the new schedule: again, 1d, 3d, 7d, mastered
   const calculateNextReviewInterval = (isCorrect: boolean, reviewRound: number = 1) => {
     if (!isCorrect) {
       // If incorrect, reset to 30 seconds
       return { days: 0, hours: 0, minutes: 0, seconds: 30 };
     }
 
-    // Match the exact progression from BidirectionalService: 30s → 10m → 1h → 1d → 3d → 7d → mastered
+    // New progression: 30s → 1d → 3d → 7d → mastered
     switch (reviewRound) {
       case 1:
         // First review after 30 seconds
         return { days: 0, hours: 0, minutes: 0, seconds: 30 };
       case 2:
-        // Second review after 10 minutes
-        return { days: 0, hours: 0, minutes: 10, seconds: 0 };
-      case 3:
-        // Third review after 1 hour
-        return { days: 0, hours: 1, minutes: 0, seconds: 0 };
-      case 4:
-        // Fourth review after 1 day
+        // Second review after 1 day
         return { days: 1, hours: 0, minutes: 0, seconds: 0 };
-      case 5:
-        // Fifth review after 3 days
+      case 3:
+        // Third review after 3 days
         return { days: 3, hours: 0, minutes: 0, seconds: 0 };
-      case 6:
-        // Sixth review after 7 days
+      case 4:
+        // Fourth review after 7 days
         return { days: 7, hours: 0, minutes: 0, seconds: 0 };
       default:
-        // After 6th review, mark as mastered
+        // After 4th review, mark as mastered
         return { days: 0, hours: 0, minutes: 0, seconds: 0, mastered: true };
     }
   };

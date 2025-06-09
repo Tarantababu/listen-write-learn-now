@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { BidirectionalExercise, BidirectionalReview, BidirectionalMasteredWord, SpacedRepetitionConfig } from '@/types/bidirectional';
 
@@ -266,7 +265,7 @@ export class BidirectionalService {
     }
   }
 
-  // Improved spaced repetition calculation with proper intervals
+  // Updated spaced repetition calculation with new intervals: again, 1d, 3d, 7d, mastered
   static calculateNextReviewDate(
     isCorrect: boolean,
     reviewRound: number = 1
@@ -279,34 +278,26 @@ export class BidirectionalService {
       return nextDate;
     }
 
-    // Improved spaced repetition: 30s → 10m → 1h → 1d → 3d → 7d → mastered
+    // New spaced repetition: 30s → 1d → 3d → 7d → mastered
     switch (reviewRound) {
       case 1:
-        // First review after 30 seconds
+        // First review after 30 seconds (immediate practice)
         nextDate.setSeconds(nextDate.getSeconds() + 30);
         break;
       case 2:
-        // Second review after 10 minutes
-        nextDate.setMinutes(nextDate.getMinutes() + 10);
-        break;
-      case 3:
-        // Third review after 1 hour
-        nextDate.setHours(nextDate.getHours() + 1);
-        break;
-      case 4:
-        // Fourth review after 1 day
+        // Second review after 1 day
         nextDate.setDate(nextDate.getDate() + 1);
         break;
-      case 5:
-        // Fifth review after 3 days
+      case 3:
+        // Third review after 3 days
         nextDate.setDate(nextDate.getDate() + 3);
         break;
-      case 6:
-        // Sixth review after 7 days
+      case 4:
+        // Fourth review after 7 days
         nextDate.setDate(nextDate.getDate() + 7);
         break;
       default:
-        // After 6th review, mark as mastered with very long interval
+        // After 4th review, mark as mastered with very long interval
         nextDate.setDate(nextDate.getDate() + 365);
         break;
     }
@@ -372,9 +363,9 @@ export class BidirectionalService {
       // Record language activity for streak system
       await this.recordLanguageActivity(user.id, exercise.target_language);
 
-      // If this is round 6 or later and correct, add mastered words and check for mastery
+      // If this is round 4 or later and correct, add mastered words and check for mastery
       const currentRound = (previousReviews?.length || 0) + 1;
-      if (data.is_correct && currentRound >= 6) {
+      if (data.is_correct && currentRound >= 4) {
         await this.extractAndMarkMasteredWords(data.exercise_id, exercise);
         
         // Check and mark exercise as mastered if both directions are complete
@@ -408,7 +399,7 @@ export class BidirectionalService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Check if both forward and backward reviews have been completed successfully for 6 rounds
+    // Check if both forward and backward reviews have been completed successfully for 4 rounds
     const { data: forwardReviews } = await supabase
       .from('bidirectional_reviews')
       .select('review_round, is_correct')
@@ -427,9 +418,9 @@ export class BidirectionalService {
       .eq('is_correct', true)
       .order('review_round', { ascending: false });
 
-    // Check if we have successful reviews at round 6 or higher for both directions
-    const forwardComplete = forwardReviews?.some(review => review.review_round >= 6) || false;
-    const backwardComplete = backwardReviews?.some(review => review.review_round >= 6) || false;
+    // Check if we have successful reviews at round 4 or higher for both directions
+    const forwardComplete = forwardReviews?.some(review => review.review_round >= 4) || false;
+    const backwardComplete = backwardReviews?.some(review => review.review_round >= 4) || false;
 
     console.log(`Exercise ${exerciseId} mastery check:`, { 
       forwardComplete, 
