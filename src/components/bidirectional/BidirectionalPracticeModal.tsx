@@ -29,14 +29,14 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
   const [userBackTranslation, setUserBackTranslation] = useState('');
   const [currentStep, setCurrentStep] = useState<'forward' | 'backward' | 'complete'>('forward');
   const [isLoading, setIsLoading] = useState(false);
-  const [translationAccuracy, setTranslationAccuracy] = useState<number | null>(null);
+  const [translationComparison, setTranslationComparison] = useState<ReturnType<typeof compareTexts> | null>(null);
 
   React.useEffect(() => {
     if (exercise && isOpen) {
       setUserTranslation(exercise.user_forward_translation || '');
       setUserBackTranslation(exercise.user_back_translation || '');
       setCurrentStep('forward');
-      setTranslationAccuracy(null);
+      setTranslationComparison(null);
     }
   }, [exercise, isOpen]);
 
@@ -46,7 +46,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
         // Check translation accuracy before proceeding
         if (exercise?.normal_translation) {
           const comparison = compareTexts(exercise.normal_translation, userTranslation);
-          setTranslationAccuracy(comparison.accuracy);
+          setTranslationComparison(comparison);
           
           if (comparison.accuracy < 95) {
             toast({
@@ -71,7 +71,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
     // For forward step, validate accuracy first
     if (currentStep === 'forward' && exercise.normal_translation) {
       const comparison = compareTexts(exercise.normal_translation, userTranslation);
-      setTranslationAccuracy(comparison.accuracy);
+      setTranslationComparison(comparison);
       
       if (comparison.accuracy < 95) {
         toast({
@@ -111,6 +111,79 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const renderWordFeedback = () => {
+    if (!translationComparison) return null;
+
+    return (
+      <div className="space-y-3">
+        <div className="text-sm font-medium">Word-by-word analysis:</div>
+        <div className="flex flex-wrap gap-1 p-3 bg-muted rounded-md">
+          {translationComparison.tokenResults.map((token, index) => {
+            let className = "px-2 py-1 rounded text-sm ";
+            let displayText = token.userToken || `[${token.originalToken}]`;
+            
+            switch (token.status) {
+              case 'correct':
+                className += "bg-green-100 text-green-800 border border-green-200";
+                break;
+              case 'almost':
+                className += "bg-yellow-100 text-yellow-800 border border-yellow-200";
+                break;
+              case 'incorrect':
+                className += "bg-red-100 text-red-800 border border-red-200";
+                break;
+              case 'missing':
+                className += "bg-gray-100 text-gray-600 border border-gray-200 line-through";
+                displayText = `[${token.originalToken}]`;
+                break;
+              case 'extra':
+                className += "bg-orange-100 text-orange-800 border border-orange-200";
+                break;
+              default:
+                className += "bg-gray-100 text-gray-600";
+            }
+            
+            return (
+              <span key={index} className={className}>
+                {displayText}
+              </span>
+            );
+          })}
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-green-100 border border-green-200 rounded"></div>
+            <span>Correct ({translationComparison.correct})</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-yellow-100 border border-yellow-200 rounded"></div>
+            <span>Almost ({translationComparison.almost})</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-red-100 border border-red-200 rounded"></div>
+            <span>Wrong ({translationComparison.incorrect})</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-gray-100 border border-gray-200 rounded"></div>
+            <span>Missing ({translationComparison.missing})</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-orange-100 border border-orange-200 rounded"></div>
+            <span>Extra ({translationComparison.extra})</span>
+          </div>
+        </div>
+
+        {exercise?.normal_translation && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
+            <div className="text-sm font-medium text-blue-800 mb-1">Expected translation:</div>
+            <div className="text-blue-900">{exercise.normal_translation}</div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (!exercise) return null;
@@ -154,27 +227,32 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                   value={userTranslation}
                   onChange={(e) => {
                     setUserTranslation(e.target.value);
-                    setTranslationAccuracy(null); // Reset accuracy when user types
+                    setTranslationComparison(null); // Reset comparison when user types
                   }}
                   placeholder="Enter your translation..."
                   rows={3}
                 />
                 
-                {translationAccuracy !== null && (
-                  <div className={`p-3 rounded-md flex items-center gap-2 ${
-                    translationAccuracy >= 95 
-                      ? 'bg-green-50 text-green-700 border border-green-200' 
-                      : 'bg-red-50 text-red-700 border border-red-200'
+                {translationComparison && (
+                  <div className={`p-4 rounded-md border ${
+                    translationComparison.accuracy >= 95 
+                      ? 'bg-green-50 border-green-200' 
+                      : 'bg-red-50 border-red-200'
                   }`}>
-                    {translationAccuracy >= 95 ? (
-                      <CheckCircle className="h-4 w-4" />
-                    ) : (
-                      <AlertTriangle className="h-4 w-4" />
-                    )}
-                    <span>
-                      Translation accuracy: {translationAccuracy}% 
-                      {translationAccuracy >= 95 ? ' - You can proceed!' : ' - Need at least 95% to continue'}
-                    </span>
+                    <div className="flex items-center gap-2 mb-3">
+                      {translationComparison.accuracy >= 95 ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                      )}
+                      <span className={`font-medium ${
+                        translationComparison.accuracy >= 95 ? 'text-green-700' : 'text-red-700'
+                      }`}>
+                        Translation accuracy: {translationComparison.accuracy}% 
+                        {translationComparison.accuracy >= 95 ? ' - You can proceed!' : ' - Need at least 95% to continue'}
+                      </span>
+                    </div>
+                    {renderWordFeedback()}
                   </div>
                 )}
 
