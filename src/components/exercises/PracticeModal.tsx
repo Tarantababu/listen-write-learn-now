@@ -36,7 +36,6 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true)
   const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false)
   const [completedAccuracy, setCompletedAccuracy] = useState<number | null>(null)
-  // Removed keyboard state - we ignore virtual keyboard completely
   
   const hasInitializedRef = useRef<boolean>(false)
   const isMobile = useIsMobile()
@@ -45,8 +44,6 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   const { exercises, hasReadingAnalysis } = useExerciseContext()
   const { user } = useAuth()
   const { subscription } = useSubscription()
-
-  // No keyboard detection needed - we ignore virtual keyboard completely
 
   // Update the local exercise state immediately when the prop changes or when exercises are updated
   useEffect(() => {
@@ -90,9 +87,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
             console.log("Existing analysis ID:", analysisData.id)
           }
 
-          // On mobile, skip directly to dictation regardless of existing analysis
-          // On desktop, skip to dictation if user has done reading analysis before
-          setPracticeStage(isMobile ? PracticeStage.DICTATION : PracticeStage.DICTATION)
+          // If user has done reading analysis before, skip to dictation
+          setPracticeStage(PracticeStage.DICTATION)
         } else {
           console.log("No existing analysis found")
           setHasExistingAnalysis(false)
@@ -123,8 +119,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
             }
           }
 
-          // On mobile, go directly to dictation. On desktop, show prompt
-          setPracticeStage(isMobile ? PracticeStage.DICTATION : PracticeStage.PROMPT)
+          // Show prompt on both mobile and desktop for new exercises
+          setPracticeStage(PracticeStage.PROMPT)
         }
       } catch (error) {
         console.error("Error in analysis check:", error)
@@ -143,7 +139,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
     if (!isOpen) {
       hasInitializedRef.current = false
     }
-  }, [exercise, user, isOpen, subscription.isSubscribed, hasReadingAnalysis, isMobile])
+  }, [exercise, user, isOpen, subscription.isSubscribed, hasReadingAnalysis])
 
   const handleComplete = (accuracy: number) => {
     // Store the completion data but don't close the modal immediately
@@ -351,21 +347,28 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
         >
           <DialogTitle className="sr-only">{updatedExercise.title} Practice</DialogTitle>
 
-          {/* Desktop: Conditionally render based on practice stage */}
-          {/* Mobile: Always show dictation directly */}
-          {!isMobile && practiceStage === PracticeStage.PROMPT && (
-            <LearningOptionsMenu
-              onStartReadingAnalysis={handleStartReadingAnalysis}
-              onStartDictation={handleStartDictation}
-              exerciseTitle={updatedExercise.title}
-              analysisAllowed={analysisAllowed}
-              isSubscribed={subscription.isSubscribed}
-              loadingAnalysisCheck={loadingAnalysisCheck}
-            />
+          {/* Show LearningOptionsMenu on both desktop and mobile when in PROMPT stage */}
+          {practiceStage === PracticeStage.PROMPT && (
+            <div className={`
+              flex-1 overflow-hidden 
+              ${isMobile ? 'mobile-practice-content' : 'practice-content'}
+            `}>
+              <LearningOptionsMenu
+                onStartReadingAnalysis={handleStartReadingAnalysis}
+                onStartDictation={handleStartDictation}
+                exerciseTitle={updatedExercise.title}
+                analysisAllowed={analysisAllowed}
+                isSubscribed={subscription.isSubscribed}
+                loadingAnalysisCheck={loadingAnalysisCheck}
+              />
+            </div>
           )}
 
-          {!isMobile && practiceStage === PracticeStage.READING && (
-            <div className="flex-1 overflow-hidden practice-content">
+          {practiceStage === PracticeStage.READING && (
+            <div className={`
+              flex-1 overflow-hidden 
+              ${isMobile ? 'mobile-practice-content' : 'practice-content'}
+            `}>
               <ReadingAnalysis
                 exercise={updatedExercise}
                 onComplete={handleStartDictation}
@@ -374,8 +377,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
             </div>
           )}
 
-          {/* Show dictation for both mobile (always) and desktop (when in dictation stage) */}
-          {(isMobile || practiceStage === PracticeStage.DICTATION) && (
+          {practiceStage === PracticeStage.DICTATION && (
             <div className={`
               flex-1 overflow-hidden 
               ${isMobile ? 'mobile-practice-content' : 'practice-content'}
