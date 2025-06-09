@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { compareTexts } from '@/utils/textComparison';
 import AudioPlayer from '@/components/AudioPlayer';
 import VocabularyHighlighter from '@/components/VocabularyHighlighter';
+import type { Exercise, Language } from '@/types';
 
 interface BidirectionalPracticeModalProps {
   exercise: BidirectionalExercise | null;
@@ -32,6 +33,18 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
   const [isLoading, setIsLoading] = useState(false);
   const [translationComparison, setTranslationComparison] = useState<ReturnType<typeof compareTexts> | null>(null);
   const [backTranslationComparison, setBackTranslationComparison] = useState<ReturnType<typeof compareTexts> | null>(null);
+
+  // Helper function to create Exercise-compatible objects for VocabularyHighlighter
+  const createExerciseForVocabulary = (text: string, language: string): Exercise => ({
+    id: exercise?.id || '',
+    text: text,
+    language: language as Language,
+    user_id: '',
+    created_at: '',
+    updated_at: '',
+    level: 'A1',
+    status: 'learning'
+  });
 
   React.useEffect(() => {
     if (exercise && isOpen) {
@@ -219,10 +232,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
             <CardContent className="space-y-4">
               <div className="p-4 bg-background rounded-lg border">
                 <VocabularyHighlighter
-                  text={exercise.original_sentence}
-                  language={exercise.target_language}
-                  exerciseId={exercise.id}
-                  className="text-xl font-semibold text-center leading-relaxed"
+                  exercise={createExerciseForVocabulary(exercise.original_sentence, exercise.target_language)}
                 />
               </div>
               {/* Audio Players for Generated Sentences */}
@@ -326,10 +336,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                       <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
                         <div className="text-sm font-medium text-blue-800 mb-1">Expected translation:</div>
                         <VocabularyHighlighter
-                          text={exercise.normal_translation}
-                          language={exercise.support_language}
-                          exerciseId={exercise.id}
-                          className="text-blue-900"
+                          exercise={createExerciseForVocabulary(exercise.normal_translation, exercise.support_language)}
                         />
                       </div>
                     )}
@@ -361,10 +368,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
               <CardContent className="space-y-4">
                 <div className="p-4 bg-background rounded-lg border">
                   <VocabularyHighlighter
-                    text={exercise.normal_translation}
-                    language={exercise.support_language}
-                    exerciseId={exercise.id}
-                    className="text-lg font-medium"
+                    exercise={createExerciseForVocabulary(exercise.normal_translation, exercise.support_language)}
                   />
                 </div>
                 {exercise.normal_translation_audio_url && (
@@ -394,10 +398,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                 <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
                   <p className="text-sm text-blue-700 mb-1 font-medium">Your forward translation:</p>
                   <VocabularyHighlighter
-                    text={userTranslation}
-                    language={exercise.support_language}
-                    exerciseId={exercise.id}
-                    className="text-blue-900"
+                    exercise={createExerciseForVocabulary(userTranslation, exercise.support_language)}
                   />
                 </div>
                 
@@ -435,10 +436,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                     <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
                       <div className="text-sm font-medium text-blue-800 mb-1">Expected back translation (original sentence):</div>
                       <VocabularyHighlighter
-                        text={exercise.original_sentence}
-                        language={exercise.target_language}
-                        exerciseId={exercise.id}
-                        className="text-blue-900"
+                        exercise={createExerciseForVocabulary(exercise.original_sentence, exercise.target_language)}
                       />
                     </div>
                   </div>
