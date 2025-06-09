@@ -397,6 +397,9 @@ export class BidirectionalService {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
+    // Cast the database response to proper type
+    const typedPreviousReviews = (previousReviews || []) as BidirectionalReview[];
+
     // FIXED: Calculate review round based on reset logic
     let reviewRoundToRecord: number;
     let nextReviewRound: number;
@@ -408,7 +411,7 @@ export class BidirectionalService {
       console.log('Recording "Again" - resetting to round 0, next review will be round 1');
     } else {
       // If correct, calculate the actual round based on consecutive correct reviews
-      reviewRoundToRecord = this.calculateActualReviewRound(previousReviews || []);
+      reviewRoundToRecord = this.calculateActualReviewRound(typedPreviousReviews);
       nextReviewRound = reviewRoundToRecord + 1;
       console.log(`Recording "Good" - current round: ${reviewRoundToRecord}, next round: ${nextReviewRound}`);
     }
@@ -665,7 +668,9 @@ export class BidirectionalService {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return { data };
+    
+    // Cast the database response to proper type
+    return { data: (data || []) as BidirectionalReview[] };
   }
 
   // Get the next review date for a specific exercise and review type
