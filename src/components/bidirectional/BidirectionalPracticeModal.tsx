@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Play, ArrowRight, CheckCircle, AlertTriangle, Volume2 } from 'lucide-react';
 import { BidirectionalService } from '@/services/bidirectionalService';
 import type { BidirectionalExercise } from '@/types/bidirectional';
+import type { Language } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { compareTexts } from '@/utils/textComparison';
 import AudioPlayer from '@/components/AudioPlayer';
@@ -201,7 +202,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
   const mockExercise = {
     id: exercise.id,
     text: exercise.original_sentence,
-    language: exercise.target_language,
+    language: exercise.target_language as Language,
     title: 'Bidirectional Exercise',
     tags: [],
     audioUrl: exercise.original_audio_url,
