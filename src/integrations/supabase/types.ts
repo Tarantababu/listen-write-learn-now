@@ -36,51 +36,6 @@ export type Database = {
         }
         Relationships: []
       }
-      admin_uploads: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          file_path: string
-          file_size: number
-          filename: string
-          id: string
-          is_active: boolean | null
-          mime_type: string
-          original_name: string
-          tags: string[] | null
-          updated_at: string | null
-          uploaded_by: string
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          file_path: string
-          file_size: number
-          filename: string
-          id?: string
-          is_active?: boolean | null
-          mime_type: string
-          original_name: string
-          tags?: string[] | null
-          updated_at?: string | null
-          uploaded_by: string
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          file_path?: string
-          file_size?: number
-          filename?: string
-          id?: string
-          is_active?: boolean | null
-          mime_type?: string
-          original_name?: string
-          tags?: string[] | null
-          updated_at?: string | null
-          uploaded_by?: string
-        }
-        Relationships: []
-      }
       blog_categories: {
         Row: {
           created_at: string
