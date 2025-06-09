@@ -148,9 +148,7 @@ const Header: React.FC = () => {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link to="/dashboard/bidirectional" className="flex items-center w-full">
-                          <ArrowLeftRight className="h-4 w-4 mr-2" /> Bidirectional
-                        </Link>
+                        
                       </DropdownMenuItem>
                       {isAdmin && <DropdownMenuItem asChild>
                           <Link to="/dashboard/admin" className="flex items-center w-full">
