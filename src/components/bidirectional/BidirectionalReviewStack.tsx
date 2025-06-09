@@ -73,7 +73,7 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
           return (
             <motion.div
               key={card.id}
-              className="absolute bg-card border rounded-2xl p-6 shadow-lg flex flex-col justify-between h-64 w-80 md:h-72 md:w-96"
+              className="absolute bg-card border rounded-2xl p-6 shadow-lg flex flex-col justify-between h-64 w-80 md:h-72 md:w-96 overflow-hidden"
               style={{
                 transformOrigin: "top center",
               }}
@@ -87,7 +87,7 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
                 ease: "easeOut"
               }}
             >
-              <div className="space-y-4">
+              <div className="space-y-4 flex-1 min-h-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Brain className="h-5 w-5 text-primary" />
@@ -103,10 +103,12 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
                   </div>
                 </div>
                 
-                <div className="space-y-3">
-                  <p className="text-lg font-medium leading-relaxed break-words">
-                    {card.exercise.original_sentence}
-                  </p>
+                <div className="space-y-3 flex-1 min-h-0">
+                  <div className="overflow-hidden">
+                    <p className="text-lg font-medium leading-relaxed break-words line-clamp-3">
+                      {card.exercise.original_sentence}
+                    </p>
+                  </div>
                   
                   <div className="text-sm text-muted-foreground">
                     {card.review_type === 'forward' 
@@ -117,7 +119,7 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 flex-shrink-0">
                 {cards.length > 1 && (
                   <div className="text-xs text-muted-foreground text-center">
                     {cards.length - index} review{cards.length - index !== 1 ? 's' : ''} remaining
