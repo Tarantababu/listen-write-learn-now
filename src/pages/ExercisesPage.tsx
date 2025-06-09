@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -21,6 +20,7 @@ import FilterBar from '@/components/exercises/FilterBar';
 import ExerciseGrid from '@/components/exercises/ExerciseGrid';
 import CreateExerciseCard from '@/components/exercises/CreateExerciseCard';
 import BidirectionalPage from './BidirectionalPage';
+import PopoverHint from '@/components/PopoverHint';
 
 const ExercisesPage: React.FC = () => {
   const { user } = useAuth();
@@ -148,6 +148,27 @@ const ExercisesPage: React.FC = () => {
                 {dueReviewsCount}
               </Badge>
             )}
+            <PopoverHint className="ml-1" triggerClassName="text-muted-foreground/60 hover:text-muted-foreground">
+              <div className="space-y-3">
+                <div>
+                  <h4 className="font-semibold mb-2">How the Bidirectional Method works:</h4>
+                  <ul className="text-sm space-y-2 list-disc list-inside">
+                    <li><strong>Forward practice:</strong> Translate from your native language to your target language</li>
+                    <li><strong>Backward practice:</strong> Translate from your target language back to your native language</li>
+                    <li><strong>Spaced repetition:</strong> Review sentences at optimal intervals for long-term retention</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Getting the most out of it:</h4>
+                  <ul className="text-sm space-y-1 list-disc list-inside">
+                    <li>Practice daily for best results</li>
+                    <li>Focus on accuracy over speed</li>
+                    <li>Review difficult sentences more frequently</li>
+                    <li>Use both literal and natural translations</li>
+                  </ul>
+                </div>
+              </div>
+            </PopoverHint>
           </TabsTrigger>
         </TabsList>
 
