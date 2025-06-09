@@ -4,10 +4,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, ArrowRight, CheckCircle } from 'lucide-react';
+import { Play, ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react';
 import { BidirectionalService } from '@/services/bidirectionalService';
 import type { BidirectionalExercise } from '@/types/bidirectional';
 import { useToast } from '@/hooks/use-toast';
+import { compareTexts } from '@/utils/textComparison';
+import AudioPlayer from '@/components/AudioPlayer';
 
 interface BidirectionalPracticeModalProps {
   exercise: BidirectionalExercise | null;
@@ -27,25 +29,34 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
   const [userBackTranslation, setUserBackTranslation] = useState('');
   const [currentStep, setCurrentStep] = useState<'forward' | 'backward' | 'complete'>('forward');
   const [isLoading, setIsLoading] = useState(false);
+  const [translationAccuracy, setTranslationAccuracy] = useState<number | null>(null);
 
   React.useEffect(() => {
     if (exercise && isOpen) {
       setUserTranslation(exercise.user_forward_translation || '');
       setUserBackTranslation(exercise.user_back_translation || '');
       setCurrentStep('forward');
+      setTranslationAccuracy(null);
     }
   }, [exercise, isOpen]);
-
-  const handlePlayAudio = () => {
-    if (exercise?.original_audio_url) {
-      const audio = new Audio(exercise.original_audio_url);
-      audio.play().catch(console.error);
-    }
-  };
 
   const handleNextStep = () => {
     switch (currentStep) {
       case 'forward':
+        // Check translation accuracy before proceeding
+        if (exercise?.normal_translation) {
+          const comparison = compareTexts(exercise.normal_translation, userTranslation);
+          setTranslationAccuracy(comparison.accuracy);
+          
+          if (comparison.accuracy < 95) {
+            toast({
+              title: "Translation Accuracy Too Low",
+              description: `Your translation accuracy is ${comparison.accuracy}%. You need at least 95% accuracy to proceed.`,
+              variant: "destructive"
+            });
+            return;
+          }
+        }
         setCurrentStep('backward');
         break;
       case 'backward':
@@ -56,6 +67,21 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
 
   const handleSaveAndContinue = async () => {
     if (!exercise) return;
+
+    // For forward step, validate accuracy first
+    if (currentStep === 'forward' && exercise.normal_translation) {
+      const comparison = compareTexts(exercise.normal_translation, userTranslation);
+      setTranslationAccuracy(comparison.accuracy);
+      
+      if (comparison.accuracy < 95) {
+        toast({
+          title: "Translation Accuracy Too Low",
+          description: `Your translation accuracy is ${comparison.accuracy}%. You need at least 95% accuracy to proceed.`,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
 
     setIsLoading(true);
     try {
@@ -100,27 +126,15 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
           {/* Original Sentence */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                Original Sentence
-                {exercise.original_audio_url && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handlePlayAudio}
-                    className="flex items-center gap-1"
-                  >
-                    <Play className="h-3 w-3" />
-                    Play
-                  </Button>
-                )}
+              <CardTitle className="text-lg">
+                Original Sentence ({exercise.target_language})
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <p className="text-lg font-medium">{exercise.original_sentence}</p>
-              {exercise.normal_translation && (
-                <div className="mt-4 p-3 bg-muted rounded-md">
-                  <p className="text-sm text-muted-foreground mb-1">Expected Translation:</p>
-                  <p>{exercise.normal_translation}</p>
+              {exercise.original_audio_url && (
+                <div className="flex justify-center">
+                  <AudioPlayer audioUrl={exercise.original_audio_url} />
                 </div>
               )}
             </CardContent>
@@ -138,10 +152,32 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
               <CardContent className="space-y-4">
                 <Textarea
                   value={userTranslation}
-                  onChange={(e) => setUserTranslation(e.target.value)}
+                  onChange={(e) => {
+                    setUserTranslation(e.target.value);
+                    setTranslationAccuracy(null); // Reset accuracy when user types
+                  }}
                   placeholder="Enter your translation..."
                   rows={3}
                 />
+                
+                {translationAccuracy !== null && (
+                  <div className={`p-3 rounded-md flex items-center gap-2 ${
+                    translationAccuracy >= 95 
+                      ? 'bg-green-50 text-green-700 border border-green-200' 
+                      : 'bg-red-50 text-red-700 border border-red-200'
+                  }`}>
+                    {translationAccuracy >= 95 ? (
+                      <CheckCircle className="h-4 w-4" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4" />
+                    )}
+                    <span>
+                      Translation accuracy: {translationAccuracy}% 
+                      {translationAccuracy >= 95 ? ' - You can proceed!' : ' - Need at least 95% to continue'}
+                    </span>
+                  </div>
+                )}
+
                 <Button 
                   onClick={handleSaveAndContinue}
                   disabled={!userTranslation.trim() || isLoading}
@@ -150,6 +186,23 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                   <ArrowRight className="h-4 w-4" />
                   Continue to Back Translation
                 </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Normal Translation Audio (shown after step 1) */}
+          {currentStep !== 'forward' && exercise.normal_translation && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Expected Translation ({exercise.support_language})</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-lg font-medium">{exercise.normal_translation}</p>
+                {exercise.normal_translation_audio_url && (
+                  <div className="flex justify-center">
+                    <AudioPlayer audioUrl={exercise.normal_translation_audio_url} />
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
