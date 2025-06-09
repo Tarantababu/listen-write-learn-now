@@ -22,7 +22,7 @@ interface BidirectionalReviewStackProps {
   dueReviews: { exercise: BidirectionalExercise; review_type: 'forward' | 'backward' }[];
   onReview: (exercise: BidirectionalExercise, reviewType: 'forward' | 'backward') => void;
   onAllComplete: () => void;
-  refreshKey?: number; // Add refreshKey to trigger re-initialization
+  refreshKey?: number;
 }
 
 export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> = ({
@@ -44,7 +44,7 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
   // Initialize cards with due status checking
   useEffect(() => {
     const initializeCards = async () => {
-      console.log('Initializing cards with due reviews:', dueReviews.length);
+      console.log('Initializing review stack with due reviews:', dueReviews.length);
       const initialCards: ReviewCard[] = [];
       
       for (const review of dueReviews) {
@@ -74,12 +74,12 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
         return 0;
       });
       
-      console.log('Initialized cards:', initialCards.length);
+      console.log('Initialized review stack cards:', initialCards.length);
       setCards(initialCards);
     };
 
     initializeCards();
-  }, [dueReviews, refreshKey]); // Add refreshKey as dependency
+  }, [dueReviews, refreshKey]);
 
   const handleReviewNow = useCallback((card: ReviewCard) => {
     console.log('Starting review for card:', card.id);

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Play, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { BidirectionalService } from '@/services/bidirectionalService';
-import type { BidirectionalExercise } from '@/types/bidirectional';
+import type { BidirectionalExercise, BidirectionalReview } from '@/types/bidirectional';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -17,20 +18,12 @@ interface BidirectionalReviewModalProps {
   onReviewComplete: () => void;
 }
 
-// Standardized interval calculation with clear documentation
-interface ReviewInterval {
-  days: number;
-  hours: number;
-  minutes: number;
-  seconds: number;
-  mastered?: boolean;
-}
-
-// Review state management
-interface ReviewState {
+// Review session state management
+interface ReviewSessionState {
   currentRound: number;
-  hasClickedAgain: boolean;
-  lastActionWasAgain: boolean;
+  hasClickedAgainInSession: boolean;
+  previousReviews: BidirectionalReview[];
+  isLoaded: boolean;
 }
 
 export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> = ({
@@ -46,27 +39,23 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
   const [showAnswer, setShowAnswer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Enhanced state management
-  const [reviewState, setReviewState] = useState<ReviewState>({
+  // Enhanced session state management
+  const [sessionState, setSessionState] = useState<ReviewSessionState>({
     currentRound: 1,
-    hasClickedAgain: false,
-    lastActionWasAgain: false
+    hasClickedAgainInSession: false,
+    previousReviews: [],
+    isLoaded: false
   });
 
   React.useEffect(() => {
     if (isOpen && exercise) {
       setUserRecall('');
       setShowAnswer(false);
-      setReviewState({
-        currentRound: 1,
-        hasClickedAgain: false,
-        lastActionWasAgain: false
-      });
-      loadCurrentReviewRound();
+      loadReviewSession();
     }
   }, [isOpen, exercise, reviewType]);
 
-  const loadCurrentReviewRound = async () => {
+  const loadReviewSession = async () => {
     if (!exercise) return;
 
     try {
@@ -74,55 +63,30 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
         exercise.id, 
         reviewType
       );
+      
       const currentRound = (previousReviews?.length || 0) + 1;
-      setReviewState(prev => ({
-        ...prev,
-        currentRound
-      }));
+      
+      setSessionState({
+        currentRound,
+        hasClickedAgainInSession: false,
+        previousReviews: previousReviews || [],
+        isLoaded: true
+      });
+
+      console.log(`Loaded review session - Round: ${currentRound}, Previous reviews: ${previousReviews?.length || 0}`);
     } catch (error) {
-      console.error('Error loading review round:', error);
-      setReviewState(prev => ({
-        ...prev,
-        currentRound: 1
-      }));
+      console.error('Error loading review session:', error);
+      setSessionState({
+        currentRound: 1,
+        hasClickedAgainInSession: false,
+        previousReviews: [],
+        isLoaded: true
+      });
     }
-  };
-
-  // Standardized interval calculation with clear spaced repetition logic
-  const calculateReviewInterval = (isCorrect: boolean, reviewRound: number): ReviewInterval => {
-    if (!isCorrect) {
-      // Always reset to 30 seconds for incorrect answers
-      return { days: 0, hours: 0, minutes: 0, seconds: 30 };
-    }
-
-    // Spaced repetition schedule: 30s → 1d → 3d → 7d → mastered
-    switch (reviewRound) {
-      case 1:
-        return { days: 0, hours: 0, minutes: 0, seconds: 30 };
-      case 2:
-        return { days: 1, hours: 0, minutes: 0, seconds: 0 };
-      case 3:
-        return { days: 3, hours: 0, minutes: 0, seconds: 0 };
-      case 4:
-        return { days: 7, hours: 0, minutes: 0, seconds: 0 };
-      default:
-        return { days: 0, hours: 0, minutes: 0, seconds: 0, mastered: true };
-    }
-  };
-
-  // Smart button labeling logic
-  const getGoodButtonInterval = (): ReviewInterval => {
-    // If user clicked "Again" in this session, the next "Good" will be round 1
-    if (reviewState.hasClickedAgain || reviewState.lastActionWasAgain) {
-      return calculateReviewInterval(true, 1);
-    }
-    
-    // Otherwise, show the interval for the current round
-    return calculateReviewInterval(true, reviewState.currentRound);
   };
 
   // Format interval for display
-  const formatInterval = (interval: ReviewInterval): string => {
+  const formatInterval = (interval: { days: number; hours: number; minutes: number; seconds: number; mastered?: boolean }): string => {
     if (interval.mastered) {
       return 'Mastered!';
     }
@@ -135,6 +99,20 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
     } else {
       return `${interval.seconds}s`;
     }
+  };
+
+  // Get the correct interval for the "Good" button based on session state
+  const getGoodButtonInterval = () => {
+    if (!exercise || !sessionState.isLoaded) {
+      return { days: 0, hours: 0, minutes: 0, seconds: 30 };
+    }
+
+    return BidirectionalService.calculateGoodButtonInterval(
+      exercise.id,
+      reviewType,
+      sessionState.hasClickedAgainInSession,
+      sessionState.previousReviews
+    );
   };
 
   const handlePlayAudio = () => {
@@ -158,12 +136,13 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
       return;
     }
 
-    // Update state based on user action
-    setReviewState(prev => ({
-      ...prev,
-      hasClickedAgain: prev.hasClickedAgain || !isCorrect,
-      lastActionWasAgain: !isCorrect
-    }));
+    // Update session state immediately when "Again" is clicked
+    if (!isCorrect) {
+      setSessionState(prev => ({
+        ...prev,
+        hasClickedAgainInSession: true
+      }));
+    }
 
     setIsLoading(true);
     try {
@@ -175,9 +154,14 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
         feedback: isCorrect ? "Correct!" : "Needs more practice"
       });
 
-      // Calculate the actual next interval for feedback
-      const nextRound = isCorrect ? reviewState.currentRound + 1 : 1;
-      const nextInterval = calculateReviewInterval(isCorrect, nextRound);
+      // Calculate the next interval for feedback using the updated service method
+      const nextInterval = BidirectionalService.calculateGoodButtonInterval(
+        exercise.id,
+        reviewType,
+        !isCorrect, // If they just answered incorrectly, they'll restart from round 1
+        sessionState.previousReviews
+      );
+      
       const intervalText = formatInterval(nextInterval);
       
       toast({
@@ -186,7 +170,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
           ? nextInterval.mastered 
             ? `Excellent! This exercise is now mastered.`
             : `Great job! Next review in ${intervalText}.`
-          : `Don't worry, you'll see this again in ${intervalText}.`,
+          : `Don't worry, you'll see this again in 30s.`,
         variant: isCorrect ? "default" : "destructive"
       });
 
@@ -255,7 +239,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
             isMobile ? 'text-base' : 'text-lg'
           }`}>
             <ArrowLeft className="h-4 w-4" />
-            {reviewType === 'forward' ? 'Forward' : 'Backward'} Review (Round {reviewState.currentRound})
+            {reviewType === 'forward' ? 'Forward' : 'Backward'} Review (Round {sessionState.currentRound})
           </DialogTitle>
         </DialogHeader>
 
@@ -345,10 +329,10 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                   </div>
                 </div>
 
-                {/* State indicator for debugging/transparency */}
-                {reviewState.hasClickedAgain && (
+                {/* Session state indicator for transparency */}
+                {sessionState.hasClickedAgainInSession && (
                   <div className="text-xs text-muted-foreground text-center bg-muted p-2 rounded">
-                    Note: Since you clicked "Again", the next "Good" will restart the interval.
+                    ⚠️ Session restarted - Next "Good" will begin from round 1 (30s interval)
                   </div>
                 )}
 

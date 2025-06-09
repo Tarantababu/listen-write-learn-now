@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getLanguageFlagCode } from '@/utils/languageUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { BidirectionalReviewStack } from '@/components/bidirectional/BidirectionalReviewStack';
+
 const SUPPORTED_LANGUAGES = [{
   value: 'english',
   label: 'English'
@@ -96,6 +97,7 @@ const SUPPORTED_LANGUAGES = [{
   value: 'hebrew',
   label: 'Hebrew'
 }];
+
 const BidirectionalPage: React.FC = () => {
   const {
     user
@@ -139,12 +141,17 @@ const BidirectionalPage: React.FC = () => {
   const [reviewExercise, setReviewExercise] = useState<BidirectionalExercise | null>(null);
   const [reviewType, setReviewType] = useState<'forward' | 'backward'>('forward');
   const [isLoading, setIsLoading] = useState(true);
+
+  // Add refresh key for review stack re-initialization
+  const [refreshKey, setRefreshKey] = useState(0);
+
   useEffect(() => {
     if (user && targetLanguage) {
       loadExercises();
       checkExerciseLimit();
     }
   }, [user, targetLanguage, subscription.isSubscribed]);
+
   const checkExerciseLimit = async () => {
     if (!user || !targetLanguage) return;
     try {
@@ -154,17 +161,25 @@ const BidirectionalPage: React.FC = () => {
       console.error('Error checking exercise limit:', error);
     }
   };
+
   const loadExercises = async () => {
     if (!user || !targetLanguage) return;
     try {
       setIsLoading(true);
 
       // Load exercises filtered by the user's selected target language
-      const [learning, reviewing, mastered, due] = await Promise.all([BidirectionalService.getUserExercises(user.id, targetLanguage, 'learning'), BidirectionalService.getUserExercises(user.id, targetLanguage, 'reviewing'), BidirectionalService.getUserExercises(user.id, targetLanguage, 'mastered'), BidirectionalService.getExercisesDueForReview(user.id, targetLanguage)]);
+      const [learning, reviewing, mastered, due] = await Promise.all([
+        BidirectionalService.getUserExercises(user.id, targetLanguage, 'learning'),
+        BidirectionalService.getUserExercises(user.id, targetLanguage, 'reviewing'),
+        BidirectionalService.getUserExercises(user.id, targetLanguage, 'mastered'),
+        BidirectionalService.getExercisesDueForReview(user.id, targetLanguage)
+      ]);
+
       setLearningExercises(learning);
       setReviewingExercises(reviewing);
       setMasteredExercises(mastered);
       setDueReviews(due);
+
       console.log('Loaded exercises:', {
         learning: learning.length,
         reviewing: reviewing.length,
@@ -182,6 +197,7 @@ const BidirectionalPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
   const handleCreateExercise = async () => {
     if (!originalSentence.trim()) {
       toast({
@@ -235,13 +251,16 @@ const BidirectionalPage: React.FC = () => {
       setIsCreating(false);
     }
   };
+
   const handlePractice = (exercise: BidirectionalExercise) => {
     setPracticeExercise(exercise);
   };
+
   const handleReview = (exercise: BidirectionalExercise, type: 'forward' | 'backward' = 'forward') => {
     setReviewExercise(exercise);
     setReviewType(type);
   };
+
   const handleDelete = async (exerciseId: string) => {
     try {
       await BidirectionalService.deleteExercise(exerciseId);
@@ -260,17 +279,27 @@ const BidirectionalPage: React.FC = () => {
       });
     }
   };
+
   const handleReviewFromStack = (exercise: BidirectionalExercise, reviewType: 'forward' | 'backward') => {
     setReviewExercise(exercise);
     setReviewType(reviewType);
   };
+
   const handleAllReviewsComplete = () => {
     // Reload exercises to refresh the state and show updated spaced repetition status
     loadExercises();
+    // Increment refresh key to trigger review stack re-initialization
+    setRefreshKey(prev => prev + 1);
     toast({
       title: "Reviews Complete!",
       description: "All due reviews have been completed. Check back later for more reviews based on your spaced repetition schedule."
     });
+  };
+
+  // Enhanced review complete handler to update refresh key
+  const handleReviewComplete = () => {
+    loadExercises();
+    setRefreshKey(prev => prev + 1);
   };
 
   // Get the display label for the current target language
@@ -278,6 +307,7 @@ const BidirectionalPage: React.FC = () => {
     const lang = SUPPORTED_LANGUAGES.find(l => l.value === languageValue);
     return lang ? lang.label : languageValue;
   };
+
   if (!user) {
     return <div className="container mx-auto px-4 py-8 text-center">
         <p>Please log in to access the Bidirectional Method.</p>
@@ -295,7 +325,9 @@ const BidirectionalPage: React.FC = () => {
         </Card>
       </div>;
   }
-  return <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-full overflow-x-hidden">
+
+  return (
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-full overflow-x-hidden">
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2">Bidirectional Method</h1>
         <p className="text-sm sm:text-base text-muted-foreground">
@@ -311,18 +343,29 @@ const BidirectionalPage: React.FC = () => {
       <Card className={`mb-6 sm:mb-8 ${dueReviews.length > 0 ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800' : 'border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800'}`}>
         <CardHeader className="pb-3">
           <CardTitle className={`flex items-center gap-2 text-lg ${dueReviews.length > 0 ? 'text-yellow-800 dark:text-yellow-200' : 'text-green-800 dark:text-green-200'}`}>
-            {dueReviews.length > 0 ? <>
+            {dueReviews.length > 0 ? (
+              <>
                 <Brain className="h-4 w-4 sm:h-5 sm:w-5" />
                 Reviews Due ({dueReviews.length})
-              </> : <>
+              </>
+            ) : (
+              <>
                 <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
                 Reviews Status
-              </>}
+              </>
+            )}
           </CardTitle>
-          
         </CardHeader>
         <CardContent>
-          {dueReviews.length > 0 ? <BidirectionalReviewStack dueReviews={dueReviews} onReview={handleReviewFromStack} onAllComplete={handleAllReviewsComplete} /> : <div className="text-center py-8">
+          {dueReviews.length > 0 ? (
+            <BidirectionalReviewStack 
+              dueReviews={dueReviews} 
+              onReview={handleReviewFromStack} 
+              onAllComplete={handleAllReviewsComplete}
+              refreshKey={refreshKey}
+            />
+          ) : (
+            <div className="text-center py-8">
               <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
@@ -334,9 +377,10 @@ const BidirectionalPage: React.FC = () => {
               </p>
               <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md">
                 <p className="font-medium mb-1">Spaced Repetition Schedule:</p>
-                <p>1 day → 3 days → 7 days → mastered</p>
+                <p>Again (30s) → 1 day → 3 days → 7 days → mastered</p>
               </div>
-            </div>}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -482,7 +526,9 @@ const BidirectionalPage: React.FC = () => {
       {/* Modals */}
       <BidirectionalPracticeModal exercise={practiceExercise} isOpen={!!practiceExercise} onClose={() => setPracticeExercise(null)} onExerciseUpdated={loadExercises} />
 
-      <BidirectionalReviewModal exercise={reviewExercise} reviewType={reviewType} isOpen={!!reviewExercise} onClose={() => setReviewExercise(null)} onReviewComplete={loadExercises} />
-    </div>;
+      <BidirectionalReviewModal exercise={reviewExercise} reviewType={reviewType} isOpen={!!reviewExercise} onClose={() => setReviewExercise(null)} onReviewComplete={handleReviewComplete} />
+    </div>
+  );
 };
+
 export default BidirectionalPage;
