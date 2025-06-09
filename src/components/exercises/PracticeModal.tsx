@@ -1,4 +1,3 @@
-
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
@@ -6,14 +5,13 @@ import { Button } from "@/components/ui/button"
 import type { Exercise } from "@/types"
 import DictationPractice from "@/components/DictationPractice"
 import ReadingAnalysis from "@/components/ReadingAnalysis"
+import LearningOptionsMenu from "@/components/exercises/LearningOptionsMenu"
 import { useUserSettingsContext } from "@/contexts/UserSettingsContext"
 import { useExerciseContext } from "@/contexts/ExerciseContext"
 import { supabase } from "@/integrations/supabase/client"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSubscription } from "@/contexts/SubscriptionContext"
 import { toast } from "@/hooks/use-toast"
-import { AlertTriangle, Search, Headphones } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 interface PracticeModalProps {
@@ -42,8 +40,6 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   
   const hasInitializedRef = useRef<boolean>(false)
   const isMobile = useIsMobile()
-  const initialViewportHeight = useRef<number>(0)
-  const resizeTimeoutRef = useRef<NodeJS.Timeout>()
 
   const { settings } = useUserSettingsContext()
   const { exercises, hasReadingAnalysis } = useExerciseContext()
@@ -358,76 +354,14 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
           {/* Desktop: Conditionally render based on practice stage */}
           {/* Mobile: Always show dictation directly */}
           {!isMobile && practiceStage === PracticeStage.PROMPT && (
-            <div className="px-6 py-8 space-y-4 md:space-y-6 flex-1 overflow-y-auto practice-content">
-              <DialogHeader className="mb-2 md:mb-4">
-                <h2 className="text-2xl font-bold mb-1 md:mb-2">{updatedExercise.title}</h2>
-                <DialogDescription className="text-sm md:text-base">
-                  <p className="text-lg font-medium mb-1 md:mb-2">Boost Your Understanding Before You Start</p>
-                  <p className="text-base">
-                    Dive into a Reading Analysis to see how words and grammar work — or skip straight to dictation.
-                  </p>
-                  {loadingAnalysisCheck && (
-                    <div className="mt-2 text-sm font-medium">Checking for existing analysis...</div>
-                  )}
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="md:grid-cols-2 gap-6 mt-6 grid grid-cols-1">
-                <Card className="border-muted overflow-hidden hover:bg-muted/5 transition-colors dark:hover:bg-muted/10">
-                  <CardContent className="p-0">
-                    <Button
-                      onClick={handleStartReadingAnalysis}
-                      variant="ghost"
-                      disabled={!analysisAllowed || loadingAnalysisCheck}
-                      className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent"
-                    >
-                      <div className="flex flex-col items-center text-center space-y-2 md:space-y-3">
-                        <div className="flex items-center justify-center bg-primary/10 w-12 h-12 rounded-full">
-                          <Search className="h-6 w-6 text-primary" />
-                        </div>
-                        <div className="font-semibold text-lg">🔍 Start with Reading Analysis</div>
-                        <p className="text-xs md:text-sm text-muted-foreground px-2">
-                          Explore vocabulary and grammar with AI explanations
-                        </p>
-                      </div>
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="overflow-hidden border border-muted hover:bg-muted/5 transition-all dark:hover:bg-muted/10">
-                  <CardContent className="p-0">
-                    <Button
-                      onClick={handleStartDictation}
-                      variant="ghost"
-                      className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent"
-                    >
-                      <div className="flex flex-col items-center text-center space-y-2 md:space-y-3">
-                        <div className="flex items-center justify-center bg-muted/40 w-12 h-12 rounded-full">
-                          <Headphones className="h-6 w-6 text-muted-foreground" />
-                        </div>
-                        <div className="font-semibold text-lg">🎧 Start Dictation Now</div>
-                        <p className="text-xs md:text-sm text-muted-foreground px-2">
-                          Practice listening and transcription skills with audio
-                        </p>
-                      </div>
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {!analysisAllowed && !subscription.isSubscribed && (
-                <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 md:p-4 rounded-md flex items-start mt-6 dark:bg-amber-950/20 dark:border-amber-800/40 dark:text-amber-300">
-                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-2 md:mr-3 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-base">Free user limit reached</p>
-                    <p className="text-sm mt-1">
-                      You've reached the limit of 5 reading analyses for free users. Upgrade to premium for unlimited
-                      analyses.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
+            <LearningOptionsMenu
+              onStartReadingAnalysis={handleStartReadingAnalysis}
+              onStartDictation={handleStartDictation}
+              exerciseTitle={updatedExercise.title}
+              analysisAllowed={analysisAllowed}
+              isSubscribed={subscription.isSubscribed}
+              loadingAnalysisCheck={loadingAnalysisCheck}
+            />
           )}
 
           {!isMobile && practiceStage === PracticeStage.READING && (
