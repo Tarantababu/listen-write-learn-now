@@ -10,10 +10,13 @@ import { toast } from 'sonner';
 
 // Storage key to track shown streak alerts by streak ID
 const STREAK_ALERT_SHOWN_KEY = 'lwl_streak_alert_shown';
-
 export function StreakIndicator() {
-  const { user } = useAuth();
-  const { settings } = useUserSettingsContext();
+  const {
+    user
+  } = useAuth();
+  const {
+    settings
+  } = useUserSettingsContext();
   const [streakData, setStreakData] = useState<StreakData>({
     currentStreak: 0,
     longestStreak: 0,
@@ -23,7 +26,6 @@ export function StreakIndicator() {
   });
   const [showCalendar, setShowCalendar] = useState(false);
   const [loading, setLoading] = useState(false);
-
   useEffect(() => {
     if (user) {
       loadStreakData();
@@ -33,8 +35,8 @@ export function StreakIndicator() {
   // Function to check if we've already shown an alert for this streak risk
   const hasAlertBeenShown = (userId: string, currentStreak: number, hoursRemaining?: number) => {
     if (!hoursRemaining) return true; // No hours remaining, so no need to show
-    
-    const streakAlertKey = `${userId}_${currentStreak}_${Math.floor(hoursRemaining/6)}`; // Group similar hour ranges
+
+    const streakAlertKey = `${userId}_${currentStreak}_${Math.floor(hoursRemaining / 6)}`; // Group similar hour ranges
     const shownAlerts = JSON.parse(localStorage.getItem(STREAK_ALERT_SHOWN_KEY) || '{}');
     return !!shownAlerts[streakAlertKey];
   };
@@ -42,8 +44,7 @@ export function StreakIndicator() {
   // Function to mark an alert as shown
   const markAlertAsShown = (userId: string, currentStreak: number, hoursRemaining?: number) => {
     if (!hoursRemaining) return;
-    
-    const streakAlertKey = `${userId}_${currentStreak}_${Math.floor(hoursRemaining/6)}`;
+    const streakAlertKey = `${userId}_${currentStreak}_${Math.floor(hoursRemaining / 6)}`;
     const shownAlerts = JSON.parse(localStorage.getItem(STREAK_ALERT_SHOWN_KEY) || '{}');
     shownAlerts[streakAlertKey] = true;
     localStorage.setItem(STREAK_ALERT_SHOWN_KEY, JSON.stringify(shownAlerts));
@@ -62,13 +63,12 @@ export function StreakIndicator() {
             onClick: () => window.location.href = '/dashboard/exercises'
           }
         });
-        
+
         // Mark this alert as shown
         markAlertAsShown(user.id, streakData.currentStreak, streakData.riskHoursRemaining);
       }
     }
   }, [streakData.isAtRisk, streakData.riskHoursRemaining, streakData.currentStreak, user]);
-
   const loadStreakData = async () => {
     if (!user) return;
     setLoading(true);
@@ -81,7 +81,6 @@ export function StreakIndicator() {
       setLoading(false);
     }
   };
-
   const getStreakLevel = (streak: number) => {
     if (streak >= 30) return 'legendary';
     if (streak >= 14) return 'fire';
@@ -89,7 +88,6 @@ export function StreakIndicator() {
     if (streak >= 3) return 'warm';
     return 'cold';
   };
-
   const getStreakVisuals = (level: string, active: boolean, isAtRisk: boolean) => {
     if (!active) {
       return {
@@ -103,20 +101,15 @@ export function StreakIndicator() {
     }
 
     // Risk indicator for at-risk streaks
-    const riskIndicator = isAtRisk ? (
-      <div className="absolute -top-1 -right-1 flex items-center">
+    const riskIndicator = isAtRisk ? <div className="absolute -top-1 -right-1 flex items-center">
         <AlertTriangle className="h-3 w-3 text-orange-500 animate-pulse" />
-      </div>
-    ) : null;
-
+      </div> : null;
     switch (level) {
       case 'legendary':
         return {
           flameColor: isAtRisk ? 'text-orange-500' : 'text-purple-600',
           textColor: isAtRisk ? 'text-orange-700 font-bold' : 'text-purple-700 font-bold',
-          buttonStyle: isAtRisk 
-            ? 'bg-gradient-to-r from-orange-100 via-red-50 to-orange-100 hover:from-orange-150 hover:via-red-100 hover:to-orange-150 border-orange-300 shadow-lg shadow-orange-200/50'
-            : 'bg-gradient-to-r from-purple-100 via-pink-50 to-purple-100 hover:from-purple-150 hover:via-pink-100 hover:to-purple-150 border-purple-300 shadow-lg shadow-purple-200/50',
+          buttonStyle: isAtRisk ? 'bg-gradient-to-r from-orange-100 via-red-50 to-orange-100 hover:from-orange-150 hover:via-red-100 hover:to-orange-150 border-orange-300 shadow-lg shadow-orange-200/50' : 'bg-gradient-to-r from-purple-100 via-pink-50 to-purple-100 hover:from-purple-150 hover:via-pink-100 hover:to-purple-150 border-purple-300 shadow-lg shadow-purple-200/50',
           emoji: isAtRisk ? '⚠️' : '👑',
           glowEffect: isAtRisk ? 'drop-shadow-[0_0_8px_rgba(251,146,60,0.3)]' : 'drop-shadow-[0_0_8px_rgba(147,51,234,0.3)]',
           riskIndicator
@@ -125,9 +118,7 @@ export function StreakIndicator() {
         return {
           flameColor: isAtRisk ? 'text-orange-500' : 'text-red-600',
           textColor: isAtRisk ? 'text-orange-700 font-bold' : 'text-red-700 font-bold',
-          buttonStyle: isAtRisk
-            ? 'bg-gradient-to-r from-orange-100 via-yellow-50 to-orange-100 hover:from-orange-150 hover:via-yellow-100 hover:to-orange-150 border-orange-300 shadow-lg shadow-orange-200/50'
-            : 'bg-gradient-to-r from-red-100 via-orange-50 to-red-100 hover:from-red-150 hover:via-orange-100 hover:to-red-150 border-red-300 shadow-lg shadow-red-200/50',
+          buttonStyle: isAtRisk ? 'bg-gradient-to-r from-orange-100 via-yellow-50 to-orange-100 hover:from-orange-150 hover:via-yellow-100 hover:to-orange-150 border-orange-300 shadow-lg shadow-orange-200/50' : 'bg-gradient-to-r from-red-100 via-orange-50 to-red-100 hover:from-red-150 hover:via-orange-100 hover:to-red-150 border-red-300 shadow-lg shadow-red-200/50',
           emoji: isAtRisk ? '⚠️' : '🔥',
           glowEffect: isAtRisk ? 'drop-shadow-[0_0_6px_rgba(251,146,60,0.3)]' : 'drop-shadow-[0_0_8px_rgba(239,68,68,0.3)]',
           riskIndicator
@@ -136,9 +127,7 @@ export function StreakIndicator() {
         return {
           flameColor: isAtRisk ? 'text-yellow-600' : 'text-orange-600',
           textColor: isAtRisk ? 'text-yellow-700 font-bold' : 'text-orange-700 font-bold',
-          buttonStyle: isAtRisk
-            ? 'bg-gradient-to-r from-yellow-100 via-amber-50 to-yellow-100 hover:from-yellow-150 hover:via-amber-100 hover:to-yellow-150 border-yellow-300 shadow-md shadow-yellow-200/40'
-            : 'bg-gradient-to-r from-orange-100 via-yellow-50 to-orange-100 hover:from-orange-150 hover:via-yellow-100 hover:to-orange-150 border-orange-300 shadow-lg shadow-orange-200/50',
+          buttonStyle: isAtRisk ? 'bg-gradient-to-r from-yellow-100 via-amber-50 to-yellow-100 hover:from-yellow-150 hover:via-amber-100 hover:to-yellow-150 border-yellow-300 shadow-md shadow-yellow-200/40' : 'bg-gradient-to-r from-orange-100 via-yellow-50 to-orange-100 hover:from-orange-150 hover:via-yellow-100 hover:to-orange-150 border-orange-300 shadow-lg shadow-orange-200/50',
           emoji: isAtRisk ? '⚠️' : '🔥',
           glowEffect: isAtRisk ? 'drop-shadow-[0_0_4px_rgba(245,158,11,0.3)]' : 'drop-shadow-[0_0_6px_rgba(251,146,60,0.3)]',
           riskIndicator
@@ -147,9 +136,7 @@ export function StreakIndicator() {
         return {
           flameColor: isAtRisk ? 'text-orange-500' : 'text-yellow-600',
           textColor: isAtRisk ? 'text-orange-700 font-semibold' : 'text-yellow-700 font-semibold',
-          buttonStyle: isAtRisk
-            ? 'bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 border-orange-200 shadow-md shadow-orange-100/40'
-            : 'bg-gradient-to-r from-yellow-100 via-amber-50 to-yellow-100 hover:from-yellow-150 hover:via-amber-100 hover:to-yellow-150 border-yellow-300 shadow-md shadow-yellow-200/40',
+          buttonStyle: isAtRisk ? 'bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 border-orange-200 shadow-md shadow-orange-100/40' : 'bg-gradient-to-r from-yellow-100 via-amber-50 to-yellow-100 hover:from-yellow-150 hover:via-amber-100 hover:to-yellow-150 border-yellow-300 shadow-md shadow-yellow-200/40',
           emoji: isAtRisk ? '⚠️' : '✨',
           glowEffect: isAtRisk ? 'drop-shadow-[0_0_3px_rgba(251,146,60,0.2)]' : 'drop-shadow-[0_0_4px_rgba(245,158,11,0.3)]',
           riskIndicator
@@ -165,19 +152,14 @@ export function StreakIndicator() {
         };
     }
   };
-
   if (!user || loading) {
-    return (
-      <Button variant="ghost" size="sm" disabled className="flex items-center gap-2 opacity-50 bg-gray-50 border border-gray-200">
+    return <Button variant="ghost" size="sm" disabled className="flex items-center gap-2 opacity-50 bg-gray-50 border border-gray-200">
         <Flame className="h-4 w-4 text-gray-400" />
         <span className="font-medium text-gray-400">-</span>
-      </Button>
-    );
+      </Button>;
   }
-
   const streakLevel = getStreakLevel(streakData.currentStreak);
   const visuals = getStreakVisuals(streakLevel, streakData.streakActive, streakData.isAtRisk);
-
   const getTooltipText = () => {
     let tooltip = `Current streak: ${streakData.currentStreak} days`;
     if (streakData.longestStreak > 0) {
@@ -189,51 +171,27 @@ export function StreakIndicator() {
     }
     return tooltip;
   };
-
-  return (
-    <>
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        onClick={() => setShowCalendar(true)} 
-        className={cn(
-          "flex items-center gap-2 transition-all duration-300 hover:scale-105 border-2 font-medium relative overflow-hidden",
-          visuals.buttonStyle
-        )} 
-        title={getTooltipText()}
-      >
+  return <>
+      <Button variant="ghost" size="sm" onClick={() => setShowCalendar(true)} className={cn("flex items-center gap-2 transition-all duration-300 hover:scale-105 border-2 font-medium relative overflow-hidden", visuals.buttonStyle)} title={getTooltipText()}>
         {/* Background accent for legendary streak */}
-        {streakLevel === 'legendary' && streakData.streakActive && !streakData.isAtRisk && (
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-200/20 to-transparent -skew-x-12 transform translate-x-full opacity-75" />
-        )}
+        {streakLevel === 'legendary' && streakData.streakActive && !streakData.isAtRisk && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-200/20 to-transparent -skew-x-12 transform translate-x-full opacity-75" />}
         
         <div className="relative flex items-center gap-2">
-          <div className="relative">
-            <Flame className={cn("h-5 w-5 transition-all duration-300", visuals.flameColor, visuals.glowEffect)} />
-            {visuals.riskIndicator}
-            {streakLevel === 'legendary' && streakData.streakActive && !streakData.isAtRisk && (
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full shadow-lg shadow-purple-300/50" />
-            )}
-          </div>
+          
           
           <span className={cn("text-sm transition-all duration-300", visuals.textColor)}>
             {streakData.currentStreak}
           </span>
 
-          {streakData.streakActive && visuals.emoji && (
-            <span className="text-xs">{visuals.emoji}</span>
-          )}
+          {streakData.streakActive && visuals.emoji && <span className="text-xs">{visuals.emoji}</span>}
 
-          {streakData.isAtRisk && streakData.riskHoursRemaining && (
-            <div className="flex items-center gap-1 text-xs text-orange-600">
+          {streakData.isAtRisk && streakData.riskHoursRemaining && <div className="flex items-center gap-1 text-xs text-orange-600">
               <Clock className="h-3 w-3" />
               <span>{streakData.riskHoursRemaining}h</span>
-            </div>
-          )}
+            </div>}
         </div>
       </Button>
       
       <StreakCalendar isOpen={showCalendar} onOpenChange={setShowCalendar} />
-    </>
-  );
+    </>;
 }
