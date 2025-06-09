@@ -20,7 +20,7 @@ serve(async (req) => {
       throw new Error('Text and language are required');
     }
     
-    // Define language-specific voice settings
+    // Define language-specific voice settings - using tts-1-hd with nova as requested
     const voiceSettings = getVoiceSettingsForLanguage(language.toLowerCase());
     
     console.log(`Generating speech for text (length: ${text.length}), using voice: ${voiceSettings.voice}, model: ${voiceSettings.model}`);
@@ -50,39 +50,11 @@ serve(async (req) => {
         const errorText = await response.text();
         console.error('OpenAI API error:', response.status, response.statusText);
         console.error('OpenAI API error details:', errorText);
-        
-        // If the requested model fails, try with tts-1-hd and nova voice as fallback
-        if (voiceSettings.model === 'gpt-4o-mini-tts') {
-          console.log('Falling back to tts-1-hd model with nova voice');
-          const fallbackResponse = await fetch('https://api.openai.com/v1/audio/speech', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'tts-1-hd',
-              voice: 'nova',
-              input: chunk,
-              response_format: 'mp3',
-              speed: voiceSettings.speed
-            }),
-          });
-          
-          if (!fallbackResponse.ok) {
-            const fallbackErrorText = await fallbackResponse.text();
-            throw new Error(`Failed to generate speech with fallback: ${fallbackErrorText}`);
-          }
-          
-          const audioContent = await fallbackResponse.arrayBuffer();
-          audioBuffers.push(new Uint8Array(audioContent));
-        } else {
-          throw new Error(`Failed to generate speech: ${errorText}`);
-        }
-      } else {
-        const audioContent = await response.arrayBuffer();
-        audioBuffers.push(new Uint8Array(audioContent));
+        throw new Error(`Failed to generate speech: ${errorText}`);
       }
+
+      const audioContent = await response.arrayBuffer();
+      audioBuffers.push(new Uint8Array(audioContent));
     }
 
     // Combine audio chunks if multiple
@@ -160,10 +132,10 @@ serve(async (req) => {
   }
 });
 
-// Function to determine voice settings based on language
+// Function to determine voice settings based on language - using tts-1-hd with nova
 function getVoiceSettingsForLanguage(language: string) {
-  const model = 'gpt-4o-mini-tts'; // Using requested model with fallback
-  let voice = 'nova';  // Default voice
+  const model = 'tts-1-hd'; // Using tts-1-hd as requested
+  let voice = 'nova';  // Using nova as requested
   let speed = 1.0;     // Default speed
   
   // Select appropriate voices for each language
