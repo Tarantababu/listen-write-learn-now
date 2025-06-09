@@ -214,13 +214,30 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                   {exercise.original_sentence}
                 </p>
               </div>
-              {exercise.original_audio_url && (
-                <div className="flex justify-center">
-                  <div className="bg-background/50 p-4 rounded-lg">
-                    <AudioPlayer audioUrl={exercise.original_audio_url} />
+              {/* Audio Players for Generated Sentences */}
+              <div className="space-y-4">
+                {exercise.original_audio_url && (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="text-sm font-medium text-muted-foreground">
+                      Original Sentence Audio
+                    </div>
+                    <div className="bg-background/50 p-4 rounded-lg border">
+                      <AudioPlayer audioUrl={exercise.original_audio_url} />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+                
+                {exercise.normal_translation_audio_url && (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="text-sm font-medium text-muted-foreground">
+                      Translation Audio ({exercise.support_language})
+                    </div>
+                    <div className="bg-background/50 p-4 rounded-lg border">
+                      <AudioPlayer audioUrl={exercise.normal_translation_audio_url} />
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
