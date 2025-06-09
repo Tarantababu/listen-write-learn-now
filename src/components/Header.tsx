@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import ThemeToggle from './ThemeToggle';
 import { Logo } from './landing/Logo';
 import { StreakIndicator } from './StreakIndicator';
 import { LanguageSelectionDropdown } from './LanguageSelectionDropdown';
+
 const Header: React.FC = () => {
   const {
     user,
@@ -29,66 +31,72 @@ const Header: React.FC = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  
   const isActive = (path: string) => {
     return location.pathname === path || path !== '/dashboard' && location.pathname.startsWith(path);
   };
+  
   return <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur">
-      <div className="container flex h-14 sm:h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-2 sm:gap-6">
-          <Link to="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
+      <div className="container flex h-14 sm:h-16 items-center justify-between px-2 sm:px-4">
+        <div className="flex items-center gap-1 sm:gap-2 md:gap-6 min-w-0 flex-1">
+          <Link to="/dashboard" className="flex items-center gap-1 sm:gap-2 text-lg font-semibold flex-shrink-0">
             <Logo />
           </Link>
           
-          {!isMobile && user && <nav className="flex items-center gap-1">
-              <Button asChild variant={isActive('/dashboard') && !isActive('/dashboard/exercises') && !isActive('/dashboard/vocabulary') && !isActive('/dashboard/curriculum') ? "default" : "ghost"} size="sm" className="transition-all">
+          {!isMobile && user && <nav className="flex items-center gap-0.5 sm:gap-1 overflow-x-auto scrollbar-hide">
+              <Button asChild variant={isActive('/dashboard') && !isActive('/dashboard/exercises') && !isActive('/dashboard/vocabulary') && !isActive('/dashboard/curriculum') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
                 <Link to="/dashboard">
-                  <LayoutDashboard className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Dashboard</span>
+                  <LayoutDashboard className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                  <span className="hidden lg:inline">Dashboard</span>
                 </Link>
               </Button>
               
-              <Button asChild variant={isActive('/dashboard/curriculum') ? "default" : "ghost"} size="sm" className="transition-all">
+              <Button asChild variant={isActive('/dashboard/curriculum') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
                 <Link to="/dashboard/curriculum">
-                  <GraduationCap className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Learning Plan</span>
+                  <GraduationCap className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                  <span className="hidden lg:inline">Learning Plan</span>
                 </Link>
               </Button>
               
-              <Button asChild variant={isActive('/dashboard/exercises') ? "default" : "ghost"} size="sm" className="transition-all">
+              <Button asChild variant={isActive('/dashboard/exercises') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
                 <Link to="/dashboard/exercises">
-                  <BookOpen className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Exercises</span>
+                  <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                  <span className="hidden lg:inline">Exercises</span>
                 </Link>
               </Button>
               
-              <Button asChild variant={isActive('/dashboard/vocabulary') ? "default" : "ghost"} size="sm" className="transition-all">
+              <Button asChild variant={isActive('/dashboard/vocabulary') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
                 <Link to="/dashboard/vocabulary">
-                  <Book className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">My Vocabulary</span>
+                  <Book className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                  <span className="hidden lg:inline">My Vocabulary</span>
                 </Link>
               </Button>
               
-              {isAdmin && <Button asChild variant={isActive('/dashboard/admin') ? "default" : "ghost"} size="sm" className="transition-all bg-amber-500/10 hover:bg-amber-500/20">
+              {isAdmin && <Button asChild variant={isActive('/dashboard/admin') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 bg-amber-500/10 hover:bg-amber-500/20 text-xs sm:text-sm px-2 sm:px-3">
                   <Link to="/dashboard/admin">
-                    <Shield className="h-4 w-4 sm:mr-1 text-amber-500" />
-                    <span className="hidden sm:inline text-amber-500">Admin</span>
+                    <Shield className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1 text-amber-500" />
+                    <span className="hidden lg:inline text-amber-500">Admin</span>
                   </Link>
                 </Button>}
             </nav>}
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {/* Add StreakIndicator for logged-in users */}
-          {user && <StreakIndicator />}
+          {user && <div className="hidden sm:block">
+              <StreakIndicator />
+            </div>}
           
           {/* Language Selection Dropdown for logged-in users */}
-          {user && <LanguageSelectionDropdown />}
+          {user && <div className="hidden md:block">
+              <LanguageSelectionDropdown />
+            </div>}
           
           {/* Theme Toggle Added Here */}
           <ThemeToggle variant="compact" showLabel={false} />
           
           {user ? <>
-              {subscription.isSubscribed && <span className="hidden sm:flex items-center text-xs font-medium bg-primary/15 text-primary px-2 py-1 rounded animate-fade-in">
+              {subscription.isSubscribed && <span className="hidden lg:flex items-center text-xs font-medium bg-primary/15 text-primary px-2 py-1 rounded animate-fade-in">
                   <Crown className="h-3 w-3 mr-1" />
                   Premium
                 </span>}
@@ -100,8 +108,10 @@ const Header: React.FC = () => {
               {isAdmin && <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button asChild variant="ghost" size="icon" className="rounded-full text-amber-500 hover:text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/30">
-                        
+                      <Button asChild variant="ghost" size="icon" className="rounded-full text-amber-500 hover:text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/30 h-8 w-8 sm:h-10 sm:w-10">
+                        <Link to="/dashboard/admin">
+                          <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Link>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -113,7 +123,7 @@ const Header: React.FC = () => {
               {/* User dropdown menu */}
               <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
+                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-10 sm:w-10">
                     <UserAvatar />
                   </Button>
                 </DropdownMenuTrigger>
@@ -169,10 +179,10 @@ const Header: React.FC = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </> : <>
-              <Button asChild variant="ghost" className="transition-all text-sm" size="sm">
+              <Button asChild variant="ghost" className="transition-all text-xs sm:text-sm px-2 sm:px-3" size="sm">
                 <Link to="/login">Log in</Link>
               </Button>
-              <Button asChild className="transition-all text-sm" size="sm">
+              <Button asChild className="transition-all text-xs sm:text-sm px-2 sm:px-3" size="sm">
                 <Link to="/signup">Sign up</Link>
               </Button>
             </>}
@@ -180,4 +190,5 @@ const Header: React.FC = () => {
       </div>
     </header>;
 };
+
 export default Header;
