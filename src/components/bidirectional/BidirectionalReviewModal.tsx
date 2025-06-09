@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -55,7 +54,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
     }
   };
 
-  // Calculate next review intervals: 30s, 1d, 3d, 7d, 14d, 30d, 60d
+  // Calculate next review intervals: 30s, 1d, 3d, 7d, 14d, 30d, then mastered
   const calculateNextReviewInterval = (isCorrect: boolean, reviewRound: number = 1) => {
     if (!isCorrect) {
       // Incorrect answer - back to 30 seconds
@@ -77,12 +76,16 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
       case 6:
         return { days: 30, hours: 0, minutes: 0, seconds: 0 };
       default:
-        return { days: 60, hours: 0, minutes: 0, seconds: 0 };
+        // After 6th review, it becomes mastered
+        return { days: 0, hours: 0, minutes: 0, seconds: 0, mastered: true };
     }
   };
 
   // Format interval for display
-  const formatInterval = (interval: { days: number; hours: number; minutes: number; seconds: number }) => {
+  const formatInterval = (interval: { days: number; hours: number; minutes: number; seconds: number; mastered?: boolean }) => {
+    if (interval.mastered) {
+      return 'Mastered!';
+    }
     if (interval.days > 0) {
       return `${interval.days}d`;
     } else if (interval.hours > 0) {
@@ -132,7 +135,9 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
       toast({
         title: "Review Complete",
         description: isCorrect 
-          ? `Great job! Next review in ${intervalText}.` 
+          ? nextInterval.mastered 
+            ? `Excellent! This exercise is now mastered.`
+            : `Great job! Next review in ${intervalText}.`
           : `Don't worry, you'll see this again in ${intervalText}.`,
         variant: isCorrect ? "default" : "destructive"
       });

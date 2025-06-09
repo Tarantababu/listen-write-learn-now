@@ -220,7 +220,7 @@ export class BidirectionalService {
     }
   }
 
-  // Calculate next review date based on new spaced repetition schedule: 30s, 1d, 3d, 7d, 14d, 30d, 60d
+  // Calculate next review date based on spaced repetition schedule: 30s, 1d, 3d, 7d, 14d, 30d, then mastered
   static calculateNextReviewDate(
     isCorrect: boolean,
     reviewRound: number = 1
@@ -233,7 +233,7 @@ export class BidirectionalService {
       return nextDate;
     }
 
-    // Spaced repetition: 30s → 1d → 3d → 7d → 14d → 30d → 60d
+    // Spaced repetition: 30s → 1d → 3d → 7d → 14d → 30d → mastered
     switch (reviewRound) {
       case 1:
         // First review after 30 seconds
@@ -260,12 +260,8 @@ export class BidirectionalService {
         nextDate.setDate(nextDate.getDate() + 30);
         break;
       default:
-        // Seventh and beyond - 60 days, then mark as mastered
-        if (reviewRound >= 7) {
-          nextDate.setDate(nextDate.getDate() + 365); // Mark as mastered with very long interval
-        } else {
-          nextDate.setDate(nextDate.getDate() + 60);
-        }
+        // After 6th review, mark as mastered with very long interval
+        nextDate.setDate(nextDate.getDate() + 365);
         break;
     }
 
@@ -319,8 +315,8 @@ export class BidirectionalService {
       // Record language activity for streak system
       await this.recordLanguageActivity(user.id, exercise.target_language);
 
-      // If this is round 7 review and correct, add mastered words
-      if (data.is_correct && reviewRound >= 7) {
+      // If this is round 6 review and correct, add mastered words
+      if (data.is_correct && reviewRound >= 6) {
         await this.extractAndMarkMasteredWords(data.exercise_id, exercise);
         
         // Mark exercise as mastered if both directions are complete
@@ -354,7 +350,7 @@ export class BidirectionalService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Check if both forward and backward reviews have been completed successfully
+    // Check if both forward and backward reviews have been completed successfully for 6 rounds
     const { data: forwardReviews } = await supabase
       .from('bidirectional_reviews')
       .select('*')
@@ -371,8 +367,8 @@ export class BidirectionalService {
       .eq('user_id', user.id)
       .eq('is_correct', true);
 
-    const forwardComplete = (forwardReviews?.length || 0) >= 3;
-    const backwardComplete = (backwardReviews?.length || 0) >= 3;
+    const forwardComplete = (forwardReviews?.length || 0) >= 6;
+    const backwardComplete = (backwardReviews?.length || 0) >= 6;
 
     if (forwardComplete && backwardComplete) {
       await supabase
