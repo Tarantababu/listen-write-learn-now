@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -50,9 +51,9 @@ serve(async (req) => {
         console.error('OpenAI API error:', response.status, response.statusText);
         console.error('OpenAI API error details:', errorText);
         
-        // If the requested model fails, try with fallback model
+        // If the requested model fails, try with tts-1-hd and nova voice as fallback
         if (voiceSettings.model === 'gpt-4o-mini-tts') {
-          console.log('Falling back to tts-1 model');
+          console.log('Falling back to tts-1-hd model with nova voice');
           const fallbackResponse = await fetch('https://api.openai.com/v1/audio/speech', {
             method: 'POST',
             headers: {
@@ -60,8 +61,8 @@ serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'tts-1',
-              voice: voiceSettings.voice,
+              model: 'tts-1-hd',
+              voice: 'nova',
               input: chunk,
               response_format: 'mp3',
               speed: voiceSettings.speed
