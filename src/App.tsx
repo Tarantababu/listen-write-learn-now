@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -37,6 +36,8 @@ import BlogPostEditor from "@/components/blog/admin/BlogPostEditor";
 // Create Blog-related pages
 import BlogPage from "@/pages/BlogPage"; 
 import BlogPostPage from "@/pages/BlogPostPage";
+
+import BidirectionalPage from './pages/BidirectionalPage';
 
 const queryClient = new QueryClient();
 
@@ -93,6 +94,8 @@ function App() {
                                     <Route path="admin/blog/edit/:id" element={<BlogPostEditor />} />
                                   </Route>
                                 </Route>
+                                
+                                <Route path="/dashboard/bidirectional" element={<ProtectedRoute><BidirectionalPage /></ProtectedRoute>} />
                                 
                                 <Route path="*" element={<NotFound />} />
                               </Routes>

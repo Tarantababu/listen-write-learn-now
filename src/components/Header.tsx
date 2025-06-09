@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAdmin } from '@/hooks/use-admin';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { LogOut, BookOpen, Home, Settings, CreditCard, Crown, LayoutDashboard, Book, Shield, HelpCircle, GraduationCap } from 'lucide-react';
+import { LogOut, BookOpen, Home, Settings, CreditCard, Crown, LayoutDashboard, Book, Shield, HelpCircle, GraduationCap, ArrowLeftRight } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import UserAvatar from './UserAvatar';
@@ -69,6 +68,13 @@ const Header: React.FC = () => {
                 <Link to="/dashboard/vocabulary">
                   <Book className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
                   <span className="hidden lg:inline">My Vocabulary</span>
+                </Link>
+              </Button>
+              
+              <Button asChild variant={isActive('/dashboard/bidirectional') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
+                <Link to="/dashboard/bidirectional">
+                  <ArrowLeftRight className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                  <span className="hidden lg:inline">Bidirectional</span>
                 </Link>
               </Button>
               
@@ -145,6 +151,11 @@ const Header: React.FC = () => {
                       <DropdownMenuItem asChild>
                         <Link to="/dashboard/vocabulary" className="flex items-center w-full">
                           <Book className="h-4 w-4 mr-2" /> Vocabulary
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard/bidirectional" className="flex items-center w-full">
+                          <ArrowLeftRight className="h-4 w-4 mr-2" /> Bidirectional
                         </Link>
                       </DropdownMenuItem>
                       {isAdmin && <DropdownMenuItem asChild>

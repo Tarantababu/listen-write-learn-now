@@ -81,99 +81,6 @@ export type Database = {
         }
         Relationships: []
       }
-      blog_categories: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          name: string
-          slug: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          name: string
-          slug: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          name?: string
-          slug?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      blog_post_categories: {
-        Row: {
-          category_id: string
-          created_at: string
-          post_id: string
-        }
-        Insert: {
-          category_id: string
-          created_at?: string
-          post_id: string
-        }
-        Update: {
-          category_id?: string
-          created_at?: string
-          post_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "blog_post_categories_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "blog_categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "blog_post_categories_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "blog_posts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      blog_post_tags: {
-        Row: {
-          created_at: string
-          post_id: string
-          tag_id: string
-        }
-        Insert: {
-          created_at?: string
-          post_id: string
-          tag_id: string
-        }
-        Update: {
-          created_at?: string
-          post_id?: string
-          tag_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "blog_post_tags_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "blog_posts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "blog_post_tags_tag_id_fkey"
-            columns: ["tag_id"]
-            isOneToOne: false
-            referencedRelation: "blog_tags"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       blog_posts: {
         Row: {
           author_id: string
@@ -218,30 +125,6 @@ export type Database = {
           slug?: string
           status?: string
           title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      blog_tags: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          slug: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          slug: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          slug?: string
           updated_at?: string
         }
         Relationships: []
@@ -569,45 +452,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      onboarding_steps: {
-        Row: {
-          created_at: string
-          description: string
-          feature_area: string
-          id: string
-          is_active: boolean
-          order_index: number
-          position: string
-          target_element: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description: string
-          feature_area: string
-          id?: string
-          is_active?: boolean
-          order_index: number
-          position: string
-          target_element: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string
-          feature_area?: string
-          id?: string
-          is_active?: boolean
-          order_index?: number
-          position?: string
-          target_element?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       profiles: {
         Row: {
@@ -1127,36 +971,6 @@ export type Database = {
           },
         ]
       }
-      user_onboarding_progress: {
-        Row: {
-          completed_onboarding: boolean
-          created_at: string
-          dismissed_until: string | null
-          id: string
-          last_step_seen: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          completed_onboarding?: boolean
-          created_at?: string
-          dismissed_until?: string | null
-          id?: string
-          last_step_seen?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          completed_onboarding?: boolean
-          created_at?: string
-          dismissed_until?: string | null
-          id?: string
-          last_step_seen?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_roles: {
         Row: {
           created_at: string
@@ -1279,6 +1093,10 @@ export type Database = {
         }
         Returns: string
       }
+      calculate_next_review_date: {
+        Args: { current_status: string }
+        Returns: string
+      }
       delete_curriculum_node: {
         Args: { node_id_param: string }
         Returns: undefined
@@ -1290,6 +1108,10 @@ export type Database = {
       enroll_in_curriculum: {
         Args: { user_id_param: string; curriculum_id_param: string }
         Returns: string
+      }
+      extract_mastered_words: {
+        Args: { exercise_id_param: string }
+        Returns: undefined
       }
       get_active_banners_for_route: {
         Args: { route_param: string }
