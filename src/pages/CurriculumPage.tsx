@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useCurriculumExercises } from '@/hooks/use-curriculum-exercises';
@@ -56,15 +55,18 @@ const CurriculumPage: React.FC = () => {
   };
 
   const handlePracticeExercise = async (id: string, tag?: string) => {
-    console.log(`Opening practice for exercise with ID: ${id}`);
+    console.log(`Opening practice for default exercise with ID: ${id}`);
     
-    // Find the exercise from the user's exercises
-    const exercise = exercises.find(ex => ex.id === id);
+    // For curriculum exercises, we need to find the user's copy by default_exercise_id
+    // The 'id' parameter here is actually the default exercise ID from the curriculum
+    const userExercise = exercises.find(ex => ex.default_exercise_id === id);
     
-    if (exercise) {
-      // Open the practice modal directly
-      setPracticeExercise(exercise);
+    if (userExercise) {
+      console.log('Found user exercise, opening practice modal:', userExercise.id);
+      // Open the practice modal directly with the user's exercise
+      setPracticeExercise(userExercise);
     } else {
+      console.log('User exercise not found, redirecting to exercises page');
       // If exercise not found in user's exercises, navigate to exercises page as fallback
       const params = new URLSearchParams({
         defaultExerciseId: id,
