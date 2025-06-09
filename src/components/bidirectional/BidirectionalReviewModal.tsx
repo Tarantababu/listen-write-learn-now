@@ -3,10 +3,10 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, ArrowRight, CheckCircle, XCircle, Brain } from 'lucide-react';
-import type { BidirectionalExercise } from '@/types/bidirectional';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Play, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { BidirectionalService } from '@/services/bidirectionalService';
+import type { BidirectionalExercise } from '@/types/bidirectional';
 import { useToast } from '@/hooks/use-toast';
 
 interface BidirectionalReviewModalProps {
@@ -24,69 +24,55 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
   onClose,
   onReviewComplete
 }) => {
-  const [step, setStep] = useState<'recall' | 'check' | 'result'>('recall');
-  const [userAttempt, setUserAttempt] = useState('');
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [feedback, setFeedback] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const [userRecall, setUserRecall] = useState('');
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   React.useEffect(() => {
     if (isOpen) {
-      setStep('recall');
-      setUserAttempt('');
-      setIsCorrect(null);
-      setFeedback('');
+      setUserRecall('');
+      setShowAnswer(false);
     }
-  }, [isOpen]);
+  }, [isOpen, exercise, reviewType]);
 
-  const getPromptText = () => {
-    if (!exercise) return '';
-    
-    if (reviewType === 'forward') {
-      return exercise.original_sentence;
-    } else {
-      return exercise.user_forward_translation || exercise.normal_translation || '';
-    }
-  };
-
-  const getTargetText = () => {
-    if (!exercise) return '';
-    
-    if (reviewType === 'forward') {
-      return exercise.user_forward_translation || exercise.normal_translation || '';
-    } else {
-      return exercise.original_sentence;
+  const handlePlayAudio = () => {
+    if (exercise?.original_audio_url) {
+      const audio = new Audio(exercise.original_audio_url);
+      audio.play().catch(console.error);
     }
   };
 
   const handleShowAnswer = () => {
-    setStep('check');
+    setShowAnswer(true);
   };
 
-  const handleMarkCorrect = (correct: boolean) => {
-    setIsCorrect(correct);
-    setStep('result');
-  };
-
-  const handleFinish = async () => {
-    if (!exercise || isCorrect === null) return;
+  const handleMarkResult = async (isCorrect: boolean) => {
+    if (!exercise || !userRecall.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your recall attempt first.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setIsLoading(true);
     try {
       await BidirectionalService.recordReview({
         exercise_id: exercise.id,
         review_type: reviewType,
-        user_recall_attempt: userAttempt,
+        user_recall_attempt: userRecall,
         is_correct: isCorrect,
-        feedback: feedback || undefined
+        feedback: isCorrect ? "Correct!" : "Needs more practice"
       });
 
       toast({
-        title: isCorrect ? "Correct!" : "Keep practicing",
+        title: "Review Complete",
         description: isCorrect 
-          ? "Great job! Review scheduled for later." 
-          : "No worries, you'll see this again soon."
+          ? "Great job! Your next review is scheduled." 
+          : "Don't worry, you'll get another chance to practice soon.",
+        variant: isCorrect ? "default" : "destructive"
       });
 
       onReviewComplete();
@@ -103,10 +89,33 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
     }
   };
 
-  const playAudio = (audioUrl?: string) => {
-    if (audioUrl) {
-      const audio = new Audio(audioUrl);
-      audio.play();
+  const getPromptText = () => {
+    if (!exercise) return '';
+
+    if (reviewType === 'forward') {
+      return `Translate this ${exercise.target_language} sentence to ${exercise.support_language}:`;
+    } else {
+      return `Translate this ${exercise.support_language} sentence back to ${exercise.target_language}:`;
+    }
+  };
+
+  const getSourceText = () => {
+    if (!exercise) return '';
+
+    if (reviewType === 'forward') {
+      return exercise.original_sentence;
+    } else {
+      return exercise.user_forward_translation || exercise.normal_translation || '';
+    }
+  };
+
+  const getExpectedAnswer = () => {
+    if (!exercise) return '';
+
+    if (reviewType === 'forward') {
+      return exercise.user_forward_translation || exercise.normal_translation || '';
+    } else {
+      return exercise.original_sentence;
     }
   };
 
@@ -114,155 +123,104 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5" />
-            Review: {reviewType === 'forward' ? 'Forward' : 'Backward'} Translation
+            <ArrowLeft className="h-4 w-4" />
+            {reviewType === 'forward' ? 'Forward' : 'Backward'} Review
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
-          {step === 'recall' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Try to recall the translation</CardTitle>
-                <CardDescription>
-                  {reviewType === 'forward' 
-                    ? `Translate from ${exercise.target_language} to ${exercise.support_language}`
-                    : `Translate from ${exercise.support_language} to ${exercise.target_language}`
-                  }
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <p className="font-medium text-lg">{getPromptText()}</p>
-                    {reviewType === 'forward' && exercise.original_audio_url && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => playAudio(exercise.original_audio_url)}
-                      >
-                        <Play className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
+          {/* Prompt */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">{getPromptText()}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <p className="text-xl font-medium flex-1">{getSourceText()}</p>
+                {reviewType === 'forward' && exercise.original_audio_url && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handlePlayAudio}
+                    className="flex items-center gap-1"
+                  >
+                    <Play className="h-3 w-3" />
+                    Play
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Your translation attempt:
-                  </label>
-                  <Textarea
-                    value={userAttempt}
-                    onChange={(e) => setUserAttempt(e.target.value)}
-                    placeholder="Type your translation here..."
-                    rows={3}
-                  />
-                </div>
-
-                <Button
+          {/* User Input */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Translation</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Textarea
+                value={userRecall}
+                onChange={(e) => setUserRecall(e.target.value)}
+                placeholder="Enter your translation..."
+                rows={3}
+                disabled={showAnswer}
+              />
+              
+              {!showAnswer && (
+                <Button 
                   onClick={handleShowAnswer}
+                  disabled={!userRecall.trim()}
                   className="w-full"
                 >
                   Show Answer
-                  <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
 
-          {step === 'check' && (
+          {/* Answer Comparison */}
+          {showAnswer && (
             <Card>
               <CardHeader>
-                <CardTitle>Compare your answer</CardTitle>
-                <CardDescription>
-                  How did you do?
-                </CardDescription>
+                <CardTitle>Compare Your Answer</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4">
-                  <div className="p-3 bg-muted rounded-lg">
-                    <p className="text-sm font-medium mb-1">Original:</p>
-                    <p>{getPromptText()}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-md">
+                    <p className="text-sm text-muted-foreground mb-2">Your Translation:</p>
+                    <p className="font-medium">{userRecall}</p>
                   </div>
-                  
-                  <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                    <p className="text-sm font-medium mb-1">Your Attempt:</p>
-                    <p>{userAttempt || 'No attempt entered'}</p>
-                  </div>
-                  
-                  <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg">
-                    <p className="text-sm font-medium mb-1">Correct Answer:</p>
-                    <p>{getTargetText()}</p>
+                  <div className="p-4 border rounded-md bg-muted">
+                    <p className="text-sm text-muted-foreground mb-2">Expected Answer:</p>
+                    <p className="font-medium">{getExpectedAnswer()}</p>
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => handleMarkCorrect(false)}
-                    variant="outline"
-                    className="flex-1 text-red-600 hover:text-red-700"
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Incorrect
-                  </Button>
-                  <Button
-                    onClick={() => handleMarkCorrect(true)}
-                    className="flex-1"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Correct
-                  </Button>
+                <div className="text-center space-y-4">
+                  <p className="text-muted-foreground">How did you do?</p>
+                  <div className="flex gap-4 justify-center">
+                    <Button
+                      onClick={() => handleMarkResult(false)}
+                      disabled={isLoading}
+                      variant="destructive"
+                      className="flex items-center gap-2"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Incorrect - Need Practice
+                    </Button>
+                    <Button
+                      onClick={() => handleMarkResult(true)}
+                      disabled={isLoading}
+                      className="flex items-center gap-2"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Correct - I Got It!
+                    </Button>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {step === 'result' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {isCorrect ? (
-                    <>
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      Great job!
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-5 w-5 text-red-600" />
-                      Keep practicing
-                    </>
-                  )}
-                </CardTitle>
-                <CardDescription>
-                  {isCorrect 
-                    ? "You'll see this again later with increased spacing."
-                    : "You'll see this again soon for more practice."
-                  }
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Additional notes (optional):
-                  </label>
-                  <Textarea
-                    value={feedback}
-                    onChange={(e) => setFeedback(e.target.value)}
-                    placeholder="Any thoughts or notes about this review..."
-                    rows={2}
-                  />
-                </div>
-
-                <Button
-                  onClick={handleFinish}
-                  disabled={isLoading}
-                  className="w-full"
-                >
-                  {isLoading ? 'Saving...' : 'Complete Review'}
-                </Button>
               </CardContent>
             </Card>
           )}

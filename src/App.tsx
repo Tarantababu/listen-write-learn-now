@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -78,6 +79,7 @@ function App() {
                                   <Route path="/dashboard" element={<Layout />}>
                                     <Route index element={<HomePage />} />
                                     <Route path="exercises" element={<ExercisesPage />} />
+                                    <Route path="bidirectional" element={<BidirectionalPage />} />
                                     <Route path="curriculum" element={<CurriculumPage />} />
                                     <Route path="vocabulary" element={<VocabularyPage />} />
                                     <Route path="settings" element={<SettingsPage />} />
@@ -94,8 +96,6 @@ function App() {
                                     <Route path="admin/blog/edit/:id" element={<BlogPostEditor />} />
                                   </Route>
                                 </Route>
-                                
-                                <Route path="/dashboard/bidirectional" element={<ProtectedRoute><BidirectionalPage /></ProtectedRoute>} />
                                 
                                 <Route path="*" element={<NotFound />} />
                               </Routes>
