@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { SampleDictationModal } from './SampleDictationModal';
 import { FlagIcon, FlagIconCode } from "react-flag-kit";
-
 const transitionVariants = {
   item: {
     hidden: {
@@ -80,7 +79,6 @@ const steps = [{
   title: "Track your progress",
   description: "Build your skills with each session and watch your comprehension improve."
 }];
-
 export function Hero() {
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
   const handleOpenSample = () => {
@@ -130,13 +128,8 @@ export function Hero() {
                   
                   {/* Large Curved Arrow connecting button to GIF */}
                   <div className="absolute top-0 left-full ml-8 hidden lg:block animate-pulse z-10">
-                    <svg width="200" height="160" viewBox="0 0 200 160" fill="none" className="text-brand-primary">
-                      <path d="M20 40 Q100 -20 180 80" stroke="currentColor" strokeWidth="4" fill="none" strokeLinecap="round" />
-                      <path d="M170 70 L180 80 L170 90" stroke="currentColor" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <div className="text-brand-primary font-bold text-lg mt-2 text-center">
-                      Try it now!
-                    </div>
+                    
+                    <div className="text-brand-primary font-bold text-lg mt-2 text-center py-px my-[23px] mx-[240px] px-[176px] rounded-3xl">Let's Try</div>
                   </div>
                 </div>
                 
