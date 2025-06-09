@@ -12,9 +12,9 @@ import { BidirectionalReviewModal } from '@/components/bidirectional/Bidirection
 import { BidirectionalReviewStack } from '@/components/bidirectional/BidirectionalReviewStack';
 import { BidirectionalExerciseCard } from '@/components/bidirectional/BidirectionalExerciseCard';
 import { MobileBidirectionalReviewDrawer } from '@/components/bidirectional/MobileBidirectionalReviewDrawer';
-import { CreateExerciseCard } from '@/components/exercises/CreateExerciseCard';
-import { EmptyStateMessage } from '@/components/exercises/EmptyStateMessage';
-import { PaginationControls } from '@/components/exercises/PaginationControls';
+import CreateExerciseCard from '@/components/exercises/CreateExerciseCard';
+import EmptyStateMessage from '@/components/exercises/EmptyStateMessage';
+import PaginationControls from '@/components/exercises/PaginationControls';
 import type { BidirectionalExercise } from '@/types/bidirectional';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -28,7 +28,7 @@ const EXERCISES_PER_PAGE = 12;
 const BidirectionalExercises: React.FC = () => {
   const { user } = useAuth();
   const { settings } = useUserSettingsContext();
-  const { isSubscribed } = useSubscription();
+  const { subscription } = useSubscription();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { dueReviewsCount, refreshDueReviews } = useBidirectionalReviews();
