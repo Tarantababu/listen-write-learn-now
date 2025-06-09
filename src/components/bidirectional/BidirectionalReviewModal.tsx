@@ -193,8 +193,8 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
 
   if (!exercise) return null;
 
-  // Calculate intervals for button display - use the next round for correct, round 1 for incorrect
-  const correctInterval = calculateNextReviewInterval(true, currentReviewRound + 1);
+  // Calculate intervals for button display - use the current round for correct (not incremented)
+  const correctInterval = calculateNextReviewInterval(true, currentReviewRound);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
