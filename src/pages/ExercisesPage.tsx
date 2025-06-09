@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Archive, Move, Edit, Trash2, Play } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Archive, Move, Edit, Trash2, Play, ArrowLeftRight, Mic } from 'lucide-react';
 import { ExerciseFormModal } from '@/components/exercises/ExerciseFormModal';
 import PracticeModal from '@/components/exercises/PracticeModal';
 import MoveExerciseModal from '@/components/MoveExerciseModal';
@@ -16,7 +17,7 @@ import PaginationControls from '@/components/exercises/PaginationControls';
 import FilterBar from '@/components/exercises/FilterBar';
 import ExerciseGrid from '@/components/exercises/ExerciseGrid';
 import CreateExerciseCard from '@/components/exercises/CreateExerciseCard';
-import BidirectionalMethodLink from '@/components/exercises/BidirectionalMethodLink';
+import BidirectionalPage from './BidirectionalPage';
 
 const ExercisesPage: React.FC = () => {
   const { user } = useAuth();
@@ -122,42 +123,60 @@ const ExercisesPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Exercise Types */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-        <CreateExerciseCard onClick={onCreateExercise} />
-        <BidirectionalMethodLink />
-        {/* Add more exercise type cards here as needed */}
-      </div>
+      <Tabs defaultValue="dictation" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="dictation" className="flex items-center gap-2">
+            <Mic className="h-4 w-4" />
+            Dictation Method
+          </TabsTrigger>
+          <TabsTrigger value="bidirectional" className="flex items-center gap-2">
+            <ArrowLeftRight className="h-4 w-4" />
+            Bidirectional Method
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Search and Filter Bar */}
-      <FilterBar
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        selectedTag={selectedTag}
-        setSelectedTag={setSelectedTag}
-        allTags={allTags}
-      />
+        <TabsContent value="dictation" className="space-y-6">
+          {/* Exercise Types */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+            <CreateExerciseCard onClick={onCreateExercise} />
+            {/* Add more exercise type cards here as needed */}
+          </div>
 
-      {/* Exercises Grid */}
-      <ExerciseGrid
-        paginatedExercises={paginatedExercises}
-        exercisesPerPage={exercisesPerPage}
-        onPractice={handlePractice}
-        onEdit={setEditingExercise}
-        onDelete={handleDeleteExercise}
-        onMove={handleMoveExercise}
-        onCreateClick={onCreateExercise}
-        canEdit={true}
-      />
+          {/* Search and Filter Bar */}
+          <FilterBar
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            selectedTag={selectedTag}
+            setSelectedTag={setSelectedTag}
+            allTags={allTags}
+          />
 
-      {/* Pagination */}
-      <PaginationControls
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={setCurrentPage}
-      />
+          {/* Exercises Grid */}
+          <ExerciseGrid
+            paginatedExercises={paginatedExercises}
+            exercisesPerPage={exercisesPerPage}
+            onPractice={handlePractice}
+            onEdit={setEditingExercise}
+            onDelete={handleDeleteExercise}
+            onMove={handleMoveExercise}
+            onCreateClick={onCreateExercise}
+            canEdit={true}
+          />
 
-      {/* Modals */}
+          {/* Pagination */}
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </TabsContent>
+
+        <TabsContent value="bidirectional">
+          <BidirectionalPage />
+        </TabsContent>
+      </Tabs>
+
+      {/* Modals for Dictation Method */}
       <ExerciseFormModal
         isOpen={isCreating || !!editingExercise}
         onOpenChange={(open) => {

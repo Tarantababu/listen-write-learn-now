@@ -38,8 +38,6 @@ import BlogPostEditor from "@/components/blog/admin/BlogPostEditor";
 import BlogPage from "@/pages/BlogPage"; 
 import BlogPostPage from "@/pages/BlogPostPage";
 
-import BidirectionalPage from './pages/BidirectionalPage';
-
 const queryClient = new QueryClient();
 
 function App() {
@@ -79,7 +77,6 @@ function App() {
                                   <Route path="/dashboard" element={<Layout />}>
                                     <Route index element={<HomePage />} />
                                     <Route path="exercises" element={<ExercisesPage />} />
-                                    <Route path="exercises/bidirectional" element={<BidirectionalPage />} />
                                     <Route path="curriculum" element={<CurriculumPage />} />
                                     <Route path="vocabulary" element={<VocabularyPage />} />
                                     <Route path="settings" element={<SettingsPage />} />
