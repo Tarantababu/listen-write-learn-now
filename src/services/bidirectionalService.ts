@@ -286,7 +286,7 @@ export class BidirectionalService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Add to bidirectional mastered words
+    // Add to bidirectional mastered words using upsert
     const masteredWords = words.map(word => ({
       user_id: user.id,
       exercise_id: exerciseId,
@@ -294,25 +294,36 @@ export class BidirectionalService {
       language: exercise.target_language
     }));
 
-    await supabase
-      .from('bidirectional_mastered_words')
-      .insert(masteredWords)
-      .on('conflict', () => {}) // Ignore duplicates
-      .select();
-
-    // Also add to main vocabulary system
-    for (const word of words) {
+    try {
       await supabase
-        .from('vocabulary')
-        .insert({
-          user_id: user.id,
-          exercise_id: exerciseId,
-          word,
-          language: exercise.target_language,
-          definition: `From bidirectional exercise: ${exercise.original_sentence}`,
-          example_sentence: exercise.original_sentence
-        })
-        .on('conflict', () => {}); // Ignore duplicates
+        .from('bidirectional_mastered_words')
+        .upsert(masteredWords, { 
+          onConflict: 'user_id,word,language',
+          ignoreDuplicates: true 
+        });
+    } catch (error) {
+      console.error('Error upserting bidirectional mastered words:', error);
+    }
+
+    // Also add to main vocabulary system using upsert
+    for (const word of words) {
+      try {
+        await supabase
+          .from('vocabulary')
+          .upsert({
+            user_id: user.id,
+            exercise_id: exerciseId,
+            word,
+            language: exercise.target_language,
+            definition: `From bidirectional exercise: ${exercise.original_sentence}`,
+            example_sentence: exercise.original_sentence
+          }, { 
+            onConflict: 'user_id,word,language',
+            ignoreDuplicates: true 
+          });
+      } catch (error) {
+        console.error('Error upserting vocabulary word:', error);
+      }
     }
 
     // Record mastered words for streak system
