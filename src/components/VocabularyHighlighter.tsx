@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,7 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
   // Function to generate vocabulary item info using OpenAI
   const generateVocabularyInfo = async (word: string, language: Language) => {
     setIsGeneratingInfo(true);
+    setIsGeneratingAudio(false);
     try {
       toast("Generating Info", {
         description: "Generating vocabulary information..."
@@ -69,6 +71,8 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
         throw new Error('Invalid response from generate-vocabulary-info function');
       }
 
+      setIsGeneratingInfo(false);
+
       // After successfully getting definition and example, generate audio
       toast("Generating Audio", {
         description: "Generating audio for example sentence..."
@@ -91,12 +95,15 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
       return null;
     } finally {
       setIsGeneratingInfo(false);
+      setIsGeneratingAudio(false);
     }
   };
 
   // Generate audio for example sentence
   const generateExampleAudio = async (text: string, language: Language): Promise<string | undefined> => {
     try {
+      console.log('Generating audio for text:', text, 'in language:', language);
+      
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { text, language }
       });
@@ -106,12 +113,16 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
         throw error;
       }
 
+      console.log('Text-to-speech response:', data);
+
       if (!data || !data.audioContent) {
-        throw new Error('No audio content received');
+        console.warn('No audio content received from text-to-speech function');
+        return undefined;
       }
 
       // If the function returned an audioUrl directly from storage, use it
       if (data.audioUrl) {
+        console.log('Using direct audioUrl from storage:', data.audioUrl);
         toast("Success", {
           description: "Audio generated successfully"
         });
@@ -120,9 +131,13 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
 
       // Otherwise, upload the base64 audio content to storage
       const audioContent = data.audioContent;
+      console.log('Converting base64 audio content to blob...');
+      
       const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
       
       const fileName = `vocab_${Date.now()}.mp3`;
+      console.log('Uploading audio file:', fileName);
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('audio')
         .upload(fileName, blob, {
@@ -138,19 +153,19 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
         .from('audio')
         .getPublicUrl(fileName);
 
+      console.log('Generated audio URL:', publicUrl);
+      
       toast("Success", {
         description: "Audio generated successfully"
       });
       return publicUrl;
     } catch (error) {
       console.error('Error generating audio:', error);
-      toast("Error", {
-        description: "Failed to generate audio for example sentence",
-        variant: "destructive"
+      toast("Warning", {
+        description: "Audio generation failed, but vocabulary will still be saved without audio",
+        variant: "default"
       });
       return undefined;
-    } finally {
-      setIsGeneratingAudio(false);
     }
   };
 
@@ -286,7 +301,9 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
               <p className="mt-2 text-sm text-muted-foreground">
                 {isGeneratingInfo 
                   ? 'Generating vocabulary information...' 
-                  : 'Creating audio for example sentence...'}
+                  : isGeneratingAudio
+                  ? 'Creating audio for example sentence...'
+                  : 'Processing...'}
               </p>
             </div>
           ) : generatedInfo ? (
@@ -299,11 +316,21 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
               <div>
                 <h4 className="text-sm font-medium mb-1">Example:</h4>
                 <p className="text-sm italic mb-2">"{generatedInfo.exampleSentence}"</p>
-                {generatedInfo.audioUrl && (
-                  <div className="mt-2">
-                    <AudioPlayer audioUrl={generatedInfo.audioUrl} />
-                  </div>
-                )}
+                
+                {/* Audio Player Section */}
+                <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+                  {generatedInfo.audioUrl ? (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2">Listen to pronunciation:</p>
+                      <AudioPlayer audioUrl={generatedInfo.audioUrl} />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Volume2 className="h-4 w-4" />
+                      <span>Audio not available</span>
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="flex justify-end gap-2">
