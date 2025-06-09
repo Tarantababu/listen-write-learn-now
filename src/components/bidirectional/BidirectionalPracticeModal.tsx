@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import type { BidirectionalExercise } from '@/types/bidirectional';
 import { useToast } from '@/hooks/use-toast';
 import { compareTexts } from '@/utils/textComparison';
 import AudioPlayer from '@/components/AudioPlayer';
+import VocabularyHighlighter from '@/components/VocabularyHighlighter';
 
 interface BidirectionalPracticeModalProps {
   exercise: BidirectionalExercise | null;
@@ -195,6 +197,26 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
 
   if (!exercise) return null;
 
+  // Create a mock exercise object for VocabularyHighlighter compatibility
+  const mockExercise = {
+    id: exercise.id,
+    text: exercise.original_sentence,
+    language: exercise.target_language,
+    title: 'Bidirectional Exercise',
+    type: 'bidirectional' as const,
+    difficulty: 'intermediate' as const,
+    tags: [],
+    archived: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    userId: exercise.user_id,
+    directoryId: null,
+    progress: 0,
+    accuracy: 0,
+    practiceCount: 0,
+    lastPracticedAt: null
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -318,12 +340,10 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                       </span>
                     </div>
                     {renderWordFeedback(translationComparison)}
-                    {exercise?.normal_translation && (
-                      <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
-                        <div className="text-sm font-medium text-blue-800 mb-1">Expected translation:</div>
-                        <div className="text-blue-900">{exercise.normal_translation}</div>
-                      </div>
-                    )}
+                    <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
+                      <div className="text-sm font-medium text-blue-800 mb-1">Expected translation:</div>
+                      <div className="text-blue-900">{exercise.normal_translation}</div>
+                    </div>
                   </div>
                 )}
 
@@ -336,6 +356,9 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                   <ArrowRight className="h-5 w-5" />
                   Continue to Back Translation
                 </Button>
+                
+                {/* Vocabulary Builder for Step 1 */}
+                <VocabularyHighlighter exercise={mockExercise} />
               </CardContent>
             </Card>
           )}
