@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, Globe } from 'lucide-react';
@@ -145,8 +146,8 @@ export function Hero() {
               <AnimatedGroup variants={transitionVariants}>
                 <div className="max-w-md w-full">
                   <img 
-                    src="/lovable-uploads/e1e8d5b6-2bcd-4fe7-bf0f-1090e33675da.png" 
-                    alt="Language learning through dictation - illustration of person with headphones practicing on laptop"
+                    src="https://i.postimg.cc/kMzwjjDG/lwlnow-how-to-exercise-landing.gif" 
+                    alt="Language learning through dictation - animated demonstration of the exercise interface"
                     className="w-full h-auto object-contain"
                   />
                 </div>
