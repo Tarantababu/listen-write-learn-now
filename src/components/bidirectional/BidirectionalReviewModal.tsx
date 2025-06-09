@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -35,14 +36,42 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
     }
   }, [isOpen, exercise, reviewType]);
 
-  // Calculate next review intervals based on spaced repetition
-  const calculateNextReviewDays = (isCorrect: boolean) => {
-    if (isCorrect) {
-      // Correct answer - longer intervals (similar to Anki)
-      return Math.round(1 * 2.5); // ~3 days for correct
+  // Calculate next review intervals: 30s, 1d, 3d, 7d, 14d, 30d, 60d
+  const calculateNextReviewInterval = (isCorrect: boolean, reviewRound: number = 1) => {
+    if (!isCorrect) {
+      // Incorrect answer - back to 30 seconds
+      return { days: 0, hours: 0, minutes: 0, seconds: 30 };
+    }
+
+    // Correct answer - follow the progression
+    switch (reviewRound) {
+      case 1:
+        return { days: 0, hours: 0, minutes: 0, seconds: 30 };
+      case 2:
+        return { days: 1, hours: 0, minutes: 0, seconds: 0 };
+      case 3:
+        return { days: 3, hours: 0, minutes: 0, seconds: 0 };
+      case 4:
+        return { days: 7, hours: 0, minutes: 0, seconds: 0 };
+      case 5:
+        return { days: 14, hours: 0, minutes: 0, seconds: 0 };
+      case 6:
+        return { days: 30, hours: 0, minutes: 0, seconds: 0 };
+      default:
+        return { days: 60, hours: 0, minutes: 0, seconds: 0 };
+    }
+  };
+
+  // Format interval for display
+  const formatInterval = (interval: { days: number; hours: number; minutes: number; seconds: number }) => {
+    if (interval.days > 0) {
+      return `${interval.days}d`;
+    } else if (interval.hours > 0) {
+      return `${interval.hours}h`;
+    } else if (interval.minutes > 0) {
+      return `${interval.minutes}m`;
     } else {
-      // Incorrect answer - shorter interval
-      return 1; // 1 day for incorrect
+      return `${interval.seconds}s`;
     }
   };
 
@@ -77,13 +106,15 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
         feedback: isCorrect ? "Correct!" : "Needs more practice"
       });
 
-      const nextReviewDays = calculateNextReviewDays(isCorrect);
+      // Get the next interval for display
+      const nextInterval = calculateNextReviewInterval(isCorrect, 1); // This will be calculated properly in the service
+      const intervalText = formatInterval(nextInterval);
       
       toast({
         title: "Review Complete",
         description: isCorrect 
-          ? `Great job! Next review in ${nextReviewDays} days.` 
-          : `Don't worry, you'll see this again tomorrow.`,
+          ? `Great job! Next review in ${intervalText}.` 
+          : `Don't worry, you'll see this again in ${intervalText}.`,
         variant: isCorrect ? "default" : "destructive"
       });
 
@@ -133,8 +164,9 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
 
   if (!exercise) return null;
 
-  const correctDays = calculateNextReviewDays(true);
-  const incorrectDays = calculateNextReviewDays(false);
+  // Calculate intervals for button display (assuming this is first review for simplicity)
+  const correctInterval = calculateNextReviewInterval(true, 2); // Next correct interval
+  const incorrectInterval = calculateNextReviewInterval(false, 1); // Reset interval
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -224,7 +256,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                       className="flex items-center gap-2"
                     >
                       <XCircle className="h-4 w-4" />
-                      Again ({incorrectDays}d)
+                      Again ({formatInterval(incorrectInterval)})
                     </Button>
                     <Button
                       onClick={() => handleMarkResult(true)}
@@ -232,7 +264,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                       className="flex items-center gap-2"
                     >
                       <CheckCircle className="h-4 w-4" />
-                      Good ({correctDays}d)
+                      Good ({formatInterval(correctInterval)})
                     </Button>
                   </div>
                 </div>

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { BidirectionalExercise, BidirectionalReview, BidirectionalMasteredWord, SpacedRepetitionConfig } from '@/types/bidirectional';
 
@@ -221,7 +220,7 @@ export class BidirectionalService {
     }
   }
 
-  // Calculate next review date based on spaced repetition (1 → 3 → 7 days)
+  // Calculate next review date based on new spaced repetition schedule: 30s, 1d, 3d, 7d, 14d, 30d, 60d
   static calculateNextReviewDate(
     isCorrect: boolean,
     reviewRound: number = 1
@@ -229,25 +228,44 @@ export class BidirectionalService {
     const nextDate = new Date();
     
     if (!isCorrect) {
-      // If incorrect, reset to 1 day
-      nextDate.setDate(nextDate.getDate() + 1);
+      // If incorrect, reset to 30 seconds
+      nextDate.setSeconds(nextDate.getSeconds() + 30);
       return nextDate;
     }
 
-    // Spaced repetition: 1 → 3 → 7 days
+    // Spaced repetition: 30s → 1d → 3d → 7d → 14d → 30d → 60d
     switch (reviewRound) {
       case 1:
-        nextDate.setDate(nextDate.getDate() + 1);
+        // First review after 30 seconds
+        nextDate.setSeconds(nextDate.getSeconds() + 30);
         break;
       case 2:
-        nextDate.setDate(nextDate.getDate() + 3);
+        // Second review after 1 day
+        nextDate.setDate(nextDate.getDate() + 1);
         break;
       case 3:
+        // Third review after 3 days
+        nextDate.setDate(nextDate.getDate() + 3);
+        break;
+      case 4:
+        // Fourth review after 7 days
         nextDate.setDate(nextDate.getDate() + 7);
         break;
-      default:
-        // After day 7, mark as mastered
+      case 5:
+        // Fifth review after 14 days
+        nextDate.setDate(nextDate.getDate() + 14);
+        break;
+      case 6:
+        // Sixth review after 30 days
         nextDate.setDate(nextDate.getDate() + 30);
+        break;
+      default:
+        // Seventh and beyond - 60 days, then mark as mastered
+        if (reviewRound >= 7) {
+          nextDate.setDate(nextDate.getDate() + 365); // Mark as mastered with very long interval
+        } else {
+          nextDate.setDate(nextDate.getDate() + 60);
+        }
         break;
     }
 
@@ -276,12 +294,17 @@ export class BidirectionalService {
     const reviewRound = (previousReviews?.length || 0) + 1;
     const nextReviewDate = this.calculateNextReviewDate(data.is_correct, reviewRound);
 
+    // For reviews due within a day, store the exact timestamp; otherwise, store just the date
+    const dueDate = nextReviewDate.getTime() - Date.now() < 24 * 60 * 60 * 1000 
+      ? nextReviewDate.toISOString()
+      : nextReviewDate.toISOString().split('T')[0];
+
     const { data: review, error } = await supabase
       .from('bidirectional_reviews')
       .insert({
         ...data,
         user_id: user.id,
-        due_date: nextReviewDate.toISOString().split('T')[0],
+        due_date: dueDate,
         completed_at: new Date().toISOString(),
         review_round: reviewRound
       })
@@ -296,8 +319,8 @@ export class BidirectionalService {
       // Record language activity for streak system
       await this.recordLanguageActivity(user.id, exercise.target_language);
 
-      // If this is round 3 review and correct, add mastered words
-      if (data.is_correct && reviewRound >= 3) {
+      // If this is round 7 review and correct, add mastered words
+      if (data.is_correct && reviewRound >= 7) {
         await this.extractAndMarkMasteredWords(data.exercise_id, exercise);
         
         // Mark exercise as mastered if both directions are complete
@@ -359,12 +382,13 @@ export class BidirectionalService {
     }
   }
 
-  // Get exercises due for review filtered by target language
+  // Get exercises due for review filtered by target language (updated to handle timestamp-based reviews)
   static async getExercisesDueForReview(userId: string, targetLanguage: string): Promise<{
     exercise: BidirectionalExercise;
     review_type: 'forward' | 'backward';
   }[]> {
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
 
     // Get exercises that need reviewing for the specific target language
     const { data: exercises, error: exerciseError } = await supabase
@@ -391,7 +415,7 @@ export class BidirectionalService {
         .limit(1);
 
       const lastForwardReview = forwardReviews?.[0];
-      if (!lastForwardReview || lastForwardReview.due_date <= today) {
+      if (!lastForwardReview || this.isReviewDue(lastForwardReview.due_date, now)) {
         dueExercises.push({ exercise: typedExercise, review_type: 'forward' });
       }
 
@@ -405,12 +429,23 @@ export class BidirectionalService {
         .limit(1);
 
       const lastBackwardReview = backwardReviews?.[0];
-      if (!lastBackwardReview || lastBackwardReview.due_date <= today) {
+      if (!lastBackwardReview || this.isReviewDue(lastBackwardReview.due_date, now)) {
         dueExercises.push({ exercise: typedExercise, review_type: 'backward' });
       }
     }
 
     return dueExercises;
+  }
+
+  // Helper method to check if a review is due (handles both date and timestamp formats)
+  static isReviewDue(dueDate: string, now: Date): boolean {
+    // If due_date includes time (timestamp), compare with exact time
+    if (dueDate.includes('T')) {
+      return new Date(dueDate) <= now;
+    } else {
+      // If due_date is just a date, compare with today's date
+      return dueDate <= now.toISOString().split('T')[0];
+    }
   }
 
   static async markWordsAsMastered(
