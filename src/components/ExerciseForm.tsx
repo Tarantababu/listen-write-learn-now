@@ -86,42 +86,93 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       toast.info(`Generating audio file...`);
 
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: { text, language }
+        body: { 
+          text, 
+          language,
+          exerciseId: initialValues?.id || 'temp_' + Date.now(),
+          audioType: 'exercise'
+        }
       });
 
       if (error) {
         console.error('Error invoking text-to-speech function:', error);
+        // Try to proceed without storage if it's a storage error
+        if (error.message?.includes('DatabaseError') || error.message?.includes('infinite recursion')) {
+          console.log('Storage error detected, trying without storage...');
+          const { data: retryData, error: retryError } = await supabase.functions.invoke('text-to-speech', {
+            body: { text, language } // Without exerciseId to skip storage
+          });
+          
+          if (retryError) {
+            throw retryError;
+          }
+          
+          if (retryData?.audioContent) {
+            // Create blob from base64 and upload manually
+            const audioContent = retryData.audioContent;
+            const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
+            
+            const fileName = `exercise_${Date.now()}.mp3`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('audio')
+              .upload(fileName, blob, {
+                contentType: 'audio/mp3'
+              });
+
+            if (!uploadError) {
+              const { data: { publicUrl } } = supabase.storage
+                .from('audio')
+                .getPublicUrl(fileName);
+              
+              toast.success(`Audio file generated successfully`);
+              return publicUrl;
+            }
+          }
+        }
         throw error;
       }
 
-      if (!data || !data.audioContent) {
-        throw new Error('No audio content received');
+      if (!data) {
+        throw new Error('No data received from text-to-speech function');
       }
 
-      const audioContent = data.audioContent;
-      const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
-      
-      const fileName = `exercise_${Date.now()}.mp3`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('audio')
-        .upload(fileName, blob, {
-          contentType: 'audio/mp3'
-        });
-
-      if (uploadError) {
-        console.error('Error uploading audio:', uploadError);
-        throw uploadError;
+      // If we have a direct audio URL, use it
+      if (data.audioUrl) {
+        toast.success(`Audio file generated successfully`);
+        return data.audioUrl;
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('audio')
-        .getPublicUrl(fileName);
+      // If we only have base64 content, upload it manually
+      if (data.audioContent) {
+        const audioContent = data.audioContent;
+        const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
+        
+        const fileName = `exercise_${Date.now()}.mp3`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('audio')
+          .upload(fileName, blob, {
+            contentType: 'audio/mp3'
+          });
 
-      toast.success(`Audio file generated successfully`);
-      return publicUrl;
+        if (uploadError) {
+          console.error('Error uploading audio:', uploadError);
+          // Return a data URL as fallback
+          toast.success(`Audio generated (using fallback method)`);
+          return `data:audio/mp3;base64,${audioContent}`;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('audio')
+          .getPublicUrl(fileName);
+
+        toast.success(`Audio file generated successfully`);
+        return publicUrl;
+      }
+
+      throw new Error('No audio content received');
     } catch (error) {
       console.error('Error generating audio:', error);
-      toast.error(`Failed to generate audio for the exercise`);
+      toast.error(`Failed to generate audio: ${error.message}`);
       return null;
     } finally {
       setIsGeneratingAudio(false);

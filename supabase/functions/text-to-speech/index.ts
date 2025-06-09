@@ -49,11 +49,39 @@ serve(async (req) => {
         const errorText = await response.text();
         console.error('OpenAI API error:', response.status, response.statusText);
         console.error('OpenAI API error details:', errorText);
-        throw new Error(`Failed to generate speech: ${errorText}`);
+        
+        // If the requested model fails, try with fallback model
+        if (voiceSettings.model === 'gpt-4o-mini-tts') {
+          console.log('Falling back to tts-1 model');
+          const fallbackResponse = await fetch('https://api.openai.com/v1/audio/speech', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'tts-1',
+              voice: voiceSettings.voice,
+              input: chunk,
+              response_format: 'mp3',
+              speed: voiceSettings.speed
+            }),
+          });
+          
+          if (!fallbackResponse.ok) {
+            const fallbackErrorText = await fallbackResponse.text();
+            throw new Error(`Failed to generate speech with fallback: ${fallbackErrorText}`);
+          }
+          
+          const audioContent = await fallbackResponse.arrayBuffer();
+          audioBuffers.push(new Uint8Array(audioContent));
+        } else {
+          throw new Error(`Failed to generate speech: ${errorText}`);
+        }
+      } else {
+        const audioContent = await response.arrayBuffer();
+        audioBuffers.push(new Uint8Array(audioContent));
       }
-
-      const audioContent = await response.arrayBuffer();
-      audioBuffers.push(new Uint8Array(audioContent));
     }
 
     // Combine audio chunks if multiple
@@ -61,55 +89,46 @@ serve(async (req) => {
     if (audioBuffers.length === 1) {
       finalAudio = audioBuffers[0];
     } else {
-      // In a real implementation, you would concatenate MP3 files properly
-      // This is simplified; in production use proper MP3 concatenation library
       finalAudio = concatUint8Arrays(audioBuffers);
     }
 
     // Store audio file in Supabase storage if exerciseId and audioType are provided
     let audioUrl = null;
     if (exerciseId && audioType) {
-      // Initialize Supabase client
-      const supabase = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-      );
+      try {
+        // Initialize Supabase client with service role key to bypass RLS
+        const supabase = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        );
 
-      // Create audio bucket if it doesn't exist
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const audioBucketExists = buckets?.some(bucket => bucket.name === 'audio');
-      
-      if (!audioBucketExists) {
-        await supabase.storage.createBucket('audio', {
-          public: true,
-          allowedMimeTypes: ['audio/mpeg', 'audio/mp3'],
-          fileSizeLimit: 52428800 // 50MB
-        });
+        // Generate filename
+        const filename = `${exerciseId}/${audioType}_${Date.now()}.mp3`;
+        
+        // Upload audio file directly without checking bucket existence
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('audio')
+          .upload(filename, finalAudio, {
+            contentType: 'audio/mpeg',
+            upsert: true
+          });
+
+        if (uploadError) {
+          console.error('Storage upload error:', uploadError);
+          console.log('Proceeding without storage, returning base64 audio only');
+        } else {
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('audio')
+            .getPublicUrl(filename);
+          
+          audioUrl = urlData.publicUrl;
+          console.log(`Audio stored successfully: ${audioUrl}`);
+        }
+      } catch (storageError) {
+        console.error('Storage operation failed:', storageError);
+        console.log('Proceeding without storage, returning base64 audio only');
       }
-
-      // Generate filename
-      const filename = `${exerciseId}/${audioType}_${Date.now()}.mp3`;
-      
-      // Upload audio file
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('audio')
-        .upload(filename, finalAudio, {
-          contentType: 'audio/mpeg',
-          upsert: true
-        });
-
-      if (uploadError) {
-        console.error('Storage upload error:', uploadError);
-        throw new Error(`Failed to store audio: ${uploadError.message}`);
-      }
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('audio')
-        .getPublicUrl(filename);
-      
-      audioUrl = urlData.publicUrl;
-      console.log(`Audio stored successfully: ${audioUrl}`);
     }
     
     // Convert to base64 string safely for backward compatibility
@@ -142,7 +161,7 @@ serve(async (req) => {
 
 // Function to determine voice settings based on language
 function getVoiceSettingsForLanguage(language: string) {
-  const model = 'tts-1'; // Corrected model name
+  const model = 'gpt-4o-mini-tts'; // Using requested model with fallback
   let voice = 'nova';  // Default voice
   let speed = 1.0;     // Default speed
   
