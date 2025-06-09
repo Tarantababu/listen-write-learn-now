@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -36,6 +35,17 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
     }
   }, [isOpen, exercise, reviewType]);
 
+  // Calculate next review intervals based on spaced repetition
+  const calculateNextReviewDays = (isCorrect: boolean) => {
+    if (isCorrect) {
+      // Correct answer - longer intervals (similar to Anki)
+      return Math.round(1 * 2.5); // ~3 days for correct
+    } else {
+      // Incorrect answer - shorter interval
+      return 1; // 1 day for incorrect
+    }
+  };
+
   const handlePlayAudio = () => {
     if (exercise?.original_audio_url) {
       const audio = new Audio(exercise.original_audio_url);
@@ -67,11 +77,13 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
         feedback: isCorrect ? "Correct!" : "Needs more practice"
       });
 
+      const nextReviewDays = calculateNextReviewDays(isCorrect);
+      
       toast({
         title: "Review Complete",
         description: isCorrect 
-          ? "Great job! Your next review is scheduled." 
-          : "Don't worry, you'll get another chance to practice soon.",
+          ? `Great job! Next review in ${nextReviewDays} days.` 
+          : `Don't worry, you'll see this again tomorrow.`,
         variant: isCorrect ? "default" : "destructive"
       });
 
@@ -120,6 +132,9 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
   };
 
   if (!exercise) return null;
+
+  const correctDays = calculateNextReviewDays(true);
+  const incorrectDays = calculateNextReviewDays(false);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -209,7 +224,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                       className="flex items-center gap-2"
                     >
                       <XCircle className="h-4 w-4" />
-                      Incorrect - Need Practice
+                      Again ({incorrectDays}d)
                     </Button>
                     <Button
                       onClick={() => handleMarkResult(true)}
@@ -217,7 +232,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                       className="flex items-center gap-2"
                     >
                       <CheckCircle className="h-4 w-4" />
-                      Correct - I Got It!
+                      Good ({correctDays}d)
                     </Button>
                   </div>
                 </div>
