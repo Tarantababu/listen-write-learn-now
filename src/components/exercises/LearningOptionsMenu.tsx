@@ -1,8 +1,11 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Search, Headphones, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useGTM } from '@/hooks/use-gtm';
+
 interface LearningOptionsMenuProps {
   onStartReadingAnalysis: () => void;
   onStartDictation: () => void;
@@ -11,6 +14,7 @@ interface LearningOptionsMenuProps {
   isSubscribed?: boolean;
   loadingAnalysisCheck?: boolean;
 }
+
 const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
   onStartReadingAnalysis,
   onStartDictation,
@@ -19,7 +23,48 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
   isSubscribed = false,
   loadingAnalysisCheck = false
 }) => {
-  return <div className="px-6 py-8 space-y-6 flex-1 overflow-y-auto practice-content">
+  const { trackFeatureUsed, trackCTAClick } = useGTM();
+
+  const handleReadingAnalysisClick = () => {
+    trackFeatureUsed({
+      feature_name: 'reading_analysis_start',
+      feature_category: 'exercise',
+      additional_data: {
+        exercise_title: exerciseTitle,
+        is_subscribed: isSubscribed
+      }
+    });
+    
+    trackCTAClick({
+      cta_type: 'start_exercise',
+      cta_location: 'learning_options_menu',
+      cta_text: 'Reading Analysis'
+    });
+    
+    onStartReadingAnalysis();
+  };
+
+  const handleDictationClick = () => {
+    trackFeatureUsed({
+      feature_name: 'dictation_practice_start',
+      feature_category: 'exercise',
+      additional_data: {
+        exercise_title: exerciseTitle,
+        is_subscribed: isSubscribed
+      }
+    });
+    
+    trackCTAClick({
+      cta_type: 'start_exercise',
+      cta_location: 'learning_options_menu',
+      cta_text: 'Dictation Practice'
+    });
+    
+    onStartDictation();
+  };
+
+  return (
+    <div className="px-6 py-8 space-y-6 flex-1 overflow-y-auto practice-content">
       <div className="mb-6">
         <h2 className="text-2xl font-bold mb-2">{exerciseTitle}</h2>
         <div>
@@ -32,17 +77,23 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        <motion.div whileHover={{
-        scale: 1.02,
-        y: -2
-      }} whileTap={{
-        scale: 0.98
-      }} transition={{
-        duration: 0.2
-      }} className="group">
+        <motion.div 
+          whileHover={{ scale: 1.02, y: -2 }} 
+          whileTap={{ scale: 0.98 }} 
+          transition={{ duration: 0.2 }} 
+          className="group"
+        >
           <Card className="border-2 border-primary/20 overflow-hidden hover:border-primary/40 transition-all duration-300 hover:shadow-lg dark:hover:bg-muted/5 bg-gradient-to-br from-primary/5 to-primary/10">
             <CardContent className="p-0">
-              <Button onClick={onStartReadingAnalysis} variant="ghost" disabled={!analysisAllowed || loadingAnalysisCheck} className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent">
+              <Button 
+                onClick={handleReadingAnalysisClick} 
+                variant="ghost" 
+                disabled={!analysisAllowed || loadingAnalysisCheck} 
+                className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent"
+                data-gtm-cta-type="start_exercise"
+                data-gtm-cta-location="learning_options_menu"
+                data-gtm-cta-text="Reading Analysis"
+              >
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="flex items-center justify-center bg-primary/15 w-16 h-16 rounded-full group-hover:bg-primary/25 transition-colors duration-300">
                     <Search className="h-7 w-7 text-primary" />
@@ -59,17 +110,22 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
           </Card>
         </motion.div>
 
-        <motion.div whileHover={{
-        scale: 1.02,
-        y: -2
-      }} whileTap={{
-        scale: 0.98
-      }} transition={{
-        duration: 0.2
-      }} className="group">
+        <motion.div 
+          whileHover={{ scale: 1.02, y: -2 }} 
+          whileTap={{ scale: 0.98 }} 
+          transition={{ duration: 0.2 }} 
+          className="group"
+        >
           <Card className="border-2 border-muted overflow-hidden hover:border-muted/60 transition-all duration-300 hover:shadow-lg dark:hover:bg-muted/5 bg-gradient-to-br from-muted/20 to-muted/30">
             <CardContent className="p-0">
-              <Button onClick={onStartDictation} variant="ghost" className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left text-brand-primary bg-transparent">
+              <Button 
+                onClick={handleDictationClick} 
+                variant="ghost" 
+                className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left text-brand-primary bg-transparent"
+                data-gtm-cta-type="start_exercise"
+                data-gtm-cta-location="learning_options_menu"
+                data-gtm-cta-text="Dictation Practice"
+              >
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="flex items-center justify-center w-16 h-16 rounded-full transition-colors duration-300 bg-brand-light">
                     <Headphones className="h-7 w-7 text-muted-foreground" />
@@ -87,15 +143,13 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
         </motion.div>
       </div>
 
-      {!analysisAllowed && !isSubscribed && <motion.div initial={{
-      opacity: 0,
-      y: 10
-    }} animate={{
-      opacity: 1,
-      y: 0
-    }} transition={{
-      duration: 0.3
-    }} className="bg-amber-50 border-2 border-amber-200 text-amber-800 p-4 rounded-lg flex items-start mt-6 dark:bg-amber-950/20 dark:border-amber-800/40 dark:text-amber-300">
+      {!analysisAllowed && !isSubscribed && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ duration: 0.3 }} 
+          className="bg-amber-50 border-2 border-amber-200 text-amber-800 p-4 rounded-lg flex items-start mt-6 dark:bg-amber-950/20 dark:border-amber-800/40 dark:text-amber-300"
+        >
           <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-3 flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-medium text-base">Free user limit reached</p>
@@ -104,7 +158,10 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
               analyses.
             </p>
           </div>
-        </motion.div>}
-    </div>;
+        </motion.div>
+      )}
+    </div>
+  );
 };
+
 export default LearningOptionsMenu;

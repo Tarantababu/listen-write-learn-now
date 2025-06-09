@@ -44,6 +44,14 @@ export interface PageViewEvent extends GTMEvent {
   user_authenticated: boolean;
 }
 
+export interface UserDataEvent extends GTMEvent {
+  event: 'user_data_update';
+  userId: string;
+  userAuthenticated: boolean;
+  userCreatedAt?: string;
+  userMetadata?: Record<string, any>;
+}
+
 // Main GTM Service Class
 class GTMService {
   private isInitialized: boolean = false;
@@ -78,7 +86,7 @@ class GTMService {
     return `user_${Math.abs(hash).toString(36)}`;
   }
 
-  // Set user data in dataLayer
+  // Set user data in dataLayer - FIXED to include event attribute
   setUser(user: User | null) {
     if (!this.isInitialized) this.initialize();
 
@@ -86,6 +94,7 @@ class GTMService {
       this.currentUserId = this.generateHashedUserId(user);
       
       this.push({
+        event: 'user_data_update',
         userId: this.currentUserId,
         userAuthenticated: true,
         userCreatedAt: user.created_at,
@@ -97,6 +106,7 @@ class GTMService {
     } else {
       this.currentUserId = null;
       this.push({
+        event: 'user_data_update',
         userId: null,
         userAuthenticated: false
       });
