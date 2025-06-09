@@ -15,7 +15,6 @@ import ThemeToggle from './ThemeToggle';
 import { Logo } from './landing/Logo';
 import { StreakIndicator } from './StreakIndicator';
 import { LanguageSelectionDropdown } from './LanguageSelectionDropdown';
-
 const Header: React.FC = () => {
   const {
     user,
@@ -30,11 +29,9 @@ const Header: React.FC = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  
   const isActive = (path: string) => {
     return location.pathname === path || path !== '/dashboard' && location.pathname.startsWith(path);
   };
-  
   return <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur">
       <div className="container flex h-14 sm:h-16 items-center justify-between px-2 sm:px-4">
         <div className="flex items-center gap-1 sm:gap-2 md:gap-6 min-w-0 flex-1">
@@ -72,10 +69,7 @@ const Header: React.FC = () => {
               </Button>
               
               <Button asChild variant={isActive('/dashboard/bidirectional') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
-                <Link to="/dashboard/bidirectional">
-                  <ArrowLeftRight className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                  <span className="hidden lg:inline">Bidirectional</span>
-                </Link>
+                
               </Button>
               
               {isAdmin && <Button asChild variant={isActive('/dashboard/admin') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 bg-amber-500/10 hover:bg-amber-500/20 text-xs sm:text-sm px-2 sm:px-3">
@@ -199,5 +193,4 @@ const Header: React.FC = () => {
       </div>
     </header>;
 };
-
 export default Header;
