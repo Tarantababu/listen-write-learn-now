@@ -18,7 +18,9 @@ export function StreakIndicator() {
   const {
     settings
   } = useUserSettingsContext();
-  const { trackFeatureUsed } = useGTM();
+  const {
+    trackFeatureUsed
+  } = useGTM();
   const [streakData, setStreakData] = useState<StreakData>({
     currentStreak: 0,
     longestStreak: 0,
@@ -185,16 +187,7 @@ export function StreakIndicator() {
     return tooltip;
   };
   return <>
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        onClick={handleCalendarOpen} 
-        className={cn("flex items-center gap-2 transition-all duration-300 hover:scale-105 border-2 font-medium relative overflow-hidden", visuals.buttonStyle)} 
-        title={getTooltipText()}
-        data-gtm-feature="streak_indicator"
-        data-gtm-streak-level={getStreakLevel(streakData.currentStreak)}
-        data-gtm-current-streak={streakData.currentStreak}
-      >
+      <Button variant="ghost" size="sm" onClick={handleCalendarOpen} className={cn("flex items-center gap-2 transition-all duration-300 hover:scale-105 border-2 font-medium relative overflow-hidden", visuals.buttonStyle)} title={getTooltipText()} data-gtm-feature="streak_indicator" data-gtm-streak-level={getStreakLevel(streakData.currentStreak)} data-gtm-current-streak={streakData.currentStreak}>
         {/* Background accent for legendary streak */}
         {streakLevel === 'legendary' && streakData.streakActive && !streakData.isAtRisk && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-200/20 to-transparent -skew-x-12 transform translate-x-full opacity-75" />}
         
@@ -209,7 +202,7 @@ export function StreakIndicator() {
             {streakData.currentStreak}
           </span>
 
-          {streakData.streakActive && visuals.emoji && <span className="text-xs">{visuals.emoji}</span>}
+          {streakData.streakActive && visuals.emoji}
 
           {streakData.isAtRisk && streakData.riskHoursRemaining && <div className="flex items-center gap-1 text-xs text-orange-600">
               <Clock className="h-3 w-3" />
