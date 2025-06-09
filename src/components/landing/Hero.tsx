@@ -121,7 +121,7 @@ export function Hero() {
                 <div className="mt-10 flex flex-col items-center justify-center lg:justify-start relative">
                   <Button size="lg" className="bg-brand-primary hover:bg-brand-secondary rounded-full px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all">
                     <Link to="/language-selection" className="flex items-center gap-2">
-                      Join Thousands – Start Free Today
+                      Start Free Today
                       <ArrowRight size={20} />
                     </Link>
                   </Button>
