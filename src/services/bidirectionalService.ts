@@ -274,7 +274,7 @@ export class BidirectionalService {
     const nextDate = new Date();
     
     if (!isCorrect) {
-      // If incorrect, reset to 30 seconds
+      // If incorrect, reset to 30 seconds (always round 1)
       nextDate.setSeconds(nextDate.getSeconds() + 30);
       return nextDate;
     }
@@ -333,11 +333,24 @@ export class BidirectionalService {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    const reviewRound = (previousReviews?.length || 0) + 1;
-    const nextReviewDate = this.calculateNextReviewDate(data.is_correct, reviewRound);
+    // Calculate the next review round based on correctness
+    let nextReviewRound: number;
+    if (!data.is_correct) {
+      // If incorrect, reset to round 1
+      nextReviewRound = 1;
+    } else {
+      // If correct, increment from the current round
+      const currentRound = (previousReviews?.length || 0) + 1;
+      nextReviewRound = currentRound + 1;
+    }
+
+    // Calculate next review date using the appropriate round
+    const nextReviewDate = this.calculateNextReviewDate(data.is_correct, data.is_correct ? nextReviewRound : 1);
 
     // Store the due date with proper format
     const dueDate = nextReviewDate.toISOString();
+
+    console.log(`Recording review - Correct: ${data.is_correct}, Current Round: ${(previousReviews?.length || 0) + 1}, Next Round: ${nextReviewRound}, Next Due: ${nextReviewDate}`);
 
     const { data: review, error } = await supabase
       .from('bidirectional_reviews')
@@ -346,7 +359,7 @@ export class BidirectionalService {
         user_id: user.id,
         due_date: dueDate,
         completed_at: new Date().toISOString(),
-        review_round: reviewRound
+        review_round: (previousReviews?.length || 0) + 1 // This is the current review round being recorded
       })
       .select()
       .single();
@@ -360,7 +373,8 @@ export class BidirectionalService {
       await this.recordLanguageActivity(user.id, exercise.target_language);
 
       // If this is round 6 or later and correct, add mastered words and check for mastery
-      if (data.is_correct && reviewRound >= 6) {
+      const currentRound = (previousReviews?.length || 0) + 1;
+      if (data.is_correct && currentRound >= 6) {
         await this.extractAndMarkMasteredWords(data.exercise_id, exercise);
         
         // Check and mark exercise as mastered if both directions are complete
