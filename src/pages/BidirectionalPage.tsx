@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -9,24 +8,42 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Brain, BookOpen, Trophy, Lock } from 'lucide-react';
+import { FlagIcon } from 'react-flag-kit';
 import { BidirectionalExerciseCard } from '@/components/bidirectional/BidirectionalExerciseCard';
 import { BidirectionalPracticeModal } from '@/components/bidirectional/BidirectionalPracticeModal';
 import { BidirectionalReviewModal } from '@/components/bidirectional/BidirectionalReviewModal';
+import { LanguageSelectWithFlag } from '@/components/bidirectional/LanguageSelectWithFlag';
 import { BidirectionalService } from '@/services/bidirectionalService';
 import type { BidirectionalExercise } from '@/types/bidirectional';
 import { useToast } from '@/hooks/use-toast';
+import { getLanguageFlagCode } from '@/utils/languageUtils';
 
 const SUPPORTED_LANGUAGES = [
   { value: 'english', label: 'English' },
-  { value: 'spanish', label: 'Spanish' },
+  { value: 'mandarin chinese', label: 'Mandarin Chinese' },
   { value: 'french', label: 'French' },
+  { value: 'spanish', label: 'Spanish' },
   { value: 'german', label: 'German' },
+  { value: 'japanese', label: 'Japanese' },
+  { value: 'arabic', label: 'Arabic' },
+  { value: 'russian', label: 'Russian' },
   { value: 'italian', label: 'Italian' },
   { value: 'portuguese', label: 'Portuguese' },
-  { value: 'russian', label: 'Russian' },
-  { value: 'chinese', label: 'Chinese' },
-  { value: 'japanese', label: 'Japanese' },
-  { value: 'korean', label: 'Korean' }
+  { value: 'korean', label: 'Korean' },
+  { value: 'hindi', label: 'Hindi' },
+  { value: 'turkish', label: 'Turkish' },
+  { value: 'dutch', label: 'Dutch' },
+  { value: 'greek', label: 'Greek' },
+  { value: 'polish', label: 'Polish' },
+  { value: 'swedish', label: 'Swedish' },
+  { value: 'norwegian', label: 'Norwegian' },
+  { value: 'czech', label: 'Czech' },
+  { value: 'danish', label: 'Danish' },
+  { value: 'hungarian', label: 'Hungarian' },
+  { value: 'finnish', label: 'Finnish' },
+  { value: 'ukrainian', label: 'Ukrainian' },
+  { value: 'romanian', label: 'Romanian' },
+  { value: 'hebrew', label: 'Hebrew' }
 ];
 
 const BidirectionalPage: React.FC = () => {
@@ -247,11 +264,25 @@ const BidirectionalPage: React.FC = () => {
               <div className="relative">
                 <Select value={targetLanguage} disabled>
                   <SelectTrigger className="bg-muted cursor-not-allowed opacity-60">
-                    <SelectValue />
+                    <SelectValue>
+                      <div className="flex items-center gap-2">
+                        <FlagIcon 
+                          code={getLanguageFlagCode(targetLanguage)} 
+                          size={16} 
+                        />
+                        <span>{getLanguageLabel(targetLanguage)}</span>
+                      </div>
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={targetLanguage}>
-                      {getLanguageLabel(targetLanguage)}
+                      <div className="flex items-center gap-2">
+                        <FlagIcon 
+                          code={getLanguageFlagCode(targetLanguage)} 
+                          size={16} 
+                        />
+                        <span>{getLanguageLabel(targetLanguage)}</span>
+                      </div>
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -268,18 +299,12 @@ const BidirectionalPage: React.FC = () => {
               <label className="block text-sm font-medium mb-2">
                 Support Language (translation language):
               </label>
-              <Select value={supportLanguage} onValueChange={setSupportLanguage}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPORTED_LANGUAGES.map(lang => (
-                    <SelectItem key={lang.value} value={lang.value}>
-                      {lang.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <LanguageSelectWithFlag
+                value={supportLanguage}
+                onValueChange={setSupportLanguage}
+                options={SUPPORTED_LANGUAGES}
+                placeholder="Select support language"
+              />
             </div>
           </div>
 
