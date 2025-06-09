@@ -69,13 +69,13 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
       }} className="group">
           <Card className="border-2 border-muted overflow-hidden hover:border-muted/60 transition-all duration-300 hover:shadow-lg dark:hover:bg-muted/5 bg-gradient-to-br from-muted/20 to-muted/30">
             <CardContent className="p-0">
-              <Button onClick={onStartDictation} variant="ghost" className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-success-light text-brand-primary">
+              <Button onClick={onStartDictation} variant="ghost" className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left text-brand-primary bg-transparent">
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="flex items-center justify-center w-16 h-16 rounded-full transition-colors duration-300 bg-brand-light">
                     <Headphones className="h-7 w-7 text-muted-foreground" />
                   </div>
                   <div className="space-y-2">
-                    <div className="font-semibold text-xl bg-success-light">🎧 Dictation Practice</div>
+                    <div className="font-semibold text-xl bg-transparent">🎧 Dictation Practice</div>
                     <p className="text-sm text-muted-foreground leading-relaxed px-2">
                       Practice listening and transcription skills with audio
                     </p>
