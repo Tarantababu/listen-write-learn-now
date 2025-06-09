@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -120,6 +119,13 @@ const BidirectionalPage: React.FC = () => {
       setReviewingExercises(reviewing);
       setMasteredExercises(mastered);
       setDueReviews(due);
+
+      console.log('Loaded exercises:', {
+        learning: learning.length,
+        reviewing: reviewing.length,
+        mastered: mastered.length,
+        due: due.length
+      });
     } catch (error) {
       console.error('Error loading exercises:', error);
       toast({
@@ -223,8 +229,13 @@ const BidirectionalPage: React.FC = () => {
   };
 
   const handleAllReviewsComplete = () => {
-    // Reload exercises to refresh the state
+    // Reload exercises to refresh the state and show updated spaced repetition status
     loadExercises();
+    
+    toast({
+      title: "Reviews Complete!",
+      description: "All due reviews have been completed. Check back later for more reviews based on your spaced repetition schedule."
+    });
   };
 
   // Get the display label for the current target language
@@ -295,8 +306,8 @@ const BidirectionalPage: React.FC = () => {
           </CardTitle>
           <CardDescription className="text-sm">
             {dueReviews.length > 0 
-              ? `Complete these reviews to maintain your learning progress for ${getLanguageLabel(targetLanguage)}`
-              : `No reviews due today for ${getLanguageLabel(targetLanguage)}. Great job staying on top of your learning!`
+              ? `Complete these spaced repetition reviews to maintain your learning progress for ${getLanguageLabel(targetLanguage)}`
+              : `No reviews due right now for ${getLanguageLabel(targetLanguage)}. The spaced repetition system will schedule reviews at optimal intervals: 30s → 10m → 1h → 1d → 3d → 7d → mastered.`
             }
           </CardDescription>
         </CardHeader>
@@ -313,11 +324,15 @@ const BidirectionalPage: React.FC = () => {
                 <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
               <h3 className="text-lg font-medium text-green-800 dark:text-green-200 mb-2">
-                Nothing to review
+                Nothing to review right now
               </h3>
-              <p className="text-sm text-green-700 dark:text-green-300">
-                You're all caught up! Complete some learning exercises to add more items to your review schedule.
+              <p className="text-sm text-green-700 dark:text-green-300 mb-4">
+                You're all caught up! The spaced repetition system will remind you when it's time to review.
               </p>
+              <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md">
+                <p className="font-medium mb-1">Spaced Repetition Schedule:</p>
+                <p>30 seconds → 10 minutes → 1 hour → 1 day → 3 days → 7 days → mastered</p>
+              </div>
             </div>
           )}
         </CardContent>

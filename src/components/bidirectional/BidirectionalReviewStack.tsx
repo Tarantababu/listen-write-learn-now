@@ -1,18 +1,21 @@
 
 "use client";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Brain, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Brain, ArrowRight, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import { FlagIcon } from "react-flag-kit";
 import type { BidirectionalExercise } from "@/types/bidirectional";
 import { getLanguageFlagCode } from "@/utils/languageUtils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { BidirectionalService } from "@/services/bidirectionalService";
 
 type ReviewCard = {
   id: string;
   exercise: BidirectionalExercise;
   review_type: 'forward' | 'backward';
+  nextReviewDate?: Date;
+  isDue: boolean;
 };
 
 interface BidirectionalReviewStackProps {
@@ -34,13 +37,45 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
     SCALE_FACTOR: isMobile ? 0.02 : 0.04
   }), [isMobile]);
 
-  const [cards, setCards] = useState<ReviewCard[]>(() =>
-    dueReviews.map((review, index) => ({
-      id: `${review.exercise.id}-${review.review_type}`,
-      exercise: review.exercise,
-      review_type: review.review_type
-    }))
-  );
+  const [cards, setCards] = useState<ReviewCard[]>([]);
+
+  // Initialize cards with due status checking
+  useEffect(() => {
+    const initializeCards = async () => {
+      const initialCards: ReviewCard[] = [];
+      
+      for (const review of dueReviews) {
+        const nextReviewDate = await BidirectionalService.getNextReviewDate(
+          review.exercise.id, 
+          review.review_type
+        );
+        
+        const isDue = nextReviewDate ? nextReviewDate <= new Date() : true;
+        
+        initialCards.push({
+          id: `${review.exercise.id}-${review.review_type}`,
+          exercise: review.exercise,
+          review_type: review.review_type,
+          nextReviewDate: nextReviewDate || undefined,
+          isDue
+        });
+      }
+      
+      // Sort by due status (due first) and then by next review date
+      initialCards.sort((a, b) => {
+        if (a.isDue && !b.isDue) return -1;
+        if (!a.isDue && b.isDue) return 1;
+        if (a.nextReviewDate && b.nextReviewDate) {
+          return a.nextReviewDate.getTime() - b.nextReviewDate.getTime();
+        }
+        return 0;
+      });
+      
+      setCards(initialCards);
+    };
+
+    initializeCards();
+  }, [dueReviews]);
 
   const handleReviewNow = useCallback((card: ReviewCard) => {
     onReview(card.exercise, card.review_type);
@@ -65,7 +100,7 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
         All reviews complete!
       </h3>
       <p className="text-sm text-green-700 dark:text-green-300">
-        Redirecting to the main menu...
+        Refreshing to show updated progress...
       </p>
     </div>
   ), []);
@@ -73,6 +108,10 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
   if (cards.length === 0) {
     return emptyState;
   }
+
+  const formatTimeRemaining = (nextReviewDate: Date): string => {
+    return BidirectionalService.formatTimeRemaining(nextReviewDate);
+  };
 
   return (
     <div className="flex justify-center py-4 sm:py-8">
@@ -83,14 +122,19 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
       }`}>
         {cards.map((card, index) => {
           const isTop = index === 0;
+          const timeRemaining = card.nextReviewDate ? formatTimeRemaining(card.nextReviewDate) : 'Due now';
           
           return (
             <motion.div
               key={card.id}
-              className={`absolute bg-card border rounded-2xl shadow-lg flex flex-col justify-between overflow-hidden ${
+              className={`absolute border rounded-2xl shadow-lg flex flex-col justify-between overflow-hidden ${
                 isMobile 
                   ? 'h-56 w-72 p-4' 
                   : 'h-64 w-80 md:h-72 md:w-96 p-6'
+              } ${
+                card.isDue 
+                  ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
+                  : 'bg-card border-border'
               }`}
               style={{
                 transformOrigin: "top center",
@@ -108,8 +152,14 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
               <div className="space-y-3 sm:space-y-4 flex-1 min-h-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Brain className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                    <span className="text-xs sm:text-sm font-medium">
+                    {card.isDue ? (
+                      <AlertTriangle className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-red-500`} />
+                    ) : (
+                      <Brain className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-primary`} />
+                    )}
+                    <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium ${
+                      card.isDue ? 'text-red-700 dark:text-red-300' : ''
+                    }`}>
                       {card.review_type === 'forward' ? 'Forward' : 'Backward'} Review
                     </span>
                   </div>
@@ -130,11 +180,19 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
                     </p>
                   </div>
                   
-                  <div className="text-xs sm:text-sm text-muted-foreground">
+                  <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>
                     {card.review_type === 'forward' 
                       ? `Translate to ${card.exercise.support_language}`
                       : `Translate back to ${card.exercise.target_language}`
                     }
+                  </div>
+
+                  {/* Review timing info */}
+                  <div className={`flex items-center gap-1 ${isMobile ? 'text-xs' : 'text-sm'} ${
+                    card.isDue ? 'text-red-600 font-medium' : 'text-muted-foreground'
+                  }`}>
+                    <Clock className="h-3 w-3" />
+                    <span>{timeRemaining}</span>
                   </div>
                 </div>
               </div>
@@ -148,12 +206,16 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
                 
                 <Button
                   onClick={() => handleReviewNow(card)}
-                  className="w-full"
+                  className={`w-full ${
+                    card.isDue 
+                      ? 'bg-red-600 hover:bg-red-700 text-white' 
+                      : ''
+                  }`}
                   size={isMobile ? "default" : "lg"}
                   disabled={!isTop}
                 >
                   <Brain className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                  Review Now
+                  {card.isDue ? 'Review Now!' : 'Review'}
                   <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-2" />
                 </Button>
               </div>

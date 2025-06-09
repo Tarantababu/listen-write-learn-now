@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, BookOpen, Brain, Trash2, Clock } from 'lucide-react';
+import { Play, BookOpen, Brain, Trash2, Clock, AlertCircle } from 'lucide-react';
 import { BidirectionalService } from '@/services/bidirectionalService';
 import type { BidirectionalExercise } from '@/types/bidirectional';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -27,6 +26,7 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
     forward?: string;
     backward?: string;
   }>({});
+  const [isAnyDue, setIsAnyDue] = useState(false);
 
   // Memoize language mapping to prevent recreation on each render
   const languageMap = useMemo(() => ({
@@ -58,16 +58,22 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
       ]);
 
       const times: { forward?: string; backward?: string } = {};
+      let anyDue = false;
       
       if (forwardDate) {
-        times.forward = BidirectionalService.formatTimeRemaining(forwardDate);
+        const timeStr = BidirectionalService.formatTimeRemaining(forwardDate);
+        times.forward = timeStr;
+        if (timeStr === 'Due now') anyDue = true;
       }
       
       if (backwardDate) {
-        times.backward = BidirectionalService.formatTimeRemaining(backwardDate);
+        const timeStr = BidirectionalService.formatTimeRemaining(backwardDate);
+        times.backward = timeStr;
+        if (timeStr === 'Due now') anyDue = true;
       }
 
       setReviewTimes(times);
+      setIsAnyDue(anyDue);
     } catch (error) {
       console.error('Error loading review times:', error);
     }
@@ -76,6 +82,9 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
   useEffect(() => {
     if (exercise.status === 'reviewing') {
       loadReviewTimes();
+      // Update review times every 30 seconds to keep them current
+      const interval = setInterval(loadReviewTimes, 30000);
+      return () => clearInterval(interval);
     }
   }, [exercise.id, exercise.status, loadReviewTimes]);
 
@@ -105,11 +114,17 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
     }
 
     return (
-      <div className={`p-2 bg-muted rounded-md ${isMobile ? 'mb-2' : 'mb-3'}`}>
+      <div className={`p-2 bg-muted rounded-md ${isMobile ? 'mb-2' : 'mb-3'} ${
+        isAnyDue ? 'border border-red-200 bg-red-50 dark:bg-red-950/20' : ''
+      }`}>
         <p className={`text-muted-foreground mb-1 flex items-center gap-1 ${
           isMobile ? 'text-xs' : 'text-xs'
         }`}>
-          <Clock className="h-3 w-3" />
+          {isAnyDue ? (
+            <AlertCircle className="h-3 w-3 text-red-500" />
+          ) : (
+            <Clock className="h-3 w-3" />
+          )}
           Next Reviews:
         </p>
         <div className="space-y-1">
@@ -132,10 +147,10 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
         </div>
       </div>
     );
-  }, [exercise.status, reviewTimes, isMobile]);
+  }, [exercise.status, reviewTimes, isAnyDue, isMobile]);
 
   return (
-    <Card className="w-full">
+    <Card className={`w-full ${isAnyDue ? 'border-red-200 shadow-red-100' : ''}`}>
       <CardHeader className={isMobile ? 'pb-2' : 'pb-3'}>
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
@@ -148,11 +163,16 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
               {getLanguageLabel(exercise.target_language)} → {getLanguageLabel(exercise.support_language)}
             </CardDescription>
           </div>
-          <Badge className={`${getStatusColor(exercise.status)} ${
-            isMobile ? 'text-xs ml-2 flex-shrink-0' : 'ml-2'
-          }`}>
-            {exercise.status}
-          </Badge>
+          <div className="flex items-center gap-2 ml-2">
+            {isAnyDue && (
+              <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            )}
+            <Badge className={`${getStatusColor(exercise.status)} ${
+              isMobile ? 'text-xs flex-shrink-0' : ''
+            }`}>
+              {exercise.status}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
       
@@ -196,12 +216,15 @@ export const BidirectionalExerciseCard: React.FC<BidirectionalExerciseCardProps>
             <Button
               size="sm"
               onClick={handleReview}
+              variant={isAnyDue ? "default" : "outline"}
               className={`flex items-center gap-1 ${
                 isMobile ? 'flex-1 min-w-0 justify-center' : ''
-              }`}
+              } ${isAnyDue ? 'bg-red-600 hover:bg-red-700 text-white' : ''}`}
             >
               <Brain className="h-3 w-3" />
-              <span className={isMobile ? 'text-xs' : ''}>Review</span>
+              <span className={isMobile ? 'text-xs' : ''}>
+                {isAnyDue ? 'Review Now!' : 'Review'}
+              </span>
             </Button>
           )}
 

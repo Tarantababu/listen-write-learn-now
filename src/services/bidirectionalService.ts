@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import type { BidirectionalExercise, BidirectionalReview, BidirectionalMasteredWord, SpacedRepetitionConfig } from '@/types/bidirectional';
 
@@ -166,19 +167,6 @@ export class BidirectionalService {
     }
   }
 
-  // Get appropriate voice for language
-  static getVoiceForLanguage(language: string): string {
-    const voiceMap: { [key: string]: string } = {
-      'spanish': 'alloy',
-      'french': 'echo',
-      'german': 'fable',
-      'italian': 'onyx',
-      'portuguese': 'nova',
-      'english': 'alloy'
-    };
-    return voiceMap[language] || 'alloy';
-  }
-
   // Get user's bidirectional exercises filtered by target language
   static async getUserExercises(userId: string, targetLanguage: string, status?: string): Promise<BidirectionalExercise[]> {
     let query = supabase
@@ -216,6 +204,7 @@ export class BidirectionalService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    // Update exercise status to reviewing
     const { error } = await supabase
       .from('bidirectional_exercises')
       .update({ status: 'reviewing' })
@@ -223,11 +212,43 @@ export class BidirectionalService {
 
     if (error) throw error;
 
+    // Create initial review entries for both directions with immediate due dates
+    const now = new Date();
+    const initialDueDate = new Date(now.getTime() + 30 * 1000); // 30 seconds from now
+
+    await Promise.all([
+      this.createInitialReview(exerciseId, user.id, 'forward', initialDueDate),
+      this.createInitialReview(exerciseId, user.id, 'backward', initialDueDate)
+    ]);
+
     // Get exercise details for language tracking
     const exercise = await this.getExerciseById(exerciseId);
     if (exercise) {
       // Record language activity for streak tracking
       await this.recordLanguageActivity(user.id, exercise.target_language);
+    }
+  }
+
+  static async createInitialReview(
+    exerciseId: string,
+    userId: string,
+    reviewType: 'forward' | 'backward',
+    dueDate: Date
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('bidirectional_reviews')
+      .insert({
+        exercise_id: exerciseId,
+        user_id: userId,
+        review_type: reviewType,
+        user_recall_attempt: '',
+        is_correct: false,
+        due_date: dueDate.toISOString(),
+        review_round: 0 // Initial round
+      });
+
+    if (error) {
+      console.error('Error creating initial review:', error);
     }
   }
 
@@ -245,7 +266,7 @@ export class BidirectionalService {
     }
   }
 
-  // Calculate next review date based on spaced repetition schedule: 30s, 1d, 3d, 7d, 14d, 30d, then mastered
+  // Improved spaced repetition calculation with proper intervals
   static calculateNextReviewDate(
     isCorrect: boolean,
     reviewRound: number = 1
@@ -258,31 +279,31 @@ export class BidirectionalService {
       return nextDate;
     }
 
-    // Spaced repetition: 30s → 1d → 3d → 7d → 14d → 30d → mastered
+    // Improved spaced repetition: 30s → 10m → 1h → 1d → 3d → 7d → mastered
     switch (reviewRound) {
       case 1:
         // First review after 30 seconds
         nextDate.setSeconds(nextDate.getSeconds() + 30);
         break;
       case 2:
-        // Second review after 1 day
-        nextDate.setDate(nextDate.getDate() + 1);
+        // Second review after 10 minutes
+        nextDate.setMinutes(nextDate.getMinutes() + 10);
         break;
       case 3:
-        // Third review after 3 days
-        nextDate.setDate(nextDate.getDate() + 3);
+        // Third review after 1 hour
+        nextDate.setHours(nextDate.getHours() + 1);
         break;
       case 4:
-        // Fourth review after 7 days
-        nextDate.setDate(nextDate.getDate() + 7);
+        // Fourth review after 1 day
+        nextDate.setDate(nextDate.getDate() + 1);
         break;
       case 5:
-        // Fifth review after 14 days
-        nextDate.setDate(nextDate.getDate() + 14);
+        // Fifth review after 3 days
+        nextDate.setDate(nextDate.getDate() + 3);
         break;
       case 6:
-        // Sixth review after 30 days
-        nextDate.setDate(nextDate.getDate() + 30);
+        // Sixth review after 7 days
+        nextDate.setDate(nextDate.getDate() + 7);
         break;
       default:
         // After 6th review, mark as mastered with very long interval
@@ -315,10 +336,8 @@ export class BidirectionalService {
     const reviewRound = (previousReviews?.length || 0) + 1;
     const nextReviewDate = this.calculateNextReviewDate(data.is_correct, reviewRound);
 
-    // For reviews due within a day, store the exact timestamp; otherwise, store just the date
-    const dueDate = nextReviewDate.getTime() - Date.now() < 24 * 60 * 60 * 1000 
-      ? nextReviewDate.toISOString()
-      : nextReviewDate.toISOString().split('T')[0];
+    // Store the due date with proper format
+    const dueDate = nextReviewDate.toISOString();
 
     const { data: review, error } = await supabase
       .from('bidirectional_reviews')
@@ -420,13 +439,12 @@ export class BidirectionalService {
     }
   }
 
-  // Get exercises due for review filtered by target language (updated to handle timestamp-based reviews)
+  // Get exercises due for review with improved logic
   static async getExercisesDueForReview(userId: string, targetLanguage: string): Promise<{
     exercise: BidirectionalExercise;
     review_type: 'forward' | 'backward';
   }[]> {
     const now = new Date();
-    const today = now.toISOString().split('T')[0];
 
     // Get exercises that need reviewing for the specific target language
     const { data: exercises, error: exerciseError } = await supabase
@@ -449,6 +467,7 @@ export class BidirectionalService {
         .select('*')
         .eq('exercise_id', exercise.id)
         .eq('review_type', 'forward')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -463,6 +482,7 @@ export class BidirectionalService {
         .select('*')
         .eq('exercise_id', exercise.id)
         .eq('review_type', 'backward')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -477,12 +497,11 @@ export class BidirectionalService {
 
   // Helper method to check if a review is due (handles both date and timestamp formats)
   static isReviewDue(dueDate: string, now: Date): boolean {
-    // If due_date includes time (timestamp), compare with exact time
-    if (dueDate.includes('T')) {
-      return new Date(dueDate) <= now;
-    } else {
-      // If due_date is just a date, compare with today's date
-      return dueDate <= now.toISOString().split('T')[0];
+    try {
+      const due = new Date(dueDate);
+      return due <= now;
+    } catch {
+      return false;
     }
   }
 
