@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { Exercise, Language } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -249,59 +250,66 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
 
   return (
     <div className="mt-12 border-t pt-8 max-w-4xl mx-auto">
-      <div className="bg-gradient-to-r from-background to-accent/5 p-6 rounded-xl shadow-sm border border-border/50">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="bg-primary/10 p-2 rounded-full">
-            <Book className="h-5 w-5 text-primary" />
-          </div>
-          <h3 className="font-medium text-lg">Vocabulary Building</h3>
-        </div>
-        
-        <div className="bg-muted/80 p-5 rounded-lg mb-5">
-          <p className="text-sm mb-3 text-muted-foreground">Select any word or phrase from the text to add it to your vocabulary:</p>
-          <div 
-            className="p-4 bg-background rounded-md border text-sm cursor-text whitespace-pre-wrap animate-fade-in hover:border-primary/30 transition-colors"
-            onMouseUp={handleTextSelection}
-          >
-            {exercise.text}
-          </div>
-        </div>
-        
-        <div className="flex gap-3 max-w-2xl mx-auto">
-          <Input 
-            value={selectedWord} 
-            onChange={e => setSelectedWord(e.target.value)} 
-            placeholder="Selected word or phrase"
-            className="flex-grow"
-          />
-          <Button
-            onClick={handleAddToVocabulary}
-            disabled={!selectedWord.trim() || isGeneratingInfo}
-            className="hover-glow"
-          >
-            {isGeneratingInfo ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              <>
-                {!canCreateMore && <Crown className="mr-2 h-4 w-4" />}
-                Add to Vocabulary
-              </>
-            )}
-          </Button>
-        </div>
-        
-        {!canCreateMore && (
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-sm text-amber-800 text-center">
-              You've reached the limit of {vocabularyLimit} vocabulary items. 
-              <span className="font-medium"> Upgrade to premium for unlimited vocabulary!</span>
-            </p>
-          </div>
-        )}
-      </div>
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="vocabulary-builder">
+          <AccordionTrigger className="text-left hover:no-underline">
+            <div className="flex items-center gap-3">
+              <div className="bg-primary/10 p-2 rounded-full">
+                <Book className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="font-medium text-lg">Vocabulary Building</h3>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="bg-gradient-to-r from-background to-accent/5 p-6 rounded-xl shadow-sm border border-border/50">
+              <div className="bg-muted/80 p-5 rounded-lg mb-5">
+                <p className="text-sm mb-3 text-muted-foreground">Select any word or phrase from the text to add it to your vocabulary:</p>
+                <div 
+                  className="p-4 bg-background rounded-md border text-sm cursor-text whitespace-pre-wrap animate-fade-in hover:border-primary/30 transition-colors"
+                  onMouseUp={handleTextSelection}
+                >
+                  {exercise.text}
+                </div>
+              </div>
+              
+              <div className="flex gap-3 max-w-2xl mx-auto">
+                <Input 
+                  value={selectedWord} 
+                  onChange={e => setSelectedWord(e.target.value)} 
+                  placeholder="Selected word or phrase"
+                  className="flex-grow"
+                />
+                <Button
+                  onClick={handleAddToVocabulary}
+                  disabled={!selectedWord.trim() || isGeneratingInfo}
+                  className="hover-glow"
+                >
+                  {isGeneratingInfo ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      {!canCreateMore && <Crown className="mr-2 h-4 w-4" />}
+                      Add to Vocabulary
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {!canCreateMore && (
+                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-800 text-center">
+                    You've reached the limit of {vocabularyLimit} vocabulary items. 
+                    <span className="font-medium"> Upgrade to premium for unlimited vocabulary!</span>
+                  </p>
+                </div>
+              )}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
       
       {/* Vocabulary Generation Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
