@@ -61,7 +61,7 @@ const languages = [{
   flag: 'SE' as FlagIconCode,
   level: 'A1'
 }];
-const features = ["🎯 Focused Dictation Practice", "🧠 Deep Learning Method", "📚 Growing Exercise Library", "🔍 Word-Level Accuracy Feedback", "📊 Progress Tracking", "📝 Vocabulary Building"];
+const features = ["🎯 Focused Dictation Practice", "🧠 Bidirectional Translation", "📚 Growing Exercise Library", "🔍 Word-Level Accuracy Feedback", "📊 Progress Tracking", "📝 Vocabulary Building"];
 const steps = [{
   number: 1,
   title: "Choose an exercise",
