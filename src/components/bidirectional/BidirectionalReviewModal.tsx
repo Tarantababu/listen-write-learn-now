@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -30,11 +31,13 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
   const [showAnswer, setShowAnswer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentReviewRound, setCurrentReviewRound] = useState(1);
+  const [hasClickedAgain, setHasClickedAgain] = useState(false);
 
   React.useEffect(() => {
     if (isOpen && exercise) {
       setUserRecall('');
       setShowAnswer(false);
+      setHasClickedAgain(false);
       loadCurrentReviewRound();
     }
   }, [isOpen, exercise, reviewType]);
@@ -118,6 +121,11 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
       return;
     }
 
+    // Track when "Again" is clicked
+    if (!isCorrect) {
+      setHasClickedAgain(true);
+    }
+
     setIsLoading(true);
     try {
       await BidirectionalService.recordReview({
@@ -193,8 +201,9 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
 
   if (!exercise) return null;
 
-  // Calculate intervals for button display - use the current round for correct (not incremented)
-  const correctInterval = calculateNextReviewInterval(true, currentReviewRound);
+  // Calculate intervals for button display - if "Again" was clicked, use round 1, otherwise use current round
+  const effectiveRoundForGoodButton = hasClickedAgain ? 1 : currentReviewRound;
+  const correctInterval = calculateNextReviewInterval(true, effectiveRoundForGoodButton);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
