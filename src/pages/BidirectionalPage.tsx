@@ -18,6 +18,7 @@ import type { BidirectionalExercise } from '@/types/bidirectional';
 import { useToast } from '@/hooks/use-toast';
 import { getLanguageFlagCode } from '@/utils/languageUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { BidirectionalReviewStack } from '@/components/bidirectional/BidirectionalReviewStack';
 
 const SUPPORTED_LANGUAGES = [
   { value: 'english', label: 'English' },
@@ -182,9 +183,14 @@ const BidirectionalPage: React.FC = () => {
     }
   };
 
-  const handleReviewFromDue = (dueReview: { exercise: BidirectionalExercise; review_type: 'forward' | 'backward' }) => {
-    setReviewExercise(dueReview.exercise);
-    setReviewType(dueReview.review_type);
+  const handleReviewFromStack = (exercise: BidirectionalExercise, reviewType: 'forward' | 'backward') => {
+    setReviewExercise(exercise);
+    setReviewType(reviewType);
+  };
+
+  const handleAllReviewsComplete = () => {
+    // Reload exercises to refresh the state
+    loadExercises();
   };
 
   // Get the display label for the current target language
@@ -229,7 +235,7 @@ const BidirectionalPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Enhanced Due Reviews Section */}
+      {/* Enhanced Due Reviews Section with Card Stack */}
       <Card className={`mb-6 sm:mb-8 ${
         dueReviews.length > 0 
           ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800' 
@@ -262,23 +268,11 @@ const BidirectionalPage: React.FC = () => {
         </CardHeader>
         <CardContent>
           {dueReviews.length > 0 ? (
-            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {dueReviews.map((dueReview, index) => (
-                <div key={`${dueReview.exercise.id}-${dueReview.review_type}`} className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg border">
-                  <p className="font-medium mb-2 text-sm sm:text-base break-words">{dueReview.exercise.original_sentence}</p>
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-3">
-                    {dueReview.review_type === 'forward' ? 'Forward' : 'Backward'} translation
-                  </p>
-                  <Button
-                    size="sm"
-                    onClick={() => handleReviewFromDue(dueReview)}
-                    className="w-full text-sm"
-                  >
-                    Review Now
-                  </Button>
-                </div>
-              ))}
-            </div>
+            <BidirectionalReviewStack
+              dueReviews={dueReviews}
+              onReview={handleReviewFromStack}
+              onAllComplete={handleAllReviewsComplete}
+            />
           ) : (
             <div className="text-center py-8">
               <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mb-4">
