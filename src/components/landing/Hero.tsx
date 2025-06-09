@@ -141,10 +141,40 @@ export function Hero() {
               </AnimatedGroup>
             </div>
 
-            {/* Right Column - Hero Image */}
-            <div className="flex justify-center lg:justify-end">
+            {/* Right Column - Hero Image with Arrow */}
+            <div className="flex justify-center lg:justify-end relative">
               <AnimatedGroup variants={transitionVariants}>
-                <div className="max-w-md w-full">
+                <div className="max-w-md w-full relative">
+                  {/* Curved Arrow pointing to the image */}
+                  <div className="absolute -left-16 top-8 hidden lg:block animate-pulse">
+                    <svg 
+                      width="80" 
+                      height="60" 
+                      viewBox="0 0 80 60" 
+                      fill="none" 
+                      className="text-brand-primary"
+                    >
+                      <path 
+                        d="M10 50 Q40 10 70 30" 
+                        stroke="currentColor" 
+                        strokeWidth="3" 
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                      <path 
+                        d="M65 25 L70 30 L65 35" 
+                        stroke="currentColor" 
+                        strokeWidth="3" 
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <div className="text-brand-primary font-semibold text-sm mt-1 ml-2">
+                      Try it now!
+                    </div>
+                  </div>
+                  
                   <img 
                     src="https://i.postimg.cc/kMzwjjDG/lwlnow-how-to-exercise-landing.gif" 
                     alt="Language learning through dictation - animated demonstration of the exercise interface"
