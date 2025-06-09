@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -34,8 +33,9 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
 
   React.useEffect(() => {
     if (exercise && isOpen) {
-      setUserTranslation(exercise.user_forward_translation || '');
-      setUserBackTranslation(exercise.user_back_translation || '');
+      // Always start with empty fields when modal opens for the first time
+      setUserTranslation('');
+      setUserBackTranslation('');
       setCurrentStep('forward');
       setTranslationComparison(null);
       setBackTranslationComparison(null);
