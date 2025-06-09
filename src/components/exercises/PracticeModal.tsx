@@ -1,3 +1,4 @@
+
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
@@ -36,6 +37,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [analysisAllowed, setAnalysisAllowed] = useState<boolean>(true)
   const [loadingAnalysisCheck, setLoadingAnalysisCheck] = useState<boolean>(false)
+  const [completedAccuracy, setCompletedAccuracy] = useState<number | null>(null)
   // Removed keyboard state - we ignore virtual keyboard completely
   
   const hasInitializedRef = useRef<boolean>(false)
@@ -148,8 +150,8 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
   }, [exercise, user, isOpen, subscription.isSubscribed, hasReadingAnalysis, isMobile])
 
   const handleComplete = (accuracy: number) => {
-    // Update progress and show results
-    onComplete(accuracy)
+    // Store the completion data but don't close the modal immediately
+    setCompletedAccuracy(accuracy)
     setShowResults(true)
 
     // Update local exercise state to reflect progress immediately
@@ -162,6 +164,10 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
         isCompleted,
       })
     }
+
+    // Call the parent's onComplete to update the exercise data
+    // but don't let it close the modal
+    onComplete(accuracy)
   }
 
   // Only reset the state when the modal opens, not during interactions
@@ -172,8 +178,9 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
       setUpdatedExercise(latestExerciseData || exercise)
       // We don't reset practiceStage or showResults here to preserve state during the session
     } else {
-      // Reset showResults when modal is fully closed to prepare for next opening
+      // Reset all relevant states when modal is fully closed to prepare for next opening
       setShowResults(false)
+      setCompletedAccuracy(null)
     }
   }, [isOpen, exercise, exercises])
 
@@ -201,6 +208,7 @@ const PracticeModal: React.FC<PracticeModalProps> = ({ isOpen, onOpenChange, exe
 
   const handleTryAgain = () => {
     setShowResults(false)
+    setCompletedAccuracy(null)
     // Important: Don't reset to prompt stage here - stay in dictation mode
   }
 
