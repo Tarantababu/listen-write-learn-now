@@ -22,12 +22,14 @@ interface BidirectionalReviewStackProps {
   dueReviews: { exercise: BidirectionalExercise; review_type: 'forward' | 'backward' }[];
   onReview: (exercise: BidirectionalExercise, reviewType: 'forward' | 'backward') => void;
   onAllComplete: () => void;
+  refreshKey?: number; // Add refreshKey to trigger re-initialization
 }
 
 export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> = ({
   dueReviews,
   onReview,
-  onAllComplete
+  onAllComplete,
+  refreshKey = 0
 }) => {
   const isMobile = useIsMobile();
   
@@ -42,6 +44,7 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
   // Initialize cards with due status checking
   useEffect(() => {
     const initializeCards = async () => {
+      console.log('Initializing cards with due reviews:', dueReviews.length);
       const initialCards: ReviewCard[] = [];
       
       for (const review of dueReviews) {
@@ -71,19 +74,23 @@ export const BidirectionalReviewStack: React.FC<BidirectionalReviewStackProps> =
         return 0;
       });
       
+      console.log('Initialized cards:', initialCards.length);
       setCards(initialCards);
     };
 
     initializeCards();
-  }, [dueReviews]);
+  }, [dueReviews, refreshKey]); // Add refreshKey as dependency
 
   const handleReviewNow = useCallback((card: ReviewCard) => {
+    console.log('Starting review for card:', card.id);
     onReview(card.exercise, card.review_type);
     
     // Remove the current card after review
     setCards(prev => {
       const newCards = prev.filter(c => c.id !== card.id);
+      console.log('Cards remaining after review:', newCards.length);
       if (newCards.length === 0) {
+        console.log('All reviews complete, calling onAllComplete');
         setTimeout(onAllComplete, 500); // Small delay for smooth transition
       }
       return newCards;

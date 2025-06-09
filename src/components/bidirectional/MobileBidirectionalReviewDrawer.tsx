@@ -95,7 +95,6 @@ export const MobileBidirectionalReviewDrawer: React.FC<MobileBidirectionalReview
 
   // Calculate intervals for button display - use the next round for correct, round 1 for incorrect
   const correctInterval = calculateNextReviewInterval(true, currentReviewRound + 1);
-  const incorrectInterval = calculateNextReviewInterval(false, 1);
 
   return (
     <Drawer open={isOpen} onOpenChange={onClose}>
@@ -188,7 +187,7 @@ export const MobileBidirectionalReviewDrawer: React.FC<MobileBidirectionalReview
                       className="w-full justify-center"
                     >
                       <XCircle className="h-4 w-4 mr-2" />
-                      Again ({formatInterval(incorrectInterval)})
+                      Again
                     </Button>
                     <Button
                       onClick={() => onMarkResult(true)}

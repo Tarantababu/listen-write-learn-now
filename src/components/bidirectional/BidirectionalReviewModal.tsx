@@ -150,8 +150,12 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
         variant: isCorrect ? "default" : "destructive"
       });
 
-      onReviewComplete();
+      // Close modal first, then trigger refresh
       onClose();
+      // Small delay to ensure modal closes before refreshing
+      setTimeout(() => {
+        onReviewComplete();
+      }, 100);
     } catch (error) {
       console.error('Error recording review:', error);
       toast({
@@ -198,7 +202,6 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
 
   // Calculate intervals for button display - use the next round for correct, round 1 for incorrect
   const correctInterval = calculateNextReviewInterval(true, currentReviewRound + 1);
-  const incorrectInterval = calculateNextReviewInterval(false, 1);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -319,7 +322,7 @@ export const BidirectionalReviewModal: React.FC<BidirectionalReviewModalProps> =
                       size={isMobile ? "default" : "default"}
                     >
                       <XCircle className="h-4 w-4" />
-                      Again ({formatInterval(incorrectInterval)})
+                      Again
                     </Button>
                     <Button
                       onClick={() => handleMarkResult(true)}
