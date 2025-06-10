@@ -46,191 +46,187 @@ export function VisitorStats() {
         setLoading(true);
         setError(null);
         
-        // Get total visitor count (raw visits)
-        const { count: totalCount, error: countError } = await supabase
+        console.log('Fetching visitor statistics...');
+        
+        // Get all visitor data
+        const { data: allVisitorData, error: allDataError } = await supabase
           .from('visitors')
-          .select('*', { count: 'exact', head: true });
+          .select('*')
+          .order('created_at', { ascending: true });
         
-        if (countError) throw countError;
-        setTotalVisitors(totalCount || 0);
+        if (allDataError) {
+          console.error('Error fetching visitor data:', allDataError);
+          throw allDataError;
+        }
         
-        // Get unique visitor count
-        const { data: uniqueData, error: uniqueError } = await supabase
-          .from('visitors')
-          .select('visitor_id');
+        console.log('Raw visitor data fetched:', allVisitorData?.length || 0, 'records');
         
-        if (uniqueError) throw uniqueError;
+        if (!allVisitorData || allVisitorData.length === 0) {
+          console.log('No visitor data found');
+          setTotalVisitors(0);
+          setUniqueVisitors(0);
+          setTodayVisitors(0);
+          setVisitorCounts([]);
+          setPageCounts([]);
+          setReferrerCounts([]);
+          setLoading(false);
+          return;
+        }
         
-        // Count unique visitor IDs
-        const uniqueIds = new Set(uniqueData?.map(visitor => visitor.visitor_id));
+        // Set total visitors
+        setTotalVisitors(allVisitorData.length);
+        
+        // Calculate unique visitors
+        const uniqueIds = new Set(allVisitorData.map(visitor => visitor.visitor_id));
         setUniqueVisitors(uniqueIds.size);
         
-        // Get today's visitor count - Using timestamp comparison for accurate timezone handling
-        const todayStart = startOfDay(new Date()).toISOString();
-        
-        const { count: todayCount, error: todayError } = await supabase
-          .from('visitors')
-          .select('*', { count: 'exact', head: true })
-          .gte('created_at', todayStart);
-        
-        if (todayError) throw todayError;
-        setTodayVisitors(todayCount || 0);
-        
-        // Get visitor data for the last 31 days (today + 30 previous days)
-        const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
-        
-        const { data: dailyData, error: dailyError } = await supabase
-          .from('visitors')
-          .select('created_at')
-          .gte('created_at', thirtyDaysAgo);
-        
-        if (dailyError) throw dailyError;
-        
-        console.log("Raw visitor data count:", dailyData?.length || 0);
-        
-        // Find the earliest data collection date to mark pre-data-collection dates
+        // Find earliest data date
+        const earliestRecord = allVisitorData[0]; // Already ordered by created_at ascending
         let earliestDate: Date | null = null;
         
-        if (dailyData && dailyData.length > 0) {
-          // Parse date strings safely, filtering out invalid dates
-          const allDates = dailyData
-            .map(visitor => {
-              try {
-                if (!visitor.created_at) return null;
-                const date = parseISO(visitor.created_at);
-                return isValid(date) ? date : null;
-              } catch (e) {
-                console.error('Invalid date format:', visitor.created_at);
-                return null;
-              }
-            })
-            .filter(date => date !== null) as Date[];
-            
-          if (allDates.length > 0) {
-            earliestDate = new Date(Math.min(...allDates.map(date => date.getTime())));
-            setDataStartDate(format(earliestDate, 'MMMM d, yyyy'));
+        if (earliestRecord?.created_at) {
+          try {
+            earliestDate = parseISO(earliestRecord.created_at);
+            if (isValid(earliestDate)) {
+              setDataStartDate(format(earliestDate, 'MMMM d, yyyy'));
+            }
+          } catch (e) {
+            console.error('Error parsing earliest date:', e);
           }
         }
         
-        console.log("Earliest data date:", earliestDate?.toISOString() || "No data");
+        // Calculate today's visitors using proper date comparison
+        const today = new Date();
+        const todayStart = startOfDay(today);
+        const todayEnd = endOfDay(today);
         
-        // Process data to count visitors per day - using full date objects for comparison
-        const dailyCounts: Record<string, number> = {};
+        const todayCount = allVisitorData.filter(visitor => {
+          if (!visitor.created_at) return false;
+          try {
+            const visitorDate = parseISO(visitor.created_at);
+            return isValid(visitorDate) && visitorDate >= todayStart && visitorDate <= todayEnd;
+          } catch (e) {
+            return false;
+          }
+        }).length;
         
-        // Initialize all days in the last 31 days with 0
+        setTodayVisitors(todayCount);
+        console.log('Today visitors:', todayCount);
+        
+        // Process daily visitor counts for the last 30 days
         const currentDate = new Date();
-        const dailyCountsArray: VisitorCount[] = [];
+        const dailyCountsMap: Record<string, number> = {};
         
+        // Initialize all days in the last 30 days with 0
         for (let i = 30; i >= 0; i--) {
           const date = subDays(currentDate, i);
-          const dateStr = format(date, 'yyyy-MM-dd');
+          const dateKey = format(date, 'yyyy-MM-dd');
+          dailyCountsMap[dateKey] = 0;
+        }
+        
+        // Count actual visitors per day
+        allVisitorData.forEach(visitor => {
+          if (!visitor.created_at) return;
+          
+          try {
+            const visitorDate = parseISO(visitor.created_at);
+            if (!isValid(visitorDate)) return;
+            
+            const dateKey = format(visitorDate, 'yyyy-MM-dd');
+            
+            // Only count if the date is within our 31-day range
+            if (dailyCountsMap.hasOwnProperty(dateKey)) {
+              dailyCountsMap[dateKey]++;
+            }
+          } catch (e) {
+            console.error('Error processing visitor date:', visitor.created_at, e);
+          }
+        });
+        
+        // Convert to array format for chart
+        const dailyCountsArray: VisitorCount[] = [];
+        for (let i = 30; i >= 0; i--) {
+          const date = subDays(currentDate, i);
+          const dateKey = format(date, 'yyyy-MM-dd');
           const formattedDate = format(date, 'MMM dd');
-          dailyCounts[dateStr] = 0;
           
           const hasData = earliestDate ? 
             date >= startOfDay(earliestDate) : 
             true;
-            
+          
           dailyCountsArray.push({
-            date: formattedDate, 
+            date: formattedDate,
             fullDate: date,
-            count: 0,
+            count: dailyCountsMap[dateKey] || 0,
             hasData
           });
         }
         
-        // Fill in actual counts by iterating through the visitor data
-        if (dailyData) {
-          for (const visitor of dailyData) {
-            if (visitor.created_at) {
-              try {
-                // Parse the ISO date and format to YYYY-MM-DD for bucketing
-                const visitorDate = parseISO(visitor.created_at);
-                
-                if (isValid(visitorDate)) {
-                  const dateKey = format(visitorDate, 'yyyy-MM-dd');
-                  
-                  // Only count if the dateKey exists in our dailyCounts (within the 31 day range)
-                  if (dailyCounts[dateKey] !== undefined) {
-                    dailyCounts[dateKey] += 1;
-                  }
-                }
-              } catch (e) {
-                console.error('Error parsing date:', visitor.created_at, e);
-              }
-            }
-          }
-        }
-        
-        // Update counts in the array
-        for (let i = 0; i < dailyCountsArray.length; i++) {
-          const item = dailyCountsArray[i];
-          const dateStr = format(item.fullDate, 'yyyy-MM-dd');
-          if (dailyCounts[dateStr] !== undefined) {
-            dailyCountsArray[i] = {
-              ...item,
-              count: dailyCounts[dateStr]
-            };
-          }
-        }
-        
-        console.log("Daily counts by date:", dailyCounts);
-        
-        // Sort by date to ensure chronological order (earliest to latest)
-        dailyCountsArray.sort((a, b) => a.fullDate.getTime() - b.fullDate.getTime());
-        
         setVisitorCounts(dailyCountsArray);
+        console.log('Daily counts processed:', dailyCountsArray);
         
-        // Get page counts
-        const { data: pageData, error: pageError } = await supabase
-          .from('visitors')
-          .select('page');
+        // Process page counts - filter out button clicks and clean page names
+        const pageCountsMap: Record<string, number> = {};
         
-        if (pageError) throw pageError;
+        allVisitorData.forEach(visitor => {
+          if (!visitor.page) return;
+          
+          let pageName = visitor.page;
+          
+          // Skip button click tracking events
+          if (pageName.startsWith('button_click:')) {
+            return;
+          }
+          
+          // Clean up page names for better display
+          if (pageName === '/') {
+            pageName = 'Home';
+          } else if (pageName.startsWith('/')) {
+            pageName = pageName.substring(1);
+            // Capitalize first letter and replace hyphens/underscores
+            pageName = pageName.charAt(0).toUpperCase() + pageName.slice(1);
+            pageName = pageName.replace(/[-_]/g, ' ');
+          }
+          
+          pageCountsMap[pageName] = (pageCountsMap[pageName] || 0) + 1;
+        });
         
-        // Process data to count visits per page
-        const pages: Record<string, number> = {};
-        
-        if (pageData) {
-          pageData.forEach((visitor) => {
-            if (visitor.page) {
-              pages[visitor.page] = (pages[visitor.page] || 0) + 1;
-            }
-          });
-        }
-        
-        // Convert to array format for chart and sort by count
-        const pagesArray = Object.entries(pages)
+        // Convert to array and sort by count
+        const pageCountsArray = Object.entries(pageCountsMap)
           .map(([page, count]) => ({ page, count }))
           .sort((a, b) => b.count - a.count)
-          .slice(0, 10); // Limit to top 10 pages for better visualization
+          .slice(0, 10); // Top 10 pages
         
-        setPageCounts(pagesArray);
-
-        // Get referrer counts
-        const { data: referrerData, error: referrerError } = await supabase
-          .from('visitors')
-          .select('referer');
+        setPageCounts(pageCountsArray);
+        console.log('Page counts processed:', pageCountsArray);
         
-        if (referrerError) throw referrerError;
+        // Process referrer counts
+        const referrerCountsMap: Record<string, number> = {};
         
-        // Process data to count visits per referrer
-        const referrers: Record<string, number> = {};
+        allVisitorData.forEach(visitor => {
+          let referer = visitor.referer || 'Direct / None';
+          
+          // Clean up referrer names for better display
+          if (referer && referer !== 'Direct / None') {
+            try {
+              const url = new URL(referer);
+              referer = url.hostname.replace('www.', '');
+            } catch (e) {
+              // If URL parsing fails, use the original referer
+            }
+          }
+          
+          referrerCountsMap[referer] = (referrerCountsMap[referer] || 0) + 1;
+        });
         
-        if (referrerData) {
-          referrerData.forEach((visitor) => {
-            const referer = visitor.referer || 'Direct / None';
-            referrers[referer] = (referrers[referer] || 0) + 1;
-          });
-        }
-        
-        // Convert to array format for chart, filter out empty entries and sort
-        const referrersArray = Object.entries(referrers)
+        // Convert to array and sort by count
+        const referrerCountsArray = Object.entries(referrerCountsMap)
           .map(([name, value]) => ({ name, value }))
           .sort((a, b) => b.value - a.value)
-          .slice(0, 8); // Limit to top 8 referrers for better visualization
+          .slice(0, 8); // Top 8 referrers
         
-        setReferrerCounts(referrersArray);
+        setReferrerCounts(referrerCountsArray);
+        console.log('Referrer counts processed:', referrerCountsArray);
         
       } catch (err: any) {
         console.error('Error fetching visitor stats:', err);
