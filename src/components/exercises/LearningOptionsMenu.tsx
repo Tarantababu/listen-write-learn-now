@@ -267,7 +267,7 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
               <Button 
                 onClick={handleDictationClick} 
                 variant="ghost" 
-                className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left text-brand-primary bg-transparent"
+                className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent"
                 data-gtm-cta-type="start_exercise"
                 data-gtm-cta-location="learning_options_menu"
                 data-gtm-cta-text="Dictation Practice"
@@ -275,13 +275,13 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
               >
                 <div className="flex flex-col items-center text-center space-y-4 w-full">
                   {/* Icon with enhanced design */}
-                  <div className="flex items-center justify-center w-16 h-16 rounded-full transition-colors duration-300 bg-brand-light">
-                    <Headphones className="h-7 w-7 text-muted-foreground" />
+                  <div className="flex items-center justify-center w-16 h-16 rounded-full transition-all duration-300 bg-muted/40 group-hover:bg-muted/60">
+                    <Headphones className="h-7 w-7 text-foreground" />
                   </div>
                   
                   {/* Content */}
                   <div className="space-y-3 w-full">
-                    <div className="font-semibold text-xl bg-transparent">🎧 Dictation Practice</div>
+                    <div className="font-semibold text-xl text-foreground">🎧 Dictation Practice</div>
                     <p className="text-sm text-muted-foreground leading-relaxed px-2">
                       Practice listening and transcription skills with audio
                     </p>
