@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Users, CreditCard, MousePointerClick, AlertCircle, TrendingUp, UserPlus, Activity } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { RefreshCw, Users, CreditCard, MousePointerClick, AlertCircle, TrendingUp, UserPlus, Activity, Database, Cloud } from 'lucide-react';
 import { useEnhancedAdminStats } from '@/hooks/use-enhanced-admin-stats';
 import EnhancedMetricsCard from './EnhancedMetricsCard';
 import TimePeriodSelector from './TimePeriodSelector';
@@ -35,15 +36,56 @@ export function EnhancedAdminDashboard() {
     buttonClicks: { color: '#ffc658' }
   };
 
+  const getDataSourceInfo = (source: string | undefined) => {
+    switch (source) {
+      case 'stripe_direct':
+        return {
+          label: 'Stripe Direct',
+          icon: <Cloud className="h-3 w-3" />,
+          variant: 'default' as const,
+          description: 'Real-time data from Stripe API'
+        };
+      case 'database_fallback':
+        return {
+          label: 'Database Cache',
+          icon: <Database className="h-3 w-3" />,
+          variant: 'secondary' as const,
+          description: 'Cached data from database'
+        };
+      case 'edge_function':
+        return {
+          label: 'Edge Function',
+          icon: <Cloud className="h-3 w-3" />,
+          variant: 'outline' as const,
+          description: 'Data from edge function'
+        };
+      default:
+        return {
+          label: 'Unknown',
+          icon: <AlertCircle className="h-3 w-3" />,
+          variant: 'destructive' as const,
+          description: 'Data source unknown'
+        };
+    }
+  };
+
+  const dataSourceInfo = getDataSourceInfo(stats.dataSource);
+
   return (
     <div className="space-y-6">
-      {/* Header with controls */}
+      {/* Header with controls and data source indicator */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-semibold">Enhanced Admin Dashboard</h2>
-          <p className="text-sm text-muted-foreground">
-            Comprehensive analytics and user metrics
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-sm text-muted-foreground">
+              Comprehensive analytics and user metrics
+            </p>
+            <Badge variant={dataSourceInfo.variant} className="flex items-center gap-1">
+              {dataSourceInfo.icon}
+              {dataSourceInfo.label}
+            </Badge>
+          </div>
         </div>
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
@@ -76,6 +118,21 @@ export function EnhancedAdminDashboard() {
         </Card>
       )}
 
+      {/* Data Source Info */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardContent className="pt-6">
+          <div className="flex gap-2 items-center text-blue-600">
+            {dataSourceInfo.icon}
+            <p className="text-sm">
+              <strong>Data Source:</strong> {dataSourceInfo.description}
+              {stats.dataSource === 'stripe_direct' && (
+                <span className="ml-2 text-green-600">✓ Live subscription data</span>
+              )}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <EnhancedMetricsCard
@@ -91,11 +148,11 @@ export function EnhancedAdminDashboard() {
         <EnhancedMetricsCard
           title="Active Subscribers"
           value={stats.subscribedUsers}
-          description="Users with paid subscriptions"
+          description={`Users with paid subscriptions (${dataSourceInfo.label})`}
           icon={<CreditCard className="h-4 w-4" />}
           trend={calculateTrend(stats.subscribedUsers, Math.max(0, stats.subscribedUsers - 5))}
           isLoading={isLoading}
-          color="success"
+          color={stats.dataSource === 'stripe_direct' ? 'success' : 'warning'}
         />
         
         <EnhancedMetricsCard

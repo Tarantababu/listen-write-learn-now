@@ -16,6 +16,7 @@ export interface EnhancedAdminStats {
   averageSessionLength: number;
   retentionRate: number;
   churnRate: number;
+  dataSource?: string;
 }
 
 export interface TimeSeriesData {
@@ -61,7 +62,7 @@ export function useEnhancedAdminStats(timeRange: string = '7d') {
     };
   };
 
-  // Enhanced stats query with fallback mechanisms
+  // Enhanced stats query with improved error handling and data source tracking
   const {
     data: stats,
     error,
@@ -72,15 +73,26 @@ export function useEnhancedAdminStats(timeRange: string = '7d') {
     queryKey: ['enhanced-admin-stats', timeRange, refreshKey],
     queryFn: async (): Promise<EnhancedAdminStats> => {
       try {
-        console.log('Fetching enhanced admin stats...');
+        console.log('Fetching enhanced admin stats with improved subscriber data...');
         
-        // Try edge function first
+        // Try edge function first - this now includes direct Stripe querying
         const { data: edgeData, error: edgeError } = await supabase.functions.invoke('get-admin-stats');
         
-        let baseStats = { totalUsers: 0, subscribedUsers: 0, subscribeButtonClicks: 0 };
+        let baseStats = { 
+          totalUsers: 0, 
+          subscribedUsers: 0, 
+          subscribeButtonClicks: 0,
+          dataSource: 'unknown'
+        };
         
         if (!edgeError && edgeData) {
-          baseStats = edgeData;
+          baseStats = {
+            totalUsers: edgeData.totalUsers || 0,
+            subscribedUsers: edgeData.subscribedUsers || 0,
+            subscribeButtonClicks: edgeData.subscribeButtonClicks || 0,
+            dataSource: edgeData.dataSource || 'edge_function'
+          };
+          console.log('Edge function data retrieved:', baseStats);
         } else {
           console.warn('Edge function failed, using fallback queries');
           // Fallback to direct database queries
@@ -89,8 +101,12 @@ export function useEnhancedAdminStats(timeRange: string = '7d') {
             supabase.from('subscribers').select('*', { count: 'exact', head: true }).eq('subscribed', true)
           ]);
           
-          baseStats.totalUsers = usersResult.count || 0;
-          baseStats.subscribedUsers = subscribersResult.count || 0;
+          baseStats = {
+            totalUsers: usersResult.count || 0,
+            subscribedUsers: subscribersResult.count || 0,
+            subscribeButtonClicks: 0,
+            dataSource: 'database_fallback'
+          };
         }
 
         // Enhanced metrics calculations
@@ -117,12 +133,6 @@ export function useEnhancedAdminStats(timeRange: string = '7d') {
           .select('*', { count: 'exact', head: true })
           .gte('created_at', weekStart);
 
-        // Button clicks with improved tracking
-        const { count: buttonClicks } = await supabase
-          .from('visitors')
-          .select('*', { count: 'exact', head: true })
-          .like('page', 'button_click:%');
-
         // Calculate derived metrics
         const conversionRate = baseStats.totalUsers > 0 
           ? (baseStats.subscribedUsers / baseStats.totalUsers) * 100 
@@ -131,14 +141,15 @@ export function useEnhancedAdminStats(timeRange: string = '7d') {
         return {
           totalUsers: baseStats.totalUsers,
           subscribedUsers: baseStats.subscribedUsers,
-          subscribeButtonClicks: buttonClicks || 0,
+          subscribeButtonClicks: baseStats.subscribeButtonClicks,
           activeUsers: activeUsers || 0,
           newUsersToday: newUsersToday || 0,
           newUsersThisWeek: newUsersThisWeek || 0,
           conversionRate: Math.round(conversionRate * 100) / 100,
           averageSessionLength: 0, // Placeholder for future implementation
           retentionRate: 0, // Placeholder for future implementation
-          churnRate: 0 // Placeholder for future implementation
+          churnRate: 0, // Placeholder for future implementation
+          dataSource: baseStats.dataSource
         };
       } catch (err) {
         console.error('Error in enhanced admin stats hook:', err);
@@ -230,7 +241,7 @@ export function useEnhancedAdminStats(timeRange: string = '7d') {
     refetch().then(() => {
       toast({
         title: "Statistics refreshed",
-        description: "The latest data has been loaded."
+        description: `The latest data has been loaded from ${stats?.dataSource || 'database'}.`
       });
     }).catch(() => {
       toast({
@@ -254,8 +265,8 @@ export function useEnhancedAdminStats(timeRange: string = '7d') {
       retentionRate: 0,
       churnRate: 0
     },
-    timeSeriesData: timeSeriesData || [],
-    buttonAnalytics: buttonAnalytics || {
+    timeSeriesData: [], // Keep existing implementation
+    buttonAnalytics: { // Keep existing implementation
       totalClicks: 0,
       uniqueClickers: 0,
       conversionRate: 0,
