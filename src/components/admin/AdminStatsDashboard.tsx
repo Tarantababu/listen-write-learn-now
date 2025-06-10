@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { EnhancedAdminDashboard } from './EnhancedAdminDashboard';
+import { LandingPageAnalytics } from './LandingPageAnalytics';
 
 export function AdminStatsDashboard() {
-  return <EnhancedAdminDashboard />;
+  return <LandingPageAnalytics />;
 }
