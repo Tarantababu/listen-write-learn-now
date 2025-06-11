@@ -4,16 +4,13 @@ import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Brain, BookOpen, Trophy, Lock, ArrowDown, CheckCircle2, Crown } from 'lucide-react';
+import { Plus, Brain, BookOpen, Trophy, CheckCircle2 } from 'lucide-react';
 import { FlagIcon } from 'react-flag-kit';
 import { BidirectionalExerciseCard } from '@/components/bidirectional/BidirectionalExerciseCard';
 import { BidirectionalPracticeModal } from '@/components/bidirectional/BidirectionalPracticeModal';
 import { BidirectionalReviewModal } from '@/components/bidirectional/BidirectionalReviewModal';
-import { LanguageSelectWithFlag } from '@/components/bidirectional/LanguageSelectWithFlag';
+import { BidirectionalCreateDialog } from '@/components/bidirectional/BidirectionalCreateDialog';
 import { BidirectionalService } from '@/services/bidirectionalService';
 import type { BidirectionalExercise } from '@/types/bidirectional';
 import { useToast } from '@/hooks/use-toast';
@@ -113,12 +110,8 @@ const BidirectionalPage: React.FC = () => {
   } = useToast();
   const isMobile = useIsMobile();
 
-  // State for exercise creation
-  const [originalSentence, setOriginalSentence] = useState('');
   // Target language now comes from user settings and cannot be changed
   const targetLanguage = settings.selectedLanguage;
-  const [supportLanguage, setSupportLanguage] = useState('english');
-  const [isCreating, setIsCreating] = useState(false);
 
   // State for exercise limits
   const [exerciseLimit, setExerciseLimit] = useState({
@@ -137,6 +130,7 @@ const BidirectionalPage: React.FC = () => {
   }[]>([]);
 
   // State for modals
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [practiceExercise, setPracticeExercise] = useState<BidirectionalExercise | null>(null);
   const [reviewExercise, setReviewExercise] = useState<BidirectionalExercise | null>(null);
   const [reviewType, setReviewType] = useState<'forward' | 'backward'>('forward');
@@ -198,58 +192,9 @@ const BidirectionalPage: React.FC = () => {
     }
   };
 
-  const handleCreateExercise = async () => {
-    if (!originalSentence.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a sentence to translate.",
-        variant: "destructive"
-      });
-      return;
-    }
-    if (!targetLanguage) {
-      toast({
-        title: "Error",
-        description: "Please select a target language in your account settings.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Check exercise limit before creating
-    if (!exerciseLimit.canCreate && !subscription.isSubscribed) {
-      toast({
-        title: "Exercise Limit Reached",
-        description: `You've reached the limit of ${exerciseLimit.limit} exercises for ${getLanguageLabel(targetLanguage)}. Upgrade to premium for unlimited exercises.`,
-        variant: "destructive"
-      });
-      return;
-    }
-    setIsCreating(true);
-    try {
-      await BidirectionalService.createExercise({
-        original_sentence: originalSentence,
-        target_language: targetLanguage,
-        support_language: supportLanguage
-      });
-      setOriginalSentence('');
-      toast({
-        title: "Success",
-        description: "Exercise created successfully!"
-      });
-
-      // Refresh exercises and check limit again
-      await Promise.all([loadExercises(), checkExerciseLimit()]);
-    } catch (error) {
-      console.error('Error creating exercise:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create exercise. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsCreating(false);
-    }
+  const handleExerciseCreated = async () => {
+    // Refresh exercises and check limit again
+    await Promise.all([loadExercises(), checkExerciseLimit()]);
   };
 
   const handlePractice = (exercise: BidirectionalExercise) => {
@@ -384,7 +329,7 @@ const BidirectionalPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Create Exercise Section */}
+      {/* Create Exercise Section - Now uses enhanced dialog */}
       <Card className="mb-6 sm:mb-8">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
@@ -396,87 +341,16 @@ const BidirectionalPage: React.FC = () => {
           </CardTitle>
           <CardDescription className="text-sm">
             Add a sentence to practice with the bidirectional method
-            {!subscription.isSubscribed && !exerciseLimit.canCreate && <span className="block mt-1 text-orange-600 dark:text-orange-400 font-medium">
-                Exercise limit reached. Upgrade to premium for unlimited exercises.
-              </span>}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {!subscription.isSubscribed && !exerciseLimit.canCreate && <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Crown className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                <h4 className="font-medium text-orange-800 dark:text-orange-200">
-                  Exercise Limit Reached
-                </h4>
-              </div>
-              <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
-                You've created {exerciseLimit.limit} exercises for {getLanguageLabel(targetLanguage)}. 
-                Upgrade to premium to create unlimited exercises and unlock all features.
-              </p>
-              <Button variant="outline" className="text-orange-600 border-orange-300 hover:bg-orange-50">
-                <Crown className="h-4 w-4 mr-2" />
-                Upgrade to Premium
-              </Button>
-            </div>}
-
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Sentence to translate:
-            </label>
-            <Textarea value={originalSentence} onChange={e => setOriginalSentence(e.target.value)} placeholder={`Enter a sentence in ${getLanguageLabel(targetLanguage)}...`} rows={2} className="text-sm sm:text-base" disabled={!subscription.isSubscribed && !exerciseLimit.canCreate} />
-          </div>
-          
-          <div className="space-y-4">
-            {/* Target Language - Mobile: Full width, Desktop: Half width */}
-            <div className={isMobile ? 'w-full' : 'grid grid-cols-2 gap-4'}>
-              <div className={isMobile ? 'mb-4' : ''}>
-                <label className="block text-sm font-medium mb-2">
-                  Target Language (sentence language):
-                </label>
-                <div className="relative">
-                  <Select value={targetLanguage} disabled>
-                    <SelectTrigger className="bg-muted cursor-not-allowed opacity-60">
-                      <SelectValue>
-                        <div className="flex items-center gap-2">
-                          <FlagIcon code={getLanguageFlagCode(targetLanguage)} size={16} />
-                          <span className="text-sm">{getLanguageLabel(targetLanguage)}</span>
-                        </div>
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={targetLanguage}>
-                        <div className="flex items-center gap-2">
-                          <FlagIcon code={getLanguageFlagCode(targetLanguage)} size={16} />
-                          <span>{getLanguageLabel(targetLanguage)}</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                    <Lock className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Language is set from your account settings
-                </p>
-              </div>
-              
-              {/* Mobile: Add visual separator */}
-              {isMobile && <div className="flex items-center justify-center my-3">
-                  <ArrowDown className="h-4 w-4 text-muted-foreground" />
-                </div>}
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Support Language (translation language):
-                </label>
-                <LanguageSelectWithFlag value={supportLanguage} onValueChange={setSupportLanguage} options={SUPPORTED_LANGUAGES} placeholder="Select support language" disabled={!subscription.isSubscribed && !exerciseLimit.canCreate} />
-              </div>
-            </div>
-          </div>
-
-          <Button onClick={handleCreateExercise} disabled={isCreating || !originalSentence.trim() || !subscription.isSubscribed && !exerciseLimit.canCreate} className="w-full" size={isMobile ? "default" : "lg"}>
-            {isCreating ? 'Creating...' : 'Create Exercise'}
+        <CardContent>
+          <Button 
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="w-full" 
+            size={isMobile ? "default" : "lg"}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Exercise
           </Button>
         </CardContent>
       </Card>
@@ -524,6 +398,15 @@ const BidirectionalPage: React.FC = () => {
       </Tabs>
 
       {/* Modals */}
+      <BidirectionalCreateDialog
+        isOpen={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+        onExerciseCreated={handleExerciseCreated}
+        exerciseLimit={exerciseLimit}
+        targetLanguage={targetLanguage}
+        supportedLanguages={SUPPORTED_LANGUAGES}
+      />
+
       <BidirectionalPracticeModal exercise={practiceExercise} isOpen={!!practiceExercise} onClose={() => setPracticeExercise(null)} onExerciseUpdated={loadExercises} />
 
       <BidirectionalReviewModal exercise={reviewExercise} reviewType={reviewType} isOpen={!!reviewExercise} onClose={() => setReviewExercise(null)} onReviewComplete={handleReviewComplete} />
