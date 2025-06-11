@@ -6,6 +6,7 @@ import { SecureVisitorTracking } from './SecureVisitorTracking';
 import { VisitorStats } from './VisitorStats';
 import { RealTimeMonitor } from './RealTimeMonitor';
 import { AdminSecurityWrapper } from './AdminSecurityWrapper';
+import { FreeSubscriptionLimitsStats } from './FreeSubscriptionLimitsStats';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, Activity, Users, TrendingUp, Radio } from 'lucide-react';
@@ -47,8 +48,9 @@ export function AdminStatsDashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview">
+          <TabsContent value="overview" className="space-y-6">
             <EnhancedAdminDashboard />
+            <FreeSubscriptionLimitsStats />
           </TabsContent>
 
           <TabsContent value="realtime">
