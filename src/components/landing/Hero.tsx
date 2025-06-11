@@ -171,11 +171,7 @@ export function Hero() {
                   <a href="https://www.producthunt.com/posts/lwlnow?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-lwlnow" target="_blank" rel="noopener noreferrer" className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl">
                     <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=961139&theme=light&t=1746390894369" alt="lwlnow - Learn languages by listening, typing, and mastering." width="200" height="43" className="rounded" />
                   </a>
-                </div>
-                <div className="mt-10 flex justify-center">
-                  <a href="https://fazier.com/launches/www.lwlnow.com" target="_blank">
-                    <img src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=featured&theme=light" width=250 alt="Fazier badge" />
-                  </a>
+                  <a href="https://fazier.com/launches/www.lwlnow.com" target="_blank"><img src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=featured&theme=light" width=250 alt="Fazier badge" /></a>
                 </div>
               </AnimatedGroup>
             </div>
