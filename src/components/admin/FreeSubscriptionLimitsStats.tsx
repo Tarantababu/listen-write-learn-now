@@ -7,7 +7,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UserLimitInfo {
-  email: string;
   user_id: string;
   count: number;
 }
@@ -25,10 +24,7 @@ export function FreeSubscriptionLimitsStats() {
       // Get users who have reached exercise limit (3 exercises)
       const { data: exerciseUsers, error: exerciseError } = await supabase
         .from('exercises')
-        .select(`
-          user_id,
-          profiles!inner(id)
-        `)
+        .select('user_id')
         .eq('archived', false);
 
       if (exerciseError) throw exerciseError;
@@ -39,28 +35,17 @@ export function FreeSubscriptionLimitsStats() {
         return acc;
       }, {}) || {};
 
-      const exerciseLimitUserIds = Object.entries(exerciseCounts)
+      const exerciseLimitUsers = Object.entries(exerciseCounts)
         .filter(([userId, count]) => count >= 3)
-        .map(([userId]) => userId);
-
-      // Get user emails for exercise limit users
-      const { data: exerciseUserDetails, error: exerciseUserError } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          auth.users(email)
-        `)
-        .in('id', exerciseLimitUserIds);
-
-      if (exerciseUserError) throw exerciseUserError;
+        .map(([userId, count]) => ({
+          user_id: userId,
+          count: count
+        }));
 
       // Get users who have reached vocabulary limit (5 vocabulary items)
       const { data: vocabularyUsers, error: vocabularyError } = await supabase
         .from('vocabulary')
-        .select(`
-          user_id,
-          profiles!inner(id)
-        `);
+        .select('user_id');
 
       if (vocabularyError) throw vocabularyError;
 
@@ -69,27 +54,17 @@ export function FreeSubscriptionLimitsStats() {
         return acc;
       }, {}) || {};
 
-      const vocabularyLimitUserIds = Object.entries(vocabularyCounts)
+      const vocabularyLimitUsers = Object.entries(vocabularyCounts)
         .filter(([userId, count]) => count >= 5)
-        .map(([userId]) => userId);
-
-      const { data: vocabularyUserDetails, error: vocabularyUserError } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          auth.users(email)
-        `)
-        .in('id', vocabularyLimitUserIds);
-
-      if (vocabularyUserError) throw vocabularyUserError;
+        .map(([userId, count]) => ({
+          user_id: userId,
+          count: count
+        }));
 
       // Get users who have reached bidirectional exercise limit (3 bidirectional exercises)
       const { data: bidirectionalUsers, error: bidirectionalError } = await supabase
         .from('bidirectional_exercises')
-        .select(`
-          user_id,
-          profiles!inner(id)
-        `);
+        .select('user_id');
 
       if (bidirectionalError) throw bidirectionalError;
 
@@ -98,36 +73,17 @@ export function FreeSubscriptionLimitsStats() {
         return acc;
       }, {}) || {};
 
-      const bidirectionalLimitUserIds = Object.entries(bidirectionalCounts)
+      const bidirectionalLimitUsers = Object.entries(bidirectionalCounts)
         .filter(([userId, count]) => count >= 3)
-        .map(([userId]) => userId);
-
-      const { data: bidirectionalUserDetails, error: bidirectionalUserError } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          auth.users(email)
-        `)
-        .in('id', bidirectionalLimitUserIds);
-
-      if (bidirectionalUserError) throw bidirectionalUserError;
+        .map(([userId, count]) => ({
+          user_id: userId,
+          count: count
+        }));
 
       return {
-        exerciseLimitUsers: exerciseUserDetails?.map(user => ({
-          email: user.auth?.users?.email || 'No email',
-          user_id: user.id,
-          count: exerciseCounts[user.id] || 0
-        })) || [],
-        vocabularyLimitUsers: vocabularyUserDetails?.map(user => ({
-          email: user.auth?.users?.email || 'No email',
-          user_id: user.id,
-          count: vocabularyCounts[user.id] || 0
-        })) || [],
-        bidirectionalLimitUsers: bidirectionalUserDetails?.map(user => ({
-          email: user.auth?.users?.email || 'No email',
-          user_id: user.id,
-          count: bidirectionalCounts[user.id] || 0
-        })) || []
+        exerciseLimitUsers,
+        vocabularyLimitUsers,
+        bidirectionalLimitUsers
       };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -180,7 +136,7 @@ export function FreeSubscriptionLimitsStats() {
         <div className="space-y-2 pl-6">
           {users.map((user, index) => (
             <div key={user.user_id} className="flex items-center justify-between p-2 bg-muted rounded text-sm">
-              <span>{user.email}</span>
+              <span className="font-mono text-xs">{user.user_id}</span>
               <Badge variant="outline">{user.count} items</Badge>
             </div>
           ))}
@@ -199,7 +155,7 @@ export function FreeSubscriptionLimitsStats() {
           Free Subscription Limits Analysis
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Users who have reached their free subscription allowances
+          Users who have reached their free subscription allowances (showing user IDs)
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
