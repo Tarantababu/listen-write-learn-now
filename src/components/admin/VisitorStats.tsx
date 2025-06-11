@@ -62,8 +62,8 @@ export function VisitorStats() {
         
         // Get unique visitors count using a more efficient approach
         try {
-          // Try to use the database function first
-          const { data: uniqueCount, error: uniqueError } = await supabase
+          // Try to use the database function first - using any to bypass TypeScript check
+          const { data: uniqueCount, error: uniqueError } = await (supabase as any)
             .rpc('get_unique_visitor_count');
           
           if (uniqueError) {
@@ -90,8 +90,10 @@ export function VisitorStats() {
               }
             }
           } else {
-            setUniqueVisitors(uniqueCount || 0);
-            console.log('Unique visitors counted via RPC:', uniqueCount);
+            // Ensure the result is a number
+            const uniqueVisitorCount = typeof uniqueCount === 'number' ? uniqueCount : 0;
+            setUniqueVisitors(uniqueVisitorCount);
+            console.log('Unique visitors counted via RPC:', uniqueVisitorCount);
           }
         } catch (uniqueError) {
           console.error('Error calculating unique visitors:', uniqueError);
