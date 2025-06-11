@@ -7,13 +7,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const logStep = (step: string, details?: any) => {
+  const timestamp = new Date().toISOString();
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[${timestamp}] [TRACK-VISITOR] ${step}${detailsStr}`);
+};
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    logStep("Visitor tracking started");
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
@@ -26,69 +33,160 @@ serve(async (req) => {
     const body = await req.json();
     const { visitorId, page, referer, userAgent, timestamp } = body;
     
-    // Get IP address from request headers
-    const forwardedFor = req.headers.get('x-forwarded-for');
-    const ipAddress = forwardedFor ? forwardedFor.split(',')[0] : 'unknown';
-    
-    if (!visitorId || !page) {
+    // Enhanced input validation
+    if (!visitorId || typeof visitorId !== 'string' || visitorId.length > 255) {
+      logStep("Invalid visitor ID", { visitorId });
       return new Response(
-        JSON.stringify({ error: 'Visitor ID and page are required' }),
+        JSON.stringify({ error: 'Invalid visitor ID' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // Ensure proper timestamp handling
+    if (!page || typeof page !== 'string' || page.length > 500) {
+      logStep("Invalid page parameter", { page });
+      return new Response(
+        JSON.stringify({ error: 'Invalid page parameter' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Get and anonymize IP address
+    const forwardedFor = req.headers.get('x-forwarded-for');
+    const realIp = req.headers.get('x-real-ip');
+    const cfConnectingIp = req.headers.get('cf-connecting-ip');
+    
+    let ipAddress = forwardedFor ? forwardedFor.split(',')[0] : 
+                   realIp || cfConnectingIp || 'unknown';
+    
+    // Anonymize IP by removing last octet for IPv4
+    if (ipAddress !== 'unknown' && ipAddress.includes('.')) {
+      ipAddress = ipAddress.replace(/(\d+\.\d+\.\d+)\.\d+/, '$1.0');
+    }
+    
+    logStep("Processing visitor data", {
+      visitorId: visitorId.substring(0, 8) + '...',
+      page,
+      anonymizedIp: ipAddress
+    });
+    
+    // Enhanced rate limiting check
+    try {
+      const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+      const { count: recentVisits } = await supabaseClient
+        .from('visitors')
+        .select('*', { count: 'exact', head: true })
+        .eq('ip_address', ipAddress)
+        .gte('created_at', oneMinuteAgo);
+      
+      if (recentVisits && recentVisits > 30) {
+        logStep("Rate limit exceeded", { ip: ipAddress, count: recentVisits });
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } catch (rateLimitError) {
+      logStep("Rate limit check failed, proceeding", { error: rateLimitError.message });
+    }
+    
+    // Handle timestamp validation
     let visitTimestamp;
     if (timestamp) {
       try {
-        // Validate the timestamp is a proper ISO string
         visitTimestamp = new Date(timestamp);
         if (isNaN(visitTimestamp.getTime())) {
-          // If invalid, fallback to current time
-          console.log("Invalid timestamp provided, using current time instead");
+          logStep("Invalid timestamp, using current time", { providedTimestamp: timestamp });
           visitTimestamp = new Date();
         }
       } catch (e) {
-        console.error("Error parsing timestamp:", e);
+        logStep("Timestamp parsing error, using current time", { error: e.message });
         visitTimestamp = new Date();
       }
     } else {
       visitTimestamp = new Date();
     }
     
-    // Format timestamp to ISO string for consistent storage
     const formattedTimestamp = visitTimestamp.toISOString();
     
-    console.log(`Processing visitor track: ${visitorId} at ${formattedTimestamp} for page: ${page}`);
-    
-    // Insert the visitor data with properly formatted timestamp
-    const { data, error } = await supabaseClient
-      .from('visitors')
-      .insert({
-        visitor_id: visitorId,
-        page,
-        referer: referer || null,
-        user_agent: userAgent || null,
-        ip_address: ipAddress,
-        created_at: formattedTimestamp
+    // Enhanced visitor tracking with duplicate detection
+    try {
+      // Check for recent duplicate entries (same visitor, same page, within 5 minutes)
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { data: recentEntry } = await supabaseClient
+        .from('visitors')
+        .select('id')
+        .eq('visitor_id', visitorId)
+        .eq('page', page)
+        .gte('created_at', fiveMinutesAgo)
+        .limit(1)
+        .maybeSingle();
+      
+      if (recentEntry) {
+        logStep("Duplicate visit detected, skipping", { 
+          visitorId: visitorId.substring(0, 8) + '...',
+          page 
+        });
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            timestamp: formattedTimestamp,
+            duplicate: true 
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Insert the visitor data
+      const { data, error } = await supabaseClient
+        .from('visitors')
+        .insert({
+          visitor_id: visitorId,
+          page,
+          referer: referer && referer.length <= 500 ? referer : null,
+          user_agent: userAgent && userAgent.length <= 500 ? userAgent : null,
+          ip_address: ipAddress,
+          created_at: formattedTimestamp
+        })
+        .select('id')
+        .single();
+      
+      if (error) {
+        logStep("Database insert failed", { error: error.message });
+        throw error;
+      }
+      
+      logStep("Visitor tracked successfully", { 
+        id: data.id,
+        visitorId: visitorId.substring(0, 8) + '...',
+        page 
       });
-    
-    if (error) {
-      console.error("Error tracking visitor:", error);
-      throw error;
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          timestamp: formattedTimestamp,
+          id: data.id 
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+      
+    } catch (dbError) {
+      logStep("Database operation failed", { error: dbError.message });
+      throw dbError;
     }
     
-    console.log("Visitor tracked successfully:", visitorId);
-    
-    return new Response(
-      JSON.stringify({ success: true, timestamp: formattedTimestamp }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
   } catch (error) {
-    console.error("Error tracking visitor:", error);
+    logStep("Fatal error in visitor tracking", { 
+      error: error.message, 
+      stack: error.stack 
+    });
     
     return new Response(
-      JSON.stringify({ error: 'Failed to track visitor' }),
+      JSON.stringify({ 
+        error: 'Failed to track visitor',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
