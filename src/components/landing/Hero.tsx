@@ -167,7 +167,7 @@ export function Hero() {
                 </div>
                 
                 {/* Product Hunt badge */}
-                <div className="mt-10 flex justify-center gap-4">
+                <div className="mt-10 flex justify-center gap-4 flex-wrap">
                   <a 
                     href="https://www.producthunt.com/posts/lwlnow?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-lwlnow" 
                     target="_blank" 
@@ -193,6 +193,21 @@ export function Hero() {
                       src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=featured&theme=light" 
                       width="200" 
                       alt="Fazier badge" 
+                      className="rounded"
+                    />
+                  </a>
+                
+                  <a 
+                    href="https://startupfa.me/s/lwlnow?utm_source=lwlnow.com" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl"
+                  >
+                    <img 
+                      src="https://startupfa.me/badges/featured/default.webp" 
+                      alt="Featured on Startup Fame" 
+                      width="171" 
+                      height="54" 
                       className="rounded"
                     />
                   </a>
