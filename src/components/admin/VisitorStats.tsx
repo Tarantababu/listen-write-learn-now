@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,45 +45,69 @@ export function VisitorStats() {
         setLoading(true);
         setError(null);
         
-        console.log('Fetching visitor statistics...');
+        console.log('Fetching visitor statistics with optimized queries...');
         
-        // Get all visitor data
-        const { data: allVisitorData, error: allDataError } = await supabase
+        // Get total visitors count using count query (no limit issues)
+        const { count: totalVisitorsCount, error: totalVisitorsError } = await supabase
           .from('visitors')
-          .select('*')
-          .order('created_at', { ascending: true });
+          .select('*', { count: 'exact', head: true });
         
-        if (allDataError) {
-          console.error('Error fetching visitor data:', allDataError);
-          throw allDataError;
+        if (totalVisitorsError) {
+          console.error('Error fetching total visitors count:', totalVisitorsError);
+          throw totalVisitorsError;
         }
         
-        console.log('Raw visitor data fetched:', allVisitorData?.length || 0, 'records');
+        setTotalVisitors(totalVisitorsCount || 0);
+        console.log('Total visitors counted:', totalVisitorsCount);
         
-        if (!allVisitorData || allVisitorData.length === 0) {
-          console.log('No visitor data found');
-          setTotalVisitors(0);
+        // Get unique visitors count using a more efficient approach
+        try {
+          // Try to use the database function first
+          const { data: uniqueCount, error: uniqueError } = await supabase
+            .rpc('get_unique_visitor_count');
+          
+          if (uniqueError) {
+            console.log('RPC function not available, using fallback method');
+            
+            // Fallback: Get a limited sample and calculate unique visitors
+            const { data: visitorSample, error: sampleError } = await supabase
+              .from('visitors')
+              .select('visitor_id')
+              .limit(50000) // Increased sample size for better accuracy
+              .order('created_at', { ascending: false }); // Get recent visitors first
+            
+            if (sampleError) {
+              throw sampleError;
+            }
+            
+            if (visitorSample) {
+              const uniqueIds = new Set(visitorSample.map(v => v.visitor_id));
+              setUniqueVisitors(uniqueIds.size);
+              console.log('Unique visitors estimated from sample:', uniqueIds.size);
+              
+              if (visitorSample.length === 50000) {
+                console.warn('Sample size reached limit, unique visitors count may be underestimated');
+              }
+            }
+          } else {
+            setUniqueVisitors(uniqueCount || 0);
+            console.log('Unique visitors counted via RPC:', uniqueCount);
+          }
+        } catch (uniqueError) {
+          console.error('Error calculating unique visitors:', uniqueError);
           setUniqueVisitors(0);
-          setTodayVisitors(0);
-          setVisitorCounts([]);
-          setPageCounts([]);
-          setReferrerCounts([]);
-          setLoading(false);
-          return;
         }
         
-        // Set total visitors
-        setTotalVisitors(allVisitorData.length);
+        // Get earliest data point for reference
+        const { data: earliestRecord, error: earliestError } = await supabase
+          .from('visitors')
+          .select('created_at')
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
         
-        // Calculate unique visitors
-        const uniqueIds = new Set(allVisitorData.map(visitor => visitor.visitor_id));
-        setUniqueVisitors(uniqueIds.size);
-        
-        // Find earliest data date
-        const earliestRecord = allVisitorData[0]; // Already ordered by created_at ascending
         let earliestDate: Date | null = null;
-        
-        if (earliestRecord?.created_at) {
+        if (!earliestError && earliestRecord?.created_at) {
           try {
             earliestDate = parseISO(earliestRecord.created_at);
             if (isValid(earliestDate)) {
@@ -95,138 +118,137 @@ export function VisitorStats() {
           }
         }
         
-        // Calculate today's visitors using proper date comparison
+        // Calculate today's visitors using count query with date filter
         const today = new Date();
-        const todayStart = startOfDay(today);
-        const todayEnd = endOfDay(today);
+        const todayStart = startOfDay(today).toISOString();
+        const todayEnd = endOfDay(today).toISOString();
         
-        const todayCount = allVisitorData.filter(visitor => {
-          if (!visitor.created_at) return false;
-          try {
-            const visitorDate = parseISO(visitor.created_at);
-            return isValid(visitorDate) && visitorDate >= todayStart && visitorDate <= todayEnd;
-          } catch (e) {
-            return false;
-          }
-        }).length;
+        const { count: todayCount, error: todayError } = await supabase
+          .from('visitors')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', todayStart)
+          .lte('created_at', todayEnd);
         
-        setTodayVisitors(todayCount);
-        console.log('Today visitors:', todayCount);
-        
-        // Process daily visitor counts for the last 30 days
-        const currentDate = new Date();
-        const dailyCountsMap: Record<string, number> = {};
-        
-        // Initialize all days in the last 30 days with 0
-        for (let i = 30; i >= 0; i--) {
-          const date = subDays(currentDate, i);
-          const dateKey = format(date, 'yyyy-MM-dd');
-          dailyCountsMap[dateKey] = 0;
+        if (!todayError) {
+          setTodayVisitors(todayCount || 0);
+          console.log('Today visitors counted:', todayCount);
         }
         
-        // Count actual visitors per day
-        allVisitorData.forEach(visitor => {
-          if (!visitor.created_at) return;
-          
-          try {
-            const visitorDate = parseISO(visitor.created_at);
-            if (!isValid(visitorDate)) return;
-            
-            const dateKey = format(visitorDate, 'yyyy-MM-dd');
-            
-            // Only count if the date is within our 31-day range
-            if (dailyCountsMap.hasOwnProperty(dateKey)) {
-              dailyCountsMap[dateKey]++;
-            }
-          } catch (e) {
-            console.error('Error processing visitor date:', visitor.created_at, e);
-          }
-        });
-        
-        // Convert to array format for chart
+        // Process daily visitor counts for the last 30 days using efficient queries
+        const currentDate = new Date();
         const dailyCountsArray: VisitorCount[] = [];
+        
+        // Get daily counts in batches to avoid overwhelming the database
         for (let i = 30; i >= 0; i--) {
           const date = subDays(currentDate, i);
-          const dateKey = format(date, 'yyyy-MM-dd');
-          const formattedDate = format(date, 'MMM dd');
+          const dateStart = startOfDay(date).toISOString();
+          const dateEnd = endOfDay(date).toISOString();
           
-          const hasData = earliestDate ? 
-            date >= startOfDay(earliestDate) : 
-            true;
-          
-          dailyCountsArray.push({
-            date: formattedDate,
-            fullDate: date,
-            count: dailyCountsMap[dateKey] || 0,
-            hasData
-          });
+          try {
+            const { count: dayCount } = await supabase
+              .from('visitors')
+              .select('*', { count: 'exact', head: true })
+              .gte('created_at', dateStart)
+              .lte('created_at', dateEnd);
+            
+            const hasData = earliestDate ? date >= startOfDay(earliestDate) : true;
+            
+            dailyCountsArray.push({
+              date: format(date, 'MMM dd'),
+              fullDate: date,
+              count: dayCount || 0,
+              hasData
+            });
+          } catch (dayError) {
+            console.warn(`Error getting count for ${format(date, 'MMM dd')}:`, dayError);
+            dailyCountsArray.push({
+              date: format(date, 'MMM dd'),
+              fullDate: date,
+              count: 0,
+              hasData: false
+            });
+          }
         }
         
         setVisitorCounts(dailyCountsArray);
-        console.log('Daily counts processed:', dailyCountsArray);
+        console.log('Daily counts processed:', dailyCountsArray.length, 'days');
         
-        // Process page counts - filter out button clicks and clean page names
-        const pageCountsMap: Record<string, number> = {};
-        
-        allVisitorData.forEach(visitor => {
-          if (!visitor.page) return;
+        // Process page counts efficiently - get top pages directly
+        try {
+          const { data: pageData, error: pageError } = await supabase
+            .from('visitors')
+            .select('page')
+            .not('page', 'like', 'button_click:%') // Exclude button clicks
+            .limit(10000); // Reasonable limit for page analysis
           
-          let pageName = visitor.page;
-          
-          // Skip button click tracking events
-          if (pageName.startsWith('button_click:')) {
-            return;
+          if (!pageError && pageData) {
+            const pageCountsMap: Record<string, number> = {};
+            
+            pageData.forEach(visitor => {
+              if (!visitor.page) return;
+              
+              let pageName = visitor.page;
+              
+              // Clean up page names for better display
+              if (pageName === '/') {
+                pageName = 'Home';
+              } else if (pageName.startsWith('/')) {
+                pageName = pageName.substring(1);
+                pageName = pageName.charAt(0).toUpperCase() + pageName.slice(1);
+                pageName = pageName.replace(/[-_]/g, ' ');
+              }
+              
+              pageCountsMap[pageName] = (pageCountsMap[pageName] || 0) + 1;
+            });
+            
+            const pageCountsArray = Object.entries(pageCountsMap)
+              .map(([page, count]) => ({ page, count }))
+              .sort((a, b) => b.count - a.count)
+              .slice(0, 10);
+            
+            setPageCounts(pageCountsArray);
+            console.log('Page counts processed:', pageCountsArray.length, 'unique pages');
           }
+        } catch (pageError) {
+          console.error('Error processing page counts:', pageError);
+        }
+        
+        // Process referrer counts efficiently
+        try {
+          const { data: referrerData, error: referrerError } = await supabase
+            .from('visitors')
+            .select('referer')
+            .limit(10000); // Reasonable limit for referrer analysis
           
-          // Clean up page names for better display
-          if (pageName === '/') {
-            pageName = 'Home';
-          } else if (pageName.startsWith('/')) {
-            pageName = pageName.substring(1);
-            // Capitalize first letter and replace hyphens/underscores
-            pageName = pageName.charAt(0).toUpperCase() + pageName.slice(1);
-            pageName = pageName.replace(/[-_]/g, ' ');
+          if (!referrerError && referrerData) {
+            const referrerCountsMap: Record<string, number> = {};
+            
+            referrerData.forEach(visitor => {
+              let referer = visitor.referer || 'Direct / None';
+              
+              if (referer && referer !== 'Direct / None') {
+                try {
+                  const url = new URL(referer);
+                  referer = url.hostname.replace('www.', '');
+                } catch (e) {
+                  // If URL parsing fails, use the original referer
+                }
+              }
+              
+              referrerCountsMap[referer] = (referrerCountsMap[referer] || 0) + 1;
+            });
+            
+            const referrerCountsArray = Object.entries(referrerCountsMap)
+              .map(([name, value]) => ({ name, value }))
+              .sort((a, b) => b.value - a.value)
+              .slice(0, 8);
+            
+            setReferrerCounts(referrerCountsArray);
+            console.log('Referrer counts processed:', referrerCountsArray.length, 'unique referrers');
           }
-          
-          pageCountsMap[pageName] = (pageCountsMap[pageName] || 0) + 1;
-        });
-        
-        // Convert to array and sort by count
-        const pageCountsArray = Object.entries(pageCountsMap)
-          .map(([page, count]) => ({ page, count }))
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 10); // Top 10 pages
-        
-        setPageCounts(pageCountsArray);
-        console.log('Page counts processed:', pageCountsArray);
-        
-        // Process referrer counts
-        const referrerCountsMap: Record<string, number> = {};
-        
-        allVisitorData.forEach(visitor => {
-          let referer = visitor.referer || 'Direct / None';
-          
-          // Clean up referrer names for better display
-          if (referer && referer !== 'Direct / None') {
-            try {
-              const url = new URL(referer);
-              referer = url.hostname.replace('www.', '');
-            } catch (e) {
-              // If URL parsing fails, use the original referer
-            }
-          }
-          
-          referrerCountsMap[referer] = (referrerCountsMap[referer] || 0) + 1;
-        });
-        
-        // Convert to array and sort by count
-        const referrerCountsArray = Object.entries(referrerCountsMap)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 8); // Top 8 referrers
-        
-        setReferrerCounts(referrerCountsArray);
-        console.log('Referrer counts processed:', referrerCountsArray);
+        } catch (referrerError) {
+          console.error('Error processing referrer counts:', referrerError);
+        }
         
       } catch (err: any) {
         console.error('Error fetching visitor stats:', err);
@@ -249,7 +271,6 @@ export function VisitorStats() {
     const todayStr = format(currentDate, 'MMM dd');
     const yesterdayStr = format(yesterday, 'MMM dd');
     
-    // Find today's and yesterday's data by formatted date string
     const todayData = visitorCounts.find(item => item.date === todayStr);
     const yesterdayData = visitorCounts.find(item => item.date === yesterdayStr);
     
@@ -292,13 +313,13 @@ export function VisitorStats() {
   // Configure chart colors with explicit values instead of CSS variables
   const chartConfig = {
     visitors: { 
-      color: '#8884d8' // Using direct color instead of CSS variable
+      color: '#8884d8'
     },
     inactive: {
-      color: '#e5e5e5' // Light gray for dates before data collection
+      color: '#e5e5e5'
     },
     pages: { 
-      color: '#82ca9d' // Using direct color instead of CSS variable
+      color: '#82ca9d'
     },
     sources: {}
   };

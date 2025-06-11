@@ -215,36 +215,56 @@ serve(async (req) => {
       }
     }
     
-    // Enhanced visitor analytics
+    // Enhanced visitor analytics - FIXED TO HANDLE LARGE DATASETS
     try {
-      // Get total visitors and unique visitors
-      const [visitorsResult, uniqueVisitorsResult] = await Promise.all([
-        supabaseClient.from('visitors').select('*', { count: 'exact', head: true }),
-        supabaseClient.from('visitors').select('visitor_id', { count: 'exact', head: true })
-      ]);
-      
-      responseData.totalVisitors = visitorsResult.count || 0;
-      
-      // Calculate unique visitors by counting distinct visitor_ids
-      const { data: uniqueVisitorData } = await supabaseClient
+      // Get total visitors count - using count query instead of fetching all data
+      const { count: totalVisitorsCount, error: visitorsError } = await supabaseClient
         .from('visitors')
-        .select('visitor_id');
+        .select('*', { count: 'exact', head: true });
       
-      if (uniqueVisitorData) {
-        const uniqueIds = new Set(uniqueVisitorData.map(v => v.visitor_id));
-        responseData.uniqueVisitors = uniqueIds.size;
+      if (visitorsError) {
+        logStep("Error counting total visitors", { error: visitorsError.message });
+        responseData.errors.push(`Total visitors error: ${visitorsError.message}`);
+      } else {
+        responseData.totalVisitors = totalVisitorsCount || 0;
+        logStep("Total visitors counted", { count: totalVisitorsCount });
       }
       
-      logStep("Visitor data collected", {
-        total: responseData.totalVisitors,
-        unique: responseData.uniqueVisitors
-      });
+      // Get unique visitors using SQL aggregation function for efficiency
+      const { data: uniqueVisitorsData, error: uniqueVisitorsError } = await supabaseClient
+        .rpc('get_unique_visitor_count');
+      
+      if (uniqueVisitorsError) {
+        logStep("Error getting unique visitors via RPC, using fallback", { error: uniqueVisitorsError.message });
+        
+        // Fallback: use a limited query to estimate unique visitors
+        const { data: sampleVisitorData, error: sampleError } = await supabaseClient
+          .from('visitors')
+          .select('visitor_id')
+          .limit(10000); // Sample first 10k to estimate
+        
+        if (!sampleError && sampleVisitorData) {
+          const uniqueIds = new Set(sampleVisitorData.map(v => v.visitor_id));
+          // If we hit the limit, this is an underestimate
+          responseData.uniqueVisitors = uniqueIds.size;
+          if (sampleVisitorData.length === 10000) {
+            responseData.errors.push(`Unique visitors count is estimated (sample of 10k records)`);
+          }
+          logStep("Unique visitors estimated from sample", { count: uniqueIds.size });
+        } else {
+          responseData.errors.push(`Unique visitors fallback error: ${sampleError?.message}`);
+        }
+      } else {
+        responseData.uniqueVisitors = uniqueVisitorsData || 0;
+        logStep("Unique visitors counted via RPC", { count: uniqueVisitorsData });
+      }
+      
     } catch (error) {
       logStep("Error collecting visitor data", { error: error.message });
       responseData.errors.push(`Visitor data error: ${error.message}`);
     }
     
-    // Enhanced button click tracking
+    // Enhanced button click tracking - using count query
     try {
       const { count: buttonClickCount, error: buttonClickError } = await supabaseClient
         .from('visitors')
@@ -253,6 +273,7 @@ serve(async (req) => {
         
       if (!buttonClickError) {
         responseData.subscribeButtonClicks = buttonClickCount || 0;
+        logStep("Button clicks counted", { count: buttonClickCount });
       } else {
         responseData.errors.push(`Button click error: ${buttonClickError.message}`);
       }
@@ -288,6 +309,8 @@ serve(async (req) => {
     logStep("Final response data prepared", {
       totalUsers: responseData.totalUsers,
       subscribedUsers: responseData.subscribedUsers,
+      totalVisitors: responseData.totalVisitors,
+      uniqueVisitors: responseData.uniqueVisitors,
       conversionRate: responseData.conversionRate,
       dataSource: responseData.dataSource,
       errorCount: responseData.errors.length
