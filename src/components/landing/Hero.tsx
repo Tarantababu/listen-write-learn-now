@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, Globe } from 'lucide-react';
+import { ArrowRight, Check, Globe, Play, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedGroup } from '@/components/ui/animated-group';
 import { SampleDictationModal } from './SampleDictationModal';
@@ -87,6 +87,7 @@ const steps = [{
 
 export function Hero() {
   const [sampleModalOpen, setSampleModalOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const { trackCTAClick, trackFeatureUsed } = useGTM();
 
   const handleOpenSample = () => {
@@ -113,94 +114,189 @@ export function Hero() {
     });
   };
 
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
   return <>
-    <section className="pt-8 pb-20 md:pt-12 relative overflow-hidden bg-gradient-to-br from-white to-brand-light/10">
-      <div className="container px-4 md:px-6 mx-auto">
+    <section className="pt-8 pb-20 md:pt-12 relative overflow-hidden bg-gradient-to-br from-white via-blue-50/30 to-purple-50/30">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-blue-400/10 to-purple-400/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      </div>
+
+      <div className="container px-4 md:px-6 mx-auto relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left Column - Text Content */}
           <div className="text-center lg:text-left">
             <AnimatedGroup variants={transitionVariants}>
               <div className="mb-6">
-                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-brand-dark">
-                  Master Any Language <span className="text-brand-primary">3X Faster</span>
+                <div className="flex items-center justify-center lg:justify-start mb-4">
+                  <span className="bg-gradient-to-r from-brand-primary to-purple-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+                    🚀 Proven Learning Method
+                  </span>
+                </div>
+                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter">
+                  <span className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+                    Master Any Language
+                  </span>
+                  <br />
+                  <span className="bg-gradient-to-r from-brand-primary via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    3X Faster
+                  </span>
                 </h1>
-                <p className="text-lg md:text-xl font-medium text-brand-dark mt-4">
+                <p className="text-lg md:text-xl font-medium text-gray-700 mt-6 leading-relaxed">
                   From Beginner to Fluent in Months, Not Years
                 </p>
               </div>
               
-              <p className="mt-6 text-xl text-muted-foreground max-w-2xl lg:mx-0 mx-auto">
+              <p className="mt-6 text-xl text-gray-600 max-w-2xl lg:mx-0 mx-auto leading-relaxed">
                 Train your ear, sharpen your memory, and improve your writing—all in one immersive experience.
               </p>
 
               <div className="mt-8 flex flex-wrap justify-center lg:justify-start gap-3">
                 {languages.slice(0, 6).map((lang, i) => (
-                  <div key={`${lang.flag}-${i}`} className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                  <div key={`${lang.flag}-${i}`} className="group language-chip flex items-center gap-2 bg-white/80 backdrop-blur-sm p-3 rounded-2xl shadow-lg border border-white/50 hover:shadow-xl hover:scale-105 transition-all duration-300 hover:bg-white">
                     <div className="flex-shrink-0">
                       <FlagIcon code={lang.flag} size={20} />
                     </div>
-                    <span className="text-sm font-medium">{lang.name}</span>
+                    <span className="text-sm font-medium text-gray-700">{lang.name}</span>
+                    <span className="text-xs font-bold text-brand-primary bg-brand-primary/10 px-2 py-1 rounded-full">
+                      {lang.level}
+                    </span>
                   </div>
                 ))}
-                <div className="language-chip flex items-center gap-2 bg-white p-2 rounded-full shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                  <Globe size={20} className="text-brand-primary" />
-                  <span className="text-sm font-medium">+ more</span>
+                <div className="group language-chip flex items-center gap-2 bg-gradient-to-r from-brand-primary to-purple-600 text-white p-3 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+                  <Globe size={20} className="animate-spin-slow" />
+                  <span className="text-sm font-medium">+ 3 more</span>
                 </div>
               </div>
               
-              <div className="mt-10 flex flex-col items-center lg:items-start">
+              <div className="mt-10 flex flex-col sm:flex-row items-center lg:items-start gap-4">
                 <Button 
                   size="lg" 
-                  className="bg-brand-primary hover:bg-brand-secondary rounded-full px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+                  className="group bg-gradient-to-r from-brand-primary to-purple-600 hover:from-purple-600 hover:to-brand-primary text-white rounded-2xl px-8 py-4 text-lg font-semibold shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 border-0"
                   onClick={handleStartFreeClick}
                   data-gtm-cta-type="signup"
                   data-gtm-cta-location="hero_section"
                   data-gtm-cta-text="Start Free Today"
                 >
-                  <Link to="/language-selection" className="flex items-center gap-2">
+                  <Link to="/language-selection" className="flex items-center gap-3">
                     Start Free Today
-                    <ArrowRight size={20} />
+                    <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </Link>
+                </Button>
+                
+                <Button 
+                  variant="outline"
+                  size="lg"
+                  onClick={handleOpenSample}
+                  className="group bg-white/80 backdrop-blur-sm border-2 border-gray-200 hover:border-brand-primary rounded-2xl px-6 py-4 text-gray-700 hover:text-brand-primary transition-all duration-300 hover:shadow-lg"
+                >
+                  <Play size={18} className="mr-2 group-hover:scale-110 transition-transform" />
+                  Try Sample Exercise
                 </Button>
               </div>
             </AnimatedGroup>
           </div>
 
-          {/* Right Column - Demo GIF */}
+          {/* Right Column - Demo Visualization */}
           <div className="text-center lg:text-right">
             <AnimatedGroup variants={transitionVariants}>
-              <div className="bg-white rounded-xl shadow-2xl p-4 border border-gray-100">
-                <img 
-                  src="./demo.gif" 
-                  alt="Language learning demonstration" 
-                  className="w-full h-auto rounded-lg max-w-md mx-auto"
-                  onError={(e) => {
-                    e.currentTarget.src = '/assets/demo.gif';
-                  }}
-                />
+              <div className="relative">
+                {/* Main demo container */}
+                <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-6 border border-white/50 hover:shadow-3xl transition-all duration-500">
+                  {!imageError ? (
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100">
+                      <img 
+                        src="./demo.gif" 
+                        alt="Language learning demonstration" 
+                        className="w-full h-auto rounded-2xl max-w-md mx-auto transition-transform duration-300 hover:scale-105"
+                        onError={handleImageError}
+                      />
+                      {/* Overlay play button for visual appeal */}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300 bg-black/10 rounded-2xl">
+                        <div className="bg-white/90 backdrop-blur-sm rounded-full p-4 shadow-lg">
+                          <Play size={32} className="text-brand-primary" />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Fallback interactive demo mockup */
+                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-8 max-w-md mx-auto">
+                      <div className="space-y-6">
+                        {/* Mock audio player */}
+                        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-brand-primary/10 p-2 rounded-full">
+                              <Volume2 size={20} className="text-brand-primary" />
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">Listen to native speaker</span>
+                          </div>
+                          <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <div className="bg-gradient-to-r from-brand-primary to-purple-600 h-full w-3/4 rounded-full animate-pulse"></div>
+                          </div>
+                        </div>
+
+                        {/* Mock typing interface */}
+                        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                          <div className="text-sm text-gray-600 mb-2">Type what you hear:</div>
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 min-h-[60px] bg-gray-50">
+                            <span className="text-gray-400 animate-pulse">The weather is beautiful today...</span>
+                          </div>
+                        </div>
+
+                        {/* Mock feedback */}
+                        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Check size={16} className="text-green-500" />
+                            <span className="text-sm font-medium text-green-700">Great job! 95% accuracy</span>
+                          </div>
+                          <div className="text-xs text-gray-500">Keep practicing to improve listening skills</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Floating stats */}
+                <div className="absolute -top-4 -left-4 bg-white/90 backdrop-blur-sm rounded-2xl p-3 shadow-xl border border-white/50">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-brand-primary">10K+</div>
+                    <div className="text-xs text-gray-600">Active Learners</div>
+                  </div>
+                </div>
+
+                <div className="absolute -bottom-4 -right-4 bg-white/90 backdrop-blur-sm rounded-2xl p-3 shadow-xl border border-white/50">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600">4.9★</div>
+                    <div className="text-xs text-gray-600">User Rating</div>
+                  </div>
+                </div>
               </div>
             </AnimatedGroup>
           </div>
         </div>
 
         {/* Featured On Section */}
-        <div className="mt-20">
+        <div className="mt-24">
           <AnimatedGroup variants={transitionVariants}>
             <div className="text-center">
-              <h3 className="text-2xl font-semibold text-gray-700 mb-8">Featured on</h3>
-              <div className="flex justify-center gap-4 flex-wrap">
+              <h3 className="text-xl font-medium text-gray-600 mb-8">Trusted by thousands, featured on</h3>
+              <div className="flex justify-center gap-6 flex-wrap">
                 <a 
                   href="https://www.producthunt.com/posts/lwlnow?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-lwlnow" 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl"
+                  className="group hover:scale-105 transition-all duration-300 shadow-lg rounded-2xl bg-white/80 backdrop-blur-sm p-4 border border-white/50 hover:shadow-2xl hover:bg-white"
                 >
                   <img 
                     src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=961139&theme=light&t=1746390894369" 
                     alt="lwlnow - Learn languages by listening, typing, and mastering." 
                     width="200" 
                     height="43" 
-                    className="rounded" 
+                    className="rounded-lg group-hover:scale-105 transition-transform" 
                   />
                 </a>
                 
@@ -208,13 +304,13 @@ export function Hero() {
                   href="https://fazier.com/launches/www.lwlnow.com" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl"
+                  className="group hover:scale-105 transition-all duration-300 shadow-lg rounded-2xl bg-white/80 backdrop-blur-sm p-4 border border-white/50 hover:shadow-2xl hover:bg-white"
                 >
                   <img 
                     src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=featured&theme=light" 
                     width="200" 
                     alt="Fazier badge" 
-                    className="rounded"
+                    className="rounded-lg group-hover:scale-105 transition-transform"
                   />
                 </a>
               
@@ -222,14 +318,14 @@ export function Hero() {
                   href="https://startupfa.me/s/lwlnow?utm_source=lwlnow.com" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl"
+                  className="group hover:scale-105 transition-all duration-300 shadow-lg rounded-2xl bg-white/80 backdrop-blur-sm p-4 border border-white/50 hover:shadow-2xl hover:bg-white"
                 >
                   <img 
                     src="https://startupfa.me/badges/featured/default.webp" 
                     alt="Featured on Startup Fame" 
                     width="171" 
                     height="54" 
-                    className="rounded"
+                    className="rounded-lg group-hover:scale-105 transition-transform"
                   />
                 </a>
               
@@ -237,14 +333,14 @@ export function Hero() {
                   href="https://twelve.tools" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl"
+                  className="group hover:scale-105 transition-all duration-300 shadow-lg rounded-2xl bg-white/80 backdrop-blur-sm p-4 border border-white/50 hover:shadow-2xl hover:bg-white"
                 >
                   <img 
                     src="https://twelve.tools/badge3-light.svg" 
                     alt="Featured on Twelve Tools" 
                     width="200" 
                     height="54" 
-                    className="rounded"
+                    className="rounded-lg group-hover:scale-105 transition-transform"
                   />
                 </a>
               </div>
@@ -255,15 +351,31 @@ export function Hero() {
     </section>
 
     {/* Features grid */}
-    <section className="py-20 bg-gray-50/50">
+    <section className="py-24 bg-gradient-to-b from-gray-50/80 to-white">
       <div className="container px-4 md:px-6 mx-auto">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12 text-brand-dark">Our Unique Approach</h2>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              <span className="bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                Our Unique Approach
+              </span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Scientifically designed features that accelerate your language learning journey
+            </p>
+          </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, i) => (
-              <div key={i} className="feature-card bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <p className="text-lg text-center font-medium">{feature}</p>
+              <div key={i} className="group feature-card bg-white/70 backdrop-blur-sm p-8 rounded-3xl shadow-lg border border-white/50 hover:shadow-2xl hover:scale-105 transition-all duration-500 hover:bg-white">
+                <div className="text-center">
+                  <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">
+                    {feature.split(' ')[0]}
+                  </div>
+                  <p className="text-lg font-semibold text-gray-800 leading-relaxed">
+                    {feature.substring(feature.indexOf(' ') + 1)}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
@@ -272,20 +384,31 @@ export function Hero() {
     </section>
 
     {/* How it works section */}
-    <section className="py-20">
+    <section className="py-24 bg-white">
       <div className="container px-4 md:px-6 mx-auto">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12 text-brand-dark">How It Works</h2>
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              <span className="bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                How It Works
+              </span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Simple steps, powerful results. Start your learning journey today.
+            </p>
+          </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {steps.map((step, i) => (
-              <div key={i} className="flex gap-4">
-                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-brand-primary text-white flex items-center justify-center font-bold text-lg">
+              <div key={i} className="group flex gap-6 p-6 rounded-3xl hover:bg-gray-50/50 transition-all duration-300">
+                <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-r from-brand-primary to-purple-600 text-white flex items-center justify-center font-bold text-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
                   {step.number}
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-brand-dark mb-2">{step.title}</h3>
-                  <p className="text-muted-foreground">{step.description}</p>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-brand-primary transition-colors">
+                    {step.title}
+                  </h3>
+                  <p className="text-gray-600 text-lg leading-relaxed">{step.description}</p>
                 </div>
               </div>
             ))}
@@ -295,67 +418,119 @@ export function Hero() {
     </section>
 
     {/* Benefits */}
-    <section className="py-20 bg-gray-50/50">
+    <section className="py-24 bg-gradient-to-b from-gray-50/80 to-white">
       <div className="container px-4 md:px-6 mx-auto">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12 text-brand-dark">Why It Works</h2>
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              <span className="bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                Why It Works
+              </span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Science-backed benefits that make our method incredibly effective
+            </p>
+          </div>
           
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-            <ul className="space-y-6">
-              <li className="flex items-start gap-4">
-                <Check className="h-6 w-6 text-brand-primary flex-shrink-0 mt-1" />
-                <div>
-                  <p className="font-semibold text-lg text-brand-dark mb-1">Improves Listening Comprehension</p>
-                  <p className="text-muted-foreground">Train your ears to recognize natural speech patterns and accents</p>
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-10 shadow-2xl border border-white/50">
+            <div className="space-y-8">
+              {[
+                {
+                  title: "Improves Listening Comprehension",
+                  description: "Train your ears to recognize natural speech patterns and accents",
+                  gradient: "from-blue-500 to-cyan-500"
+                },
+                {
+                  title: "Strengthens Writing Skills", 
+                  description: "Master spelling, grammar, and sentence structure through practice",
+                  gradient: "from-purple-500 to-pink-500"
+                },
+                {
+                  title: "Builds Vocabulary in Context",
+                  description: "Learn new words naturally in proper context, not as isolated flashcards",
+                  gradient: "from-green-500 to-emerald-500"
+                },
+                {
+                  title: "Creates Deeper Neural Connections",
+                  description: "Engage multiple learning pathways simultaneously for better retention",
+                  gradient: "from-orange-500 to-red-500"
+                }
+              ].map((benefit, i) => (
+                <div key={i} className="group flex items-start gap-6 p-6 rounded-2xl hover:bg-white/50 transition-all duration-300">
+                  <div className={`flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-r ${benefit.gradient} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                    <Check className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-xl text-gray-900 mb-2 group-hover:text-brand-primary transition-colors">
+                      {benefit.title}
+                    </p>
+                    <p className="text-gray-600 text-lg leading-relaxed">{benefit.description}</p>
+                  </div>
                 </div>
-              </li>
-              <li className="flex items-start gap-4">
-                <Check className="h-6 w-6 text-brand-primary flex-shrink-0 mt-1" />
-                <div>
-                  <p className="font-semibold text-lg text-brand-dark mb-1">Strengthens Writing Skills</p>
-                  <p className="text-muted-foreground">Master spelling, grammar, and sentence structure through practice</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-4">
-                <Check className="h-6 w-6 text-brand-primary flex-shrink-0 mt-1" />
-                <div>
-                  <p className="font-semibold text-lg text-brand-dark mb-1">Builds Vocabulary in Context</p>
-                  <p className="text-muted-foreground">Learn new words naturally in proper context, not as isolated flashcards</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-4">
-                <Check className="h-6 w-6 text-brand-primary flex-shrink-0 mt-1" />
-                <div>
-                  <p className="font-semibold text-lg text-brand-dark mb-1">Creates Deeper Neural Connections</p>
-                  <p className="text-muted-foreground">Engage multiple learning pathways simultaneously for better retention</p>
-                </div>
-              </li>
-            </ul>
+              ))}
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     {/* CTA */}
-    <section className="py-20">
-      <div className="container px-4 md:px-6 mx-auto">
+    <section className="py-24 bg-gradient-to-br from-brand-primary via-purple-600 to-pink-600 relative overflow-hidden">
+      {/* Background animation */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
+      </div>
+      
+      <div className="container px-4 md:px-6 mx-auto relative z-10">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-6 text-brand-dark">Ready to Transform Your Language Journey?</h2>
-          <p className="text-xl text-muted-foreground mb-10">Join thousands of learners who have improved their language skills with our method.</p>
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white leading-tight">
+            Ready to Transform Your Language Journey?
+          </h2>
+          <p className="text-xl text-white/90 mb-12 leading-relaxed max-w-2xl mx-auto">
+            Join thousands of learners who have improved their language skills with our proven method.
+          </p>
           
-          <Button 
-            size="lg" 
-            className="bg-brand-primary hover:bg-brand-secondary rounded-full px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
-            onClick={handleStartLearningClick}
-            data-gtm-cta-type="signup"
-            data-gtm-cta-location="cta_section"
-            data-gtm-cta-text="Start Learning Now"
-          >
-            <Link to="/language-selection" className="flex items-center gap-2">
-              Start Learning Now
-              <ArrowRight size={20} />
-            </Link>
-          </Button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+            <Button 
+              size="lg" 
+              className="group bg-white text-brand-primary hover:bg-gray-50 rounded-2xl px-10 py-5 text-xl font-bold shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 border-0"
+              onClick={handleStartLearningClick}
+              data-gtm-cta-type="signup"
+              data-gtm-cta-location="cta_section"
+              data-gtm-cta-text="Start Learning Now"
+            >
+              <Link to="/language-selection" className="flex items-center gap-3">
+                Start Learning Now
+                <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </Button>
+            
+            <Button 
+              variant="outline"
+              size="lg"
+              onClick={handleOpenSample}
+              className="group bg-transparent border-2 border-white text-white hover:bg-white hover:text-brand-primary rounded-2xl px-8 py-5 text-lg font-semibold transition-all duration-300"
+            >
+              <Play size={20} className="mr-2 group-hover:scale-110 transition-transform" />
+              Try Free Sample
+            </Button>
+          </div>
+
+          {/* Trust indicators */}
+          <div className="mt-12 flex items-center justify-center gap-8 text-white/80 text-sm">
+            <div className="flex items-center gap-2">
+              <Check size={16} />
+              <span>Free to start</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Check size={16} />
+              <span>No credit card required</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Check size={16} />
+              <span>Cancel anytime</span>
+            </div>
+          </div>
         </div>
       </div>
     </section>
