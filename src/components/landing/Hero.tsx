@@ -172,7 +172,7 @@ export function Hero() {
                     <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=961139&theme=light&t=1746390894369" alt="lwlnow - Learn languages by listening, typing, and mastering." width="200" height="43" className="rounded" />
                   </a>
                   <a href="https://fazier.com/launches/www.lwlnow.com" target="_blank">
-                    <img src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=featured&theme=light" width=250 alt="Fazier badge" />
+                    <img src="https://fazier.com/api/v1//public/badges/launch_badges.svg?badge_type=featured&theme=light" width="200" alt="Fazier badge" />
                   </a>
                 </div>
               </AnimatedGroup>
