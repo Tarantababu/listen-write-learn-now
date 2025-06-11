@@ -1319,6 +1319,7 @@ export type Database = {
           exercise_count: number
           vocabulary_count: number
           bidirectional_count: number
+          is_premium: boolean
         }[]
       }
       get_top_pages: {

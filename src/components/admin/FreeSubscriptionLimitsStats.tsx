@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Users, BookOpen, MessageSquare, Target } from 'lucide-react';
+import { Loader2, Users, BookOpen, MessageSquare, Target, Crown } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -12,6 +12,7 @@ interface UserLimitInfo {
   exercise_count: number;
   vocabulary_count: number;
   bidirectional_count: number;
+  is_premium: boolean;
 }
 
 export function FreeSubscriptionLimitsStats() {
@@ -80,7 +81,15 @@ export function FreeSubscriptionLimitsStats() {
           {users.map((user, index) => (
             <div key={user.user_id} className="flex items-center justify-between p-2 bg-muted rounded text-sm">
               <div className="flex flex-col">
-                <span className="font-medium">{user.email}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{user.email}</span>
+                  {user.is_premium && (
+                    <Badge variant="default" className="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600">
+                      <Crown className="h-3 w-3" />
+                      Premium
+                    </Badge>
+                  )}
+                </div>
                 <span className="font-mono text-xs text-muted-foreground">{user.user_id}</span>
               </div>
               <Badge variant="outline">{user[countKey]} items</Badge>
@@ -101,7 +110,7 @@ export function FreeSubscriptionLimitsStats() {
           Free Subscription Limits Analysis
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Users who have reached their free subscription allowances (showing email addresses)
+          Users who have reached their free subscription allowances (showing email addresses and premium status)
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
