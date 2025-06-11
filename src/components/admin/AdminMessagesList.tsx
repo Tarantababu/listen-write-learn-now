@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
-import { useAuth } from '@/contexts/AuthContext';
+import { AdminSecurityWrapper } from './AdminSecurityWrapper';
+import { useSecurityLogging } from './EnhancedSecurityHooks';
 
 interface AdminMessage {
   id: string;
@@ -24,13 +25,13 @@ interface AdminMessage {
 }
 
 export default function AdminMessagesList() {
-  const { user } = useAuth();
+  const { logSecurityEvent } = useSecurityLogging();
+
   const { data: messages, isLoading, error, refetch } = useQuery({
     queryKey: ['admin-messages'],
     queryFn: async () => {
       try {
-        // No need to call set_admin_email function anymore with our updated RLS
-        // Get all admin messages
+        // Get all admin messages using the enhanced RLS policies
         const { data: adminMessages, error } = await supabase
           .from('admin_messages')
           .select('*')
@@ -47,14 +48,18 @@ export default function AdminMessagesList() {
               .eq('message_id', message.id)
               .eq('is_read', true);
               
-            if (readError) throw readError;
+            if (readError) {
+              console.warn('Error fetching read count:', readError);
+            }
             
             const { count: totalUsers, error: userError } = await supabase
               .from('user_messages')
               .select('*', { count: 'exact', head: true })
               .eq('message_id', message.id);
               
-            if (userError) throw userError;
+            if (userError) {
+              console.warn('Error fetching total users:', userError);
+            }
             
             return {
               ...message,
@@ -74,7 +79,6 @@ export default function AdminMessagesList() {
 
   const toggleMessageStatus = async (id: string, currentStatus: boolean) => {
     try {
-      // No need to call set_admin_email function anymore with our updated RLS      
       const { error } = await supabase
         .from('admin_messages')
         .update({ is_active: !currentStatus })
@@ -82,82 +86,84 @@ export default function AdminMessagesList() {
         
       if (error) throw error;
       
+      // Log the security event
+      await logSecurityEvent('admin_action', {
+        action: 'toggle_message_status',
+        message_id: id,
+        new_status: !currentStatus
+      });
+      
       toast.success(`Message ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
       refetch();
     } catch (error: any) {
+      console.error('Failed to update message status:', error);
       toast.error(`Failed to update message status: ${error.message}`);
     }
   };
 
-  if (error) {
-    return (
+  return (
+    <AdminSecurityWrapper>
       <Card>
         <CardContent className="p-6">
-          <div className="text-center text-red-500">
-            Failed to load messages. Make sure you have admin permissions.
-          </div>
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          ) : error ? (
+            <div className="text-center text-red-500">
+              Failed to load messages. Error: {error.message}
+            </div>
+          ) : messages && messages.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Read By</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {messages.map((message) => (
+                  <TableRow key={message.id}>
+                    <TableCell className="font-medium">{message.title}</TableCell>
+                    <TableCell>{format(new Date(message.created_at), 'MMM d, yyyy')}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          checked={message.is_active}
+                          onCheckedChange={() => toggleMessageStatus(message.id, message.is_active)}
+                        />
+                        <span className={message.is_active ? "text-green-600" : "text-gray-500"}>
+                          {message.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
+                        {message.read_count} / {message.total_users} users
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-10 text-muted-foreground">
+              <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-50" />
+              <p>No messages have been sent yet</p>
+            </div>
+          )}
         </CardContent>
       </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardContent className="p-6">
-        {isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        ) : messages && messages.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Read By</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {messages.map((message) => (
-                <TableRow key={message.id}>
-                  <TableCell className="font-medium">{message.title}</TableCell>
-                  <TableCell>{format(new Date(message.created_at), 'MMM d, yyyy')}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        checked={message.is_active}
-                        onCheckedChange={() => toggleMessageStatus(message.id, message.is_active)}
-                      />
-                      <span className={message.is_active ? "text-green-600" : "text-gray-500"}>
-                        {message.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
-                      {message.read_count} / {message.total_users} users
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <div className="text-center py-10 text-muted-foreground">
-            <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-50" />
-            <p>No messages have been sent yet</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    </AdminSecurityWrapper>
   );
 }

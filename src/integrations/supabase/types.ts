@@ -792,6 +792,36 @@ export type Database = {
           },
         ]
       }
+      security_logs: {
+        Row: {
+          created_at: string
+          event_details: Json | null
+          event_type: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_details?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_details?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       subscribers: {
         Row: {
           created_at: string
@@ -1306,6 +1336,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      log_security_event: {
+        Args: {
+          event_type: string
+          event_details?: Json
+          user_id_param?: string
+        }
+        Returns: undefined
+      }
       record_curriculum_exercise_attempt: {
         Args: {
           user_id_param: string
@@ -1341,6 +1379,16 @@ export type Database = {
         }
         Returns: string
       }
+      track_visitor_secure: {
+        Args: {
+          visitor_id_param: string
+          page_param: string
+          referer_param: string
+          user_agent_param: string
+          ip_address_param: string
+        }
+        Returns: string
+      }
       update_curriculum_node: {
         Args: {
           node_id_param: string
@@ -1360,6 +1408,14 @@ export type Database = {
           description_param: string
         }
         Returns: undefined
+      }
+      validate_admin_access: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      validate_input: {
+        Args: { input_text: string; max_length?: number; allow_html?: boolean }
+        Returns: boolean
       }
     }
     Enums: {
