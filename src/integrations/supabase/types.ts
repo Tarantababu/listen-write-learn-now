@@ -1311,6 +1311,20 @@ export type Database = {
           status: string
         }[]
       }
+      get_top_pages: {
+        Args: { limit_count?: number }
+        Returns: {
+          page: string
+          count: number
+        }[]
+      }
+      get_top_referrers: {
+        Args: { limit_count?: number }
+        Returns: {
+          name: string
+          value: number
+        }[]
+      }
       get_user_bidirectional_exercise_count: {
         Args: { user_id_param: string; target_language_param: string }
         Returns: number

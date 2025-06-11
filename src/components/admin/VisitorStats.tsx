@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -175,81 +176,48 @@ export function VisitorStats() {
         setVisitorCounts(dailyCountsArray);
         console.log('Daily counts processed:', dailyCountsArray.length, 'days');
         
-        // Process page counts efficiently - get top pages directly
+        // Use optimized database function for page counts
         try {
-          const { data: pageData, error: pageError } = await supabase
-            .from('visitors')
-            .select('page')
-            .not('page', 'like', 'button_click:%') // Exclude button clicks
-            .limit(10000); // Reasonable limit for page analysis
+          const { data: pageData, error: pageError } = await (supabase as any)
+            .rpc('get_top_pages', { limit_count: 10 });
           
           if (!pageError && pageData) {
-            const pageCountsMap: Record<string, number> = {};
-            
-            pageData.forEach(visitor => {
-              if (!visitor.page) return;
-              
-              let pageName = visitor.page;
-              
-              // Clean up page names for better display
-              if (pageName === '/') {
-                pageName = 'Home';
-              } else if (pageName.startsWith('/')) {
-                pageName = pageName.substring(1);
-                pageName = pageName.charAt(0).toUpperCase() + pageName.slice(1);
-                pageName = pageName.replace(/[-_]/g, ' ');
-              }
-              
-              pageCountsMap[pageName] = (pageCountsMap[pageName] || 0) + 1;
-            });
-            
-            const pageCountsArray = Object.entries(pageCountsMap)
-              .map(([page, count]) => ({ page, count }))
-              .sort((a, b) => b.count - a.count)
-              .slice(0, 10);
+            const pageCountsArray = pageData.map((item: any) => ({
+              page: item.page,
+              count: parseInt(item.count, 10)
+            }));
             
             setPageCounts(pageCountsArray);
-            console.log('Page counts processed:', pageCountsArray.length, 'unique pages');
+            console.log('Page counts processed via database function:', pageCountsArray.length, 'unique pages');
+          } else {
+            console.error('Error with get_top_pages function:', pageError);
+            setPageCounts([]);
           }
         } catch (pageError) {
           console.error('Error processing page counts:', pageError);
+          setPageCounts([]);
         }
         
-        // Process referrer counts efficiently
+        // Use optimized database function for referrer counts
         try {
-          const { data: referrerData, error: referrerError } = await supabase
-            .from('visitors')
-            .select('referer')
-            .limit(10000); // Reasonable limit for referrer analysis
+          const { data: referrerData, error: referrerError } = await (supabase as any)
+            .rpc('get_top_referrers', { limit_count: 8 });
           
           if (!referrerError && referrerData) {
-            const referrerCountsMap: Record<string, number> = {};
-            
-            referrerData.forEach(visitor => {
-              let referer = visitor.referer || 'Direct / None';
-              
-              if (referer && referer !== 'Direct / None') {
-                try {
-                  const url = new URL(referer);
-                  referer = url.hostname.replace('www.', '');
-                } catch (e) {
-                  // If URL parsing fails, use the original referer
-                }
-              }
-              
-              referrerCountsMap[referer] = (referrerCountsMap[referer] || 0) + 1;
-            });
-            
-            const referrerCountsArray = Object.entries(referrerCountsMap)
-              .map(([name, value]) => ({ name, value }))
-              .sort((a, b) => b.value - a.value)
-              .slice(0, 8);
+            const referrerCountsArray = referrerData.map((item: any) => ({
+              name: item.name,
+              value: parseInt(item.value, 10)
+            }));
             
             setReferrerCounts(referrerCountsArray);
-            console.log('Referrer counts processed:', referrerCountsArray.length, 'unique referrers');
+            console.log('Referrer counts processed via database function:', referrerCountsArray.length, 'unique referrers');
+          } else {
+            console.error('Error with get_top_referrers function:', referrerError);
+            setReferrerCounts([]);
           }
         } catch (referrerError) {
           console.error('Error processing referrer counts:', referrerError);
+          setReferrerCounts([]);
         }
         
       } catch (err: any) {
