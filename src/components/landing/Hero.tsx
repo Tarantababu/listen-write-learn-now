@@ -162,9 +162,6 @@ export function Hero() {
                       <FlagIcon code={lang.flag} size={20} />
                     </div>
                     <span className="text-sm font-medium text-gray-700">{lang.name}</span>
-                    <span className="text-xs font-bold text-brand-primary bg-brand-primary/10 px-2 py-1 rounded-full">
-                      {lang.level}
-                    </span>
                   </div>
                 ))}
                 <div className="group language-chip flex items-center gap-2 bg-gradient-to-r from-brand-primary to-purple-600 text-white p-3 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
@@ -173,7 +170,7 @@ export function Hero() {
                 </div>
               </div>
               
-              <div className="mt-10 flex flex-col sm:flex-row items-center lg:items-start gap-4">
+              <div className="mt-10 flex flex-col items-center lg:items-start">
                 <Button 
                   size="lg" 
                   className="group bg-gradient-to-r from-brand-primary to-purple-600 hover:from-purple-600 hover:to-brand-primary text-white rounded-2xl px-8 py-4 text-lg font-semibold shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 border-0"
@@ -186,16 +183,6 @@ export function Hero() {
                     Start Free Today
                     <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </Link>
-                </Button>
-                
-                <Button 
-                  variant="outline"
-                  size="lg"
-                  onClick={handleOpenSample}
-                  className="group bg-white/80 backdrop-blur-sm border-2 border-gray-200 hover:border-brand-primary rounded-2xl px-6 py-4 text-gray-700 hover:text-brand-primary transition-all duration-300 hover:shadow-lg"
-                >
-                  <Play size={18} className="mr-2 group-hover:scale-110 transition-transform" />
-                  Try Sample Exercise
                 </Button>
               </div>
             </AnimatedGroup>
@@ -490,7 +477,6 @@ export function Hero() {
             Join thousands of learners who have improved their language skills with our proven method.
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
             <Button 
               size="lg" 
               className="group bg-white text-brand-primary hover:bg-gray-50 rounded-2xl px-10 py-5 text-xl font-bold shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 border-0"
@@ -504,17 +490,6 @@ export function Hero() {
                 <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
               </Link>
             </Button>
-            
-            <Button 
-              variant="outline"
-              size="lg"
-              onClick={handleOpenSample}
-              className="group bg-transparent border-2 border-white text-white hover:bg-white hover:text-brand-primary rounded-2xl px-8 py-5 text-lg font-semibold transition-all duration-300"
-            >
-              <Play size={20} className="mr-2 group-hover:scale-110 transition-transform" />
-              Try Free Sample
-            </Button>
-          </div>
 
           {/* Trust indicators */}
           <div className="mt-12 flex items-center justify-center gap-8 text-white/80 text-sm">
