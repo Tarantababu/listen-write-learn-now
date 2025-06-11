@@ -171,10 +171,12 @@ export function Hero() {
             <AnimatedGroup variants={transitionVariants}>
               <div className="bg-white rounded-xl shadow-2xl p-4 border border-gray-100">
                 <img 
-                  src="/demo.gif" 
+                  src="./demo.gif" 
                   alt="Language learning demonstration" 
-                  className="w-full h-auto rounded-lg"
-                  loading="lazy"
+                  className="w-full h-auto rounded-lg max-w-md mx-auto"
+                  onError={(e) => {
+                    e.currentTarget.src = '/assets/demo.gif';
+                  }}
                 />
               </div>
             </AnimatedGroup>
