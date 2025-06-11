@@ -1311,6 +1311,16 @@ export type Database = {
           status: string
         }[]
       }
+      get_free_subscription_limits: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          email: string
+          exercise_count: number
+          vocabulary_count: number
+          bidirectional_count: number
+        }[]
+      }
       get_top_pages: {
         Args: { limit_count?: number }
         Returns: {
