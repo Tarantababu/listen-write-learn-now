@@ -28,18 +28,22 @@ export function RealTimeMonitor() {
           table: 'visitors'
         },
         (payload) => {
-          const newEvent: RealtimeEvent = {
-            id: payload.new.id,
-            type: 'visitor',
-            timestamp: new Date().toISOString(),
-            data: {
-              page: payload.new.page,
-              visitor_id: payload.new.visitor_id?.substring(0, 8) + '...',
-              referer: payload.new.referer
-            }
-          };
-          
-          setEvents(prev => [newEvent, ...prev.slice(0, 19)]); // Keep last 20 events
+          // Safe property access with type checking
+          const newData = payload.new as any;
+          if (newData && typeof newData === 'object') {
+            const newEvent: RealtimeEvent = {
+              id: newData.id || 'unknown',
+              type: 'visitor',
+              timestamp: new Date().toISOString(),
+              data: {
+                page: newData.page || 'unknown',
+                visitor_id: newData.visitor_id ? newData.visitor_id.substring(0, 8) + '...' : 'unknown',
+                referer: newData.referer || null
+              }
+            };
+            
+            setEvents(prev => [newEvent, ...prev.slice(0, 19)]); // Keep last 20 events
+          }
         }
       )
       .subscribe((status) => {
@@ -57,17 +61,21 @@ export function RealTimeMonitor() {
           table: 'profiles'
         },
         (payload) => {
-          const newEvent: RealtimeEvent = {
-            id: payload.new.id,
-            type: 'user',
-            timestamp: new Date().toISOString(),
-            data: {
-              user_id: payload.new.id?.substring(0, 8) + '...',
-              language: payload.new.selected_language
-            }
-          };
-          
-          setEvents(prev => [newEvent, ...prev.slice(0, 19)]);
+          // Safe property access with type checking
+          const newData = payload.new as any;
+          if (newData && typeof newData === 'object') {
+            const newEvent: RealtimeEvent = {
+              id: newData.id || 'unknown',
+              type: 'user',
+              timestamp: new Date().toISOString(),
+              data: {
+                user_id: newData.id ? newData.id.substring(0, 8) + '...' : 'unknown',
+                language: newData.selected_language || 'unknown'
+              }
+            };
+            
+            setEvents(prev => [newEvent, ...prev.slice(0, 19)]);
+          }
         }
       )
       .subscribe();
@@ -83,19 +91,26 @@ export function RealTimeMonitor() {
           table: 'subscribers'
         },
         (payload) => {
-          const newEvent: RealtimeEvent = {
-            id: payload.new?.id || payload.old?.id,
-            type: 'subscription',
-            timestamp: new Date().toISOString(),
-            data: {
-              email: payload.new?.email || payload.old?.email,
-              subscribed: payload.new?.subscribed,
-              tier: payload.new?.subscription_tier,
-              event: payload.eventType
-            }
-          };
+          // Safe property access with type checking
+          const newData = payload.new as any;
+          const oldData = payload.old as any;
+          const eventData = newData || oldData;
           
-          setEvents(prev => [newEvent, ...prev.slice(0, 19)]);
+          if (eventData && typeof eventData === 'object') {
+            const newEvent: RealtimeEvent = {
+              id: eventData.id || 'unknown',
+              type: 'subscription',
+              timestamp: new Date().toISOString(),
+              data: {
+                email: eventData.email || 'unknown',
+                subscribed: eventData.subscribed || false,
+                tier: eventData.subscription_tier || 'unknown',
+                event: payload.eventType || 'unknown'
+              }
+            };
+            
+            setEvents(prev => [newEvent, ...prev.slice(0, 19)]);
+          }
         }
       )
       .subscribe();
