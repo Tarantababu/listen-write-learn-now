@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Exercise } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -86,6 +85,23 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
   
   // Get shortcuts for the current language
   const shortcuts = getLanguageShortcuts(exercise.language);
+  
+  // Function to get dynamic button label based on accuracy
+  const getTryAgainButtonLabel = () => {
+    if (accuracy === null) return "Try Again";
+    
+    if (accuracy >= 95) {
+      return "Practice More";
+    } else if (accuracy >= 85) {
+      return "Almost There!";
+    } else if (accuracy >= 70) {
+      return "Keep Trying";
+    } else if (accuracy >= 50) {
+      return "Try Again";
+    } else {
+      return "Listen Again";
+    }
+  };
   
   // Sync with external showResults prop
   useEffect(() => {
@@ -963,7 +979,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
                           isMobile && "w-full"
                         )}
                       >
-                        Try Again
+                        {getTryAgainButtonLabel()}
                       </Button>
                     </div>
                   </div>
@@ -1027,7 +1043,7 @@ const DictationPractice: React.FC<DictationPracticeProps> = ({
                         isMobile && "w-full"
                       )}
                     >
-                      Try Again
+                      {getTryAgainButtonLabel()}
                     </Button>
                   </div>
                 </div>
