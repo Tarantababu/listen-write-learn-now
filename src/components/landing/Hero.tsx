@@ -169,26 +169,13 @@ export function Hero() {
           {/* Right Column - Demo GIF */}
           <div className="text-center lg:text-right">
             <AnimatedGroup variants={transitionVariants}>
-              <div className="relative">
-                <div className="bg-white rounded-xl shadow-2xl p-4 border border-gray-100">
-                  <img 
-                    src="/demo.gif" 
-                    alt="Language learning demonstration" 
-                    className="w-full h-auto rounded-lg"
-                    loading="lazy"
-                  />
-                </div>
-                
-                {/* Optional: Try Sample button overlay */}
-                <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2">
-                  <Button
-                    onClick={handleOpenSample}
-                    variant="outline"
-                    className="bg-white shadow-lg hover:shadow-xl border-2 border-brand-primary text-brand-primary hover:bg-brand-primary hover:text-white transition-all rounded-full px-6 py-2"
-                  >
-                    Try Sample Exercise
-                  </Button>
-                </div>
+              <div className="bg-white rounded-xl shadow-2xl p-4 border border-gray-100">
+                <img 
+                  src="/demo.gif" 
+                  alt="Language learning demonstration" 
+                  className="w-full h-auto rounded-lg"
+                  loading="lazy"
+                />
               </div>
             </AnimatedGroup>
           </div>
