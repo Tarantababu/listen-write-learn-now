@@ -166,7 +166,7 @@ export function Hero() {
                 ))}
                 <div className="group language-chip flex items-center gap-2 bg-gradient-to-r from-brand-primary to-purple-600 text-white p-3 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
                   <Globe size={20} className="animate-spin-slow" />
-                  <span className="text-sm font-medium">+ 4 more</span>
+                  <span className="text-sm font-medium">+ 3 more</span>
                 </div>
               </div>
               
@@ -191,74 +191,154 @@ export function Hero() {
           {/* Right Column - Demo Visualization */}
           <div className="text-center lg:text-right">
             <AnimatedGroup variants={transitionVariants}>
-              <div className="relative">
-                {/* Main demo container */}
-                <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-6 border border-white/50 hover:shadow-3xl transition-all duration-500">
-                  {!imageError ? (
-                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100">
-                      <img 
-                        src="./demo.gif" 
-                        alt="Language learning demonstration" 
-                        className="w-full h-auto rounded-2xl max-w-md mx-auto transition-transform duration-300 hover:scale-105"
-                        onError={handleImageError}
-                      />
-                      {/* Overlay play button for visual appeal */}
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300 bg-black/10 rounded-2xl">
-                        <div className="bg-white/90 backdrop-blur-sm rounded-full p-4 shadow-lg">
-                          <Play size={32} className="text-brand-primary" />
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Fallback interactive demo mockup */
-                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-8 max-w-md mx-auto">
-                      <div className="space-y-6">
-                        {/* Mock audio player */}
-                        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="bg-brand-primary/10 p-2 rounded-full">
-                              <Volume2 size={20} className="text-brand-primary" />
+              <div className="relative max-w-lg mx-auto">
+                {/* Main demo container with enhanced design */}
+                <div className="relative bg-gradient-to-br from-white/90 to-white/70 backdrop-blur-xl rounded-3xl shadow-2xl p-1 border border-white/60 hover:shadow-3xl transition-all duration-700 group">
+                  {/* Animated border glow */}
+                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-brand-primary/20 via-purple-500/20 to-pink-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  
+                  <div className="relative bg-white/90 backdrop-blur-sm rounded-3xl p-6">
+                    {!imageError ? (
+                      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 shadow-inner">
+                        {/* Image with enhanced effects */}
+                        <img 
+                          src="./demo.gif" 
+                          alt="Language learning demonstration" 
+                          className="w-full h-auto rounded-2xl transition-all duration-500 group-hover:scale-[1.02]"
+                          onError={handleImageError}
+                        />
+                        
+                        {/* Enhanced overlay with interaction hint */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 bg-gradient-to-t from-black/20 via-transparent to-transparent rounded-2xl">
+                          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl border border-white/80 transform scale-90 group-hover:scale-100 transition-transform duration-300">
+                            <div className="flex items-center gap-3 text-brand-primary">
+                              <div className="relative">
+                                <Play size={24} className="animate-pulse" />
+                                <div className="absolute inset-0 bg-brand-primary/20 rounded-full animate-ping"></div>
+                              </div>
+                              <span className="font-semibold">Interactive Demo</span>
                             </div>
-                            <span className="text-sm font-medium text-gray-700">Listen to native speaker</span>
                           </div>
-                          <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
-                            <div className="bg-gradient-to-r from-brand-primary to-purple-600 h-full w-3/4 rounded-full animate-pulse"></div>
-                          </div>
-                        </div>
-
-                        {/* Mock typing interface */}
-                        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-                          <div className="text-sm text-gray-600 mb-2">Type what you hear:</div>
-                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 min-h-[60px] bg-gray-50">
-                            <span className="text-gray-400 animate-pulse">The weather is beautiful today...</span>
-                          </div>
-                        </div>
-
-                        {/* Mock feedback */}
-                        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Check size={16} className="text-green-500" />
-                            <span className="text-sm font-medium text-green-700">Great job! 95% accuracy</span>
-                          </div>
-                          <div className="text-xs text-gray-500">Keep practicing to improve listening skills</div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      /* Enhanced fallback interactive demo mockup */
+                      <div className="bg-gradient-to-br from-gray-50 via-white to-gray-50 rounded-2xl p-8 shadow-inner">
+                        <div className="space-y-6">
+                          {/* Enhanced mock audio player */}
+                          <div className="group/audio bg-white rounded-2xl p-5 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
+                            <div className="flex items-center gap-4 mb-4">
+                              <div className="bg-gradient-to-br from-brand-primary to-purple-600 p-3 rounded-2xl shadow-lg group-hover/audio:scale-110 transition-transform duration-300">
+                                <Volume2 size={20} className="text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="text-sm font-semibold text-gray-800 mb-1">Native Speaker Audio</div>
+                                <div className="text-xs text-gray-500">French • Intermediate Level</div>
+                              </div>
+                              <div className="text-xs text-brand-primary font-mono bg-brand-primary/10 px-2 py-1 rounded-lg">
+                                0:24
+                              </div>
+                            </div>
+                            <div className="bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
+                              <div className="bg-gradient-to-r from-brand-primary via-purple-500 to-pink-500 h-full rounded-full shadow-sm relative overflow-hidden" style={{width: '65%'}}>
+                                <div className="absolute inset-0 bg-white/30 animate-pulse"></div>
+                              </div>
+                            </div>
+                          </div>
 
-                {/* Floating stats */}
-                <div className="absolute -top-4 -left-4 bg-white/90 backdrop-blur-sm rounded-2xl p-3 shadow-xl border border-white/50">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-brand-primary">10K+</div>
-                    <div className="text-xs text-gray-600">Active Learners</div>
+                          {/* Enhanced mock typing interface */}
+                          <div className="group/typing bg-white rounded-2xl p-5 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="text-sm font-semibold text-gray-800">Type what you hear:</div>
+                              <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">3/5 phrases</div>
+                            </div>
+                            <div className="border-2 border-dashed border-blue-200 rounded-xl p-4 bg-gradient-to-br from-blue-50/50 to-purple-50/50 min-h-[70px] relative overflow-hidden group-hover/typing:border-brand-primary transition-colors duration-300">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-2 h-2 bg-brand-primary rounded-full animate-pulse"></div>
+                                <span className="text-gray-600 font-medium">Le temps est magnifique...</span>
+                              </div>
+                              <div className="text-xs text-gray-400 italic">The weather is beautiful...</div>
+                              
+                              {/* Typing cursor effect */}
+                              <div className="absolute bottom-4 right-4 w-px h-4 bg-brand-primary animate-pulse"></div>
+                            </div>
+                          </div>
+
+                          {/* Enhanced mock feedback */}
+                          <div className="group/feedback bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-5 shadow-lg border border-green-100 hover:shadow-xl transition-all duration-300">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-2 rounded-xl shadow-lg group-hover/feedback:scale-110 transition-transform duration-300">
+                                <Check size={16} className="text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-bold text-green-800 mb-1">Excellent Progress!</div>
+                                <div className="text-sm text-green-600">95% accuracy • +15 XP earned</div>
+                              </div>
+                              <div className="text-2xl font-bold text-green-600">95%</div>
+                            </div>
+                            
+                            {/* Progress visualization */}
+                            <div className="bg-white/60 rounded-xl p-3 border border-green-200/50">
+                              <div className="flex items-center gap-2 text-xs text-green-700">
+                                <div className="flex-1 bg-green-200 rounded-full h-1.5 overflow-hidden">
+                                  <div className="bg-gradient-to-r from-green-500 to-emerald-500 h-full w-[95%] rounded-full"></div>
+                                </div>
+                                <span className="font-semibold">Level up soon!</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="absolute -bottom-4 -right-4 bg-white/90 backdrop-blur-sm rounded-2xl p-3 shadow-xl border border-white/50">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">4.9★</div>
-                    <div className="text-xs text-gray-600">User Rating</div>
+                {/* Enhanced floating stats with animations */}
+                <div className="absolute -top-6 -left-6 group/stat">
+                  <div className="bg-gradient-to-br from-white/95 to-white/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/60 hover:shadow-3xl transition-all duration-500 hover:scale-110">
+                    <div className="text-center">
+                      <div className="text-3xl font-black bg-gradient-to-r from-brand-primary to-purple-600 bg-clip-text text-transparent">
+                        10K+
+                      </div>
+                      <div className="text-xs font-medium text-gray-600 mt-1">Active Learners</div>
+                      <div className="w-8 h-0.5 bg-gradient-to-r from-brand-primary to-purple-600 mx-auto mt-2 rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="absolute -bottom-6 -right-6 group/stat">
+                  <div className="bg-gradient-to-br from-white/95 to-white/80 backdrop-blur-xl rounded-2xl p-4 shadow-2xl border border-white/60 hover:shadow-3xl transition-all duration-500 hover:scale-110">
+                    <div className="text-center">
+                      <div className="flex items-center gap-1 justify-center mb-1">
+                        <span className="text-3xl font-black bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent">4.9</span>
+                        <span className="text-yellow-500 text-xl">★</span>
+                      </div>
+                      <div className="text-xs font-medium text-gray-600">User Rating</div>
+                      <div className="flex gap-0.5 justify-center mt-2">
+                        {[...Array(5)].map((_, i) => (
+                          <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < 5 ? 'bg-yellow-400' : 'bg-gray-300'}`}></div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional floating achievement badge */}
+                <div className="absolute top-1/2 -left-8 transform -translate-y-1/2 group/achievement">
+                  <div className="bg-gradient-to-br from-purple-500 to-pink-600 text-white rounded-2xl p-3 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-110 hover:rotate-3">
+                    <div className="text-center">
+                      <div className="text-lg font-bold">🏆</div>
+                      <div className="text-xs font-semibold mt-1 whitespace-nowrap">AI Powered</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="absolute top-1/3 -right-8 transform -translate-y-1/2 group/speed">
+                  <div className="bg-gradient-to-br from-blue-500 to-cyan-600 text-white rounded-2xl p-3 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-110 hover:-rotate-3">
+                    <div className="text-center">
+                      <div className="text-lg font-bold">⚡</div>
+                      <div className="text-xs font-semibold mt-1 whitespace-nowrap">3x Faster</div>
+                    </div>
                   </div>
                 </div>
               </div>
