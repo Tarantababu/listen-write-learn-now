@@ -166,7 +166,7 @@ export function Hero() {
                 ))}
                 <div className="group language-chip flex items-center gap-2 bg-gradient-to-r from-brand-primary to-purple-600 text-white p-3 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
                   <Globe size={20} className="animate-spin-slow" />
-                  <span className="text-sm font-medium">+ 3 more</span>
+                  <span className="text-sm font-medium">+ 4 more</span>
                 </div>
               </div>
               
