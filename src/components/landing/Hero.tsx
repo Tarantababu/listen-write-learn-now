@@ -167,7 +167,9 @@ export function Hero() {
                 </div>
                 
                 {/* Product Hunt badge */}
-                <div className="mt-10 flex justify-center gap-4 flex-wrap">
+                <div className="mt-10 text-center">
+                  <h3 className="text-2xl font-semibold text-gray-700 mb-6">Featured on</h3>
+                  <div className="flex justify-center gap-4 flex-wrap">
                   <a 
                     href="https://www.producthunt.com/posts/lwlnow?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-lwlnow" 
                     target="_blank" 
@@ -226,15 +228,7 @@ export function Hero() {
                       className="rounded"
                     />
                   </a>
-                </div>
-              </AnimatedGroup>
-            </div>
-
-            {/* Right Column - Hero Image */}
-            <div className="flex justify-center lg:justify-end relative">
-              <AnimatedGroup variants={transitionVariants}>
-                <div className="max-w-md w-full relative">
-                  <img src="https://i.postimg.cc/kMzwjjDG/lwlnow-how-to-exercise-landing.gif" alt="Language learning through dictation - animated demonstration of the exercise interface" className="w-full h-auto object-contain" />
+                  </div>
                 </div>
               </AnimatedGroup>
             </div>
