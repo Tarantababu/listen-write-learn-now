@@ -211,6 +211,21 @@ export function Hero() {
                       className="rounded"
                     />
                   </a>
+                
+                  <a 
+                    href="https://twelve.tools" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:scale-105 transition-transform shadow-lg rounded-lg bg-white p-2 border border-gray-200 hover:shadow-xl"
+                  >
+                    <img 
+                      src="https://twelve.tools/badge3-light.svg" 
+                      alt="Featured on Twelve Tools" 
+                      width="200" 
+                      height="54" 
+                      className="rounded"
+                    />
+                  </a>
                 </div>
               </AnimatedGroup>
             </div>
