@@ -26,7 +26,7 @@ export function FreeSubscriptionLimitsStats() {
     bidirectional: true
   });
   
-  const ITEMS_PER_PAGE = 5;
+  const ITEMS_PER_PAGE = 20;
 
   const { data: limitsData, isLoading, error } = useQuery({
     queryKey: ['free-subscription-limits'],
@@ -81,10 +81,13 @@ export function FreeSubscriptionLimitsStats() {
     );
   }
 
-  // Filter users based on their specific limits
-  const exerciseLimitUsers = limitsData?.filter(user => user.exercise_count >= 3) || [];
-  const vocabularyLimitUsers = limitsData?.filter(user => user.vocabulary_count >= 5) || [];
-  const bidirectionalLimitUsers = limitsData?.filter(user => user.bidirectional_count >= 3) || [];
+  // Filter and sort users based on their specific limits (ascending order by count)
+  const exerciseLimitUsers = limitsData?.filter(user => user.exercise_count >= 3)
+    .sort((a, b) => a.exercise_count - b.exercise_count) || [];
+  const vocabularyLimitUsers = limitsData?.filter(user => user.vocabulary_count >= 5)
+    .sort((a, b) => a.vocabulary_count - b.vocabulary_count) || [];
+  const bidirectionalLimitUsers = limitsData?.filter(user => user.bidirectional_count >= 3)
+    .sort((a, b) => a.bidirectional_count - b.bidirectional_count) || [];
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({
