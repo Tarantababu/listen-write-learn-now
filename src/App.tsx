@@ -263,53 +263,65 @@ if (typeof window !== 'undefined') {
       });
     }
   });
-
-  // Set up query error handling globally
-  queryClient.setMutationDefaults(['*'], {
-    onError: (error: any) => {
-      console.error('Mutation error:', error);
-      
-      if (error?.message?.includes('supabase') || error?.message?.includes('database')) {
-        toast.error('Failed to save changes', {
-          description: 'Database connection issue'
-        });
-      } else if (error?.status === 401) {
-        toast.error('Authentication required', {
-          description: 'Please log in again'
-        });
-      } else if (error?.status === 403) {
-        toast.error('Permission denied', {
-          description: 'You don\'t have access to this action'
-        });
-      } else {
-        toast.error('Operation failed', {
-          description: 'Please try again'
-        });
-      }
-    }
-  });
-
-  queryClient.setQueryDefaults(['*'], {
-    onError: (error: any) => {
-      console.error('Query error:', error);
-      
-      // Show elegant error notifications
-      if (error?.message?.includes('fetch') || error?.message?.includes('network')) {
-        toast.error('Connection issue detected', {
-          description: 'Please check your internet connection'
-        });
-      } else if (error?.status === 401) {
-        toast.error('Session expired', {
-          description: 'Please log in again'
-        });
-      } else if (error?.message?.includes('supabase') || error?.message?.includes('database')) {
-        toast.error('Service temporarily unavailable', {
-          description: 'Please try again in a moment'
-        });
-      }
-    }
-  });
 }
+
+// Set up global error handling for React Query
+const handleQueryError = (error: any) => {
+  console.error('Query error:', error);
+  
+  // Show elegant error notifications
+  if (error?.message?.includes('fetch') || error?.message?.includes('network')) {
+    toast.error('Connection issue detected', {
+      description: 'Please check your internet connection'
+    });
+  } else if (error?.status === 401) {
+    toast.error('Session expired', {
+      description: 'Please log in again'
+    });
+  } else if (error?.message?.includes('supabase') || error?.message?.includes('database')) {
+    toast.error('Service temporarily unavailable', {
+      description: 'Please try again in a moment'
+    });
+  }
+};
+
+const handleMutationError = (error: any) => {
+  console.error('Mutation error:', error);
+  
+  if (error?.message?.includes('supabase') || error?.message?.includes('database')) {
+    toast.error('Failed to save changes', {
+      description: 'Database connection issue'
+    });
+  } else if (error?.status === 401) {
+    toast.error('Authentication required', {
+      description: 'Please log in again'
+    });
+  } else if (error?.status === 403) {
+    toast.error('Permission denied', {
+      description: 'You don\'t have access to this action'
+    });
+  } else {
+    toast.error('Operation failed', {
+      description: 'Please try again'
+    });
+  }
+};
+
+// Set up query cache event listeners for global error handling
+queryClient.getQueryCache().subscribe((event) => {
+  if (event.type === 'observerResultsUpdated') {
+    const { query } = event;
+    if (query.state.error) {
+      handleQueryError(query.state.error);
+    }
+  }
+});
+
+queryClient.getMutationCache().subscribe((event) => {
+  if (event.type === 'updated' && event.mutation?.state.error) {
+    handleMutationError(event.mutation.state.error);
+  }
+});
 
 function App() {
   return (
