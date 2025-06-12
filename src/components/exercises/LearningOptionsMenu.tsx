@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Headphones, AlertTriangle, Clock, BookOpen, TrendingUp, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useGTM } from '@/hooks/use-gtm';
-
 interface LearningOptionsMenuProps {
   onStartReadingAnalysis: () => void;
   onStartDictation: () => void;
@@ -15,7 +13,6 @@ interface LearningOptionsMenuProps {
   isSubscribed?: boolean;
   loadingAnalysisCheck?: boolean;
 }
-
 const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
   onStartReadingAnalysis,
   onStartDictation,
@@ -24,8 +21,10 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
   isSubscribed = false,
   loadingAnalysisCheck = false
 }) => {
-  const { trackFeatureUsed, trackCTAClick } = useGTM();
-
+  const {
+    trackFeatureUsed,
+    trackCTAClick
+  } = useGTM();
   const handleReadingAnalysisClick = () => {
     trackFeatureUsed({
       feature_name: 'reading_analysis_start',
@@ -35,16 +34,13 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
         is_subscribed: isSubscribed
       }
     });
-    
     trackCTAClick({
       cta_type: 'start_exercise',
       cta_location: 'learning_options_menu',
       cta_text: 'Reading Analysis'
     });
-    
     onStartReadingAnalysis();
   };
-
   const handleDictationClick = () => {
     trackFeatureUsed({
       feature_name: 'dictation_practice_start',
@@ -54,13 +50,11 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
         is_subscribed: isSubscribed
       }
     });
-    
     trackCTAClick({
       cta_type: 'start_exercise',
       cta_location: 'learning_options_menu',
       cta_text: 'Dictation Practice'
     });
-    
     onStartDictation();
   };
 
@@ -79,11 +73,8 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
       action: 'analysis'
     };
   };
-
   const recommendation = getRecommendation();
-
-  return (
-    <div className="px-6 py-8 space-y-6 flex-1 overflow-y-auto practice-content">
+  return <div className="px-6 py-8 space-y-6 flex-1 overflow-y-auto practice-content">
       {/* Header Section with Enhanced Hierarchy */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-3">
@@ -94,20 +85,16 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
         </div>
         
         {/* Smart Recommendation Banner */}
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
-        >
-          <div className={`p-4 rounded-lg border-l-4 ${
-            recommendation.type === 'upgrade' 
-              ? 'bg-amber-50 border-l-amber-400 dark:bg-amber-950/20' 
-              : 'bg-blue-50 border-l-blue-400 dark:bg-blue-950/20'
-          }`}>
+        <motion.div initial={{
+        opacity: 0,
+        y: -10
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} className="mb-6">
+          <div className={`p-4 rounded-lg border-l-4 ${recommendation.type === 'upgrade' ? 'bg-amber-50 border-l-amber-400 dark:bg-amber-950/20' : 'bg-blue-50 border-l-blue-400 dark:bg-blue-950/20'}`}>
             <div className="flex items-start gap-3">
-              <TrendingUp className={`h-5 w-5 mt-0.5 ${
-                recommendation.type === 'upgrade' ? 'text-amber-600' : 'text-blue-600'
-              }`} />
+              <TrendingUp className={`h-5 w-5 mt-0.5 ${recommendation.type === 'upgrade' ? 'text-amber-600' : 'text-blue-600'}`} />
               <div>
                 <p className="font-medium text-sm mb-1">💡 Smart Recommendation</p>
                 <p className="text-sm text-muted-foreground">{recommendation.message}</p>
@@ -140,65 +127,49 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
             </div>
           </div>
           
-          {loadingAnalysisCheck && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-2 mt-3 text-sm font-medium text-primary"
-            >
+          {loadingAnalysisCheck && <motion.div initial={{
+          opacity: 0
+        }} animate={{
+          opacity: 1
+        }} className="flex items-center gap-2 mt-3 text-sm font-medium text-primary">
               <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
               Checking for existing analysis...
-            </motion.div>
-          )}
+            </motion.div>}
         </div>
       </div>
 
       {/* Learning Options Grid with Enhanced Design */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         {/* Reading Analysis Option */}
-        <motion.div 
-          whileHover={{ scale: 1.02, y: -2 }} 
-          whileTap={{ scale: 0.98 }} 
-          transition={{ duration: 0.2 }} 
-          className="group relative"
-        >
+        <motion.div whileHover={{
+        scale: 1.02,
+        y: -2
+      }} whileTap={{
+        scale: 0.98
+      }} transition={{
+        duration: 0.2
+      }} className="group relative">
           {/* Recommended Badge */}
-          {recommendation.action === 'analysis' && analysisAllowed && (
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="absolute -top-2 -right-2 z-10"
-            >
+          {recommendation.action === 'analysis' && analysisAllowed && <motion.div initial={{
+          scale: 0,
+          opacity: 0
+        }} animate={{
+          scale: 1,
+          opacity: 1
+        }} transition={{
+          delay: 0.3
+        }} className="absolute -top-2 -right-2 z-10">
               <Badge className="bg-green-500 text-white shadow-lg">
                 Recommended
               </Badge>
-            </motion.div>
-          )}
+            </motion.div>}
           
-          <Card className={`border-2 overflow-hidden transition-all duration-300 hover:shadow-lg dark:hover:bg-muted/5 ${
-            analysisAllowed 
-              ? 'border-primary/20 hover:border-primary/40 bg-gradient-to-br from-primary/5 to-primary/10' 
-              : 'border-muted/50 bg-muted/20'
-          } ${recommendation.action === 'analysis' && analysisAllowed ? 'ring-2 ring-primary/20' : ''}`}>
+          <Card className={`border-2 overflow-hidden transition-all duration-300 hover:shadow-lg dark:hover:bg-muted/5 ${analysisAllowed ? 'border-primary/20 hover:border-primary/40 bg-gradient-to-br from-primary/5 to-primary/10' : 'border-muted/50 bg-muted/20'} ${recommendation.action === 'analysis' && analysisAllowed ? 'ring-2 ring-primary/20' : ''}`}>
             <CardContent className="p-0">
-              <Button 
-                onClick={handleReadingAnalysisClick} 
-                variant="ghost" 
-                disabled={!analysisAllowed || loadingAnalysisCheck} 
-                className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent"
-                data-gtm-cta-type="start_exercise"
-                data-gtm-cta-location="learning_options_menu"
-                data-gtm-cta-text="Reading Analysis"
-                aria-label={`Start Reading Analysis for ${exerciseTitle}. ${analysisAllowed ? 'Available' : 'Requires upgrade'}`}
-              >
+              <Button onClick={handleReadingAnalysisClick} variant="ghost" disabled={!analysisAllowed || loadingAnalysisCheck} className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent" data-gtm-cta-type="start_exercise" data-gtm-cta-location="learning_options_menu" data-gtm-cta-text="Reading Analysis" aria-label={`Start Reading Analysis for ${exerciseTitle}. ${analysisAllowed ? 'Available' : 'Requires upgrade'}`}>
                 <div className="flex flex-col items-center text-center space-y-4 w-full">
                   {/* Icon with enhanced design */}
-                  <div className={`flex items-center justify-center w-16 h-16 rounded-full transition-all duration-300 ${
-                    analysisAllowed 
-                      ? 'bg-primary/15 group-hover:bg-primary/25' 
-                      : 'bg-muted/30'
-                  }`}>
+                  <div className={`flex items-center justify-center w-16 h-16 rounded-full transition-all duration-300 ${analysisAllowed ? 'bg-primary/15 group-hover:bg-primary/25' : 'bg-muted/30'}`}>
                     <Search className={`h-7 w-7 ${analysisAllowed ? 'text-primary' : 'text-muted-foreground'}`} />
                   </div>
                   
@@ -240,39 +211,32 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
         </motion.div>
 
         {/* Dictation Practice Option */}
-        <motion.div 
-          whileHover={{ scale: 1.02, y: -2 }} 
-          whileTap={{ scale: 0.98 }} 
-          transition={{ duration: 0.2 }} 
-          className="group relative"
-        >
+        <motion.div whileHover={{
+        scale: 1.02,
+        y: -2
+      }} whileTap={{
+        scale: 0.98
+      }} transition={{
+        duration: 0.2
+      }} className="group relative">
           {/* Recommended Badge */}
-          {recommendation.action === 'dictation' && (
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="absolute -top-2 -right-2 z-10"
-            >
+          {recommendation.action === 'dictation' && <motion.div initial={{
+          scale: 0,
+          opacity: 0
+        }} animate={{
+          scale: 1,
+          opacity: 1
+        }} transition={{
+          delay: 0.3
+        }} className="absolute -top-2 -right-2 z-10">
               <Badge className="bg-green-500 text-white shadow-lg">
                 Recommended
               </Badge>
-            </motion.div>
-          )}
+            </motion.div>}
           
-          <Card className={`border-2 overflow-hidden transition-all duration-300 hover:shadow-lg dark:hover:bg-muted/5 bg-gradient-to-br from-muted/20 to-muted/30 border-muted hover:border-muted/60 ${
-            recommendation.action === 'dictation' ? 'ring-2 ring-primary/20' : ''
-          }`}>
+          <Card className={`border-2 overflow-hidden transition-all duration-300 hover:shadow-lg dark:hover:bg-muted/5 bg-gradient-to-br from-muted/20 to-muted/30 border-muted hover:border-muted/60 ${recommendation.action === 'dictation' ? 'ring-2 ring-primary/20' : ''}`}>
             <CardContent className="p-0">
-              <Button 
-                onClick={handleDictationClick} 
-                variant="ghost" 
-                className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent"
-                data-gtm-cta-type="start_exercise"
-                data-gtm-cta-location="learning_options_menu"
-                data-gtm-cta-text="Dictation Practice"
-                aria-label={`Start Dictation Practice for ${exerciseTitle}`}
-              >
+              <Button onClick={handleDictationClick} variant="ghost" className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent" data-gtm-cta-type="start_exercise" data-gtm-cta-location="learning_options_menu" data-gtm-cta-text="Dictation Practice" aria-label={`Start Dictation Practice for ${exerciseTitle}`}>
                 <div className="flex flex-col items-center text-center space-y-4 w-full">
                   {/* Icon with enhanced design */}
                   <div className="flex items-center justify-center w-16 h-16 rounded-full transition-all duration-300 bg-muted/40 group-hover:bg-muted/60">
@@ -318,15 +282,18 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
       </div>
 
       {/* Social Proof Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="flex items-center justify-center gap-6 pt-6 text-sm text-muted-foreground"
-      >
+      <motion.div initial={{
+      opacity: 0,
+      y: 20
+    }} animate={{
+      opacity: 1,
+      y: 0
+    }} transition={{
+      delay: 0.4
+    }} className="flex items-center justify-center gap-6 pt-6 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4" />
-          <span>Join 50k+ learners</span>
+          <span>Join 10k+ learners</span>
         </div>
         <div className="w-1 h-1 rounded-full bg-muted-foreground"></div>
         <div className="flex items-center gap-2">
@@ -336,13 +303,16 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
       </motion.div>
 
       {/* Upgrade Banner for Free Users */}
-      {!analysisAllowed && !isSubscribed && (
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          transition={{ duration: 0.3, delay: 0.5 }} 
-          className="bg-amber-50 border-2 border-amber-200 text-amber-800 p-6 rounded-lg mt-6 dark:bg-amber-950/20 dark:border-amber-800/40 dark:text-amber-300"
-        >
+      {!analysisAllowed && !isSubscribed && <motion.div initial={{
+      opacity: 0,
+      y: 10
+    }} animate={{
+      opacity: 1,
+      y: 0
+    }} transition={{
+      duration: 0.3,
+      delay: 0.5
+    }} className="bg-amber-50 border-2 border-amber-200 text-amber-800 p-6 rounded-lg mt-6 dark:bg-amber-950/20 dark:border-amber-800/40 dark:text-amber-300">
           <div className="flex items-start gap-4">
             <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-1" />
             <div className="flex-1">
@@ -359,10 +329,7 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
               </div>
             </div>
           </div>
-        </motion.div>
-      )}
-    </div>
-  );
+        </motion.div>}
+    </div>;
 };
-
 export default LearningOptionsMenu;
