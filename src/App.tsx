@@ -11,9 +11,8 @@ import { SubscriptionProvider } from './contexts/SubscriptionContext';
 import { HelmetProvider } from 'react-helmet-async';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { GTMTracker } from '@/components/GTMTracker';
-import { ErrorBoundary } from 'react-error-boundary';
 import { toast } from 'sonner';
-import React from 'react';
+import React, { Component, ReactNode } from 'react';
 
 import Layout from "@/components/Layout";
 import Index from "@/pages/Index";
@@ -40,6 +39,42 @@ import BlogPostEditor from "@/components/blog/admin/BlogPostEditor";
 // Create Blog-related pages
 import BlogPage from "@/pages/BlogPage"; 
 import BlogPostPage from "@/pages/BlogPostPage";
+
+// Custom Error Boundary Component
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('ErrorBoundary caught error:', error, errorInfo);
+  }
+
+  resetError = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  render() {
+    if (this.state.hasError && this.state.error) {
+      return <ErrorFallback error={this.state.error} resetErrorBoundary={this.resetError} />;
+    }
+    return this.props.children;
+  }
+}
 
 // Error Fallback Component
 interface ErrorFallbackProps {
@@ -182,52 +217,20 @@ const queryClient = new QueryClient({
         return failureCount < 2;
       },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-      onError: (error: any) => {
-        console.error('Query error:', error);
-        
-        // Show elegant error notifications
-        if (error?.message?.includes('fetch') || error?.message?.includes('network')) {
-          toast.error('Connection issue detected', {
-            description: 'Please check your internet connection'
-          });
-        } else if (error?.status === 401) {
-          toast.error('Session expired', {
-            description: 'Please log in again'
-          });
-        } else if (error?.message?.includes('supabase') || error?.message?.includes('database')) {
-          toast.error('Service temporarily unavailable', {
-            description: 'Please try again in a moment'
-          });
-        }
-      }
     },
     mutations: {
-      onError: (error: any) => {
-        console.error('Mutation error:', error);
-        
-        if (error?.message?.includes('supabase') || error?.message?.includes('database')) {
-          toast.error('Failed to save changes', {
-            description: 'Database connection issue'
-          });
-        } else if (error?.status === 401) {
-          toast.error('Authentication required', {
-            description: 'Please log in again'
-          });
-        } else if (error?.status === 403) {
-          toast.error('Permission denied', {
-            description: 'You don\'t have access to this action'
-          });
-        } else {
-          toast.error('Operation failed', {
-            description: 'Please try again'
-          });
+      retry: (failureCount, error: any) => {
+        // Don't retry mutations for auth errors
+        if (error?.status === 401 || error?.status === 403) {
+          return false;
         }
-      }
+        return failureCount < 1;
+      },
     }
   }
 });
 
-// Global error handlers
+// Global error handlers with elegant notifications
 if (typeof window !== 'undefined') {
   // Handle unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {
@@ -260,22 +263,58 @@ if (typeof window !== 'undefined') {
       });
     }
   });
+
+  // Set up query error handling globally
+  queryClient.setMutationDefaults(['*'], {
+    onError: (error: any) => {
+      console.error('Mutation error:', error);
+      
+      if (error?.message?.includes('supabase') || error?.message?.includes('database')) {
+        toast.error('Failed to save changes', {
+          description: 'Database connection issue'
+        });
+      } else if (error?.status === 401) {
+        toast.error('Authentication required', {
+          description: 'Please log in again'
+        });
+      } else if (error?.status === 403) {
+        toast.error('Permission denied', {
+          description: 'You don\'t have access to this action'
+        });
+      } else {
+        toast.error('Operation failed', {
+          description: 'Please try again'
+        });
+      }
+    }
+  });
+
+  queryClient.setQueryDefaults(['*'], {
+    onError: (error: any) => {
+      console.error('Query error:', error);
+      
+      // Show elegant error notifications
+      if (error?.message?.includes('fetch') || error?.message?.includes('network')) {
+        toast.error('Connection issue detected', {
+          description: 'Please check your internet connection'
+        });
+      } else if (error?.status === 401) {
+        toast.error('Session expired', {
+          description: 'Please log in again'
+        });
+      } else if (error?.message?.includes('supabase') || error?.message?.includes('database')) {
+        toast.error('Service temporarily unavailable', {
+          description: 'Please try again in a moment'
+        });
+      }
+    }
+  });
 }
 
 function App() {
   return (
     <div className="min-h-screen flex flex-col">
-      <ErrorBoundary 
-        FallbackComponent={ErrorFallback}
-        onError={(error, errorInfo) => {
-          console.error('ErrorBoundary caught error:', error, errorInfo);
-          // Here you could send error reports to monitoring services
-        }}
-        onReset={() => {
-          // Reset any global state if needed
-          window.location.reload();
-        }}
-      >
+      <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
             <HelmetProvider>
