@@ -1,8 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, Loader2, BookOpen, Brain, Lightbulb, FileText } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface ReadingAnalysisProgressProps {
   isGenerating: boolean;
@@ -55,19 +53,28 @@ export const ReadingAnalysisProgress: React.FC<ReadingAnalysisProgressProps> = (
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [stepProgress, setStepProgress] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     if (!isGenerating) {
+      // Reset all states when not generating
       setCurrentStepIndex(0);
       setProgress(0);
       setStepProgress(0);
+      setIsAnimating(false);
       return;
     }
 
+    // Start animation when generation begins
+    setIsAnimating(true);
+    
     const totalDuration = PROGRESS_STEPS.reduce((acc, step) => acc + step.estimatedDuration, 0);
     let elapsedTime = 0;
+    let hasCompleted = false;
 
     const interval = setInterval(() => {
+      if (hasCompleted) return;
+      
       elapsedTime += 0.1;
       
       // Calculate which step we should be on
@@ -75,43 +82,52 @@ export const ReadingAnalysisProgress: React.FC<ReadingAnalysisProgressProps> = (
       let newStepIndex = 0;
       
       for (let i = 0; i < PROGRESS_STEPS.length; i++) {
-        if (elapsedTime <= cumulativeTime + PROGRESS_STEPS[i].estimatedDuration) {
+        const stepEndTime = cumulativeTime + PROGRESS_STEPS[i].estimatedDuration;
+        if (elapsedTime <= stepEndTime) {
           newStepIndex = i;
           break;
         }
         cumulativeTime += PROGRESS_STEPS[i].estimatedDuration;
-        newStepIndex = i + 1;
       }
       
+      // Ensure we don't exceed the last step
+      newStepIndex = Math.min(newStepIndex, PROGRESS_STEPS.length - 1);
+      
       // Update current step if it changed
-      if (newStepIndex !== currentStepIndex && newStepIndex < PROGRESS_STEPS.length) {
+      if (newStepIndex !== currentStepIndex) {
         setCurrentStepIndex(newStepIndex);
       }
       
-      // Calculate overall progress
+      // Calculate overall progress (cap at 95% until completion)
       const overallProgress = Math.min((elapsedTime / totalDuration) * 100, 95);
       setProgress(overallProgress);
       
       // Calculate step progress
-      if (newStepIndex < PROGRESS_STEPS.length) {
-        const stepStartTime = PROGRESS_STEPS.slice(0, newStepIndex).reduce((acc, step) => acc + step.estimatedDuration, 0);
-        const stepElapsed = elapsedTime - stepStartTime;
-        const stepDuration = PROGRESS_STEPS[newStepIndex].estimatedDuration;
-        const stepProg = Math.min((stepElapsed / stepDuration) * 100, 100);
-        setStepProgress(stepProg);
-      }
+      const stepStartTime = PROGRESS_STEPS.slice(0, newStepIndex).reduce((acc, step) => acc + step.estimatedDuration, 0);
+      const stepElapsed = Math.max(0, elapsedTime - stepStartTime);
+      const stepDuration = PROGRESS_STEPS[newStepIndex].estimatedDuration;
+      const stepProg = Math.min((stepElapsed / stepDuration) * 100, 100);
+      setStepProgress(stepProg);
       
-      // If we've completed all steps, stop the interval
-      if (overallProgress >= 95) {
-        clearInterval(interval);
-        if (onComplete) {
-          onComplete();
-        }
+      // If we've reached 95% progress, trigger completion
+      if (overallProgress >= 95 && !hasCompleted) {
+        hasCompleted = true;
+        setProgress(100);
+        setStepProgress(100);
+        
+        // Wait a moment before calling onComplete
+        setTimeout(() => {
+          if (onComplete) {
+            onComplete();
+          }
+        }, 500);
       }
     }, 100);
 
-    return () => clearInterval(interval);
-  }, [isGenerating, currentStepIndex, onComplete]);
+    return () => {
+      clearInterval(interval);
+    };
+  }, [isGenerating, onComplete]);
 
   if (!isGenerating) return null;
 
@@ -123,12 +139,14 @@ export const ReadingAnalysisProgress: React.FC<ReadingAnalysisProgressProps> = (
       {/* Main Progress Circle */}
       <div className="relative">
         <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          <div 
+            className={`transition-transform duration-1000 ${isAnimating ? 'animate-spin' : ''}`}
+            style={{ 
+              animation: isAnimating ? 'spin 2s linear infinite' : 'none'
+            }}
           >
             <CurrentStepIcon className="h-8 w-8 text-primary" />
-          </motion.div>
+          </div>
         </div>
         
         {/* Progress ring overlay */}
@@ -151,7 +169,7 @@ export const ReadingAnalysisProgress: React.FC<ReadingAnalysisProgressProps> = (
             fill="transparent"
             strokeDasharray={`${2 * Math.PI * 36}`}
             strokeDashoffset={`${2 * Math.PI * 36 * (1 - progress / 100)}`}
-            className="text-primary transition-all duration-300"
+            className="text-primary transition-all duration-500 ease-out"
             strokeLinecap="round"
           />
         </svg>
@@ -159,23 +177,19 @@ export const ReadingAnalysisProgress: React.FC<ReadingAnalysisProgressProps> = (
 
       {/* Current Step Info */}
       <div className="text-center space-y-2">
-        <motion.h3 
+        <h3 
           key={currentStep?.id}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-lg font-semibold text-primary"
+          className="text-lg font-semibold text-primary transition-opacity duration-300"
         >
           {currentStep?.label || 'Processing...'}
-        </motion.h3>
+        </h3>
         
-        <motion.p 
+        <p 
           key={`${currentStep?.id}-desc`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-sm text-muted-foreground max-w-xs"
+          className="text-sm text-muted-foreground max-w-xs transition-opacity duration-300"
         >
           {currentStep?.description || 'Analyzing your text...'}
-        </motion.p>
+        </p>
       </div>
 
       {/* Overall Progress Bar */}
@@ -187,7 +201,6 @@ export const ReadingAnalysisProgress: React.FC<ReadingAnalysisProgressProps> = (
         <Progress 
           value={progress} 
           className="h-2"
-          indicatorClassName="transition-all duration-300"
         />
       </div>
 
@@ -199,8 +212,7 @@ export const ReadingAnalysisProgress: React.FC<ReadingAnalysisProgressProps> = (
         </div>
         <Progress 
           value={stepProgress} 
-          className="h-1"
-          indicatorClassName="bg-primary/60 transition-all duration-300"
+          className="h-1 bg-muted"
         />
       </div>
 
@@ -211,19 +223,18 @@ export const ReadingAnalysisProgress: React.FC<ReadingAnalysisProgressProps> = (
             const StepIcon = step.icon;
             const isCompleted = index < currentStepIndex;
             const isCurrent = index === currentStepIndex;
-            const isUpcoming = index > currentStepIndex;
             
             return (
-              <motion.div
+              <div
                 key={step.id}
-                initial={{ scale: 0.8, opacity: 0.5 }}
-                animate={{ 
-                  scale: isCurrent ? 1.1 : 1,
+                className={`flex flex-col items-center p-2 rounded-lg text-center transition-all duration-300 ${
+                  isCurrent ? 'scale-105' : 'scale-100'
+                }`}
+                style={{
                   opacity: isCompleted ? 1 : isCurrent ? 1 : 0.4
                 }}
-                className="flex flex-col items-center p-2 rounded-lg text-center"
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 transition-colors ${
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 transition-colors duration-300 ${
                   isCompleted 
                     ? 'bg-green-100 text-green-600' 
                     : isCurrent 
@@ -236,7 +247,7 @@ export const ReadingAnalysisProgress: React.FC<ReadingAnalysisProgressProps> = (
                     <StepIcon className="h-4 w-4" />
                   )}
                 </div>
-                <span className={`text-xs font-medium ${
+                <span className={`text-xs font-medium transition-colors duration-300 ${
                   isCompleted 
                     ? 'text-green-600' 
                     : isCurrent 
@@ -245,21 +256,19 @@ export const ReadingAnalysisProgress: React.FC<ReadingAnalysisProgressProps> = (
                 }`}>
                   {step.label.split(' ')[0]}
                 </span>
-              </motion.div>
+              </div>
             );
           })}
         </div>
       </div>
 
       {/* Estimated time remaining */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        className="text-xs text-muted-foreground text-center"
+      <div 
+        className="text-xs text-muted-foreground text-center transition-opacity duration-1000 delay-1000"
+        style={{ opacity: isAnimating ? 1 : 0 }}
       >
         This usually takes 10-15 seconds
-      </motion.div>
+      </div>
     </div>
   );
 };
