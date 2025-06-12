@@ -6,8 +6,9 @@ import { Exercise, Json } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import ReadingAnalysisProgress from '@/components/ReadingAnalysisProgress';
 
 interface ReadingAnalysisProps {
   exercise: Exercise;
@@ -296,11 +297,12 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
   
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 p-6">
-        <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-        <p className="text-lg font-medium">Generating reading analysis...</p>
-        <p className="text-sm text-muted-foreground mt-2">This may take a moment as we analyze the text.</p>
-      </div>
+      <ReadingAnalysisProgress 
+        isGenerating={true}
+        onComplete={() => {
+          // Progress component handles the UI, actual completion handled by useEffect
+        }}
+      />
     );
   }
   
