@@ -339,7 +339,7 @@ function App() {
                           <VocabularyProvider>
                             <TooltipProvider>
                               <Toaster 
-                                position="top-right"
+                                position="bottom-right"
                                 expand={true}
                                 richColors={true}
                                 closeButton={true}
