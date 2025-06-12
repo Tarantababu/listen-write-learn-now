@@ -18,6 +18,7 @@ import {
 } from '@/services/exerciseService';
 import { fetchDefaultExercises, copyDefaultExerciseToUser, mapToExercise } from '@/services/defaultExerciseService';
 import { useLocalExercises } from '@/hooks/useLocalExercises';
+import { countUserDefaultExercises, canAddMoreDefaultExercises } from '@/utils/defaultExerciseUtils';
 
 interface ExerciseContextType {
   exercises: Exercise[];
@@ -38,6 +39,10 @@ interface ExerciseContextType {
   canEdit: boolean;
   exerciseLimit: number;
   refreshExercises: () => Promise<void>;
+  // New properties for default exercise limitations
+  defaultExerciseLimit: number;
+  userDefaultExerciseCount: number;
+  canAddMoreDefaultExercises: boolean;
 }
 
 const ExerciseContext = createContext<ExerciseContextType | undefined>(undefined);
@@ -64,11 +69,24 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Define the exercise limit for non-premium users - updated to 3
   const exerciseLimit = 3;
   
+  // Define the default exercise limit for non-premium users
+  const defaultExerciseLimit = 10;
+  
+  // Calculate how many default exercises the user has added
+  const userDefaultExerciseCount = countUserDefaultExercises(exercises);
+  
   // Determine if user can create more exercises
   const canCreateMore = subscription.isSubscribed || exercises.length < exerciseLimit;
   
   // Determine if user can edit exercises (only premium users can)
   const canEdit = subscription.isSubscribed;
+
+  // Determine if user can add more default exercises
+  const canAddMoreDefaultExercisesValue = canAddMoreDefaultExercises(
+    userDefaultExerciseCount,
+    subscription.isSubscribed,
+    defaultExerciseLimit
+  );
 
   // Ensure audio bucket exists
   useEffect(() => {
@@ -323,11 +341,17 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       toast.error('You need to be logged in to copy default exercises');
       throw new Error('Authentication required');
     }
+
+    // Check if user can add more default exercises
+    if (!canAddMoreDefaultExercisesValue) {
+      toast.error(`You've reached the limit of ${defaultExerciseLimit} learning plan exercises. Upgrade to premium for unlimited access.`);
+      throw new Error('Default exercise limit reached');
+    }
     
     try {
       const newExercise = await copyDefaultExerciseToUser(defaultExerciseId, user.id);
       setExercises(prev => [newExercise, ...prev]);
-      toast.success('Default exercise copied to your exercises');
+      toast.success('Learning plan exercise added to your collection');
       return newExercise;
     } catch (error: any) {
       toast.error('Failed to copy default exercise: ' + error.message);
@@ -398,6 +422,10 @@ export const ExerciseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     canEdit,
     exerciseLimit,
     refreshExercises,
+    // New properties for default exercise limitations
+    defaultExerciseLimit,
+    userDefaultExerciseCount,
+    canAddMoreDefaultExercises: canAddMoreDefaultExercisesValue,
   };
 
   return (
