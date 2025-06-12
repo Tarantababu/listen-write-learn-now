@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, ArrowRight, CheckCircle, AlertTriangle, Volume2 } from 'lucide-react';
+import { Play, ArrowRight, CheckCircle, AlertTriangle, Volume2, RotateCcw, Eye } from 'lucide-react';
 import { BidirectionalService } from '@/services/bidirectionalService';
 import type { BidirectionalExercise } from '@/types/bidirectional';
 import type { Language } from '@/types';
@@ -35,6 +36,8 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
   const [isLoading, setIsLoading] = useState(false);
   const [translationComparison, setTranslationComparison] = useState<ReturnType<typeof compareTexts> | null>(null);
   const [backTranslationComparison, setBackTranslationComparison] = useState<ReturnType<typeof compareTexts> | null>(null);
+  const [showExpectedTranslation, setShowExpectedTranslation] = useState(false);
+  const [showExpectedBackTranslation, setShowExpectedBackTranslation] = useState(false);
 
   React.useEffect(() => {
     if (exercise && isOpen) {
@@ -44,30 +47,28 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
       setCurrentStep('forward');
       setTranslationComparison(null);
       setBackTranslationComparison(null);
+      setShowExpectedTranslation(false);
+      setShowExpectedBackTranslation(false);
     }
   }, [exercise, isOpen]);
 
+  const handleCheckAccuracy = () => {
+    if (currentStep === 'forward' && exercise?.normal_translation) {
+      const comparison = compareTexts(exercise.normal_translation, userTranslation);
+      setTranslationComparison(comparison);
+    } else if (currentStep === 'backward' && exercise?.original_sentence) {
+      const backComparison = compareTexts(exercise.original_sentence, userBackTranslation);
+      setBackTranslationComparison(backComparison);
+    }
+  };
+
   const handleNextStep = () => {
-    switch (currentStep) {
-      case 'forward':
-        // Check translation accuracy before proceeding
-        if (exercise?.normal_translation) {
-          const comparison = compareTexts(exercise.normal_translation, userTranslation);
-          setTranslationComparison(comparison);
-          if (comparison.accuracy < 95) {
-            toast({
-              title: "Translation Accuracy Too Low",
-              description: `Your translation accuracy is ${comparison.accuracy}%. You need at least 95% accuracy to proceed.`,
-              variant: "destructive"
-            });
-            return;
-          }
-        }
-        setCurrentStep('backward');
-        break;
-      case 'backward':
-        setCurrentStep('complete');
-        break;
+    if (currentStep === 'forward') {
+      setCurrentStep('backward');
+      setTranslationComparison(null);
+      setShowExpectedTranslation(false);
+    } else if (currentStep === 'backward') {
+      setCurrentStep('complete');
     }
   };
 
@@ -132,33 +133,45 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
     }
   };
 
+  const handleRetry = () => {
+    if (currentStep === 'forward') {
+      setUserTranslation('');
+      setTranslationComparison(null);
+      setShowExpectedTranslation(false);
+    } else if (currentStep === 'backward') {
+      setUserBackTranslation('');
+      setBackTranslationComparison(null);
+      setShowExpectedBackTranslation(false);
+    }
+  };
+
   const renderWordFeedback = (comparison: ReturnType<typeof compareTexts>) => {
     if (!comparison) return null;
     
     return (
-      <div className="space-y-3">
-        <div className="text-sm font-medium">Word-by-word analysis:</div>
-        <div className="flex flex-wrap gap-1 p-3 bg-muted rounded-md">
+      <div className="space-y-2">
+        <div className="text-xs font-medium text-muted-foreground">Word-by-word analysis:</div>
+        <div className="flex flex-wrap gap-1 p-2 bg-muted/50 rounded-md border">
           {comparison.tokenResults.map((token, index) => {
-            let className = "px-2 py-1 rounded text-sm ";
+            let className = "px-1.5 py-0.5 rounded text-xs ";
             let displayText = token.userToken || `[${token.originalToken}]`;
             
             switch (token.status) {
               case 'correct':
-                className += "bg-green-100 text-green-800 border border-green-200";
+                className += "bg-green-100 text-green-700 border border-green-200";
                 break;
               case 'almost':
-                className += "bg-yellow-100 text-yellow-800 border border-yellow-200";
+                className += "bg-yellow-100 text-yellow-700 border border-yellow-200";
                 break;
               case 'incorrect':
-                className += "bg-red-100 text-red-800 border border-red-200";
+                className += "bg-red-100 text-red-700 border border-red-200";
                 break;
               case 'missing':
                 className += "bg-gray-100 text-gray-600 border border-gray-200 line-through";
                 displayText = `[${token.originalToken}]`;
                 break;
               case 'extra':
-                className += "bg-orange-100 text-orange-800 border border-orange-200";
+                className += "bg-orange-100 text-orange-700 border border-orange-200";
                 break;
               default:
                 className += "bg-gray-100 text-gray-600";
@@ -172,26 +185,26 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
           })}
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+        <div className="grid grid-cols-3 md:grid-cols-5 gap-1 text-xs">
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 bg-green-100 border border-green-200 rounded"></div>
-            <span>Correct ({comparison.correct})</span>
+            <div className="w-2 h-2 bg-green-100 border border-green-200 rounded"></div>
+            <span className="text-xs">Correct ({comparison.correct})</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 bg-yellow-100 border border-yellow-200 rounded"></div>
-            <span>Almost ({comparison.almost})</span>
+            <div className="w-2 h-2 bg-yellow-100 border border-yellow-200 rounded"></div>
+            <span className="text-xs">Almost ({comparison.almost})</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 bg-red-100 border border-red-200 rounded"></div>
-            <span>Wrong ({comparison.incorrect})</span>
+            <div className="w-2 h-2 bg-red-100 border border-red-200 rounded"></div>
+            <span className="text-xs">Wrong ({comparison.incorrect})</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 bg-gray-100 border border-gray-200 rounded"></div>
-            <span>Missing ({comparison.missing})</span>
+            <div className="w-2 h-2 bg-gray-100 border border-gray-200 rounded"></div>
+            <span className="text-xs">Missing ({comparison.missing})</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 bg-orange-100 border border-orange-200 rounded"></div>
-            <span>Extra ({comparison.extra})</span>
+            <div className="w-2 h-2 bg-orange-100 border border-orange-200 rounded"></div>
+            <span className="text-xs">Extra ({comparison.extra})</span>
           </div>
         </div>
       </div>
@@ -201,9 +214,8 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
   if (!exercise) return null;
 
   // Create a mock exercise object for VocabularyHighlighter compatibility
-  // Note: We don't pass the exerciseId since bidirectional exercises are in a different table
   const mockExercise = {
-    id: `bidirectional-${exercise.id}`, // Use a prefixed ID to distinguish from regular exercises
+    id: `bidirectional-${exercise.id}`,
     text: exercise.original_sentence,
     language: exercise.target_language as Language,
     title: 'Bidirectional Exercise',
@@ -217,42 +229,42 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
   };
 
   const modalContent = (
-    <div className={`space-y-4 ${isMobile ? 'px-4 py-4' : 'space-y-6'}`}>
+    <div className={`space-y-4 ${isMobile ? 'px-2 py-2' : 'space-y-4'}`}>
       {/* Original Sentence - Always Visible at Top */}
       <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
-        <CardHeader className={isMobile ? "pb-2" : "pb-3"}>
+        <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
-            <Volume2 className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-            <CardTitle className={`${isMobile ? 'text-base' : 'text-lg'} text-primary`}>
+            <Volume2 className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-medium text-primary">
               Original Sentence ({exercise.target_language})
             </CardTitle>
           </div>
         </CardHeader>
-        <CardContent className={`space-y-3 ${isMobile ? 'space-y-2' : 'space-y-4'}`}>
-          <div className={`p-3 ${isMobile ? 'p-3' : 'p-4'} bg-background rounded-lg border`}>
-            <p className={`${isMobile ? 'text-lg' : 'text-xl'} font-semibold text-center leading-relaxed`}>
+        <CardContent className="space-y-3">
+          <div className="p-3 bg-background rounded-lg border">
+            <p className="text-base font-medium text-center leading-relaxed">
               {exercise.original_sentence}
             </p>
           </div>
-          {/* Audio Players for Generated Sentences */}
-          <div className={`space-y-3 ${isMobile ? 'space-y-2' : 'space-y-4'}`}>
+          {/* Audio Players */}
+          <div className="space-y-2">
             {exercise.original_audio_url && (
-              <div className="flex flex-col items-center gap-2">
-                <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-muted-foreground`}>
-                  Original Sentence Audio
+              <div className="flex flex-col items-center gap-1">
+                <div className="text-xs font-medium text-muted-foreground">
+                  Original Audio
                 </div>
-                <div className={`bg-background/50 ${isMobile ? 'p-2' : 'p-4'} rounded-lg border`}>
+                <div className="bg-background/50 p-2 rounded-lg border">
                   <AudioPlayer audioUrl={exercise.original_audio_url} />
                 </div>
               </div>
             )}
             
             {exercise.normal_translation_audio_url && (
-              <div className="flex flex-col items-center gap-2">
-                <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-muted-foreground`}>
+              <div className="flex flex-col items-center gap-1">
+                <div className="text-xs font-medium text-muted-foreground">
                   Translation Audio ({exercise.support_language})
                 </div>
-                <div className={`bg-background/50 ${isMobile ? 'p-2' : 'p-4'} rounded-lg border`}>
+                <div className="bg-background/50 p-2 rounded-lg border">
                   <AudioPlayer audioUrl={exercise.normal_translation_audio_url} />
                 </div>
               </div>
@@ -262,118 +274,133 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
       </Card>
 
       {/* Step Progress Indicator */}
-      <div className={`flex items-center justify-center ${isMobile ? 'space-x-2 py-1' : 'space-x-4 py-2'}`}>
-        <div className={`flex items-center ${isMobile ? 'space-x-1 px-2 py-1' : 'space-x-2 px-4 py-2'} rounded-full ${
+      <div className="flex items-center justify-center space-x-2 py-2">
+        <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs ${
           currentStep === 'forward' ? 'bg-primary text-primary-foreground' : 
           currentStep === 'backward' || currentStep === 'complete' ? 'bg-green-100 text-green-800' : 'bg-muted'
         }`}>
-          <span className={`font-medium ${isMobile ? 'text-xs' : ''}`}>1</span>
-          <span className={isMobile ? 'text-xs' : ''}>Forward Translation</span>
+          <span className="font-medium">1</span>
+          <span>Forward</span>
         </div>
-        <ArrowRight className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground`} />
-        <div className={`flex items-center ${isMobile ? 'space-x-1 px-2 py-1' : 'space-x-2 px-4 py-2'} rounded-full ${
+        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+        <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs ${
           currentStep === 'backward' ? 'bg-primary text-primary-foreground' : 
           currentStep === 'complete' ? 'bg-green-100 text-green-800' : 'bg-muted'
         }`}>
-          <span className={`font-medium ${isMobile ? 'text-xs' : ''}`}>2</span>
-          <span className={isMobile ? 'text-xs' : ''}>Back Translation</span>
+          <span className="font-medium">2</span>
+          <span>Backward</span>
         </div>
-        <ArrowRight className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground`} />
-        <div className={`flex items-center ${isMobile ? 'space-x-1 px-2 py-1' : 'space-x-2 px-4 py-2'} rounded-full ${
+        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+        <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs ${
           currentStep === 'complete' ? 'bg-green-500 text-white' : 'bg-muted'
         }`}>
-          <CheckCircle className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
-          <span className={isMobile ? 'text-xs' : ''}>Complete</span>
+          <CheckCircle className="h-3 w-3" />
+          <span>Complete</span>
         </div>
       </div>
 
       {/* Forward Translation Step */}
       {currentStep === 'forward' && (
         <Card className="border-blue-200 bg-blue-50/50">
-          <CardHeader className={isMobile ? 'pb-2' : ''}>
-            <CardTitle className="flex items-center gap-2">
-              <span className={`bg-blue-500 text-white rounded-full ${isMobile ? 'w-5 h-5 text-xs' : 'w-6 h-6 text-sm'} flex items-center justify-center font-bold`}>1</span>
-              <span className={isMobile ? 'text-base' : ''}>Forward Translation</span>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <span className="bg-blue-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold">1</span>
+              <span>Forward Translation</span>
             </CardTitle>
-            <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
-              Translate the sentence from <span className="font-semibold">{exercise.target_language}</span> to <span className="font-semibold">{exercise.support_language}</span>
+            <p className="text-xs text-muted-foreground">
+              Translate from <span className="font-semibold">{exercise.target_language}</span> to <span className="font-semibold">{exercise.support_language}</span>
             </p>
           </CardHeader>
-          <CardContent className={`space-y-3 ${isMobile ? 'space-y-3' : 'space-y-4'}`}>
+          <CardContent className="space-y-3">
             <div className="space-y-2">
-              <label className={`${isMobile ? 'text-sm' : 'text-sm'} font-medium`}>Your translation:</label>
+              <label className="text-xs font-medium">Your translation:</label>
               <Textarea 
                 value={userTranslation} 
                 onChange={(e) => {
                   setUserTranslation(e.target.value);
-                  setTranslationComparison(null); // Reset comparison when user types
+                  setTranslationComparison(null);
                 }} 
                 placeholder="Enter your translation..." 
-                rows={isMobile ? 2 : 3} 
-                className={isMobile ? 'text-base' : 'text-lg'} 
+                rows={2}
+                className="text-sm resize-none"
               />
             </div>
             
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                onClick={handleCheckAccuracy} 
+                disabled={!userTranslation.trim()} 
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Check Accuracy
+              </Button>
+              
+              <Button 
+                onClick={() => setShowExpectedTranslation(!showExpectedTranslation)} 
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                <Eye className="h-3 w-3 mr-1" />
+                {showExpectedTranslation ? 'Hide' : 'Show'} Expected
+              </Button>
+              
+              <Button 
+                onClick={handleRetry} 
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                <RotateCcw className="h-3 w-3 mr-1" />
+                Retry
+              </Button>
+            </div>
+            
+            {/* Expected Translation */}
+            {showExpectedTranslation && exercise.normal_translation && (
+              <div className="p-2 bg-blue-50 rounded-md border border-blue-200">
+                <div className="text-xs font-medium text-blue-800 mb-1">Expected translation:</div>
+                <div className="text-sm text-blue-900">{exercise.normal_translation}</div>
+              </div>
+            )}
+            
+            {/* Accuracy Feedback */}
             {translationComparison && (
-              <div className={`${isMobile ? 'p-3' : 'p-4'} rounded-md border ${
+              <div className={`p-3 rounded-md border ${
                 translationComparison.accuracy >= 95 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
               }`}>
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-2">
                   {translationComparison.accuracy >= 95 ? 
                     <CheckCircle className="h-4 w-4 text-green-600" /> : 
                     <AlertTriangle className="h-4 w-4 text-red-600" />
                   }
-                  <span className={`font-medium ${isMobile ? 'text-sm' : ''} ${
+                  <span className={`font-medium text-xs ${
                     translationComparison.accuracy >= 95 ? 'text-green-700' : 'text-red-700'
                   }`}>
-                    Translation accuracy: {translationComparison.accuracy}% 
-                    {translationComparison.accuracy >= 95 ? ' - You can proceed!' : ' - Need at least 95% to continue'}
+                    Accuracy: {translationComparison.accuracy}% 
+                    {translationComparison.accuracy >= 95 ? ' - Ready to proceed!' : ' - Need 95% to continue'}
                   </span>
                 </div>
                 {renderWordFeedback(translationComparison)}
-                <div className={`mt-4 ${isMobile ? 'p-2' : 'p-3'} bg-blue-50 rounded-md border border-blue-200`}>
-                  <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-blue-800 mb-1`}>Expected translation:</div>
-                  <div className={`text-blue-900 ${isMobile ? 'text-sm' : ''}`}>{exercise.normal_translation}</div>
-                </div>
               </div>
             )}
 
             <Button 
               onClick={handleSaveAndContinue} 
-              disabled={!userTranslation.trim() || isLoading} 
-              className={`w-full flex items-center gap-2 ${isMobile ? 'text-base py-3' : 'text-lg py-6'}`} 
-              size={isMobile ? "default" : "lg"}
+              disabled={!userTranslation.trim() || isLoading || (translationComparison && translationComparison.accuracy < 95)} 
+              className="w-full text-sm"
+              size="sm"
             >
-              <ArrowRight className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
-              Continue to Back Translation
+              <ArrowRight className="h-4 w-4 mr-1" />
+              Continue to Step 2
             </Button>
             
-            {/* Vocabulary Builder for Step 1 */}
+            {/* Vocabulary Builder */}
             <VocabularyHighlighter exercise={mockExercise} />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Normal Translation Audio (shown after step 1) */}
-      {currentStep !== 'forward' && exercise.normal_translation && (
-        <Card className="border-green-200 bg-green-50/50">
-          <CardHeader className={isMobile ? 'pb-2' : ''}>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-green-600`} />
-              <span className={isMobile ? 'text-base' : ''}>Expected Translation ({exercise.support_language})</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className={`space-y-3 ${isMobile ? 'space-y-3' : 'space-y-4'}`}>
-            <div className={`${isMobile ? 'p-3' : 'p-4'} bg-background rounded-lg border`}>
-              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-medium`}>{exercise.normal_translation}</p>
-            </div>
-            {exercise.normal_translation_audio_url && (
-              <div className="flex justify-center">
-                <div className={`bg-background/50 ${isMobile ? 'p-2' : 'p-4'} rounded-lg`}>
-                  <AudioPlayer audioUrl={exercise.normal_translation_audio_url} />
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
@@ -381,67 +408,107 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
       {/* Backward Translation Step */}
       {currentStep === 'backward' && (
         <Card className="border-orange-200 bg-orange-50/50">
-          <CardHeader className={isMobile ? 'pb-2' : ''}>
-            <CardTitle className="flex items-center gap-2">
-              <span className={`bg-orange-500 text-white rounded-full ${isMobile ? 'w-5 h-5 text-xs' : 'w-6 h-6 text-sm'} flex items-center justify-center font-bold`}>2</span>
-              <span className={isMobile ? 'text-base' : ''}>Back Translation</span>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <span className="bg-orange-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold">2</span>
+              <span>Back Translation</span>
             </CardTitle>
-            <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
-              Now translate your translation back to <span className="font-semibold">{exercise.target_language}</span>
+            <p className="text-xs text-muted-foreground">
+              Translate back to <span className="font-semibold">{exercise.target_language}</span>
             </p>
           </CardHeader>
-          <CardContent className={`space-y-3 ${isMobile ? 'space-y-3' : 'space-y-4'}`}>
-            <div className={`${isMobile ? 'p-2' : 'p-3'} bg-blue-50 rounded-md border border-blue-200`}>
-              <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-blue-700 mb-1 font-medium`}>Your forward translation:</p>
-              <p className={`text-blue-900 ${isMobile ? 'text-sm' : ''}`}>{userTranslation}</p>
+          <CardContent className="space-y-3">
+            {/* Reference Translation */}
+            <div className="p-2 bg-blue-50 rounded-md border border-blue-200">
+              <p className="text-xs text-blue-700 mb-1 font-medium">Your forward translation:</p>
+              <p className="text-sm text-blue-900">{userTranslation}</p>
             </div>
             
             <div className="space-y-2">
-              <label className={`${isMobile ? 'text-sm' : 'text-sm'} font-medium`}>Translate back to {exercise.target_language}:</label>
+              <label className="text-xs font-medium">Translate back to {exercise.target_language}:</label>
               <Textarea 
                 value={userBackTranslation} 
                 onChange={(e) => {
                   setUserBackTranslation(e.target.value);
-                  setBackTranslationComparison(null); // Reset comparison when user types
+                  setBackTranslationComparison(null);
                 }} 
                 placeholder="Translate back to the original language..." 
-                rows={isMobile ? 2 : 3} 
-                className={isMobile ? 'text-base' : 'text-lg'} 
+                rows={2}
+                className="text-sm resize-none"
               />
             </div>
             
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                onClick={handleCheckAccuracy} 
+                disabled={!userBackTranslation.trim()} 
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Check Accuracy
+              </Button>
+              
+              <Button 
+                onClick={() => setShowExpectedBackTranslation(!showExpectedBackTranslation)} 
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                <Eye className="h-3 w-3 mr-1" />
+                {showExpectedBackTranslation ? 'Hide' : 'Show'} Expected
+              </Button>
+              
+              <Button 
+                onClick={handleRetry} 
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                <RotateCcw className="h-3 w-3 mr-1" />
+                Retry
+              </Button>
+            </div>
+            
+            {/* Expected Back Translation */}
+            {showExpectedBackTranslation && (
+              <div className="p-2 bg-blue-50 rounded-md border border-blue-200">
+                <div className="text-xs font-medium text-blue-800 mb-1">Expected back translation (original):</div>
+                <div className="text-sm text-blue-900">{exercise.original_sentence}</div>
+              </div>
+            )}
+            
+            {/* Accuracy Feedback */}
             {backTranslationComparison && (
-              <div className={`${isMobile ? 'p-3' : 'p-4'} rounded-md border ${
+              <div className={`p-3 rounded-md border ${
                 backTranslationComparison.accuracy >= 95 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
               }`}>
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-2">
                   {backTranslationComparison.accuracy >= 95 ? 
                     <CheckCircle className="h-4 w-4 text-green-600" /> : 
                     <AlertTriangle className="h-4 w-4 text-red-600" />
                   }
-                  <span className={`font-medium ${isMobile ? 'text-sm' : ''} ${
+                  <span className={`font-medium text-xs ${
                     backTranslationComparison.accuracy >= 95 ? 'text-green-700' : 'text-red-700'
                   }`}>
-                    Back translation accuracy: {backTranslationComparison.accuracy}% 
-                    {backTranslationComparison.accuracy >= 95 ? ' - You can complete!' : ' - Need at least 95% to complete'}
+                    Accuracy: {backTranslationComparison.accuracy}% 
+                    {backTranslationComparison.accuracy >= 95 ? ' - Ready to complete!' : ' - Need 95% to complete'}
                   </span>
                 </div>
                 {renderWordFeedback(backTranslationComparison)}
-                <div className={`mt-4 ${isMobile ? 'p-2' : 'p-3'} bg-blue-50 rounded-md border border-blue-200`}>
-                  <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-blue-800 mb-1`}>Expected back translation (original sentence):</div>
-                  <div className={`text-blue-900 ${isMobile ? 'text-sm' : ''}`}>{exercise.original_sentence}</div>
-                </div>
               </div>
             )}
             
             <Button 
               onClick={handleSaveAndContinue} 
-              disabled={!userBackTranslation.trim() || isLoading} 
-              className={`w-full flex items-center gap-2 ${isMobile ? 'text-base py-3' : 'text-lg py-6'}`} 
-              size={isMobile ? "default" : "lg"}
+              disabled={!userBackTranslation.trim() || isLoading || (backTranslationComparison && backTranslationComparison.accuracy < 95)} 
+              className="w-full text-sm"
+              size="sm"
             >
-              <CheckCircle className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
-              Complete Practice
+              <CheckCircle className="h-4 w-4 mr-1" />
+              Complete Exercise
             </Button>
           </CardContent>
         </Card>
@@ -450,25 +517,25 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
       {/* Complete Step */}
       {currentStep === 'complete' && (
         <Card className="border-green-200 bg-green-50">
-          <CardHeader className={isMobile ? 'pb-2' : ''}>
-            <CardTitle className="flex items-center gap-2 text-green-800">
-              <CheckCircle className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'} text-green-600`} />
-              <span className={isMobile ? 'text-base' : ''}>Practice Complete!</span>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-green-800 text-sm">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <span>Practice Complete!</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className={`space-y-3 ${isMobile ? 'space-y-3' : 'space-y-4'}`}>
-            <div className={`${isMobile ? 'p-3' : 'p-4'} bg-green-100 rounded-lg`}>
-              <p className={`text-green-800 font-medium ${isMobile ? 'text-sm' : ''}`}>
-                🎉 Great job! This exercise is now ready for spaced repetition review.
+          <CardContent className="space-y-3">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <p className="text-green-800 font-medium text-sm">
+                🎉 Excellent work! This exercise is now ready for spaced repetition review.
               </p>
-              <p className={`text-green-700 mt-2 ${isMobile ? 'text-sm' : ''}`}>
+              <p className="text-green-700 mt-2 text-xs">
                 You'll be prompted to review it using the schedule: 1 → 3 → 7 days.
               </p>
             </div>
             <Button 
               onClick={() => onClose()} 
-              className={`w-full bg-green-600 hover:bg-green-700 ${isMobile ? 'text-base py-3' : 'text-lg py-6'}`} 
-              size={isMobile ? "default" : "lg"}
+              className="w-full bg-green-600 hover:bg-green-700 text-sm" 
+              size="sm"
             >
               Close and Return to Exercises
             </Button>
@@ -484,7 +551,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent side="bottom" className="h-[95vh] flex flex-col overflow-hidden">
           <SheetHeader className="flex-shrink-0 pb-2">
-            <SheetTitle className="text-lg font-bold">
+            <SheetTitle className="text-base font-bold">
               Bidirectional Practice
             </SheetTitle>
           </SheetHeader>
@@ -499,9 +566,9 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
   // Desktop: Use Dialog
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="pb-2">
-          <DialogTitle className="text-xl font-bold">
+          <DialogTitle className="text-lg font-bold">
             Bidirectional Practice
           </DialogTitle>
         </DialogHeader>
