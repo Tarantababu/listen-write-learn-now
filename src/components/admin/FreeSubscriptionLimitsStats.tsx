@@ -82,7 +82,7 @@ export function FreeSubscriptionLimitsStats() {
   }
 
   // Filter and sort users based on their specific limits (ascending order by count)
-  const exerciseLimitUsers = limitsData?.filter(user => user.exercise_count >= 3)
+  const exerciseLimitUsers = limitsData?.filter(user => user.exercise_count >= 10)
     .sort((a, b) => a.exercise_count - b.exercise_count) || [];
   const vocabularyLimitUsers = limitsData?.filter(user => user.vocabulary_count >= 5)
     .sort((a, b) => a.vocabulary_count - b.vocabulary_count) || [];
