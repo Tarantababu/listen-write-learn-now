@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -62,7 +63,22 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   componentDidCatch(error: Error, errorInfo: any) {
     console.error('ErrorBoundary caught error:', error, errorInfo);
+    
+    // Log to external service if needed
+    this.logErrorToService(error, errorInfo);
   }
+
+  logErrorToService = (error: Error, errorInfo: any) => {
+    // Log error details for monitoring
+    console.error('Critical error logged:', {
+      message: error.message,
+      stack: error.stack,
+      errorInfo,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      url: window.location.href
+    });
+  };
 
   resetError = () => {
     this.setState({ hasError: false, error: null });
@@ -76,7 +92,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
-// Error Fallback Component
+// Enhanced Error Fallback Component
 interface ErrorFallbackProps {
   error: Error;
   resetErrorBoundary: () => void;
@@ -86,38 +102,58 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
   const getErrorInfo = (error: Error) => {
     const message = error.message.toLowerCase();
     
-    if (message.includes('supabase') || message.includes('database') || error.name === 'PostgrestError') {
+    // Enhanced third-party service detection
+    if (message.includes('supabase') || 
+        message.includes('database') || 
+        error.name === 'PostgrestError' ||
+        message.includes('connection') ||
+        message.includes('timeout') ||
+        message.includes('503') ||
+        message.includes('502') ||
+        message.includes('504')) {
       return {
-        title: 'Database Connection Issue',
-        description: 'We\'re having trouble connecting to our database. This might be a temporary issue.',
-        icon: '🔌',
-        color: 'text-amber-600 dark:text-amber-400'
+        title: 'Service Temporarily Unavailable',
+        description: 'We\'re currently experiencing issues with a third-party service provider. We\'re working on it — nothing will be lost, and we\'ll be back shortly.',
+        icon: '🔧',
+        color: 'text-blue-600 dark:text-blue-400',
+        isThirdParty: true
       };
     }
     
-    if (message.includes('network') || message.includes('fetch') || message.includes('failed to fetch')) {
+    if (message.includes('network') || 
+        message.includes('fetch') || 
+        message.includes('failed to fetch') ||
+        message.includes('offline') ||
+        !navigator.onLine) {
       return {
-        title: 'Network Connection Problem',
-        description: 'Please check your internet connection and try again.',
+        title: 'Connection Issue',
+        description: 'A third-party system is temporarily unavailable. Your data is safe and we\'re resolving it.',
         icon: '🌐',
-        color: 'text-blue-600 dark:text-blue-400'
+        color: 'text-amber-600 dark:text-amber-400',
+        isThirdParty: true
       };
     }
     
-    if (message.includes('auth') || message.includes('token') || message.includes('unauthorized')) {
+    if (message.includes('auth') || 
+        message.includes('token') || 
+        message.includes('unauthorized') ||
+        message.includes('401') ||
+        message.includes('403')) {
       return {
-        title: 'Authentication Issue',
-        description: 'Your session may have expired. Please try logging in again.',
+        title: 'Authentication Service Issue',
+        description: 'We\'re unable to connect to our authentication service provider. We\'re on it — everything will be restored soon.',
         icon: '🔐',
-        color: 'text-purple-600 dark:text-purple-400'
+        color: 'text-purple-600 dark:text-purple-400',
+        isThirdParty: true
       };
     }
     
     return {
       title: 'Something Went Wrong',
-      description: 'An unexpected error occurred. Our team has been notified.',
+      description: 'We encountered an unexpected issue. Our team has been notified and is working on a fix.',
       icon: '⚠️',
-      color: 'text-red-600 dark:text-red-400'
+      color: 'text-red-600 dark:text-red-400',
+      isThirdParty: false
     };
   };
 
@@ -125,21 +161,45 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-      <div className="max-w-lg w-full">
+      <div className="max-w-2xl w-full">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 p-6 text-center">
-            <div className="text-4xl mb-3">{errorInfo.icon}</div>
-            <h1 className={`text-xl font-bold ${errorInfo.color} mb-2`}>
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600 p-8 text-center">
+            <div className="text-5xl mb-4">{errorInfo.icon}</div>
+            <h1 className={`text-2xl font-bold ${errorInfo.color} mb-3`}>
               {errorInfo.title}
             </h1>
-            <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+            <p className="text-gray-600 dark:text-gray-300 text-base leading-relaxed max-w-lg mx-auto">
               {errorInfo.description}
             </p>
           </div>
           
           {/* Content */}
-          <div className="p-6 space-y-4">
+          <div className="p-8 space-y-6">
+            {/* Support Information */}
+            {errorInfo.isThirdParty && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="text-2xl">💬</div>
+                  <div>
+                    <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                      Need Help?
+                    </h3>
+                    <p className="text-blue-800 dark:text-blue-200 text-sm mb-3">
+                      For urgent matters or if this issue persists, please contact our support team:
+                    </p>
+                    <a 
+                      href="mailto:support@lwlnow.com"
+                      className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                    >
+                      <span>📧</span>
+                      <span>support@lwlnow.com</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Action Buttons */}
             <div className="grid gap-3">
               <button
@@ -162,6 +222,14 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
               >
                 ← Go to Homepage
               </button>
+            </div>
+            
+            {/* Status Indicator */}
+            <div className="text-center">
+              <div className="inline-flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                <span>Monitoring service status...</span>
+              </div>
             </div>
             
             {/* Error Details (Development) */}
@@ -191,13 +259,6 @@ function ErrorFallback({ error, resetErrorBoundary }: ErrorFallbackProps) {
               </details>
             )}
           </div>
-        </div>
-        
-        {/* Footer */}
-        <div className="text-center mt-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            If this problem persists, please contact support
-          </p>
         </div>
       </div>
     </div>
@@ -230,7 +291,7 @@ const queryClient = new QueryClient({
   }
 });
 
-// Global error handlers with elegant notifications
+// Enhanced global error handlers with user-friendly messaging
 if (typeof window !== 'undefined') {
   // Handle unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {
@@ -238,49 +299,120 @@ if (typeof window !== 'undefined') {
     event.preventDefault();
     
     const error = event.reason;
-    if (error?.message?.includes('supabase') || error?.message?.includes('database')) {
-      toast.error('Service connection lost', {
-        description: 'Reconnecting automatically...'
-      });
-    } else if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
-      toast.error('Network connection lost', {
-        description: 'Please check your internet connection'
-      });
-    }
-  });
-
-  // Handle global JavaScript errors (less intrusive)
-  window.addEventListener('error', (event) => {
-    console.error('Global error:', event.error);
-    // Only show notification for critical errors in production
-    if (process.env.NODE_ENV === 'production' && event.error?.message?.includes('chunk')) {
-      toast.error('App update available', {
-        description: 'Please refresh the page',
+    const message = error?.message?.toLowerCase() || '';
+    
+    if (message.includes('supabase') || 
+        message.includes('database') || 
+        message.includes('connection') ||
+        message.includes('timeout')) {
+      toast.error('Service temporarily unavailable', {
+        description: 'We\'re experiencing issues with a service provider. Your data is safe and we\'re working on it.',
+        duration: 6000,
         action: {
-          label: 'Refresh',
+          label: 'Contact Support',
+          onClick: () => window.open('mailto:support@lwlnow.com', '_blank')
+        }
+      });
+    } else if (message.includes('network') || 
+               message.includes('fetch') || 
+               !navigator.onLine) {
+      toast.error('Connection issue detected', {
+        description: 'A third-party system is temporarily unavailable. We\'re resolving it.',
+        duration: 6000,
+        action: {
+          label: 'Retry',
           onClick: () => window.location.reload()
         }
       });
+    } else {
+      toast.error('Something went wrong', {
+        description: 'We encountered an issue and our team has been notified.',
+        duration: 4000
+      });
     }
+  });
+
+  // Handle global JavaScript errors
+  window.addEventListener('error', (event) => {
+    console.error('Global error:', event.error);
+    
+    const error = event.error;
+    const message = error?.message?.toLowerCase() || '';
+    
+    // Only show notifications for critical errors in production
+    if (process.env.NODE_ENV === 'production') {
+      if (message.includes('chunk') || message.includes('loading')) {
+        toast.error('App update available', {
+          description: 'Please refresh the page to get the latest version',
+          duration: 8000,
+          action: {
+            label: 'Refresh',
+            onClick: () => window.location.reload()
+          }
+        });
+      } else if (message.includes('supabase') || 
+                 message.includes('network') || 
+                 message.includes('service')) {
+        toast.error('Service issue detected', {
+          description: 'We\'re experiencing technical difficulties. Please try again.',
+          duration: 6000,
+          action: {
+            label: 'Contact Support',
+            onClick: () => window.open('mailto:support@lwlnow.com', '_blank')
+          }
+        });
+      }
+    }
+  });
+
+  // Network status monitoring
+  window.addEventListener('online', () => {
+    toast.success('Connection restored', {
+      description: 'You\'re back online! Services should work normally now.',
+      duration: 3000
+    });
+  });
+
+  window.addEventListener('offline', () => {
+    toast.error('You\'re offline', {
+      description: 'Some features may not work until your connection is restored.',
+      duration: 5000
+    });
   });
 }
 
-// Set up global error handling for React Query
+// Enhanced error handling for React Query
 const handleQueryError = (error: any) => {
   console.error('Query error:', error);
   
-  // Show elegant error notifications
-  if (error?.message?.includes('fetch') || error?.message?.includes('network')) {
-    toast.error('Connection issue detected', {
-      description: 'Please check your internet connection'
+  const message = error?.message?.toLowerCase() || '';
+  const status = error?.status;
+  
+  if (message.includes('fetch') || 
+      message.includes('network') || 
+      status >= 500) {
+    toast.error('Service connection issue', {
+      description: 'We\'re unable to connect to a service provider. We\'re on it — everything will be restored soon.',
+      duration: 6000,
+      action: {
+        label: 'Contact Support',
+        onClick: () => window.open('mailto:support@lwlnow.com', '_blank')
+      }
     });
-  } else if (error?.status === 401) {
+  } else if (status === 401) {
     toast.error('Session expired', {
-      description: 'Please log in again'
+      description: 'Please log in again to continue',
+      duration: 4000
     });
-  } else if (error?.message?.includes('supabase') || error?.message?.includes('database')) {
-    toast.error('Service temporarily unavailable', {
-      description: 'Please try again in a moment'
+  } else if (message.includes('supabase') || 
+             message.includes('database')) {
+    toast.error('Database service issue', {
+      description: 'We\'re experiencing issues with our database provider. Your data is safe and we\'re working on it.',
+      duration: 6000,
+      action: {
+        label: 'Support',
+        onClick: () => window.open('mailto:support@lwlnow.com', '_blank')
+      }
     });
   }
 };
@@ -288,21 +420,38 @@ const handleQueryError = (error: any) => {
 const handleMutationError = (error: any) => {
   console.error('Mutation error:', error);
   
-  if (error?.message?.includes('supabase') || error?.message?.includes('database')) {
+  const message = error?.message?.toLowerCase() || '';
+  const status = error?.status;
+  
+  if (message.includes('supabase') || 
+      message.includes('database') || 
+      status >= 500) {
     toast.error('Failed to save changes', {
-      description: 'Database connection issue'
+      description: 'We\'re experiencing issues with a service provider. Your data is safe and we\'re working on it.',
+      duration: 6000,
+      action: {
+        label: 'Contact Support',
+        onClick: () => window.open('mailto:support@lwlnow.com', '_blank')
+      }
     });
-  } else if (error?.status === 401) {
+  } else if (status === 401) {
     toast.error('Authentication required', {
-      description: 'Please log in again'
+      description: 'Please log in again to continue',
+      duration: 4000
     });
-  } else if (error?.status === 403) {
+  } else if (status === 403) {
     toast.error('Permission denied', {
-      description: 'You don\'t have access to this action'
+      description: 'You don\'t have access to this action',
+      duration: 4000
     });
   } else {
     toast.error('Operation failed', {
-      description: 'Please try again'
+      description: 'We encountered an issue. Our team has been notified.',
+      duration: 4000,
+      action: {
+        label: 'Retry',
+        onClick: () => window.location.reload()
+      }
     });
   }
 };
