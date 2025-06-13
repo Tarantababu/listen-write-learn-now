@@ -638,7 +638,7 @@ const VocabularyPage = () => {
         e.stopPropagation();
         playAudio(itemId);
       }} className={`${className} transition-all duration-200 ${isPlaying ? "text-primary bg-primary/10 shadow-sm" : error ? "text-red-500 hover:text-red-600" : "text-muted-foreground hover:text-primary hover:bg-primary/5"} ${isInQueue ? "ring-2 ring-primary/20" : ""}`} disabled={isLoading} title={error ? `Error: ${error}` : isPlaying ? "Stop audio" : "Play audio"} aria-label={isPlaying ? "Stop audio" : "Play audio"}>
-            {isLoading ? <Loader2 className={`${size === "sm" ? "h-3 w-3" : "h-4 w-4"} animate-spin`} /> : error ? <AlertCircle className={`${size === "sm" ? "h-3 w-3" : "h-4 w-4"}`} /> : isPlaying ? <div className="relative">
+            {isLoading ? <Loader2 className={`${size === "sm" ? "h-3 w-3" : "h-4 w-4"}`} /> : error ? <AlertCircle className={`${size === "sm" ? "h-3 w-3" : "h-4 w-4"}`} /> : isPlaying ? <div className="relative">
                 <Pause className={`${size === "sm" ? "h-3 w-3" : "h-4 w-4"}`} />
                 {showProgress && <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-muted rounded-full overflow-hidden">
                     <div className="h-full bg-primary transition-all duration-100" style={{
@@ -814,7 +814,6 @@ const VocabularyPage = () => {
   // Quick Start Guide Component
   const QuickStartGuide = () => <Dialog open={showQuickStart} onOpenChange={open => {
     setShowQuickStart(open);
-    // Removed hasSeenGuide logic - popup will show based on conditions only
   }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -870,14 +869,14 @@ const VocabularyPage = () => {
     if (wordsWithAudio.length > 0 && audioQueue.length === 0) {
       const timer = setTimeout(() => {
         setShowQuickStart(true);
-      }, 1000); // Reduced delay for better UX
+      }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [wordsWithAudio.length, audioQueue.length]); // Removed hasSeenGuide dependency
+  }, [wordsWithAudio.length, audioQueue.length]);
 
   return <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 md:py-8 space-y-4 sm:space-y-6">
       {/* Main Audio Player - Mobile-friendly */}
-      {audioQueue.length > 0 && <Card className="animate-in slide-in-from-top-5 duration-300 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 sticky top-2 z-10 shadow-lg">
+      {audioQueue.length > 0 && <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 sticky top-2 z-10 shadow-lg">
           <CardContent className="pt-3 pb-3">
             <div className="flex flex-col gap-3">
               {/* Now Playing Info - Mobile optimized */}
@@ -985,7 +984,7 @@ const VocabularyPage = () => {
                 </Badge>}
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <p className="text-muted-foreground text-sm animate-in slide-in-from-left-5 duration-500">
+              <p className="text-muted-foreground text-sm">
                 {getMotivationalMessage()}
               </p>
               {wordsWithAudio.length > 0 && audioQueue.length === 0 && <Button variant="ghost" size="sm" onClick={() => setShowPlaylistGuide(true)} className="text-xs text-primary hover:text-primary/80 h-6 px-2 self-start sm:self-auto">
@@ -998,7 +997,7 @@ const VocabularyPage = () => {
       </div>
 
       {/* Enhanced Subscription Status Alert */}
-      {!subscription.isSubscribed && <Alert className={`border-l-4 transition-all duration-300 animate-in slide-in-from-top-5 ${isAtLimit ? "bg-red-50 border-red-400 shadow-red-100" : isNearLimit ? "bg-yellow-50 border-yellow-400 shadow-yellow-100" : "bg-blue-50 border-blue-400 shadow-blue-100"}`}>
+      {!subscription.isSubscribed && <Alert className={`border-l-4 transition-all duration-300 ${isAtLimit ? "bg-red-50 border-red-400 shadow-red-100" : isNearLimit ? "bg-yellow-50 border-yellow-400 shadow-yellow-100" : "bg-blue-50 border-blue-400 shadow-blue-100"}`}>
           <div className="flex items-center gap-2">
             {isAtLimit ? <AlertCircle className="h-4 w-4 text-red-500" /> : isNearLimit ? <AlertCircle className="h-4 w-4 text-yellow-500" /> : <Sparkles className="h-4 w-4 text-blue-500" />}
 
@@ -1036,7 +1035,7 @@ const VocabularyPage = () => {
         </Alert>}
 
       {/* Enhanced Search and Filter Bar */}
-      {languageVocabulary.length > 0 && <Card className="animate-in slide-in-from-top-5 duration-300 delay-100">
+      {languageVocabulary.length > 0 && <Card className="">
           <CardContent className="pt-4">
             <div className="flex flex-col sm:flex-row gap-3">
               {/* Enhanced Search Input */}
@@ -1050,7 +1049,7 @@ const VocabularyPage = () => {
             </div>
 
             {/* Active Filters Display */}
-            {searchTerm && <div className="flex items-center gap-2 mt-3 pt-3 border-t animate-in fade-in-50 duration-200">
+            {searchTerm && <div className="flex items-center gap-2 mt-3 pt-3 border-t">
                 <span className="text-xs text-muted-foreground">Active filters:</span>
                 <Badge variant="secondary" className="text-xs">
                   Search: "{searchTerm}"
@@ -1065,7 +1064,7 @@ const VocabularyPage = () => {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         {/* Main content - Full width on mobile, 2/3 on desktop */}
         <div className="xl:col-span-2 space-y-4">
-          <Card className="h-full animate-in slide-in-from-left-5 duration-500">
+          <Card className="h-full">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
@@ -1073,7 +1072,7 @@ const VocabularyPage = () => {
                   Your Vocabulary List
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  {filteredVocabulary.length !== languageVocabulary.length && <Badge variant="outline" className="text-xs animate-in fade-in-50 duration-300">
+                  {filteredVocabulary.length !== languageVocabulary.length && <Badge variant="outline" className="text-xs">
                       {filteredVocabulary.length} of {languageVocabulary.length}
                     </Badge>}
                   {/* Enhanced View Mode Toggle */}
@@ -1091,7 +1090,7 @@ const VocabularyPage = () => {
             <CardContent>
               {isVocabularyLoading ? <div className="space-y-4">
                   {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)}
-                </div> : languageVocabulary.length === 0 ? <div className="text-center py-8 sm:py-12 animate-in fade-in-50 duration-500">
+                </div> : languageVocabulary.length === 0 ? <div className="text-center py-8 sm:py-12">
                   <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
                     <BookOpen className="h-8 w-8 text-primary" />
                   </div>
@@ -1100,7 +1099,7 @@ const VocabularyPage = () => {
                     Start building your vocabulary by adding words through the Vocabulary Builder when reading
                     exercises.
                   </p>
-                </div> : filteredVocabulary.length === 0 ? <div className="text-center py-8 animate-in fade-in-50 duration-300">
+                </div> : filteredVocabulary.length === 0 ? <div className="text-center py-8">
                   <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-yellow-100 to-yellow-50 rounded-full flex items-center justify-center">
                     <Search className="h-8 w-8 text-yellow-600" />
                   </div>
@@ -1108,7 +1107,7 @@ const VocabularyPage = () => {
                   <p className="text-muted-foreground text-sm">Try adjusting your search terms.</p>
                 </div> : <>
                   {/* Enhanced Bulk Actions Bar */}
-                  {selectedItems.length > 0 && <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-3 mb-4 flex items-center justify-between animate-in slide-in-from-top-3 duration-200 border border-primary/20">
+                  {selectedItems.length > 0 && <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-3 mb-4 flex items-center justify-between border border-primary/20">
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-medium">{selectedItems.length} selected</span>
                         <Button variant="outline" size="sm" onClick={addSelectedToQueue} className="h-7 text-xs border-primary/30 hover:border-primary">
@@ -1139,9 +1138,7 @@ const VocabularyPage = () => {
 
                   {/* List View - Mobile optimized */}
                   {viewMode === "list" && <div className="space-y-2 sm:space-y-4">
-                      {filteredVocabulary.map((item, index) => <div key={item.id} className="group relative animate-in slide-in-from-left-5 duration-300" style={{
-                  animationDelay: `${index * 50}ms`
-                }}>
+                      {filteredVocabulary.map((item, index) => <div key={item.id} className="group relative">
                           <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border hover:border-primary/30 transition-all duration-200 hover:shadow-sm">
                             <div className="flex items-center gap-2 pt-1">
                               <Button variant="ghost" size="sm" onClick={() => toggleSelectItem(item.id)} className={`h-5 w-5 sm:h-6 sm:w-6 p-0 transition-all duration-200 ${selectedItems.includes(item.id) ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/5"}`}>
@@ -1168,7 +1165,7 @@ const VocabularyPage = () => {
                     </div>}
 
                   {/* Enhanced Study Mode */}
-                  {viewMode === "study" && <div className="space-y-4 animate-in fade-in-50 duration-500">
+                  {viewMode === "study" && <div className="space-y-4">
                       {/* Study Mode Controls */}
                       <div className="flex justify-between items-center bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-3 border border-primary/20">
                         <div className="flex items-center gap-3">
@@ -1196,7 +1193,7 @@ const VocabularyPage = () => {
                           <CardContent className="p-3 sm:p-4 md:p-8 h-full flex flex-col justify-center text-center">
                             <div className="space-y-4 sm:space-y-6">
                               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-                                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary animate-in slide-in-from-top-5 duration-300">
+                                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-primary">
                                   {filteredVocabulary[currentCardIndex]?.word}
                                 </h2>
                                 <div className="flex items-center gap-2">
@@ -1223,7 +1220,7 @@ const VocabularyPage = () => {
                                   </>}
                               </Button>
 
-                              {showDefinition[filteredVocabulary[currentCardIndex]?.id] && <div className="space-y-3 sm:space-y-4 animate-in fade-in-50 slide-in-from-bottom-5 duration-300">
+                              {showDefinition[filteredVocabulary[currentCardIndex]?.id] && <div className="space-y-3 sm:space-y-4">
                                   {filteredVocabulary[currentCardIndex]?.definition && <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                                       {filteredVocabulary[currentCardIndex].definition}
                                     </p>}
@@ -1264,7 +1261,7 @@ const VocabularyPage = () => {
         {/* Right column: Simplified Tools */}
         <div className="space-y-4">
           {/* Simplified Tools Card - Removed redundant Practice tab */}
-          <Card className="h-full animate-in slide-in-from-right-5 duration-500">
+          <Card className="h-full">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
                 <Trophy className="h-5 w-5" />
@@ -1357,7 +1354,7 @@ const VocabularyPage = () => {
           </Card>
 
           {/* Enhanced Subscription Upgrade Card */}
-          {!subscription.isSubscribed && <div className="mt-4 animate-in slide-in-from-right-5 duration-500 delay-200">
+          {!subscription.isSubscribed && <div className="mt-4">
               <UpgradePrompt title="Unlimited Vocabulary" message="Premium subscribers can create unlimited vocabulary lists, export all their flashcards with audio, and access advanced audio playlist features with unlimited queue capacity." />
             </div>}
         </div>
