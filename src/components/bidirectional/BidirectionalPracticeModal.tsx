@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, ArrowRight, CheckCircle, AlertTriangle, Volume2, RotateCcw, Eye } from 'lucide-react';
+import { Play, ArrowRight, CheckCircle, AlertTriangle, Volume2, RotateCcw, Eye, Sparkles, Languages } from 'lucide-react';
 import { BidirectionalService } from '@/services/bidirectionalService';
 import type { BidirectionalExercise } from '@/types/bidirectional';
 import type { Language } from '@/types';
@@ -229,91 +228,118 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
   };
 
   const modalContent = (
-    <div className={`space-y-4 ${isMobile ? 'px-2 py-2' : 'space-y-4'}`}>
-      {/* Original Sentence - Always Visible at Top */}
-      <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-2">
-            <Volume2 className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-medium text-primary">
-              Original Sentence ({exercise.target_language})
-            </CardTitle>
+    <div className={`space-y-6 ${isMobile ? 'px-2 py-2' : 'space-y-6'}`}>
+      {/* Enhanced Original Sentence Section */}
+      <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-lg">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-full">
+              <Languages className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-bold text-primary">
+                Original Sentence
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Listen carefully and understand the meaning
+              </p>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="p-3 bg-background rounded-lg border">
-            <p className="text-base font-medium text-center leading-relaxed">
+        <CardContent className="space-y-4">
+          <div className="relative p-4 bg-background/80 backdrop-blur-sm rounded-lg border-2 border-primary/20 shadow-inner">
+            <div className="absolute top-2 right-2 text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full">
+              {exercise.target_language}
+            </div>
+            <p className="text-xl font-medium text-center leading-relaxed pt-2">
               {exercise.original_sentence}
             </p>
           </div>
-          {/* Audio Players */}
-          <div className="space-y-2">
+          
+          {/* Enhanced Audio Players */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {exercise.original_audio_url && (
-              <div className="flex flex-col items-center gap-1">
-                <div className="text-xs font-medium text-muted-foreground">
-                  Original Audio
+              <div className="flex flex-col items-center gap-2 p-3 bg-background/60 rounded-lg border">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">Original Audio</span>
                 </div>
-                <div className="bg-background/50 p-2 rounded-lg border">
-                  <AudioPlayer audioUrl={exercise.original_audio_url} />
-                </div>
+                <AudioPlayer audioUrl={exercise.original_audio_url} />
               </div>
             )}
             
             {exercise.normal_translation_audio_url && (
-              <div className="flex flex-col items-center gap-1">
-                <div className="text-xs font-medium text-muted-foreground">
-                  Translation Audio ({exercise.support_language})
+              <div className="flex flex-col items-center gap-2 p-3 bg-background/60 rounded-lg border">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Translation Audio ({exercise.support_language})
+                  </span>
                 </div>
-                <div className="bg-background/50 p-2 rounded-lg border">
-                  <AudioPlayer audioUrl={exercise.normal_translation_audio_url} />
-                </div>
+                <AudioPlayer audioUrl={exercise.normal_translation_audio_url} />
               </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Step Progress Indicator */}
-      <div className="flex items-center justify-center space-x-2 py-2">
-        <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs ${
-          currentStep === 'forward' ? 'bg-primary text-primary-foreground' : 
-          currentStep === 'backward' || currentStep === 'complete' ? 'bg-green-100 text-green-800' : 'bg-muted'
+      {/* Enhanced Step Progress Indicator */}
+      <div className="flex items-center justify-center space-x-3 py-4">
+        <div className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+          currentStep === 'forward' ? 'bg-primary text-primary-foreground shadow-lg scale-105' : 
+          currentStep === 'backward' || currentStep === 'complete' ? 'bg-green-500 text-white shadow-md' : 'bg-muted text-muted-foreground'
         }`}>
-          <span className="font-medium">1</span>
-          <span>Forward</span>
+          <span className="font-bold">1</span>
+          <span>Forward Translation</span>
+          {(currentStep === 'backward' || currentStep === 'complete') && <CheckCircle className="h-4 w-4" />}
         </div>
-        <ArrowRight className="h-3 w-3 text-muted-foreground" />
-        <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs ${
-          currentStep === 'backward' ? 'bg-primary text-primary-foreground' : 
-          currentStep === 'complete' ? 'bg-green-100 text-green-800' : 'bg-muted'
+        <ArrowRight className={`h-4 w-4 transition-colors ${
+          currentStep === 'backward' || currentStep === 'complete' ? 'text-green-500' : 'text-muted-foreground'
+        }`} />
+        <div className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+          currentStep === 'backward' ? 'bg-primary text-primary-foreground shadow-lg scale-105' : 
+          currentStep === 'complete' ? 'bg-green-500 text-white shadow-md' : 'bg-muted text-muted-foreground'
         }`}>
-          <span className="font-medium">2</span>
-          <span>Backward</span>
+          <span className="font-bold">2</span>
+          <span>Back Translation</span>
+          {currentStep === 'complete' && <CheckCircle className="h-4 w-4" />}
         </div>
-        <ArrowRight className="h-3 w-3 text-muted-foreground" />
-        <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-xs ${
-          currentStep === 'complete' ? 'bg-green-500 text-white' : 'bg-muted'
+        <ArrowRight className={`h-4 w-4 transition-colors ${
+          currentStep === 'complete' ? 'text-green-500' : 'text-muted-foreground'
+        }`} />
+        <div className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+          currentStep === 'complete' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-muted text-muted-foreground'
         }`}>
-          <CheckCircle className="h-3 w-3" />
+          <CheckCircle className="h-4 w-4" />
           <span>Complete</span>
         </div>
       </div>
 
       {/* Forward Translation Step */}
       {currentStep === 'forward' && (
-        <Card className="border-blue-200 bg-blue-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <span className="bg-blue-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold">1</span>
-              <span>Forward Translation</span>
+        <Card className="border-blue-200 bg-gradient-to-br from-blue-50/80 to-blue-100/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-3 text-lg">
+              <div className="bg-blue-500 text-white rounded-full w-8 h-8 text-sm flex items-center justify-center font-bold">1</div>
+              <div>
+                <span className="text-blue-800">Forward Translation</span>
+                <p className="text-sm font-normal text-blue-600 mt-1">
+                  Translate from <span className="font-semibold">{exercise.target_language}</span> to <span className="font-semibold">{exercise.support_language}</span>
+                </p>
+              </div>
             </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Translate from <span className="font-semibold">{exercise.target_language}</span> to <span className="font-semibold">{exercise.support_language}</span>
-            </p>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
+            {/* Text to translate - prominently displayed above input */}
+            <div className="p-4 bg-blue-100/50 rounded-lg border-2 border-blue-200">
+              <div className="text-sm font-medium text-blue-800 mb-2">Text to translate:</div>
+              <div className="text-lg font-medium text-blue-900 text-center py-2">
+                {exercise.original_sentence}
+              </div>
+            </div>
+            
             <div className="space-y-2">
-              <label className="text-xs font-medium">Your translation:</label>
+              <label className="text-sm font-medium text-blue-800">Your translation:</label>
               <Textarea 
                 value={userTranslation} 
                 onChange={(e) => {
@@ -321,8 +347,8 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                   setTranslationComparison(null);
                 }} 
                 placeholder="Enter your translation..." 
-                rows={2}
-                className="text-sm resize-none"
+                rows={3}
+                className="text-sm resize-none border-blue-200 focus:border-blue-400"
               />
             </div>
             
@@ -333,7 +359,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                 disabled={!userTranslation.trim()} 
                 variant="outline"
                 size="sm"
-                className="text-xs"
+                className="text-xs border-blue-200 hover:bg-blue-50"
               >
                 <AlertTriangle className="h-3 w-3 mr-1" />
                 Check Accuracy
@@ -343,7 +369,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                 onClick={() => setShowExpectedTranslation(!showExpectedTranslation)} 
                 variant="outline"
                 size="sm"
-                className="text-xs"
+                className="text-xs border-blue-200 hover:bg-blue-50"
               >
                 <Eye className="h-3 w-3 mr-1" />
                 {showExpectedTranslation ? 'Hide' : 'Show'} Expected
@@ -353,7 +379,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                 onClick={handleRetry} 
                 variant="outline"
                 size="sm"
-                className="text-xs"
+                className="text-xs border-blue-200 hover:bg-blue-50"
               >
                 <RotateCcw className="h-3 w-3 mr-1" />
                 Retry
@@ -362,7 +388,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
             
             {/* Expected Translation */}
             {showExpectedTranslation && exercise.normal_translation && (
-              <div className="p-2 bg-blue-50 rounded-md border border-blue-200">
+              <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
                 <div className="text-xs font-medium text-blue-800 mb-1">Expected translation:</div>
                 <div className="text-sm text-blue-900">{exercise.normal_translation}</div>
               </div>
@@ -392,40 +418,57 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
             <Button 
               onClick={handleSaveAndContinue} 
               disabled={!userTranslation.trim() || isLoading || (translationComparison && translationComparison.accuracy < 95)} 
-              className="w-full text-sm"
+              className="w-full text-sm bg-blue-600 hover:bg-blue-700"
               size="sm"
             >
               <ArrowRight className="h-4 w-4 mr-1" />
               Continue to Step 2
             </Button>
             
-            {/* Vocabulary Builder */}
-            <VocabularyHighlighter exercise={mockExercise} />
+            {/* Enhanced Vocabulary Builder */}
+            <Card className="border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm text-amber-800">
+                  <Sparkles className="h-4 w-4" />
+                  Add some words to your vocabulary
+                </CardTitle>
+                <p className="text-xs text-amber-700">
+                  Click on words below to save them for later study
+                </p>
+              </CardHeader>
+              <CardContent>
+                <VocabularyHighlighter exercise={mockExercise} />
+              </CardContent>
+            </Card>
           </CardContent>
         </Card>
       )}
 
       {/* Backward Translation Step */}
       {currentStep === 'backward' && (
-        <Card className="border-orange-200 bg-orange-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <span className="bg-orange-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold">2</span>
-              <span>Back Translation</span>
+        <Card className="border-orange-200 bg-gradient-to-br from-orange-50/80 to-orange-100/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-3 text-lg">
+              <div className="bg-orange-500 text-white rounded-full w-8 h-8 text-sm flex items-center justify-center font-bold">2</div>
+              <div>
+                <span className="text-orange-800">Back Translation</span>
+                <p className="text-sm font-normal text-orange-600 mt-1">
+                  Translate back to <span className="font-semibold">{exercise.target_language}</span>
+                </p>
+              </div>
             </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Translate back to <span className="font-semibold">{exercise.target_language}</span>
-            </p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {/* Reference Translation */}
-            <div className="p-2 bg-blue-50 rounded-md border border-blue-200">
-              <p className="text-xs text-blue-700 mb-1 font-medium">Your forward translation:</p>
-              <p className="text-sm text-blue-900">{userTranslation}</p>
+          <CardContent className="space-y-4">
+            {/* Reference Translation - prominently displayed */}
+            <div className="p-4 bg-orange-100/50 rounded-lg border-2 border-orange-200">
+              <div className="text-sm font-medium text-orange-800 mb-2">Text to translate back:</div>
+              <div className="text-lg font-medium text-orange-900 text-center py-2">
+                {userTranslation}
+              </div>
             </div>
             
             <div className="space-y-2">
-              <label className="text-xs font-medium">Translate back to {exercise.target_language}:</label>
+              <label className="text-sm font-medium text-orange-800">Your back translation:</label>
               <Textarea 
                 value={userBackTranslation} 
                 onChange={(e) => {
@@ -433,8 +476,8 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                   setBackTranslationComparison(null);
                 }} 
                 placeholder="Translate back to the original language..." 
-                rows={2}
-                className="text-sm resize-none"
+                rows={3}
+                className="text-sm resize-none border-orange-200 focus:border-orange-400"
               />
             </div>
             
@@ -445,7 +488,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                 disabled={!userBackTranslation.trim()} 
                 variant="outline"
                 size="sm"
-                className="text-xs"
+                className="text-xs border-orange-200 hover:bg-orange-50"
               >
                 <AlertTriangle className="h-3 w-3 mr-1" />
                 Check Accuracy
@@ -455,7 +498,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                 onClick={() => setShowExpectedBackTranslation(!showExpectedBackTranslation)} 
                 variant="outline"
                 size="sm"
-                className="text-xs"
+                className="text-xs border-orange-200 hover:bg-orange-50"
               >
                 <Eye className="h-3 w-3 mr-1" />
                 {showExpectedBackTranslation ? 'Hide' : 'Show'} Expected
@@ -465,7 +508,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
                 onClick={handleRetry} 
                 variant="outline"
                 size="sm"
-                className="text-xs"
+                className="text-xs border-orange-200 hover:bg-orange-50"
               >
                 <RotateCcw className="h-3 w-3 mr-1" />
                 Retry
@@ -474,9 +517,9 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
             
             {/* Expected Back Translation */}
             {showExpectedBackTranslation && (
-              <div className="p-2 bg-blue-50 rounded-md border border-blue-200">
-                <div className="text-xs font-medium text-blue-800 mb-1">Expected back translation (original):</div>
-                <div className="text-sm text-blue-900">{exercise.original_sentence}</div>
+              <div className="p-3 bg-orange-50 rounded-md border border-orange-200">
+                <div className="text-xs font-medium text-orange-800 mb-1">Expected back translation (original):</div>
+                <div className="text-sm text-orange-900">{exercise.original_sentence}</div>
               </div>
             )}
             
@@ -504,7 +547,7 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
             <Button 
               onClick={handleSaveAndContinue} 
               disabled={!userBackTranslation.trim() || isLoading || (backTranslationComparison && backTranslationComparison.accuracy < 95)} 
-              className="w-full text-sm"
+              className="w-full text-sm bg-orange-600 hover:bg-orange-700"
               size="sm"
             >
               <CheckCircle className="h-4 w-4 mr-1" />
@@ -516,19 +559,24 @@ export const BidirectionalPracticeModal: React.FC<BidirectionalPracticeModalProp
 
       {/* Complete Step */}
       {currentStep === 'complete' && (
-        <Card className="border-green-200 bg-green-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-green-800 text-sm">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <span>Practice Complete!</span>
+        <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-3 text-green-800 text-lg">
+              <CheckCircle className="h-8 w-8 text-green-600" />
+              <div>
+                <span>Practice Complete!</span>
+                <p className="text-sm font-normal text-green-600 mt-1">
+                  Excellent work! You've successfully completed both translation steps.
+                </p>
+              </div>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="p-3 bg-green-100 rounded-lg">
-              <p className="text-green-800 font-medium text-sm">
-                🎉 Excellent work! This exercise is now ready for spaced repetition review.
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-green-100 rounded-lg border border-green-200">
+              <p className="text-green-800 font-medium text-sm mb-2">
+                🎉 Congratulations! This exercise is now ready for spaced repetition review.
               </p>
-              <p className="text-green-700 mt-2 text-xs">
+              <p className="text-green-700 text-xs">
                 You'll be prompted to review it using the schedule: 1 → 3 → 7 days.
               </p>
             </div>
