@@ -12,7 +12,7 @@ import {
 import { ReadingExercise } from '@/types/reading';
 import { EnhancedInteractiveText } from './EnhancedInteractiveText';
 import { AudioWordSynchronizer } from './AudioWordSynchronizer';
-import { SynchronizedText } from './SynchronizedText';
+import { SynchronizedTextWithSelection } from './SynchronizedTextWithSelection';
 import { AdvancedAudioControls } from './AdvancedAudioControls';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { readingExerciseService } from '@/services/readingExerciseService';
@@ -61,6 +61,22 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1);
   
   const isMobile = useIsMobile();
+
+  // Debug logging for feature flags
+  useEffect(() => {
+    if (exercise && isOpen) {
+      console.log('ReadingFocusedModal feature flags:', {
+        enableTextSelection,
+        enableWordSynchronization,
+        enableContextMenu,
+        enableSelectionFeedback,
+        enableVocabularyIntegration,
+        enableFullTextAudio,
+        exerciseId: exercise.id,
+        exerciseLanguage: exercise.language
+      });
+    }
+  }, [exercise, isOpen, enableTextSelection, enableWordSynchronization, enableContextMenu, enableSelectionFeedback]);
 
   // Generate full-text audio
   const generateFullTextAudio = async () => {
@@ -148,6 +164,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   };
 
   const handleCreateDictation = (selectedText: string) => {
+    console.log('Creating dictation for:', selectedText);
     if (onCreateDictation) {
       onCreateDictation(selectedText);
     } else {
@@ -156,6 +173,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   };
 
   const handleCreateBidirectional = (selectedText: string) => {
+    console.log('Creating bidirectional for:', selectedText);
     if (onCreateBidirectional) {
       onCreateBidirectional(selectedText);
     } else {
@@ -167,6 +185,19 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
 
   const fullText = exercise.content.sentences.map(s => s.text).join(' ');
   const totalWords = fullText.split(/\s+/).length;
+
+  // Determine which text component to render based on feature flags
+  const shouldUseWordSync = enableWordSynchronization && enableFullTextAudio && audioUrl;
+  const shouldUseSelection = enableTextSelection;
+
+  console.log('Rendering decision:', {
+    shouldUseWordSync,
+    shouldUseSelection,
+    enableWordSynchronization,
+    enableFullTextAudio,
+    hasAudioUrl: !!audioUrl,
+    enableTextSelection
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -244,17 +275,29 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
 
         <Separator className="flex-shrink-0" />
 
-        {/* Main Reading Content */}
+        {/* Main Reading Content with Fixed Logic */}
         <div className="flex-1 overflow-auto">
           <Card className="p-6 h-full">
-            {enableWordSynchronization && enableFullTextAudio ? (
-              <SynchronizedText
+            {shouldUseWordSync && shouldUseSelection ? (
+              // Both word sync and text selection enabled - use hybrid component
+              <SynchronizedTextWithSelection
                 text={fullText}
                 highlightedWordIndex={highlightedWordIndex}
                 enableWordHighlighting={true}
                 className={isMobile ? 'text-base' : 'text-lg'}
+                onCreateDictation={handleCreateDictation}
+                onCreateBidirectional={handleCreateBidirectional}
+                exerciseId={exercise.id}
+                exerciseLanguage={exercise.language}
+                enableTextSelection={enableTextSelection}
+                enableVocabulary={enableVocabularyIntegration}
+                enhancedHighlighting={enableEnhancedHighlighting}
+                vocabularyIntegration={enableVocabularyIntegration}
+                enableContextMenu={enableContextMenu}
+                enableSelectionFeedback={enableSelectionFeedback}
               />
-            ) : (
+            ) : shouldUseSelection ? (
+              // Only text selection enabled - use enhanced interactive text
               <EnhancedInteractiveText
                 text={fullText}
                 language={exercise.language}
@@ -266,6 +309,24 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                 exerciseId={exercise.id}
                 onCreateDictation={handleCreateDictation}
                 onCreateBidirectional={handleCreateBidirectional}
+              />
+            ) : (
+              // Fallback to basic synchronized text (no selection)
+              <SynchronizedTextWithSelection
+                text={fullText}
+                highlightedWordIndex={highlightedWordIndex}
+                enableWordHighlighting={shouldUseWordSync}
+                className={isMobile ? 'text-base' : 'text-lg'}
+                onCreateDictation={handleCreateDictation}
+                onCreateBidirectional={handleCreateBidirectional}
+                exerciseId={exercise.id}
+                exerciseLanguage={exercise.language}
+                enableTextSelection={false} // Explicitly disable selection
+                enableVocabulary={false}
+                enhancedHighlighting={false}
+                vocabularyIntegration={false}
+                enableContextMenu={false}
+                enableSelectionFeedback={false}
               />
             )}
           </Card>

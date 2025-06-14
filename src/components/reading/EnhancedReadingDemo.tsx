@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +26,11 @@ export const EnhancedReadingDemo: React.FC<EnhancedReadingDemoProps> = ({
 }) => {
   const [activeFeature, setActiveFeature] = useState<string | null>(null);
   const featureFlags = getReadingFeatureFlags();
+
+  // Debug logging for feature flags
+  React.useEffect(() => {
+    console.log('EnhancedReadingDemo feature flags:', featureFlags);
+  }, [featureFlags]);
 
   const demoText = "The fascinating world of artificial intelligence continues to evolve rapidly. Machine learning algorithms are becoming increasingly sophisticated, enabling computers to process natural language with remarkable accuracy. This technological advancement opens new possibilities for human-computer interaction and automated text analysis.";
 
@@ -78,10 +82,12 @@ export const EnhancedReadingDemo: React.FC<EnhancedReadingDemoProps> = ({
   ];
 
   const handleCreateDictation = (selectedText: string) => {
+    console.log('Demo: Creating dictation for:', selectedText);
     toast.success(`Dictation exercise created for: "${selectedText.substring(0, 30)}..."`);
   };
 
   const handleCreateBidirectional = (selectedText: string) => {
+    console.log('Demo: Creating bidirectional for:', selectedText);
     toast.success(`Translation exercise created for: "${selectedText.substring(0, 30)}..."`);
   };
 

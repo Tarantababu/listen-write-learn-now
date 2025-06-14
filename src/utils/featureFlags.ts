@@ -1,4 +1,3 @@
-
 // Feature flag utilities for gradual rollout of enhanced reading features
 
 export interface ReadingFeatureFlags {
@@ -128,28 +127,50 @@ export const productionPhase5: ReadingFeatureFlags = {
 
 // Utility function to get feature flags based on environment
 export const getReadingFeatureFlags = (): ReadingFeatureFlags => {
-  if (import.meta.env.DEV) {
-    return developmentFeatureFlags;
-  }
-  
+  const isDev = import.meta.env.DEV;
   const phase = import.meta.env.VITE_READING_FEATURE_PHASE || 'phase5';
   
-  switch (phase) {
-    case 'phase1':
-      return productionPhase1;
-    case 'phase2':
-      return productionPhase2;
-    case 'phase3':
-      return productionPhase3;
-    case 'phase4':
-      return productionPhase4;
-    case 'phase5':
-      return productionPhase5;
-    case 'development':
-      return developmentFeatureFlags;
-    default:
-      return productionPhase5; // Default to full feature set
+  let flags: ReadingFeatureFlags;
+  
+  if (isDev) {
+    flags = developmentFeatureFlags;
+  } else {
+    switch (phase) {
+      case 'phase1':
+        flags = productionPhase1;
+        break;
+      case 'phase2':
+        flags = productionPhase2;
+        break;
+      case 'phase3':
+        flags = productionPhase3;
+        break;
+      case 'phase4':
+        flags = productionPhase4;
+        break;
+      case 'phase5':
+        flags = productionPhase5;
+        break;
+      case 'development':
+        flags = developmentFeatureFlags;
+        break;
+      default:
+        flags = productionPhase5; // Default to full feature set
+    }
   }
+  
+  // Debug logging
+  console.log('Reading Feature Flags Loaded:', {
+    isDev,
+    phase,
+    textSelection: flags.enableTextSelection,
+    contextMenu: flags.enableContextMenu,
+    selectionFeedback: flags.enableSelectionFeedback,
+    wordSync: flags.enableWordSynchronization,
+    timestamp: new Date().toISOString()
+  });
+  
+  return flags;
 };
 
 // User-specific feature flag overrides (can be stored in user preferences)
