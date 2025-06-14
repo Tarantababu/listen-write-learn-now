@@ -7,7 +7,8 @@ import { Separator } from '@/components/ui/separator';
 import { 
   BookOpen,
   Mic,
-  Plus
+  Plus,
+  Languages
 } from 'lucide-react';
 import { ReadingExercise } from '@/types/reading';
 import { Language } from '@/types';
@@ -15,6 +16,7 @@ import { EnhancedInteractiveText } from './EnhancedInteractiveText';
 import { AudioWordSynchronizer } from './AudioWordSynchronizer';
 import { SynchronizedTextWithSelection } from './SynchronizedTextWithSelection';
 import { AdvancedAudioControls } from './AdvancedAudioControls';
+import { TranslationAnalysis } from './TranslationAnalysis';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { toast } from 'sonner';
@@ -60,6 +62,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string>('');
   const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1);
+  const [showTranslationAnalysis, setShowTranslationAnalysis] = useState(false);
   
   const isMobile = useIsMobile();
 
@@ -182,6 +185,10 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     }
   };
 
+  const handleAnalyzeTranslation = () => {
+    setShowTranslationAnalysis(true);
+  };
+
   if (!exercise) return null;
 
   const fullText = exercise.content.sentences.map(s => s.text).join(' ');
@@ -232,11 +239,22 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                 </div>
               </div>
             </div>
+            
+            {/* Analyze Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAnalyzeTranslation}
+              className="flex items-center gap-2"
+            >
+              <Languages className="h-4 w-4" />
+              Analyze
+            </Button>
           </div>
         </DialogHeader>
 
         {/* Advanced Audio Controls */}
-        {enableFullTextAudio && (
+        {enableFullTextAudio && !showTranslationAnalysis && (
           <div className="flex-shrink-0 mb-4">
             <AudioWordSynchronizer
               audioUrl={audioUrl}
@@ -275,46 +293,56 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
 
         <Separator className="flex-shrink-0" />
 
-        {/* Main Reading Content - Simplified Logic */}
+        {/* Main Content */}
         <div className="flex-1 overflow-auto">
           <Card className="p-6 h-full">
-            {enableTextSelection ? (
-              // Text selection is enabled - use the hybrid component
-              <SynchronizedTextWithSelection
+            {showTranslationAnalysis ? (
+              <TranslationAnalysis
                 text={fullText}
-                highlightedWordIndex={highlightedWordIndex}
-                enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
-                className={isMobile ? 'text-base' : 'text-lg'}
-                onCreateDictation={handleCreateDictation}
-                onCreateBidirectional={handleCreateBidirectional}
-                exerciseId={exercise.id}
-                exerciseLanguage={exerciseLanguage}
-                enableTextSelection={true}
-                enableVocabulary={enableVocabularyIntegration}
-                enhancedHighlighting={enableEnhancedHighlighting}
-                vocabularyIntegration={enableVocabularyIntegration}
-                enableContextMenu={enableContextMenu}
+                sourceLanguage={exerciseLanguage}
+                onClose={() => setShowTranslationAnalysis(false)}
               />
             ) : (
-              // Text selection is disabled - use enhanced interactive text
-              <EnhancedInteractiveText
-                text={fullText}
-                language={exerciseLanguage}
-                enableTooltips={true}
-                enableBidirectionalCreation={true}
-                enableTextSelection={false}
-                vocabularyIntegration={false}
-                enhancedHighlighting={false}
-                exerciseId={exercise.id}
-                onCreateDictation={handleCreateDictation}
-                onCreateBidirectional={handleCreateBidirectional}
-              />
+              <>
+                {enableTextSelection ? (
+                  // Text selection is enabled - use the hybrid component
+                  <SynchronizedTextWithSelection
+                    text={fullText}
+                    highlightedWordIndex={highlightedWordIndex}
+                    enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
+                    className={isMobile ? 'text-base' : 'text-lg'}
+                    onCreateDictation={handleCreateDictation}
+                    onCreateBidirectional={handleCreateBidirectional}
+                    exerciseId={exercise.id}
+                    exerciseLanguage={exerciseLanguage}
+                    enableTextSelection={true}
+                    enableVocabulary={enableVocabularyIntegration}
+                    enhancedHighlighting={enableEnhancedHighlighting}
+                    vocabularyIntegration={enableVocabularyIntegration}
+                    enableContextMenu={enableContextMenu}
+                  />
+                ) : (
+                  // Text selection is disabled - use enhanced interactive text
+                  <EnhancedInteractiveText
+                    text={fullText}
+                    language={exerciseLanguage}
+                    enableTooltips={true}
+                    enableBidirectionalCreation={true}
+                    enableTextSelection={false}
+                    vocabularyIntegration={false}
+                    enhancedHighlighting={false}
+                    exerciseId={exercise.id}
+                    onCreateDictation={handleCreateDictation}
+                    onCreateBidirectional={handleCreateBidirectional}
+                  />
+                )}
+              </>
             )}
           </Card>
         </div>
 
         {/* Quick Actions - Mobile */}
-        {isMobile && (
+        {isMobile && !showTranslationAnalysis && (
           <div className="flex-shrink-0 border-t p-4 bg-gray-50">
             <div className="flex justify-center gap-2">
               <Button
@@ -332,6 +360,14 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Translation
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAnalyzeTranslation}
+              >
+                <Languages className="h-4 w-4 mr-1" />
+                Analyze
               </Button>
             </div>
           </div>
