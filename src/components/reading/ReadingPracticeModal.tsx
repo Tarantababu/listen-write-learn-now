@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -21,6 +20,7 @@ import {
   Rewind
 } from 'lucide-react';
 import { ReadingExercise, ReadingSentence } from '@/types/reading';
+import { Language } from '@/types';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { InteractiveText } from './InteractiveText';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -169,7 +169,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
       const dictationExercise = {
         title: `Dictation: ${exercise.title}`,
         text: currentSentence.text,
-        language: exercise.language,
+        language: exercise.language as Language,
         tags: ['dictation', 'from-reading'],
         directoryId: null
       };
