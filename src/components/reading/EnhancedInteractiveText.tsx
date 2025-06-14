@@ -93,7 +93,7 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
-                className="inline-flex items-center h-auto p-0.5 font-normal text-base leading-relaxed text-gray-800 hover:bg-gray-100 hover:text-gray-900 rounded-sm border-b border-transparent hover:border-gray-300 transition-all duration-200"
+                className="inline-flex items-center h-auto p-0.5 font-normal text-base leading-relaxed text-gray-800 hover:bg-gray-50 hover:text-gray-800 border-b border-transparent hover:border-gray-200 transition-colors duration-300"
                 onMouseEnter={() => setHoveredWord(word)}
                 onMouseLeave={() => setHoveredWord(null)}
                 onClick={() => onWordClick?.(word)}
