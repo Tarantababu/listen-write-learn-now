@@ -176,14 +176,37 @@ export const TextSelectionPanel: React.FC<TextSelectionPanelProps> = ({
       const info = await generateVocabularyInfo(cleanedText, exerciseLanguage);
       
       if (info) {
-        const isBidirectionalExercise = exerciseId?.startsWith('bidirectional-');
+        // Check if the exerciseId exists in the exercises table before using it
+        let validExerciseId = '';
+        
+        if (exerciseId) {
+          console.log('Checking if exercise exists:', exerciseId);
+          const { data: exerciseExists, error: checkError } = await supabase
+            .from('exercises')
+            .select('id')
+            .eq('id', exerciseId)
+            .maybeSingle();
+          
+          if (checkError) {
+            console.error('Error checking exercise existence:', checkError);
+          }
+          
+          // Only use the exerciseId if it exists in the exercises table
+          if (exerciseExists) {
+            validExerciseId = exerciseId;
+            console.log('Exercise exists, using exerciseId:', validExerciseId);
+          } else {
+            console.log('Exercise does not exist in exercises table, using empty exerciseId');
+            validExerciseId = '';
+          }
+        }
         
         await addVocabularyItem({
           word: cleanedText,
           definition: info.definition,
           exampleSentence: info.exampleSentence,
           audioUrl: info.audioUrl,
-          exerciseId: isBidirectionalExercise ? '' : (exerciseId || ''),
+          exerciseId: validExerciseId,
           language: exerciseLanguage
         });
         
