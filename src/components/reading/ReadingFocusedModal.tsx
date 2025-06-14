@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -188,21 +187,17 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   const fullText = exercise.content.sentences.map(s => s.text).join(' ');
   const totalWords = fullText.split(/\s+/).length;
 
-  // Determine which text component to render based on feature flags
-  const shouldUseWordSync = enableWordSynchronization && enableFullTextAudio && audioUrl;
-  const shouldUseSelection = enableTextSelection;
+  // Cast exercise.language to Language type to fix TypeScript error
+  const exerciseLanguage = exercise.language as Language;
 
-  console.log('Rendering decision:', {
-    shouldUseWordSync,
-    shouldUseSelection,
+  // Simplified rendering logic with proper debug logging
+  console.log('ReadingFocusedModal rendering decision:', {
+    enableTextSelection,
     enableWordSynchronization,
     enableFullTextAudio,
     hasAudioUrl: !!audioUrl,
-    enableTextSelection
+    exerciseId: exercise.id
   });
-
-  // Cast exercise.language to Language type
-  const exerciseLanguage = exercise.language as Language;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -280,58 +275,40 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
 
         <Separator className="flex-shrink-0" />
 
-        {/* Main Reading Content with Fixed Logic */}
+        {/* Main Reading Content - Simplified Logic */}
         <div className="flex-1 overflow-auto">
           <Card className="p-6 h-full">
-            {shouldUseWordSync && shouldUseSelection ? (
-              // Both word sync and text selection enabled - use hybrid component
+            {enableTextSelection ? (
+              // Text selection is enabled - use the hybrid component
               <SynchronizedTextWithSelection
                 text={fullText}
                 highlightedWordIndex={highlightedWordIndex}
-                enableWordHighlighting={true}
+                enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
                 className={isMobile ? 'text-base' : 'text-lg'}
                 onCreateDictation={handleCreateDictation}
                 onCreateBidirectional={handleCreateBidirectional}
                 exerciseId={exercise.id}
                 exerciseLanguage={exerciseLanguage}
-                enableTextSelection={enableTextSelection}
+                enableTextSelection={true}
                 enableVocabulary={enableVocabularyIntegration}
                 enhancedHighlighting={enableEnhancedHighlighting}
                 vocabularyIntegration={enableVocabularyIntegration}
                 enableContextMenu={enableContextMenu}
                 enableSelectionFeedback={enableSelectionFeedback}
               />
-            ) : shouldUseSelection ? (
-              // Only text selection enabled - use enhanced interactive text
+            ) : (
+              // Text selection is disabled - use enhanced interactive text
               <EnhancedInteractiveText
                 text={fullText}
                 language={exerciseLanguage}
                 enableTooltips={true}
                 enableBidirectionalCreation={true}
-                enableTextSelection={enableTextSelection}
-                vocabularyIntegration={enableVocabularyIntegration}
-                enhancedHighlighting={enableEnhancedHighlighting}
-                exerciseId={exercise.id}
-                onCreateDictation={handleCreateDictation}
-                onCreateBidirectional={handleCreateBidirectional}
-              />
-            ) : (
-              // Fallback to basic synchronized text (no selection)
-              <SynchronizedTextWithSelection
-                text={fullText}
-                highlightedWordIndex={highlightedWordIndex}
-                enableWordHighlighting={shouldUseWordSync}
-                className={isMobile ? 'text-base' : 'text-lg'}
-                onCreateDictation={handleCreateDictation}
-                onCreateBidirectional={handleCreateBidirectional}
-                exerciseId={exercise.id}
-                exerciseLanguage={exerciseLanguage}
                 enableTextSelection={false}
-                enableVocabulary={false}
-                enhancedHighlighting={false}
                 vocabularyIntegration={false}
-                enableContextMenu={false}
-                enableSelectionFeedback={false}
+                enhancedHighlighting={false}
+                exerciseId={exercise.id}
+                onCreateDictation={handleCreateDictation}
+                onCreateBidirectional={handleCreateBidirectional}
               />
             )}
           </Card>
