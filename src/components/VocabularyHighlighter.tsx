@@ -127,7 +127,7 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
         return undefined;
       }
 
-      // The updated function now returns { audio_url: "storage_url" } consistently
+      // Handle the correct response format: { audio_url: "..." }
       if (data.audio_url) {
         console.log('Audio URL received:', data.audio_url);
         toast("Success", {
@@ -136,7 +136,16 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
         return data.audio_url;
       }
 
-      console.warn('No audio_url in response:', data);
+      // Legacy fallback for old response format (backward compatibility)
+      if (data.audioUrl) {
+        console.log('Audio URL received (legacy format):', data.audioUrl);
+        toast("Success", {
+          description: "Audio generated successfully!"
+        });
+        return data.audioUrl;
+      }
+
+      console.warn('No audio URL in response:', data);
       return undefined;
       
     } catch (error) {
@@ -309,7 +318,7 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
                 <h4 className="text-sm font-medium mb-1">Example:</h4>
                 <p className="text-sm italic mb-2">"{generatedInfo.exampleSentence}"</p>
                 
-                {/* Audio Player Section */}
+                {/* Enhanced Audio Player Section */}
                 <div className="mt-3 p-3 bg-muted/50 rounded-lg">
                   {generatedInfo.audioUrl ? (
                     <div>

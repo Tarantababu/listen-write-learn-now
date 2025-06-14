@@ -88,47 +88,12 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { 
           text, 
-          language,
-          exerciseId: initialValues?.id || 'temp_' + Date.now(),
-          audioType: 'exercise'
+          language
         }
       });
 
       if (error) {
         console.error('Error invoking text-to-speech function:', error);
-        // Try to proceed without storage if it's a storage error
-        if (error.message?.includes('DatabaseError') || error.message?.includes('infinite recursion')) {
-          console.log('Storage error detected, trying without storage...');
-          const { data: retryData, error: retryError } = await supabase.functions.invoke('text-to-speech', {
-            body: { text, language } // Without exerciseId to skip storage
-          });
-          
-          if (retryError) {
-            throw retryError;
-          }
-          
-          if (retryData?.audioContent) {
-            // Create blob from base64 and upload manually
-            const audioContent = retryData.audioContent;
-            const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
-            
-            const fileName = `exercise_${Date.now()}.mp3`;
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('audio')
-              .upload(fileName, blob, {
-                contentType: 'audio/mp3'
-              });
-
-            if (!uploadError) {
-              const { data: { publicUrl } } = supabase.storage
-                .from('audio')
-                .getPublicUrl(fileName);
-              
-              toast.success(`Audio file generated successfully`);
-              return publicUrl;
-            }
-          }
-        }
         throw error;
       }
 
@@ -136,40 +101,21 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
         throw new Error('No data received from text-to-speech function');
       }
 
-      // If we have a direct audio URL, use it
+      // Handle the correct response format: { audio_url: "..." }
+      if (data.audio_url) {
+        console.log('Audio generated successfully, URL:', data.audio_url);
+        toast.success(`Audio file generated successfully`);
+        return data.audio_url;
+      }
+
+      // Legacy fallback for old response format (backward compatibility)
       if (data.audioUrl) {
+        console.log('Audio generated successfully (legacy format), URL:', data.audioUrl);
         toast.success(`Audio file generated successfully`);
         return data.audioUrl;
       }
 
-      // If we only have base64 content, upload it manually
-      if (data.audioContent) {
-        const audioContent = data.audioContent;
-        const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
-        
-        const fileName = `exercise_${Date.now()}.mp3`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('audio')
-          .upload(fileName, blob, {
-            contentType: 'audio/mp3'
-          });
-
-        if (uploadError) {
-          console.error('Error uploading audio:', uploadError);
-          // Return a data URL as fallback
-          toast.success(`Audio generated (using fallback method)`);
-          return `data:audio/mp3;base64,${audioContent}`;
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('audio')
-          .getPublicUrl(fileName);
-
-        toast.success(`Audio file generated successfully`);
-        return publicUrl;
-      }
-
-      throw new Error('No audio content received');
+      throw new Error('No audio URL received in response');
     } catch (error) {
       console.error('Error generating audio:', error);
       toast.error(`Failed to generate audio: ${error.message}`);
@@ -188,7 +134,6 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       setIsSaving(true);
 
       // Generate audio - passing the current language for database association
-      // but TTS function will use English voice regardless
       const audioUrl = await generateAudio(text, language);
       
       if (initialValues?.id) {
@@ -196,7 +141,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
         await updateExercise(initialValues.id, {
           title,
           text,
-          language, // Keep using the language from settings for database association
+          language,
           tags,
           directoryId,
           ...(audioUrl && { audioUrl })
@@ -207,7 +152,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
         await addExercise({
           title,
           text,
-          language, // Keep using the language from settings for database association
+          language,
           tags,
           directoryId,
           ...(audioUrl && { audioUrl })

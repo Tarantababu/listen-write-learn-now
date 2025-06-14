@@ -146,14 +146,20 @@ export class ReadingExerciseService {
         throw new Error('No audio data received');
       }
 
-      // The function now returns { audio_url: "storage_url" } consistently
-      if (!data.audio_url) {
-        console.error('No audio_url in response:', data);
-        throw new Error('No audio URL in response');
+      // Handle the correct response format: { audio_url: "..." }
+      if (data.audio_url) {
+        console.log('Audio generated successfully, URL:', data.audio_url);
+        return data.audio_url;
       }
 
-      console.log('Audio generated successfully, URL:', data.audio_url);
-      return data.audio_url;
+      // Legacy fallback for old response format (backward compatibility)
+      if (data.audioUrl) {
+        console.log('Audio generated successfully (legacy format), URL:', data.audioUrl);
+        return data.audioUrl;
+      }
+
+      console.error('No audio URL in response:', data);
+      throw new Error('No audio URL in response');
     } catch (error) {
       console.error('Error generating audio:', error);
       throw error;

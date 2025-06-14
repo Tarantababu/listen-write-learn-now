@@ -24,6 +24,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [duration, setDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const play = () => {
@@ -90,8 +91,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   }, [registerMethods]);
 
   useEffect(() => {
-    // Reset error state when audioUrl changes
+    // Reset states when audioUrl changes
     setHasError(false);
+    setIsLoading(false);
     
     // If we have no audio URL and are in demo mode, create a fake audio element
     if (demoMode && !audioUrl) {
@@ -101,17 +103,31 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
     // If we have an audioUrl, create the audio element
     if (audioUrl) {
+      setIsLoading(true);
       const audio = new Audio();
       
-      // Handle both data URLs and storage URLs
-      if (audioUrl.startsWith('data:') || audioUrl.startsWith('http')) {
-        audio.src = audioUrl;
-      } else {
-        // Handle relative URLs by making them absolute
-        audio.src = audioUrl.startsWith('/') ? audioUrl : `/${audioUrl}`;
+      // Enhanced URL handling for backward compatibility
+      try {
+        if (audioUrl.startsWith('data:')) {
+          // Handle data URLs (base64 encoded)
+          audio.src = audioUrl;
+          console.log('Loading data URL audio');
+        } else if (audioUrl.startsWith('http')) {
+          // Handle full URLs (storage URLs)
+          audio.src = audioUrl;
+          console.log('Loading storage URL audio:', audioUrl);
+        } else {
+          // Handle relative URLs by making them absolute
+          audio.src = audioUrl.startsWith('/') ? audioUrl : `/${audioUrl}`;
+          console.log('Loading relative URL audio:', audio.src);
+        }
+        
+        audioRef.current = audio;
+      } catch (error) {
+        console.error('Error setting audio source:', error);
+        setHasError(true);
+        setIsLoading(false);
       }
-      
-      audioRef.current = audio;
     }
   }, [audioUrl, demoMode]);
 
@@ -133,6 +149,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const handleLoadedMetadata = () => {
       setDuration(audio.duration || 0);
       setHasError(false);
+      setIsLoading(false);
+      console.log('Audio metadata loaded successfully');
     };
 
     const handleDurationChange = () => {
@@ -143,6 +161,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       console.error('Audio loading error:', error);
       setHasError(true);
       setIsPlaying(false);
+      setIsLoading(false);
+    };
+
+    const handleLoadStart = () => {
+      setIsLoading(true);
+    };
+
+    const handleCanPlay = () => {
+      setIsLoading(false);
+      console.log('Audio can play');
     };
     
     audio.addEventListener('ended', handleEnded);
@@ -150,6 +178,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('durationchange', handleDurationChange);
     audio.addEventListener('error', handleError);
+    audio.addEventListener('loadstart', handleLoadStart);
+    audio.addEventListener('canplay', handleCanPlay);
     
     return () => {
       audio.removeEventListener('ended', handleEnded);
@@ -157,6 +187,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('durationchange', handleDurationChange);
       audio.removeEventListener('error', handleError);
+      audio.removeEventListener('loadstart', handleLoadStart);
+      audio.removeEventListener('canplay', handleCanPlay);
     };
   }, [isDragging, audioUrl]);
 
@@ -186,12 +218,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
           variant="outline"
           size="icon"
           className="rounded-full w-12 h-12"
-          disabled={hasError && !demoMode}
+          disabled={(hasError && !demoMode) || isLoading}
         >
-          {isPlaying ? 
-            <Pause className="h-6 w-6" /> : 
+          {isLoading ? (
+            <div className="animate-spin w-6 h-6 border-2 border-current border-t-transparent rounded-full" />
+          ) : isPlaying ? (
+            <Pause className="h-6 w-6" />
+          ) : (
             <Play className="h-6 w-6" />
-          }
+          )}
         </Button>
         
         <Button 
@@ -199,7 +234,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
           variant="outline"
           size="icon"
           className="rounded-full"
-          disabled={hasError && !demoMode}
+          disabled={(hasError && !demoMode) || isLoading}
         >
           <RotateCcw className="h-4 w-4" />
         </Button>
@@ -215,7 +250,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
           onValueCommit={handleSeekEnd}
           onPointerDown={handleSeekStart}
           className="w-full"
-          disabled={(!audioUrl && !demoMode) || hasError}
+          disabled={(!audioUrl && !demoMode) || hasError || isLoading}
         />
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>{formatTime(currentTime)}</span>
@@ -226,6 +261,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       {demoMode && (
         <p className="text-xs text-muted-foreground mt-2 text-center">
           Audio would play here in the full version
+        </p>
+      )}
+      
+      {isLoading && (
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          Loading audio...
         </p>
       )}
     </div>

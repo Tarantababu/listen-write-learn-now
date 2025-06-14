@@ -111,31 +111,49 @@ const DefaultExerciseForm: React.FC = () => {
         throw error;
       }
 
-      if (!data || !data.audioContent) {
-        throw new Error('No audio content received');
+      if (!data) {
+        throw new Error('No data received from text-to-speech function');
       }
 
-      const audioContent = data.audioContent;
-      const blob = await fetch(`data:audio/mp3;base64,${audioContent}`).then(res => res.blob());
-      
-      const fileName = `default_exercise_${Date.now()}.mp3`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('audio')
-        .upload(fileName, blob, {
-          contentType: 'audio/mp3'
-        });
-
-      if (uploadError) {
-        console.error('Error uploading audio:', uploadError);
-        throw uploadError;
+      // Handle the correct response format: { audio_url: "..." }
+      if (data.audio_url) {
+        console.log('Audio generated successfully, URL:', data.audio_url);
+        toast.success(`Audio file generated successfully`);
+        return data.audio_url;
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('audio')
-        .getPublicUrl(fileName);
+      // Legacy fallback for old response format (backward compatibility)
+      if (data.audioUrl) {
+        console.log('Audio generated successfully (legacy format), URL:', data.audioUrl);
+        toast.success(`Audio file generated successfully`);
+        return data.audioUrl;
+      }
 
-      toast.success(`Audio file generated successfully`);
-      return publicUrl;
+      // Handle old audioContent format for legacy compatibility
+      if (data.audioContent) {
+        const blob = await fetch(`data:audio/mp3;base64,${data.audioContent}`).then(res => res.blob());
+        
+        const fileName = `default_exercise_${Date.now()}.mp3`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('audio')
+          .upload(fileName, blob, {
+            contentType: 'audio/mp3'
+          });
+
+        if (uploadError) {
+          console.error('Error uploading audio:', uploadError);
+          throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('audio')
+          .getPublicUrl(fileName);
+
+        toast.success(`Audio file generated successfully`);
+        return publicUrl;
+      }
+
+      throw new Error('No audio content received');
     } catch (error) {
       console.error('Error generating audio:', error);
       toast.error(`Failed to generate audio for the exercise`);
@@ -154,7 +172,6 @@ const DefaultExerciseForm: React.FC = () => {
       setIsLoading(true);
 
       // Generate audio - passing the selected language for database association
-      // but TTS function will use English voice regardless
       const audioUrl = await generateAudio(text, language);
       
       await createDefaultExercise(user.id, {
