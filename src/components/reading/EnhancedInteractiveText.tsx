@@ -3,8 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Volume2, BookOpen, Plus, Sparkles } from 'lucide-react';
+import { Volume2, Plus } from 'lucide-react';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { toast } from 'sonner';
@@ -78,28 +77,6 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
     return words.find(w => w.word.toLowerCase() === cleanWord);
   };
 
-  const getDifficultyColor = (difficulty?: string) => {
-    switch (difficulty) {
-      case 'easy': 
-        return 'text-green-700 bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300';
-      case 'medium': 
-        return 'text-yellow-700 bg-yellow-50 border-yellow-200 hover:bg-yellow-100 hover:border-yellow-300';
-      case 'hard': 
-        return 'text-red-700 bg-red-50 border-red-200 hover:bg-red-100 hover:border-red-300';
-      default: 
-        return 'text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100 hover:border-blue-300';
-    }
-  };
-
-  const getDifficultyIcon = (difficulty?: string) => {
-    switch (difficulty) {
-      case 'easy': return '●';
-      case 'medium': return '●●';
-      case 'hard': return '●●●';
-      default: return '○';
-    }
-  };
-
   const renderInteractiveText = () => {
     const words = text.split(/(\s+)/);
     
@@ -116,44 +93,29 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
-                className={`inline-flex items-center gap-1 h-auto p-1 font-normal rounded-md border transition-all duration-200 ${getDifficultyColor(wordInfo.difficulty)} text-base leading-relaxed`}
+                className="inline-flex items-center h-auto p-0.5 font-normal text-base leading-relaxed text-gray-800 hover:bg-gray-100 hover:text-gray-900 rounded-sm border-b border-transparent hover:border-gray-300 transition-all duration-200"
                 onMouseEnter={() => setHoveredWord(word)}
                 onMouseLeave={() => setHoveredWord(null)}
                 onClick={() => onWordClick?.(word)}
               >
                 {word}
-                {hoveredWord === word && (
-                  <span className="ml-1 text-xs opacity-70 font-medium">
-                    {getDifficultyIcon(wordInfo.difficulty)}
-                  </span>
-                )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 shadow-xl border-gray-200" side="top" sideOffset={8}>
+            <PopoverContent className="w-80 p-0 shadow-lg border-gray-200" side="top" sideOffset={8}>
               <Card className="border-0 shadow-none">
-                <div className="p-5 space-y-4">
-                  {/* Header with word and controls */}
+                <div className="p-4 space-y-3">
+                  {/* Simple header with word and controls */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <h4 className="font-bold text-lg text-gray-900">{wordInfo.word}</h4>
-                      {wordInfo.difficulty && (
-                        <Badge
-                          variant="outline"
-                          className={`text-xs font-medium ${getDifficultyColor(wordInfo.difficulty)}`}
-                        >
-                          {wordInfo.difficulty}
-                        </Badge>
-                      )}
-                    </div>
+                    <h4 className="font-semibold text-lg text-gray-900">{wordInfo.word}</h4>
                     <div className="flex items-center gap-1">
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => playWordAudio(wordInfo.word)}
                         disabled={playingWord === wordInfo.word}
-                        className="h-8 w-8 p-0 hover:bg-blue-100 transition-colors duration-200"
+                        className="h-8 w-8 p-0 hover:bg-gray-100 text-gray-600 transition-colors duration-200"
                       >
-                        <Volume2 className={`h-4 w-4 ${playingWord === wordInfo.word ? 'text-blue-600' : 'text-gray-600'}`} />
+                        <Volume2 className="h-4 w-4" />
                       </Button>
                       {enableBidirectionalCreation && (
                         <Button
@@ -161,9 +123,9 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
                           variant="ghost"
                           onClick={() => createBidirectionalExercise(wordInfo.word, wordInfo.definition)}
                           title="Create translation exercise"
-                          className="h-8 w-8 p-0 hover:bg-purple-100 transition-colors duration-200"
+                          className="h-8 w-8 p-0 hover:bg-gray-100 text-gray-600 transition-colors duration-200"
                         >
-                          <Plus className="h-4 w-4 text-purple-600" />
+                          <Plus className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
@@ -171,41 +133,20 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
                   
                   {/* Part of speech */}
                   {wordInfo.partOfSpeech && (
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600 italic font-medium">{wordInfo.partOfSpeech}</span>
-                    </div>
+                    <div className="text-sm text-gray-600 italic">{wordInfo.partOfSpeech}</div>
                   )}
                   
                   {/* Definition */}
                   {wordInfo.definition && (
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <div className="bg-gray-50 rounded-md p-3 border border-gray-200">
                       <p className="text-sm text-gray-800 leading-relaxed">
-                        <strong className="text-gray-900">Definition:</strong> {wordInfo.definition}
+                        <span className="font-medium text-gray-900">Definition:</span> {wordInfo.definition}
                       </p>
                     </div>
                   )}
                   
-                  {/* Difficulty info */}
-                  {wordInfo.difficulty && (
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500">Difficulty:</span>
-                        <span className={`font-medium ${
-                          wordInfo.difficulty === 'easy' ? 'text-green-600' :
-                          wordInfo.difficulty === 'medium' ? 'text-yellow-600' :
-                          'text-red-600'
-                        }`}>
-                          {wordInfo.difficulty === 'easy' && 'Common word'}
-                          {wordInfo.difficulty === 'medium' && 'Intermediate vocabulary'}
-                          {wordInfo.difficulty === 'hard' && 'Advanced vocabulary'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Footer info */}
-                  <div className="pt-3 border-t border-gray-100">
+                  {/* Simple footer info */}
+                  <div className="pt-2 border-t border-gray-100">
                     <div className="text-xs text-gray-500 flex items-center gap-4">
                       <span className="flex items-center gap-1">
                         <Volume2 className="h-3 w-3" />
@@ -226,7 +167,7 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
         );
       }
 
-      return <span key={index} className="text-base leading-relaxed">{word}</span>;
+      return <span key={index} className="text-base leading-relaxed text-gray-800">{word}</span>;
     });
   };
 
