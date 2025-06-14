@@ -10,11 +10,13 @@ export interface TextSelectionInfo {
 }
 
 export const analyzeTextSelection = (text: string): TextSelectionInfo => {
-  // Only trim leading/trailing whitespace, preserve internal spaces
-  const cleanText = text.replace(/^\s+|\s+$/g, '');
-  const words = cleanText.split(/\s+/).filter(word => word.length > 0);
+  // CRITICAL: Preserve the original text exactly as received - no additional processing
+  const preservedText = text;
+  
+  // Count words properly while preserving spacing
+  const words = preservedText.split(/\s+/).filter(word => word.length > 0);
   const wordCount = words.length;
-  const characterCount = cleanText.length;
+  const characterCount = preservedText.length;
 
   // Determine selection type
   let selectionType: TextSelectionInfo['selectionType'] = 'word';
@@ -34,7 +36,7 @@ export const analyzeTextSelection = (text: string): TextSelectionInfo => {
   const isValidForTranslation = wordCount >= 2 && wordCount <= 30 && characterCount <= 300;
 
   return {
-    text: cleanText,
+    text: preservedText, // Return exactly what was passed in
     wordCount,
     characterCount,
     isValidForDictation,
@@ -67,13 +69,20 @@ export const getSelectionRecommendation = (info: TextSelectionInfo): string => {
 };
 
 export const cleanTextForExercise = (text: string, exerciseType: 'dictation' | 'vocabulary' | 'translation'): string => {
-  // Preserve original spacing - only trim leading/trailing whitespace
-  let cleaned = text.replace(/^\s+|\s+$/g, '');
+  // CRITICAL: For dictation and translation, preserve original spacing completely
+  let cleaned = text;
   
-  // For vocabulary, clean punctuation more aggressively
+  // For vocabulary, clean punctuation more aggressively but preserve internal spacing
   if (exerciseType === 'vocabulary') {
+    // Only trim leading/trailing whitespace, preserve internal spacing
+    cleaned = text.replace(/^\s+|\s+$/g, '');
+    // Remove punctuation but preserve spacing between words
     cleaned = cleaned.replace(/[.,!?;:"'()[\]{}]/g, '');
-    cleaned = cleaned.trim();
+    // Clean up any double spaces that might result from punctuation removal
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  } else {
+    // For dictation and translation, only trim leading/trailing whitespace
+    cleaned = text.replace(/^\s+|\s+$/g, '');
   }
   
   // For dictation, ensure proper sentence structure

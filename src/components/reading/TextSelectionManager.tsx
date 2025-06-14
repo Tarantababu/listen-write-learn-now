@@ -70,7 +70,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     }
 
     const range = selection.getRangeAt(0);
-    // Get the raw text preserving original spacing
+    // Get the raw text preserving ALL original spacing and formatting
     const rawText = range.toString();
 
     if (!containerRef.current?.contains(range.commonAncestorContainer)) {
@@ -79,20 +79,20 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     }
 
     if (rawText.length > 0) {
-      // Only trim leading/trailing whitespace, preserve internal spacing
-      const cleanedText = rawText.replace(/^\s+|\s+$/g, '');
+      // CRITICAL FIX: Only trim leading/trailing whitespace, preserve ALL internal spacing
+      const preservedText = rawText.replace(/^\s+|\s+$/g, '');
       
       console.log('Raw selected text:', JSON.stringify(rawText));
-      console.log('Cleaned selected text:', JSON.stringify(cleanedText));
+      console.log('Preserved selected text:', JSON.stringify(preservedText));
       
       const rect = range.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
       const y = rect.top;
 
-      // Analyze the selection
-      const analysis = analyzeTextSelection(cleanedText);
+      // Analyze the selection using the preserved text
+      const analysis = analyzeTextSelection(preservedText);
       
-      setSelectedText(cleanedText);
+      setSelectedText(preservedText);
       setSelectionRange(range.cloneRange());
       setSelectionPosition({ x, y });
       setSelectionInfo(analysis);

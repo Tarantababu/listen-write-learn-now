@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { EnhancedWordSpan } from './EnhancedWordSpan';
-import { SmartSelectionDetector } from './SmartSelectionDetector';
 import { EnhancedTextHighlighter } from './EnhancedTextHighlighter';
 
 interface SynchronizedTextProps {
@@ -73,7 +72,32 @@ export const SynchronizedText: React.FC<SynchronizedTextProps> = ({
     setHoveredWordIndex(isHovering ? wordIndex : -1);
   };
 
-  const handleSelectionChange = (boundary: SelectionBoundary | null) => {
+  const handleSelectionChange = () => {
+    // Simplified selection handling - let TextSelectionManager handle the actual selection logic
+    // This component just focuses on rendering and word highlighting
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      setSelectionBoundary(null);
+      return;
+    }
+
+    const selectedText = selection.toString();
+    if (!selectedText.trim()) {
+      setSelectionBoundary(null);
+      return;
+    }
+
+    // Simple boundary detection for visual feedback only
+    const selectedWords = selectedText.trim().split(/\s+/);
+    const boundary: SelectionBoundary = {
+      startWordIndex: 0,
+      endWordIndex: selectedWords.length - 1,
+      selectedWords,
+      selectionType: selectedWords.length === 1 ? 'single' : 
+                   selectedWords.length <= 5 ? 'phrase' : 
+                   selectedWords.length <= 15 ? 'sentence' : 'paragraph'
+    };
+    
     setSelectionBoundary(boundary);
   };
 
@@ -117,10 +141,47 @@ export const SynchronizedText: React.FC<SynchronizedTextProps> = ({
   };
 
   return (
-    <SmartSelectionDetector
-      onSelectionChange={handleSelectionChange}
-      onSmartSelect={handleSmartSelect}
-      className={`leading-relaxed ${className}`}
+    <div
+      className={`relative leading-relaxed ${className}`}
+      onMouseUp={handleSelectionChange}
+      onKeyUp={handleSelectionChange}
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        const wordElement = target.closest('[data-word-index]');
+        
+        if (!wordElement) return;
+
+        const wordIndex = parseInt(wordElement.getAttribute('data-word-index') || '-1');
+        if (wordIndex === -1) return;
+
+        const now = Date.now();
+        const timeSinceLastClick = now - (handleSmartSelect as any).lastClickTime || 0;
+        
+        if (timeSinceLastClick < 500) {
+          (handleSmartSelect as any).clickCount = ((handleSmartSelect as any).clickCount || 0) + 1;
+        } else {
+          (handleSmartSelect as any).clickCount = 1;
+        }
+        
+        (handleSmartSelect as any).lastClickTime = now;
+
+        // Smart selection based on click count
+        setTimeout(() => {
+          const clickCount = (handleSmartSelect as any).clickCount || 0;
+          if (clickCount === 2) {
+            handleSmartSelect(wordIndex, 'word');
+          } else if (clickCount === 3) {
+            handleSmartSelect(wordIndex, 'phrase');
+          }
+          (handleSmartSelect as any).clickCount = 0;
+        }, 300);
+      }}
+      style={{
+        userSelect: 'text',
+        WebkitUserSelect: 'text',
+        MozUserSelect: 'text',
+        cursor: 'text'
+      }}
     >
       <EnhancedTextHighlighter
         selectedText={selectionBoundary?.selectedWords.join(' ') || ''}
@@ -154,6 +215,6 @@ export const SynchronizedText: React.FC<SynchronizedTextProps> = ({
           })}
         </div>
       </EnhancedTextHighlighter>
-    </SmartSelectionDetector>
+    </div>
   );
 };
