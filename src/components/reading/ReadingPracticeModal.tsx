@@ -43,7 +43,6 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
 
   useEffect(() => {
     if (exercise) {
-      // Load progress from backend
       loadProgress();
     }
   }, [exercise]);
@@ -98,13 +97,11 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
       setIsPlaying(true);
       
       if (currentSentence.audio_url) {
-        // Use existing audio URL
         if (audioRef.current) {
           audioRef.current.src = currentSentence.audio_url;
           await audioRef.current.play();
         }
       } else {
-        // Generate audio on demand
         const audioUrl = await readingExerciseService.generateAudio(
           currentSentence.text,
           exercise!.language

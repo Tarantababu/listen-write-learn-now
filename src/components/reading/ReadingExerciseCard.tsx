@@ -29,7 +29,7 @@ export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
     }
   };
 
-  const estimatedReadingTime = Math.ceil(exercise.content.analysis?.wordCount || exercise.target_length / 200);
+  const estimatedReadingTime = Math.ceil((exercise.content.analysis?.wordCount || exercise.target_length) / 200);
 
   return (
     <Card className="h-full hover:shadow-md transition-all duration-200">
