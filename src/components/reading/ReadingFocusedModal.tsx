@@ -294,7 +294,6 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                 enhancedHighlighting={enableEnhancedHighlighting}
                 vocabularyIntegration={enableVocabularyIntegration}
                 enableContextMenu={enableContextMenu}
-                enableSelectionFeedback={enableSelectionFeedback}
               />
             ) : (
               // Text selection is disabled - use enhanced interactive text
