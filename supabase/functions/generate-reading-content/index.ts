@@ -16,46 +16,48 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured')
     }
 
-    const prompt = `Create a reading exercise in ${language} for ${difficulty_level} level learners.
+    const prompt = `Create an engaging reading exercise in ${language} for ${difficulty_level} level learners.
 
 Topic: ${topic}
 Target length: approximately ${target_length} words
-${grammar_focus ? `Focus on grammar: ${grammar_focus}` : ''}
+${grammar_focus ? `Grammar focus: ${grammar_focus}` : ''}
 
 Requirements:
-1. Create an engaging text about the topic
-2. Split the text into 5-8 natural sentences
-3. For each sentence, provide:
-   - The original text
-   - Word-level analysis (definitions, part of speech, difficulty)
-   - Grammar points covered
-   - Translation to English (if not English)
-4. Make it appropriate for ${difficulty_level} level
+1. Create a cohesive, interesting passage about the topic
+2. Split the text into 5-8 natural sentences that flow well together
+3. For each sentence, provide comprehensive analysis:
+   - Original text
+   - Detailed word analysis with definitions, parts of speech, and difficulty levels
+   - Grammar points covered in that sentence
+   - Natural translation to English (if the target language isn't English)
+4. Make vocabulary and grammar appropriate for ${difficulty_level} level
+5. Include varied sentence structures and engaging content
+6. Ensure cultural authenticity and relevance
 
 Return JSON in this exact format:
 {
   "sentences": [
     {
-      "id": "unique-id",
-      "text": "sentence text",
+      "id": "sentence-1",
+      "text": "sentence text in ${language}",
       "analysis": {
         "words": [
           {
             "word": "word",
-            "definition": "definition",
-            "partOfSpeech": "noun/verb/etc",
+            "definition": "clear, helpful definition",
+            "partOfSpeech": "noun/verb/adjective/etc",
             "difficulty": "easy/medium/hard"
           }
         ],
-        "grammar": ["grammar points"],
-        "translation": "English translation"
+        "grammar": ["specific grammar points used in this sentence"],
+        "translation": "natural English translation"
       }
     }
   ],
   "analysis": {
-    "wordCount": number,
-    "readingTime": number,
-    "grammarPoints": ["overall grammar points covered"]
+    "wordCount": ${target_length},
+    "readingTime": 2,
+    "grammarPoints": ["overall grammar concepts covered"]
   }
 }`
 
@@ -66,11 +68,11 @@ Return JSON in this exact format:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           {
             role: 'system',
-            content: 'You are an expert language teacher creating reading exercises. Always respond with valid JSON only, no additional text.'
+            content: `You are an expert language teacher creating high-quality reading exercises. You create authentic, culturally relevant content that is perfectly calibrated for language learners. Always respond with valid JSON only, no additional text. Make sure every word in the vocabulary analysis is actually present in the text.`
           },
           {
             role: 'user',
@@ -78,7 +80,7 @@ Return JSON in this exact format:
           }
         ],
         temperature: 0.7,
-        max_tokens: 2000
+        max_tokens: 3000
       }),
     })
 
@@ -98,11 +100,20 @@ Return JSON in this exact format:
       throw new Error('Failed to parse OpenAI response as JSON')
     }
 
-    // Add unique IDs to sentences if not present
+    // Add unique IDs to sentences if not present and validate structure
     parsedContent.sentences = parsedContent.sentences.map((sentence: any, index: number) => ({
       ...sentence,
       id: sentence.id || `sentence-${index + 1}`
     }))
+
+    // Ensure analysis exists
+    if (!parsedContent.analysis) {
+      parsedContent.analysis = {
+        wordCount: target_length,
+        readingTime: Math.ceil(target_length / 200),
+        grammarPoints: grammar_focus ? [grammar_focus] : []
+      }
+    }
 
     return new Response(JSON.stringify(parsedContent), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

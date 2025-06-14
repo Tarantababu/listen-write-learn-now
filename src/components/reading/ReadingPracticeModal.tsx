@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { 
   Volume2, 
@@ -15,10 +14,16 @@ import {
   Pause,
   BookOpen,
   Brain,
-  RotateCcw
+  RotateCcw,
+  Mic,
+  Edit,
+  SkipForward,
+  Rewind
 } from 'lucide-react';
 import { ReadingExercise, ReadingSentence } from '@/types/reading';
 import { readingExerciseService } from '@/services/readingExerciseService';
+import { InteractiveText } from './InteractiveText';
+import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { toast } from 'sonner';
 
 interface ReadingPracticeModalProps {
@@ -32,10 +37,13 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
   isOpen,
   onOpenChange
 }) => {
+  const { addExercise } = useExerciseContext();
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
+  const [isWordByWordMode, setIsWordByWordMode] = useState(false);
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const currentSentence = exercise?.content.sentences[currentSentenceIndex];
@@ -75,6 +83,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     
     setCurrentSentenceIndex(prev => prev + 1);
     setShowAnalysis(false);
+    setCurrentWordIndex(0);
     saveProgress();
   };
 
@@ -83,11 +92,13 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     
     setCurrentSentenceIndex(prev => prev - 1);
     setShowAnalysis(false);
+    setCurrentWordIndex(0);
   };
 
   const restartExercise = () => {
     setCurrentSentenceIndex(0);
     setShowAnalysis(false);
+    setCurrentWordIndex(0);
   };
 
   const playAudio = async () => {
@@ -120,6 +131,57 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     }
   };
 
+  const playWordByWord = async () => {
+    if (!currentSentence || !audioEnabled) return;
+    
+    const words = currentSentence.text.split(/\s+/);
+    setIsWordByWordMode(true);
+    setCurrentWordIndex(0);
+    
+    try {
+      for (let i = 0; i < words.length; i++) {
+        setCurrentWordIndex(i);
+        const word = words[i].replace(/[.,!?;:"'()]/g, '');
+        const audioUrl = await readingExerciseService.generateAudio(word, exercise!.language);
+        
+        const audio = new Audio(audioUrl);
+        await new Promise((resolve, reject) => {
+          audio.onended = resolve;
+          audio.onerror = reject;
+          audio.play();
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 500)); // Pause between words
+      }
+    } catch (error) {
+      console.error('Error in word-by-word playback:', error);
+      toast.error('Word-by-word playback failed');
+    } finally {
+      setIsWordByWordMode(false);
+      setCurrentWordIndex(0);
+    }
+  };
+
+  const createDictationExercise = async () => {
+    if (!exercise || !currentSentence) return;
+    
+    try {
+      const dictationExercise = {
+        title: `Dictation: ${exercise.title}`,
+        text: currentSentence.text,
+        language: exercise.language,
+        tags: ['dictation', 'from-reading'],
+        directoryId: null
+      };
+      
+      await addExercise(dictationExercise);
+      toast.success('Dictation exercise created successfully!');
+    } catch (error) {
+      console.error('Error creating dictation exercise:', error);
+      toast.error('Failed to create dictation exercise');
+    }
+  };
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'easy': return 'bg-green-100 text-green-800 border-green-200';
@@ -129,11 +191,33 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     }
   };
 
+  const renderInteractiveText = () => {
+    if (!currentSentence) return null;
+
+    const words = currentSentence.text.split(/\s+/);
+    
+    return (
+      <div className="leading-relaxed text-lg">
+        {words.map((word, index) => {
+          const isCurrentWord = isWordByWordMode && index === currentWordIndex;
+          return (
+            <span
+              key={index}
+              className={`${isCurrentWord ? 'bg-yellow-200 px-1 rounded' : ''} transition-colors`}
+            >
+              {word}{index < words.length - 1 ? ' ' : ''}
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
+
   if (!exercise) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
@@ -168,21 +252,43 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
           {/* Current Sentence */}
           <Card>
             <CardContent className="p-6 space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <p className="text-lg leading-relaxed flex-1">
-                  {currentSentence?.text}
-                </p>
+              <div className="space-y-4">
+                <InteractiveText
+                  text={currentSentence?.text || ''}
+                  words={currentSentence?.analysis?.words}
+                  language={exercise.language}
+                  onWordClick={(word) => console.log('Word clicked:', word)}
+                />
+                
+                {isWordByWordMode && (
+                  <div className="text-sm text-muted-foreground">
+                    Word-by-word playback active...
+                  </div>
+                )}
+              </div>
+
+              {/* Audio Controls */}
+              <div className="flex items-center gap-2 pt-2 border-t">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={playAudio}
                   disabled={isPlaying || !audioEnabled}
                 >
                   {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  <span className="ml-2">Play Sentence</span>
                 </Button>
-              </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={playWordByWord}
+                  disabled={isWordByWordMode || !audioEnabled}
+                >
+                  <SkipForward className="h-4 w-4" />
+                  <span className="ml-2">Word by Word</span>
+                </Button>
 
-              <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -190,6 +296,15 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
                 >
                   <Brain className="h-4 w-4 mr-2" />
                   {showAnalysis ? 'Hide' : 'Show'} Analysis
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={createDictationExercise}
+                >
+                  <Mic className="h-4 w-4 mr-2" />
+                  Create as Dictation
                 </Button>
               </div>
 

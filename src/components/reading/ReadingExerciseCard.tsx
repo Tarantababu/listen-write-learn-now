@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { BookOpen, Clock, Volume2, Brain, Play, Trash2 } from 'lucide-react';
+import { BookOpen, Clock, Volume2, Brain, Play, Trash2, Edit } from 'lucide-react';
 import { ReadingExercise } from '@/types/reading';
 
 interface ReadingExerciseCardProps {
@@ -12,13 +12,15 @@ interface ReadingExerciseCardProps {
   progress?: number;
   onPractice: (exercise: ReadingExercise) => void;
   onDelete: (exercise: ReadingExercise) => void;
+  onEdit?: (exercise: ReadingExercise) => void;
 }
 
 export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
   exercise,
   progress = 0,
   onPractice,
-  onDelete
+  onDelete,
+  onEdit
 }) => {
   const getDifficultyColor = (level: string) => {
     switch (level) {
@@ -96,10 +98,10 @@ export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
         {/* Features */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Volume2 className="h-3 w-3" />
-          <span>Audio available</span>
+          <span>Interactive audio</span>
           <span>•</span>
           <Brain className="h-3 w-3" />
-          <span>Word analysis</span>
+          <span>Clickable words</span>
         </div>
 
         {/* Actions */}
@@ -112,6 +114,18 @@ export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
             <Play className="h-3 w-3 mr-1" />
             {progress > 0 ? 'Continue' : 'Start'}
           </Button>
+          
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(exercise)}
+              className="text-muted-foreground hover:text-primary"
+            >
+              <Edit className="h-3 w-3" />
+            </Button>
+          )}
+          
           <Button
             variant="ghost"
             size="sm"
