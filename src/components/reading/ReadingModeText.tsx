@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { PureReadingModeText } from './PureReadingModeText';
+import { TextSelectionPanel } from './TextSelectionPanel';
 import { Language } from '@/types';
 
 interface ReadingModeTextProps {
@@ -22,17 +22,15 @@ export const ReadingModeText: React.FC<ReadingModeTextProps> = ({
   exerciseId,
   exerciseLanguage,
   enableVocabulary = false,
-  vocabularyIntegration = false,
-  enableContextMenu = true
+  vocabularyIntegration = false
 }) => {
-  console.log('ReadingModeText rendering with pure approach:', {
+  console.log('ReadingModeText rendering with new TextSelectionPanel approach:', {
     textLength: text.length,
-    enableContextMenu,
     vocabularyIntegration
   });
 
   return (
-    <PureReadingModeText
+    <TextSelectionPanel
       text={text}
       onCreateDictation={onCreateDictation}
       onCreateBidirectional={onCreateBidirectional}
@@ -40,7 +38,6 @@ export const ReadingModeText: React.FC<ReadingModeTextProps> = ({
       exerciseLanguage={exerciseLanguage}
       enableVocabulary={enableVocabulary}
       vocabularyIntegration={vocabularyIntegration}
-      enableContextMenu={enableContextMenu}
     />
   );
 };

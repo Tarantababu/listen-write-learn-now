@@ -1,7 +1,7 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { TextHighlighter } from './TextHighlighter';
 import { TextSelectionContextMenu } from './TextSelectionContextMenu';
+import { TextSelectionPanel } from './TextSelectionPanel';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -26,6 +26,7 @@ interface TextSelectionManagerProps {
   vocabularyIntegration?: boolean;
   enableContextMenu?: boolean;
   isReadingMode?: boolean;
+  readingText?: string;
 }
 
 export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
@@ -39,8 +40,26 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   enhancedHighlighting = false,
   vocabularyIntegration = false,
   enableContextMenu = true,
-  isReadingMode = false
+  isReadingMode = false,
+  readingText
 }) => {
+  // If in reading mode and we have text, use the new TextSelectionPanel approach
+  if (isReadingMode && readingText) {
+    return (
+      <div className="space-y-6">
+        <TextSelectionPanel
+          text={readingText}
+          onCreateDictation={onCreateDictation}
+          onCreateBidirectional={onCreateBidirectional}
+          exerciseId={exerciseId}
+          exerciseLanguage={exerciseLanguage}
+          enableVocabulary={enableVocabulary}
+          vocabularyIntegration={vocabularyIntegration}
+        />
+      </div>
+    );
+  }
+
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<Range | null>(null);
   const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
