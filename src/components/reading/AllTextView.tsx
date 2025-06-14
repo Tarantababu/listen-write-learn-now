@@ -1,8 +1,11 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, Volume2, Brain, Mic, Info } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import { Play, Pause, Volume2, Brain, Mic, Info, BarChart3, Clock, FileText } from 'lucide-react';
 import { ReadingExercise } from '@/types/reading';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { EnhancedInteractiveText } from './EnhancedInteractiveText';
@@ -33,6 +36,7 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [currentPlayingSentence, setCurrentPlayingSentence] = useState<number>(-1);
   const [showSelectionHelp, setShowSelectionHelp] = useState(true);
+  const [audioProgress, setAudioProgress] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const fullText = exercise.content.sentences.map(s => s.text).join(' ');
@@ -75,7 +79,6 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
           audio.play();
         });
         
-        // Pause between sentences
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     } catch (error) {
@@ -105,25 +108,37 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
     }
   };
 
-  // Handle audio ended event
+  // Handle audio progress tracking
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
+      const updateProgress = () => {
+        if (audio.duration) {
+          setAudioProgress((audio.currentTime / audio.duration) * 100);
+        }
+      };
+
       const handleEnded = () => {
         setIsPlaying(false);
         setCurrentPlayingSentence(-1);
+        setAudioProgress(0);
       };
       
+      audio.addEventListener('timeupdate', updateProgress);
       audio.addEventListener('ended', handleEnded);
-      return () => audio.removeEventListener('ended', handleEnded);
+      
+      return () => {
+        audio.removeEventListener('timeupdate', updateProgress);
+        audio.removeEventListener('ended', handleEnded);
+      };
     }
   }, []);
 
-  // Auto-hide selection help after 5 seconds
+  // Auto-hide selection help after 7 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSelectionHelp(false);
-    }, 5000);
+    }, 7000);
     
     return () => clearTimeout(timer);
   }, []);
@@ -141,15 +156,14 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
       );
     }
 
-    // Highlight the currently playing sentence
     return (
       <div className="leading-relaxed text-lg">
         {exercise.content.sentences.map((sentence, index) => (
           <span
             key={index}
-            className={`transition-all duration-300 ${
+            className={`transition-all duration-500 ${
               index === currentPlayingSentence 
-                ? 'bg-yellow-200 px-1 rounded shadow-sm' 
+                ? 'bg-blue-100 px-2 py-1 rounded-md shadow-sm border border-blue-200' 
                 : ''
             }`}
           >
@@ -169,28 +183,40 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Selection Help Banner */}
+      {/* Enhanced Selection Help Banner */}
       {showSelectionHelp && (onCreateDictationFromSelection || onCreateBidirectionalFromSelection) && (
-        <Card className={`border-blue-200 bg-blue-50 ${isMobile ? 'mx-0' : ''}`}>
-          <CardContent className={`${isMobile ? 'p-3' : 'p-4'}`}>
-            <div className="flex items-start gap-3">
-              <Info className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600 mt-0.5 flex-shrink-0`} />
+        <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardContent className={`${isMobile ? 'p-4' : 'p-5'}`}>
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Info className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
+              </div>
               <div className="flex-1">
-                <h4 className={`font-medium text-blue-900 mb-1 ${isMobile ? 'text-sm' : ''}`}>
-                  Text Selection Available
+                <h4 className={`font-semibold text-blue-900 mb-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
+                  Interactive Text Selection
                 </h4>
-                <p className={`text-blue-800 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                <p className={`text-blue-800 leading-relaxed ${isMobile ? 'text-xs' : 'text-sm'}`}>
                   {isMobile 
-                    ? 'Tap and hold to select text, then choose to create dictation or bidirectional exercises.'
-                    : 'Select any portion of text to create targeted dictation or bidirectional exercises from your selection.'
+                    ? 'Tap and hold any text to create custom exercises. Select words, phrases, or sentences to generate targeted practice materials.'
+                    : 'Select any portion of text to create personalized dictation or translation exercises. Perfect for focusing on challenging vocabulary or grammar patterns.'
                   }
                 </p>
+                <div className="flex items-center gap-4 mt-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
+                    <span className="text-xs text-blue-700">Dictation</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-purple-600 rounded-full"></div>
+                    <span className="text-xs text-blue-700">Translation</span>
+                  </div>
+                </div>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowSelectionHelp(false)}
-                className={`text-blue-600 hover:text-blue-800 ${isMobile ? 'p-1' : ''}`}
+                className="text-blue-600 hover:text-blue-800 hover:bg-blue-100 transition-colors duration-200"
               >
                 ×
               </Button>
@@ -199,155 +225,246 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
         </Card>
       )}
 
-      {/* Full Text Display with Selection */}
-      <Card>
-        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} space-y-4`}>
-          <TextSelectionManager
-            onCreateDictation={onCreateDictationFromSelection || (() => {})}
-            onCreateBidirectional={onCreateBidirectionalFromSelection || (() => {})}
-            disabled={!onCreateDictationFromSelection && !onCreateBidirectionalFromSelection}
-          >
-            <div className="space-y-4">
-              {renderHighlightedText()}
-              
-              {isPlaying && currentPlayingSentence !== -1 && (
-                <div className={`text-muted-foreground bg-blue-50 p-2 rounded ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                  Playing sentence {currentPlayingSentence + 1} of {exercise.content.sentences.length}
-                </div>
-              )}
+      {/* Enhanced Audio Control Panel */}
+      <Card className="border-gray-200 shadow-sm">
+        <CardHeader className={`${isMobile ? 'p-4' : 'p-5'} pb-3`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Volume2 className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className={`font-semibold text-gray-900 ${isMobile ? 'text-sm' : 'text-base'}`}>
+                  Audio Playback
+                </h3>
+                <p className={`text-gray-500 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                  Listen to the full text or sentence by sentence
+                </p>
+              </div>
             </div>
-          </TextSelectionManager>
-
-          {/* Audio Controls */}
-          <div className={`flex items-center gap-2 pt-2 border-t ${isMobile ? 'flex-wrap' : ''}`}>
+            <Badge variant="outline" className="text-xs font-medium">
+              {exercise.language.toUpperCase()}
+            </Badge>
+          </div>
+          {isPlaying && audioProgress > 0 && (
+            <div className="mt-3">
+              <Progress value={audioProgress} className="h-2" />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>Playing...</span>
+                <span>{Math.round(audioProgress)}%</span>
+              </div>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent className={`${isMobile ? 'p-4' : 'p-5'} pt-0`}>
+          <div className={`flex gap-3 ${isMobile ? 'flex-col' : 'flex-wrap'}`}>
             <Button
-              variant="outline"
-              size={isMobile ? 'sm' : 'sm'}
               onClick={playFullText}
               disabled={isPlaying || !audioEnabled}
-              className={isMobile ? 'flex-1' : ''}
+              className={`flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 ${
+                isMobile ? 'w-full justify-center py-2.5' : ''
+              }`}
             >
-              {isPlaying && currentPlayingSentence === -1 ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              <span className={`ml-2 ${isMobile ? 'text-xs' : ''}`}>Play All</span>
+              {isPlaying && currentPlayingSentence === -1 ? (
+                <Pause className="h-4 w-4" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              <span className={`font-medium ${isMobile ? 'text-sm' : 'text-sm'}`}>
+                Play Full Text
+              </span>
             </Button>
             
             <Button
               variant="outline"
-              size={isMobile ? 'sm' : 'sm'}
               onClick={playSentenceBysentence}
               disabled={isPlaying || !audioEnabled}
-              className={isMobile ? 'flex-1' : ''}
+              className={`flex items-center gap-2 border-gray-300 hover:bg-gray-50 transition-colors duration-200 ${
+                isMobile ? 'w-full justify-center py-2.5' : ''
+              }`}
             >
               <Volume2 className="h-4 w-4" />
-              <span className={`ml-2 ${isMobile ? 'text-xs' : ''}`}>By Sentence</span>
+              <span className={`font-medium ${isMobile ? 'text-sm' : 'text-sm'}`}>
+                Sentence by Sentence
+              </span>
             </Button>
 
             <Button
               variant="outline"
-              size={isMobile ? 'sm' : 'sm'}
-              onClick={() => setShowAnalysis(!showAnalysis)}
-              className={isMobile ? 'flex-1' : ''}
-            >
-              <Brain className="h-4 w-4 mr-2" />
-              <span className={isMobile ? 'text-xs' : ''}>{showAnalysis ? 'Hide' : 'Show'} Analysis</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size={isMobile ? 'sm' : 'sm'}
               onClick={createDictationFromFullText}
-              className={isMobile ? 'w-full mt-2' : ''}
+              className={`flex items-center gap-2 border-blue-300 text-blue-700 hover:bg-blue-50 transition-colors duration-200 ${
+                isMobile ? 'w-full justify-center py-2.5' : ''
+              }`}
             >
-              <Mic className="h-4 w-4 mr-2" />
-              <span className={isMobile ? 'text-xs' : ''}>Create Full Dictation</span>
+              <Mic className="h-4 w-4" />
+              <span className={`font-medium ${isMobile ? 'text-sm' : 'text-sm'}`}>
+                Create Dictation
+              </span>
             </Button>
           </div>
-
-          {/* Analysis Panel */}
-          {showAnalysis && (
-            <div className="space-y-4 border-t pt-4">
-              {/* Overall Statistics */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">
-                    {exercise.content.sentences.length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Sentences</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">
-                    {exercise.content.analysis?.wordCount || fullText.split(/\s+/).length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Words</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">
-                    {exercise.content.analysis?.readingTime || Math.ceil(fullText.split(/\s+/).length / 200)}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Min Read</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary capitalize">
-                    {exercise.difficulty_level}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Level</div>
-                </div>
+          
+          {isPlaying && currentPlayingSentence !== -1 && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                <span className={`text-blue-800 font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                  Playing sentence {currentPlayingSentence + 1} of {exercise.content.sentences.length}
+                </span>
               </div>
-
-              {/* Grammar Points */}
-              {exercise.content.analysis?.grammarPoints && exercise.content.analysis.grammarPoints.length > 0 && (
-                <div>
-                  <h4 className="font-semibold text-sm mb-2">Grammar Focus:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {exercise.content.analysis.grammarPoints.map((point, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
-                        {point}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Vocabulary Overview */}
-              {allWords.length > 0 && (
-                <div>
-                  <h4 className="font-semibold text-sm mb-3">Vocabulary Overview:</h4>
-                  <div className="grid gap-2 max-h-48 overflow-y-auto">
-                    {allWords.slice(0, 20).map((word, index) => (
-                      <div key={index} className="flex items-start gap-3 p-2 bg-muted/30 rounded text-sm">
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            word.difficulty === 'easy' ? 'border-green-200 text-green-800' :
-                            word.difficulty === 'medium' ? 'border-yellow-200 text-yellow-800' :
-                            word.difficulty === 'hard' ? 'border-red-200 text-red-800' :
-                            'border-gray-200 text-gray-800'
-                          }`}
-                        >
-                          {word.word}
-                        </Badge>
-                        <div className="flex-1">
-                          <p className="font-medium">{word.definition}</p>
-                          {word.partOfSpeech && (
-                            <p className="text-xs text-muted-foreground">{word.partOfSpeech}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {allWords.length > 20 && (
-                      <div className="text-xs text-muted-foreground text-center p-2">
-                        And {allWords.length - 20} more words...
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </CardContent>
       </Card>
 
-      <audio ref={audioRef} onEnded={() => setIsPlaying(false)} />
+      {/* Enhanced Text Display */}
+      <Card className="border-gray-200 shadow-sm">
+        <CardHeader className={`${isMobile ? 'p-4' : 'p-5'} pb-3`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <FileText className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <h3 className={`font-semibold text-gray-900 ${isMobile ? 'text-sm' : 'text-base'}`}>
+                  Reading Text
+                </h3>
+                <p className={`text-gray-500 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                  Click on words for definitions and pronunciation
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAnalysis(!showAnalysis)}
+              className="flex items-center gap-2 border-gray-300 hover:bg-gray-50"
+            >
+              <BarChart3 className="h-4 w-4" />
+              <span className={isMobile ? 'text-xs' : 'text-sm'}>
+                {showAnalysis ? 'Hide' : 'Show'} Analysis
+              </span>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
+          <TextSelectionManager
+            onCreateDictation={onCreateDictationFromSelection || (() => {})}
+            onCreateBidirectional={onCreateBidirectionalFromSelection || (() => {})}
+            disabled={!onCreateDictationFromSelection && !onCreateBidirectionalFromSelection}
+          >
+            <div className="prose prose-lg max-w-none">
+              {renderHighlightedText()}
+            </div>
+          </TextSelectionManager>
+        </CardContent>
+      </Card>
+
+      {/* Enhanced Analysis Panel */}
+      {showAnalysis && (
+        <Card className="border-gray-200 shadow-sm">
+          <CardHeader className={`${isMobile ? 'p-4' : 'p-5'} pb-3`}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Brain className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <h3 className={`font-semibold text-gray-900 ${isMobile ? 'text-sm' : 'text-base'}`}>
+                  Text Analysis
+                </h3>
+                <p className={`text-gray-500 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                  Reading statistics and vocabulary breakdown
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0 space-y-6`}>
+            {/* Enhanced Statistics Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
+                <div className="text-2xl font-bold text-blue-700 mb-1">
+                  {exercise.content.sentences.length}
+                </div>
+                <div className="text-sm text-blue-600 font-medium">Sentences</div>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-xl border border-green-200">
+                <div className="text-2xl font-bold text-green-700 mb-1">
+                  {exercise.content.analysis?.wordCount || fullText.split(/\s+/).length}
+                </div>
+                <div className="text-sm text-green-600 font-medium">Words</div>
+              </div>
+              <div className="text-center p-4 bg-orange-50 rounded-xl border border-orange-200">
+                <div className="text-2xl font-bold text-orange-700 mb-1">
+                  {exercise.content.analysis?.readingTime || Math.ceil(fullText.split(/\s+/).length / 200)}
+                </div>
+                <div className="text-sm text-orange-600 font-medium">Min Read</div>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-xl border border-purple-200">
+                <div className="text-2xl font-bold text-purple-700 mb-1 capitalize">
+                  {exercise.difficulty_level}
+                </div>
+                <div className="text-sm text-purple-600 font-medium">Level</div>
+              </div>
+            </div>
+
+            {/* Grammar Points */}
+            {exercise.content.analysis?.grammarPoints && exercise.content.analysis.grammarPoints.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                  Grammar Focus
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {exercise.content.analysis.grammarPoints.map((point, index) => (
+                    <Badge key={index} variant="secondary" className="text-xs bg-blue-100 text-blue-800 border border-blue-200">
+                      {point}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Enhanced Vocabulary Overview */}
+            {allWords.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                  Key Vocabulary ({allWords.length} words)
+                </h4>
+                <div className="grid gap-3 max-h-64 overflow-y-auto pr-2">
+                  {allWords.slice(0, 20).map((word, index) => (
+                    <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors duration-200">
+                      <Badge
+                        variant="outline"
+                        className={`text-xs font-medium ${
+                          word.difficulty === 'easy' ? 'border-green-300 text-green-700 bg-green-50' :
+                          word.difficulty === 'medium' ? 'border-yellow-300 text-yellow-700 bg-yellow-50' :
+                          word.difficulty === 'hard' ? 'border-red-300 text-red-700 bg-red-50' :
+                          'border-gray-300 text-gray-700 bg-gray-50'
+                        }`}
+                      >
+                        {word.word}
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 text-sm">{word.definition}</p>
+                        {word.partOfSpeech && (
+                          <p className="text-xs text-gray-500 mt-1 italic">{word.partOfSpeech}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {allWords.length > 20 && (
+                    <div className="text-center p-3 text-sm text-gray-500 bg-gray-50 rounded-lg border border-gray-200">
+                      And {allWords.length - 20} more words...
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <audio ref={audioRef} />
     </div>
   );
 };

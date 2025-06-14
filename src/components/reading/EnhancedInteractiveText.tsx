@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Volume2, BookOpen, Plus } from 'lucide-react';
+import { Volume2, BookOpen, Plus, Sparkles } from 'lucide-react';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { toast } from 'sonner';
@@ -55,11 +55,10 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
     if (!enableBidirectionalCreation) return;
     
     try {
-      // Create a simple sentence using the word for bidirectional exercise
-      const sentence = `This sentence contains the word "${word}".`;
+      const sentence = `Practice sentence with the word "${word}".`;
       
       const bidirectionalExercise = {
-        title: `Bidirectional: ${word}`,
+        title: `Translation: ${word}`,
         text: sentence,
         language: language as any,
         tags: ['bidirectional', 'from-reading', word.toLowerCase()],
@@ -67,10 +66,10 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
       };
       
       await addExercise(bidirectionalExercise);
-      toast.success(`Bidirectional exercise created for "${word}"`);
+      toast.success(`Translation exercise created for "${word}"`);
     } catch (error) {
       console.error('Error creating bidirectional exercise:', error);
-      toast.error('Failed to create bidirectional exercise');
+      toast.error('Failed to create translation exercise');
     }
   };
 
@@ -81,10 +80,23 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
 
   const getDifficultyColor = (difficulty?: string) => {
     switch (difficulty) {
-      case 'easy': return 'text-green-600 border-green-200 bg-green-50 hover:bg-green-100';
-      case 'medium': return 'text-yellow-600 border-yellow-200 bg-yellow-50 hover:bg-yellow-100';
-      case 'hard': return 'text-red-600 border-red-200 bg-red-50 hover:bg-red-100';
-      default: return 'text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100';
+      case 'easy': 
+        return 'text-green-700 bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300';
+      case 'medium': 
+        return 'text-yellow-700 bg-yellow-50 border-yellow-200 hover:bg-yellow-100 hover:border-yellow-300';
+      case 'hard': 
+        return 'text-red-700 bg-red-50 border-red-200 hover:bg-red-100 hover:border-red-300';
+      default: 
+        return 'text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100 hover:border-blue-300';
+    }
+  };
+
+  const getDifficultyIcon = (difficulty?: string) => {
+    switch (difficulty) {
+      case 'easy': return '●';
+      case 'medium': return '●●';
+      case 'hard': return '●●●';
+      default: return '○';
     }
   };
 
@@ -104,79 +116,108 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
-                className={`inline-flex items-center gap-1 h-auto p-1 text-base font-normal rounded-sm border border-transparent transition-all ${getDifficultyColor(wordInfo.difficulty)}`}
+                className={`inline-flex items-center gap-1 h-auto p-1 font-normal rounded-md border transition-all duration-200 ${getDifficultyColor(wordInfo.difficulty)} text-base leading-relaxed`}
                 onMouseEnter={() => setHoveredWord(word)}
                 onMouseLeave={() => setHoveredWord(null)}
                 onClick={() => onWordClick?.(word)}
               >
                 {word}
                 {hoveredWord === word && (
-                  <div className="ml-1 text-xs opacity-70">
-                    {wordInfo.difficulty === 'easy' && '●'}
-                    {wordInfo.difficulty === 'medium' && '●●'}
-                    {wordInfo.difficulty === 'hard' && '●●●'}
-                  </div>
+                  <span className="ml-1 text-xs opacity-70 font-medium">
+                    {getDifficultyIcon(wordInfo.difficulty)}
+                  </span>
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" side="top">
-              <Card className="border-0 shadow-lg">
-                <div className="p-4 space-y-3">
+            <PopoverContent className="w-80 p-0 shadow-xl border-gray-200" side="top" sideOffset={8}>
+              <Card className="border-0 shadow-none">
+                <div className="p-5 space-y-4">
+                  {/* Header with word and controls */}
                   <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-lg">{wordInfo.word}</h4>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
+                      <h4 className="font-bold text-lg text-gray-900">{wordInfo.word}</h4>
+                      {wordInfo.difficulty && (
+                        <Badge
+                          variant="outline"
+                          className={`text-xs font-medium ${getDifficultyColor(wordInfo.difficulty)}`}
+                        >
+                          {wordInfo.difficulty}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => playWordAudio(wordInfo.word)}
                         disabled={playingWord === wordInfo.word}
+                        className="h-8 w-8 p-0 hover:bg-blue-100 transition-colors duration-200"
                       >
-                        <Volume2 className="h-4 w-4" />
+                        <Volume2 className={`h-4 w-4 ${playingWord === wordInfo.word ? 'text-blue-600' : 'text-gray-600'}`} />
                       </Button>
                       {enableBidirectionalCreation && (
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => createBidirectionalExercise(wordInfo.word, wordInfo.definition)}
-                          title="Create bidirectional exercise"
+                          title="Create translation exercise"
+                          className="h-8 w-8 p-0 hover:bg-purple-100 transition-colors duration-200"
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-4 w-4 text-purple-600" />
                         </Button>
                       )}
                     </div>
                   </div>
                   
+                  {/* Part of speech */}
                   {wordInfo.partOfSpeech && (
-                    <div className="text-sm text-muted-foreground italic">
-                      {wordInfo.partOfSpeech}
-                    </div>
-                  )}
-                  
-                  {wordInfo.definition && (
-                    <div className="text-sm">
-                      <strong>Definition:</strong> {wordInfo.definition}
-                    </div>
-                  )}
-                  
-                  {wordInfo.difficulty && (
                     <div className="flex items-center gap-2">
-                      <Badge
-                        variant="outline"
-                        className={`text-xs font-medium ${getDifficultyColor(wordInfo.difficulty)}`}
-                      >
-                        {wordInfo.difficulty} level
-                      </Badge>
-                      <div className="text-xs text-muted-foreground">
-                        {wordInfo.difficulty === 'easy' && 'Common word'}
-                        {wordInfo.difficulty === 'medium' && 'Intermediate vocabulary'}
-                        {wordInfo.difficulty === 'hard' && 'Advanced vocabulary'}
+                      <Sparkles className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600 italic font-medium">{wordInfo.partOfSpeech}</span>
+                    </div>
+                  )}
+                  
+                  {/* Definition */}
+                  {wordInfo.definition && (
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <p className="text-sm text-gray-800 leading-relaxed">
+                        <strong className="text-gray-900">Definition:</strong> {wordInfo.definition}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Difficulty info */}
+                  {wordInfo.difficulty && (
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">Difficulty:</span>
+                        <span className={`font-medium ${
+                          wordInfo.difficulty === 'easy' ? 'text-green-600' :
+                          wordInfo.difficulty === 'medium' ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>
+                          {wordInfo.difficulty === 'easy' && 'Common word'}
+                          {wordInfo.difficulty === 'medium' && 'Intermediate vocabulary'}
+                          {wordInfo.difficulty === 'hard' && 'Advanced vocabulary'}
+                        </span>
                       </div>
                     </div>
                   )}
                   
-                  <div className="text-xs text-muted-foreground pt-2 border-t">
-                    Click to pronounce • Hover for quick info
-                    {enableBidirectionalCreation && ' • + to create exercise'}
+                  {/* Footer info */}
+                  <div className="pt-3 border-t border-gray-100">
+                    <div className="text-xs text-gray-500 flex items-center gap-4">
+                      <span className="flex items-center gap-1">
+                        <Volume2 className="h-3 w-3" />
+                        Click to hear
+                      </span>
+                      {enableBidirectionalCreation && (
+                        <span className="flex items-center gap-1">
+                          <Plus className="h-3 w-3" />
+                          + for exercise
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -185,12 +226,12 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
         );
       }
 
-      return <span key={index}>{word}</span>;
+      return <span key={index} className="text-base leading-relaxed">{word}</span>;
     });
   };
 
   return (
-    <div className="leading-relaxed text-lg">
+    <div className="leading-relaxed text-lg text-gray-800">
       {renderInteractiveText()}
     </div>
   );
