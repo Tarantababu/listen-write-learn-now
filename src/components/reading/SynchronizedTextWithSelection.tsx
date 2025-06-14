@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { NewSynchronizedTextWithSelection } from './NewSynchronizedTextWithSelection';
+import { SynchronizedText } from './SynchronizedText';
+import { TextSelectionManager } from './TextSelectionManager';
 import { Language } from '@/types';
 
 interface SynchronizedTextWithSelectionProps {
@@ -22,8 +23,65 @@ interface SynchronizedTextWithSelectionProps {
   enableContextMenu?: boolean;
 }
 
-export const SynchronizedTextWithSelection: React.FC<SynchronizedTextWithSelectionProps> = (props) => {
-  // For now, use the new implementation directly
-  // This maintains backward compatibility while using the fixed version
-  return <NewSynchronizedTextWithSelection {...props} />;
+export const SynchronizedTextWithSelection: React.FC<SynchronizedTextWithSelectionProps> = ({
+  text,
+  highlightedWordIndex,
+  onWordClick,
+  enableWordHighlighting = true,
+  highlightColor = 'bg-yellow-300',
+  className = '',
+  onCreateDictation,
+  onCreateBidirectional,
+  exerciseId,
+  exerciseLanguage,
+  enableTextSelection = true,
+  enableVocabulary = false,
+  enhancedHighlighting = false,
+  vocabularyIntegration = false,
+  enableContextMenu = true
+}) => {
+  console.log('SynchronizedTextWithSelection props:', {
+    enableTextSelection,
+    enableContextMenu,
+    vocabularyIntegration,
+    textLength: text.length
+  });
+
+  if (!enableTextSelection) {
+    // If text selection is disabled, just render the synchronized text
+    return (
+      <SynchronizedText
+        text={text}
+        highlightedWordIndex={highlightedWordIndex}
+        onWordClick={onWordClick}
+        enableWordHighlighting={enableWordHighlighting}
+        highlightColor={highlightColor}
+        className={className}
+      />
+    );
+  }
+
+  // Wrap synchronized text with selection capabilities
+  return (
+    <TextSelectionManager
+      onCreateDictation={onCreateDictation}
+      onCreateBidirectional={onCreateBidirectional}
+      disabled={false}
+      exerciseId={exerciseId}
+      exerciseLanguage={exerciseLanguage}
+      enableVocabulary={enableVocabulary}
+      enhancedHighlighting={enhancedHighlighting}
+      vocabularyIntegration={vocabularyIntegration}
+      enableContextMenu={enableContextMenu}
+    >
+      <SynchronizedText
+        text={text}
+        highlightedWordIndex={highlightedWordIndex}
+        onWordClick={onWordClick}
+        enableWordHighlighting={enableWordHighlighting}
+        highlightColor={highlightColor}
+        className={className}
+      />
+    </TextSelectionManager>
+  );
 };
