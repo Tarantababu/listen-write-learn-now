@@ -220,7 +220,6 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
         enhancedHighlighting={enhancedHighlighting}
         vocabularyIntegration={vocabularyIntegration}
         enableContextMenu={enableContextMenu}
-        enableSelectionFeedback={false} // Disabled feedback, show popup directly
       >
         {textContent}
       </TextSelectionManager>

@@ -26,7 +26,6 @@ interface TextSelectionManagerProps {
   enhancedHighlighting?: boolean;
   vocabularyIntegration?: boolean;
   enableContextMenu?: boolean;
-  enableSelectionFeedback?: boolean;
 }
 
 export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
@@ -39,8 +38,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   enableVocabulary = false,
   enhancedHighlighting = false,
   vocabularyIntegration = false,
-  enableContextMenu = true,
-  enableSelectionFeedback = false // Disabled by default now
+  enableContextMenu = true
 }) => {
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<Range | null>(null);
@@ -73,26 +71,33 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     }
 
     const range = selection.getRangeAt(0);
-    const text = range.toString().trim();
+    // Get the raw text with preserved spacing
+    const rawText = range.toString();
 
     if (!containerRef.current?.contains(range.commonAncestorContainer)) {
       clearSelection();
       return;
     }
 
-    if (text.length > 0) {
+    if (rawText.length > 0) {
+      // Clean up the text but preserve proper spacing between words
+      const cleanedText = rawText.replace(/^\s+|\s+$/g, '').replace(/\s+/g, ' ');
+      
+      console.log('Raw selected text:', JSON.stringify(rawText));
+      console.log('Cleaned selected text:', JSON.stringify(cleanedText));
+      
       const rect = range.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
       const y = rect.top;
 
       // Analyze the selection
-      const analysis = analyzeTextSelection(text);
+      const analysis = analyzeTextSelection(cleanedText);
       
-      setSelectedText(text);
+      setSelectedText(cleanedText);
       setSelectionRange(range.cloneRange());
       setSelectionPosition({ x, y });
       setSelectionInfo(analysis);
-      setShowPopup(true); // Show popup immediately
+      setShowPopup(true);
       setVocabularyInfo(null);
       setIsGeneratingVocabulary(false);
     } else {
