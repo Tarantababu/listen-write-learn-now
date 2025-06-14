@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, BookOpen, Volume2, Brain, Sparkles } from 'lucide-react';
+import { Plus, Search, BookOpen, Volume2, Brain, Sparkles, Loader2 } from 'lucide-react';
 import { ReadingExerciseModal } from './ReadingExerciseModal';
 import { ReadingFocusedModal } from './ReadingFocusedModal';
 import { ReadingExerciseCard } from './ReadingExerciseCard';
@@ -15,6 +15,7 @@ import { ReadingExercise } from '@/types/reading';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { getReadingFeatureFlags } from '@/utils/featureFlags';
+import { supabase } from '@/integrations/supabase/client';
 
 export const ReadingExercisesSection: React.FC = () => {
   const { settings } = useUserSettingsContext();
@@ -24,6 +25,7 @@ export const ReadingExercisesSection: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
+  const [creatingDictation, setCreatingDictation] = useState(false);
   
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -60,21 +62,77 @@ export const ReadingExercisesSection: React.FC = () => {
     }
   };
 
-  const handleCreateDictation = async (selectedText: string) => {
+  const generateAudioForText = async (text: string, language: string): Promise<string | undefined> => {
     try {
+      console.log('Generating audio for dictation text:', text.substring(0, 50) + '...');
+      
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: { text, language }
+      });
+
+      if (error) {
+        console.error('Error invoking text-to-speech function:', error);
+        throw error;
+      }
+
+      if (data?.audio_url || data?.audioUrl) {
+        const audioUrl = data.audio_url || data.audioUrl;
+        console.log('Audio generated successfully:', audioUrl);
+        return audioUrl;
+      } else {
+        console.warn('No audio URL in response:', data);
+        return undefined;
+      }
+    } catch (error) {
+      console.error('Error generating audio for dictation:', error);
+      throw error;
+    }
+  };
+
+  const handleCreateDictation = async (selectedText: string) => {
+    if (creatingDictation) return; // Prevent double-clicks
+    
+    setCreatingDictation(true);
+    
+    try {
+      console.log('Creating dictation exercise with audio generation for text:', selectedText);
+      
+      // Generate audio for the selected text
+      let audioUrl: string | undefined;
+      try {
+        audioUrl = await generateAudioForText(selectedText, settings.selectedLanguage);
+        if (audioUrl) {
+          console.log('Audio generated successfully for dictation exercise');
+        } else {
+          console.warn('Audio generation returned no URL, creating exercise without audio');
+        }
+      } catch (audioError) {
+        console.error('Audio generation failed, creating exercise without audio:', audioError);
+        // Continue without audio rather than failing completely
+        audioUrl = undefined;
+      }
+      
       const dictationExercise = {
         title: `Dictation: ${selectedText.substring(0, 30)}${selectedText.length > 30 ? '...' : ''}`,
         text: selectedText,
         language: settings.selectedLanguage as any,
         tags: ['dictation', 'from-reading'],
-        directoryId: null
+        directoryId: null,
+        audioUrl: audioUrl || undefined // Include audio URL if generated
       };
       
       await addExercise(dictationExercise);
-      toast.success('Dictation exercise created successfully!');
+      
+      if (audioUrl) {
+        toast.success('Dictation exercise created with audio successfully!');
+      } else {
+        toast.success('Dictation exercise created successfully! (Audio generation failed, you can add audio later)');
+      }
     } catch (error) {
       console.error('Error creating dictation exercise:', error);
       toast.error('Failed to create dictation exercise');
+    } finally {
+      setCreatingDictation(false);
     }
   };
 
@@ -224,6 +282,25 @@ export const ReadingExercisesSection: React.FC = () => {
           Create Exercise
         </Button>
       </div>
+
+      {/* Show loading indicator when creating dictation */}
+      {creatingDictation && (
+        <Card className={`border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20 ${isMobile ? 'mx-4' : ''}`}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <div>
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  Creating Dictation Exercise
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  Generating audio and setting up the exercise...
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Exercises Grid */}
       {filteredExercises.length === 0 ? (
