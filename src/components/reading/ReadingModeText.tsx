@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { TextSelectionManager } from './TextSelectionManager';
+import { PureReadingModeText } from './PureReadingModeText';
 import { Language } from '@/types';
 
 interface ReadingModeTextProps {
@@ -22,47 +22,25 @@ export const ReadingModeText: React.FC<ReadingModeTextProps> = ({
   exerciseId,
   exerciseLanguage,
   enableVocabulary = false,
-  enhancedHighlighting = false,
   vocabularyIntegration = false,
   enableContextMenu = true
 }) => {
-  console.log('ReadingModeText rendering:', {
+  console.log('ReadingModeText rendering with pure approach:', {
     textLength: text.length,
     enableContextMenu,
     vocabularyIntegration
   });
 
   return (
-    <TextSelectionManager
+    <PureReadingModeText
+      text={text}
       onCreateDictation={onCreateDictation}
       onCreateBidirectional={onCreateBidirectional}
-      disabled={false}
       exerciseId={exerciseId}
       exerciseLanguage={exerciseLanguage}
       enableVocabulary={enableVocabulary}
-      enhancedHighlighting={false}
       vocabularyIntegration={vocabularyIntegration}
       enableContextMenu={enableContextMenu}
-      isReadingMode={true}
-    >
-      <div 
-        className="
-          text-selectable leading-relaxed
-          prose prose-sm max-w-none
-          text-gray-900 dark:text-gray-100
-          selection:bg-blue-200/60 selection:text-gray-900
-          dark:selection:bg-blue-300/40 dark:selection:text-gray-100
-          cursor-text
-        "
-        style={{
-          userSelect: 'text',
-          WebkitUserSelect: 'text',
-          MozUserSelect: 'text',
-          cursor: 'text'
-        }}
-      >
-        {text}
-      </div>
-    </TextSelectionManager>
+    />
   );
 };

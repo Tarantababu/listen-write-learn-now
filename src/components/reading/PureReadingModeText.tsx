@@ -1,6 +1,6 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { SelectionPopup } from './SelectionPopup';
-import { TextHighlighter } from './TextHighlighter';
 import { TextSelectionContextMenu } from './TextSelectionContextMenu';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,32 +14,26 @@ interface VocabularyInfo {
   audioUrl?: string;
 }
 
-interface TextSelectionManagerProps {
-  children: React.ReactNode;
+interface PureReadingModeTextProps {
+  text: string;
   onCreateDictation: (selectedText: string) => void;
   onCreateBidirectional: (selectedText: string) => void;
-  disabled?: boolean;
   exerciseId?: string;
   exerciseLanguage?: Language;
   enableVocabulary?: boolean;
-  enhancedHighlighting?: boolean;
   vocabularyIntegration?: boolean;
   enableContextMenu?: boolean;
-  isReadingMode?: boolean;
 }
 
-export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
-  children,
+export const PureReadingModeText: React.FC<PureReadingModeTextProps> = ({
+  text,
   onCreateDictation,
   onCreateBidirectional,
-  disabled = false,
   exerciseId,
   exerciseLanguage,
   enableVocabulary = false,
-  enhancedHighlighting = false,
   vocabularyIntegration = false,
-  enableContextMenu = true,
-  isReadingMode = false
+  enableContextMenu = true
 }) => {
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<Range | null>(null);
@@ -52,6 +46,12 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
 
   const { addVocabularyItem, canCreateMore } = useVocabularyContext();
 
+  console.log('PureReadingModeText rendering:', {
+    textLength: text.length,
+    enableContextMenu,
+    vocabularyIntegration
+  });
+
   const clearSelection = useCallback(() => {
     setSelectedText('');
     setSelectionRange(null);
@@ -63,8 +63,6 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   }, []);
 
   const processSelection = useCallback(() => {
-    if (disabled) return;
-
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) {
       clearSelection();
@@ -74,8 +72,15 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     const range = selection.getRangeAt(0);
     const rawText = range.toString();
 
-    // Standard containment check - simplified since Reading Mode uses PureReadingModeText
-    if (!containerRef.current?.contains(range.commonAncestorContainer)) {
+    // Check if selection is within our container
+    const startContainer = range.startContainer;
+    const endContainer = range.endContainer;
+    
+    const isStartWithinContainer = containerRef.current?.contains(startContainer);
+    const isEndWithinContainer = containerRef.current?.contains(endContainer);
+    
+    if (!isStartWithinContainer || !isEndWithinContainer) {
+      console.log('Selection outside container in pure reading mode');
       clearSelection();
       return;
     }
@@ -84,8 +89,8 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       // Only trim leading/trailing whitespace, preserve ALL internal spacing
       const preservedText = rawText.replace(/^\s+|\s+$/g, '');
       
-      console.log('TextSelectionManager - Raw selected text:', JSON.stringify(rawText));
-      console.log('TextSelectionManager - Preserved selected text:', JSON.stringify(preservedText));
+      console.log('Pure reading mode - Raw selected text:', JSON.stringify(rawText));
+      console.log('Pure reading mode - Preserved selected text:', JSON.stringify(preservedText));
       
       const rect = range.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
@@ -104,9 +109,9 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     } else {
       clearSelection();
     }
-  }, [disabled, clearSelection]);
+  }, [clearSelection]);
 
-  // Generate vocabulary info using existing VocabularyHighlighter functions
+  // Generate vocabulary info
   const generateVocabularyInfo = async (word: string, language: Language) => {
     try {
       console.log('Generating vocabulary info for:', word, 'in language:', language);
@@ -309,18 +314,29 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       ref={containerRef}
       className="relative"
       style={{ 
-        userSelect: disabled ? 'none' : 'text',
-        WebkitUserSelect: disabled ? 'none' : 'text',
-        MozUserSelect: disabled ? 'none' : 'text'
+        userSelect: 'text',
+        WebkitUserSelect: 'text',
+        MozUserSelect: 'text'
       }}
     >
-      <TextHighlighter
-        selectedText={selectedText}
-        selectionRange={selectionRange}
-        enhancedHighlighting={enhancedHighlighting}
+      <div 
+        className="
+          text-selectable leading-relaxed
+          prose prose-sm max-w-none
+          text-gray-900 dark:text-gray-100
+          selection:bg-blue-200/60 selection:text-gray-900
+          dark:selection:bg-blue-300/40 dark:selection:text-gray-100
+          cursor-text
+        "
+        style={{
+          userSelect: 'text',
+          WebkitUserSelect: 'text',
+          MozUserSelect: 'text',
+          cursor: 'text'
+        }}
       >
-        {children}
-      </TextHighlighter>
+        {text}
+      </div>
       
       {/* Main interactive popup - shown immediately on selection */}
       {selectionPosition && showPopup && (
@@ -348,7 +364,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
         onCreateDictation={handleCreateDictation}
         onCreateBidirectional={handleCreateBidirectional}
         onCreateVocabulary={shouldShowVocabulary ? handleCreateVocabulary : undefined}
-        disabled={disabled}
+        disabled={false}
         enableVocabulary={shouldShowVocabulary}
       >
         {content}
