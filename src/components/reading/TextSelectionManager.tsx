@@ -1,6 +1,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { SelectionActions } from './SelectionActions';
+import { SelectionPopup } from './SelectionPopup';
+import { TextHighlighter } from './TextHighlighter';
 
 interface TextSelectionManagerProps {
   children: React.ReactNode;
@@ -18,8 +19,35 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   const [selectedText, setSelectedText] = useState('');
   const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
   const [selectionTimeout, setSelectionTimeout] = useState<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleSelectionChange = useCallback((selection: Selection | null, range: Range | null) => {
+    if (disabled || !selection || !range) return;
+
+    const text = range.toString().trim();
+    
+    if (text.length > 0) {
+      // Get the bounding rectangle of the selection for positioning
+      const rect = range.getBoundingClientRect();
+      
+      // Calculate optimal position for the popup
+      const x = rect.left + rect.width / 2;
+      const y = rect.top;
+
+      setSelectedText(text);
+      setSelectionPosition({ x, y });
+      setIsSelecting(true);
+      
+      // Show popup after a brief delay to ensure selection is stable
+      setTimeout(() => {
+        setShowPopup(true);
+      }, 150);
+    } else {
+      clearSelection();
+    }
+  }, [disabled]);
 
   const handleMouseUp = useCallback(() => {
     if (disabled) return;
@@ -38,16 +66,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       const text = range.toString().trim();
 
       if (text.length > 0 && containerRef.current?.contains(range.commonAncestorContainer)) {
-        // Get the bounding rectangle of the selection
-        const rect = range.getBoundingClientRect();
-        const containerRect = containerRef.current.getBoundingClientRect();
-        
-        // Position the actions above the selection with better centering
-        const x = rect.left + rect.width / 2;
-        const y = rect.top - 60; // Position above selection with more space
-
-        setSelectedText(text);
-        setSelectionPosition({ x, y });
+        // Selection will be handled by TextHighlighter
         setIsSelecting(true);
       } else {
         clearSelection();
@@ -71,6 +90,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     setSelectedText('');
     setSelectionPosition(null);
     setIsSelecting(false);
+    setShowPopup(false);
     window.getSelection()?.removeAllRanges();
   }, [selectionTimeout]);
 
@@ -93,52 +113,51 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
       
-      // Don't clear if clicking on the selection actions popup
-      const isClickingOnActions = target && (
+      // Don't clear if clicking on the selection popup
+      const isClickingOnPopup = target && (
         target.nodeType === Node.ELEMENT_NODE &&
-        (target as Element).closest('[data-selection-actions]')
+        (target as Element).closest('[role="dialog"]')
       );
       
-      if (isClickingOnActions) return;
+      if (isClickingOnPopup) return;
       
       if (containerRef.current && !containerRef.current.contains(target)) {
         clearSelection();
       }
     };
 
-    if (isSelecting) {
+    if (showPopup) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isSelecting, clearSelection]);
+  }, [showPopup, clearSelection]);
 
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isSelecting) {
+      if (event.key === 'Escape' && showPopup) {
         clearSelection();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isSelecting, clearSelection]);
+  }, [showPopup, clearSelection]);
 
   // Enhanced touch support for mobile
   const handleTouchEnd = useCallback((event: TouchEvent) => {
     if (disabled) return;
     
-    // Prevent default touch behavior that might interfere with selection
-    event.preventDefault();
-    
-    // Trigger the same logic as mouse up
-    handleMouseUp();
+    // Allow default touch behavior for text selection
+    setTimeout(() => {
+      handleMouseUp();
+    }, 100);
   }, [disabled, handleMouseUp]);
 
   useEffect(() => {
     const container = containerRef.current;
     if (container) {
-      container.addEventListener('touchend', handleTouchEnd, { passive: false });
+      container.addEventListener('touchend', handleTouchEnd);
       return () => container.removeEventListener('touchend', handleTouchEnd);
     }
   }, [handleTouchEnd]);
@@ -164,18 +183,23 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
         MozUserSelect: disabled ? 'none' : 'text'
       }}
     >
-      {children}
+      <TextHighlighter
+        isSelecting={isSelecting}
+        onSelectionChange={handleSelectionChange}
+      >
+        {children}
+      </TextHighlighter>
       
-      {isSelecting && selectionPosition && (
-        <div data-selection-actions>
-          <SelectionActions
-            position={selectionPosition}
-            selectedText={selectedText}
-            onCreateDictation={handleCreateDictation}
-            onCreateBidirectional={handleCreateBidirectional}
-            onClose={clearSelection}
-          />
-        </div>
+      {/* Portal-based popup */}
+      {selectionPosition && (
+        <SelectionPopup
+          position={selectionPosition}
+          selectedText={selectedText}
+          onCreateDictation={handleCreateDictation}
+          onCreateBidirectional={handleCreateBidirectional}
+          onClose={clearSelection}
+          isVisible={showPopup}
+        />
       )}
     </div>
   );

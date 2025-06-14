@@ -13,6 +13,10 @@ interface SelectionActionsProps {
   onClose: () => void;
 }
 
+/**
+ * Legacy SelectionActions component - now replaced by SelectionPopup
+ * Keeping for backward compatibility
+ */
 export const SelectionActions: React.FC<SelectionActionsProps> = ({
   position,
   selectedText,
