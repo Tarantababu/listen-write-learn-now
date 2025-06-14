@@ -22,7 +22,7 @@ import {
 import { ReadingExercise, ReadingSentence } from '@/types/reading';
 import { Language } from '@/types';
 import { readingExerciseService } from '@/services/readingExerciseService';
-import { InteractiveText } from './InteractiveText';
+import { EnhancedInteractiveText } from './EnhancedInteractiveText';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { toast } from 'sonner';
 
@@ -44,6 +44,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [isWordByWordMode, setIsWordByWordMode] = useState(false);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const currentSentence = exercise?.content.sentences[currentSentenceIndex];
@@ -84,6 +85,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     setCurrentSentenceIndex(prev => prev + 1);
     setShowAnalysis(false);
     setCurrentWordIndex(0);
+    setHighlightedWordIndex(-1);
     saveProgress();
   };
 
@@ -93,12 +95,14 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     setCurrentSentenceIndex(prev => prev - 1);
     setShowAnalysis(false);
     setCurrentWordIndex(0);
+    setHighlightedWordIndex(-1);
   };
 
   const restartExercise = () => {
     setCurrentSentenceIndex(0);
     setShowAnalysis(false);
     setCurrentWordIndex(0);
+    setHighlightedWordIndex(-1);
   };
 
   const playAudio = async () => {
@@ -126,11 +130,10 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     } catch (error) {
       console.error('Error playing audio:', error);
       toast.error('Audio playback failed');
-    } finally {
-      setIsPlaying(false);
     }
   };
 
+  // Enhanced word-by-word playback with synchronized highlighting
   const playWordByWord = async () => {
     if (!currentSentence || !audioEnabled) return;
     
@@ -141,6 +144,8 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     try {
       for (let i = 0; i < words.length; i++) {
         setCurrentWordIndex(i);
+        setHighlightedWordIndex(i);
+        
         const word = words[i].replace(/[.,!?;:"'()]/g, '');
         const audioUrl = await readingExerciseService.generateAudio(word, exercise!.language);
         
@@ -151,7 +156,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
           audio.play();
         });
         
-        await new Promise(resolve => setTimeout(resolve, 500)); // Pause between words
+        await new Promise(resolve => setTimeout(resolve, 300)); // Pause between words
       }
     } catch (error) {
       console.error('Error in word-by-word playback:', error);
@@ -159,6 +164,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     } finally {
       setIsWordByWordMode(false);
       setCurrentWordIndex(0);
+      setHighlightedWordIndex(-1);
     }
   };
 
@@ -191,6 +197,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     }
   };
 
+  // Enhanced text rendering with synchronized highlighting
   const renderInteractiveText = () => {
     if (!currentSentence) return null;
 
@@ -200,10 +207,16 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
       <div className="leading-relaxed text-lg">
         {words.map((word, index) => {
           const isCurrentWord = isWordByWordMode && index === currentWordIndex;
+          const isHighlighted = highlightedWordIndex === index;
+          
           return (
             <span
               key={index}
-              className={`${isCurrentWord ? 'bg-yellow-200 px-1 rounded' : ''} transition-colors`}
+              className={`transition-all duration-300 ${
+                isCurrentWord || isHighlighted 
+                  ? 'bg-yellow-200 px-1 rounded shadow-sm' 
+                  : ''
+              }`}
             >
               {word}{index < words.length - 1 ? ' ' : ''}
             </span>
@@ -212,6 +225,20 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
       </div>
     );
   };
+
+  // Handle audio ended event
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      const handleEnded = () => {
+        setIsPlaying(false);
+        setHighlightedWordIndex(-1);
+      };
+      
+      audio.addEventListener('ended', handleEnded);
+      return () => audio.removeEventListener('ended', handleEnded);
+    }
+  }, []);
 
   if (!exercise) return null;
 
@@ -253,21 +280,23 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
           <Card>
             <CardContent className="p-6 space-y-4">
               <div className="space-y-4">
-                <InteractiveText
+                <EnhancedInteractiveText
                   text={currentSentence?.text || ''}
                   words={currentSentence?.analysis?.words}
                   language={exercise.language}
                   onWordClick={(word) => console.log('Word clicked:', word)}
+                  enableTooltips={true}
+                  enableBidirectionalCreation={true}
                 />
                 
                 {isWordByWordMode && (
-                  <div className="text-sm text-muted-foreground">
-                    Word-by-word playback active...
+                  <div className="text-sm text-muted-foreground bg-blue-50 p-2 rounded">
+                    Word-by-word playback active... ({currentWordIndex + 1} of {currentSentence?.text.split(/\s+/).length})
                   </div>
                 )}
               </div>
 
-              {/* Audio Controls */}
+              {/* Enhanced Audio Controls */}
               <div className="flex items-center gap-2 pt-2 border-t">
                 <Button
                   variant="outline"
@@ -308,7 +337,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
                 </Button>
               </div>
 
-              {/* Analysis Panel */}
+              {/* Enhanced Analysis Panel */}
               {showAnalysis && currentSentence?.analysis && (
                 <div className="space-y-4 border-t pt-4">
                   {/* Translation */}
