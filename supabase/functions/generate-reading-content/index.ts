@@ -30,8 +30,8 @@ serve(async (req) => {
       // Process custom text
       content = await processCustomText(customText, language, difficulty_level, grammar_focus);
     } else {
-      // Generate AI content
-      content = await generateAIContent(topic, language, difficulty_level, target_length, grammar_focus);
+      // Generate AI content with retry logic for word count
+      content = await generateAIContentWithRetry(topic, language, difficulty_level, target_length, grammar_focus);
     }
 
     return new Response(JSON.stringify(content), {
@@ -94,28 +94,70 @@ IMPORTANT: Return ONLY valid JSON in this exact format, no additional text or fo
   }
 }`
 
-  return await callOpenAI(prompt, language);
+  return await callOpenAI(prompt, language, 4000); // Fixed token limit for custom text
+}
+
+async function generateAIContentWithRetry(topic: string, language: string, difficulty_level: string, target_length: number, grammar_focus?: string) {
+  const maxRetries = 3;
+  let attempt = 0;
+  
+  while (attempt < maxRetries) {
+    try {
+      console.log(`Generating content attempt ${attempt + 1}/${maxRetries} for ${target_length} words`);
+      
+      const content = await generateAIContent(topic, language, difficulty_level, target_length, grammar_focus);
+      
+      // Validate word count
+      const actualWordCount = content.analysis?.wordCount || 0;
+      const minExpectedWords = Math.floor(target_length * 0.8); // Allow 20% variance
+      
+      console.log(`Generated ${actualWordCount} words, target: ${target_length}, minimum: ${minExpectedWords}`);
+      
+      if (actualWordCount >= minExpectedWords) {
+        console.log('Word count validation passed');
+        return content;
+      } else {
+        console.log(`Word count too low (${actualWordCount}/${minExpectedWords}), retrying...`);
+        attempt++;
+        
+        if (attempt === maxRetries) {
+          console.warn('Max retries reached, returning content with lower word count');
+          return content;
+        }
+      }
+    } catch (error) {
+      console.error(`Attempt ${attempt + 1} failed:`, error);
+      attempt++;
+      
+      if (attempt === maxRetries) {
+        throw error;
+      }
+    }
+  }
 }
 
 async function generateAIContent(topic: string, language: string, difficulty_level: string, target_length: number, grammar_focus?: string) {
   const prompt = `Create an engaging reading exercise in ${language} for ${difficulty_level} level learners.
 
 Topic: ${topic}
-Target length: approximately ${target_length} words
+TARGET WORD COUNT: EXACTLY ${target_length} words - this is critical!
 ${grammar_focus ? `Grammar focus: ${grammar_focus}` : ''}
 
-Requirements:
-1. Create a cohesive, interesting passage about the topic
-2. Split the text into 5-12 natural sentences that flow well together
-3. For each sentence, provide comprehensive analysis:
+CRITICAL REQUIREMENTS:
+1. The text MUST contain approximately ${target_length} words total across all sentences
+2. Create a cohesive, interesting passage about the topic with ${target_length} words
+3. Split the text into 8-15 natural sentences that flow well together
+4. Each sentence should be substantial and contribute to reaching the ${target_length} word target
+5. For each sentence, provide comprehensive analysis:
    - Original text
    - Detailed word analysis with definitions, parts of speech, and difficulty levels
    - Grammar points covered in that sentence
    - Natural translation to English (if the target language isn't English)
-4. Make vocabulary and grammar appropriate for ${difficulty_level} level
-5. Include varied sentence structures and engaging content
-6. Ensure cultural authenticity and relevance
-7. Target approximately ${target_length} words total
+6. Make vocabulary and grammar appropriate for ${difficulty_level} level
+7. Include varied sentence structures and engaging content
+8. Ensure cultural authenticity and relevance
+
+WORD COUNT TARGET: ${target_length} words - do not create shorter content!
 
 IMPORTANT: Return ONLY valid JSON in this exact format, no additional text or formatting:
 {
@@ -144,10 +186,36 @@ IMPORTANT: Return ONLY valid JSON in this exact format, no additional text or fo
   }
 }`
 
-  return await callOpenAI(prompt, language);
+  // Calculate dynamic token limit based on target length
+  const dynamicMaxTokens = calculateTokenLimit(target_length);
+  console.log(`Using dynamic token limit: ${dynamicMaxTokens} for target length: ${target_length}`);
+  
+  return await callOpenAI(prompt, language, dynamicMaxTokens);
 }
 
-async function callOpenAI(prompt: string, language: string) {
+function calculateTokenLimit(target_length: number): number {
+  // Base calculation: approximate tokens needed for the content plus analysis
+  // Rough estimate: 1 word ≈ 1.3 tokens, plus overhead for JSON structure and analysis
+  const contentTokens = Math.ceil(target_length * 1.3);
+  const analysisOverhead = Math.ceil(target_length * 0.5); // For word definitions, grammar points, etc.
+  const jsonOverhead = 500; // For JSON structure
+  
+  const calculatedLimit = contentTokens + analysisOverhead + jsonOverhead;
+  
+  // Set reasonable bounds
+  const minTokens = 2000;
+  const maxTokens = 16000; // OpenAI's model limit
+  
+  const finalLimit = Math.max(minTokens, Math.min(maxTokens, calculatedLimit));
+  
+  console.log(`Token calculation: target_length=${target_length}, content_tokens=${contentTokens}, analysis_overhead=${analysisOverhead}, final_limit=${finalLimit}`);
+  
+  return finalLimit;
+}
+
+async function callOpenAI(prompt: string, language: string, maxTokens: number) {
+  console.log(`Calling OpenAI with max_tokens: ${maxTokens}`);
+  
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -159,7 +227,7 @@ async function callOpenAI(prompt: string, language: string) {
       messages: [
         {
           role: 'system',
-          content: `You are an expert language teacher creating high-quality reading exercises. You create authentic, culturally relevant content that is perfectly calibrated for language learners. You MUST respond with valid JSON only, no additional text or formatting. Make sure every word in the vocabulary analysis is actually present in the text.`
+          content: `You are an expert language teacher creating high-quality reading exercises. You create authentic, culturally relevant content that is perfectly calibrated for language learners. You MUST respond with valid JSON only, no additional text or formatting. Make sure every word in the vocabulary analysis is actually present in the text. CRITICAL: You must generate content that meets the exact word count specified in the user prompt.`
         },
         {
           role: 'user',
@@ -167,7 +235,7 @@ async function callOpenAI(prompt: string, language: string) {
         }
       ],
       temperature: 0.7,
-      max_tokens: 4000,
+      max_tokens: maxTokens,
       response_format: { type: "json_object" }
     }),
   })
@@ -181,7 +249,7 @@ async function callOpenAI(prompt: string, language: string) {
   const data = await response.json()
   const content = data.choices[0].message.content
 
-  console.log('Raw OpenAI response:', content)
+  console.log('Raw OpenAI response length:', content.length);
 
   // Parse the JSON response with better error handling
   let parsedContent
@@ -222,19 +290,24 @@ async function callOpenAI(prompt: string, language: string) {
     }
   }))
 
-  // Ensure analysis exists
+  // Calculate actual word count from sentences
+  const actualWordCount = parsedContent.sentences.reduce((count: number, sentence: any) => {
+    return count + (sentence.text?.split(' ').length || 0);
+  }, 0);
+
+  // Ensure analysis exists with correct word count
   if (!parsedContent.analysis) {
-    const wordCount = parsedContent.sentences.reduce((count: number, sentence: any) => {
-      return count + (sentence.text?.split(' ').length || 0);
-    }, 0);
-    
     parsedContent.analysis = {
-      wordCount: wordCount,
-      readingTime: Math.ceil(wordCount / 200),
+      wordCount: actualWordCount,
+      readingTime: Math.ceil(actualWordCount / 200),
       grammarPoints: []
     }
+  } else {
+    // Update word count with actual count
+    parsedContent.analysis.wordCount = actualWordCount;
+    parsedContent.analysis.readingTime = Math.ceil(actualWordCount / 200);
   }
 
-  console.log('Successfully processed reading content')
+  console.log(`Successfully processed reading content with ${actualWordCount} words`);
   return parsedContent;
 }
