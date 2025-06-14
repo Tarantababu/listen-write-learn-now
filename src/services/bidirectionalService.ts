@@ -124,7 +124,7 @@ export class BidirectionalService {
     }
   }
 
-  // Generate and store audio using TTS with proper URL storage
+  // FIXED: Generate and store audio using TTS with proper parameters and error handling
   static async generateAndStoreAudio(
     exerciseId: string,
     text: string,
@@ -132,37 +132,68 @@ export class BidirectionalService {
     audioType: 'original' | 'normal_translation' | 'literal_translation'
   ): Promise<void> {
     try {
+      console.log(`Generating ${audioType} audio for exercise ${exerciseId}:`, text.substring(0, 50) + '...');
+      
+      // Call text-to-speech function with only the expected parameters
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text,
-          language,
-          exerciseId,
-          audioType
+          language
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`Error invoking text-to-speech function for ${audioType}:`, error);
+        throw error;
+      }
+
+      if (!data) {
+        console.warn(`No data received from text-to-speech function for ${audioType}`);
+        throw new Error('No audio data received');
+      }
+
+      // Handle the correct response format: { audio_url: "..." }
+      let audioUrl: string | null = null;
+      
+      if (data.audio_url) {
+        audioUrl = data.audio_url;
+        console.log(`Audio generated successfully for ${audioType}, URL:`, audioUrl);
+      } else if (data.audioUrl) {
+        // Legacy fallback for old response format (backward compatibility)
+        audioUrl = data.audioUrl;
+        console.log(`Audio generated successfully for ${audioType} (legacy format), URL:`, audioUrl);
+      } else {
+        console.error(`No audio URL in response for ${audioType}:`, data);
+        throw new Error('No audio URL in response');
+      }
 
       // Update exercise with audio URL
-      if (data.audioUrl) {
+      if (audioUrl) {
         const updateData: { [key: string]: string } = {};
         if (audioType === 'original') {
-          updateData.original_audio_url = data.audioUrl;
+          updateData.original_audio_url = audioUrl;
         } else if (audioType === 'normal_translation') {
-          updateData.normal_translation_audio_url = data.audioUrl;
+          updateData.normal_translation_audio_url = audioUrl;
         } else if (audioType === 'literal_translation') {
-          updateData.literal_translation_audio_url = data.audioUrl;
+          updateData.literal_translation_audio_url = audioUrl;
         }
 
-        await supabase
+        const { error: updateError } = await supabase
           .from('bidirectional_exercises')
           .update(updateData)
           .eq('id', exerciseId);
         
-        console.log(`Updated exercise ${exerciseId} with ${audioType} audio URL: ${data.audioUrl}`);
+        if (updateError) {
+          console.error(`Error updating exercise ${exerciseId} with ${audioType} audio URL:`, updateError);
+          throw updateError;
+        }
+        
+        console.log(`Successfully updated exercise ${exerciseId} with ${audioType} audio URL: ${audioUrl}`);
       }
     } catch (error) {
-      console.error(`Error generating ${audioType} audio:`, error);
+      console.error(`Error generating ${audioType} audio for exercise ${exerciseId}:`, error);
+      // Don't throw here to prevent blocking exercise creation if audio fails
+      // The exercise will still be created without audio
     }
   }
 
