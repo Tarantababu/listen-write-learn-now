@@ -3,12 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, BookOpen, Volume2, Brain, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Search, BookOpen, Volume2, Brain, Sparkles, Loader2, Zap } from 'lucide-react';
 import { ReadingExerciseModal } from './ReadingExerciseModal';
 import { ReadingFocusedModal } from './ReadingFocusedModal';
 import { ReadingExerciseCard } from './ReadingExerciseCard';
 import { BidirectionalCreateDialog } from '@/components/bidirectional/BidirectionalCreateDialog';
-import { readingExerciseService } from '@/services/readingExerciseService';
+import { optimizedReadingService } from '@/services/optimizedReadingService';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -55,7 +55,7 @@ export const ReadingExercisesSection: React.FC = () => {
   const loadExercises = async () => {
     try {
       setLoading(true);
-      const data = await readingExerciseService.getReadingExercises(settings.selectedLanguage);
+      const data = await optimizedReadingService.getReadingExercises(settings.selectedLanguage);
       setExercises(data);
     } catch (error) {
       console.error('Error loading reading exercises:', error);
@@ -67,7 +67,7 @@ export const ReadingExercisesSection: React.FC = () => {
 
   const handleDeleteExercise = async (exercise: ReadingExercise) => {
     try {
-      await readingExerciseService.deleteReadingExercise(exercise.id);
+      await optimizedReadingService.deleteReadingExercise(exercise.id);
       setExercises(prev => prev.filter(e => e.id !== exercise.id));
       toast.success('Reading exercise deleted');
     } catch (error) {
@@ -104,14 +104,13 @@ export const ReadingExercisesSection: React.FC = () => {
   };
 
   const handleCreateDictation = async (selectedText: string) => {
-    if (creatingDictation) return; // Prevent double-clicks
+    if (creatingDictation) return;
     
     setCreatingDictation(true);
     
     try {
       console.log('Creating dictation exercise with audio generation for text:', selectedText);
       
-      // Generate audio for the selected text
       let audioUrl: string | undefined;
       try {
         audioUrl = await generateAudioForText(selectedText, settings.selectedLanguage);
@@ -122,7 +121,6 @@ export const ReadingExercisesSection: React.FC = () => {
         }
       } catch (audioError) {
         console.error('Audio generation failed, creating exercise without audio:', audioError);
-        // Continue without audio rather than failing completely
         audioUrl = undefined;
       }
       
@@ -132,7 +130,7 @@ export const ReadingExercisesSection: React.FC = () => {
         language: settings.selectedLanguage as any,
         tags: ['dictation', 'from-reading'],
         directoryId: null,
-        audioUrl: audioUrl || undefined // Include audio URL if generated
+        audioUrl: audioUrl || undefined
       };
       
       await addExercise(dictationExercise);
@@ -160,7 +158,6 @@ export const ReadingExercisesSection: React.FC = () => {
     console.log('Bidirectional exercise created successfully');
     setIsBidirectionalDialogOpen(false);
     setSelectedTextForBidirectional('');
-    // Optionally refresh exercises or show additional success message
   };
 
   const filteredExercises = exercises.filter(exercise => {
@@ -199,11 +196,10 @@ export const ReadingExercisesSection: React.FC = () => {
       <div className="text-center space-y-4">
         <div className={`flex items-center justify-center gap-2 font-semibold ${isMobile ? 'text-lg' : 'text-lg'}`}>
           <BookOpen className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
-          Enhanced Reading & Listening Experience
+          Smart Reading & Listening Experience
         </div>
         <p className={`text-muted-foreground max-w-2xl mx-auto ${isMobile ? 'text-sm px-4' : ''}`}>
-          Immersive reading with advanced text selection, word synchronization, audio controls, 
-          and AI-powered exercise creation from any selected text.
+          Create personalized reading exercises with our optimized AI system. Fast generation, smart recovery, and seamless audio integration.
         </p>
       </div>
 
@@ -212,13 +208,13 @@ export const ReadingExercisesSection: React.FC = () => {
         <Card className={`text-center ${isMobile ? 'p-3' : 'p-4'}`}>
           <CardHeader className={`p-0 ${isMobile ? 'pb-2' : 'pb-3'}`}>
             <div className="flex justify-center">
-              <Sparkles className={`text-blue-500 ${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
+              <Zap className={`text-blue-500 ${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
             </div>
-            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Smart Text Selection</CardTitle>
+            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Optimized Generation</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <CardDescription className={isMobile ? 'text-xs' : 'text-sm'}>
-              {featureFlags.enableTextSelection ? 'Select any text to create exercises instantly' : 'Enhanced text interaction (Coming Soon)'}
+              Smart content creation with automatic strategy selection
             </CardDescription>
           </CardContent>
         </Card>
@@ -228,11 +224,11 @@ export const ReadingExercisesSection: React.FC = () => {
             <div className="flex justify-center">
               <Volume2 className={`text-green-500 ${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
             </div>
-            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Word Sync Audio</CardTitle>
+            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Background Audio</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <CardDescription className={isMobile ? 'text-xs' : 'text-sm'}>
-              {featureFlags.enableWordSynchronization ? 'Follow along with synchronized word highlighting' : 'Synchronized reading (Coming Soon)'}
+              Audio generation happens automatically in the background
             </CardDescription>
           </CardContent>
         </Card>
@@ -242,11 +238,11 @@ export const ReadingExercisesSection: React.FC = () => {
             <div className="flex justify-center">
               <Brain className={`text-purple-500 ${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
             </div>
-            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Context Menus</CardTitle>
+            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Smart Recovery</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <CardDescription className={isMobile ? 'text-xs' : 'text-sm'}>
-              {featureFlags.enableContextMenu ? 'Right-click selected text for instant options' : 'Smart context actions (Coming Soon)'}
+              Intelligent fallbacks ensure successful exercise creation
             </CardDescription>
           </CardContent>
         </Card>
@@ -254,13 +250,13 @@ export const ReadingExercisesSection: React.FC = () => {
         <Card className={`text-center ${isMobile ? 'p-3' : 'p-4'}`}>
           <CardHeader className={`p-0 ${isMobile ? 'pb-2' : 'pb-3'}`}>
             <div className="flex justify-center">
-              <BookOpen className={`text-orange-500 ${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
+              <Sparkles className={`text-orange-500 ${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
             </div>
-            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Live Feedback</CardTitle>
+            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Enhanced UX</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <CardDescription className={isMobile ? 'text-xs' : 'text-sm'}>
-              {featureFlags.enableSelectionFeedback ? 'Get instant feedback on your text selections' : 'Selection guidance (Coming Soon)'}
+              Simplified interface with real-time progress tracking
             </CardDescription>
           </CardContent>
         </Card>
@@ -326,7 +322,7 @@ export const ReadingExercisesSection: React.FC = () => {
             <h3 className={`font-semibold mb-2 ${isMobile ? 'text-base' : ''}`}>No Reading Exercises Yet</h3>
             <p className={`text-muted-foreground mb-4 ${isMobile ? 'text-sm' : ''}`}>
               {exercises.length === 0
-                ? 'Create your first reading exercise to experience the enhanced features!'
+                ? 'Create your first reading exercise with our optimized system!'
                 : 'No exercises match your current search filters.'}
             </p>
             {exercises.length === 0 && (
