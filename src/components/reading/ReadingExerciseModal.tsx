@@ -5,10 +5,26 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, BookOpen, Volume2, Brain, Sparkles } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { 
+  Loader2, 
+  BookOpen, 
+  Sparkles, 
+  Clock, 
+  Target, 
+  GraduationCap,
+  Zap,
+  ChevronRight,
+  ArrowLeft
+} from 'lucide-react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { readingExerciseService } from '@/services/readingExerciseService';
+import { TopicMandalaSelector } from './TopicMandalaSelector';
+import { GrammarFocusSelector } from './GrammarFocusSelector';
+import { ReadingExerciseCreationProgress } from './ReadingExerciseCreationProgress';
 import { toast } from 'sonner';
 
 interface ReadingExerciseModalProps {
@@ -17,28 +33,90 @@ interface ReadingExerciseModalProps {
   onSuccess: () => void;
 }
 
-const TOPIC_SUGGESTIONS = [
-  { value: 'daily-routines', label: 'Daily Routines', description: 'Morning habits, work schedules, evening activities' },
-  { value: 'travel-culture', label: 'Travel & Culture', description: 'Exploring new places, cultural experiences' },
-  { value: 'food-cooking', label: 'Food & Cooking', description: 'Recipes, restaurants, culinary traditions' },
-  { value: 'technology', label: 'Technology', description: 'Digital life, social media, gadgets' },
-  { value: 'environment', label: 'Environment', description: 'Climate change, sustainability, nature' },
-  { value: 'health-fitness', label: 'Health & Fitness', description: 'Exercise, nutrition, mental wellness' },
-  { value: 'education', label: 'Education', description: 'Learning, schools, academic life' },
-  { value: 'business', label: 'Business', description: 'Work life, entrepreneurship, economics' },
-  { value: 'hobbies', label: 'Hobbies & Interests', description: 'Sports, arts, music, reading' },
-  { value: 'family-relationships', label: 'Family & Relationships', description: 'Social connections, friendships, family life' }
+const DIFFICULTY_OPTIONS = [
+  {
+    value: 'beginner',
+    label: 'Beginner',
+    subtitle: 'A1-A2 Level',
+    description: 'Simple vocabulary, basic grammar, short sentences',
+    color: 'bg-green-100 text-green-700 border-green-200'
+  },
+  {
+    value: 'intermediate',
+    label: 'Intermediate',
+    subtitle: 'B1-B2 Level',
+    description: 'Varied vocabulary, complex sentences, cultural references',
+    color: 'bg-yellow-100 text-yellow-700 border-yellow-200'
+  },
+  {
+    value: 'advanced',
+    label: 'Advanced',
+    subtitle: 'C1-C2 Level',
+    description: 'Sophisticated language, nuanced expressions, abstract concepts',
+    color: 'bg-red-100 text-red-700 border-red-200'
+  }
 ];
 
-const GRAMMAR_SUGGESTIONS = [
-  { value: 'past-tense', label: 'Past Tense', description: 'Simple past, past continuous, past perfect' },
-  { value: 'future-tense', label: 'Future Tense', description: 'Will, going to, future continuous' },
-  { value: 'conditionals', label: 'Conditionals', description: 'If clauses, hypothetical situations' },
-  { value: 'passive-voice', label: 'Passive Voice', description: 'Passive constructions and usage' },
-  { value: 'subjunctive', label: 'Subjunctive Mood', description: 'Wishes, hypotheticals, formal speech' },
-  { value: 'articles', label: 'Articles', description: 'Definite and indefinite articles' },
-  { value: 'prepositions', label: 'Prepositions', description: 'Time, place, and direction prepositions' },
-  { value: 'pronouns', label: 'Pronouns', description: 'Personal, possessive, reflexive pronouns' }
+const LENGTH_OPTIONS = [
+  {
+    value: 80,
+    label: 'Quick Read',
+    subtitle: '~30 seconds',
+    description: 'Perfect for daily practice sessions',
+    icon: Zap
+  },
+  {
+    value: 120,
+    label: 'Standard',
+    subtitle: '~45 seconds',
+    description: 'Balanced length for focused learning',
+    icon: Target
+  },
+  {
+    value: 200,
+    label: 'Extended',
+    subtitle: '~1 minute',
+    description: 'Deep dive into interesting topics',
+    icon: BookOpen
+  },
+  {
+    value: 300,
+    label: 'Comprehensive',
+    subtitle: '~1.5 minutes',
+    description: 'Full story experience with rich content',
+    icon: GraduationCap
+  }
+];
+
+const CREATION_STEPS = [
+  {
+    id: 'content-generation',
+    label: 'Content Generation',
+    description: 'AI is writing your personalized reading passage',
+    status: 'pending' as const,
+    estimatedTime: 8
+  },
+  {
+    id: 'text-processing',
+    label: 'Text Analysis',
+    description: 'Processing vocabulary and grammar analysis',
+    status: 'pending' as const,
+    estimatedTime: 3
+  },
+  {
+    id: 'audio-generation',
+    label: 'Audio Creation',
+    description: 'Generating high-quality pronunciation audio',
+    status: 'pending' as const,
+    estimatedTime: 5
+  },
+  {
+    id: 'finalization',
+    label: 'Finalizing',
+    description: 'Preparing your exercise for practice',
+    status: 'pending' as const,
+    estimatedTime: 2
+  }
 ];
 
 export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
@@ -47,294 +125,346 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   onSuccess
 }) => {
   const { settings } = useUserSettingsContext();
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedTopicSuggestion, setSelectedTopicSuggestion] = useState('');
-  const [selectedGrammarSuggestion, setSelectedGrammarSuggestion] = useState('');
+  const [currentTab, setCurrentTab] = useState('setup');
+  const [isCreating, setIsCreating] = useState(false);
+  const [creationSteps, setCreationSteps] = useState(CREATION_STEPS);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [overallProgress, setOverallProgress] = useState(0);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(18);
+
   const [formData, setFormData] = useState({
     title: '',
-    topic: '',
+    selectedTopic: '',
     difficulty_level: 'beginner' as const,
     target_length: 120,
-    grammar_focus: ''
+    selectedGrammar: [] as string[]
   });
 
-  const handleTopicSuggestionSelect = (value: string) => {
-    setSelectedTopicSuggestion(value);
-    const suggestion = TOPIC_SUGGESTIONS.find(t => t.value === value);
-    if (suggestion) {
-      setFormData(prev => ({ 
-        ...prev, 
-        topic: suggestion.label,
-        title: prev.title || `${suggestion.label} Practice`
-      }));
+  const canProceed = formData.selectedTopic && formData.title.trim();
+  const totalEstimatedTime = CREATION_STEPS.reduce((sum, step) => sum + (step.estimatedTime || 0), 0);
+
+  const handleTopicSelect = (topicId: string) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      selectedTopic: topicId,
+      title: prev.title || getTopicDisplayName(topicId)
+    }));
+  };
+
+  const getTopicDisplayName = (topicId: string) => {
+    const topicMap: Record<string, string> = {
+      'daily-routines': 'Daily Life Adventures',
+      'travel-culture': 'Travel Stories',
+      'food-cooking': 'Culinary Journey',
+      'technology': 'Tech Insights',
+      'environment': 'Nature Chronicles',
+      'health-fitness': 'Wellness Guide',
+      'education': 'Learning Experience',
+      'business': 'Professional Life'
+    };
+    return topicMap[topicId] || 'Reading Exercise';
+  };
+
+  const handleGrammarToggle = (grammarId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedGrammar: prev.selectedGrammar.includes(grammarId)
+        ? prev.selectedGrammar.filter(id => id !== grammarId)
+        : prev.selectedGrammar.length < 3
+          ? [...prev.selectedGrammar, grammarId]
+          : prev.selectedGrammar
+    }));
+  };
+
+  const simulateCreationProgress = async () => {
+    const steps = [...CREATION_STEPS];
+    let stepIndex = 0;
+    
+    for (const step of steps) {
+      setCurrentStep(stepIndex);
+      setCreationSteps(prev => prev.map((s, i) => 
+        i === stepIndex ? { ...s, status: 'active' } : s
+      ));
+      
+      // Simulate step duration
+      const stepDuration = step.estimatedTime || 2;
+      for (let i = 0; i <= stepDuration; i++) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const stepProgress = (i / stepDuration) * 100;
+        const overallProgressValue = ((stepIndex + (i / stepDuration)) / steps.length) * 100;
+        setOverallProgress(overallProgressValue);
+        
+        const remaining = Math.max(0, totalEstimatedTime - Math.floor((overallProgressValue / 100) * totalEstimatedTime));
+        setEstimatedTimeRemaining(remaining);
+      }
+      
+      setCreationSteps(prev => prev.map((s, i) => 
+        i === stepIndex ? { ...s, status: 'completed' } : s
+      ));
+      
+      stepIndex++;
     }
   };
 
-  const handleGrammarSuggestionSelect = (value: string) => {
-    setSelectedGrammarSuggestion(value);
-    const suggestion = GRAMMAR_SUGGESTIONS.find(g => g.value === value);
-    if (suggestion) {
-      setFormData(prev => ({ 
-        ...prev, 
-        grammar_focus: suggestion.label
-      }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
+  const handleCreateExercise = async () => {
+    setIsCreating(true);
+    setCurrentTab('progress');
+    
     try {
+      // Start progress simulation
+      simulateCreationProgress();
+      
+      // Create the actual exercise
       await readingExerciseService.createReadingExercise({
-        ...formData,
+        title: formData.title,
+        topic: getTopicDisplayName(formData.selectedTopic),
+        difficulty_level: formData.difficulty_level,
+        target_length: formData.target_length,
+        grammar_focus: formData.selectedGrammar.join(', '),
         language: settings.selectedLanguage
       });
       
       toast.success('Reading exercise created successfully!');
       onSuccess();
-      onOpenChange(false);
-      setFormData({
-        title: '',
-        topic: '',
-        difficulty_level: 'beginner',
-        target_length: 120,
-        grammar_focus: ''
-      });
-      setSelectedTopicSuggestion('');
-      setSelectedGrammarSuggestion('');
+      handleClose();
     } catch (error) {
       console.error('Error creating reading exercise:', error);
       toast.error('Failed to create reading exercise. Please try again.');
-    } finally {
-      setIsLoading(false);
+      setIsCreating(false);
+      setCurrentTab('setup');
     }
   };
 
+  const handleClose = () => {
+    if (isCreating) return;
+    
+    onOpenChange(false);
+    setTimeout(() => {
+      setCurrentTab('setup');
+      setIsCreating(false);
+      setCreationSteps(CREATION_STEPS);
+      setCurrentStep(0);
+      setOverallProgress(0);
+      setEstimatedTimeRemaining(18);
+      setFormData({
+        title: '',
+        selectedTopic: '',
+        difficulty_level: 'beginner',
+        target_length: 120,
+        selectedGrammar: []
+      });
+    }, 300);
+  };
+
+  const handleCancel = () => {
+    setIsCreating(false);
+    setCurrentTab('setup');
+    setCreationSteps(CREATION_STEPS);
+    setCurrentStep(0);
+    setOverallProgress(0);
+    toast.info('Exercise creation cancelled');
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-        <DialogHeader>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            Create AI-Powered Reading & Listening Exercise
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded-lg">
+              <Sparkles className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <span>AI-Powered Reading Exercise</span>
+              <p className="text-sm font-normal text-muted-foreground mt-1">
+                Create personalized content with enhanced learning features
+              </p>
+            </div>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-6">
-          {/* Feature highlights */}
-          <div className="grid gap-3 md:grid-cols-3">
-            <Card className="p-4">
-              <CardHeader className="p-0 pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-blue-500" />
-                  AI-Generated Content
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <CardDescription className="text-xs">
-                  Custom reading passages tailored to your level and interests
-                </CardDescription>
-              </CardContent>
-            </Card>
+        <div className="flex-1 overflow-auto">
+          <Tabs value={currentTab} onValueChange={setCurrentTab} className="h-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="setup" disabled={isCreating}>
+                <BookOpen className="h-4 w-4 mr-2" />
+                Setup
+              </TabsTrigger>
+              <TabsTrigger value="progress" disabled={!isCreating}>
+                <Loader2 className={`h-4 w-4 mr-2 ${isCreating ? 'animate-spin' : ''}`} />
+                Creating
+              </TabsTrigger>
+            </TabsList>
 
-            <Card className="p-4">
-              <CardHeader className="p-0 pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Volume2 className="h-4 w-4 text-green-500" />
-                  Interactive Audio
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <CardDescription className="text-xs">
-                  Click any word for pronunciation and meaning
-                </CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card className="p-4">
-              <CardHeader className="p-0 pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Brain className="h-4 w-4 text-purple-500" />
-                  Deep Analysis
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <CardDescription className="text-xs">
-                  Word definitions, grammar explanations, and translations
-                </CardDescription>
-              </CardContent>
-            </Card>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Left Column */}
+            <TabsContent value="setup" className="space-y-6">
+              {/* Topic Selection */}
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Exercise Title</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="e.g., Daily Routines in Paris"
-                    required
-                  />
-                </div>
+                <TopicMandalaSelector
+                  selectedTopic={formData.selectedTopic}
+                  onTopicSelect={handleTopicSelect}
+                />
+              </div>
 
-                <div className="space-y-3">
-                  <Label>Topic Suggestions</Label>
-                  <Select value={selectedTopicSuggestion} onValueChange={handleTopicSuggestionSelect}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose from popular topics..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TOPIC_SUGGESTIONS.map((topic) => (
-                        <SelectItem key={topic.value} value={topic.value}>
-                          <div>
-                            <div className="font-medium">{topic.label}</div>
-                            <div className="text-xs text-muted-foreground">{topic.description}</div>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
+              <Separator />
+
+              {/* Exercise Details */}
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="custom-topic">Or enter custom topic</Label>
+                    <Label htmlFor="title">Exercise Title</Label>
                     <Input
-                      id="custom-topic"
-                      value={formData.topic}
-                      onChange={(e) => setFormData(prev => ({ ...prev, topic: e.target.value }))}
-                      placeholder="e.g., sustainable living, digital nomads, cooking traditions"
-                      required
+                      id="title"
+                      value={formData.title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="e.g., A Day in Tokyo"
+                      className="text-base"
                     />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>Difficulty Level</Label>
+                    <div className="grid gap-2">
+                      {DIFFICULTY_OPTIONS.map((option) => (
+                        <Card
+                          key={option.value}
+                          className={`
+                            cursor-pointer transition-all
+                            ${formData.difficulty_level === option.value 
+                              ? 'ring-2 ring-primary shadow-md' 
+                              : 'hover:shadow-sm'
+                            }
+                          `}
+                          onClick={() => setFormData(prev => ({ 
+                            ...prev, 
+                            difficulty_level: option.value as any 
+                          }))}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium">{option.label}</h4>
+                                  <Badge variant="outline" className="text-xs">
+                                    {option.subtitle}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {option.description}
+                                </p>
+                              </div>
+                              <div className={`
+                                w-4 h-4 rounded-full border-2 transition-all
+                                ${formData.difficulty_level === option.value
+                                  ? 'bg-primary border-primary'
+                                  : 'border-muted-foreground/30'
+                                }
+                              `} />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="difficulty">Difficulty Level</Label>
-                  <Select
-                    value={formData.difficulty_level}
-                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, difficulty_level: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="beginner">
-                        <div>
-                          <div className="font-medium">Beginner (A1-A2)</div>
-                          <div className="text-xs text-muted-foreground">Simple vocabulary and basic grammar</div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="intermediate">
-                        <div>
-                          <div className="font-medium">Intermediate (B1-B2)</div>
-                          <div className="text-xs text-muted-foreground">Complex sentences and varied vocabulary</div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="advanced">
-                        <div>
-                          <div className="font-medium">Advanced (C1-C2)</div>
-                          <div className="text-xs text-muted-foreground">Sophisticated language and cultural nuances</div>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="length">Reading Length</Label>
-                  <Select
-                    value={formData.target_length.toString()}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, target_length: parseInt(value) }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="80">
-                        <div>
-                          <div className="font-medium">Quick Read (80 words)</div>
-                          <div className="text-xs text-muted-foreground">~30 seconds • Perfect for daily practice</div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="120">
-                        <div>
-                          <div className="font-medium">Standard (120 words)</div>
-                          <div className="text-xs text-muted-foreground">~45 seconds • Balanced length</div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="200">
-                        <div>
-                          <div className="font-medium">Extended (200 words)</div>
-                          <div className="text-xs text-muted-foreground">~1 minute • Deep dive into topics</div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="300">
-                        <div>
-                          <div className="font-medium">Comprehensive (300 words)</div>
-                          <div className="text-xs text-muted-foreground">~1.5 minutes • Full story experience</div>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Grammar Focus (Optional)</Label>
-                  <Select value={selectedGrammarSuggestion} onValueChange={handleGrammarSuggestionSelect}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Target specific grammar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GRAMMAR_SUGGESTIONS.map((grammar) => (
-                        <SelectItem key={grammar.value} value={grammar.value}>
-                          <div>
-                            <div className="font-medium">{grammar.label}</div>
-                            <div className="text-xs text-muted-foreground">{grammar.description}</div>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-grammar">Or specify custom focus</Label>
-                    <Input
-                      id="custom-grammar"
-                      value={formData.grammar_focus}
-                      onChange={(e) => setFormData(prev => ({ ...prev, grammar_focus: e.target.value }))}
-                      placeholder="e.g., reflexive verbs, modal verbs, question formation"
-                    />
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <Label>Reading Length</Label>
+                    <div className="grid gap-2">
+                      {LENGTH_OPTIONS.map((option) => {
+                        const IconComponent = option.icon;
+                        return (
+                          <Card
+                            key={option.value}
+                            className={`
+                              cursor-pointer transition-all
+                              ${formData.target_length === option.value 
+                                ? 'ring-2 ring-primary shadow-md' 
+                                : 'hover:shadow-sm'
+                              }
+                            `}
+                            onClick={() => setFormData(prev => ({ 
+                              ...prev, 
+                              target_length: option.value 
+                            }))}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <IconComponent className="h-5 w-5 text-muted-foreground" />
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <h4 className="font-medium">{option.label}</h4>
+                                      <Badge variant="outline" className="text-xs">
+                                        {option.subtitle}
+                                      </Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                      {option.description}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className={`
+                                  w-4 h-4 rounded-full border-2 transition-all
+                                  ${formData.target_length === option.value
+                                    ? 'bg-primary border-primary'
+                                    : 'border-muted-foreground/30'
+                                  }
+                                `} />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating with AI...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
+              <Separator />
+
+              {/* Grammar Focus */}
+              <GrammarFocusSelector
+                selectedGrammar={formData.selectedGrammar}
+                onGrammarToggle={handleGrammarToggle}
+              />
+
+              {/* Action Buttons */}
+              <div className="flex justify-between items-center pt-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  {canProceed && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Estimated creation time: ~{totalEstimatedTime}s
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleClose}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleCreateExercise} 
+                    disabled={!canProceed}
+                    className="gap-2"
+                  >
+                    <Sparkles className="h-4 w-4" />
                     Create Exercise
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="progress" className="h-full">
+              <ReadingExerciseCreationProgress
+                steps={creationSteps}
+                currentStep={currentStep}
+                overallProgress={overallProgress}
+                onCancel={handleCancel}
+                estimatedTimeRemaining={estimatedTimeRemaining}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </DialogContent>
     </Dialog>
