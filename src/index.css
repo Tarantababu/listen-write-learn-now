@@ -194,69 +194,6 @@
     @apply bg-blue-400/30 border-blue-400/40;
     color: rgb(147, 197, 253);
   }
-
-  /* Virtual highlighting overlay styles */
-  .virtual-highlight-overlay {
-    @apply absolute inset-0 pointer-events-none z-10;
-  }
-
-  .virtual-word-highlight {
-    @apply absolute pointer-events-auto cursor-pointer transition-all duration-200 ease-out;
-    border-radius: 2px;
-  }
-
-  .virtual-word-highlight:hover {
-    @apply bg-gray-50/40;
-  }
-
-  .virtual-word-highlighted {
-    @apply bg-yellow-300/90 shadow-sm;
-    transform: scale(1.02);
-    font-weight: 500;
-    z-index: 2;
-  }
-
-  .virtual-word-highlighted::before {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    background: rgba(250, 204, 21, 0.2);
-    border: 1px solid rgba(250, 204, 21, 0.4);
-    border-radius: 3px;
-    z-index: -1;
-  }
-
-  /* Dark mode support for virtual highlighting */
-  .dark .virtual-word-highlight:hover {
-    @apply bg-gray-800/40;
-  }
-
-  .dark .virtual-word-highlighted {
-    @apply bg-yellow-400/30;
-    color: rgb(254, 240, 138);
-  }
-
-  .dark .virtual-word-highlighted::before {
-    background: rgba(250, 204, 21, 0.1);
-    border-color: rgba(250, 204, 21, 0.2);
-  }
-
-  /* Enhanced text selection for virtual highlighting */
-  .virtual-text-container {
-    @apply cursor-text select-text relative;
-    -webkit-user-select: text !important;
-    -moz-user-select: text !important;
-    -ms-user-select: text !important;
-    user-select: text !important;
-  }
-
-  .virtual-text-container::-moz-selection {
-    background: rgba(59, 130, 246, 0.3);
-  }
-
-  .virtual-text-container::selection {
-    background: rgba(59, 130, 246, 0.3);
-  }
 }
 
 @keyframes fadeIn {
