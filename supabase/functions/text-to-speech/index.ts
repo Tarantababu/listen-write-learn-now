@@ -7,6 +7,42 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
 const supabaseUrl = Deno.env.get('SUPABASE_URL')
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
+// Helper function to create a safe filename from text
+function createSafeFilename(text: string): string {
+  // Create a hash of the text using Web Crypto API for Unicode-safe filename generation
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text.substring(0, 50)); // Use first 50 chars for hash
+  
+  // Use a simple hash function for filename generation
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    const char = data[i];
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  
+  // Convert to positive number and use base 36 for alphanumeric
+  const hashString = Math.abs(hash).toString(36);
+  const timestamp = Date.now();
+  
+  return `audio_${timestamp}_${hashString}`;
+}
+
+// Helper function to convert ArrayBuffer to base64 (Unicode-safe)
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  
+  // Process in chunks to avoid stack overflow with large files
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.slice(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  
+  return btoa(binary);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -23,6 +59,10 @@ serve(async (req) => {
       throw new Error('Supabase configuration not found')
     }
 
+    if (!text || text.trim().length === 0) {
+      throw new Error('Text content is required')
+    }
+
     // Map language codes to OpenAI TTS voices
     const voiceMap: Record<string, string> = {
       'english': 'alloy',
@@ -34,12 +74,19 @@ serve(async (req) => {
       'russian': 'echo',
       'chinese': 'alloy',
       'japanese': 'nova',
-      'korean': 'shimmer'
+      'korean': 'shimmer',
+      'arabic': 'echo',
+      'turkish': 'nova',
+      'polish': 'shimmer',
+      'dutch': 'alloy',
+      'swedish': 'nova',
+      'norwegian': 'echo'
     }
 
     const voice = voiceMap[language.toLowerCase()] || 'alloy'
 
     console.log('Generating audio for text:', text.substring(0, 50) + '...')
+    console.log('Using voice:', voice, 'for language:', language)
 
     const response = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
@@ -67,10 +114,8 @@ serve(async (req) => {
     // Create Supabase client with service role key for storage operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
-    // Generate unique filename with timestamp and hash
-    const timestamp = Date.now()
-    const textHash = btoa(text.substring(0, 20)).replace(/[^a-zA-Z0-9]/g, '').substring(0, 8)
-    const fileName = `audio_${timestamp}_${textHash}.mp3`
+    // Generate unique filename using Unicode-safe method
+    const fileName = createSafeFilename(text) + '.mp3'
     
     console.log('Uploading audio file:', fileName)
     
@@ -84,14 +129,19 @@ serve(async (req) => {
 
     if (uploadError) {
       console.error('Storage upload error:', uploadError)
-      // Fallback to base64 data URL if storage fails
-      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioData)))
-      const audioUrl = `data:audio/mp3;base64,${base64Audio}`
-      console.log('Falling back to data URL due to storage error')
-      
-      return new Response(JSON.stringify({ audio_url: audioUrl }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      // Fallback to base64 data URL if storage fails - now Unicode-safe
+      try {
+        const base64Audio = arrayBufferToBase64(audioData)
+        const audioUrl = `data:audio/mp3;base64,${base64Audio}`
+        console.log('Falling back to data URL due to storage error')
+        
+        return new Response(JSON.stringify({ audio_url: audioUrl }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (base64Error) {
+        console.error('Base64 encoding also failed:', base64Error)
+        throw new Error('Failed to generate audio: both storage and base64 fallback failed')
+      }
     }
 
     // Get the public URL for the uploaded file
