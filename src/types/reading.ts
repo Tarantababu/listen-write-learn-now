@@ -14,6 +14,21 @@ export interface ReadingExercise {
       wordCount: number;
       readingTime: number;
       grammarPoints: string[];
+      fallbackInfo?: {
+        method: string;
+        reason: string;
+        isUsable: boolean;
+        originalTargetLength?: number;
+        actualLength?: number;
+        recoveryMethod?: string;
+        note?: string;
+      };
+      recoveryInfo?: {
+        originalTargetLength: number;
+        actualLength: number;
+        recoveryMethod: string;
+        note: string;
+      };
     };
   };
   audio_url?: string;
