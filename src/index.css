@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -123,6 +122,77 @@
 
   .enhanced-word-highlighted {
     @apply bg-yellow-300/80 border border-yellow-500/60 shadow-md scale-105 font-medium;
+  }
+
+  /* CSS-only highlighting system for stable DOM */
+  .word-span {
+    @apply transition-all duration-200 ease-out;
+    position: relative;
+    padding: 1px 2px;
+    margin: 0 1px;
+    border-radius: 2px;
+    /* Ensure text selection works properly */
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+  }
+
+  .word-span:hover {
+    @apply bg-gray-50/40;
+  }
+
+  /* Word highlighting for audio sync */
+  .word-highlighted {
+    @apply bg-yellow-300/90 shadow-sm;
+    transform: scale(1.02);
+    font-weight: 500;
+    z-index: 1;
+    position: relative;
+  }
+
+  .word-highlighted::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    background: rgba(250, 204, 21, 0.2);
+    border: 1px solid rgba(250, 204, 21, 0.4);
+    border-radius: 3px;
+    z-index: -1;
+  }
+
+  /* Word selection state */
+  .word-selected {
+    @apply bg-blue-200/70 border border-blue-300/60;
+    transform: scale(1.01);
+  }
+
+  /* Whitespace spans for consistent structure */
+  .whitespace-span {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+  }
+
+  /* Dark mode support for word highlighting */
+  .dark .word-span:hover {
+    @apply bg-gray-800/40;
+  }
+
+  .dark .word-highlighted {
+    @apply bg-yellow-400/30;
+    color: rgb(254, 240, 138);
+  }
+
+  .dark .word-highlighted::before {
+    background: rgba(250, 204, 21, 0.1);
+    border-color: rgba(250, 204, 21, 0.2);
+  }
+
+  .dark .word-selected {
+    @apply bg-blue-400/30 border-blue-400/40;
+    color: rgb(147, 197, 253);
   }
 }
 

@@ -69,13 +69,10 @@ export const SynchronizedText: React.FC<SynchronizedTextProps> = ({
 
   return (
     <div
-      className={`relative leading-relaxed ${className}`}
-      style={{
-        userSelect: 'text',
-        WebkitUserSelect: 'text',
-        MozUserSelect: 'text',
-        cursor: 'text'
-      }}
+      className={`
+        relative leading-relaxed text-selectable
+        ${className}
+      `}
     >
       <EnhancedTextHighlighter
         selectedText=""
@@ -88,11 +85,11 @@ export const SynchronizedText: React.FC<SynchronizedTextProps> = ({
         <div className="inline">
           {segments.map((segment, index) => {
             if (!segment.isWord) {
-              // Render whitespace as-is
-              return <span key={`space-${index}`}>{segment.content}</span>;
+              // Render whitespace as plain span for consistent structure
+              return <span key={`space-${index}`} className="whitespace-span">{segment.content}</span>;
             }
 
-            // Render word with enhanced span
+            // Always render words as spans for stable DOM
             const wordIndex = segment.wordIndex!;
             return (
               <EnhancedWordSpan
