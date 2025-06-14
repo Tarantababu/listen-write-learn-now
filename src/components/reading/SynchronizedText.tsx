@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useRef } from 'react';
 import { EnhancedWordSpan } from './EnhancedWordSpan';
-import { EnhancedTextHighlighter } from './EnhancedTextHighlighter';
+import { AudioWordOverlay } from './AudioWordOverlay';
 
 interface SynchronizedTextProps {
   text: string;
@@ -23,10 +23,10 @@ export const SynchronizedText: React.FC<SynchronizedTextProps> = ({
   highlightedWordIndex,
   onWordClick,
   enableWordHighlighting = true,
-  highlightColor = 'bg-yellow-300',
+  highlightColor = 'bg-yellow-300/80',
   className = ''
 }) => {
-  const [hoveredWordIndex, setHoveredWordIndex] = useState(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Split text into segments preserving spaces
   const createTextSegments = (text: string): TextSegment[] => {
@@ -59,16 +59,13 @@ export const SynchronizedText: React.FC<SynchronizedTextProps> = ({
 
   const segments = createTextSegments(text);
 
-  const handleWordHover = (wordIndex: number, word: string, isHovering: boolean) => {
-    setHoveredWordIndex(isHovering ? wordIndex : -1);
-  };
-
   const handleWordClick = (wordIndex: number, word: string) => {
     onWordClick?.(wordIndex, word);
   };
 
   return (
     <div
+      ref={containerRef}
       className={`relative leading-relaxed ${className}`}
       style={{
         userSelect: 'text',
@@ -76,39 +73,45 @@ export const SynchronizedText: React.FC<SynchronizedTextProps> = ({
         MozUserSelect: 'text',
         cursor: 'text'
       }}
+      onClick={(e) => {
+        // Handle word clicks through event delegation
+        const target = e.target as HTMLElement;
+        const wordIndex = target.getAttribute('data-word-index');
+        const word = target.getAttribute('data-word');
+        
+        if (wordIndex !== null && word !== null) {
+          handleWordClick(parseInt(wordIndex), word);
+        }
+      }}
     >
-      <EnhancedTextHighlighter
-        selectedText=""
-        selectionRange={null}
-        highlightedWordIndex={highlightedWordIndex}
-        hoveredWordIndex={hoveredWordIndex}
-        enhancedHighlighting={true}
-        wordSyncColor={highlightColor}
-      >
-        <div className="inline">
-          {segments.map((segment, index) => {
-            if (!segment.isWord) {
-              // Render whitespace as-is
-              return <span key={`space-${index}`}>{segment.content}</span>;
-            }
+      <div className="inline">
+        {segments.map((segment, index) => {
+          if (!segment.isWord) {
+            // Render whitespace as-is
+            return <span key={`space-${index}`}>{segment.content}</span>;
+          }
 
-            // Render word with enhanced span
-            const wordIndex = segment.wordIndex!;
-            return (
-              <EnhancedWordSpan
-                key={`word-${wordIndex}-${segment.content}`}
-                word={segment.content}
-                index={wordIndex}
-                isHighlighted={enableWordHighlighting && wordIndex === highlightedWordIndex}
-                isSelected={false}
-                onWordClick={handleWordClick}
-                onWordHover={handleWordHover}
-                highlightColor={highlightColor}
-              />
-            );
-          })}
-        </div>
-      </EnhancedTextHighlighter>
+          // Render word with plain text span
+          const wordIndex = segment.wordIndex!;
+          return (
+            <EnhancedWordSpan
+              key={`word-${wordIndex}-${segment.content}`}
+              word={segment.content}
+              index={wordIndex}
+            />
+          );
+        })}
+      </div>
+      
+      {/* Audio word overlay for highlighting */}
+      {enableWordHighlighting && (
+        <AudioWordOverlay
+          containerRef={containerRef}
+          highlightedWordIndex={highlightedWordIndex}
+          highlightColor={highlightColor}
+          animateHighlight={true}
+        />
+      )}
     </div>
   );
 };

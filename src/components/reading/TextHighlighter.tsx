@@ -1,10 +1,11 @@
 
 import React, { useRef, useEffect, useState } from 'react';
+import { AudioWordOverlay } from './AudioWordOverlay';
 
 interface HighlightOverlay {
   rect: DOMRect;
   id: string;
-  type: 'selection' | 'word-sync' | 'hover';
+  type: 'selection' | 'hover';
 }
 
 interface TextHighlighterProps {
@@ -59,25 +60,6 @@ export const TextHighlighter: React.FC<TextHighlighterProps> = ({
       }
     }
 
-    // Word sync highlights
-    if (highlightedWordIndex >= 0 && containerRef.current) {
-      const wordElement = containerRef.current.querySelector(`[data-word-index="${highlightedWordIndex}"]`);
-      if (wordElement) {
-        const rect = wordElement.getBoundingClientRect();
-        const containerRect = containerRef.current.getBoundingClientRect();
-        
-        overlays.push({
-          rect: {
-            ...rect,
-            x: rect.x - containerRect.x,
-            y: rect.y - containerRect.y,
-          } as DOMRect,
-          id: `word-sync-${highlightedWordIndex}`,
-          type: 'word-sync'
-        });
-      }
-    }
-
     // Hover highlights
     if (hoveredWordIndex >= 0 && hoveredWordIndex !== highlightedWordIndex && containerRef.current) {
       const wordElement = containerRef.current.querySelector(`[data-word-index="${hoveredWordIndex}"]`);
@@ -109,10 +91,6 @@ export const TextHighlighter: React.FC<TextHighlighterProps> = ({
           return `${baseClasses} ${highlightColor} border border-blue-400/60 shadow-sm ${
             animateHighlight ? 'animate-in fade-in duration-300' : ''
           }`;
-        case 'word-sync':
-          return `${baseClasses} ${wordSyncColor} border border-yellow-500/60 shadow-md ${
-            animateHighlight ? 'animate-pulse' : ''
-          }`;
         case 'hover':
           return `${baseClasses} ${hoverColor} border border-gray-400/30 ${
             animateHighlight ? 'duration-150' : ''
@@ -130,6 +108,14 @@ export const TextHighlighter: React.FC<TextHighlighterProps> = ({
     <div ref={containerRef} className="relative">
       {children}
       
+      {/* Audio word synchronization overlay */}
+      <AudioWordOverlay
+        containerRef={containerRef}
+        highlightedWordIndex={highlightedWordIndex}
+        highlightColor={wordSyncColor}
+        animateHighlight={animateHighlight}
+      />
+      
       {highlightOverlays.map((overlay) => (
         <div
           key={overlay.id}
@@ -139,7 +125,7 @@ export const TextHighlighter: React.FC<TextHighlighterProps> = ({
             top: overlay.rect.y,
             width: overlay.rect.width,
             height: overlay.rect.height,
-            zIndex: overlay.type === 'word-sync' ? 20 : overlay.type === 'selection' ? 15 : 10,
+            zIndex: overlay.type === 'selection' ? 15 : 10,
           }}
         />
       ))}
