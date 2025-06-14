@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { TextHighlighter } from './TextHighlighter';
 import { TextSelectionContextMenu } from './TextSelectionContextMenu';
@@ -300,6 +301,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   const handleCreateDictation = useCallback(() => {
     if (selectedText) {
       const cleanedText = cleanTextForExercise(selectedText, 'dictation');
+      console.log('TextSelectionManager - Creating dictation for:', cleanedText);
       onCreateDictation(cleanedText);
       clearSelection();
     }
@@ -308,6 +310,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   const handleCreateBidirectional = useCallback(() => {
     if (selectedText) {
       const cleanedText = cleanTextForExercise(selectedText, 'translation');
+      console.log('TextSelectionManager - Creating bidirectional exercise for:', cleanedText);
       onCreateBidirectional(cleanedText);
       clearSelection();
     }

@@ -24,9 +24,10 @@ export const ReadingModeText: React.FC<ReadingModeTextProps> = ({
   enableVocabulary = false,
   vocabularyIntegration = false
 }) => {
-  console.log('ReadingModeText rendering with new TextSelectionPanel approach:', {
+  console.log('ReadingModeText rendering with enhanced bidirectional support:', {
     textLength: text.length,
-    vocabularyIntegration
+    vocabularyIntegration,
+    exerciseLanguage
   });
 
   return (

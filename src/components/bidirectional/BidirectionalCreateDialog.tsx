@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,6 +27,7 @@ interface BidirectionalCreateDialogProps {
   };
   targetLanguage: string;
   supportedLanguages: Array<{ value: string; label: string }>;
+  prefilledText?: string; // New prop for pre-filling the text
 }
 
 const CREATION_STEPS = [
@@ -68,7 +69,8 @@ export const BidirectionalCreateDialog: React.FC<BidirectionalCreateDialogProps>
   onExerciseCreated,
   exerciseLimit,
   targetLanguage,
-  supportedLanguages
+  supportedLanguages,
+  prefilledText = ''
 }) => {
   const { user } = useAuth();
   const { settings } = useUserSettingsContext();
@@ -80,6 +82,15 @@ export const BidirectionalCreateDialog: React.FC<BidirectionalCreateDialogProps>
     target_language: targetLanguage,
     support_language: 'english'
   });
+
+  // Update form data when prefilledText or targetLanguage changes
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      original_sentence: prefilledText,
+      target_language: targetLanguage
+    }));
+  }, [prefilledText, targetLanguage]);
 
   const {
     steps,
@@ -99,7 +110,7 @@ export const BidirectionalCreateDialog: React.FC<BidirectionalCreateDialogProps>
     onComplete: () => {
       toast({
         title: "Success",
-        description: "Exercise created successfully!"
+        description: "Translation exercise created successfully!"
       });
       handleClose();
       onExerciseCreated();
@@ -206,7 +217,9 @@ export const BidirectionalCreateDialog: React.FC<BidirectionalCreateDialogProps>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle>Create New Exercise</DialogTitle>
+            <DialogTitle>
+              {prefilledText ? 'Create Translation Exercise from Selection' : 'Create New Exercise'}
+            </DialogTitle>
             <Button
               variant="ghost"
               size="icon"
@@ -234,6 +247,17 @@ export const BidirectionalCreateDialog: React.FC<BidirectionalCreateDialogProps>
         ) : (
           // Form View
           <div className="space-y-4">
+            {prefilledText && (
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">
+                  Selected Text
+                </h4>
+                <p className="text-sm text-blue-700 dark:text-blue-300 break-words">
+                  "{prefilledText}"
+                </p>
+              </div>
+            )}
+
             {cannotCreate && (
               <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">

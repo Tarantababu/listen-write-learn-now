@@ -8,6 +8,7 @@ import { Plus, Search, BookOpen, Volume2, Brain, Sparkles, Loader2 } from 'lucid
 import { ReadingExerciseModal } from './ReadingExerciseModal';
 import { ReadingFocusedModal } from './ReadingFocusedModal';
 import { ReadingExerciseCard } from './ReadingExerciseCard';
+import { BidirectionalCreateDialog } from '@/components/bidirectional/BidirectionalCreateDialog';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -30,9 +31,34 @@ export const ReadingExercisesSection: React.FC = () => {
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [practiceExercise, setPracticeExercise] = useState<ReadingExercise | null>(null);
+  
+  // Bidirectional dialog states
+  const [isBidirectionalDialogOpen, setIsBidirectionalDialogOpen] = useState(false);
+  const [selectedTextForBidirectional, setSelectedTextForBidirectional] = useState('');
 
   // Get feature flags for enhanced reading features
   const featureFlags = getReadingFeatureFlags();
+
+  // Supported languages for bidirectional exercises
+  const supportedLanguages = [
+    { value: 'english', label: 'English' },
+    { value: 'spanish', label: 'Spanish' },
+    { value: 'french', label: 'French' },
+    { value: 'german', label: 'German' },
+    { value: 'italian', label: 'Italian' },
+    { value: 'portuguese', label: 'Portuguese' },
+    { value: 'russian', label: 'Russian' },
+    { value: 'japanese', label: 'Japanese' },
+    { value: 'korean', label: 'Korean' },
+    { value: 'chinese', label: 'Chinese' }
+  ];
+
+  // Mock exercise limit for bidirectional exercises
+  const exerciseLimit = {
+    canCreate: true,
+    currentCount: 0,
+    limit: 10
+  };
 
   useEffect(() => {
     loadExercises();
@@ -137,14 +163,16 @@ export const ReadingExercisesSection: React.FC = () => {
   };
 
   const handleCreateBidirectional = async (selectedText: string) => {
-    try {
-      // For now, just show a success message
-      // In a full implementation, this would create a bidirectional exercise
-      toast.success(`Bidirectional exercise ready for: "${selectedText.substring(0, 50)}${selectedText.length > 50 ? '...' : ''}"`);
-    } catch (error) {
-      console.error('Error creating bidirectional exercise:', error);
-      toast.error('Failed to create bidirectional exercise');
-    }
+    console.log('Opening bidirectional dialog for text:', selectedText);
+    setSelectedTextForBidirectional(selectedText);
+    setIsBidirectionalDialogOpen(true);
+  };
+
+  const handleBidirectionalExerciseCreated = () => {
+    console.log('Bidirectional exercise created successfully');
+    setIsBidirectionalDialogOpen(false);
+    setSelectedTextForBidirectional('');
+    // Optionally refresh exercises or show additional success message
   };
 
   const filteredExercises = exercises.filter(exercise => {
@@ -359,6 +387,19 @@ export const ReadingExercisesSection: React.FC = () => {
         enableContextMenu={featureFlags.enableContextMenu}
         enableSelectionFeedback={featureFlags.enableSelectionFeedback}
         enableSmartTextProcessing={featureFlags.enableSmartTextProcessing}
+      />
+
+      {/* Bidirectional Exercise Creation Dialog */}
+      <BidirectionalCreateDialog
+        isOpen={isBidirectionalDialogOpen}
+        onClose={() => {
+          setIsBidirectionalDialogOpen(false);
+          setSelectedTextForBidirectional('');
+        }}
+        onExerciseCreated={handleBidirectionalExerciseCreated}
+        exerciseLimit={exerciseLimit}
+        targetLanguage={settings.selectedLanguage}
+        supportedLanguages={supportedLanguages}
       />
     </div>
   );

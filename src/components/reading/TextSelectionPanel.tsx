@@ -147,7 +147,7 @@ export const TextSelectionPanel: React.FC<TextSelectionPanelProps> = ({
     if (selectedText) {
       const cleanedText = cleanTextForExercise(selectedText, 'dictation');
       onCreateDictation(cleanedText);
-      toast.success('Dictation exercise created!');
+      toast.success('Opening dictation exercise creation...');
       clearSelection();
     }
   };
@@ -155,8 +155,9 @@ export const TextSelectionPanel: React.FC<TextSelectionPanelProps> = ({
   const handleCreateBidirectional = () => {
     if (selectedText) {
       const cleanedText = cleanTextForExercise(selectedText, 'translation');
+      console.log('TextSelectionPanel - Creating bidirectional exercise for:', cleanedText);
       onCreateBidirectional(cleanedText);
-      toast.success('Translation exercise created!');
+      toast.success('Opening translation exercise creation...');
       clearSelection();
     }
   };
