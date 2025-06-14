@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -31,6 +30,14 @@ interface ReadingExerciseModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+}
+
+interface ProgressStep {
+  id: string;
+  label: string;
+  description: string;
+  status: 'pending' | 'active' | 'completed' | 'error';
+  estimatedTime: number;
 }
 
 const DIFFICULTY_OPTIONS = [
@@ -88,33 +95,33 @@ const LENGTH_OPTIONS = [
   }
 ];
 
-const CREATION_STEPS = [
+const CREATION_STEPS: ProgressStep[] = [
   {
     id: 'content-generation',
     label: 'Content Generation',
     description: 'AI is writing your personalized reading passage',
-    status: 'pending' as const,
+    status: 'pending',
     estimatedTime: 8
   },
   {
     id: 'text-processing',
     label: 'Text Analysis',
     description: 'Processing vocabulary and grammar analysis',
-    status: 'pending' as const,
+    status: 'pending',
     estimatedTime: 3
   },
   {
     id: 'audio-generation',
     label: 'Audio Creation',
     description: 'Generating high-quality pronunciation audio',
-    status: 'pending' as const,
+    status: 'pending',
     estimatedTime: 5
   },
   {
     id: 'finalization',
     label: 'Finalizing',
     description: 'Preparing your exercise for practice',
-    status: 'pending' as const,
+    status: 'pending',
     estimatedTime: 2
   }
 ];
@@ -127,7 +134,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const { settings } = useUserSettingsContext();
   const [currentTab, setCurrentTab] = useState('setup');
   const [isCreating, setIsCreating] = useState(false);
-  const [creationSteps, setCreationSteps] = useState(CREATION_STEPS);
+  const [creationSteps, setCreationSteps] = useState<ProgressStep[]>(CREATION_STEPS);
   const [currentStep, setCurrentStep] = useState(0);
   const [overallProgress, setOverallProgress] = useState(0);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(18);
