@@ -17,96 +17,73 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   disabled = false
 }) => {
   const [selectedText, setSelectedText] = useState('');
+  const [selectionRange, setSelectionRange] = useState<Range | null>(null);
   const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
-  const [isSelecting, setIsSelecting] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
-  const [selectionTimeout, setSelectionTimeout] = useState<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleSelectionChange = useCallback((selection: Selection | null, range: Range | null) => {
-    if (disabled || !selection || !range) return;
+  const clearSelection = useCallback(() => {
+    setSelectedText('');
+    setSelectionRange(null);
+    setSelectionPosition(null);
+    setShowPopup(false);
+    // Don't clear browser selection here - let user do it naturally
+  }, []);
 
+  const processSelection = useCallback(() => {
+    if (disabled) return;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      clearSelection();
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
     const text = range.toString().trim();
-    
+
+    // Check if selection is within our container
+    if (!containerRef.current?.contains(range.commonAncestorContainer)) {
+      clearSelection();
+      return;
+    }
+
     if (text.length > 0) {
       // Get the bounding rectangle of the selection for positioning
       const rect = range.getBoundingClientRect();
       
-      // Calculate optimal position for the popup
+      // Calculate optimal position for the popup (center horizontally, above selection)
       const x = rect.left + rect.width / 2;
       const y = rect.top;
 
       setSelectedText(text);
+      setSelectionRange(range.cloneRange()); // Clone to avoid range mutation
       setSelectionPosition({ x, y });
-      setIsSelecting(true);
-      
-      // Show popup after a brief delay to ensure selection is stable
-      setTimeout(() => {
-        setShowPopup(true);
-      }, 150);
+      setShowPopup(true);
     } else {
       clearSelection();
     }
-  }, [disabled]);
+  }, [disabled, clearSelection]);
 
-  const handleMouseUp = useCallback(() => {
-    if (disabled) return;
+  // Handle selection changes with debouncing
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
 
-    // Clear any existing timeout
-    if (selectionTimeout) {
-      clearTimeout(selectionTimeout);
-    }
+    const handleSelectionChange = () => {
+      // Clear previous timeout
+      if (timeoutId) clearTimeout(timeoutId);
+      
+      // Debounce selection processing
+      timeoutId = setTimeout(processSelection, 100);
+    };
 
-    // Small delay to ensure selection is complete
-    const timeout = setTimeout(() => {
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) return;
-
-      const range = selection.getRangeAt(0);
-      const text = range.toString().trim();
-
-      if (text.length > 0 && containerRef.current?.contains(range.commonAncestorContainer)) {
-        // Selection will be handled by TextHighlighter
-        setIsSelecting(true);
-      } else {
-        clearSelection();
-      }
-    }, 100);
-
-    setSelectionTimeout(timeout);
-  }, [disabled, selectionTimeout]);
-
-  const handleMouseDown = useCallback(() => {
-    if (!disabled) {
-      clearSelection();
-    }
-  }, [disabled]);
-
-  const clearSelection = useCallback(() => {
-    if (selectionTimeout) {
-      clearTimeout(selectionTimeout);
-      setSelectionTimeout(null);
-    }
-    setSelectedText('');
-    setSelectionPosition(null);
-    setIsSelecting(false);
-    setShowPopup(false);
-    window.getSelection()?.removeAllRanges();
-  }, [selectionTimeout]);
-
-  const handleCreateDictation = useCallback(() => {
-    if (selectedText) {
-      onCreateDictation(selectedText);
-      clearSelection();
-    }
-  }, [selectedText, onCreateDictation, clearSelection]);
-
-  const handleCreateBidirectional = useCallback(() => {
-    if (selectedText) {
-      onCreateBidirectional(selectedText);
-      clearSelection();
-    }
-  }, [selectedText, onCreateBidirectional, clearSelection]);
+    document.addEventListener('selectionchange', handleSelectionChange);
+    
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [processSelection]);
 
   // Enhanced click outside detection
   useEffect(() => {
@@ -121,6 +98,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       
       if (isClickingOnPopup) return;
       
+      // Clear selection if clicking outside container
       if (containerRef.current && !containerRef.current.contains(target)) {
         clearSelection();
       }
@@ -144,39 +122,24 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [showPopup, clearSelection]);
 
-  // Enhanced touch support for mobile
-  const handleTouchEnd = useCallback((event: TouchEvent) => {
-    if (disabled) return;
-    
-    // Allow default touch behavior for text selection
-    setTimeout(() => {
-      handleMouseUp();
-    }, 100);
-  }, [disabled, handleMouseUp]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (container) {
-      container.addEventListener('touchend', handleTouchEnd);
-      return () => container.removeEventListener('touchend', handleTouchEnd);
+  const handleCreateDictation = useCallback(() => {
+    if (selectedText) {
+      onCreateDictation(selectedText);
+      clearSelection();
     }
-  }, [handleTouchEnd]);
+  }, [selectedText, onCreateDictation, clearSelection]);
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (selectionTimeout) {
-        clearTimeout(selectionTimeout);
-      }
-    };
-  }, [selectionTimeout]);
+  const handleCreateBidirectional = useCallback(() => {
+    if (selectedText) {
+      onCreateBidirectional(selectedText);
+      clearSelection();
+    }
+  }, [selectedText, onCreateBidirectional, clearSelection]);
 
   return (
     <div
       ref={containerRef}
       className="relative"
-      onMouseUp={handleMouseUp}
-      onMouseDown={handleMouseDown}
       style={{ 
         userSelect: disabled ? 'none' : 'text',
         WebkitUserSelect: disabled ? 'none' : 'text',
@@ -184,8 +147,8 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       }}
     >
       <TextHighlighter
-        isSelecting={isSelecting}
-        onSelectionChange={handleSelectionChange}
+        selectedText={selectedText}
+        selectionRange={selectionRange}
       >
         {children}
       </TextHighlighter>

@@ -36,6 +36,9 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
     let x = position.x;
     let y = position.y;
     
+    // Center horizontally and adjust for boundaries
+    x = x - popupWidth / 2;
+    
     // Horizontal boundary check
     if (x + popupWidth > window.innerWidth - margin) {
       x = window.innerWidth - popupWidth - margin;
@@ -44,11 +47,13 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
       x = margin;
     }
     
-    // Vertical boundary check - prefer above selection
-    if (y - popupHeight < margin) {
-      y = position.y + 60; // Show below selection
+    // Vertical positioning - prefer above selection
+    if (y - popupHeight - 20 < margin) {
+      // Show below selection if not enough space above
+      y = position.y + 40;
     } else {
-      y = position.y - popupHeight - 20; // Show above selection
+      // Show above selection
+      y = position.y - popupHeight - 20;
     }
     
     return { x, y };
@@ -89,7 +94,6 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
           top: safePosition.y,
           maxWidth: isMobile ? '280px' : '320px',
           minWidth: isMobile ? '240px' : '280px',
-          transform: isMobile ? 'translateX(-50%)' : 'none',
         }}
         role="dialog"
         aria-label="Text selection actions"

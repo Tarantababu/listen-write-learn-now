@@ -8,64 +8,51 @@ interface HighlightOverlay {
 
 interface TextHighlighterProps {
   children: React.ReactNode;
-  isSelecting: boolean;
-  onSelectionChange?: (selection: Selection | null, range: Range | null) => void;
+  selectedText: string;
+  selectionRange: Range | null;
 }
 
 export const TextHighlighter: React.FC<TextHighlighterProps> = ({
   children,
-  isSelecting,
-  onSelectionChange
+  selectedText,
+  selectionRange
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [highlightOverlays, setHighlightOverlays] = useState<HighlightOverlay[]>([]);
 
   useEffect(() => {
-    if (!isSelecting) {
+    // Clear highlights if no selection
+    if (!selectedText || !selectionRange) {
       setHighlightOverlays([]);
       return;
     }
 
-    const updateHighlights = () => {
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) {
-        setHighlightOverlays([]);
-        return;
-      }
+    // Ensure the selection is within our container
+    if (!containerRef.current?.contains(selectionRange.commonAncestorContainer)) {
+      setHighlightOverlays([]);
+      return;
+    }
 
-      const range = selection.getRangeAt(0);
-      if (!containerRef.current?.contains(range.commonAncestorContainer)) {
-        setHighlightOverlays([]);
-        return;
-      }
+    // Create highlight overlays for the selection
+    const rects = selectionRange.getClientRects();
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    
+    if (!containerRect || rects.length === 0) {
+      setHighlightOverlays([]);
+      return;
+    }
 
-      // Create highlight overlays for the selection
-      const rects = range.getClientRects();
-      const containerRect = containerRef.current?.getBoundingClientRect();
-      
-      if (!containerRect) return;
+    const overlays: HighlightOverlay[] = Array.from(rects).map((rect, index) => ({
+      rect: {
+        ...rect,
+        x: rect.x - containerRect.x,
+        y: rect.y - containerRect.y,
+      } as DOMRect,
+      id: `highlight-${index}`
+    }));
 
-      const overlays: HighlightOverlay[] = Array.from(rects).map((rect, index) => ({
-        rect: {
-          ...rect,
-          x: rect.x - containerRect.x,
-          y: rect.y - containerRect.y,
-        } as DOMRect,
-        id: `highlight-${index}`
-      }));
-
-      setHighlightOverlays(overlays);
-      onSelectionChange?.(selection, range);
-    };
-
-    const handleSelectionChange = () => {
-      // Small delay to ensure selection is complete
-      setTimeout(updateHighlights, 50);
-    };
-
-    document.addEventListener('selectionchange', handleSelectionChange);
-    return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, [isSelecting, onSelectionChange]);
+    setHighlightOverlays(overlays);
+  }, [selectedText, selectionRange]);
 
   return (
     <div ref={containerRef} className="relative">
