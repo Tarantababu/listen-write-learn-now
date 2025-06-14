@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,9 @@ import {
   GraduationCap,
   Zap,
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  FileText,
+  Book
 } from 'lucide-react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { readingExerciseService } from '@/services/readingExerciseService';
@@ -68,31 +71,45 @@ const DIFFICULTY_OPTIONS = [
 
 const LENGTH_OPTIONS = [
   {
-    value: 80,
-    label: 'Quick Read',
-    subtitle: '~30 seconds',
-    description: 'Perfect for daily practice sessions',
+    value: 300,
+    label: 'Short Read',
+    subtitle: '~300 words',
+    description: 'Quick daily practice session',
     icon: Zap
   },
   {
-    value: 120,
-    label: 'Standard',
-    subtitle: '~45 seconds',
-    description: 'Balanced length for focused learning',
+    value: 700,
+    label: 'Medium Read',
+    subtitle: '~700 words',
+    description: 'Standard focused learning',
     icon: Target
   },
   {
-    value: 200,
-    label: 'Extended',
-    subtitle: '~1 minute',
-    description: 'Deep dive into interesting topics',
+    value: 1200,
+    label: 'Extended Read',
+    subtitle: '~1,200 words',
+    description: 'Deep dive into topics',
     icon: BookOpen
   },
   {
-    value: 300,
-    label: 'Comprehensive',
-    subtitle: '~1.5 minutes',
-    description: 'Full story experience with rich content',
+    value: 2000,
+    label: 'Long Read',
+    subtitle: '~2,000 words',
+    description: 'Comprehensive exploration',
+    icon: Book
+  },
+  {
+    value: 3000,
+    label: 'Article Length',
+    subtitle: '~3,000 words',
+    description: 'Full article experience',
+    icon: FileText
+  },
+  {
+    value: 4000,
+    label: 'Essay Length',
+    subtitle: '~4,000 words',
+    description: 'Complete story or essay',
     icon: GraduationCap
   }
 ];
@@ -171,7 +188,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     selectedTopic: '',
     customText: '',
     difficulty_level: 'beginner' as const,
-    target_length: 120,
+    target_length: 700,
     selectedGrammar: [] as string[]
   });
 
