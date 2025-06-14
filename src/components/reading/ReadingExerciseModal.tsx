@@ -134,7 +134,7 @@ const AI_CREATION_STEPS: ProgressStep[] = [
     label: 'Audio Creation',
     description: 'Generating high-quality pronunciation audio',
     status: 'pending',
-    estimatedTime: 5
+    estimatedTime: 12
   },
   {
     id: 'finalization',
@@ -158,7 +158,7 @@ const CUSTOM_CREATION_STEPS: ProgressStep[] = [
     label: 'Audio Creation',
     description: 'Generating high-quality pronunciation audio',
     status: 'pending',
-    estimatedTime: 8
+    estimatedTime: 15
   },
   {
     id: 'finalization',
@@ -180,7 +180,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const [creationSteps, setCreationSteps] = useState<ProgressStep[]>(AI_CREATION_STEPS);
   const [currentStep, setCurrentStep] = useState(0);
   const [overallProgress, setOverallProgress] = useState(0);
-  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(18);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(25);
 
   const [formData, setFormData] = useState({
     contentSource: 'ai' as 'ai' | 'custom',
@@ -255,7 +255,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         i === stepIndex ? { ...s, status: 'active' } : s
       ));
       
-      // Simulate step duration
+      // Simulate step duration with more realistic timing for audio generation
       const stepDuration = step.estimatedTime || 2;
       for (let i = 0; i <= stepDuration; i++) {
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -311,7 +311,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         });
       }
       
-      toast.success('Reading exercise created successfully! Audio is being generated in the background.');
+      toast.success('Reading exercise created successfully with audio! Ready to practice.');
       onSuccess();
       handleClose();
     } catch (error) {
@@ -332,14 +332,14 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
       setCreationSteps(AI_CREATION_STEPS);
       setCurrentStep(0);
       setOverallProgress(0);
-      setEstimatedTimeRemaining(18);
+      setEstimatedTimeRemaining(25);
       setFormData({
         contentSource: 'ai',
         title: '',
         selectedTopic: '',
         customText: '',
         difficulty_level: 'beginner',
-        target_length: 120,
+        target_length: 700,
         selectedGrammar: []
       });
     }, 300);
@@ -365,7 +365,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
             <div>
               <span>AI-Powered Reading Exercise</span>
               <p className="text-sm font-normal text-muted-foreground mt-1">
-                Create personalized content with enhanced learning features
+                Create personalized content with pre-generated audio
               </p>
             </div>
           </DialogTitle>
@@ -609,7 +609,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                   {canProceed && (
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
-                      Estimated creation time: ~{totalEstimatedTime}s
+                      Estimated creation time: ~{totalEstimatedTime}s (includes audio)
                     </div>
                   )}
                 </div>

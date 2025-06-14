@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise, ReadingExerciseProgress, CreateReadingExerciseRequest } from '@/types/reading';
 
@@ -17,7 +18,10 @@ export class ReadingExerciseService {
       content = await this.generateReadingContent(request);
     }
     
-    // Create the reading exercise with pending audio status
+    // Generate audio synchronously during creation
+    const contentWithAudio = await this.generateAudioForContent(content, request.language);
+    
+    // Create the reading exercise with completed audio
     const { data, error } = await supabase
       .from('reading_exercises')
       .insert({
@@ -28,21 +32,19 @@ export class ReadingExerciseService {
         target_length: request.target_length,
         grammar_focus: request.grammar_focus,
         topic: request.topic,
-        content: content,
-        audio_generation_status: 'pending'
+        content: contentWithAudio,
+        full_text_audio_url: contentWithAudio.full_text_audio_url,
+        audio_generation_status: 'completed'
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    // Start background audio generation
-    this.generateAudioForExercise(data.id, content, request.language);
-
     return {
       ...data,
       difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
-      audio_generation_status: (data.audio_generation_status || 'pending') as 'pending' | 'generating' | 'completed' | 'failed',
+      audio_generation_status: 'completed' as 'pending' | 'generating' | 'completed' | 'failed',
       content: data.content as unknown as ReadingExercise['content']
     };
   }
@@ -155,14 +157,10 @@ export class ReadingExerciseService {
     return data;
   }
 
-  private async generateAudioForExercise(exerciseId: string, content: any, language: string) {
+  private async generateAudioForContent(content: any, language: string): Promise<any> {
     try {
-      // Update status to generating
-      await supabase
-        .from('reading_exercises')
-        .update({ audio_generation_status: 'generating' })
-        .eq('id', exerciseId);
-
+      console.log('Generating audio for reading exercise content');
+      
       // Generate audio for full text
       const fullText = content.sentences.map((s: any) => s.text).join(' ');
       const fullAudioUrl = await this.generateAudio(fullText, language);
@@ -175,29 +173,26 @@ export class ReadingExerciseService {
 
       const sentencesWithAudio = await Promise.all(sentenceAudioPromises);
 
-      // Update the exercise with audio URLs
-      const updatedContent = {
+      // Return the updated content with all audio URLs
+      return {
         ...content,
-        sentences: sentencesWithAudio
+        sentences: sentencesWithAudio,
+        full_text_audio_url: fullAudioUrl
       };
 
-      await supabase
-        .from('reading_exercises')
-        .update({ 
-          content: updatedContent,
-          full_text_audio_url: fullAudioUrl,
-          audio_generation_status: 'completed'
-        })
-        .eq('id', exerciseId);
-
     } catch (error) {
-      console.error('Error generating audio for exercise:', error);
+      console.error('Error generating audio during exercise creation:', error);
       
-      // Update status to failed
-      await supabase
-        .from('reading_exercises')
-        .update({ audio_generation_status: 'failed' })
-        .eq('id', exerciseId);
+      // If audio generation fails, we'll still create the exercise but without audio
+      // This ensures the exercise creation doesn't completely fail due to audio issues
+      return {
+        ...content,
+        sentences: content.sentences.map((sentence: any) => ({
+          ...sentence,
+          audio_url: null
+        })),
+        full_text_audio_url: null
+      };
     }
   }
 
@@ -244,7 +239,16 @@ export class ReadingExerciseService {
 
   async retryAudioGeneration(exerciseId: string): Promise<void> {
     const exercise = await this.getReadingExercise(exerciseId);
-    await this.generateAudioForExercise(exerciseId, exercise.content, exercise.language);
+    const contentWithAudio = await this.generateAudioForContent(exercise.content, exercise.language);
+    
+    await supabase
+      .from('reading_exercises')
+      .update({ 
+        content: contentWithAudio,
+        full_text_audio_url: contentWithAudio.full_text_audio_url,
+        audio_generation_status: 'completed'
+      })
+      .eq('id', exerciseId);
   }
 }
 
