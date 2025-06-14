@@ -1,5 +1,5 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { SelectionPopup } from './SelectionPopup';
 import { TextHighlighter } from './TextHighlighter';
 import { TextSelectionContextMenu } from './TextSelectionContextMenu';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
@@ -44,7 +44,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<Range | null>(null);
   const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
-  const [showPopup, setShowPopup] = useState(false);
+  const [showSelectionIndicator, setShowSelectionIndicator] = useState(false);
   const [vocabularyInfo, setVocabularyInfo] = useState<VocabularyInfo | null>(null);
   const [isGeneratingVocabulary, setIsGeneratingVocabulary] = useState(false);
   const [selectionInfo, setSelectionInfo] = useState<TextSelectionInfo | null>(null);
@@ -56,7 +56,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     setSelectedText('');
     setSelectionRange(null);
     setSelectionPosition(null);
-    setShowPopup(false);
+    setShowSelectionIndicator(false);
     setVocabularyInfo(null);
     setIsGeneratingVocabulary(false);
     setSelectionInfo(null);
@@ -98,7 +98,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       setSelectionRange(range.cloneRange());
       setSelectionPosition({ x, y });
       setSelectionInfo(analysis);
-      setShowPopup(true);
+      setShowSelectionIndicator(true);
       setVocabularyInfo(null);
       setIsGeneratingVocabulary(false);
     } else {
@@ -255,35 +255,28 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
       
-      const isClickingOnPopup = target && (
-        target.nodeType === Node.ELEMENT_NODE &&
-        (target as Element).closest('[role="dialog"]')
-      );
-      
-      if (isClickingOnPopup) return;
-      
       if (containerRef.current && !containerRef.current.contains(target)) {
         clearSelection();
       }
     };
 
-    if (showPopup) {
+    if (showSelectionIndicator) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showPopup, clearSelection]);
+  }, [showSelectionIndicator, clearSelection]);
 
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && showPopup) {
+      if (event.key === 'Escape' && showSelectionIndicator) {
         clearSelection();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showPopup, clearSelection]);
+  }, [showSelectionIndicator, clearSelection]);
 
   const handleCreateDictation = useCallback(() => {
     if (selectedText) {
@@ -322,26 +315,26 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
         {children}
       </TextHighlighter>
       
-      {/* Main interactive popup - shown immediately on selection */}
-      {selectionPosition && showPopup && (
-        <SelectionPopup
-          position={selectionPosition}
-          selectedText={selectedText}
-          onCreateDictation={handleCreateDictation}
-          onCreateBidirectional={handleCreateBidirectional}
-          onCreateVocabulary={shouldShowVocabulary ? handleCreateVocabulary : undefined}
-          onClose={clearSelection}
-          isVisible={showPopup}
-          vocabularyInfo={vocabularyInfo}
-          isGeneratingVocabulary={isGeneratingVocabulary}
-          canCreateVocabulary={canCreateMore}
-        />
+      {/* Subtle selection indicator */}
+      {showSelectionIndicator && selectedText && (
+        <div
+          className="fixed z-10 pointer-events-none"
+          style={{
+            left: selectionPosition?.x || 0,
+            top: (selectionPosition?.y || 0) - 8,
+            transform: 'translateX(-50%)',
+          }}
+        >
+          <div className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full shadow-lg animate-fade-in">
+            Right-click for options
+          </div>
+        </div>
       )}
     </div>
   );
 
-  // Conditionally wrap with context menu for right-click options
-  if (enableContextMenu && selectedText) {
+  // Conditionally wrap with enhanced context menu for right-click options
+  if (enableContextMenu) {
     return (
       <TextSelectionContextMenu
         selectedText={selectedText}
@@ -350,6 +343,10 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
         onCreateVocabulary={shouldShowVocabulary ? handleCreateVocabulary : undefined}
         disabled={disabled}
         enableVocabulary={shouldShowVocabulary}
+        isGeneratingVocabulary={isGeneratingVocabulary}
+        canCreateVocabulary={canCreateMore}
+        vocabularyInfo={vocabularyInfo}
+        onClose={clearSelection}
       >
         {content}
       </TextSelectionContextMenu>
