@@ -1,132 +1,145 @@
 
-import React from 'react';
-import { Card } from '@/components/ui/card';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Coffee, 
-  Plane, 
-  Utensils, 
-  Smartphone, 
-  Leaf, 
-  Heart, 
-  GraduationCap, 
-  Briefcase,
-  Gamepad2,
-  Users
-} from 'lucide-react';
-
-const TOPIC_MANDALA_OPTIONS = [
-  { 
-    id: 'daily-routines', 
-    label: 'Daily Life', 
-    icon: Coffee, 
-    color: 'bg-amber-100 text-amber-700 border-amber-200',
-    description: 'Morning habits, routines, everyday activities'
-  },
-  { 
-    id: 'travel-culture', 
-    label: 'Travel', 
-    icon: Plane, 
-    color: 'bg-blue-100 text-blue-700 border-blue-200',
-    description: 'Adventures, cultures, places to visit'
-  },
-  { 
-    id: 'food-cooking', 
-    label: 'Food', 
-    icon: Utensils, 
-    color: 'bg-orange-100 text-orange-700 border-orange-200',
-    description: 'Recipes, restaurants, culinary experiences'
-  },
-  { 
-    id: 'technology', 
-    label: 'Technology', 
-    icon: Smartphone, 
-    color: 'bg-purple-100 text-purple-700 border-purple-200',
-    description: 'Digital life, gadgets, innovation'
-  },
-  { 
-    id: 'environment', 
-    label: 'Nature', 
-    icon: Leaf, 
-    color: 'bg-green-100 text-green-700 border-green-200',
-    description: 'Environment, sustainability, wildlife'
-  },
-  { 
-    id: 'health-fitness', 
-    label: 'Wellness', 
-    icon: Heart, 
-    color: 'bg-red-100 text-red-700 border-red-200',
-    description: 'Health, fitness, mental wellbeing'
-  },
-  { 
-    id: 'education', 
-    label: 'Learning', 
-    icon: GraduationCap, 
-    color: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-    description: 'Education, skills, personal growth'
-  },
-  { 
-    id: 'business', 
-    label: 'Work', 
-    icon: Briefcase, 
-    color: 'bg-gray-100 text-gray-700 border-gray-200',
-    description: 'Career, entrepreneurship, professional life'
-  }
-];
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Sparkles, Plus, X } from 'lucide-react';
 
 interface TopicMandalaSelectorProps {
   selectedTopic: string;
-  onTopicSelect: (topicId: string) => void;
+  onTopicSelect: (topic: string) => void;
+  language: string;
 }
+
+const TOPIC_SUGGESTIONS = [
+  'Travel & Culture',
+  'Food & Cooking',
+  'Technology',
+  'Health & Fitness',
+  'Environment',
+  'History',
+  'Science',
+  'Art & Literature',
+  'Business',
+  'Sports',
+  'Education',
+  'Family & Relationships'
+];
 
 export const TopicMandalaSelector: React.FC<TopicMandalaSelectorProps> = ({
   selectedTopic,
-  onTopicSelect
+  onTopicSelect,
+  language
 }) => {
+  const [customTopic, setCustomTopic] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
+
+  const handleTopicClick = (topic: string) => {
+    onTopicSelect(topic);
+  };
+
+  const handleCustomSubmit = () => {
+    if (customTopic.trim()) {
+      onTopicSelect(customTopic.trim());
+      setCustomTopic('');
+      setShowCustomInput(false);
+    }
+  };
+
+  const clearSelection = () => {
+    onTopicSelect('');
+  };
+
   return (
     <div className="space-y-4">
-      <div className="text-center">
-        <h3 className="text-lg font-semibold mb-2">Choose Your Topic</h3>
-        <p className="text-sm text-muted-foreground">
-          Select what you'd like to read about
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-base font-medium">Topic Selection</Label>
+          <p className="text-sm text-muted-foreground">
+            Choose a topic for your {language} reading exercise
+          </p>
+        </div>
+        {selectedTopic && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearSelection}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Clear
+          </Button>
+        )}
       </div>
-      
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {TOPIC_MANDALA_OPTIONS.map((topic) => {
-          const IconComponent = topic.icon;
-          const isSelected = selectedTopic === topic.id;
-          
-          return (
-            <Card
-              key={topic.id}
-              className={`
-                p-4 cursor-pointer transition-all duration-200 hover:scale-105
-                ${isSelected 
-                  ? 'ring-2 ring-primary shadow-lg' 
-                  : 'hover:shadow-md'
-                }
-              `}
-              onClick={() => onTopicSelect(topic.id)}
-            >
-              <div className="text-center space-y-2">
-                <div className={`
-                  w-12 h-12 mx-auto rounded-full flex items-center justify-center
-                  ${isSelected ? 'bg-primary text-primary-foreground' : topic.color}
-                `}>
-                  <IconComponent className="h-6 w-6" />
-                </div>
-                <div>
-                  <h4 className="font-medium text-sm">{topic.label}</h4>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {topic.description}
-                  </p>
-                </div>
+
+      {selectedTopic && (
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-800">Selected Topic:</span>
+            <Badge variant="default">{selectedTopic}</Badge>
+          </div>
+        </div>
+      )}
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Suggested Topics</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {TOPIC_SUGGESTIONS.map((topic) => (
+              <Badge
+                key={topic}
+                variant={selectedTopic === topic ? "default" : "outline"}
+                className="cursor-pointer p-2 justify-center hover:bg-muted transition-colors"
+                onClick={() => handleTopicClick(topic)}
+              >
+                {topic}
+              </Badge>
+            ))}
+          </div>
+
+          <div className="pt-2 border-t">
+            {!showCustomInput ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCustomInput(true)}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Custom Topic
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter your custom topic..."
+                  value={customTopic}
+                  onChange={(e) => setCustomTopic(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleCustomSubmit()}
+                  autoFocus
+                />
+                <Button size="sm" onClick={handleCustomSubmit} disabled={!customTopic.trim()}>
+                  Add
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowCustomInput(false);
+                    setCustomTopic('');
+                  }}
+                >
+                  Cancel
+                </Button>
               </div>
-            </Card>
-          );
-        })}
-      </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

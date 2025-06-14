@@ -356,8 +356,9 @@ export const ReadingExercisesSection: React.FC = () => {
       {/* Modals */}
       <ReadingExerciseModal
         isOpen={isCreateModalOpen}
-        onOpenChange={setIsCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
         onSuccess={loadExercises}
+        language={settings.selectedLanguage}
       />
 
       {/* Enhanced Reading Modal with all feature flags */}

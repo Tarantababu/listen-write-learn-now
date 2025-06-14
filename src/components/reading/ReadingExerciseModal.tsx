@@ -19,8 +19,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 interface ReadingExerciseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onExerciseCreated: (exercise: any) => void;
-  language: string;
+  onSuccess?: () => void;
+  language?: string;
 }
 
 interface ProgressStep {
@@ -34,15 +34,15 @@ interface ProgressStep {
 export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   isOpen,
   onClose,
-  onExerciseCreated,
-  language
+  onSuccess,
+  language = 'English'
 }) => {
   const [title, setTitle] = useState('');
   const [topic, setTopic] = useState('');
   const [difficultyLevel, setDifficultyLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
   const [targetLength, setTargetLength] = useState(500);
-  const [grammarFocus, setGrammarFocus] = useState('');
-  const [contentSource, setContentSource] = useState<'generate' | 'custom'>('generate');
+  const [grammarFocus, setGrammarFocus] = useState<string[]>([]);
+  const [contentSource, setContentSource] = useState<'ai' | 'custom'>('ai');
   const [customText, setCustomText] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
@@ -138,7 +138,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title.trim() || (contentSource === 'generate' && !topic.trim()) || (contentSource === 'custom' && !customText.trim())) {
+    if (!title.trim() || (contentSource === 'ai' && !topic.trim()) || (contentSource === 'custom' && !customText.trim())) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -167,8 +167,8 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         language,
         difficulty_level: difficultyLevel,
         target_length: targetLength,
-        grammar_focus: grammarFocus.trim() || undefined,
-        topic: contentSource === 'generate' ? topic.trim() : 'Custom Content',
+        grammar_focus: grammarFocus.join(', ') || undefined,
+        topic: contentSource === 'ai' ? topic.trim() : 'Custom Content',
         customText: contentSource === 'custom' ? customText.trim() : undefined
       });
 
@@ -185,7 +185,9 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
       
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      onExerciseCreated(exercise);
+      if (onSuccess) {
+        onSuccess();
+      }
       
       // Check if exercise was created with fallback content
       const isFallbackContent = exercise.content?.analysis?.fallbackInfo?.isUsable;
@@ -220,8 +222,8 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
       setTopic('');
       setDifficultyLevel('beginner');
       setTargetLength(500);
-      setGrammarFocus('');
-      setContentSource('generate');
+      setGrammarFocus([]);
+      setContentSource('ai');
       setCustomText('');
       setShowProgress(false);
       setSteps([]);
@@ -230,6 +232,14 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
       setEstimatedTimeRemaining(undefined);
       onClose();
     }
+  };
+
+  const handleGrammarToggle = (grammarId: string) => {
+    setGrammarFocus(prev => 
+      prev.includes(grammarId) 
+        ? prev.filter(id => id !== grammarId)
+        : [...prev, grammarId]
+    );
   };
 
   const selectedLengthOption = lengthOptions.find(opt => opt.value === targetLength);
@@ -279,15 +289,15 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
           </div>
 
           <ContentSourceSelector
-            value={contentSource}
-            onChange={setContentSource}
+            selectedSource={contentSource}
+            onSourceSelect={setContentSource}
           />
 
-          {contentSource === 'generate' ? (
+          {contentSource === 'ai' ? (
             <>
               <TopicMandalaSelector
-                value={topic}
-                onChange={setTopic}
+                selectedTopic={topic}
+                onTopicSelect={setTopic}
                 language={language}
               />
 
@@ -334,17 +344,16 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
               )}
 
               <GrammarFocusSelector
-                value={grammarFocus}
-                onChange={setGrammarFocus}
-                difficultyLevel={difficultyLevel}
+                selectedGrammar={grammarFocus}
+                onGrammarToggle={handleGrammarToggle}
+                maxSelections={3}
               />
             </>
           ) : (
             <CustomTextInput
               value={customText}
               onChange={setCustomText}
-              language={language}
-              difficultyLevel={difficultyLevel}
+              maxLength={4000}
             />
           )}
 
