@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise, ReadingExerciseProgress, CreateReadingExerciseRequest } from '@/types/reading';
 
@@ -43,6 +42,7 @@ export class ReadingExerciseService {
     return {
       ...data,
       difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
+      audio_generation_status: (data.audio_generation_status || 'pending') as 'pending' | 'generating' | 'completed' | 'failed',
       content: data.content as unknown as ReadingExercise['content']
     };
   }
@@ -67,6 +67,7 @@ export class ReadingExerciseService {
     return (data || []).map(exercise => ({
       ...exercise,
       difficulty_level: exercise.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
+      audio_generation_status: (exercise.audio_generation_status || 'pending') as 'pending' | 'generating' | 'completed' | 'failed',
       content: exercise.content as unknown as ReadingExercise['content']
     }));
   }
@@ -82,6 +83,7 @@ export class ReadingExerciseService {
     return {
       ...data,
       difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
+      audio_generation_status: (data.audio_generation_status || 'pending') as 'pending' | 'generating' | 'completed' | 'failed',
       content: data.content as unknown as ReadingExercise['content']
     };
   }
