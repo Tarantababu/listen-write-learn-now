@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise, CreateReadingExerciseRequest } from '@/types/reading';
 
@@ -10,6 +11,7 @@ interface GenerationProgress {
     vocabularyDiversity?: number;
     coherenceScore?: number;
     generationStrategy?: string;
+    recoveryUsed?: boolean;
   };
 }
 
