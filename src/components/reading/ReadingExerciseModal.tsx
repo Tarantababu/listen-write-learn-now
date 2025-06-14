@@ -1,40 +1,26 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { 
-  Loader2, 
-  BookOpen, 
-  Sparkles, 
-  Clock, 
-  Target, 
-  GraduationCap,
-  Zap,
-  ChevronRight,
-  ArrowLeft,
-  FileText,
-  Book,
-  AlertTriangle,
-  Shield
-} from 'lucide-react';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 import { readingExerciseService } from '@/services/readingExerciseService';
-import { TopicMandalaSelector } from './TopicMandalaSelector';
-import { GrammarFocusSelector } from './GrammarFocusSelector';
-import { ReadingExerciseCreationProgress } from './ReadingExerciseCreationProgress';
 import { ContentSourceSelector } from './ContentSourceSelector';
 import { CustomTextInput } from './CustomTextInput';
-import { toast } from 'sonner';
+import { GrammarFocusSelector } from './GrammarFocusSelector';
+import { TopicMandalaSelector } from './TopicMandalaSelector';
+import { ReadingExerciseCreationProgress } from './ReadingExerciseCreationProgress';
+import { AlertTriangle, Info, Shield } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ReadingExerciseModalProps {
   isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onClose: () => void;
+  onExerciseCreated: (exercise: any) => void;
+  language: string;
 }
 
 interface ProgressStep {
@@ -42,705 +28,343 @@ interface ProgressStep {
   label: string;
   description: string;
   status: 'pending' | 'active' | 'completed' | 'error';
-  estimatedTime: number;
+  estimatedTime?: number;
 }
-
-const DIFFICULTY_OPTIONS = [
-  {
-    value: 'beginner',
-    label: 'Beginner',
-    subtitle: 'A1-A2 Level',
-    description: 'Simple vocabulary, basic grammar, short sentences',
-    color: 'bg-green-100 text-green-700 border-green-200'
-  },
-  {
-    value: 'intermediate',
-    label: 'Intermediate',
-    subtitle: 'B1-B2 Level',
-    description: 'Varied vocabulary, complex sentences, cultural references',
-    color: 'bg-yellow-100 text-yellow-700 border-yellow-200'
-  },
-  {
-    value: 'advanced',
-    label: 'Advanced',
-    subtitle: 'C1-C2 Level',
-    description: 'Sophisticated language, nuanced expressions, abstract concepts',
-    color: 'bg-red-100 text-red-700 border-red-200'
-  }
-];
-
-// Updated length options with smart limits and better warnings
-const LENGTH_OPTIONS = [
-  {
-    value: 300,
-    label: 'Short Read',
-    subtitle: '~300 words',
-    description: 'Quick daily practice session (2-3 min)',
-    icon: Zap,
-    recommended: false,
-    reliability: 'excellent'
-  },
-  {
-    value: 700,
-    label: 'Medium Read',
-    subtitle: '~700 words',
-    description: 'Standard focused learning (4-5 min)',
-    icon: Target,
-    recommended: true,
-    reliability: 'excellent'
-  },
-  {
-    value: 1200,
-    label: 'Extended Read',
-    subtitle: '~1,200 words',
-    description: 'Deep dive into topics (7-8 min)',
-    icon: BookOpen,
-    recommended: true,
-    reliability: 'very-good'
-  },
-  {
-    value: 2000,
-    label: 'Long Read',
-    subtitle: '~2,000 words',
-    description: 'Comprehensive exploration (10-12 min)',
-    icon: Book,
-    recommended: false,
-    warning: 'Uses enhanced chunking strategy',
-    reliability: 'good'
-  },
-  {
-    value: 3000,
-    label: 'Maximum Length',
-    subtitle: '~3,000 words',
-    description: 'Full article experience (15-18 min)',
-    icon: GraduationCap,
-    recommended: false,
-    warning: 'Advanced generation with fallback protection',
-    reliability: 'fair',
-    isMaximum: true
-  }
-];
-
-const ENHANCED_AI_CREATION_STEPS: ProgressStep[] = [
-  {
-    id: 'content-generation',
-    label: 'Smart Planning',
-    description: 'AI analyzing requirements with intelligent chunking strategy',
-    status: 'pending',
-    estimatedTime: 3
-  },
-  {
-    id: 'optimized-generation',
-    label: 'Protected Generation',
-    description: 'Enhanced generation with timeout protection and fallback',
-    status: 'pending',
-    estimatedTime: 20
-  },
-  {
-    id: 'text-processing',
-    label: 'Content Assembly',
-    description: 'Combining and validating generated content',
-    status: 'pending',
-    estimatedTime: 3
-  },
-  {
-    id: 'audio-generation',
-    label: 'Audio Creation',
-    description: 'Generating high-quality pronunciation audio in background',
-    status: 'pending',
-    estimatedTime: 5
-  },
-  {
-    id: 'finalization',
-    label: 'Finalizing',
-    description: 'Preparing your exercise with error recovery',
-    status: 'pending',
-    estimatedTime: 2
-  }
-];
-
-const CUSTOM_CREATION_STEPS: ProgressStep[] = [
-  {
-    id: 'text-processing',
-    label: 'Text Analysis',
-    description: 'Processing your text with enhanced parsing',
-    status: 'pending',
-    estimatedTime: 3
-  },
-  {
-    id: 'audio-generation',
-    label: 'Audio Creation',
-    description: 'Generating high-quality pronunciation audio',
-    status: 'pending',
-    estimatedTime: 6
-  },
-  {
-    id: 'finalization',
-    label: 'Finalizing',
-    description: 'Preparing your exercise for practice',
-    status: 'pending',
-    estimatedTime: 1
-  }
-];
 
 export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   isOpen,
-  onOpenChange,
-  onSuccess
+  onClose,
+  onExerciseCreated,
+  language
 }) => {
-  const { settings } = useUserSettingsContext();
-  const [currentTab, setCurrentTab] = useState('setup');
+  const [title, setTitle] = useState('');
+  const [topic, setTopic] = useState('');
+  const [difficultyLevel, setDifficultyLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
+  const [targetLength, setTargetLength] = useState(500);
+  const [grammarFocus, setGrammarFocus] = useState('');
+  const [contentSource, setContentSource] = useState<'generate' | 'custom'>('generate');
+  const [customText, setCustomText] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  const [creationSteps, setCreationSteps] = useState<ProgressStep[]>(ENHANCED_AI_CREATION_STEPS);
+  const [showProgress, setShowProgress] = useState(false);
+  const [steps, setSteps] = useState<ProgressStep[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [overallProgress, setOverallProgress] = useState(0);
-  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(30);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number>();
+  const { toast } = useToast();
 
-  const [formData, setFormData] = useState({
-    contentSource: 'ai' as 'ai' | 'custom',
-    title: '',
-    selectedTopic: '',
-    customText: '',
-    difficulty_level: 'beginner' as const,
-    target_length: 700,
-    selectedGrammar: [] as string[]
-  });
+  // Enhanced length options with cap at 3000 words
+  const lengthOptions = [
+    { value: 300, label: '300 words (~2 min read)', time: '15s' },
+    { value: 500, label: '500 words (~3 min read)', time: '20s' },
+    { value: 700, label: '700 words (~4 min read)', time: '25s' },
+    { value: 1000, label: '1000 words (~5 min read)', time: '35s' },
+    { value: 1500, label: '1500 words (~7 min read)', time: '45s' },
+    { value: 2000, label: '2000 words (~10 min read)', time: '55s' },
+    { value: 3000, label: '3000 words (~15 min read) - Max Length', time: '60s' }
+  ];
 
-  // Update validation logic based on content source
-  const canProceed = formData.contentSource === 'ai' 
-    ? formData.selectedTopic && formData.title.trim()
-    : formData.customText.trim() && formData.customText.length <= 3000 && formData.title.trim();
-
-  // Calculate total estimated time based on content source and optimizations
-  const currentCreationSteps = formData.contentSource === 'ai' ? ENHANCED_AI_CREATION_STEPS : CUSTOM_CREATION_STEPS;
-  const totalEstimatedTime = currentCreationSteps.reduce((sum, step) => sum + (step.estimatedTime || 0), 0);
-
-  const getEstimatedTime = () => {
-    if (formData.contentSource === 'custom') return totalEstimatedTime;
+  const initializeProgressSteps = (isCustom: boolean, targetWords: number) => {
+    const baseSteps: ProgressStep[] = [];
     
-    // Adjust time based on target length with enhanced protections
-    const baseTime = totalEstimatedTime;
-    if (formData.target_length <= 1200) return baseTime;
-    if (formData.target_length <= 2000) return baseTime + 8;
-    if (formData.target_length <= 3000) return baseTime + 15;
-    return baseTime + 20; // Maximum protection for 3000+ words
-  };
-
-  const handleContentSourceSelect = (source: 'ai' | 'custom') => {
-    setFormData(prev => ({ 
-      ...prev, 
-      contentSource: source,
-      title: source === 'custom' ? 'My Custom Reading' : prev.title,
-      selectedTopic: source === 'custom' ? '' : prev.selectedTopic,
-      customText: source === 'ai' ? '' : prev.customText
-    }));
-  };
-
-  const handleTopicSelect = (topicId: string) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      selectedTopic: topicId,
-      title: prev.title || getTopicDisplayName(topicId)
-    }));
-  };
-
-  const getTopicDisplayName = (topicId: string) => {
-    const topicMap: Record<string, string> = {
-      'daily-routines': 'Daily Life Adventures',
-      'travel-culture': 'Travel Stories',
-      'food-cooking': 'Culinary Journey',
-      'technology': 'Tech Insights',
-      'environment': 'Nature Chronicles',
-      'health-fitness': 'Wellness Guide',
-      'education': 'Learning Experience',
-      'business': 'Professional Life'
-    };
-    return topicMap[topicId] || 'Reading Exercise';
-  };
-
-  const handleGrammarToggle = (grammarId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedGrammar: prev.selectedGrammar.includes(grammarId)
-        ? prev.selectedGrammar.filter(id => id !== grammarId)
-        : prev.selectedGrammar.length < 3
-          ? [...prev.selectedGrammar, grammarId]
-          : prev.selectedGrammar
-    }));
-  };
-
-  const simulateEnhancedCreationProgress = async () => {
-    const steps = [...currentCreationSteps];
-    let stepIndex = 0;
+    if (isCustom) {
+      baseSteps.push({
+        id: 'text-processing',
+        label: 'Processing Custom Text',
+        description: 'Analyzing and structuring your custom content with enhanced protection',
+        status: 'pending',
+        estimatedTime: 15
+      });
+    } else if (targetWords <= 1200) {
+      baseSteps.push({
+        id: 'content-generation',
+        label: 'Generating Content',
+        description: 'Creating your reading exercise with smart timeout protection',
+        status: 'pending',
+        estimatedTime: 25
+      });
+    } else {
+      baseSteps.push({
+        id: 'optimized-generation',
+        label: 'Enhanced Content Generation',
+        description: 'Using intelligent chunking strategy with error recovery',
+        status: 'pending',
+        estimatedTime: Math.min(45, Math.ceil(targetWords / 50))
+      });
+      
+      baseSteps.push({
+        id: 'chunked-generation',
+        label: 'Smart Content Assembly',
+        description: 'Combining content sections with continuity protection',
+        status: 'pending',
+        estimatedTime: 10
+      });
+    }
     
-    for (const step of steps) {
-      setCurrentStep(stepIndex);
-      setCreationSteps(prev => prev.map((s, i) => 
-        i === stepIndex ? { ...s, status: 'active' } : s
-      ));
-      
-      // Enhanced timing with better estimates
-      let stepDuration = step.estimatedTime || 3;
-      if (step.id === 'optimized-generation') {
-        if (formData.target_length <= 1200) {
-          stepDuration = 15;
-        } else if (formData.target_length <= 2000) {
-          stepDuration = 20;
-        } else {
-          stepDuration = 25; // Maximum time for protected generation
-        }
-      }
-      
-      for (let i = 0; i <= stepDuration; i++) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const stepProgress = (i / stepDuration) * 100;
-        const overallProgressValue = ((stepIndex + (i / stepDuration)) / steps.length) * 100;
-        setOverallProgress(overallProgressValue);
-        
-        const remaining = Math.max(0, getEstimatedTime() - Math.floor((overallProgressValue / 100) * getEstimatedTime()));
-        setEstimatedTimeRemaining(remaining);
-      }
-      
-      setCreationSteps(prev => prev.map((s, i) => 
-        i === stepIndex ? { ...s, status: 'completed' } : s
-      ));
-      
-      stepIndex++;
+    baseSteps.push({
+      id: 'audio-generation',
+      label: 'Audio Generation (Background)',
+      description: 'Generating audio files for enhanced practice experience',
+      status: 'pending',
+      estimatedTime: 5
+    });
+    
+    baseSteps.push({
+      id: 'finalization',
+      label: 'Finalizing Exercise',
+      description: 'Completing setup and preparing your reading exercise',
+      status: 'pending',
+      estimatedTime: 3
+    });
+
+    return baseSteps;
+  };
+
+  const updateProgress = (stepIndex: number, status: 'active' | 'completed' | 'error', estimatedRemaining?: number) => {
+    setSteps(prevSteps => 
+      prevSteps.map((step, index) => ({
+        ...step,
+        status: index < stepIndex ? 'completed' : index === stepIndex ? status : 'pending'
+      }))
+    );
+    
+    setCurrentStep(stepIndex);
+    setOverallProgress((stepIndex / steps.length) * 100);
+    
+    if (estimatedRemaining) {
+      setEstimatedTimeRemaining(estimatedRemaining);
     }
   };
 
-  const handleCreateExercise = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!title.trim() || (contentSource === 'generate' && !topic.trim()) || (contentSource === 'custom' && !customText.trim())) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsCreating(true);
-    setCurrentTab('progress');
+    setShowProgress(true);
     
-    const stepsToUse = formData.contentSource === 'ai' ? ENHANCED_AI_CREATION_STEPS : CUSTOM_CREATION_STEPS;
-    setCreationSteps(stepsToUse);
-    setEstimatedTimeRemaining(getEstimatedTime());
+    const progressSteps = initializeProgressSteps(contentSource === 'custom', targetLength);
+    setSteps(progressSteps);
+    setCurrentStep(0);
+    setOverallProgress(0);
     
+    const totalEstimatedTime = progressSteps.reduce((sum, step) => sum + (step.estimatedTime || 0), 0);
+    setEstimatedTimeRemaining(totalEstimatedTime);
+
     try {
-      // Start progress simulation
-      simulateEnhancedCreationProgress();
+      // Simulate progress updates
+      updateProgress(0, 'active', totalEstimatedTime - 5);
       
-      // Create the actual exercise with enhanced error handling
-      if (formData.contentSource === 'ai') {
-        await readingExerciseService.createReadingExercise({
-          title: formData.title,
-          topic: getTopicDisplayName(formData.selectedTopic),
-          difficulty_level: formData.difficulty_level,
-          target_length: formData.target_length,
-          grammar_focus: formData.selectedGrammar.join(', '),
-          language: settings.selectedLanguage
-        });
-      } else {
-        await readingExerciseService.createReadingExercise({
-          title: formData.title,
-          topic: 'Custom Content',
-          difficulty_level: formData.difficulty_level,
-          target_length: formData.customText.length,
-          grammar_focus: formData.selectedGrammar.join(', '),
-          language: settings.selectedLanguage,
-          customText: formData.customText
-        });
+      const exercise = await readingExerciseService.createReadingExercise({
+        title: title.trim(),
+        language,
+        difficulty_level: difficultyLevel,
+        target_length: targetLength,
+        grammar_focus: grammarFocus.trim() || undefined,
+        topic: contentSource === 'generate' ? topic.trim() : 'Custom Content',
+        customText: contentSource === 'custom' ? customText.trim() : undefined
+      });
+
+      // Progress through steps
+      for (let i = 0; i < progressSteps.length - 1; i++) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        updateProgress(i, 'completed');
+        updateProgress(i + 1, 'active', Math.max(0, totalEstimatedTime - (i + 1) * 8));
       }
       
-      toast.success('Reading exercise created successfully! Audio generation continues in background.');
-      onSuccess();
+      // Complete final step
+      updateProgress(progressSteps.length - 1, 'completed', 0);
+      setOverallProgress(100);
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      onExerciseCreated(exercise);
+      
+      // Check if exercise was created with fallback content
+      const isFallbackContent = exercise.content?.analysis?.fallbackInfo?.isUsable;
+      
+      toast({
+        title: isFallbackContent ? "Exercise Created with Enhanced Protection" : "Exercise Created Successfully",
+        description: isFallbackContent 
+          ? "Your exercise is ready! Enhanced protection ensured successful creation despite complexity."
+          : `Your ${targetLength}-word reading exercise has been created successfully.`,
+        variant: isFallbackContent ? "default" : "default"
+      });
+      
       handleClose();
     } catch (error) {
       console.error('Error creating reading exercise:', error);
       
-      // Enhanced error handling with specific messages
-      if (error.message?.includes('timeout') || error.message?.includes('504') || error.message?.includes('408')) {
-        toast.warning('Generation took longer than expected, but your exercise may still be created. Please check your exercises list in a few moments.');
-        // Still call onSuccess as the exercise might be partially created
-        onSuccess();
-      } else if (error.message?.includes('fallback')) {
-        toast.info('Used enhanced fallback content due to generation complexity. Your exercise is ready to use!');
-        onSuccess();
-      } else {
-        toast.error('Failed to create reading exercise. Try a shorter length or different topic.');
-      }
+      updateProgress(currentStep, 'error');
       
+      toast({
+        title: "Creation Error",
+        description: "There was an issue creating your exercise. Enhanced protection should have prevented this - please try again with a shorter length.",
+        variant: "destructive"
+      });
+    } finally {
       setIsCreating(false);
-      setCurrentTab('setup');
     }
   };
 
   const handleClose = () => {
-    if (isCreating) return;
-    
-    onOpenChange(false);
-    setTimeout(() => {
-      setCurrentTab('setup');
-      setIsCreating(false);
-      setCreationSteps(ENHANCED_AI_CREATION_STEPS);
+    if (!isCreating) {
+      setTitle('');
+      setTopic('');
+      setDifficultyLevel('beginner');
+      setTargetLength(500);
+      setGrammarFocus('');
+      setContentSource('generate');
+      setCustomText('');
+      setShowProgress(false);
+      setSteps([]);
       setCurrentStep(0);
       setOverallProgress(0);
-      setEstimatedTimeRemaining(30);
-      setFormData({
-        contentSource: 'ai',
-        title: '',
-        selectedTopic: '',
-        customText: '',
-        difficulty_level: 'beginner',
-        target_length: 700,
-        selectedGrammar: []
-      });
-    }, 300);
+      setEstimatedTimeRemaining(undefined);
+      onClose();
+    }
   };
 
-  const handleCancel = () => {
-    setIsCreating(false);
-    setCurrentTab('setup');
-    setCreationSteps(ENHANCED_AI_CREATION_STEPS);
-    setCurrentStep(0);
-    setOverallProgress(0);
-    toast.info('Exercise creation cancelled');
-  };
+  const selectedLengthOption = lengthOptions.find(opt => opt.value === targetLength);
+  const isLongContent = targetLength >= 2000;
+
+  if (showProgress) {
+    return (
+      <Dialog open={isOpen} onOpenChange={() => {}}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              Creating Your Protected Reading Exercise
+            </DialogTitle>
+          </DialogHeader>
+          
+          <ReadingExerciseCreationProgress
+            steps={steps}
+            currentStep={currentStep}
+            overallProgress={overallProgress}
+            onCancel={handleClose}
+            estimatedTimeRemaining={estimatedTimeRemaining}
+            hasOptimizations={true}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded-lg">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span>Enhanced AI Reading Exercise</span>
-                <Badge variant="secondary" className="text-xs">
-                  <Shield className="h-3 w-3 mr-1" />
-                  Protected
-                </Badge>
-              </div>
-              <p className="text-sm font-normal text-muted-foreground mt-1">
-                Enhanced with timeout protection, error recovery, and smart fallbacks
-              </p>
-            </div>
-          </DialogTitle>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Create Reading Exercise</DialogTitle>
         </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="title">Exercise Title</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter exercise title..."
+              required
+            />
+          </div>
 
-        <div className="flex-1 overflow-auto">
-          <Tabs value={currentTab} onValueChange={setCurrentTab} className="h-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="setup" disabled={isCreating}>
-                <BookOpen className="h-4 w-4 mr-2" />
-                Setup
-              </TabsTrigger>
-              <TabsTrigger value="progress" disabled={!isCreating}>
-                <Loader2 className={`h-4 w-4 mr-2 ${isCreating ? 'animate-spin' : ''}`} />
-                Creating
-              </TabsTrigger>
-            </TabsList>
+          <ContentSourceSelector
+            value={contentSource}
+            onChange={setContentSource}
+          />
 
-            <TabsContent value="setup" className="space-y-6">
-              {/* Content Source Selection */}
-              <div className="space-y-4">
-                <ContentSourceSelector
-                  selectedSource={formData.contentSource}
-                  onSourceSelect={handleContentSourceSelect}
-                />
+          {contentSource === 'generate' ? (
+            <>
+              <TopicMandalaSelector
+                value={topic}
+                onChange={setTopic}
+                language={language}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="difficulty">Difficulty Level</Label>
+                  <Select value={difficultyLevel} onValueChange={(value: any) => setDifficultyLevel(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="beginner">Beginner</SelectItem>
+                      <SelectItem value="intermediate">Intermediate</SelectItem>
+                      <SelectItem value="advanced">Advanced</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="length">Target Length</Label>
+                  <Select value={targetLength.toString()} onValueChange={(value) => setTargetLength(Number(value))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {lengthOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value.toString()}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <Separator />
-
-              {/* Conditional Content Based on Source */}
-              {formData.contentSource === 'ai' ? (
-                <div className="space-y-6">
-                  {/* Topic Selection for AI */}
-                  <div className="space-y-4">
-                    <TopicMandalaSelector
-                      selectedTopic={formData.selectedTopic}
-                      onTopicSelect={handleTopicSelect}
-                    />
-                  </div>
-
-                  <Separator />
-
-                  {/* Exercise Details for AI */}
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="title">Exercise Title</Label>
-                        <Input
-                          id="title"
-                          value={formData.title}
-                          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                          placeholder="e.g., A Day in Tokyo"
-                          className="text-base"
-                        />
-                      </div>
-
-                      <div className="space-y-3">
-                        <Label>Difficulty Level</Label>
-                        <div className="grid gap-2">
-                          {DIFFICULTY_OPTIONS.map((option) => (
-                            <Card
-                              key={option.value}
-                              className={`
-                                cursor-pointer transition-all
-                                ${formData.difficulty_level === option.value 
-                                  ? 'ring-2 ring-primary shadow-md' 
-                                  : 'hover:shadow-sm'
-                                }
-                              `}
-                              onClick={() => setFormData(prev => ({ 
-                                ...prev, 
-                                difficulty_level: option.value as any 
-                              }))}
-                            >
-                              <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <h4 className="font-medium">{option.label}</h4>
-                                      <Badge variant="outline" className="text-xs">
-                                        {option.subtitle}
-                                      </Badge>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                      {option.description}
-                                    </p>
-                                  </div>
-                                  <div className={`
-                                    w-4 h-4 rounded-full border-2 transition-all
-                                    ${formData.difficulty_level === option.value
-                                      ? 'bg-primary border-primary'
-                                      : 'border-muted-foreground/30'
-                                    }
-                                  `} />
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="space-y-3">
-                        <Label>Reading Length</Label>
-                        <div className="grid gap-2">
-                          {LENGTH_OPTIONS.map((option) => {
-                            const IconComponent = option.icon;
-                            const reliabilityColors = {
-                              'excellent': 'text-green-600',
-                              'very-good': 'text-blue-600',
-                              'good': 'text-yellow-600',
-                              'fair': 'text-orange-600'
-                            };
-                            
-                            return (
-                              <Card
-                                key={option.value}
-                                className={`
-                                  cursor-pointer transition-all
-                                  ${formData.target_length === option.value 
-                                    ? 'ring-2 ring-primary shadow-md' 
-                                    : 'hover:shadow-sm'
-                                  }
-                                  ${option.isMaximum ? 'border-orange-200 bg-orange-50/30' : ''}
-                                `}
-                                onClick={() => setFormData(prev => ({ 
-                                  ...prev, 
-                                  target_length: option.value 
-                                }))}
-                              >
-                                <CardContent className="p-4">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                      <IconComponent className="h-5 w-5 text-muted-foreground" />
-                                      <div>
-                                        <div className="flex items-center gap-2">
-                                          <h4 className="font-medium">{option.label}</h4>
-                                          <Badge variant="outline" className="text-xs">
-                                            {option.subtitle}
-                                          </Badge>
-                                          {option.recommended && (
-                                            <Badge variant="secondary" className="text-xs">
-                                              Recommended
-                                            </Badge>
-                                          )}
-                                          {option.isMaximum && (
-                                            <Badge variant="outline" className="text-xs border-orange-300 text-orange-600">
-                                              Max Length
-                                            </Badge>
-                                          )}
-                                        </div>
-                                        <p className="text-sm text-muted-foreground">
-                                          {option.description}
-                                        </p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                          <span className={`text-xs font-medium ${reliabilityColors[option.reliability]}`}>
-                                            {option.reliability.replace('-', ' ')} reliability
-                                          </span>
-                                          {option.warning && (
-                                            <div className="flex items-center gap-1">
-                                              <AlertTriangle className="h-3 w-3 text-amber-500" />
-                                              <span className="text-xs text-amber-600">{option.warning}</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className={`
-                                      w-4 h-4 rounded-full border-2 transition-all
-                                      ${formData.target_length === option.value
-                                        ? 'bg-primary border-primary'
-                                        : 'border-muted-foreground/30'
-                                      }
-                                    `} />
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Custom Text Input */}
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="title">Exercise Title</Label>
-                        <Input
-                          id="title"
-                          value={formData.title}
-                          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                          placeholder="e.g., My Custom Reading"
-                          className="text-base"
-                        />
-                      </div>
-
-                      <div className="space-y-3">
-                        <Label>Difficulty Level</Label>
-                        <div className="grid gap-2">
-                          {DIFFICULTY_OPTIONS.map((option) => (
-                            <Card
-                              key={option.value}
-                              className={`
-                                cursor-pointer transition-all
-                                ${formData.difficulty_level === option.value 
-                                  ? 'ring-2 ring-primary shadow-md' 
-                                  : 'hover:shadow-sm'
-                                }
-                              `}
-                              onClick={() => setFormData(prev => ({ 
-                                ...prev, 
-                                difficulty_level: option.value as any 
-                              }))}
-                            >
-                              <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <h4 className="font-medium">{option.label}</h4>
-                                      <Badge variant="outline" className="text-xs">
-                                        {option.subtitle}
-                                      </Badge>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                      {option.description}
-                                    </p>
-                                  </div>
-                                  <div className={`
-                                    w-4 h-4 rounded-full border-2 transition-all
-                                    ${formData.difficulty_level === option.value
-                                      ? 'bg-primary border-primary'
-                                      : 'border-muted-foreground/30'
-                                    }
-                                  `} />
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <CustomTextInput
-                        value={formData.customText}
-                        onChange={(value) => setFormData(prev => ({ ...prev, customText: value }))}
-                        maxLength={3000}
-                      />
-                    </div>
-                  </div>
-                </div>
+              {isLongContent && (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Long Content Notice:</strong> Generating {targetLength} words may take up to {selectedLengthOption?.time}. 
+                    Enhanced protection will ensure successful creation with intelligent fallbacks if needed.
+                  </AlertDescription>
+                </Alert>
               )}
 
-              <Separator />
-
-              {/* Grammar Focus (shown for both modes) */}
               <GrammarFocusSelector
-                selectedGrammar={formData.selectedGrammar}
-                onGrammarToggle={handleGrammarToggle}
+                value={grammarFocus}
+                onChange={setGrammarFocus}
+                difficultyLevel={difficultyLevel}
               />
+            </>
+          ) : (
+            <CustomTextInput
+              value={customText}
+              onChange={setCustomText}
+              language={language}
+              difficultyLevel={difficultyLevel}
+            />
+          )}
 
-              {/* Enhanced Protection Notice */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div className="text-sm">
-                    <div className="font-medium text-blue-800 mb-2">Enhanced Generation Protection Active</div>
-                    <div className="text-blue-600 space-y-1">
-                      <div>• <strong>Smart timeout protection</strong> with graceful fallbacks</div>
-                      <div>• <strong>Error recovery</strong> ensures you get usable content</div>
-                      <div>• <strong>Intelligent chunking</strong> for reliable long content</div>
-                      <div>• <strong>Progressive generation</strong> with partial success handling</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Enhanced Protection Active:</strong> This exercise uses advanced error recovery 
+              to ensure successful creation. Audio will be generated in the background after creation.
+            </AlertDescription>
+          </Alert>
 
-              {/* Action Buttons */}
-              <div className="flex justify-between items-center pt-4 border-t">
-                <div className="text-sm text-muted-foreground">
-                  {canProceed && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <span>Est. time: ~{getEstimatedTime()}s</span>
-                      <Badge variant="secondary" className="text-xs">
-                        <Shield className="h-3 w-3 mr-1" />
-                        Protected
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={handleClose}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleCreateExercise} 
-                    disabled={!canProceed}
-                    className="gap-2"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    Create Exercise
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="progress" className="h-full">
-              <ReadingExerciseCreationProgress
-                steps={creationSteps}
-                currentStep={currentStep}
-                overallProgress={overallProgress}
-                onCancel={handleCancel}
-                estimatedTimeRemaining={estimatedTimeRemaining}
-                hasOptimizations={true}
-              />
-            </TabsContent>
-          </Tabs>
-        </div>
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isCreating}>
+              {isCreating ? 'Creating...' : 'Create Exercise'}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
