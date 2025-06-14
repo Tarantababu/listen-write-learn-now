@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise, ReadingExerciseProgress, CreateReadingExerciseRequest } from '@/types/reading';
 
@@ -125,15 +126,38 @@ export class ReadingExerciseService {
   }
 
   async generateAudio(text: string, language: string): Promise<string> {
-    const { data, error } = await supabase.functions.invoke('text-to-speech', {
-      body: {
-        text,
-        language
-      }
-    });
+    try {
+      console.log('Calling text-to-speech function for:', text.substring(0, 50) + '...');
+      
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: {
+          text,
+          language
+        }
+      });
 
-    if (error) throw error;
-    return data.audio_url;
+      if (error) {
+        console.error('Error invoking text-to-speech function:', error);
+        throw error;
+      }
+
+      if (!data) {
+        console.warn('No data received from text-to-speech function');
+        throw new Error('No audio data received');
+      }
+
+      // The function now returns { audio_url: "storage_url" } consistently
+      if (!data.audio_url) {
+        console.error('No audio_url in response:', data);
+        throw new Error('No audio URL in response');
+      }
+
+      console.log('Audio generated successfully, URL:', data.audio_url);
+      return data.audio_url;
+    } catch (error) {
+      console.error('Error generating audio:', error);
+      throw error;
+    }
   }
 }
 

@@ -127,50 +127,16 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
         return undefined;
       }
 
-      // Check if we got a direct audioUrl from storage
-      if (data.audioUrl) {
-        console.log('Using audioUrl from storage:', data.audioUrl);
+      // The updated function now returns { audio_url: "storage_url" } consistently
+      if (data.audio_url) {
+        console.log('Audio URL received:', data.audio_url);
         toast("Success", {
-          description: "Audio generated and linked successfully!"
+          description: "Audio generated successfully!"
         });
-        return data.audioUrl;
+        return data.audio_url;
       }
 
-      // Fallback: if no audioUrl but we have audioContent, handle it locally
-      if (data.audioContent) {
-        console.log('No audioUrl received, using audioContent fallback');
-        
-        // Create blob from base64 content
-        const blob = await fetch(`data:audio/mp3;base64,${data.audioContent}`).then(res => res.blob());
-        
-        // Upload to storage manually as fallback
-        const fileName = `vocabulary/fallback_${Date.now()}.mp3`;
-        console.log('Uploading fallback audio file:', fileName);
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('audio')
-          .upload(fileName, blob, {
-            contentType: 'audio/mp3'
-          });
-
-        if (uploadError) {
-          console.error('Fallback upload error:', uploadError);
-          throw uploadError;
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('audio')
-          .getPublicUrl(fileName);
-
-        console.log('Fallback audio uploaded successfully:', publicUrl);
-        
-        toast("Success", {
-          description: "Audio generated and linked successfully!"
-        });
-        return publicUrl;
-      }
-
-      console.warn('No audio content or URL received');
+      console.warn('No audio_url in response:', data);
       return undefined;
       
     } catch (error) {
