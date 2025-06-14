@@ -15,6 +15,7 @@ import { useCreateExerciseProgress } from '@/hooks/use-create-exercise-progress'
 import { BidirectionalService } from '@/services/bidirectionalService';
 import { FlagIcon } from 'react-flag-kit';
 import { getLanguageFlagCode } from '@/utils/languageUtils';
+import { getLanguageLabel } from '@/constants/languages';
 
 interface BidirectionalCreateDialogProps {
   isOpen: boolean;
@@ -203,11 +204,6 @@ export const BidirectionalCreateDialog: React.FC<BidirectionalCreateDialogProps>
       const currentStep = steps[currentStepIndex]?.id || 'unknown';
       errorStep(currentStep, error as Error);
     }
-  };
-
-  const getLanguageLabel = (languageValue: string) => {
-    const lang = supportedLanguages.find(l => l.value === languageValue);
-    return lang ? lang.label : languageValue;
   };
 
   const cannotCreate = !subscription.isSubscribed && !exerciseLimit.canCreate;

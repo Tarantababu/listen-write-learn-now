@@ -17,83 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getLanguageFlagCode } from '@/utils/languageUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { BidirectionalReviewStack } from '@/components/bidirectional/BidirectionalReviewStack';
-
-const SUPPORTED_LANGUAGES = [{
-  value: 'english',
-  label: 'English'
-}, {
-  value: 'mandarin chinese',
-  label: 'Mandarin Chinese'
-}, {
-  value: 'french',
-  label: 'French'
-}, {
-  value: 'spanish',
-  label: 'Spanish'
-}, {
-  value: 'german',
-  label: 'German'
-}, {
-  value: 'japanese',
-  label: 'Japanese'
-}, {
-  value: 'arabic',
-  label: 'Arabic'
-}, {
-  value: 'russian',
-  label: 'Russian'
-}, {
-  value: 'italian',
-  label: 'Italian'
-}, {
-  value: 'portuguese',
-  label: 'Portuguese'
-}, {
-  value: 'korean',
-  label: 'Korean'
-}, {
-  value: 'hindi',
-  label: 'Hindi'
-}, {
-  value: 'turkish',
-  label: 'Turkish'
-}, {
-  value: 'dutch',
-  label: 'Dutch'
-}, {
-  value: 'greek',
-  label: 'Greek'
-}, {
-  value: 'polish',
-  label: 'Polish'
-}, {
-  value: 'swedish',
-  label: 'Swedish'
-}, {
-  value: 'norwegian',
-  label: 'Norwegian'
-}, {
-  value: 'czech',
-  label: 'Czech'
-}, {
-  value: 'danish',
-  label: 'Danish'
-}, {
-  value: 'hungarian',
-  label: 'Hungarian'
-}, {
-  value: 'finnish',
-  label: 'Finnish'
-}, {
-  value: 'ukrainian',
-  label: 'Ukrainian'
-}, {
-  value: 'romanian',
-  label: 'Romanian'
-}, {
-  value: 'hebrew',
-  label: 'Hebrew'
-}];
+import { SUPPORTED_LANGUAGES, getLanguageLabel } from '@/constants/languages';
 
 const BidirectionalPage: React.FC = () => {
   const {
@@ -248,9 +172,8 @@ const BidirectionalPage: React.FC = () => {
   };
 
   // Get the display label for the current target language
-  const getLanguageLabel = (languageValue: string) => {
-    const lang = SUPPORTED_LANGUAGES.find(l => l.value === languageValue);
-    return lang ? lang.label : languageValue;
+  const getLanguageLabelLocal = (languageValue: string) => {
+    return getLanguageLabel(languageValue);
   };
 
   if (!user) {
@@ -279,7 +202,7 @@ const BidirectionalPage: React.FC = () => {
           Practice translation in both directions with spaced repetition for{' '}
           <span className="inline-flex items-center gap-1 font-medium">
             <FlagIcon code={getLanguageFlagCode(targetLanguage)} size={16} />
-            {getLanguageLabel(targetLanguage)}
+            {getLanguageLabelLocal(targetLanguage)}
           </span>
         </p>
       </div>
@@ -334,7 +257,7 @@ const BidirectionalPage: React.FC = () => {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
             <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
-            Create New Exercise for {getLanguageLabel(targetLanguage)}
+            Create New Exercise for {getLanguageLabelLocal(targetLanguage)}
             {!subscription.isSubscribed && <span className="text-sm text-muted-foreground">
                 ({exerciseLimit.currentCount}/{exerciseLimit.limit})
               </span>}
@@ -376,7 +299,7 @@ const BidirectionalPage: React.FC = () => {
           {isLoading ? <div className="text-center py-8">Loading exercises...</div> : learningExercises.length > 0 ? <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {learningExercises.map(exercise => <BidirectionalExerciseCard key={exercise.id} exercise={exercise} onPractice={handlePractice} onReview={() => handleReview(exercise)} onDelete={handleDelete} />)}
             </div> : <div className="text-center py-8 text-muted-foreground text-sm sm:text-base">
-              No learning exercises yet for {getLanguageLabel(targetLanguage)}. Create your first exercise above!
+              No learning exercises yet for {getLanguageLabelLocal(targetLanguage)}. Create your first exercise above!
             </div>}
         </TabsContent>
 
@@ -384,7 +307,7 @@ const BidirectionalPage: React.FC = () => {
           {isLoading ? <div className="text-center py-8">Loading exercises...</div> : reviewingExercises.length > 0 ? <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {reviewingExercises.map(exercise => <BidirectionalExerciseCard key={exercise.id} exercise={exercise} onPractice={handlePractice} onReview={() => handleReview(exercise)} onDelete={handleDelete} />)}
             </div> : <div className="text-center py-8 text-muted-foreground text-sm sm:text-base">
-              No exercises in review phase yet for {getLanguageLabel(targetLanguage)}. Complete some learning exercises first!
+              No exercises in review phase yet for {getLanguageLabelLocal(targetLanguage)}. Complete some learning exercises first!
             </div>}
         </TabsContent>
 
@@ -392,7 +315,7 @@ const BidirectionalPage: React.FC = () => {
           {isLoading ? <div className="text-center py-8">Loading exercises...</div> : masteredExercises.length > 0 ? <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {masteredExercises.map(exercise => <BidirectionalExerciseCard key={exercise.id} exercise={exercise} onPractice={handlePractice} onReview={() => handleReview(exercise)} />)}
             </div> : <div className="text-center py-8 text-muted-foreground text-sm sm:text-base">
-              No mastered exercises yet for {getLanguageLabel(targetLanguage)}. Keep practicing!
+              No mastered exercises yet for {getLanguageLabelLocal(targetLanguage)}. Keep practicing!
             </div>}
         </TabsContent>
       </Tabs>

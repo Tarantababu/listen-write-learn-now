@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,15 +11,18 @@ import { BidirectionalCreateDialog } from '@/components/bidirectional/Bidirectio
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { ReadingExercise } from '@/types/reading';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { getReadingFeatureFlags } from '@/utils/featureFlags';
 import { supabase } from '@/integrations/supabase/client';
+import { SUPPORTED_LANGUAGES } from '@/constants/languages';
 
 export const ReadingExercisesSection: React.FC = () => {
   const { settings } = useUserSettingsContext();
   const { addExercise } = useExerciseContext();
+  const { subscription } = useSubscription();
   const isMobile = useIsMobile();
   const [exercises, setExercises] = useState<ReadingExercise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,25 +41,11 @@ export const ReadingExercisesSection: React.FC = () => {
   // Get feature flags for enhanced reading features
   const featureFlags = getReadingFeatureFlags();
 
-  // Supported languages for bidirectional exercises
-  const supportedLanguages = [
-    { value: 'english', label: 'English' },
-    { value: 'spanish', label: 'Spanish' },
-    { value: 'french', label: 'French' },
-    { value: 'german', label: 'German' },
-    { value: 'italian', label: 'Italian' },
-    { value: 'portuguese', label: 'Portuguese' },
-    { value: 'russian', label: 'Russian' },
-    { value: 'japanese', label: 'Japanese' },
-    { value: 'korean', label: 'Korean' },
-    { value: 'chinese', label: 'Chinese' }
-  ];
-
   // Mock exercise limit for bidirectional exercises
   const exerciseLimit = {
-    canCreate: true,
+    canCreate: subscription.isSubscribed || true,
     currentCount: 0,
-    limit: 10
+    limit: subscription.isSubscribed ? Infinity : 10
   };
 
   useEffect(() => {
@@ -399,7 +387,8 @@ export const ReadingExercisesSection: React.FC = () => {
         onExerciseCreated={handleBidirectionalExerciseCreated}
         exerciseLimit={exerciseLimit}
         targetLanguage={settings.selectedLanguage}
-        supportedLanguages={supportedLanguages}
+        supportedLanguages={SUPPORTED_LANGUAGES}
+        prefilledText={selectedTextForBidirectional}
       />
     </div>
   );
