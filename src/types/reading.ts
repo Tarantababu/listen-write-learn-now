@@ -14,6 +14,13 @@ export interface ReadingExercise {
       wordCount: number;
       readingTime: number;
       grammarPoints: string[];
+      enhancedGeneration?: boolean;
+      qualityMetrics?: {
+        vocabularyDiversity?: number;
+        coherenceScore?: number;
+        generationStrategy?: string;
+        recoveryUsed?: boolean;
+      };
       fallbackInfo?: {
         method: string;
         reason: string;
