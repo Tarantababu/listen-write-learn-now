@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import {
   Plus
 } from 'lucide-react';
 import { ReadingExercise } from '@/types/reading';
+import { Language } from '@/types';
 import { EnhancedInteractiveText } from './EnhancedInteractiveText';
 import { AudioWordSynchronizer } from './AudioWordSynchronizer';
 import { SynchronizedTextWithSelection } from './SynchronizedTextWithSelection';
@@ -199,6 +201,9 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     enableTextSelection
   });
 
+  // Cast exercise.language to Language type
+  const exerciseLanguage = exercise.language as Language;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className={`${isMobile ? 'w-full h-full max-w-full max-h-full m-0 rounded-none' : 'max-w-4xl max-h-[95vh]'} overflow-hidden flex flex-col`}>
@@ -288,7 +293,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                 onCreateDictation={handleCreateDictation}
                 onCreateBidirectional={handleCreateBidirectional}
                 exerciseId={exercise.id}
-                exerciseLanguage={exercise.language}
+                exerciseLanguage={exerciseLanguage}
                 enableTextSelection={enableTextSelection}
                 enableVocabulary={enableVocabularyIntegration}
                 enhancedHighlighting={enableEnhancedHighlighting}
@@ -300,7 +305,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
               // Only text selection enabled - use enhanced interactive text
               <EnhancedInteractiveText
                 text={fullText}
-                language={exercise.language}
+                language={exerciseLanguage}
                 enableTooltips={true}
                 enableBidirectionalCreation={true}
                 enableTextSelection={enableTextSelection}
@@ -320,7 +325,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                 onCreateDictation={handleCreateDictation}
                 onCreateBidirectional={handleCreateBidirectional}
                 exerciseId={exercise.id}
-                exerciseLanguage={exercise.language}
+                exerciseLanguage={exerciseLanguage}
                 enableTextSelection={false} // Explicitly disable selection
                 enableVocabulary={false}
                 enhancedHighlighting={false}
