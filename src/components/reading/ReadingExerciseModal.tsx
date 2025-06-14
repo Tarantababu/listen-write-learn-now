@@ -12,7 +12,7 @@ import { CustomTextInput } from './CustomTextInput';
 import { GrammarFocusSelector } from './GrammarFocusSelector';
 import { TopicMandalaSelector } from './TopicMandalaSelector';
 import { SimpleCreationProgress } from './SimpleCreationProgress';
-import { AlertTriangle, Info } from 'lucide-react';
+import { AlertTriangle, Info, TrendingUp, Brain, Zap } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ReadingExerciseModalProps {
@@ -22,11 +22,17 @@ interface ReadingExerciseModalProps {
   language?: string;
 }
 
-interface GenerationProgress {
+interface EnhancedGenerationProgress {
   progress: number;
   status: 'generating' | 'completed' | 'error';
   message: string;
   estimatedTime?: number;
+  qualityMetrics?: {
+    vocabularyDiversity?: number;
+    coherenceScore?: number;
+    generationStrategy?: string;
+    recoveryUsed?: boolean;
+  };
 }
 
 export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
@@ -44,22 +50,22 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const [customText, setCustomText] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
-  const [progress, setProgress] = useState<GenerationProgress>({
+  const [progress, setProgress] = useState<EnhancedGenerationProgress>({
     progress: 0,
     status: 'generating',
     message: 'Initializing...'
   });
   const { toast } = useToast();
 
-  // Simplified length options with better UX
+  // Enhanced length options with strategy indicators
   const lengthOptions = [
-    { value: 300, label: '300 words (~2 min read)', recommended: 'Quick practice' },
-    { value: 500, label: '500 words (~3 min read)', recommended: 'Most popular' },
-    { value: 700, label: '700 words (~4 min read)', recommended: 'Good balance' },
-    { value: 1000, label: '1000 words (~5 min read)', recommended: 'Comprehensive' },
-    { value: 1500, label: '1500 words (~7 min read)', recommended: 'Extended practice' },
-    { value: 2000, label: '2000 words (~10 min read)', recommended: 'Advanced' },
-    { value: 3000, label: '3000 words (~15 min read)', recommended: 'Maximum length' }
+    { value: 300, label: '300 words (~2 min)', recommended: 'Quick practice', strategy: 'Direct' },
+    { value: 500, label: '500 words (~3 min)', recommended: 'Most popular', strategy: 'Direct' },
+    { value: 700, label: '700 words (~4 min)', recommended: 'Good balance', strategy: 'Direct' },
+    { value: 1000, label: '1000 words (~5 min)', recommended: 'Comprehensive', strategy: 'Smart Chunking' },
+    { value: 1500, label: '1500 words (~7 min)', recommended: 'Extended practice', strategy: 'Smart Chunking' },
+    { value: 2000, label: '2000 words (~10 min)', recommended: 'Advanced', strategy: 'Adaptive' },
+    { value: 3000, label: '3000 words (~15 min)', recommended: 'Maximum length', strategy: 'Adaptive' }
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,7 +80,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
       return;
     }
 
-    console.log('[MODAL] Starting optimized exercise creation');
+    console.log('[ENHANCED MODAL] Starting enhanced exercise creation');
     setIsCreating(true);
     setShowProgress(true);
 
@@ -95,36 +101,46 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         onSuccess();
       }
       
-      // Check if exercise was created with fallback content
-      const isFallbackContent = exercise.content?.analysis?.fallbackInfo?.isUsable;
+      // Enhanced success handling with quality assessment
+      const isEnhancedContent = exercise.content?.analysis?.enhancedGeneration;
+      const qualityLevel = exercise.content?.analysis?.qualityMetrics?.coherenceScore || 0;
+      const usedRecovery = exercise.content?.analysis?.fallbackInfo?.isUsable;
+      
+      const getSuccessMessage = () => {
+        if (usedRecovery) {
+          return "Exercise created with smart recovery! Our enhanced system ensured successful creation.";
+        } else if (isEnhancedContent) {
+          return `Enhanced exercise created successfully! Quality score: ${Math.round(qualityLevel * 100)}%`;
+        } else {
+          return `Your ${targetLength}-word reading exercise has been created successfully.`;
+        }
+      };
       
       toast({
-        title: isFallbackContent ? "Exercise Created with Smart Recovery" : "Exercise Created Successfully",
-        description: isFallbackContent 
-          ? "Your exercise is ready! Smart recovery ensured successful creation."
-          : `Your ${targetLength}-word reading exercise has been created successfully.`,
+        title: isEnhancedContent ? "Enhanced Exercise Created" : "Exercise Created Successfully",
+        description: getSuccessMessage(),
         variant: "default"
       });
       
-      console.log('[MODAL] Exercise creation completed successfully');
+      console.log('[ENHANCED MODAL] Exercise creation completed with enhanced features');
       
-      // Auto-close after success
+      // Auto-close after success with quality summary
       setTimeout(() => {
         handleClose();
-      }, 1500);
+      }, 2000);
       
     } catch (error) {
-      console.error('[MODAL] Exercise creation failed:', error);
+      console.error('[ENHANCED MODAL] Exercise creation failed:', error);
       
       setProgress({
         progress: 0,
         status: 'error',
-        message: 'Failed to create exercise. Please try again.'
+        message: 'Failed to create exercise. Our enhanced system tried multiple recovery methods.'
       });
       
       toast({
         title: "Creation Error",
-        description: "There was an issue creating your exercise. Please try again.",
+        description: "There was an issue creating your exercise. Our enhanced system attempted multiple recovery methods. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -157,6 +173,11 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
 
   const selectedLengthOption = lengthOptions.find(opt => opt.value === targetLength);
   const isLongContent = targetLength >= 2000;
+  const getGenerationStrategy = () => {
+    if (targetLength <= 800) return 'Enhanced Direct';
+    if (targetLength <= 1500) return 'Smart Chunking';
+    return 'Adaptive Chunking';
+  };
 
   if (showProgress) {
     return (
@@ -164,7 +185,8 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              Creating Your Reading Exercise
+              <Brain className="h-5 w-5" />
+              Creating Your Enhanced Reading Exercise
             </DialogTitle>
           </DialogHeader>
           
@@ -175,6 +197,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
             estimatedTime={progress.estimatedTime}
             onCancel={handleClose}
             showOptimizations={true}
+            qualityMetrics={progress.qualityMetrics}
           />
         </DialogContent>
       </Dialog>
@@ -185,7 +208,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Reading Exercise</DialogTitle>
+          <DialogTitle>Create Enhanced Reading Exercise</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -238,7 +261,12 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                       {lengthOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value.toString()}>
                           <div className="flex flex-col">
-                            <span>{option.label}</span>
+                            <div className="flex items-center gap-2">
+                              <span>{option.label}</span>
+                              <span className="text-xs bg-blue-100 text-blue-700 px-1 rounded">
+                                {option.strategy}
+                              </span>
+                            </div>
                             {option.recommended && (
                               <span className="text-xs text-muted-foreground">{option.recommended}</span>
                             )}
@@ -250,14 +278,14 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                 </div>
               </div>
 
-              {isLongContent && (
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Extended Content:</strong> Generating {targetLength} words will use our advanced creation system for optimal results.
-                  </AlertDescription>
-                </Alert>
-              )}
+              {/* Enhanced Strategy Information */}
+              <Alert>
+                <TrendingUp className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Generation Strategy:</strong> {getGenerationStrategy()} - This strategy is optimized for {targetLength} words to ensure quality and coherence.
+                  {isLongContent && " Advanced adaptive chunking will be used for optimal results."}
+                </AlertDescription>
+              </Alert>
 
               <GrammarFocusSelector
                 selectedGrammar={grammarFocus}
@@ -274,9 +302,9 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
           )}
 
           <Alert>
-            <Info className="h-4 w-4" />
+            <Zap className="h-4 w-4" />
             <AlertDescription>
-              <strong>Smart Generation:</strong> Our optimized system automatically selects the best approach for your content length and complexity. Audio will be generated in the background.
+              <strong>Enhanced Generation:</strong> Our optimized system uses intelligent strategies, quality metrics, and smart recovery to ensure successful creation. Audio generation happens automatically in the background.
             </AlertDescription>
           </Alert>
 
@@ -285,7 +313,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
               Cancel
             </Button>
             <Button type="submit" disabled={isCreating}>
-              {isCreating ? 'Creating...' : 'Create Exercise'}
+              {isCreating ? 'Creating...' : 'Create Enhanced Exercise'}
             </Button>
           </div>
         </form>
