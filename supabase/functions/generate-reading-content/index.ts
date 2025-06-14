@@ -34,7 +34,7 @@ Requirements:
 5. Include varied sentence structures and engaging content
 6. Ensure cultural authenticity and relevance
 
-Return JSON in this exact format:
+IMPORTANT: Return ONLY valid JSON in this exact format, no additional text or formatting:
 {
   "sentences": [
     {
@@ -68,11 +68,11 @@ Return JSON in this exact format:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
-            content: `You are an expert language teacher creating high-quality reading exercises. You create authentic, culturally relevant content that is perfectly calibrated for language learners. Always respond with valid JSON only, no additional text. Make sure every word in the vocabulary analysis is actually present in the text.`
+            content: `You are an expert language teacher creating high-quality reading exercises. You create authentic, culturally relevant content that is perfectly calibrated for language learners. You MUST respond with valid JSON only, no additional text or formatting. Make sure every word in the vocabulary analysis is actually present in the text.`
           },
           {
             role: 'user',
@@ -80,30 +80,59 @@ Return JSON in this exact format:
           }
         ],
         temperature: 0.7,
-        max_tokens: 3000
+        max_tokens: 3000,
+        response_format: { type: "json_object" }
       }),
     })
 
     if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`OpenAI API error: ${error}`)
+      const errorText = await response.text()
+      console.error(`OpenAI API error: ${response.status} - ${errorText}`)
+      throw new Error(`OpenAI API error: ${response.status}`)
     }
 
     const data = await response.json()
     const content = data.choices[0].message.content
 
-    // Parse the JSON response
+    console.log('Raw OpenAI response:', content)
+
+    // Parse the JSON response with better error handling
     let parsedContent
     try {
       parsedContent = JSON.parse(content)
-    } catch (e) {
-      throw new Error('Failed to parse OpenAI response as JSON')
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response:', content)
+      console.error('Parse error:', parseError.message)
+      
+      // Try to extract JSON from the response if it's wrapped in other text
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        try {
+          parsedContent = JSON.parse(jsonMatch[0])
+          console.log('Successfully extracted JSON from wrapped response')
+        } catch (extractError) {
+          console.error('Failed to extract JSON:', extractError.message)
+          throw new Error('Failed to parse OpenAI response as JSON')
+        }
+      } else {
+        throw new Error('No valid JSON found in OpenAI response')
+      }
+    }
+
+    // Validate and fix the structure
+    if (!parsedContent.sentences || !Array.isArray(parsedContent.sentences)) {
+      throw new Error('Invalid response structure: missing sentences array')
     }
 
     // Add unique IDs to sentences if not present and validate structure
     parsedContent.sentences = parsedContent.sentences.map((sentence: any, index: number) => ({
       ...sentence,
-      id: sentence.id || `sentence-${index + 1}`
+      id: sentence.id || `sentence-${index + 1}`,
+      analysis: {
+        words: sentence.analysis?.words || [],
+        grammar: sentence.analysis?.grammar || [],
+        translation: sentence.analysis?.translation || ''
+      }
     }))
 
     // Ensure analysis exists
@@ -115,6 +144,7 @@ Return JSON in this exact format:
       }
     }
 
+    console.log('Successfully processed reading content')
     return new Response(JSON.stringify(parsedContent), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
