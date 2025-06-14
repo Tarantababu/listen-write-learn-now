@@ -50,6 +50,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [overallProgress, setOverallProgress] = useState(0);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number>();
+  const [apiSuccess, setApiSuccess] = useState(false);
   const { toast } = useToast();
 
   // Enhanced length options with cap at 3000 words
@@ -130,8 +131,34 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     setCurrentStep(stepIndex);
     setOverallProgress((stepIndex / steps.length) * 100);
     
-    if (estimatedRemaining) {
+    if (estimatedRemaining !== undefined) {
       setEstimatedTimeRemaining(estimatedRemaining);
+    }
+  };
+
+  const simulateProgressSteps = async (totalSteps: number) => {
+    console.log('[PROGRESS SIM] Starting progress simulation for', totalSteps, 'steps');
+    
+    // Progress through steps with realistic timing
+    for (let i = 0; i < totalSteps - 1; i++) {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Only update progress if API hasn't failed
+      if (apiSuccess || isCreating) {
+        updateProgress(i, 'completed');
+        updateProgress(i + 1, 'active', Math.max(0, (totalSteps - i - 1) * 2));
+        console.log('[PROGRESS SIM] Step', i, 'completed, moving to step', i + 1);
+      } else {
+        console.log('[PROGRESS SIM] Stopping simulation - API failed or creation cancelled');
+        return;
+      }
+    }
+    
+    // Complete final step only if API succeeded
+    if (apiSuccess && isCreating) {
+      updateProgress(totalSteps - 1, 'completed', 0);
+      setOverallProgress(100);
+      console.log('[PROGRESS SIM] All steps completed successfully');
     }
   };
 
@@ -147,8 +174,10 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
       return;
     }
 
+    console.log('[MODAL] Starting exercise creation');
     setIsCreating(true);
     setShowProgress(true);
+    setApiSuccess(false);
     
     const progressSteps = initializeProgressSteps(contentSource === 'custom', targetLength);
     setSteps(progressSteps);
@@ -158,10 +187,16 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     const totalEstimatedTime = progressSteps.reduce((sum, step) => sum + (step.estimatedTime || 0), 0);
     setEstimatedTimeRemaining(totalEstimatedTime);
 
+    // Start the first step
+    updateProgress(0, 'active', totalEstimatedTime - 5);
+
     try {
-      // Simulate progress updates
-      updateProgress(0, 'active', totalEstimatedTime - 5);
+      console.log('[MODAL] Calling readingExerciseService.createReadingExercise');
       
+      // Start progress simulation in background
+      const progressPromise = simulateProgressSteps(progressSteps.length);
+      
+      // Make the actual API call
       const exercise = await readingExerciseService.createReadingExercise({
         title: title.trim(),
         language,
@@ -172,17 +207,13 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         customText: contentSource === 'custom' ? customText.trim() : undefined
       });
 
-      // Progress through steps
-      for (let i = 0; i < progressSteps.length - 1; i++) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        updateProgress(i, 'completed');
-        updateProgress(i + 1, 'active', Math.max(0, totalEstimatedTime - (i + 1) * 8));
-      }
+      console.log('[MODAL] API call succeeded, exercise created:', exercise.id);
+      setApiSuccess(true);
       
-      // Complete final step
-      updateProgress(progressSteps.length - 1, 'completed', 0);
-      setOverallProgress(100);
+      // Wait for progress simulation to complete
+      await progressPromise;
       
+      // Additional delay for completion effect
       await new Promise(resolve => setTimeout(resolve, 500));
 
       if (onSuccess) {
@@ -197,18 +228,24 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         description: isFallbackContent 
           ? "Your exercise is ready! Enhanced protection ensured successful creation despite complexity."
           : `Your ${targetLength}-word reading exercise has been created successfully.`,
-        variant: isFallbackContent ? "default" : "default"
+        variant: "default"
       });
       
+      console.log('[MODAL] Exercise creation completed successfully');
       handleClose();
-    } catch (error) {
-      console.error('Error creating reading exercise:', error);
       
+    } catch (error) {
+      console.error('[MODAL] Exercise creation failed:', error);
+      
+      // Mark API as failed to stop progress simulation
+      setApiSuccess(false);
+      
+      // Update current step to error state
       updateProgress(currentStep, 'error');
       
       toast({
         title: "Creation Error",
-        description: "There was an issue creating your exercise. Enhanced protection should have prevented this - please try again with a shorter length.",
+        description: "There was an issue creating your exercise. Please try again with a shorter length or different topic.",
         variant: "destructive"
       });
     } finally {
@@ -230,6 +267,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
       setCurrentStep(0);
       setOverallProgress(0);
       setEstimatedTimeRemaining(undefined);
+      setApiSuccess(false);
       onClose();
     }
   };
