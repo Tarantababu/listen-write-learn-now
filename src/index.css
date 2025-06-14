@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -102,6 +103,27 @@
   .word-comparison-missing {
     @apply dark:bg-amber-950/30 dark:border-amber-800/40 dark:text-amber-300;
   }
+
+  /* Enhanced text selection styles */
+  .enhanced-text-selection {
+    @apply cursor-text select-text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+
+  .enhanced-word-hover {
+    @apply transition-all duration-200 hover:bg-gray-50/60 hover:shadow-sm hover:scale-102;
+  }
+
+  .enhanced-word-selected {
+    @apply bg-blue-200/60 border border-blue-300/50 shadow-sm;
+  }
+
+  .enhanced-word-highlighted {
+    @apply bg-yellow-300/80 border border-yellow-500/60 shadow-md scale-105 font-medium;
+  }
 }
 
 @keyframes fadeIn {
@@ -157,6 +179,30 @@
   }
 }
 
+/* Enhanced selection animations */
+@keyframes selectionGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+@keyframes wordPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
 @layer utilities {
   /* Animation utilities */
   .animate-fade-in {
@@ -174,10 +220,22 @@
   .animate-bounce-once {
     animation: bounceOnce 1s ease-out;
   }
+
+  .animate-selection-glow {
+    animation: selectionGlow 0.6s ease-out;
+  }
+
+  .animate-word-pulse {
+    animation: wordPulse 0.5s ease-in-out;
+  }
   
   /* Hover effects */
   .hover-scale {
     @apply transition-transform hover:scale-105 duration-200;
+  }
+
+  .hover-scale-102 {
+    @apply transition-transform hover:scale-102 duration-200;
   }
   
   .hover-glow {
@@ -188,6 +246,23 @@
   .dark-gradient {
     @apply dark:bg-gradient-to-br dark:from-background/90 dark:via-background/70 dark:to-accent/10;
   }
+
+  /* Enhanced text selection utilities */
+  .text-selectable {
+    @apply cursor-text select-text;
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+  }
+
+  .text-unselectable {
+    @apply cursor-default select-none;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+  }
 }
 
 /* Custom styles for the new landing page */
@@ -197,4 +272,33 @@
 
 .feature-card {
   @apply relative px-5 py-4 rounded-xl border-2 border-brand-light/20 bg-white/50 hover:border-brand-primary/30 transition-colors;
+}
+
+/* Enhanced word selection styles */
+::selection {
+  background-color: rgba(59, 130, 246, 0.3);
+  color: inherit;
+}
+
+::-moz-selection {
+  background-color: rgba(59, 130, 246, 0.3);
+  color: inherit;
+}
+
+/* Custom scrollbar for better UX */
+.enhanced-reading-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.enhanced-reading-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.enhanced-reading-content::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 3px;
+}
+
+.enhanced-reading-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.5);
 }

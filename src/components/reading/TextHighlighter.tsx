@@ -4,15 +4,21 @@ import React, { useRef, useEffect, useState } from 'react';
 interface HighlightOverlay {
   rect: DOMRect;
   id: string;
+  type: 'selection' | 'word-sync' | 'hover';
 }
 
 interface TextHighlighterProps {
   children: React.ReactNode;
   selectedText: string;
   selectionRange: Range | null;
-  enhancedHighlighting?: boolean; // New prop for enhanced highlighting
-  highlightColor?: string; // Customizable highlight color
-  animateHighlight?: boolean; // Animation option
+  enhancedHighlighting?: boolean;
+  highlightColor?: string;
+  animateHighlight?: boolean;
+  // New props for enhanced functionality
+  hoveredWordIndex?: number;
+  highlightedWordIndex?: number;
+  wordSyncColor?: string;
+  hoverColor?: string;
 }
 
 export const TextHighlighter: React.FC<TextHighlighterProps> = ({
@@ -21,54 +27,103 @@ export const TextHighlighter: React.FC<TextHighlighterProps> = ({
   selectionRange,
   enhancedHighlighting = false,
   highlightColor = 'bg-blue-200/40',
-  animateHighlight = true
+  animateHighlight = true,
+  hoveredWordIndex = -1,
+  highlightedWordIndex = -1,
+  wordSyncColor = 'bg-yellow-300/80',
+  hoverColor = 'bg-gray-200/30'
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [highlightOverlays, setHighlightOverlays] = useState<HighlightOverlay[]>([]);
 
   useEffect(() => {
-    if (!selectedText || !selectionRange) {
-      setHighlightOverlays([]);
-      return;
+    const overlays: HighlightOverlay[] = [];
+
+    // Selection highlights
+    if (selectedText && selectionRange && containerRef.current?.contains(selectionRange.commonAncestorContainer)) {
+      const rects = selectionRange.getClientRects();
+      const containerRect = containerRef.current.getBoundingClientRect();
+      
+      if (containerRect && rects.length > 0) {
+        Array.from(rects).forEach((rect, index) => {
+          overlays.push({
+            rect: {
+              ...rect,
+              x: rect.x - containerRect.x,
+              y: rect.y - containerRect.y,
+            } as DOMRect,
+            id: `selection-${index}`,
+            type: 'selection'
+          });
+        });
+      }
     }
 
-    if (!containerRef.current?.contains(selectionRange.commonAncestorContainer)) {
-      setHighlightOverlays([]);
-      return;
+    // Word sync highlights
+    if (highlightedWordIndex >= 0 && containerRef.current) {
+      const wordElement = containerRef.current.querySelector(`[data-word-index="${highlightedWordIndex}"]`);
+      if (wordElement) {
+        const rect = wordElement.getBoundingClientRect();
+        const containerRect = containerRef.current.getBoundingClientRect();
+        
+        overlays.push({
+          rect: {
+            ...rect,
+            x: rect.x - containerRect.x,
+            y: rect.y - containerRect.y,
+          } as DOMRect,
+          id: `word-sync-${highlightedWordIndex}`,
+          type: 'word-sync'
+        });
+      }
     }
 
-    const rects = selectionRange.getClientRects();
-    const containerRect = containerRef.current?.getBoundingClientRect();
-    
-    if (!containerRect || rects.length === 0) {
-      setHighlightOverlays([]);
-      return;
+    // Hover highlights
+    if (hoveredWordIndex >= 0 && hoveredWordIndex !== highlightedWordIndex && containerRef.current) {
+      const wordElement = containerRef.current.querySelector(`[data-word-index="${hoveredWordIndex}"]`);
+      if (wordElement) {
+        const rect = wordElement.getBoundingClientRect();
+        const containerRect = containerRef.current.getBoundingClientRect();
+        
+        overlays.push({
+          rect: {
+            ...rect,
+            x: rect.x - containerRect.x,
+            y: rect.y - containerRect.y,
+          } as DOMRect,
+          id: `hover-${hoveredWordIndex}`,
+          type: 'hover'
+        });
+      }
     }
-
-    const overlays: HighlightOverlay[] = Array.from(rects).map((rect, index) => ({
-      rect: {
-        ...rect,
-        x: rect.x - containerRect.x,
-        y: rect.y - containerRect.y,
-      } as DOMRect,
-      id: `highlight-${index}`
-    }));
 
     setHighlightOverlays(overlays);
-  }, [selectedText, selectionRange]);
+  }, [selectedText, selectionRange, highlightedWordIndex, hoveredWordIndex]);
 
-  // Enhanced highlight styling based on prop
-  const getHighlightClasses = () => {
-    const baseClasses = `absolute pointer-events-none rounded-sm`;
+  const getHighlightClasses = (type: HighlightOverlay['type']) => {
+    const baseClasses = 'absolute pointer-events-none rounded-sm transition-all duration-200';
     
     if (enhancedHighlighting) {
-      return `${baseClasses} ${highlightColor} border border-blue-300/50 shadow-sm ${
-        animateHighlight ? 'transition-all duration-200 animate-pulse' : ''
-      }`;
+      switch (type) {
+        case 'selection':
+          return `${baseClasses} ${highlightColor} border border-blue-400/60 shadow-sm ${
+            animateHighlight ? 'animate-in fade-in duration-300' : ''
+          }`;
+        case 'word-sync':
+          return `${baseClasses} ${wordSyncColor} border border-yellow-500/60 shadow-md ${
+            animateHighlight ? 'animate-pulse' : ''
+          }`;
+        case 'hover':
+          return `${baseClasses} ${hoverColor} border border-gray-400/30 ${
+            animateHighlight ? 'duration-150' : ''
+          }`;
+        default:
+          return `${baseClasses} ${highlightColor}`;
+      }
     }
     
     // Default highlighting for backward compatibility
-    return `${baseClasses} ${highlightColor} border border-blue-300/50 transition-all duration-200`;
+    return `${baseClasses} ${highlightColor} border border-blue-300/50`;
   };
 
   return (
@@ -78,12 +133,13 @@ export const TextHighlighter: React.FC<TextHighlighterProps> = ({
       {highlightOverlays.map((overlay) => (
         <div
           key={overlay.id}
-          className={getHighlightClasses()}
+          className={getHighlightClasses(overlay.type)}
           style={{
             left: overlay.rect.x,
             top: overlay.rect.y,
             width: overlay.rect.width,
             height: overlay.rect.height,
+            zIndex: overlay.type === 'word-sync' ? 20 : overlay.type === 'selection' ? 15 : 10,
           }}
         />
       ))}
