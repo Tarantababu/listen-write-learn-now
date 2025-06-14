@@ -74,7 +74,7 @@ export class OptimizedReadingService {
         ...data,
         difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
         audio_generation_status: 'pending' as const,
-        content: data.content as ReadingExercise['content']
+        content: this.parseContentFromDatabase(data.content)
       };
 
     } catch (error) {
@@ -88,6 +88,38 @@ export class OptimizedReadingService {
       
       throw error;
     }
+  }
+
+  private parseContentFromDatabase(content: any): ReadingExercise['content'] {
+    // Handle the case where content might be a JSON string or already parsed
+    if (typeof content === 'string') {
+      try {
+        content = JSON.parse(content);
+      } catch (e) {
+        console.error('Failed to parse content as JSON:', e);
+        // Return a default structure if parsing fails
+        return {
+          sentences: [],
+          analysis: {
+            wordCount: 0,
+            readingTime: 0,
+            grammarPoints: []
+          }
+        };
+      }
+    }
+
+    // Ensure the content has the required structure
+    return {
+      sentences: Array.isArray(content?.sentences) ? content.sentences : [],
+      analysis: {
+        wordCount: content?.analysis?.wordCount || 0,
+        readingTime: content?.analysis?.readingTime || 0,
+        grammarPoints: Array.isArray(content?.analysis?.grammarPoints) ? content.analysis.grammarPoints : [],
+        ...(content?.analysis?.fallbackInfo && { fallbackInfo: content.analysis.fallbackInfo }),
+        ...(content?.analysis?.recoveryInfo && { recoveryInfo: content.analysis.recoveryInfo })
+      }
+    };
   }
 
   private async generateContentOptimized(
@@ -238,7 +270,7 @@ export class OptimizedReadingService {
       ...exercise,
       difficulty_level: exercise.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
       audio_generation_status: (exercise.audio_generation_status || 'pending') as 'pending' | 'generating' | 'completed' | 'failed',
-      content: exercise.content as ReadingExercise['content']
+      content: this.parseContentFromDatabase(exercise.content)
     }));
   }
 
