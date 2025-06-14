@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ import { EnhancedInteractiveText } from './EnhancedInteractiveText';
 import { AllTextView } from './AllTextView';
 import { ViewToggle, ReadingView } from './ViewToggle';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
 interface ReadingPracticeModalProps {
@@ -38,6 +40,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
   onOpenChange
 }) => {
   const { addExercise } = useExerciseContext();
+  const isMobile = useIsMobile();
   const [currentView, setCurrentView] = useState<ReadingView>('sentence');
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
   const [showAnalysis, setShowAnalysis] = useState(false);
@@ -204,7 +207,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     const words = currentSentence.text.split(/\s+/);
     
     return (
-      <div className="leading-relaxed text-lg">
+      <div className={`leading-relaxed ${isMobile ? 'text-base' : 'text-lg'}`}>
         {words.map((word, index) => {
           const isCurrentWord = isWordByWordMode && index === currentWordIndex;
           const isHighlighted = highlightedWordIndex === index;
@@ -243,21 +246,22 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto">
-        <DialogHeader>
+      <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[95vh] p-4' : 'max-w-5xl max-h-[90vh]'} overflow-auto`}>
+        <DialogHeader className={isMobile ? 'pb-4' : ''}>
           <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              {exercise.title}
+            <DialogTitle className={`flex items-center gap-2 ${isMobile ? 'text-lg' : ''}`}>
+              <BookOpen className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
+              <span className={isMobile ? 'line-clamp-2' : ''}>{exercise.title}</span>
             </DialogTitle>
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="capitalize">
+              <Badge variant="outline" className={`capitalize ${isMobile ? 'text-xs' : ''}`}>
                 {exercise.difficulty_level}
               </Badge>
               <Button
                 variant="ghost"
-                size="sm"
+                size={isMobile ? 'sm' : 'sm'}
                 onClick={() => setAudioEnabled(!audioEnabled)}
+                className={isMobile ? 'p-2' : ''}
               >
                 {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
               </Button>
@@ -273,7 +277,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
             <>
               {/* Progress Bar - Only show in sentence view */}
               <div className="space-y-2">
-                <div className="flex justify-between text-sm text-muted-foreground">
+                <div className={`flex justify-between text-muted-foreground ${isMobile ? 'text-sm' : 'text-sm'}`}>
                   <span>Sentence {currentSentenceIndex + 1} of {exercise.content.sentences.length}</span>
                   <span>{Math.round(progress)}% complete</span>
                 </div>
@@ -282,7 +286,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
 
               {/* Current Sentence */}
               <Card>
-                <CardContent className="p-6 space-y-4">
+                <CardContent className={`space-y-4 ${isMobile ? 'p-4' : 'p-6'}`}>
                   <div className="space-y-4">
                     <EnhancedInteractiveText
                       text={currentSentence?.text || ''}
@@ -294,61 +298,74 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
                     />
                     
                     {isWordByWordMode && (
-                      <div className="text-sm text-muted-foreground bg-blue-50 p-2 rounded">
+                      <div className={`bg-blue-50 p-2 rounded ${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>
                         Word-by-word playback active... ({currentWordIndex + 1} of {currentSentence?.text.split(/\s+/).length})
                       </div>
                     )}
                   </div>
 
                   {/* Audio Controls */}
-                  <div className="flex items-center gap-2 pt-2 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={playAudio}
-                      disabled={isPlaying || !audioEnabled}
-                    >
-                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      <span className="ml-2">Play Sentence</span>
-                    </Button>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={playWordByWord}
-                      disabled={isWordByWordMode || !audioEnabled}
-                    >
-                      <SkipForward className="h-4 w-4" />
-                      <span className="ml-2">Word by Word</span>
-                    </Button>
+                  <div className={`pt-2 border-t ${isMobile ? 'space-y-3' : ''}`}>
+                    <div className={`flex items-center gap-2 ${isMobile ? 'flex-wrap' : ''}`}>
+                      <Button
+                        variant="outline"
+                        size={isMobile ? 'sm' : 'sm'}
+                        onClick={playAudio}
+                        disabled={isPlaying || !audioEnabled}
+                        className={isMobile ? 'flex-1 min-w-0' : ''}
+                      >
+                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                        <span className={`ml-2 ${isMobile ? 'text-xs' : ''}`}>
+                          {isMobile ? 'Play' : 'Play Sentence'}
+                        </span>
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size={isMobile ? 'sm' : 'sm'}
+                        onClick={playWordByWord}
+                        disabled={isWordByWordMode || !audioEnabled}
+                        className={isMobile ? 'flex-1 min-w-0' : ''}
+                      >
+                        <SkipForward className="h-4 w-4" />
+                        <span className={`ml-2 ${isMobile ? 'text-xs' : ''}`}>
+                          {isMobile ? 'Words' : 'Word by Word'}
+                        </span>
+                      </Button>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowAnalysis(!showAnalysis)}
-                    >
-                      <Brain className="h-4 w-4 mr-2" />
-                      {showAnalysis ? 'Hide' : 'Show'} Analysis
-                    </Button>
+                      <Button
+                        variant="outline"
+                        size={isMobile ? 'sm' : 'sm'}
+                        onClick={() => setShowAnalysis(!showAnalysis)}
+                        className={isMobile ? 'flex-1 min-w-0' : ''}
+                      >
+                        <Brain className="h-4 w-4 mr-2" />
+                        <span className={isMobile ? 'text-xs' : ''}>
+                          {showAnalysis ? 'Hide' : 'Show'} Analysis
+                        </span>
+                      </Button>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={createDictationExercise}
-                    >
-                      <Mic className="h-4 w-4 mr-2" />
-                      Create as Dictation
-                    </Button>
+                      <Button
+                        variant="outline"
+                        size={isMobile ? 'sm' : 'sm'}
+                        onClick={createDictationExercise}
+                        className={isMobile ? 'w-full mt-2' : ''}
+                      >
+                        <Mic className="h-4 w-4 mr-2" />
+                        <span className={isMobile ? 'text-xs' : ''}>
+                          {isMobile ? 'Create as Dictation' : 'Create as Dictation'}
+                        </span>
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Analysis Panel */}
                   {showAnalysis && currentSentence?.analysis && (
-                    <div className="space-y-4 border-t pt-4">
-                      {/* ... keep existing code (translation, word analysis, grammar points) */}
+                    <div className={`space-y-4 border-t pt-4 ${isMobile ? 'space-y-3' : ''}`}>
                       {currentSentence.analysis.translation && (
                         <div>
-                          <h4 className="font-semibold text-sm mb-2">Translation:</h4>
-                          <p className="text-muted-foreground italic">
+                          <h4 className={`font-semibold mb-2 ${isMobile ? 'text-sm' : 'text-sm'}`}>Translation:</h4>
+                          <p className={`text-muted-foreground italic ${isMobile ? 'text-sm' : ''}`}>
                             {currentSentence.analysis.translation}
                           </p>
                         </div>
@@ -356,10 +373,10 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
 
                       {currentSentence.analysis.words && currentSentence.analysis.words.length > 0 && (
                         <div>
-                          <h4 className="font-semibold text-sm mb-3">Word Analysis:</h4>
+                          <h4 className={`font-semibold mb-3 ${isMobile ? 'text-sm' : 'text-sm'}`}>Word Analysis:</h4>
                           <div className="grid gap-2">
                             {currentSentence.analysis.words.map((word, index) => (
-                              <div key={index} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                              <div key={index} className={`flex items-start gap-3 bg-muted/50 rounded-lg ${isMobile ? 'p-2' : 'p-3'}`}>
                                 <Badge
                                   variant="outline"
                                   className={`${getDifficultyColor(word.difficulty || 'easy')} text-xs`}
@@ -367,9 +384,9 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
                                   {word.word}
                                 </Badge>
                                 <div className="flex-1 space-y-1">
-                                  <p className="text-sm font-medium">{word.definition}</p>
+                                  <p className={`font-medium ${isMobile ? 'text-sm' : 'text-sm'}`}>{word.definition}</p>
                                   {word.partOfSpeech && (
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className={`text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
                                       {word.partOfSpeech}
                                     </p>
                                   )}
@@ -382,7 +399,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
 
                       {currentSentence.analysis.grammar && currentSentence.analysis.grammar.length > 0 && (
                         <div>
-                          <h4 className="font-semibold text-sm mb-2">Grammar Points:</h4>
+                          <h4 className={`font-semibold mb-2 ${isMobile ? 'text-sm' : 'text-sm'}`}>Grammar Points:</h4>
                           <div className="flex flex-wrap gap-2">
                             {currentSentence.analysis.grammar.map((point, index) => (
                               <Badge key={index} variant="secondary" className="text-xs">
@@ -398,31 +415,33 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
               </Card>
 
               {/* Navigation Controls */}
-              <div className="flex items-center justify-between">
+              <div className={`flex items-center ${isMobile ? 'flex-col gap-3' : 'justify-between'}`}>
                 <Button
                   variant="outline"
                   onClick={restartExercise}
-                  className="flex items-center gap-2"
+                  className={`flex items-center gap-2 ${isMobile ? 'w-full py-3' : ''}`}
                 >
                   <RotateCcw className="h-4 w-4" />
                   Restart
                 </Button>
 
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 ${isMobile ? 'w-full' : ''}`}>
                   <Button
                     variant="outline"
                     onClick={previousSentence}
                     disabled={currentSentenceIndex === 0}
+                    className={isMobile ? 'flex-1 py-3' : ''}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Previous
+                    {!isMobile && 'Previous'}
                   </Button>
                   
                   <Button
                     onClick={nextSentence}
                     disabled={currentSentenceIndex >= exercise.content.sentences.length - 1}
+                    className={isMobile ? 'flex-1 py-3' : ''}
                   >
-                    Next
+                    {!isMobile && 'Next'}
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -431,11 +450,11 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
               {/* Exercise Complete */}
               {currentSentenceIndex >= exercise.content.sentences.length - 1 && (
                 <Card className="border-green-200 bg-green-50">
-                  <CardContent className="p-4 text-center">
-                    <h3 className="font-semibold text-green-800 mb-2">
+                  <CardContent className={`text-center ${isMobile ? 'p-4' : 'p-4'}`}>
+                    <h3 className={`font-semibold text-green-800 mb-2 ${isMobile ? 'text-base' : ''}`}>
                       🎉 Exercise Complete!
                     </h3>
-                    <p className="text-green-700 text-sm">
+                    <p className={`text-green-700 ${isMobile ? 'text-sm' : 'text-sm'}`}>
                       Great job! You've completed this reading exercise.
                     </p>
                   </CardContent>

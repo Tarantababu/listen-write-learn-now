@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { BookOpen, Clock, Volume2, Brain, Play, Trash2, Edit } from 'lucide-react';
 import { ReadingExercise } from '@/types/reading';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ReadingExerciseCardProps {
   exercise: ReadingExercise;
@@ -22,6 +23,8 @@ export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
   onDelete,
   onEdit
 }) => {
+  const isMobile = useIsMobile();
+
   const getDifficultyColor = (level: string) => {
     switch (level) {
       case 'beginner': return 'bg-green-100 text-green-800 border-green-200';
@@ -34,51 +37,53 @@ export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
   const estimatedReadingTime = Math.ceil((exercise.content.analysis?.wordCount || exercise.target_length) / 200);
 
   return (
-    <Card className="h-full hover:shadow-md transition-all duration-200">
-      <CardHeader className="pb-3">
+    <Card className={`h-full hover:shadow-md transition-all duration-200 ${isMobile ? 'touch-manipulation' : ''}`}>
+      <CardHeader className={isMobile ? 'pb-2' : 'pb-3'}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-base truncate">{exercise.title}</CardTitle>
-            <CardDescription className="line-clamp-2 mt-1">
+            <CardTitle className={`truncate ${isMobile ? 'text-sm' : 'text-base'}`}>
+              {exercise.title}
+            </CardTitle>
+            <CardDescription className={`line-clamp-2 mt-1 ${isMobile ? 'text-xs' : ''}`}>
               Topic: {exercise.topic}
               {exercise.grammar_focus && ` • Focus: ${exercise.grammar_focus}`}
             </CardDescription>
           </div>
           <Badge 
             variant="outline" 
-            className={`${getDifficultyColor(exercise.difficulty_level)} text-xs shrink-0 capitalize`}
+            className={`${getDifficultyColor(exercise.difficulty_level)} shrink-0 capitalize ${isMobile ? 'text-xs' : 'text-xs'}`}
           >
             {exercise.difficulty_level}
           </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className={`space-y-4 ${isMobile ? 'space-y-3' : ''}`}>
         {/* Exercise Stats */}
-        <div className="grid grid-cols-3 gap-3 text-center">
+        <div className={`grid grid-cols-3 gap-3 text-center ${isMobile ? 'gap-2' : ''}`}>
           <div className="space-y-1">
             <div className="flex items-center justify-center">
-              <BookOpen className="h-3 w-3 text-muted-foreground" />
+              <BookOpen className={`text-muted-foreground ${isMobile ? 'h-3 w-3' : 'h-3 w-3'}`} />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className={`text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
               {exercise.content.sentences?.length || 0} sentences
             </p>
           </div>
           
           <div className="space-y-1">
             <div className="flex items-center justify-center">
-              <Clock className="h-3 w-3 text-muted-foreground" />
+              <Clock className={`text-muted-foreground ${isMobile ? 'h-3 w-3' : 'h-3 w-3'}`} />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className={`text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
               ~{estimatedReadingTime} min
             </p>
           </div>
           
           <div className="space-y-1">
             <div className="flex items-center justify-center">
-              <Brain className="h-3 w-3 text-muted-foreground" />
+              <Brain className={`text-muted-foreground ${isMobile ? 'h-3 w-3' : 'h-3 w-3'}`} />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className={`text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
               {exercise.content.analysis?.wordCount || exercise.target_length} words
             </p>
           </div>
@@ -87,7 +92,7 @@ export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
         {/* Progress */}
         {progress > 0 && (
           <div className="space-y-2">
-            <div className="flex justify-between text-xs text-muted-foreground">
+            <div className={`flex justify-between text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
               <span>Progress</span>
               <span>{Math.round(progress)}%</span>
             </div>
@@ -96,44 +101,48 @@ export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
         )}
 
         {/* Features */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Volume2 className="h-3 w-3" />
+        <div className={`flex items-center gap-2 text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
+          <Volume2 className={`${isMobile ? 'h-3 w-3' : 'h-3 w-3'}`} />
           <span>Interactive audio</span>
           <span>•</span>
-          <Brain className="h-3 w-3" />
+          <Brain className={`${isMobile ? 'h-3 w-3' : 'h-3 w-3'}`} />
           <span>Clickable words</span>
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2 pt-2">
+        <div className={`flex gap-2 pt-2 ${isMobile ? 'flex-col' : ''}`}>
           <Button 
             onClick={() => onPractice(exercise)}
-            className="flex-1"
-            size="sm"
+            className={`${isMobile ? 'w-full py-3' : 'flex-1'}`}
+            size={isMobile ? 'default' : 'sm'}
           >
-            <Play className="h-3 w-3 mr-1" />
+            <Play className={`mr-1 ${isMobile ? 'h-4 w-4' : 'h-3 w-3'}`} />
             {progress > 0 ? 'Continue' : 'Start'}
           </Button>
           
-          {onEdit && (
+          <div className={`flex gap-2 ${isMobile ? 'w-full' : ''}`}>
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size={isMobile ? 'default' : 'sm'}
+                onClick={() => onEdit(exercise)}
+                className={`text-muted-foreground hover:text-primary ${isMobile ? 'flex-1 py-3' : ''}`}
+              >
+                <Edit className={`${isMobile ? 'h-4 w-4' : 'h-3 w-3'}`} />
+                {isMobile && <span className="ml-2">Edit</span>}
+              </Button>
+            )}
+            
             <Button
               variant="ghost"
-              size="sm"
-              onClick={() => onEdit(exercise)}
-              className="text-muted-foreground hover:text-primary"
+              size={isMobile ? 'default' : 'sm'}
+              onClick={() => onDelete(exercise)}
+              className={`text-muted-foreground hover:text-destructive ${isMobile ? 'flex-1 py-3' : ''}`}
             >
-              <Edit className="h-3 w-3" />
+              <Trash2 className={`${isMobile ? 'h-4 w-4' : 'h-3 w-3'}`} />
+              {isMobile && <span className="ml-2">Delete</span>}
             </Button>
-          )}
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDelete(exercise)}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

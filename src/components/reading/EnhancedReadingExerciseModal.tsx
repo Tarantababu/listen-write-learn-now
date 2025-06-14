@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,11 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, BookOpen, Volume2, Brain, Sparkles, X } from 'lucide-react';
+import { Loader2, BookOpen, Volume2, Brain, Sparkles, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { TopicMandala } from './TopicMandala';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface EnhancedReadingExerciseModalProps {
   isOpen: boolean;
@@ -48,6 +50,7 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
   onSuccess
 }) => {
   const { settings } = useUserSettingsContext();
+  const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(false);
   const [creationProgress, setCreationProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState('');
@@ -153,37 +156,88 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
     }
   };
 
+  const goToNextTab = () => {
+    if (currentTab === 'topic') setCurrentTab('details');
+    else if (currentTab === 'details') setCurrentTab('grammar');
+  };
+
+  const goToPreviousTab = () => {
+    if (currentTab === 'grammar') setCurrentTab('details');
+    else if (currentTab === 'details') setCurrentTab('topic');
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            Create AI-Powered Reading & Listening Exercise
+      <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[95vh] p-4' : 'max-w-5xl max-h-[90vh]'} overflow-auto`}>
+        <DialogHeader className={isMobile ? 'pb-4' : ''}>
+          <DialogTitle className={`flex items-center gap-2 ${isMobile ? 'text-lg' : ''}`}>
+            <BookOpen className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
+            <span className={isMobile ? 'line-clamp-2' : ''}>Create AI-Powered Reading & Listening Exercise</span>
           </DialogTitle>
         </DialogHeader>
 
         {isLoading && (
-          <div className="space-y-4 mb-6 p-4 bg-muted/30 rounded-lg">
+          <div className={`space-y-4 mb-6 p-4 bg-muted/30 rounded-lg ${isMobile ? 'p-3' : ''}`}>
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm font-medium">{currentStep}</span>
+              <span className={`font-medium ${isMobile ? 'text-sm' : 'text-sm'}`}>{currentStep}</span>
             </div>
             <Progress value={creationProgress} className="w-full" />
-            <div className="text-xs text-muted-foreground">
+            <div className={`text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
               Please wait while we create your personalized exercise...
             </div>
           </div>
         )}
 
         <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="topic" disabled={isLoading}>1. Choose Topic</TabsTrigger>
-            <TabsTrigger value="details" disabled={!formData.topic || isLoading}>
-              2. Configure
+          <TabsList className={`grid w-full ${isMobile ? 'grid-cols-1 h-auto gap-1' : 'grid-cols-3'}`}>
+            <TabsTrigger 
+              value="topic" 
+              disabled={isLoading}
+              className={isMobile ? 'justify-start py-3' : ''}
+            >
+              {isMobile ? (
+                <div className="flex items-center gap-2">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${currentTab === 'topic' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                    1
+                  </div>
+                  Choose Topic
+                </div>
+              ) : (
+                '1. Choose Topic'
+              )}
             </TabsTrigger>
-            <TabsTrigger value="grammar" disabled={!formData.title || isLoading}>
-              3. Grammar Focus
+            <TabsTrigger 
+              value="details" 
+              disabled={!formData.topic || isLoading}
+              className={isMobile ? 'justify-start py-3' : ''}
+            >
+              {isMobile ? (
+                <div className="flex items-center gap-2">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${currentTab === 'details' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                    2
+                  </div>
+                  Configure
+                </div>
+              ) : (
+                '2. Configure'
+              )}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="grammar" 
+              disabled={!formData.title || isLoading}
+              className={isMobile ? 'justify-start py-3' : ''}
+            >
+              {isMobile ? (
+                <div className="flex items-center gap-2">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${currentTab === 'grammar' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                    3
+                  </div>
+                  Grammar Focus
+                </div>
+              ) : (
+                '3. Grammar Focus'
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -201,21 +255,24 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
                 onChange={(e) => setFormData(prev => ({ ...prev, topic: e.target.value }))}
                 placeholder="e.g., sustainable living, digital nomads, cooking traditions"
                 disabled={isLoading}
+                className={isMobile ? 'text-base' : ''}
               />
             </div>
 
-            <div className="flex justify-end">
+            <div className={`flex ${isMobile ? 'flex-col gap-3' : 'justify-end'}`}>
               <Button 
-                onClick={() => setCurrentTab('details')}
+                onClick={goToNextTab}
                 disabled={!canProceedToNext() || isLoading}
+                className={isMobile ? 'w-full py-3' : ''}
               >
+                {isMobile && <ChevronRight className="h-4 w-4 mr-2" />}
                 Next: Configure Exercise
               </Button>
             </div>
           </TabsContent>
 
           <TabsContent value="details" className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2'}`}>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Exercise Title</Label>
@@ -225,6 +282,7 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
                     onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="e.g., Daily Routines in Paris"
                     required
+                    className={isMobile ? 'text-base' : ''}
                   />
                 </div>
 
@@ -234,7 +292,7 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
                     value={formData.difficulty_level}
                     onValueChange={(value: any) => setFormData(prev => ({ ...prev, difficulty_level: value }))}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={isMobile ? 'text-base' : ''}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -272,18 +330,20 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
                           formData.target_length === option.value 
                             ? 'ring-2 ring-primary bg-primary/5' 
                             : 'hover:bg-muted/30'
-                        }`}
+                        } ${isMobile ? 'touch-manipulation' : ''}`}
                         onClick={() => setFormData(prev => ({ ...prev, target_length: option.value }))}
                       >
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="font-medium">{option.label} ({option.value} words)</div>
-                              <div className="text-xs text-muted-foreground">
+                        <CardContent className={isMobile ? 'p-3' : 'p-3'}>
+                          <div className={`flex items-center justify-between ${isMobile ? 'flex-col items-start gap-2' : ''}`}>
+                            <div className={isMobile ? 'w-full' : ''}>
+                              <div className={`font-medium ${isMobile ? 'text-sm' : ''}`}>
+                                {option.label} ({option.value} words)
+                              </div>
+                              <div className={`text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
                                 ~{option.time} • {option.description}
                               </div>
                             </div>
-                            <div className="text-xs bg-muted px-2 py-1 rounded">
+                            <div className={`bg-muted px-2 py-1 rounded ${isMobile ? 'text-xs self-end' : 'text-xs'}`}>
                               {option.time}
                             </div>
                           </div>
@@ -295,14 +355,22 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
               </div>
             </div>
 
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setCurrentTab('topic')} disabled={isLoading}>
+            <div className={`flex ${isMobile ? 'flex-col gap-3' : 'justify-between'}`}>
+              <Button 
+                variant="outline" 
+                onClick={goToPreviousTab} 
+                disabled={isLoading}
+                className={isMobile ? 'w-full py-3' : ''}
+              >
+                {isMobile && <ChevronLeft className="h-4 w-4 mr-2" />}
                 Back: Topic
               </Button>
               <Button 
-                onClick={() => setCurrentTab('grammar')}
+                onClick={goToNextTab}
                 disabled={!canProceedToNext() || isLoading}
+                className={isMobile ? 'w-full py-3' : ''}
               >
+                {isMobile && <ChevronRight className="h-4 w-4 mr-2" />}
                 Next: Grammar Focus
               </Button>
             </div>
@@ -311,8 +379,8 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
           <TabsContent value="grammar" className="space-y-6">
             <div className="space-y-4">
               <div>
-                <h3 className="font-semibold mb-2">Grammar Focus (Optional)</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className={`font-semibold mb-2 ${isMobile ? 'text-base' : ''}`}>Grammar Focus (Optional)</h3>
+                <p className={`text-muted-foreground ${isMobile ? 'text-sm' : 'text-sm'}`}>
                   Select specific grammar points to emphasize in your reading exercise
                 </p>
               </div>
@@ -327,11 +395,11 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
                         <Badge 
                           key={grammarId} 
                           variant="secondary" 
-                          className="flex items-center gap-1"
+                          className={`flex items-center gap-1 ${isMobile ? 'text-xs py-1 px-2' : ''}`}
                         >
                           {option?.label}
                           <X 
-                            className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                            className={`cursor-pointer hover:text-destructive ${isMobile ? 'h-3 w-3 touch-manipulation' : 'h-3 w-3'}`}
                             onClick={() => removeGrammarFocus(grammarId)}
                           />
                         </Badge>
@@ -341,18 +409,24 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
                 </div>
               )}
 
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className={`grid gap-3 ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2'}`}>
                 {GRAMMAR_FOCUS_OPTIONS.map((option) => (
-                  <Card key={option.id} className="cursor-pointer hover:bg-muted/30">
-                    <CardContent className="p-3">
+                  <Card 
+                    key={option.id} 
+                    className={`cursor-pointer hover:bg-muted/30 ${isMobile ? 'touch-manipulation' : ''}`}
+                  >
+                    <CardContent className={isMobile ? 'p-3' : 'p-3'}>
                       <div className="flex items-start gap-3">
                         <Checkbox
                           checked={selectedGrammarFocus.includes(option.id)}
                           onCheckedChange={() => handleGrammarToggle(option.id)}
+                          className={isMobile ? 'mt-1' : ''}
                         />
                         <div className="flex-1">
-                          <div className="font-medium text-sm">{option.label}</div>
-                          <div className="text-xs text-muted-foreground mt-1">
+                          <div className={`font-medium ${isMobile ? 'text-sm' : 'text-sm'}`}>
+                            {option.label}
+                          </div>
+                          <div className={`text-muted-foreground mt-1 ${isMobile ? 'text-xs' : 'text-xs'}`}>
                             {option.description}
                           </div>
                         </div>
@@ -369,15 +443,26 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
                   value={formData.custom_grammar_focus}
                   onChange={(e) => setFormData(prev => ({ ...prev, custom_grammar_focus: e.target.value }))}
                   placeholder="e.g., reflexive verbs, modal verbs, question formation"
+                  className={isMobile ? 'text-base' : ''}
                 />
               </div>
             </div>
 
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setCurrentTab('details')} disabled={isLoading}>
+            <div className={`flex ${isMobile ? 'flex-col gap-3' : 'justify-between'}`}>
+              <Button 
+                variant="outline" 
+                onClick={goToPreviousTab} 
+                disabled={isLoading}
+                className={isMobile ? 'w-full py-3' : ''}
+              >
+                {isMobile && <ChevronLeft className="h-4 w-4 mr-2" />}
                 Back: Configure
               </Button>
-              <Button onClick={handleSubmit} disabled={isLoading}>
+              <Button 
+                onClick={handleSubmit} 
+                disabled={isLoading}
+                className={isMobile ? 'w-full py-3' : ''}
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -394,44 +479,44 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
           </TabsContent>
         </Tabs>
 
-        <div className="grid gap-3 md:grid-cols-3 pt-6 border-t">
-          <Card className="p-3">
-            <CardHeader className="p-0 pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-blue-500" />
+        <div className={`grid gap-3 pt-6 border-t ${isMobile ? 'grid-cols-1' : 'md:grid-cols-3'}`}>
+          <Card className={isMobile ? 'p-3' : 'p-3'}>
+            <CardHeader className={`p-0 ${isMobile ? 'pb-2' : 'pb-2'}`}>
+              <CardTitle className={`flex items-center gap-2 ${isMobile ? 'text-sm' : 'text-sm'}`}>
+                <Sparkles className={`text-blue-500 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
                 AI-Generated Content
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <CardDescription className="text-xs">
+              <CardDescription className={isMobile ? 'text-xs' : 'text-xs'}>
                 Custom reading passages tailored to your level and interests
               </CardDescription>
             </CardContent>
           </Card>
 
-          <Card className="p-3">
-            <CardHeader className="p-0 pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Volume2 className="h-4 w-4 text-green-500" />
+          <Card className={isMobile ? 'p-3' : 'p-3'}>
+            <CardHeader className={`p-0 ${isMobile ? 'pb-2' : 'pb-2'}`}>
+              <CardTitle className={`flex items-center gap-2 ${isMobile ? 'text-sm' : 'text-sm'}`}>
+                <Volume2 className={`text-green-500 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
                 Interactive Audio
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <CardDescription className="text-xs">
+              <CardDescription className={isMobile ? 'text-xs' : 'text-xs'}>
                 Click any word for pronunciation and meaning
               </CardDescription>
             </CardContent>
           </Card>
 
-          <Card className="p-3">
-            <CardHeader className="p-0 pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Brain className="h-4 w-4 text-purple-500" />
+          <Card className={isMobile ? 'p-3' : 'p-3'}>
+            <CardHeader className={`p-0 ${isMobile ? 'pb-2' : 'pb-2'}`}>
+              <CardTitle className={`flex items-center gap-2 ${isMobile ? 'text-sm' : 'text-sm'}`}>
+                <Brain className={`text-purple-500 ${isMobile ? 'h-4 w-4' : 'h-4 w-4'}`} />
                 Deep Analysis
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <CardDescription className="text-xs">
+              <CardDescription className={isMobile ? 'text-xs' : 'text-xs'}>
                 Word definitions, grammar explanations, and translations
               </CardDescription>
             </CardContent>

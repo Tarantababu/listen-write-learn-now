@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,10 +11,12 @@ import { ReadingExerciseCard } from './ReadingExerciseCard';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { ReadingExercise } from '@/types/reading';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
 export const ReadingExercisesSection: React.FC = () => {
   const { settings } = useUserSettingsContext();
+  const isMobile = useIsMobile();
   const [exercises, setExercises] = useState<ReadingExercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,7 +64,7 @@ export const ReadingExercisesSection: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader>
@@ -85,55 +88,55 @@ export const ReadingExercisesSection: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center space-y-4">
-        <div className="flex items-center justify-center gap-2 text-lg font-semibold">
-          <BookOpen className="h-5 w-5" />
+        <div className={`flex items-center justify-center gap-2 font-semibold ${isMobile ? 'text-lg' : 'text-lg'}`}>
+          <BookOpen className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
           Reading & Listening Exercises
         </div>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
+        <p className={`text-muted-foreground max-w-2xl mx-auto ${isMobile ? 'text-sm px-4' : ''}`}>
           Improve your comprehension with AI-generated reading passages featuring audio support, 
           word analysis, and grammar explanations tailored to your level.
         </p>
       </div>
 
       {/* Feature Highlights */}
-      <div className="grid gap-4 md:grid-cols-3 mb-8">
-        <Card className="text-center p-4">
-          <CardHeader className="p-0 pb-3">
+      <div className={`grid gap-4 mb-8 ${isMobile ? 'grid-cols-1 px-4' : 'md:grid-cols-3'}`}>
+        <Card className={`text-center ${isMobile ? 'p-3' : 'p-4'}`}>
+          <CardHeader className={`p-0 ${isMobile ? 'pb-2' : 'pb-3'}`}>
             <div className="flex justify-center">
-              <Sparkles className="h-8 w-8 text-blue-500" />
+              <Sparkles className={`text-blue-500 ${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
             </div>
-            <CardTitle className="text-base">AI-Generated Content</CardTitle>
+            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>AI-Generated Content</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <CardDescription className="text-sm">
+            <CardDescription className={isMobile ? 'text-xs' : 'text-sm'}>
               Custom reading passages created for your interests and level
             </CardDescription>
           </CardContent>
         </Card>
 
-        <Card className="text-center p-4">
-          <CardHeader className="p-0 pb-3">
+        <Card className={`text-center ${isMobile ? 'p-3' : 'p-4'}`}>
+          <CardHeader className={`p-0 ${isMobile ? 'pb-2' : 'pb-3'}`}>
             <div className="flex justify-center">
-              <Volume2 className="h-8 w-8 text-green-500" />
+              <Volume2 className={`text-green-500 ${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
             </div>
-            <CardTitle className="text-base">Audio Support</CardTitle>
+            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Audio Support</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <CardDescription className="text-sm">
+            <CardDescription className={isMobile ? 'text-xs' : 'text-sm'}>
               Listen to native pronunciation for every sentence
             </CardDescription>
           </CardContent>
         </Card>
 
-        <Card className="text-center p-4">
-          <CardHeader className="p-0 pb-3">
+        <Card className={`text-center ${isMobile ? 'p-3' : 'p-4'}`}>
+          <CardHeader className={`p-0 ${isMobile ? 'pb-2' : 'pb-3'}`}>
             <div className="flex justify-center">
-              <Brain className="h-8 w-8 text-purple-500" />
+              <Brain className={`text-purple-500 ${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
             </div>
-            <CardTitle className="text-base">Deep Analysis</CardTitle>
+            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Deep Analysis</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <CardDescription className="text-sm">
+            <CardDescription className={isMobile ? 'text-xs' : 'text-sm'}>
               Word definitions, grammar explanations, and translations
             </CardDescription>
           </CardContent>
@@ -141,19 +144,19 @@ export const ReadingExercisesSection: React.FC = () => {
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1 flex gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className={`flex gap-4 ${isMobile ? 'flex-col px-4' : 'flex-col md:flex-row'}`}>
+        <div className={`flex gap-4 ${isMobile ? 'flex-col' : 'flex-1'}`}>
+          <div className={`relative ${isMobile ? 'w-full' : 'flex-1'}`}>
+            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
             <Input
               placeholder="Search exercises by title or topic..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className={`pl-10 ${isMobile ? 'text-base py-3' : ''}`}
             />
           </div>
           <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className={isMobile ? 'w-full text-base py-3' : 'w-48'}>
               <SelectValue placeholder="All levels" />
             </SelectTrigger>
             <SelectContent>
@@ -164,7 +167,10 @@ export const ReadingExercisesSection: React.FC = () => {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
+        <Button 
+          onClick={() => setIsCreateModalOpen(true)}
+          className={isMobile ? 'w-full py-3' : ''}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Create Exercise
         </Button>
@@ -172,17 +178,20 @@ export const ReadingExercisesSection: React.FC = () => {
 
       {/* Exercises Grid */}
       {filteredExercises.length === 0 ? (
-        <Card className="text-center py-12">
+        <Card className={`text-center ${isMobile ? 'py-8 mx-4' : 'py-12'}`}>
           <CardContent>
-            <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-semibold mb-2">No Reading Exercises Yet</h3>
-            <p className="text-muted-foreground mb-4">
+            <BookOpen className={`mx-auto text-muted-foreground mb-4 ${isMobile ? 'h-8 w-8' : 'h-12 w-12'}`} />
+            <h3 className={`font-semibold mb-2 ${isMobile ? 'text-base' : ''}`}>No Reading Exercises Yet</h3>
+            <p className={`text-muted-foreground mb-4 ${isMobile ? 'text-sm' : ''}`}>
               {exercises.length === 0
                 ? 'Create your first reading exercise to get started!'
                 : 'No exercises match your current search filters.'}
             </p>
             {exercises.length === 0 && (
-              <Button onClick={() => setIsCreateModalOpen(true)}>
+              <Button 
+                onClick={() => setIsCreateModalOpen(true)}
+                className={isMobile ? 'w-full py-3' : ''}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Your First Exercise
               </Button>
@@ -190,7 +199,7 @@ export const ReadingExercisesSection: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className={`grid gap-6 ${isMobile ? 'grid-cols-1 px-4' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
           {filteredExercises.map((exercise) => (
             <ReadingExerciseCard
               key={exercise.id}
