@@ -7,6 +7,8 @@ import { Volume2, Plus } from 'lucide-react';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { toast } from 'sonner';
+import { TextSelectionManager } from './TextSelectionManager';
+import { Language } from '@/types';
 
 interface Word {
   word: string;
@@ -22,6 +24,13 @@ interface EnhancedInteractiveTextProps {
   onWordClick?: (word: string) => void;
   enableTooltips?: boolean;
   enableBidirectionalCreation?: boolean;
+  // New props for enhanced functionality
+  enableTextSelection?: boolean;
+  vocabularyIntegration?: boolean;
+  enhancedHighlighting?: boolean;
+  exerciseId?: string;
+  onCreateDictation?: (selectedText: string) => void;
+  onCreateBidirectional?: (selectedText: string) => void;
 }
 
 export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = ({
@@ -30,7 +39,14 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
   language,
   onWordClick,
   enableTooltips = true,
-  enableBidirectionalCreation = false
+  enableBidirectionalCreation = false,
+  // New props with defaults for backward compatibility
+  enableTextSelection = false,
+  vocabularyIntegration = false,
+  enhancedHighlighting = false,
+  exerciseId,
+  onCreateDictation,
+  onCreateBidirectional
 }) => {
   const [playingWord, setPlayingWord] = useState<string | null>(null);
   const [hoveredWord, setHoveredWord] = useState<string | null>(null);
@@ -75,6 +91,24 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
   const getWordInfo = (wordText: string): Word | undefined => {
     const cleanWord = wordText.toLowerCase().replace(/[.,!?;:"'()]/g, '');
     return words.find(w => w.word.toLowerCase() === cleanWord);
+  };
+
+  const handleCreateDictation = (selectedText: string) => {
+    if (onCreateDictation) {
+      onCreateDictation(selectedText);
+    } else {
+      // Default behavior - could create a dictation exercise
+      toast.success(`Dictation exercise can be created for: "${selectedText}"`);
+    }
+  };
+
+  const handleCreateBidirectional = (selectedText: string) => {
+    if (onCreateBidirectional) {
+      onCreateBidirectional(selectedText);
+    } else {
+      // Default behavior
+      createBidirectionalExercise(selectedText);
+    }
   };
 
   const renderInteractiveText = () => {
@@ -131,12 +165,10 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
                     </div>
                   </div>
                   
-                  {/* Part of speech */}
                   {wordInfo.partOfSpeech && (
                     <div className="text-sm text-gray-600 italic">{wordInfo.partOfSpeech}</div>
                   )}
                   
-                  {/* Definition */}
                   {wordInfo.definition && (
                     <div className="bg-gray-50 rounded-md p-3 border border-gray-200">
                       <p className="text-sm text-gray-800 leading-relaxed">
@@ -145,7 +177,6 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
                     </div>
                   )}
                   
-                  {/* Simple footer info */}
                   <div className="pt-2 border-t border-gray-100">
                     <div className="text-xs text-gray-500 flex items-center gap-4">
                       <span className="flex items-center gap-1">
@@ -171,9 +202,29 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
     });
   };
 
-  return (
+  const textContent = (
     <div className="leading-relaxed text-lg text-gray-800">
       {renderInteractiveText()}
     </div>
   );
+
+  // Conditionally wrap with TextSelectionManager if text selection is enabled
+  if (enableTextSelection) {
+    return (
+      <TextSelectionManager
+        onCreateDictation={handleCreateDictation}
+        onCreateBidirectional={handleCreateBidirectional}
+        exerciseId={exerciseId}
+        exerciseLanguage={language as Language}
+        enableVocabulary={vocabularyIntegration}
+        enhancedHighlighting={enhancedHighlighting}
+        vocabularyIntegration={vocabularyIntegration}
+      >
+        {textContent}
+      </TextSelectionManager>
+    );
+  }
+
+  // Return the original component for backward compatibility
+  return textContent;
 };

@@ -10,30 +10,33 @@ interface TextHighlighterProps {
   children: React.ReactNode;
   selectedText: string;
   selectionRange: Range | null;
+  enhancedHighlighting?: boolean; // New prop for enhanced highlighting
+  highlightColor?: string; // Customizable highlight color
+  animateHighlight?: boolean; // Animation option
 }
 
 export const TextHighlighter: React.FC<TextHighlighterProps> = ({
   children,
   selectedText,
-  selectionRange
+  selectionRange,
+  enhancedHighlighting = false,
+  highlightColor = 'bg-blue-200/40',
+  animateHighlight = true
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [highlightOverlays, setHighlightOverlays] = useState<HighlightOverlay[]>([]);
 
   useEffect(() => {
-    // Clear highlights if no selection
     if (!selectedText || !selectionRange) {
       setHighlightOverlays([]);
       return;
     }
 
-    // Ensure the selection is within our container
     if (!containerRef.current?.contains(selectionRange.commonAncestorContainer)) {
       setHighlightOverlays([]);
       return;
     }
 
-    // Create highlight overlays for the selection
     const rects = selectionRange.getClientRects();
     const containerRect = containerRef.current?.getBoundingClientRect();
     
@@ -54,15 +57,28 @@ export const TextHighlighter: React.FC<TextHighlighterProps> = ({
     setHighlightOverlays(overlays);
   }, [selectedText, selectionRange]);
 
+  // Enhanced highlight styling based on prop
+  const getHighlightClasses = () => {
+    const baseClasses = `absolute pointer-events-none rounded-sm`;
+    
+    if (enhancedHighlighting) {
+      return `${baseClasses} ${highlightColor} border border-blue-300/50 shadow-sm ${
+        animateHighlight ? 'transition-all duration-200 animate-pulse' : ''
+      }`;
+    }
+    
+    // Default highlighting for backward compatibility
+    return `${baseClasses} ${highlightColor} border border-blue-300/50 transition-all duration-200`;
+  };
+
   return (
     <div ref={containerRef} className="relative">
       {children}
       
-      {/* Highlight overlays */}
       {highlightOverlays.map((overlay) => (
         <div
           key={overlay.id}
-          className="absolute pointer-events-none bg-blue-200/40 border border-blue-300/50 rounded-sm transition-all duration-200"
+          className={getHighlightClasses()}
           style={{
             left: overlay.rect.x,
             top: overlay.rect.y,

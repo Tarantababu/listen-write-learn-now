@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { SelectionPopup } from './SelectionPopup';
 import { TextHighlighter } from './TextHighlighter';
@@ -21,6 +20,8 @@ interface TextSelectionManagerProps {
   exerciseId?: string;
   exerciseLanguage?: Language;
   enableVocabulary?: boolean;
+  enhancedHighlighting?: boolean; // New prop for enhanced highlighting
+  vocabularyIntegration?: boolean; // New prop for vocabulary integration
 }
 
 export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
@@ -30,7 +31,9 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   disabled = false,
   exerciseId,
   exerciseLanguage,
-  enableVocabulary = false
+  enableVocabulary = false,
+  enhancedHighlighting = false, // Default to false for backward compatibility
+  vocabularyIntegration = false // Default to false for backward compatibility
 }) => {
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<Range | null>(null);
@@ -49,7 +52,6 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     setShowPopup(false);
     setVocabularyInfo(null);
     setIsGeneratingVocabulary(false);
-    // Don't clear browser selection here - let user do it naturally
   }, []);
 
   const processSelection = useCallback(() => {
@@ -64,25 +66,20 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     const range = selection.getRangeAt(0);
     const text = range.toString().trim();
 
-    // Check if selection is within our container
     if (!containerRef.current?.contains(range.commonAncestorContainer)) {
       clearSelection();
       return;
     }
 
     if (text.length > 0) {
-      // Get the bounding rectangle of the selection for positioning
       const rect = range.getBoundingClientRect();
-      
-      // Calculate optimal position for the popup (center horizontally, above selection)
       const x = rect.left + rect.width / 2;
       const y = rect.top;
 
       setSelectedText(text);
-      setSelectionRange(range.cloneRange()); // Clone to avoid range mutation
+      setSelectionRange(range.cloneRange());
       setSelectionPosition({ x, y });
       setShowPopup(true);
-      // Reset vocabulary state when new selection is made
       setVocabularyInfo(null);
       setIsGeneratingVocabulary(false);
     } else {
@@ -95,7 +92,6 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     try {
       console.log('Generating vocabulary info for:', word, 'in language:', language);
       
-      // Using the dedicated vocabulary generation function
       const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
         body: { text: word, language }
       });
@@ -111,7 +107,6 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
         throw new Error('No data received from generate-vocabulary-info function');
       }
       
-      // Extract the definition and example sentence from the response
       const definition = data.definition;
       const exampleSentence = data.exampleSentence;
       
@@ -120,7 +115,6 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
         throw new Error('Invalid response from generate-vocabulary-info function');
       }
 
-      // Generate audio for example sentence
       console.log('Starting audio generation for example sentence:', exampleSentence);
       
       const audioUrl = await generateExampleAudio(exampleSentence, language);
@@ -158,13 +152,11 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
         return undefined;
       }
 
-      // Handle the correct response format: { audio_url: "..." }
       if (data.audio_url) {
         console.log('Audio URL received:', data.audio_url);
         return data.audio_url;
       }
 
-      // Legacy fallback for old response format (backward compatibility)
       if (data.audioUrl) {
         console.log('Audio URL received (legacy format):', data.audioUrl);
         return data.audioUrl;
@@ -182,7 +174,6 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   const handleCreateVocabulary = useCallback(async () => {
     if (!selectedText || !exerciseLanguage) return;
     
-    // Check if user can create more vocabulary items
     if (!canCreateMore) {
       toast.error('You\'ve reached the vocabulary limit. Upgrade to premium for unlimited vocabulary.');
       return;
@@ -196,7 +187,6 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       if (info) {
         console.log('Saving vocabulary item with audio URL:', info.audioUrl);
         
-        // Check if this is a bidirectional exercise (prefixed ID) and don't pass exerciseId
         const isBidirectionalExercise = exerciseId?.startsWith('bidirectional-');
         
         await addVocabularyItem({
@@ -204,7 +194,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
           definition: info.definition,
           exampleSentence: info.exampleSentence,
           audioUrl: info.audioUrl,
-          exerciseId: isBidirectionalExercise ? '' : (exerciseId || ''), // Empty string for bidirectional exercises
+          exerciseId: isBidirectionalExercise ? '' : (exerciseId || ''),
           language: exerciseLanguage
         });
         
@@ -213,7 +203,6 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       }
     } catch (error) {
       console.error('Error saving vocabulary item:', error);
-      // Check if it's a vocabulary limit error
       if (error instanceof Error && error.message === 'Vocabulary limit reached') {
         toast.error('Vocabulary limit reached. Upgrade to premium for unlimited vocabulary.');
       } else {
@@ -229,10 +218,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     let timeoutId: NodeJS.Timeout;
 
     const handleSelectionChange = () => {
-      // Clear previous timeout
       if (timeoutId) clearTimeout(timeoutId);
-      
-      // Debounce selection processing
       timeoutId = setTimeout(processSelection, 100);
     };
 
@@ -249,7 +235,6 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
       
-      // Don't clear if clicking on the selection popup
       const isClickingOnPopup = target && (
         target.nodeType === Node.ELEMENT_NODE &&
         (target as Element).closest('[role="dialog"]')
@@ -257,7 +242,6 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       
       if (isClickingOnPopup) return;
       
-      // Clear selection if clicking outside container
       if (containerRef.current && !containerRef.current.contains(target)) {
         clearSelection();
       }
@@ -295,6 +279,9 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     }
   }, [selectedText, onCreateBidirectional, clearSelection]);
 
+  // Determine which vocabulary features to show based on props
+  const shouldShowVocabulary = vocabularyIntegration && (enableVocabulary || vocabularyIntegration);
+
   return (
     <div
       ref={containerRef}
@@ -308,6 +295,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       <TextHighlighter
         selectedText={selectedText}
         selectionRange={selectionRange}
+        enhancedHighlighting={enhancedHighlighting} // Pass new prop
       >
         {children}
       </TextHighlighter>
@@ -319,7 +307,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
           selectedText={selectedText}
           onCreateDictation={handleCreateDictation}
           onCreateBidirectional={handleCreateBidirectional}
-          onCreateVocabulary={enableVocabulary ? handleCreateVocabulary : undefined}
+          onCreateVocabulary={shouldShowVocabulary ? handleCreateVocabulary : undefined}
           onClose={clearSelection}
           isVisible={showPopup}
           vocabularyInfo={vocabularyInfo}
