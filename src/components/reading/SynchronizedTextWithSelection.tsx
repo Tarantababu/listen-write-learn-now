@@ -21,7 +21,6 @@ interface SynchronizedTextWithSelectionProps {
   enhancedHighlighting?: boolean;
   vocabularyIntegration?: boolean;
   enableContextMenu?: boolean;
-  enableSelectionFeedback?: boolean;
 }
 
 export const SynchronizedTextWithSelection: React.FC<SynchronizedTextWithSelectionProps> = ({
@@ -39,13 +38,11 @@ export const SynchronizedTextWithSelection: React.FC<SynchronizedTextWithSelecti
   enableVocabulary = false,
   enhancedHighlighting = false,
   vocabularyIntegration = false,
-  enableContextMenu = true,
-  enableSelectionFeedback = true
+  enableContextMenu = true
 }) => {
   console.log('SynchronizedTextWithSelection props:', {
     enableTextSelection,
     enableContextMenu,
-    enableSelectionFeedback,
     vocabularyIntegration,
     textLength: text.length
   });
@@ -76,7 +73,6 @@ export const SynchronizedTextWithSelection: React.FC<SynchronizedTextWithSelecti
       enhancedHighlighting={enhancedHighlighting}
       vocabularyIntegration={vocabularyIntegration}
       enableContextMenu={enableContextMenu}
-      enableSelectionFeedback={enableSelectionFeedback}
     >
       <SynchronizedText
         text={text}

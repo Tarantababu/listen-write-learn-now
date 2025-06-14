@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -183,8 +184,6 @@ export const EnhancedReadingDemo: React.FC<EnhancedReadingDemoProps> = ({
             vocabularyIntegration={featureFlags.enableVocabularyIntegration}
             enhancedHighlighting={featureFlags.enableEnhancedHighlighting}
             enableContextMenu={featureFlags.enableContextMenu}
-            enableSelectionFeedback={featureFlags.enableSelectionFeedback}
-            enableSmartTextProcessing={featureFlags.enableSmartTextProcessing}
             onCreateDictation={handleCreateDictation}
             onCreateBidirectional={handleCreateBidirectional}
           />
