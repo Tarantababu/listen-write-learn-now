@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Languages, ArrowRight } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Loader2, Languages, ArrowRight, Zap, Timer, TrendingUp } from 'lucide-react';
 import { LanguageSelectWithFlag } from '@/components/bidirectional/LanguageSelectWithFlag';
-import { supabase } from '@/integrations/supabase/client';
+import { translationPerformanceService } from '@/services/translationPerformanceService';
 import { toast } from 'sonner';
 
 interface TranslationAnalysisProps {
@@ -20,10 +21,17 @@ interface WordTranslation {
   translation: string;
 }
 
-interface BidirectionalTranslation {
+interface OptimizedTranslationResult {
   normalTranslation: string;
   literalTranslation: string;
   wordTranslations: WordTranslation[];
+  performanceMetrics: {
+    totalProcessingTime: number;
+    chunkCount: number;
+    averageChunkTime: number;
+    parallelProcessing: boolean;
+    cacheHits: number;
+  };
 }
 
 export const TranslationAnalysis: React.FC<TranslationAnalysisProps> = ({
@@ -32,8 +40,10 @@ export const TranslationAnalysis: React.FC<TranslationAnalysisProps> = ({
   onClose
 }) => {
   const [targetLanguage, setTargetLanguage] = useState('english');
-  const [translation, setTranslation] = useState<BidirectionalTranslation | null>(null);
+  const [translation, setTranslation] = useState<OptimizedTranslationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [progressStatus, setProgressStatus] = useState('');
 
   const languageOptions = [
     { value: 'english', label: 'English' },
@@ -55,38 +65,44 @@ export const TranslationAnalysis: React.FC<TranslationAnalysisProps> = ({
     }
 
     setIsLoading(true);
+    setProgress(0);
+    setProgressStatus('Initializing...');
+    
     try {
-      console.log('Requesting bidirectional translation:', {
-        text: text.substring(0, 50) + '...',
+      console.log('Starting optimized translation:', {
+        textLength: text.length,
         sourceLanguage,
         targetLanguage
       });
 
-      const { data, error } = await supabase.functions.invoke('generate-reading-analysis', {
-        body: {
-          text,
-          language: sourceLanguage,
-          type: 'bidirectional_translation',
-          supportLanguage: targetLanguage
+      const result = await translationPerformanceService.optimizedTranslation(
+        text,
+        sourceLanguage,
+        targetLanguage,
+        (progressValue, status) => {
+          setProgress(progressValue);
+          setProgressStatus(status);
         }
-      });
+      );
 
-      if (error) {
-        console.error('Translation error:', error);
-        throw new Error(error.message || 'Failed to generate translation');
-      }
-
-      if (!data) {
-        throw new Error('No translation data received');
-      }
-
-      console.log('Translation response:', data);
-      setTranslation(data);
+      console.log('Optimized translation completed:', result.performanceMetrics);
+      setTranslation(result);
+      
+      // Show performance summary
+      const { performanceMetrics } = result;
+      toast.success(
+        `Translation completed in ${(performanceMetrics.totalProcessingTime / 1000).toFixed(1)}s` +
+        ` using ${performanceMetrics.chunkCount} segments` +
+        (performanceMetrics.cacheHits > 0 ? ` (${performanceMetrics.cacheHits} cache hits)` : '')
+      );
+      
     } catch (error) {
-      console.error('Error generating translation:', error);
+      console.error('Error generating optimized translation:', error);
       toast.error('Failed to generate translation');
     } finally {
       setIsLoading(false);
+      setProgress(0);
+      setProgressStatus('');
     }
   };
 
@@ -114,6 +130,45 @@ export const TranslationAnalysis: React.FC<TranslationAnalysisProps> = ({
     );
   };
 
+  const renderPerformanceMetrics = (metrics: OptimizedTranslationResult['performanceMetrics']) => {
+    return (
+      <Card className="p-4 bg-blue-50 border-blue-200">
+        <h4 className="font-medium text-sm text-blue-800 mb-3 flex items-center gap-2">
+          <TrendingUp className="h-4 w-4" />
+          Performance Metrics
+        </h4>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="flex items-center gap-2">
+            <Timer className="h-3 w-3 text-blue-600" />
+            <span className="text-blue-700">
+              {(metrics.totalProcessingTime / 1000).toFixed(1)}s total
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Zap className="h-3 w-3 text-blue-600" />
+            <span className="text-blue-700">
+              {metrics.chunkCount} segments
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-blue-600">⚡</span>
+            <span className="text-blue-700">
+              {metrics.parallelProcessing ? 'Parallel' : 'Sequential'}
+            </span>
+          </div>
+          {metrics.cacheHits > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-blue-600">💾</span>
+              <span className="text-blue-700">
+                {metrics.cacheHits} cache hits
+              </span>
+            </div>
+          )}
+        </div>
+      </Card>
+    );
+  };
+
   const getLanguageLabel = (langCode: string) => {
     const option = languageOptions.find(opt => opt.value === langCode);
     return option ? option.label : langCode;
@@ -124,7 +179,7 @@ export const TranslationAnalysis: React.FC<TranslationAnalysisProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Languages className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-semibold">Translation Analysis</h3>
+          <h3 className="text-lg font-semibold">Enhanced Translation Analysis</h3>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose}>
           ×
@@ -160,15 +215,32 @@ export const TranslationAnalysis: React.FC<TranslationAnalysisProps> = ({
               Analyzing...
             </>
           ) : (
-            'Analyze Translation'
+            <>
+              <Zap className="h-4 w-4 mr-2" />
+              Enhanced Analysis
+            </>
           )}
         </Button>
       </div>
+
+      {/* Progress Bar */}
+      {isLoading && (
+        <div className="space-y-2">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-600">{progressStatus}</span>
+            <span className="text-gray-500">{Math.round(progress)}%</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+      )}
 
       {/* Translation Results */}
       {translation && (
         <div className="space-y-4">
           <Separator />
+          
+          {/* Performance Metrics */}
+          {renderPerformanceMetrics(translation.performanceMetrics)}
           
           {/* Normal Translation */}
           <Card className="p-4">

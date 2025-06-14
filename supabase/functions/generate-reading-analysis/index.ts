@@ -7,6 +7,7 @@ interface RequestBody {
   language: string
   type?: string
   supportLanguage?: string
+  chunkIndex?: number
 }
 
 interface AnalysisWord {
@@ -49,7 +50,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, language, type, supportLanguage } = await req.json() as RequestBody
+    const { text, language, type, supportLanguage, chunkIndex } = await req.json() as RequestBody
 
     if (!text || !language) {
       return new Response(
@@ -67,6 +68,24 @@ serve(async (req) => {
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
     if (!openAIApiKey) {
       throw new Error('OpenAI API key is not configured')
+    }
+
+    // Handle optimized bidirectional translation request
+    if (type === 'optimized_bidirectional_translation') {
+      const translation = await generateOptimizedBidirectionalTranslation(
+        text, 
+        language, 
+        supportLanguage || 'english', 
+        openAIApiKey,
+        chunkIndex
+      )
+      return new Response(
+        JSON.stringify(translation),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
     }
 
     // Handle bidirectional translation request
@@ -108,6 +127,83 @@ serve(async (req) => {
     )
   }
 })
+
+async function generateOptimizedBidirectionalTranslation(
+  text: string,
+  sourceLanguage: string,
+  targetLanguage: string,
+  apiKey: string,
+  chunkIndex?: number
+): Promise<BidirectionalTranslation> {
+  const prompt = `
+Translate this ${sourceLanguage} text segment into ${targetLanguage}. This is ${chunkIndex !== undefined ? `segment ${chunkIndex + 1}` : 'a text segment'}.
+
+TEXT: "${text}"
+
+Provide ONLY a JSON response with these exact fields:
+{
+  "normalTranslation": "Natural, fluent translation in ${targetLanguage}",
+  "literalTranslation": "Word-order preserving translation showing structure",
+  "wordTranslations": [
+    {"original": "word1", "translation": "translation1"},
+    {"original": "word2", "translation": "translation2"}
+  ]
+}
+
+IMPORTANT:
+- normalTranslation: Make it sound natural to native ${targetLanguage} speakers
+- literalTranslation: Keep original word order as much as possible to show structure
+- wordTranslations: Include significant content words (nouns, verbs, adjectives), skip articles/prepositions unless crucial
+- Return ONLY valid JSON, no explanations
+`
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are an expert translator. Respond only with valid JSON. Focus on accuracy and efficiency.' 
+          },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.1,
+        max_tokens: 1000
+      })
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('OpenAI API error:', errorData)
+      throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText}`)
+    }
+
+    const data = await response.json()
+    const content = data.choices[0].message.content.trim()
+    
+    try {
+      return JSON.parse(content)
+    } catch (e) {
+      console.error('Failed to parse optimized translation response as JSON:', e)
+      console.log('Raw response:', content)
+      
+      return {
+        normalTranslation: "Translation could not be generated for this segment.",
+        literalTranslation: "Literal translation could not be generated for this segment.",
+        wordTranslations: []
+      }
+    }
+  } catch (error) {
+    console.error('Error generating optimized bidirectional translation:', error)
+    throw error
+  }
+}
 
 async function generateBidirectionalTranslation(
   text: string,
