@@ -52,6 +52,7 @@ export const AudioSyncModeText: React.FC<AudioSyncModeTextProps> = ({
       enhancedHighlighting={enhancedHighlighting}
       vocabularyIntegration={vocabularyIntegration}
       enableContextMenu={enableContextMenu}
+      isReadingMode={false}
     >
       <SynchronizedText
         text={text}

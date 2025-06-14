@@ -40,9 +40,10 @@ export const ReadingModeText: React.FC<ReadingModeTextProps> = ({
       exerciseId={exerciseId}
       exerciseLanguage={exerciseLanguage}
       enableVocabulary={enableVocabulary}
-      enhancedHighlighting={enhancedHighlighting}
+      enhancedHighlighting={false}
       vocabularyIntegration={vocabularyIntegration}
       enableContextMenu={enableContextMenu}
+      isReadingMode={true}
     >
       <div 
         className="
@@ -51,6 +52,7 @@ export const ReadingModeText: React.FC<ReadingModeTextProps> = ({
           text-gray-900 dark:text-gray-100
           selection:bg-blue-200/60 selection:text-gray-900
           dark:selection:bg-blue-300/40 dark:selection:text-gray-100
+          cursor-text
         "
         style={{
           userSelect: 'text',

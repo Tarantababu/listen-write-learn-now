@@ -25,6 +25,7 @@ interface TextSelectionManagerProps {
   enhancedHighlighting?: boolean;
   vocabularyIntegration?: boolean;
   enableContextMenu?: boolean;
+  isReadingMode?: boolean;
 }
 
 export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
@@ -37,7 +38,8 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   enableVocabulary = false,
   enhancedHighlighting = false,
   vocabularyIntegration = false,
-  enableContextMenu = true
+  enableContextMenu = true,
+  isReadingMode = false
 }) => {
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<Range | null>(null);
@@ -70,16 +72,32 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     }
 
     const range = selection.getRangeAt(0);
-    // Get the raw text preserving ALL original spacing and formatting
     const rawText = range.toString();
 
-    if (!containerRef.current?.contains(range.commonAncestorContainer)) {
-      clearSelection();
-      return;
+    // Improved containment check for Reading Mode
+    if (isReadingMode) {
+      // For reading mode, check if the selection is within our container more reliably
+      const startContainer = range.startContainer;
+      const endContainer = range.endContainer;
+      
+      const isStartWithinContainer = containerRef.current?.contains(startContainer);
+      const isEndWithinContainer = containerRef.current?.contains(endContainer);
+      
+      if (!isStartWithinContainer || !isEndWithinContainer) {
+        console.log('Selection outside container in reading mode');
+        clearSelection();
+        return;
+      }
+    } else {
+      // Original containment check for other modes
+      if (!containerRef.current?.contains(range.commonAncestorContainer)) {
+        clearSelection();
+        return;
+      }
     }
 
     if (rawText.length > 0) {
-      // CRITICAL FIX: Only trim leading/trailing whitespace, preserve ALL internal spacing
+      // Only trim leading/trailing whitespace, preserve ALL internal spacing
       const preservedText = rawText.replace(/^\s+|\s+$/g, '');
       
       console.log('Raw selected text:', JSON.stringify(rawText));
@@ -102,7 +120,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     } else {
       clearSelection();
     }
-  }, [disabled, clearSelection]);
+  }, [disabled, clearSelection, isReadingMode]);
 
   // Generate vocabulary info using existing VocabularyHighlighter functions
   const generateVocabularyInfo = async (word: string, language: Language) => {
@@ -312,13 +330,18 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
         MozUserSelect: disabled ? 'none' : 'text'
       }}
     >
-      <TextHighlighter
-        selectedText={selectedText}
-        selectionRange={selectionRange}
-        enhancedHighlighting={enhancedHighlighting}
-      >
-        {children}
-      </TextHighlighter>
+      {/* Skip TextHighlighter completely in Reading Mode to avoid DOM interference */}
+      {isReadingMode ? (
+        children
+      ) : (
+        <TextHighlighter
+          selectedText={selectedText}
+          selectionRange={selectionRange}
+          enhancedHighlighting={enhancedHighlighting}
+        >
+          {children}
+        </TextHighlighter>
+      )}
       
       {/* Main interactive popup - shown immediately on selection */}
       {selectionPosition && showPopup && (
