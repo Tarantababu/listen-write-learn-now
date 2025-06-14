@@ -28,7 +28,8 @@ export class ReadingExerciseService {
     if (error) throw error;
     return {
       ...data,
-      difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced'
+      difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
+      content: data.content as ReadingExercise['content']
     };
   }
 
@@ -51,7 +52,8 @@ export class ReadingExerciseService {
     if (error) throw error;
     return (data || []).map(exercise => ({
       ...exercise,
-      difficulty_level: exercise.difficulty_level as 'beginner' | 'intermediate' | 'advanced'
+      difficulty_level: exercise.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
+      content: exercise.content as ReadingExercise['content']
     }));
   }
 
@@ -65,7 +67,8 @@ export class ReadingExerciseService {
     if (error) throw error;
     return {
       ...data,
-      difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced'
+      difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
+      content: data.content as ReadingExercise['content']
     };
   }
 
