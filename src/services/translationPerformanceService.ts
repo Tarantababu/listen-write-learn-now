@@ -33,7 +33,7 @@ interface TranslationCache {
 }
 
 export class TranslationPerformanceService {
-  private cache: TranslationCache = new Map();
+  private cache: TranslationCache = {};
   private readonly OPTIMAL_CHUNK_SIZE = 300; // words
   private readonly MAX_CHUNK_SIZE = 500; // words
   private readonly MIN_CHUNK_SIZE = 50; // words
@@ -184,10 +184,10 @@ export class TranslationPerformanceService {
     const cacheKey = this.generateCacheKey(chunk, sourceLanguage, targetLanguage);
     
     // Check cache first
-    if (this.cache.has(cacheKey)) {
+    if (this.cache[cacheKey]) {
       console.log(`[TRANSLATION PERFORMANCE] Cache hit for chunk ${index}`);
       return {
-        ...this.cache.get(cacheKey)!,
+        ...this.cache[cacheKey],
         chunkIndex: index,
         processingTime: 0 // Indicate cache hit
       };
@@ -220,7 +220,7 @@ export class TranslationPerformanceService {
       };
 
       // Cache the result
-      this.cache.set(cacheKey, result);
+      this.cache[cacheKey] = result;
       
       console.log(`[TRANSLATION PERFORMANCE] Chunk ${index} processed in ${processingTime}ms`);
       return result;
@@ -277,14 +277,14 @@ export class TranslationPerformanceService {
 
   // Cache management methods
   clearCache(): void {
-    this.cache.clear();
+    this.cache = {};
     console.log('[TRANSLATION PERFORMANCE] Cache cleared');
   }
 
   getCacheStats(): { size: number; keys: string[] } {
     return {
-      size: this.cache.size,
-      keys: Array.from(this.cache.keys())
+      size: Object.keys(this.cache).length,
+      keys: Object.keys(this.cache)
     };
   }
 }
