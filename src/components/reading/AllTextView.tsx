@@ -1,31 +1,38 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, Volume2, Brain, Mic } from 'lucide-react';
+import { Play, Pause, Volume2, Brain, Mic, Info } from 'lucide-react';
 import { ReadingExercise } from '@/types/reading';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { EnhancedInteractiveText } from './EnhancedInteractiveText';
+import { TextSelectionManager } from './TextSelectionManager';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { Language } from '@/types';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AllTextViewProps {
   exercise: ReadingExercise;
   audioEnabled: boolean;
   onCreateDictation: () => void;
+  onCreateDictationFromSelection?: (selectedText: string) => void;
+  onCreateBidirectionalFromSelection?: (selectedText: string) => void;
 }
 
 export const AllTextView: React.FC<AllTextViewProps> = ({
   exercise,
   audioEnabled,
-  onCreateDictation
+  onCreateDictation,
+  onCreateDictationFromSelection,
+  onCreateBidirectionalFromSelection
 }) => {
   const { addExercise } = useExerciseContext();
+  const isMobile = useIsMobile();
   const [isPlaying, setIsPlaying] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [currentPlayingSentence, setCurrentPlayingSentence] = useState<number>(-1);
+  const [showSelectionHelp, setShowSelectionHelp] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const fullText = exercise.content.sentences.map(s => s.text).join(' ');
@@ -112,6 +119,15 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
     }
   }, []);
 
+  // Auto-hide selection help after 5 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSelectionHelp(false);
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   const renderHighlightedText = () => {
     if (currentPlayingSentence === -1) {
       return (
@@ -153,57 +169,97 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Full Text Display */}
-      <Card>
-        <CardContent className="p-6 space-y-4">
-          <div className="space-y-4">
-            {renderHighlightedText()}
-            
-            {isPlaying && currentPlayingSentence !== -1 && (
-              <div className="text-sm text-muted-foreground bg-blue-50 p-2 rounded">
-                Playing sentence {currentPlayingSentence + 1} of {exercise.content.sentences.length}
+      {/* Selection Help Banner */}
+      {showSelectionHelp && (onCreateDictationFromSelection || onCreateBidirectionalFromSelection) && (
+        <Card className={`border-blue-200 bg-blue-50 ${isMobile ? 'mx-0' : ''}`}>
+          <CardContent className={`${isMobile ? 'p-3' : 'p-4'}`}>
+            <div className="flex items-start gap-3">
+              <Info className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600 mt-0.5 flex-shrink-0`} />
+              <div className="flex-1">
+                <h4 className={`font-medium text-blue-900 mb-1 ${isMobile ? 'text-sm' : ''}`}>
+                  Text Selection Available
+                </h4>
+                <p className={`text-blue-800 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                  {isMobile 
+                    ? 'Tap and hold to select text, then choose to create dictation or bidirectional exercises.'
+                    : 'Select any portion of text to create targeted dictation or bidirectional exercises from your selection.'
+                  }
+                </p>
               </div>
-            )}
-          </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSelectionHelp(false)}
+                className={`text-blue-600 hover:text-blue-800 ${isMobile ? 'p-1' : ''}`}
+              >
+                ×
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Full Text Display with Selection */}
+      <Card>
+        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} space-y-4`}>
+          <TextSelectionManager
+            onCreateDictation={onCreateDictationFromSelection || (() => {})}
+            onCreateBidirectional={onCreateBidirectionalFromSelection || (() => {})}
+            disabled={!onCreateDictationFromSelection && !onCreateBidirectionalFromSelection}
+          >
+            <div className="space-y-4">
+              {renderHighlightedText()}
+              
+              {isPlaying && currentPlayingSentence !== -1 && (
+                <div className={`text-muted-foreground bg-blue-50 p-2 rounded ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                  Playing sentence {currentPlayingSentence + 1} of {exercise.content.sentences.length}
+                </div>
+              )}
+            </div>
+          </TextSelectionManager>
 
           {/* Audio Controls */}
-          <div className="flex items-center gap-2 pt-2 border-t">
+          <div className={`flex items-center gap-2 pt-2 border-t ${isMobile ? 'flex-wrap' : ''}`}>
             <Button
               variant="outline"
-              size="sm"
+              size={isMobile ? 'sm' : 'sm'}
               onClick={playFullText}
               disabled={isPlaying || !audioEnabled}
+              className={isMobile ? 'flex-1' : ''}
             >
               {isPlaying && currentPlayingSentence === -1 ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              <span className="ml-2">Play All</span>
+              <span className={`ml-2 ${isMobile ? 'text-xs' : ''}`}>Play All</span>
             </Button>
             
             <Button
               variant="outline"
-              size="sm"
+              size={isMobile ? 'sm' : 'sm'}
               onClick={playSentenceBysentence}
               disabled={isPlaying || !audioEnabled}
+              className={isMobile ? 'flex-1' : ''}
             >
               <Volume2 className="h-4 w-4" />
-              <span className="ml-2">Play by Sentence</span>
+              <span className={`ml-2 ${isMobile ? 'text-xs' : ''}`}>By Sentence</span>
             </Button>
 
             <Button
               variant="outline"
-              size="sm"
+              size={isMobile ? 'sm' : 'sm'}
               onClick={() => setShowAnalysis(!showAnalysis)}
+              className={isMobile ? 'flex-1' : ''}
             >
               <Brain className="h-4 w-4 mr-2" />
-              {showAnalysis ? 'Hide' : 'Show'} Analysis
+              <span className={isMobile ? 'text-xs' : ''}>{showAnalysis ? 'Hide' : 'Show'} Analysis</span>
             </Button>
 
             <Button
               variant="outline"
-              size="sm"
+              size={isMobile ? 'sm' : 'sm'}
               onClick={createDictationFromFullText}
+              className={isMobile ? 'w-full mt-2' : ''}
             >
               <Mic className="h-4 w-4 mr-2" />
-              Create Full Dictation
+              <span className={isMobile ? 'text-xs' : ''}>Create Full Dictation</span>
             </Button>
           </div>
 

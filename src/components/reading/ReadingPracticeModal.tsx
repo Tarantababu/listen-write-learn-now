@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -41,7 +40,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
 }) => {
   const { addExercise } = useExerciseContext();
   const isMobile = useIsMobile();
-  const [currentView, setCurrentView] = useState<ReadingView>('sentence');
+  const [currentView, setCurrentView] = useState<ReadingView>('all'); // Changed default to 'all'
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -189,6 +188,46 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     } catch (error) {
       console.error('Error creating dictation exercise:', error);
       toast.error('Failed to create dictation exercise');
+    }
+  };
+
+  const createDictationFromSelection = async (selectedText: string) => {
+    if (!exercise) return;
+    
+    try {
+      const dictationExercise = {
+        title: `Dictation: ${selectedText.substring(0, 30)}...`,
+        text: selectedText,
+        language: exercise.language as Language,
+        tags: ['dictation', 'from-reading', 'selection'],
+        directoryId: null
+      };
+      
+      await addExercise(dictationExercise);
+      toast.success('Dictation exercise created from selection!');
+    } catch (error) {
+      console.error('Error creating dictation exercise:', error);
+      toast.error('Failed to create dictation exercise');
+    }
+  };
+
+  const createBidirectionalFromSelection = async (selectedText: string) => {
+    if (!exercise) return;
+    
+    try {
+      const bidirectionalExercise = {
+        title: `Bidirectional: ${selectedText.substring(0, 30)}...`,
+        text: selectedText,
+        language: exercise.language as Language,
+        tags: ['bidirectional', 'from-reading', 'selection'],
+        directoryId: null
+      };
+      
+      await addExercise(bidirectionalExercise);
+      toast.success('Bidirectional exercise created from selection!');
+    } catch (error) {
+      console.error('Error creating bidirectional exercise:', error);
+      toast.error('Failed to create bidirectional exercise');
     }
   };
 
@@ -462,11 +501,13 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
               )}
             </>
           ) : (
-            /* All Text View */
+            /* All Text View with Selection */
             <AllTextView
               exercise={exercise}
               audioEnabled={audioEnabled}
               onCreateDictation={createDictationExercise}
+              onCreateDictationFromSelection={createDictationFromSelection}
+              onCreateBidirectionalFromSelection={createBidirectionalFromSelection}
             />
           )}
         </div>
