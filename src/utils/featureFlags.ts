@@ -24,7 +24,7 @@ export const developmentFeatureFlags: ReadingFeatureFlags = {
   enableVocabularyIntegration: true,
   enableEnhancedHighlighting: true,
   enableAdvancedFeatures: true,
-  enableEnhancedModal: true,
+  enableEnhancedModal: true, // Enable the new modal in development
 };
 
 // Production rollout phases
@@ -49,7 +49,7 @@ export const productionPhase3: ReadingFeatureFlags = {
   enableVocabularyIntegration: true,
   enableEnhancedHighlighting: true,
   enableAdvancedFeatures: true,
-  enableEnhancedModal: true,
+  enableEnhancedModal: true, // Enable new modal in final phase
 };
 
 // Utility function to get feature flags based on environment

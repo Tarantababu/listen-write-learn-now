@@ -23,8 +23,10 @@ import { readingExerciseService } from '@/services/readingExerciseService';
 import { EnhancedInteractiveText } from './EnhancedInteractiveText';
 import { AllTextView } from './AllTextView';
 import { ViewToggle, ReadingView } from './ViewToggle';
+import { ReadingFocusedModal } from './ReadingFocusedModal';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getReadingFeatureFlags } from '@/utils/featureFlags';
 import { toast } from 'sonner';
 
 interface ReadingPracticeModalProps {
@@ -40,6 +42,11 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
 }) => {
   const { addExercise } = useExerciseContext();
   const isMobile = useIsMobile();
+  const featureFlags = getReadingFeatureFlags();
+  
+  // Check if we should use the new focused modal
+  const shouldUseFocusedModal = featureFlags.enableEnhancedModal;
+
   const [currentView, setCurrentView] = useState<ReadingView>('all'); // Changed default to 'all'
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
   const [showAnalysis, setShowAnalysis] = useState(false);
@@ -281,6 +288,24 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     }
   }, []);
 
+  // Use the new focused modal if feature flag is enabled
+  if (shouldUseFocusedModal) {
+    return (
+      <ReadingFocusedModal
+        exercise={exercise}
+        isOpen={isOpen}
+        onClose={() => onOpenChange(false)}
+        onCreateDictation={createDictationFromSelection}
+        onCreateBidirectional={createBidirectionalFromSelection}
+        enableTextSelection={featureFlags.enableTextSelection}
+        enableVocabularyIntegration={featureFlags.enableVocabularyIntegration}
+        enableEnhancedHighlighting={featureFlags.enableEnhancedHighlighting}
+        enableFullTextAudio={featureFlags.enableAdvancedFeatures}
+      />
+    );
+  }
+
+  // Fallback to original modal for backward compatibility
   if (!exercise) return null;
 
   return (
@@ -309,12 +334,10 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* View Toggle */}
           <ViewToggle currentView={currentView} onViewChange={setCurrentView} />
 
           {currentView === 'sentence' ? (
             <>
-              {/* Progress Bar - Only show in sentence view */}
               <div className="space-y-2">
                 <div className={`flex justify-between text-muted-foreground ${isMobile ? 'text-sm' : 'text-sm'}`}>
                   <span>Sentence {currentSentenceIndex + 1} of {exercise.content.sentences.length}</span>
@@ -323,7 +346,6 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
                 <Progress value={progress} className="h-2" />
               </div>
 
-              {/* Current Sentence */}
               <Card>
                 <CardContent className={`space-y-4 ${isMobile ? 'p-4' : 'p-6'}`}>
                   <div className="space-y-4">
@@ -343,7 +365,6 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
                     )}
                   </div>
 
-                  {/* Audio Controls */}
                   <div className={`pt-2 border-t ${isMobile ? 'space-y-3' : ''}`}>
                     <div className={`flex items-center gap-2 ${isMobile ? 'flex-wrap' : ''}`}>
                       <Button
@@ -398,7 +419,6 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Analysis Panel */}
                   {showAnalysis && currentSentence?.analysis && (
                     <div className={`space-y-4 border-t pt-4 ${isMobile ? 'space-y-3' : ''}`}>
                       {currentSentence.analysis.translation && (
@@ -453,7 +473,6 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
                 </CardContent>
               </Card>
 
-              {/* Navigation Controls */}
               <div className={`flex items-center ${isMobile ? 'flex-col gap-3' : 'justify-between'}`}>
                 <Button
                   variant="outline"
@@ -486,7 +505,6 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
                 </div>
               </div>
 
-              {/* Exercise Complete */}
               {currentSentenceIndex >= exercise.content.sentences.length - 1 && (
                 <Card className="border-green-200 bg-green-50">
                   <CardContent className={`text-center ${isMobile ? 'p-4' : 'p-4'}`}>
@@ -501,7 +519,6 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
               )}
             </>
           ) : (
-            /* All Text View with Selection */
             <AllTextView
               exercise={exercise}
               audioEnabled={audioEnabled}
