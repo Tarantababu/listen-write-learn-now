@@ -154,7 +154,6 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
             </TabsTrigger>
           </TabsList>
 
-          {/* Topic Selection */}
           <TabsContent value="topic" className="space-y-6">
             <TopicMandala 
               onTopicSelect={handleTopicSelect}
@@ -181,7 +180,6 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
             </div>
           </TabsContent>
 
-          {/* Exercise Details */}
           <TabsContent value="details" className="space-y-6">
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-4">
@@ -276,7 +274,6 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
             </div>
           </TabsContent>
 
-          {/* Grammar Focus */}
           <TabsContent value="grammar" className="space-y-6">
             <div className="space-y-4">
               <div>
@@ -356,14 +353,13 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
                   <>
                     <Sparkles className="h-4 w-4 mr-2" />
                     Create Exercise
-                  </Sparkles>
+                  </>
                 )}
               </Button>
             </div>
           </TabsContent>
         </Tabs>
 
-        {/* Feature highlights at the bottom */}
         <div className="grid gap-3 md:grid-cols-3 pt-6 border-t">
           <Card className="p-3">
             <CardHeader className="p-0 pb-2">
