@@ -256,6 +256,41 @@ export class ReadingExerciseService {
     return data;
   }
 
+  private async generateAudioInBackground(exerciseId: string, content: any, language: string): Promise<void> {
+    try {
+      console.log(`[BACKGROUND AUDIO] Starting generation for exercise ${exerciseId}`);
+      
+      // Update status to generating
+      await supabase
+        .from('reading_exercises')
+        .update({ audio_generation_status: 'generating' })
+        .eq('id', exerciseId);
+
+      // Generate audio for content
+      const contentWithAudio = await this.generateAudioForContent(content, language);
+      
+      // Update exercise with audio URLs
+      await supabase
+        .from('reading_exercises')
+        .update({ 
+          content: contentWithAudio,
+          full_text_audio_url: contentWithAudio.full_text_audio_url,
+          audio_generation_status: 'completed'
+        })
+        .eq('id', exerciseId);
+
+      console.log(`[BACKGROUND AUDIO] Completed for exercise ${exerciseId}`);
+    } catch (error) {
+      console.error(`[BACKGROUND AUDIO] Failed for exercise ${exerciseId}:`, error);
+      
+      // Update status to failed
+      await supabase
+        .from('reading_exercises')
+        .update({ audio_generation_status: 'failed' })
+        .eq('id', exerciseId);
+    }
+  }
+
   private async generateAudioForContent(content: any, language: string): Promise<any> {
     try {
       console.log('Generating audio for reading exercise content');
