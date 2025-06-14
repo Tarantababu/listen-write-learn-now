@@ -1,8 +1,8 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { SelectionPopup } from './SelectionPopup';
 import { TextHighlighter } from './TextHighlighter';
 import { TextSelectionContextMenu } from './TextSelectionContextMenu';
-import { SelectionFeedback } from './SelectionFeedback';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -25,8 +25,8 @@ interface TextSelectionManagerProps {
   enableVocabulary?: boolean;
   enhancedHighlighting?: boolean;
   vocabularyIntegration?: boolean;
-  enableContextMenu?: boolean; // New prop for context menu
-  enableSelectionFeedback?: boolean; // New prop for selection feedback
+  enableContextMenu?: boolean;
+  enableSelectionFeedback?: boolean;
 }
 
 export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
@@ -39,8 +39,8 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   enableVocabulary = false,
   enhancedHighlighting = false,
   vocabularyIntegration = false,
-  enableContextMenu = true, // Default to true for Phase 3
-  enableSelectionFeedback = true // Default to true for Phase 3
+  enableContextMenu = true,
+  enableSelectionFeedback = false // Disabled by default now
 }) => {
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<Range | null>(null);
@@ -49,7 +49,6 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   const [vocabularyInfo, setVocabularyInfo] = useState<VocabularyInfo | null>(null);
   const [isGeneratingVocabulary, setIsGeneratingVocabulary] = useState(false);
   const [selectionInfo, setSelectionInfo] = useState<TextSelectionInfo | null>(null);
-  const [showFeedback, setShowFeedback] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { addVocabularyItem, canCreateMore } = useVocabularyContext();
@@ -62,7 +61,6 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     setVocabularyInfo(null);
     setIsGeneratingVocabulary(false);
     setSelectionInfo(null);
-    setShowFeedback(false);
   }, []);
 
   const processSelection = useCallback(() => {
@@ -94,14 +92,13 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       setSelectionRange(range.cloneRange());
       setSelectionPosition({ x, y });
       setSelectionInfo(analysis);
-      setShowPopup(true);
-      setShowFeedback(enableSelectionFeedback);
+      setShowPopup(true); // Show popup immediately
       setVocabularyInfo(null);
       setIsGeneratingVocabulary(false);
     } else {
       clearSelection();
     }
-  }, [disabled, clearSelection, enableSelectionFeedback]);
+  }, [disabled, clearSelection]);
 
   // Generate vocabulary info using existing VocabularyHighlighter functions
   const generateVocabularyInfo = async (word: string, language: Language) => {
@@ -319,19 +316,8 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
         {children}
       </TextHighlighter>
       
-      {/* Selection feedback */}
-      {enableSelectionFeedback && selectionInfo && (
-        <SelectionFeedback
-          selectedText={selectedText}
-          wordCount={selectionInfo.wordCount}
-          isValidSelection={selectionInfo.isValidForDictation || selectionInfo.isValidForVocabulary}
-          position={selectionPosition}
-          visible={showFeedback}
-        />
-      )}
-      
-      {/* Portal-based popup */}
-      {selectionPosition && (
+      {/* Main interactive popup - shown immediately on selection */}
+      {selectionPosition && showPopup && (
         <SelectionPopup
           position={selectionPosition}
           selectedText={selectedText}
@@ -348,7 +334,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     </div>
   );
 
-  // Conditionally wrap with context menu
+  // Conditionally wrap with context menu for right-click options
   if (enableContextMenu && selectedText) {
     return (
       <TextSelectionContextMenu

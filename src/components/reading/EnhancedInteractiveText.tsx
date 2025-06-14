@@ -30,10 +30,8 @@ interface EnhancedInteractiveTextProps {
   exerciseId?: string;
   onCreateDictation?: (selectedText: string) => void;
   onCreateBidirectional?: (selectedText: string) => void;
-  // New Phase 3 props
+  // Simplified Phase 3 props - focus on core functionality
   enableContextMenu?: boolean;
-  enableSelectionFeedback?: boolean;
-  enableSmartTextProcessing?: boolean;
 }
 
 export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = ({
@@ -50,10 +48,8 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
   exerciseId,
   onCreateDictation,
   onCreateBidirectional,
-  // New Phase 3 props with defaults
-  enableContextMenu = true,
-  enableSelectionFeedback = true,
-  enableSmartTextProcessing = true
+  // Simplified Phase 3 props
+  enableContextMenu = true
 }) => {
   const [playingWord, setPlayingWord] = useState<string | null>(null);
   const [hoveredWord, setHoveredWord] = useState<string | null>(null);
@@ -224,7 +220,7 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
         enhancedHighlighting={enhancedHighlighting}
         vocabularyIntegration={vocabularyIntegration}
         enableContextMenu={enableContextMenu}
-        enableSelectionFeedback={enableSelectionFeedback}
+        enableSelectionFeedback={false} // Disabled feedback, show popup directly
       >
         {textContent}
       </TextSelectionManager>

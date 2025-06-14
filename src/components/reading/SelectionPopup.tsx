@@ -44,8 +44,8 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
 
   // Enhanced positioning with viewport boundary detection
   const getOptimalPosition = () => {
-    const popupWidth = isMobile ? 320 : 380;
-    const popupHeight = vocabularyInfo ? (isMobile ? 300 : 350) : (isMobile ? 160 : 180);
+    const popupWidth = isMobile ? 300 : 360;
+    const popupHeight = vocabularyInfo ? (isMobile ? 280 : 320) : (isMobile ? 140 : 160);
     const margin = 16;
     
     let x = position.x;
@@ -77,7 +77,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   const safePosition = getOptimalPosition();
 
   // Smart text truncation with word boundary awareness
-  const getDisplayText = (text: string, maxLength: number = isMobile ? 35 : 50) => {
+  const getDisplayText = (text: string, maxLength: number = isMobile ? 30 : 45) => {
     if (text.length <= maxLength) return text;
     
     const truncated = text.substring(0, maxLength);
@@ -99,57 +99,72 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
         width: '100vw',
         height: '100vh',
       }}
+      onClick={(e) => e.stopPropagation()}
     >
       <Card
-        className={`absolute pointer-events-auto bg-white shadow-xl border border-gray-200 rounded-xl animate-in fade-in zoom-in-95 duration-300 ${
+        className={`absolute pointer-events-auto bg-white shadow-2xl border border-gray-300 rounded-xl animate-in fade-in zoom-in-95 duration-200 ${
           isMobile ? 'p-3' : 'p-4'
         }`}
         style={{
           left: safePosition.x,
           top: safePosition.y,
-          maxWidth: isMobile ? '320px' : '380px',
-          minWidth: isMobile ? '280px' : '320px',
+          maxWidth: isMobile ? '300px' : '360px',
+          minWidth: isMobile ? '260px' : '300px',
+          zIndex: 9999,
         }}
         role="dialog"
         aria-label="Text selection actions"
         onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="space-y-3">
-          {/* Enhanced text preview with better typography */}
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-3 border border-gray-200">
-            <div className={`text-gray-800 font-medium leading-relaxed ${isMobile ? 'text-sm' : 'text-base'}`}>
-              <span className="text-gray-500 text-xs font-normal">"</span>
+          {/* Enhanced text preview with better visual prominence */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
+            <div className={`text-gray-900 font-semibold leading-relaxed ${isMobile ? 'text-sm' : 'text-base'}`}>
+              <span className="text-blue-500 text-xs font-normal">"</span>
               {getDisplayText(selectedText)}
-              <span className="text-gray-500 text-xs font-normal">"</span>
+              <span className="text-blue-500 text-xs font-normal">"</span>
             </div>
           </div>
           
-          {/* Enhanced action buttons with vocabulary button */}
+          {/* Enhanced action buttons - more prominent and clearly clickable */}
           <div className="flex gap-2">
             <Button
               size="sm"
-              onClick={onCreateDictation}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-[1.02]"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onCreateDictation();
+              }}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 border-0 font-medium"
             >
               <Mic className="h-4 w-4 mr-2" />
-              <span className="text-sm font-medium">Dictation</span>
+              <span className="text-sm">Dictation</span>
             </Button>
             
             <Button
               size="sm"
-              onClick={onCreateBidirectional}
-              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-[1.02]"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onCreateBidirectional();
+              }}
+              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 border-0 font-medium"
             >
               <Brain className="h-4 w-4 mr-2" />
-              <span className="text-sm font-medium">Translation</span>
+              <span className="text-sm">Translation</span>
             </Button>
 
             {onCreateVocabulary && (
               <Button
                 size="sm"
-                onClick={onCreateVocabulary}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onCreateVocabulary();
+                }}
                 disabled={isGeneratingVocabulary || !canCreateVocabulary}
-                className="bg-green-600 hover:bg-green-700 text-white transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-[1.02] disabled:opacity-50"
+                className="bg-green-600 hover:bg-green-700 text-white transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 border-0 font-medium disabled:opacity-50 disabled:transform-none disabled:shadow-lg"
                 title={canCreateVocabulary ? "Add to vocabulary" : "Vocabulary limit reached"}
               >
                 {isGeneratingVocabulary ? (
@@ -197,12 +212,16 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
             </div>
           )}
 
-          {/* Enhanced close button with better accessibility */}
+          {/* Close button with better accessibility */}
           <div className="flex justify-center pt-1">
             <Button
               size="sm"
               variant="ghost"
-              onClick={onClose}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
               className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200 px-3 py-1 rounded-full"
               aria-label="Close selection menu"
             >
