@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise, ReadingExerciseProgress, CreateReadingExerciseRequest } from '@/types/reading';
 
@@ -27,7 +26,10 @@ export class ReadingExerciseService {
       .single();
 
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced'
+    };
   }
 
   async getReadingExercises(language?: string): Promise<ReadingExercise[]> {
@@ -47,7 +49,10 @@ export class ReadingExerciseService {
 
     const { data, error } = await query;
     if (error) throw error;
-    return data || [];
+    return (data || []).map(exercise => ({
+      ...exercise,
+      difficulty_level: exercise.difficulty_level as 'beginner' | 'intermediate' | 'advanced'
+    }));
   }
 
   async getReadingExercise(id: string): Promise<ReadingExercise> {
@@ -58,7 +63,10 @@ export class ReadingExerciseService {
       .single();
 
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced'
+    };
   }
 
   async updateProgress(exerciseId: string, sentenceIndex: number): Promise<void> {
