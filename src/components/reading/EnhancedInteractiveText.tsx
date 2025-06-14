@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -24,13 +23,17 @@ interface EnhancedInteractiveTextProps {
   onWordClick?: (word: string) => void;
   enableTooltips?: boolean;
   enableBidirectionalCreation?: boolean;
-  // New props for enhanced functionality
+  // Existing props
   enableTextSelection?: boolean;
   vocabularyIntegration?: boolean;
   enhancedHighlighting?: boolean;
   exerciseId?: string;
   onCreateDictation?: (selectedText: string) => void;
   onCreateBidirectional?: (selectedText: string) => void;
+  // New Phase 3 props
+  enableContextMenu?: boolean;
+  enableSelectionFeedback?: boolean;
+  enableSmartTextProcessing?: boolean;
 }
 
 export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = ({
@@ -40,13 +43,17 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
   onWordClick,
   enableTooltips = true,
   enableBidirectionalCreation = false,
-  // New props with defaults for backward compatibility
+  // Existing props with defaults for backward compatibility
   enableTextSelection = false,
   vocabularyIntegration = false,
   enhancedHighlighting = false,
   exerciseId,
   onCreateDictation,
-  onCreateBidirectional
+  onCreateBidirectional,
+  // New Phase 3 props with defaults
+  enableContextMenu = true,
+  enableSelectionFeedback = true,
+  enableSmartTextProcessing = true
 }) => {
   const [playingWord, setPlayingWord] = useState<string | null>(null);
   const [hoveredWord, setHoveredWord] = useState<string | null>(null);
@@ -97,7 +104,6 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
     if (onCreateDictation) {
       onCreateDictation(selectedText);
     } else {
-      // Default behavior - could create a dictation exercise
       toast.success(`Dictation exercise can be created for: "${selectedText}"`);
     }
   };
@@ -106,7 +112,6 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
     if (onCreateBidirectional) {
       onCreateBidirectional(selectedText);
     } else {
-      // Default behavior
       createBidirectionalExercise(selectedText);
     }
   };
@@ -138,7 +143,6 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
             <PopoverContent className="w-80 p-0 shadow-lg border-gray-200" side="top" sideOffset={8}>
               <Card className="border-0 shadow-none">
                 <div className="p-4 space-y-3">
-                  {/* Simple header with word and controls */}
                   <div className="flex items-center justify-between">
                     <h4 className="font-semibold text-lg text-gray-900">{wordInfo.word}</h4>
                     <div className="flex items-center gap-1">
@@ -219,12 +223,13 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
         enableVocabulary={vocabularyIntegration}
         enhancedHighlighting={enhancedHighlighting}
         vocabularyIntegration={vocabularyIntegration}
+        enableContextMenu={enableContextMenu}
+        enableSelectionFeedback={enableSelectionFeedback}
       >
         {textContent}
       </TextSelectionManager>
     );
   }
 
-  // Return the original component for backward compatibility
   return textContent;
 };

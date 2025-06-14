@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -30,7 +29,10 @@ interface ReadingFocusedModalProps {
   enableVocabularyIntegration?: boolean;
   enableEnhancedHighlighting?: boolean;
   enableFullTextAudio?: boolean;
-  enableWordSynchronization?: boolean; // New feature flag for Phase 2
+  enableWordSynchronization?: boolean;
+  enableContextMenu?: boolean;
+  enableSelectionFeedback?: boolean;
+  enableSmartTextProcessing?: boolean;
 }
 
 export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
@@ -43,7 +45,10 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   enableVocabularyIntegration = true,
   enableEnhancedHighlighting = true,
   enableFullTextAudio = true,
-  enableWordSynchronization = true // Default to true for Phase 2
+  enableWordSynchronization = true,
+  enableContextMenu = true,
+  enableSelectionFeedback = true,
+  enableSmartTextProcessing = true
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -186,6 +191,11 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                   {enableWordSynchronization && (
                     <Badge variant="outline" className="text-xs">
                       Word Sync
+                    </Badge>
+                  )}
+                  {enableContextMenu && (
+                    <Badge variant="outline" className="text-xs">
+                      Enhanced Selection
                     </Badge>
                   )}
                 </div>

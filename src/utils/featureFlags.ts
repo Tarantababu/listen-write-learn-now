@@ -1,4 +1,3 @@
-
 // Feature flag utilities for gradual rollout of enhanced reading features
 
 export interface ReadingFeatureFlags {
@@ -7,7 +6,10 @@ export interface ReadingFeatureFlags {
   enableEnhancedHighlighting: boolean;
   enableAdvancedFeatures: boolean;
   enableEnhancedModal: boolean;
-  enableWordSynchronization: boolean; // New flag for Phase 2
+  enableWordSynchronization: boolean;
+  enableContextMenu: boolean;
+  enableSelectionFeedback: boolean;
+  enableSmartTextProcessing: boolean;
 }
 
 // Default feature flags - all disabled for backward compatibility
@@ -18,6 +20,9 @@ export const defaultFeatureFlags: ReadingFeatureFlags = {
   enableAdvancedFeatures: false,
   enableEnhancedModal: false,
   enableWordSynchronization: false,
+  enableContextMenu: false,
+  enableSelectionFeedback: false,
+  enableSmartTextProcessing: false,
 };
 
 // Development feature flags - can be enabled for testing
@@ -27,7 +32,10 @@ export const developmentFeatureFlags: ReadingFeatureFlags = {
   enableEnhancedHighlighting: true,
   enableAdvancedFeatures: true,
   enableEnhancedModal: true,
-  enableWordSynchronization: true, // Enable word sync in development
+  enableWordSynchronization: true,
+  enableContextMenu: true,
+  enableSelectionFeedback: true,
+  enableSmartTextProcessing: true,
 };
 
 // Production rollout phases
@@ -38,6 +46,9 @@ export const productionPhase1: ReadingFeatureFlags = {
   enableAdvancedFeatures: true,
   enableEnhancedModal: false,
   enableWordSynchronization: false,
+  enableContextMenu: false,
+  enableSelectionFeedback: false,
+  enableSmartTextProcessing: false,
 };
 
 export const productionPhase2: ReadingFeatureFlags = {
@@ -46,7 +57,10 @@ export const productionPhase2: ReadingFeatureFlags = {
   enableEnhancedHighlighting: true,
   enableAdvancedFeatures: true,
   enableEnhancedModal: true,
-  enableWordSynchronization: true, // Enable word sync in phase 2
+  enableWordSynchronization: true,
+  enableContextMenu: false,
+  enableSelectionFeedback: false,
+  enableSmartTextProcessing: false,
 };
 
 export const productionPhase3: ReadingFeatureFlags = {
@@ -56,17 +70,17 @@ export const productionPhase3: ReadingFeatureFlags = {
   enableAdvancedFeatures: true,
   enableEnhancedModal: true,
   enableWordSynchronization: true,
+  enableContextMenu: true,
+  enableSelectionFeedback: true,
+  enableSmartTextProcessing: true,
 };
 
 // Utility function to get feature flags based on environment
 export const getReadingFeatureFlags = (): ReadingFeatureFlags => {
-  // In development, enable all features for testing
   if (import.meta.env.DEV) {
     return developmentFeatureFlags;
   }
   
-  // For production, start with default (all disabled) and gradually enable
-  // This can be controlled by environment variables or user settings
   const phase = import.meta.env.VITE_READING_FEATURE_PHASE || 'default';
   
   switch (phase) {

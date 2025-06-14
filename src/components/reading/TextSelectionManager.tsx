@@ -1,10 +1,13 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { SelectionPopup } from './SelectionPopup';
 import { TextHighlighter } from './TextHighlighter';
+import { TextSelectionContextMenu } from './TextSelectionContextMenu';
+import { SelectionFeedback } from './SelectionFeedback';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Language } from '@/types';
+import { analyzeTextSelection, cleanTextForExercise, TextSelectionInfo } from '@/utils/textSelection';
 
 interface VocabularyInfo {
   definition: string;
@@ -20,8 +23,10 @@ interface TextSelectionManagerProps {
   exerciseId?: string;
   exerciseLanguage?: Language;
   enableVocabulary?: boolean;
-  enhancedHighlighting?: boolean; // New prop for enhanced highlighting
-  vocabularyIntegration?: boolean; // New prop for vocabulary integration
+  enhancedHighlighting?: boolean;
+  vocabularyIntegration?: boolean;
+  enableContextMenu?: boolean; // New prop for context menu
+  enableSelectionFeedback?: boolean; // New prop for selection feedback
 }
 
 export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
@@ -32,8 +37,10 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   exerciseId,
   exerciseLanguage,
   enableVocabulary = false,
-  enhancedHighlighting = false, // Default to false for backward compatibility
-  vocabularyIntegration = false // Default to false for backward compatibility
+  enhancedHighlighting = false,
+  vocabularyIntegration = false,
+  enableContextMenu = true, // Default to true for Phase 3
+  enableSelectionFeedback = true // Default to true for Phase 3
 }) => {
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<Range | null>(null);
@@ -41,6 +48,8 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   const [showPopup, setShowPopup] = useState(false);
   const [vocabularyInfo, setVocabularyInfo] = useState<VocabularyInfo | null>(null);
   const [isGeneratingVocabulary, setIsGeneratingVocabulary] = useState(false);
+  const [selectionInfo, setSelectionInfo] = useState<TextSelectionInfo | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { addVocabularyItem, canCreateMore } = useVocabularyContext();
@@ -52,6 +61,8 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     setShowPopup(false);
     setVocabularyInfo(null);
     setIsGeneratingVocabulary(false);
+    setSelectionInfo(null);
+    setShowFeedback(false);
   }, []);
 
   const processSelection = useCallback(() => {
@@ -76,16 +87,21 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       const x = rect.left + rect.width / 2;
       const y = rect.top;
 
+      // Analyze the selection
+      const analysis = analyzeTextSelection(text);
+      
       setSelectedText(text);
       setSelectionRange(range.cloneRange());
       setSelectionPosition({ x, y });
+      setSelectionInfo(analysis);
       setShowPopup(true);
+      setShowFeedback(enableSelectionFeedback);
       setVocabularyInfo(null);
       setIsGeneratingVocabulary(false);
     } else {
       clearSelection();
     }
-  }, [disabled, clearSelection]);
+  }, [disabled, clearSelection, enableSelectionFeedback]);
 
   // Generate vocabulary info using existing VocabularyHighlighter functions
   const generateVocabularyInfo = async (word: string, language: Language) => {
@@ -182,7 +198,8 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     setIsGeneratingVocabulary(true);
     
     try {
-      const info = await generateVocabularyInfo(selectedText, exerciseLanguage);
+      const cleanedText = cleanTextForExercise(selectedText, 'vocabulary');
+      const info = await generateVocabularyInfo(cleanedText, exerciseLanguage);
       
       if (info) {
         console.log('Saving vocabulary item with audio URL:', info.audioUrl);
@@ -190,7 +207,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
         const isBidirectionalExercise = exerciseId?.startsWith('bidirectional-');
         
         await addVocabularyItem({
-          word: selectedText,
+          word: cleanedText,
           definition: info.definition,
           exampleSentence: info.exampleSentence,
           audioUrl: info.audioUrl,
@@ -267,14 +284,16 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
 
   const handleCreateDictation = useCallback(() => {
     if (selectedText) {
-      onCreateDictation(selectedText);
+      const cleanedText = cleanTextForExercise(selectedText, 'dictation');
+      onCreateDictation(cleanedText);
       clearSelection();
     }
   }, [selectedText, onCreateDictation, clearSelection]);
 
   const handleCreateBidirectional = useCallback(() => {
     if (selectedText) {
-      onCreateBidirectional(selectedText);
+      const cleanedText = cleanTextForExercise(selectedText, 'translation');
+      onCreateBidirectional(cleanedText);
       clearSelection();
     }
   }, [selectedText, onCreateBidirectional, clearSelection]);
@@ -282,7 +301,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
   // Determine which vocabulary features to show based on props
   const shouldShowVocabulary = vocabularyIntegration && (enableVocabulary || vocabularyIntegration);
 
-  return (
+  const content = (
     <div
       ref={containerRef}
       className="relative"
@@ -295,10 +314,21 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       <TextHighlighter
         selectedText={selectedText}
         selectionRange={selectionRange}
-        enhancedHighlighting={enhancedHighlighting} // Pass new prop
+        enhancedHighlighting={enhancedHighlighting}
       >
         {children}
       </TextHighlighter>
+      
+      {/* Selection feedback */}
+      {enableSelectionFeedback && selectionInfo && (
+        <SelectionFeedback
+          selectedText={selectedText}
+          wordCount={selectionInfo.wordCount}
+          isValidSelection={selectionInfo.isValidForDictation || selectionInfo.isValidForVocabulary}
+          position={selectionPosition}
+          visible={showFeedback}
+        />
+      )}
       
       {/* Portal-based popup */}
       {selectionPosition && (
@@ -317,4 +347,22 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
       )}
     </div>
   );
+
+  // Conditionally wrap with context menu
+  if (enableContextMenu && selectedText) {
+    return (
+      <TextSelectionContextMenu
+        selectedText={selectedText}
+        onCreateDictation={handleCreateDictation}
+        onCreateBidirectional={handleCreateBidirectional}
+        onCreateVocabulary={shouldShowVocabulary ? handleCreateVocabulary : undefined}
+        disabled={disabled}
+        enableVocabulary={shouldShowVocabulary}
+      >
+        {content}
+      </TextSelectionContextMenu>
+    );
+  }
+
+  return content;
 };
