@@ -880,10 +880,12 @@ export type Database = {
       reading_exercises: {
         Row: {
           archived: boolean | null
+          audio_generation_status: string | null
           audio_url: string | null
           content: Json
           created_at: string
           difficulty_level: string
+          full_text_audio_url: string | null
           grammar_focus: string | null
           id: string
           language: string
@@ -895,10 +897,12 @@ export type Database = {
         }
         Insert: {
           archived?: boolean | null
+          audio_generation_status?: string | null
           audio_url?: string | null
           content: Json
           created_at?: string
           difficulty_level: string
+          full_text_audio_url?: string | null
           grammar_focus?: string | null
           id?: string
           language: string
@@ -910,10 +914,12 @@ export type Database = {
         }
         Update: {
           archived?: boolean | null
+          audio_generation_status?: string | null
           audio_url?: string | null
           content?: Json
           created_at?: string
           difficulty_level?: string
+          full_text_audio_url?: string | null
           grammar_focus?: string | null
           id?: string
           language?: string

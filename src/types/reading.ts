@@ -17,6 +17,8 @@ export interface ReadingExercise {
     };
   };
   audio_url?: string;
+  full_text_audio_url?: string;
+  audio_generation_status?: 'pending' | 'generating' | 'completed' | 'failed';
   created_at: string;
   updated_at: string;
   archived: boolean;

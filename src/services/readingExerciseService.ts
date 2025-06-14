@@ -18,6 +18,7 @@ export class ReadingExerciseService {
       content = await this.generateReadingContent(request);
     }
     
+    // Create the reading exercise with pending audio status
     const { data, error } = await supabase
       .from('reading_exercises')
       .insert({
@@ -28,12 +29,17 @@ export class ReadingExerciseService {
         target_length: request.target_length,
         grammar_focus: request.grammar_focus,
         topic: request.topic,
-        content: content
+        content: content,
+        audio_generation_status: 'pending'
       })
       .select()
       .single();
 
     if (error) throw error;
+
+    // Start background audio generation
+    this.generateAudioForExercise(data.id, content, request.language);
+
     return {
       ...data,
       difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
@@ -118,7 +124,6 @@ export class ReadingExerciseService {
   }
 
   private async processCustomText(request: CreateReadingExerciseRequest) {
-    // For custom text, we still use AI to analyze the text and break it into sentences
     const { data, error } = await supabase.functions.invoke('generate-reading-content', {
       body: {
         customText: request.customText,
@@ -146,6 +151,52 @@ export class ReadingExerciseService {
 
     if (error) throw error;
     return data;
+  }
+
+  private async generateAudioForExercise(exerciseId: string, content: any, language: string) {
+    try {
+      // Update status to generating
+      await supabase
+        .from('reading_exercises')
+        .update({ audio_generation_status: 'generating' })
+        .eq('id', exerciseId);
+
+      // Generate audio for full text
+      const fullText = content.sentences.map((s: any) => s.text).join(' ');
+      const fullAudioUrl = await this.generateAudio(fullText, language);
+
+      // Generate audio for individual sentences
+      const sentenceAudioPromises = content.sentences.map(async (sentence: any) => {
+        const audioUrl = await this.generateAudio(sentence.text, language);
+        return { ...sentence, audio_url: audioUrl };
+      });
+
+      const sentencesWithAudio = await Promise.all(sentenceAudioPromises);
+
+      // Update the exercise with audio URLs
+      const updatedContent = {
+        ...content,
+        sentences: sentencesWithAudio
+      };
+
+      await supabase
+        .from('reading_exercises')
+        .update({ 
+          content: updatedContent,
+          full_text_audio_url: fullAudioUrl,
+          audio_generation_status: 'completed'
+        })
+        .eq('id', exerciseId);
+
+    } catch (error) {
+      console.error('Error generating audio for exercise:', error);
+      
+      // Update status to failed
+      await supabase
+        .from('reading_exercises')
+        .update({ audio_generation_status: 'failed' })
+        .eq('id', exerciseId);
+    }
   }
 
   async generateAudio(text: string, language: string): Promise<string> {
@@ -187,6 +238,11 @@ export class ReadingExerciseService {
       console.error('Error generating audio:', error);
       throw error;
     }
+  }
+
+  async retryAudioGeneration(exerciseId: string): Promise<void> {
+    const exercise = await this.getReadingExercise(exerciseId);
+    await this.generateAudioForExercise(exerciseId, exercise.content, exercise.language);
   }
 }
 

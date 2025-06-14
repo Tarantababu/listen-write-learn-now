@@ -74,42 +74,42 @@ const LENGTH_OPTIONS = [
     value: 300,
     label: 'Short Read',
     subtitle: '~300 words',
-    description: 'Quick daily practice session',
+    description: 'Quick daily practice session (2-3 min)',
     icon: Zap
   },
   {
     value: 700,
     label: 'Medium Read',
     subtitle: '~700 words',
-    description: 'Standard focused learning',
+    description: 'Standard focused learning (4-5 min)',
     icon: Target
   },
   {
     value: 1200,
     label: 'Extended Read',
     subtitle: '~1,200 words',
-    description: 'Deep dive into topics',
+    description: 'Deep dive into topics (7-8 min)',
     icon: BookOpen
   },
   {
     value: 2000,
     label: 'Long Read',
     subtitle: '~2,000 words',
-    description: 'Comprehensive exploration',
+    description: 'Comprehensive exploration (10-12 min)',
     icon: Book
   },
   {
     value: 3000,
     label: 'Article Length',
     subtitle: '~3,000 words',
-    description: 'Full article experience',
+    description: 'Full article experience (15-18 min)',
     icon: FileText
   },
   {
     value: 4000,
     label: 'Essay Length',
     subtitle: '~4,000 words',
-    description: 'Complete story or essay',
+    description: 'Complete story or essay (20-25 min)',
     icon: GraduationCap
   }
 ];
@@ -158,7 +158,7 @@ const CUSTOM_CREATION_STEPS: ProgressStep[] = [
     label: 'Audio Creation',
     description: 'Generating high-quality pronunciation audio',
     status: 'pending',
-    estimatedTime: 6
+    estimatedTime: 8
   },
   {
     id: 'finalization',
@@ -311,7 +311,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         });
       }
       
-      toast.success('Reading exercise created successfully!');
+      toast.success('Reading exercise created successfully! Audio is being generated in the background.');
       onSuccess();
       handleClose();
     } catch (error) {
