@@ -58,4 +58,5 @@ export interface CreateReadingExerciseRequest {
   target_length: number;
   grammar_focus?: string;
   topic: string;
+  customText?: string;
 }

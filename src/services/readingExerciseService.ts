@@ -8,8 +8,15 @@ export class ReadingExerciseService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Generate content using OpenAI
-    const content = await this.generateReadingContent(request);
+    let content;
+    
+    if (request.customText) {
+      // Process custom text - create content structure from user's text
+      content = await this.processCustomText(request);
+    } else {
+      // Generate content using OpenAI for AI mode
+      content = await this.generateReadingContent(request);
+    }
     
     const { data, error } = await supabase
       .from('reading_exercises')
@@ -108,6 +115,22 @@ export class ReadingExerciseService {
       .eq('id', id);
 
     if (error) throw error;
+  }
+
+  private async processCustomText(request: CreateReadingExerciseRequest) {
+    // For custom text, we still use AI to analyze the text and break it into sentences
+    const { data, error } = await supabase.functions.invoke('generate-reading-content', {
+      body: {
+        customText: request.customText,
+        language: request.language,
+        difficulty_level: request.difficulty_level,
+        grammar_focus: request.grammar_focus,
+        isCustomText: true
+      }
+    });
+
+    if (error) throw error;
+    return data;
   }
 
   private async generateReadingContent(request: CreateReadingExerciseRequest) {

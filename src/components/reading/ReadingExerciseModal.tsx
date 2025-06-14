@@ -24,6 +24,8 @@ import { readingExerciseService } from '@/services/readingExerciseService';
 import { TopicMandalaSelector } from './TopicMandalaSelector';
 import { GrammarFocusSelector } from './GrammarFocusSelector';
 import { ReadingExerciseCreationProgress } from './ReadingExerciseCreationProgress';
+import { ContentSourceSelector } from './ContentSourceSelector';
+import { CustomTextInput } from './CustomTextInput';
 import { toast } from 'sonner';
 
 interface ReadingExerciseModalProps {
@@ -95,7 +97,7 @@ const LENGTH_OPTIONS = [
   }
 ];
 
-const CREATION_STEPS: ProgressStep[] = [
+const AI_CREATION_STEPS: ProgressStep[] = [
   {
     id: 'content-generation',
     label: 'Content Generation',
@@ -126,6 +128,30 @@ const CREATION_STEPS: ProgressStep[] = [
   }
 ];
 
+const CUSTOM_CREATION_STEPS: ProgressStep[] = [
+  {
+    id: 'text-processing',
+    label: 'Text Analysis',
+    description: 'Processing your text and analyzing vocabulary',
+    status: 'pending',
+    estimatedTime: 4
+  },
+  {
+    id: 'audio-generation',
+    label: 'Audio Creation',
+    description: 'Generating high-quality pronunciation audio',
+    status: 'pending',
+    estimatedTime: 6
+  },
+  {
+    id: 'finalization',
+    label: 'Finalizing',
+    description: 'Preparing your exercise for practice',
+    status: 'pending',
+    estimatedTime: 2
+  }
+];
+
 export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   isOpen,
   onOpenChange,
@@ -134,21 +160,40 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const { settings } = useUserSettingsContext();
   const [currentTab, setCurrentTab] = useState('setup');
   const [isCreating, setIsCreating] = useState(false);
-  const [creationSteps, setCreationSteps] = useState<ProgressStep[]>(CREATION_STEPS);
+  const [creationSteps, setCreationSteps] = useState<ProgressStep[]>(AI_CREATION_STEPS);
   const [currentStep, setCurrentStep] = useState(0);
   const [overallProgress, setOverallProgress] = useState(0);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(18);
 
   const [formData, setFormData] = useState({
+    contentSource: 'ai' as 'ai' | 'custom',
     title: '',
     selectedTopic: '',
+    customText: '',
     difficulty_level: 'beginner' as const,
     target_length: 120,
     selectedGrammar: [] as string[]
   });
 
-  const canProceed = formData.selectedTopic && formData.title.trim();
-  const totalEstimatedTime = CREATION_STEPS.reduce((sum, step) => sum + (step.estimatedTime || 0), 0);
+  // Update validation logic based on content source
+  const canProceed = formData.contentSource === 'ai' 
+    ? formData.selectedTopic && formData.title.trim()
+    : formData.customText.trim() && formData.customText.length <= 4000 && formData.title.trim();
+
+  // Calculate total estimated time based on content source
+  const currentCreationSteps = formData.contentSource === 'ai' ? AI_CREATION_STEPS : CUSTOM_CREATION_STEPS;
+  const totalEstimatedTime = currentCreationSteps.reduce((sum, step) => sum + (step.estimatedTime || 0), 0);
+
+  const handleContentSourceSelect = (source: 'ai' | 'custom') => {
+    setFormData(prev => ({ 
+      ...prev, 
+      contentSource: source,
+      // Reset relevant fields when switching
+      title: source === 'custom' ? 'My Custom Reading' : prev.title,
+      selectedTopic: source === 'custom' ? '' : prev.selectedTopic,
+      customText: source === 'ai' ? '' : prev.customText
+    }));
+  };
 
   const handleTopicSelect = (topicId: string) => {
     setFormData(prev => ({ 
@@ -184,7 +229,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   };
 
   const simulateCreationProgress = async () => {
-    const steps = [...CREATION_STEPS];
+    const steps = [...currentCreationSteps];
     let stepIndex = 0;
     
     for (const step of steps) {
@@ -217,19 +262,37 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     setIsCreating(true);
     setCurrentTab('progress');
     
+    // Set the appropriate creation steps based on content source
+    const stepsToUse = formData.contentSource === 'ai' ? AI_CREATION_STEPS : CUSTOM_CREATION_STEPS;
+    setCreationSteps(stepsToUse);
+    setEstimatedTimeRemaining(stepsToUse.reduce((sum, step) => sum + step.estimatedTime, 0));
+    
     try {
       // Start progress simulation
       simulateCreationProgress();
       
-      // Create the actual exercise
-      await readingExerciseService.createReadingExercise({
-        title: formData.title,
-        topic: getTopicDisplayName(formData.selectedTopic),
-        difficulty_level: formData.difficulty_level,
-        target_length: formData.target_length,
-        grammar_focus: formData.selectedGrammar.join(', '),
-        language: settings.selectedLanguage
-      });
+      // Create the actual exercise with different parameters based on content source
+      if (formData.contentSource === 'ai') {
+        await readingExerciseService.createReadingExercise({
+          title: formData.title,
+          topic: getTopicDisplayName(formData.selectedTopic),
+          difficulty_level: formData.difficulty_level,
+          target_length: formData.target_length,
+          grammar_focus: formData.selectedGrammar.join(', '),
+          language: settings.selectedLanguage
+        });
+      } else {
+        // For custom text, we'll need to update the service to handle custom content
+        await readingExerciseService.createReadingExercise({
+          title: formData.title,
+          topic: 'Custom Content',
+          difficulty_level: formData.difficulty_level,
+          target_length: formData.customText.length,
+          grammar_focus: formData.selectedGrammar.join(', '),
+          language: settings.selectedLanguage,
+          customText: formData.customText
+        });
+      }
       
       toast.success('Reading exercise created successfully!');
       onSuccess();
@@ -249,13 +312,15 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     setTimeout(() => {
       setCurrentTab('setup');
       setIsCreating(false);
-      setCreationSteps(CREATION_STEPS);
+      setCreationSteps(AI_CREATION_STEPS);
       setCurrentStep(0);
       setOverallProgress(0);
       setEstimatedTimeRemaining(18);
       setFormData({
+        contentSource: 'ai',
         title: '',
         selectedTopic: '',
+        customText: '',
         difficulty_level: 'beginner',
         target_length: 120,
         selectedGrammar: []
@@ -266,7 +331,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const handleCancel = () => {
     setIsCreating(false);
     setCurrentTab('setup');
-    setCreationSteps(CREATION_STEPS);
+    setCreationSteps(AI_CREATION_STEPS);
     setCurrentStep(0);
     setOverallProgress(0);
     toast.info('Exercise creation cancelled');
@@ -303,101 +368,63 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
             </TabsList>
 
             <TabsContent value="setup" className="space-y-6">
-              {/* Topic Selection */}
+              {/* Content Source Selection */}
               <div className="space-y-4">
-                <TopicMandalaSelector
-                  selectedTopic={formData.selectedTopic}
-                  onTopicSelect={handleTopicSelect}
+                <ContentSourceSelector
+                  selectedSource={formData.contentSource}
+                  onSourceSelect={handleContentSourceSelect}
                 />
               </div>
 
               <Separator />
 
-              {/* Exercise Details */}
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Exercise Title</Label>
-                    <Input
-                      id="title"
-                      value={formData.title}
-                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="e.g., A Day in Tokyo"
-                      className="text-base"
+              {/* Conditional Content Based on Source */}
+              {formData.contentSource === 'ai' ? (
+                <div className="space-y-6">
+                  {/* Topic Selection for AI */}
+                  <div className="space-y-4">
+                    <TopicMandalaSelector
+                      selectedTopic={formData.selectedTopic}
+                      onTopicSelect={handleTopicSelect}
                     />
                   </div>
 
-                  <div className="space-y-3">
-                    <Label>Difficulty Level</Label>
-                    <div className="grid gap-2">
-                      {DIFFICULTY_OPTIONS.map((option) => (
-                        <Card
-                          key={option.value}
-                          className={`
-                            cursor-pointer transition-all
-                            ${formData.difficulty_level === option.value 
-                              ? 'ring-2 ring-primary shadow-md' 
-                              : 'hover:shadow-sm'
-                            }
-                          `}
-                          onClick={() => setFormData(prev => ({ 
-                            ...prev, 
-                            difficulty_level: option.value as any 
-                          }))}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-medium">{option.label}</h4>
-                                  <Badge variant="outline" className="text-xs">
-                                    {option.subtitle}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {option.description}
-                                </p>
-                              </div>
-                              <div className={`
-                                w-4 h-4 rounded-full border-2 transition-all
-                                ${formData.difficulty_level === option.value
-                                  ? 'bg-primary border-primary'
-                                  : 'border-muted-foreground/30'
-                                }
-                              `} />
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                  <Separator />
 
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    <Label>Reading Length</Label>
-                    <div className="grid gap-2">
-                      {LENGTH_OPTIONS.map((option) => {
-                        const IconComponent = option.icon;
-                        return (
-                          <Card
-                            key={option.value}
-                            className={`
-                              cursor-pointer transition-all
-                              ${formData.target_length === option.value 
-                                ? 'ring-2 ring-primary shadow-md' 
-                                : 'hover:shadow-sm'
-                              }
-                            `}
-                            onClick={() => setFormData(prev => ({ 
-                              ...prev, 
-                              target_length: option.value 
-                            }))}
-                          >
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <IconComponent className="h-5 w-5 text-muted-foreground" />
+                  {/* Exercise Details for AI */}
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="title">Exercise Title</Label>
+                        <Input
+                          id="title"
+                          value={formData.title}
+                          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="e.g., A Day in Tokyo"
+                          className="text-base"
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <Label>Difficulty Level</Label>
+                        <div className="grid gap-2">
+                          {DIFFICULTY_OPTIONS.map((option) => (
+                            <Card
+                              key={option.value}
+                              className={`
+                                cursor-pointer transition-all
+                                ${formData.difficulty_level === option.value 
+                                  ? 'ring-2 ring-primary shadow-md' 
+                                  : 'hover:shadow-sm'
+                                }
+                              `}
+                              onClick={() => setFormData(prev => ({ 
+                                ...prev, 
+                                difficulty_level: option.value as any 
+                              }))}
+                            >
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
                                   <div>
                                     <div className="flex items-center gap-2">
                                       <h4 className="font-medium">{option.label}</h4>
@@ -405,31 +432,155 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                                         {option.subtitle}
                                       </Badge>
                                     </div>
-                                    <p className="text-sm text-muted-foreground">
+                                    <p className="text-sm text-muted-foreground mt-1">
                                       {option.description}
                                     </p>
                                   </div>
+                                  <div className={`
+                                    w-4 h-4 rounded-full border-2 transition-all
+                                    ${formData.difficulty_level === option.value
+                                      ? 'bg-primary border-primary'
+                                      : 'border-muted-foreground/30'
+                                    }
+                                  `} />
                                 </div>
-                                <div className={`
-                                  w-4 h-4 rounded-full border-2 transition-all
-                                  ${formData.target_length === option.value
-                                    ? 'bg-primary border-primary'
-                                    : 'border-muted-foreground/30'
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-3">
+                        <Label>Reading Length</Label>
+                        <div className="grid gap-2">
+                          {LENGTH_OPTIONS.map((option) => {
+                            const IconComponent = option.icon;
+                            return (
+                              <Card
+                                key={option.value}
+                                className={`
+                                  cursor-pointer transition-all
+                                  ${formData.target_length === option.value 
+                                    ? 'ring-2 ring-primary shadow-md' 
+                                    : 'hover:shadow-sm'
                                   }
-                                `} />
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
+                                `}
+                                onClick={() => setFormData(prev => ({ 
+                                  ...prev, 
+                                  target_length: option.value 
+                                }))}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <IconComponent className="h-5 w-5 text-muted-foreground" />
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <h4 className="font-medium">{option.label}</h4>
+                                          <Badge variant="outline" className="text-xs">
+                                            {option.subtitle}
+                                          </Badge>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
+                                          {option.description}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className={`
+                                      w-4 h-4 rounded-full border-2 transition-all
+                                      ${formData.target_length === option.value
+                                        ? 'bg-primary border-primary'
+                                        : 'border-muted-foreground/30'
+                                      }
+                                    `} />
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Custom Text Input */}
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="title">Exercise Title</Label>
+                        <Input
+                          id="title"
+                          value={formData.title}
+                          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="e.g., My Custom Reading"
+                          className="text-base"
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <Label>Difficulty Level</Label>
+                        <div className="grid gap-2">
+                          {DIFFICULTY_OPTIONS.map((option) => (
+                            <Card
+                              key={option.value}
+                              className={`
+                                cursor-pointer transition-all
+                                ${formData.difficulty_level === option.value 
+                                  ? 'ring-2 ring-primary shadow-md' 
+                                  : 'hover:shadow-sm'
+                                }
+                              `}
+                              onClick={() => setFormData(prev => ({ 
+                                ...prev, 
+                                difficulty_level: option.value as any 
+                              }))}
+                            >
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <h4 className="font-medium">{option.label}</h4>
+                                      <Badge variant="outline" className="text-xs">
+                                        {option.subtitle}
+                                      </Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                      {option.description}
+                                    </p>
+                                  </div>
+                                  <div className={`
+                                    w-4 h-4 rounded-full border-2 transition-all
+                                    ${formData.difficulty_level === option.value
+                                      ? 'bg-primary border-primary'
+                                      : 'border-muted-foreground/30'
+                                    }
+                                  `} />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <CustomTextInput
+                        value={formData.customText}
+                        onChange={(value) => setFormData(prev => ({ ...prev, customText: value }))}
+                        maxLength={4000}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <Separator />
 
-              {/* Grammar Focus */}
+              {/* Grammar Focus (shown for both modes) */}
               <GrammarFocusSelector
                 selectedGrammar={formData.selectedGrammar}
                 onGrammarToggle={handleGrammarToggle}
