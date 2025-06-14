@@ -1,18 +1,29 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Mic, Brain, X } from 'lucide-react';
+import { Mic, Brain, X, Plus, Loader2, Volume2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import AudioPlayer from '@/components/AudioPlayer';
+
+interface VocabularyInfo {
+  definition: string;
+  exampleSentence: string;
+  audioUrl?: string;
+}
 
 interface SelectionPopupProps {
   position: { x: number; y: number };
   selectedText: string;
   onCreateDictation: () => void;
   onCreateBidirectional: () => void;
+  onCreateVocabulary?: () => void;
   onClose: () => void;
   isVisible: boolean;
+  vocabularyInfo?: VocabularyInfo | null;
+  isGeneratingVocabulary?: boolean;
+  canCreateVocabulary?: boolean;
 }
 
 export const SelectionPopup: React.FC<SelectionPopupProps> = ({
@@ -20,8 +31,12 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   selectedText,
   onCreateDictation,
   onCreateBidirectional,
+  onCreateVocabulary,
   onClose,
-  isVisible
+  isVisible,
+  vocabularyInfo,
+  isGeneratingVocabulary = false,
+  canCreateVocabulary = true
 }) => {
   const isMobile = useIsMobile();
 
@@ -29,8 +44,8 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
 
   // Enhanced positioning with viewport boundary detection
   const getOptimalPosition = () => {
-    const popupWidth = isMobile ? 280 : 320;
-    const popupHeight = isMobile ? 160 : 180;
+    const popupWidth = isMobile ? 320 : 380;
+    const popupHeight = vocabularyInfo ? (isMobile ? 300 : 350) : (isMobile ? 160 : 180);
     const margin = 16;
     
     let x = position.x;
@@ -92,8 +107,8 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
         style={{
           left: safePosition.x,
           top: safePosition.y,
-          maxWidth: isMobile ? '280px' : '320px',
-          minWidth: isMobile ? '240px' : '280px',
+          maxWidth: isMobile ? '320px' : '380px',
+          minWidth: isMobile ? '280px' : '320px',
         }}
         role="dialog"
         aria-label="Text selection actions"
@@ -109,7 +124,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
             </div>
           </div>
           
-          {/* Enhanced action buttons with better visual hierarchy */}
+          {/* Enhanced action buttons with vocabulary button */}
           <div className="flex gap-2">
             <Button
               size="sm"
@@ -128,7 +143,59 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
               <Brain className="h-4 w-4 mr-2" />
               <span className="text-sm font-medium">Translation</span>
             </Button>
+
+            {onCreateVocabulary && (
+              <Button
+                size="sm"
+                onClick={onCreateVocabulary}
+                disabled={isGeneratingVocabulary || !canCreateVocabulary}
+                className="bg-green-600 hover:bg-green-700 text-white transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-[1.02] disabled:opacity-50"
+                title={canCreateVocabulary ? "Add to vocabulary" : "Vocabulary limit reached"}
+              >
+                {isGeneratingVocabulary ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+              </Button>
+            )}
           </div>
+
+          {/* Vocabulary information display */}
+          {vocabularyInfo && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2">
+              <div>
+                <h4 className="text-sm font-medium text-green-800 mb-1">Definition:</h4>
+                <p className="text-sm text-green-700">{vocabularyInfo.definition}</p>
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-medium text-green-800 mb-1">Example:</h4>
+                <p className="text-sm italic text-green-700 mb-2">"{vocabularyInfo.exampleSentence}"</p>
+                
+                {vocabularyInfo.audioUrl ? (
+                  <div className="mt-2">
+                    <AudioPlayer audioUrl={vocabularyInfo.audioUrl} />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-xs text-green-600">
+                    <Volume2 className="h-3 w-3" />
+                    <span>Audio not available</span>
+                  </div>
+                )}
+              </div>
+              
+              <p className="text-xs text-green-600">✓ Added to your vocabulary!</p>
+            </div>
+          )}
+
+          {/* Loading state for vocabulary generation */}
+          {isGeneratingVocabulary && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+              <span className="text-sm text-blue-700">Generating vocabulary information...</span>
+            </div>
+          )}
 
           {/* Enhanced close button with better accessibility */}
           <div className="flex justify-center pt-1">
