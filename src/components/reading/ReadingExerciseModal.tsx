@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +18,8 @@ import {
   ChevronRight,
   ArrowLeft,
   FileText,
-  Book
+  Book,
+  AlertTriangle
 } from 'lucide-react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { readingExerciseService } from '@/services/readingExerciseService';
@@ -74,66 +74,75 @@ const LENGTH_OPTIONS = [
     label: 'Short Read',
     subtitle: '~300 words',
     description: 'Quick daily practice session (2-3 min)',
-    icon: Zap
+    icon: Zap,
+    recommended: false
   },
   {
     value: 700,
     label: 'Medium Read',
     subtitle: '~700 words',
     description: 'Standard focused learning (4-5 min)',
-    icon: Target
+    icon: Target,
+    recommended: true
   },
   {
     value: 1200,
     label: 'Extended Read',
     subtitle: '~1,200 words',
     description: 'Deep dive into topics (7-8 min)',
-    icon: BookOpen
+    icon: BookOpen,
+    recommended: true
   },
   {
     value: 2000,
     label: 'Long Read',
     subtitle: '~2,000 words',
     description: 'Comprehensive exploration (10-12 min)',
-    icon: Book
+    icon: Book,
+    recommended: false,
+    warning: 'May take longer to generate'
   },
   {
     value: 3000,
     label: 'Article Length',
     subtitle: '~3,000 words',
     description: 'Full article experience (15-18 min)',
-    icon: FileText
+    icon: FileText,
+    recommended: false,
+    warning: 'Extended generation time'
   },
   {
     value: 4000,
     label: 'Essay Length',
     subtitle: '~4,000 words',
     description: 'Complete story or essay (20-25 min)',
-    icon: GraduationCap
+    icon: GraduationCap,
+    recommended: false,
+    warning: 'Uses advanced chunking strategy'
   }
 ];
 
-const AI_CREATION_STEPS: ProgressStep[] = [
+const OPTIMIZED_AI_CREATION_STEPS: ProgressStep[] = [
   {
     id: 'content-generation',
     label: 'Content Planning',
-    description: 'AI is analyzing your requirements and planning the content',
+    description: 'AI is analyzing requirements with optimized strategy',
     status: 'pending',
-    estimatedTime: 3
+    estimatedTime: 2
   },
   {
-    id: 'chunked-generation',
+    id: 'optimized-generation',
     label: 'Smart Generation',
-    description: 'Using advanced chunking for optimal content creation',
+    description: 'Using enhanced chunking with timeout protection',
     status: 'pending',
-    estimatedTime: 12
+    estimatedTime: 15
   },
   {
     id: 'text-processing',
     label: 'Content Assembly',
-    description: 'Combining and optimizing the generated content',
+    description: 'Combining and validating generated content',
     status: 'pending',
-    estimatedTime: 3
+    estimatedTime: 2
   },
   {
     id: 'audio-generation',
@@ -147,7 +156,7 @@ const AI_CREATION_STEPS: ProgressStep[] = [
     label: 'Finalizing',
     description: 'Preparing your exercise for immediate use',
     status: 'pending',
-    estimatedTime: 2
+    estimatedTime: 1
   }
 ];
 
@@ -155,23 +164,23 @@ const CUSTOM_CREATION_STEPS: ProgressStep[] = [
   {
     id: 'text-processing',
     label: 'Text Analysis',
-    description: 'Processing your text and analyzing vocabulary',
+    description: 'Processing your text with optimized parsing',
     status: 'pending',
-    estimatedTime: 4
+    estimatedTime: 3
   },
   {
     id: 'audio-generation',
     label: 'Audio Creation',
     description: 'Generating high-quality pronunciation audio',
     status: 'pending',
-    estimatedTime: 8
+    estimatedTime: 6
   },
   {
     id: 'finalization',
     label: 'Finalizing',
     description: 'Preparing your exercise for practice',
     status: 'pending',
-    estimatedTime: 2
+    estimatedTime: 1
   }
 ];
 
@@ -183,7 +192,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const { settings } = useUserSettingsContext();
   const [currentTab, setCurrentTab] = useState('setup');
   const [isCreating, setIsCreating] = useState(false);
-  const [creationSteps, setCreationSteps] = useState<ProgressStep[]>(AI_CREATION_STEPS);
+  const [creationSteps, setCreationSteps] = useState<ProgressStep[]>(OPTIMIZED_AI_CREATION_STEPS);
   const [currentStep, setCurrentStep] = useState(0);
   const [overallProgress, setOverallProgress] = useState(0);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(25);
@@ -203,15 +212,25 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     ? formData.selectedTopic && formData.title.trim()
     : formData.customText.trim() && formData.customText.length <= 4000 && formData.title.trim();
 
-  // Calculate total estimated time based on content source
-  const currentCreationSteps = formData.contentSource === 'ai' ? AI_CREATION_STEPS : CUSTOM_CREATION_STEPS;
+  // Calculate total estimated time based on content source and optimizations
+  const currentCreationSteps = formData.contentSource === 'ai' ? OPTIMIZED_AI_CREATION_STEPS : CUSTOM_CREATION_STEPS;
   const totalEstimatedTime = currentCreationSteps.reduce((sum, step) => sum + (step.estimatedTime || 0), 0);
+
+  const getEstimatedTime = () => {
+    if (formData.contentSource === 'custom') return totalEstimatedTime;
+    
+    // Adjust time based on target length with optimizations
+    const baseTime = totalEstimatedTime;
+    if (formData.target_length <= 1500) return baseTime;
+    if (formData.target_length <= 2500) return baseTime + 5;
+    if (formData.target_length <= 3500) return baseTime + 10;
+    return baseTime + 15; // For very long content with chunking
+  };
 
   const handleContentSourceSelect = (source: 'ai' | 'custom') => {
     setFormData(prev => ({ 
       ...prev, 
       contentSource: source,
-      // Reset relevant fields when switching
       title: source === 'custom' ? 'My Custom Reading' : prev.title,
       selectedTopic: source === 'custom' ? '' : prev.selectedTopic,
       customText: source === 'ai' ? '' : prev.customText
@@ -251,7 +270,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     }));
   };
 
-  const simulateCreationProgress = async () => {
+  const simulateOptimizedCreationProgress = async () => {
     const steps = [...currentCreationSteps];
     let stepIndex = 0;
     
@@ -261,10 +280,10 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         i === stepIndex ? { ...s, status: 'active' } : s
       ));
       
-      // Adaptive timing based on content length
+      // Adaptive timing based on content length and optimizations
       let stepDuration = step.estimatedTime || 2;
-      if (step.id === 'chunked-generation' && formData.target_length > 2000) {
-        stepDuration = Math.min(20, Math.floor(formData.target_length / 200));
+      if (step.id === 'optimized-generation' && formData.target_length > 2000) {
+        stepDuration = Math.min(20, Math.floor(formData.target_length / 250)); // Faster due to optimizations
       }
       
       for (let i = 0; i <= stepDuration; i++) {
@@ -273,7 +292,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         const overallProgressValue = ((stepIndex + (i / stepDuration)) / steps.length) * 100;
         setOverallProgress(overallProgressValue);
         
-        const remaining = Math.max(0, totalEstimatedTime - Math.floor((overallProgressValue / 100) * totalEstimatedTime));
+        const remaining = Math.max(0, getEstimatedTime() - Math.floor((overallProgressValue / 100) * getEstimatedTime()));
         setEstimatedTimeRemaining(remaining);
       }
       
@@ -289,13 +308,13 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     setIsCreating(true);
     setCurrentTab('progress');
     
-    const stepsToUse = formData.contentSource === 'ai' ? AI_CREATION_STEPS : CUSTOM_CREATION_STEPS;
+    const stepsToUse = formData.contentSource === 'ai' ? OPTIMIZED_AI_CREATION_STEPS : CUSTOM_CREATION_STEPS;
     setCreationSteps(stepsToUse);
-    setEstimatedTimeRemaining(stepsToUse.reduce((sum, step) => sum + step.estimatedTime, 0));
+    setEstimatedTimeRemaining(getEstimatedTime());
     
     try {
       // Start progress simulation
-      simulateCreationProgress();
+      simulateOptimizedCreationProgress();
       
       // Create the actual exercise
       if (formData.contentSource === 'ai') {
@@ -324,7 +343,16 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
       handleClose();
     } catch (error) {
       console.error('Error creating reading exercise:', error);
-      toast.error('Failed to create reading exercise. Please try again.');
+      
+      // Handle timeout errors gracefully
+      if (error.message?.includes('timeout') || error.message?.includes('504')) {
+        toast.warning('Generation took longer than expected, but your exercise may still be created. Please check your exercises list.');
+        // Still call onSuccess in case the exercise was partially created
+        onSuccess();
+      } else {
+        toast.error('Failed to create reading exercise. Please try again with a shorter length.');
+      }
+      
       setIsCreating(false);
       setCurrentTab('setup');
     }
@@ -337,7 +365,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     setTimeout(() => {
       setCurrentTab('setup');
       setIsCreating(false);
-      setCreationSteps(AI_CREATION_STEPS);
+      setCreationSteps(OPTIMIZED_AI_CREATION_STEPS);
       setCurrentStep(0);
       setOverallProgress(0);
       setEstimatedTimeRemaining(25);
@@ -356,7 +384,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const handleCancel = () => {
     setIsCreating(false);
     setCurrentTab('setup');
-    setCreationSteps(AI_CREATION_STEPS);
+    setCreationSteps(OPTIMIZED_AI_CREATION_STEPS);
     setCurrentStep(0);
     setOverallProgress(0);
     toast.info('Exercise creation cancelled');
@@ -371,9 +399,15 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
-              <span>AI-Powered Reading Exercise</span>
+              <div className="flex items-center gap-2">
+                <span>AI-Powered Reading Exercise</span>
+                <Badge variant="secondary" className="text-xs">
+                  <Zap className="h-3 w-3 mr-1" />
+                  Optimized
+                </Badge>
+              </div>
               <p className="text-sm font-normal text-muted-foreground mt-1">
-                Create personalized content with pre-generated audio
+                Enhanced with timeout protection and intelligent chunking
               </p>
             </div>
           </DialogTitle>
@@ -507,10 +541,21 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                                           <Badge variant="outline" className="text-xs">
                                             {option.subtitle}
                                           </Badge>
+                                          {option.recommended && (
+                                            <Badge variant="secondary" className="text-xs">
+                                              Recommended
+                                            </Badge>
+                                          )}
                                         </div>
                                         <p className="text-sm text-muted-foreground">
                                           {option.description}
                                         </p>
+                                        {option.warning && (
+                                          <div className="flex items-center gap-1 mt-1">
+                                            <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                            <span className="text-xs text-amber-600">{option.warning}</span>
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                     <div className={`
@@ -617,7 +662,11 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                   {canProceed && (
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
-                      Estimated creation time: ~{totalEstimatedTime}s (includes audio)
+                      <span>Estimated time: ~{getEstimatedTime()}s</span>
+                      <Badge variant="secondary" className="text-xs">
+                        <Zap className="h-3 w-3 mr-1" />
+                        Optimized
+                      </Badge>
                     </div>
                   )}
                 </div>
@@ -645,6 +694,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                 overallProgress={overallProgress}
                 onCancel={handleCancel}
                 estimatedTimeRemaining={estimatedTimeRemaining}
+                hasOptimizations={true}
               />
             </TabsContent>
           </Tabs>

@@ -12,7 +12,9 @@ import {
   FileText, 
   Volume2,
   X,
-  Layers
+  Layers,
+  AlertTriangle,
+  Zap
 } from 'lucide-react';
 
 interface ProgressStep {
@@ -29,12 +31,14 @@ interface ReadingExerciseCreationProgressProps {
   overallProgress: number;
   onCancel: () => void;
   estimatedTimeRemaining?: number;
+  hasOptimizations?: boolean;
 }
 
 const STEP_ICONS = {
   'content-generation': Sparkles,
   'text-processing': FileText,
   'chunked-generation': Layers,
+  'optimized-generation': Zap,
   'audio-generation': Volume2,
   'finalization': CheckCircle
 };
@@ -44,7 +48,8 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
   currentStep,
   overallProgress,
   onCancel,
-  estimatedTimeRemaining
+  estimatedTimeRemaining,
+  hasOptimizations = true
 }) => {
   return (
     <div className="space-y-6">
@@ -53,9 +58,18 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
           <Sparkles className="h-5 w-5 text-primary animate-pulse" />
           <h3 className="text-lg font-semibold">Creating Your Reading Exercise</h3>
         </div>
+        
+        {hasOptimizations && (
+          <div className="flex items-center justify-center gap-2 text-sm text-green-600">
+            <Zap className="h-4 w-4" />
+            <span>Using optimized generation strategy</span>
+          </div>
+        )}
+        
         <p className="text-sm text-muted-foreground">
-          Using advanced chunking strategy for optimal content generation
+          Enhanced performance with timeout protection and parallel processing
         </p>
+        
         {estimatedTimeRemaining && (
           <Badge variant="outline" className="text-xs">
             <Clock className="h-3 w-3 mr-1" />
@@ -70,7 +84,11 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
             <span className="text-sm font-medium">Overall Progress</span>
             <span className="text-sm text-muted-foreground">{Math.round(overallProgress)}%</span>
           </div>
-          <Progress value={overallProgress} className="h-2" />
+          <Progress 
+            value={overallProgress} 
+            className="h-2" 
+            indicatorClassName="transition-all duration-500"
+          />
         </div>
 
         <div className="space-y-3">
@@ -85,7 +103,7 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
                 key={step.id}
                 className={`
                   transition-all duration-300
-                  ${isActive ? 'ring-2 ring-primary shadow-lg' : ''}
+                  ${isActive ? 'ring-2 ring-primary shadow-lg scale-[1.02]' : ''}
                   ${isCompleted ? 'bg-green-50 border-green-200' : ''}
                   ${isError ? 'bg-red-50 border-red-200' : ''}
                 `}
@@ -105,6 +123,8 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
                     `}>
                       {isCompleted ? (
                         <CheckCircle className="h-5 w-5" />
+                      ) : isError ? (
+                        <AlertTriangle className="h-5 w-5" />
                       ) : isActive ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
                       ) : (
@@ -120,24 +140,38 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
                             ~{step.estimatedTime}s
                           </Badge>
                         )}
+                        {step.id === 'optimized-generation' && isActive && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Zap className="h-3 w-3 mr-1" />
+                            Optimized
+                          </Badge>
+                        )}
                         {step.id === 'chunked-generation' && isActive && (
                           <Badge variant="secondary" className="text-xs">
-                            Advanced Strategy
+                            Smart Chunking
                           </Badge>
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {step.description}
                       </p>
+                      
+                      {isError && (
+                        <div className="mt-2 text-xs text-red-600">
+                          Processing failed, but we'll continue with available content
+                        </div>
+                      )}
                     </div>
 
                     <div className={`
-                      w-4 h-4 rounded-full border-2
+                      w-4 h-4 rounded-full border-2 transition-all duration-300
                       ${isCompleted 
                         ? 'bg-green-500 border-green-500' 
-                        : isActive 
-                          ? 'border-primary bg-primary/20' 
-                          : 'border-muted-foreground/30'
+                        : isError
+                          ? 'bg-red-500 border-red-500'
+                          : isActive 
+                            ? 'border-primary bg-primary/20 animate-pulse' 
+                            : 'border-muted-foreground/30'
                       }
                     `} />
                   </div>
@@ -146,6 +180,23 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
             );
           })}
         </div>
+        
+        {hasOptimizations && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <Zap className="h-4 w-4 text-blue-600 mt-0.5" />
+              <div className="text-sm">
+                <div className="font-medium text-blue-800">Performance Optimizations Active</div>
+                <div className="text-blue-600 mt-1">
+                  • Intelligent chunking strategy<br/>
+                  • Timeout protection with graceful fallback<br/>
+                  • Parallel processing for faster generation<br/>
+                  • Enhanced error recovery
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-center">

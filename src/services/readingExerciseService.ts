@@ -7,12 +7,26 @@ export class ReadingExerciseService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    console.log(`[EXERCISE SERVICE] Creating exercise with target length: ${request.target_length}`);
+
     let content;
     
-    if (request.customText) {
-      content = await this.processCustomText(request);
-    } else {
-      content = await this.generateReadingContent(request);
+    try {
+      if (request.customText) {
+        content = await this.processCustomTextWithTimeout(request);
+      } else {
+        content = await this.generateReadingContentWithTimeout(request);
+      }
+    } catch (error) {
+      console.error('[EXERCISE SERVICE] Content generation failed:', error);
+      
+      // Handle timeout errors gracefully
+      if (error.message?.includes('timeout') || error.message?.includes('504')) {
+        console.warn('[EXERCISE SERVICE] Using fallback content due to timeout');
+        content = this.createFallbackContent(request);
+      } else {
+        throw error;
+      }
     }
     
     // Generate audio in background for better performance
@@ -32,7 +46,12 @@ export class ReadingExerciseService {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[EXERCISE SERVICE] Database insert failed:', error);
+      throw error;
+    }
+
+    console.log(`[EXERCISE SERVICE] Exercise created successfully: ${data.id}`);
 
     // Start background audio generation
     this.generateAudioInBackground(data.id, content, request.language);
@@ -45,38 +64,81 @@ export class ReadingExerciseService {
     };
   }
 
-  private async generateAudioInBackground(exerciseId: string, content: any, language: string) {
+  private async generateReadingContentWithTimeout(request: CreateReadingExerciseRequest) {
+    console.log(`[CONTENT GENERATION] Starting with timeout protection`);
+    
+    const timeoutDuration = 50000; // 50 seconds
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Content generation timeout')), timeoutDuration)
+    );
+
+    const generationPromise = this.generateReadingContent(request);
+
     try {
-      console.log('Starting background audio generation for exercise:', exerciseId);
-      
-      // Update status to generating
-      await supabase
-        .from('reading_exercises')
-        .update({ audio_generation_status: 'generating' })
-        .eq('id', exerciseId);
-
-      const contentWithAudio = await this.generateAudioForContent(content, language);
-      
-      // Update exercise with completed audio
-      await supabase
-        .from('reading_exercises')
-        .update({ 
-          content: contentWithAudio,
-          full_text_audio_url: contentWithAudio.full_text_audio_url,
-          audio_generation_status: 'completed'
-        })
-        .eq('id', exerciseId);
-
-      console.log('Background audio generation completed for exercise:', exerciseId);
+      const content = await Promise.race([generationPromise, timeoutPromise]);
+      console.log(`[CONTENT GENERATION] Completed successfully`);
+      return content;
     } catch (error) {
-      console.error('Background audio generation failed:', error);
-      
-      // Mark as failed but don't throw - exercise is still usable
-      await supabase
-        .from('reading_exercises')
-        .update({ audio_generation_status: 'failed' })
-        .eq('id', exerciseId);
+      console.error(`[CONTENT GENERATION] Failed:`, error);
+      throw error;
     }
+  }
+
+  private async processCustomTextWithTimeout(request: CreateReadingExerciseRequest) {
+    console.log(`[CUSTOM TEXT] Processing with timeout protection`);
+    
+    const timeoutDuration = 30000; // 30 seconds for custom text
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Custom text processing timeout')), timeoutDuration)
+    );
+
+    const processingPromise = this.processCustomText(request);
+
+    try {
+      const content = await Promise.race([processingPromise, timeoutPromise]);
+      console.log(`[CUSTOM TEXT] Processed successfully`);
+      return content;
+    } catch (error) {
+      console.error(`[CUSTOM TEXT] Processing failed:`, error);
+      throw error;
+    }
+  }
+
+  private createFallbackContent(request: CreateReadingExerciseRequest) {
+    console.log('[FALLBACK CONTENT] Creating fallback content structure');
+    
+    const sentences = [];
+    const targetLength = request.target_length || 500;
+    const wordsPerSentence = Math.max(8, Math.floor(targetLength / 8));
+    const numSentences = Math.ceil(targetLength / wordsPerSentence);
+    
+    for (let i = 0; i < Math.min(numSentences, 10); i++) {
+      sentences.push({
+        id: `fallback-sentence-${i + 1}`,
+        text: `This is a sample sentence in ${request.language} for your ${request.difficulty_level} level reading exercise. Content generation experienced a timeout, but you can still practice with this exercise.`,
+        analysis: {
+          words: [
+            {
+              word: 'sample',
+              definition: 'An example or specimen',
+              partOfSpeech: 'noun',
+              difficulty: 'easy'
+            }
+          ],
+          grammar: ['present tense', 'article usage'],
+          translation: 'This is a sample sentence for practice. Content generation timed out.'
+        }
+      });
+    }
+    
+    return {
+      sentences,
+      analysis: {
+        wordCount: sentences.length * wordsPerSentence,
+        readingTime: Math.ceil((sentences.length * wordsPerSentence) / 200),
+        grammarPoints: ['basic sentence structure', 'timeout fallback content']
+      }
+    };
   }
 
   async getReadingExercises(language?: string): Promise<ReadingExercise[]> {
@@ -198,10 +260,8 @@ export class ReadingExerciseService {
     try {
       console.log('Generating audio for reading exercise content');
       
-      // Generate audio for full text
       const fullText = content.sentences.map((s: any) => s.text).join(' ');
       
-      // Use batching for sentence audio to avoid overwhelming the API
       const batchSize = 5;
       const sentenceBatches = [];
       
@@ -212,14 +272,12 @@ export class ReadingExerciseService {
       let fullAudioUrl = null;
       const sentencesWithAudio = [...content.sentences];
 
-      // Generate full text audio first (priority)
       try {
         fullAudioUrl = await this.generateAudio(fullText, language);
       } catch (error) {
         console.warn('Full text audio generation failed:', error);
       }
 
-      // Generate sentence audio in batches
       for (const batch of sentenceBatches) {
         const batchPromises = batch.map(async (sentence: any, localIndex: number) => {
           const globalIndex = sentenceBatches.indexOf(batch) * batchSize + localIndex;
@@ -234,7 +292,6 @@ export class ReadingExerciseService {
 
         await Promise.allSettled(batchPromises);
         
-        // Small delay between batches
         if (sentenceBatches.indexOf(batch) < sentenceBatches.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
@@ -249,7 +306,6 @@ export class ReadingExerciseService {
     } catch (error) {
       console.error('Error generating audio during exercise creation:', error);
       
-      // Return content without audio if generation fails
       return {
         ...content,
         sentences: content.sentences.map((sentence: any) => ({
