@@ -15,14 +15,14 @@ import {
   Brain,
   RotateCcw,
   Mic,
-  Edit,
-  SkipForward,
-  Rewind
+  SkipForward
 } from 'lucide-react';
 import { ReadingExercise, ReadingSentence } from '@/types/reading';
 import { Language } from '@/types';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { EnhancedInteractiveText } from './EnhancedInteractiveText';
+import { AllTextView } from './AllTextView';
+import { ViewToggle, ReadingView } from './ViewToggle';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { toast } from 'sonner';
 
@@ -38,6 +38,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
   onOpenChange
 }) => {
   const { addExercise } = useExerciseContext();
+  const [currentView, setCurrentView] = useState<ReadingView>('sentence');
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -103,6 +104,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     setShowAnalysis(false);
     setCurrentWordIndex(0);
     setHighlightedWordIndex(-1);
+    setCurrentView('sentence');
   };
 
   const playAudio = async () => {
@@ -133,7 +135,6 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     }
   };
 
-  // Enhanced word-by-word playback with synchronized highlighting
   const playWordByWord = async () => {
     if (!currentSentence || !audioEnabled) return;
     
@@ -156,7 +157,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
           audio.play();
         });
         
-        await new Promise(resolve => setTimeout(resolve, 300)); // Pause between words
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     } catch (error) {
       console.error('Error in word-by-word playback:', error);
@@ -197,7 +198,6 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     }
   };
 
-  // Enhanced text rendering with synchronized highlighting
   const renderInteractiveText = () => {
     if (!currentSentence) return null;
 
@@ -226,7 +226,6 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
     );
   };
 
-  // Handle audio ended event
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
@@ -267,177 +266,189 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Progress Bar */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Sentence {currentSentenceIndex + 1} of {exercise.content.sentences.length}</span>
-              <span>{Math.round(progress)}% complete</span>
-            </div>
-            <Progress value={progress} className="h-2" />
-          </div>
+          {/* View Toggle */}
+          <ViewToggle currentView={currentView} onViewChange={setCurrentView} />
 
-          {/* Current Sentence */}
-          <Card>
-            <CardContent className="p-6 space-y-4">
-              <div className="space-y-4">
-                <EnhancedInteractiveText
-                  text={currentSentence?.text || ''}
-                  words={currentSentence?.analysis?.words}
-                  language={exercise.language}
-                  onWordClick={(word) => console.log('Word clicked:', word)}
-                  enableTooltips={true}
-                  enableBidirectionalCreation={true}
-                />
-                
-                {isWordByWordMode && (
-                  <div className="text-sm text-muted-foreground bg-blue-50 p-2 rounded">
-                    Word-by-word playback active... ({currentWordIndex + 1} of {currentSentence?.text.split(/\s+/).length})
-                  </div>
-                )}
-              </div>
-
-              {/* Enhanced Audio Controls */}
-              <div className="flex items-center gap-2 pt-2 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={playAudio}
-                  disabled={isPlaying || !audioEnabled}
-                >
-                  {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  <span className="ml-2">Play Sentence</span>
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={playWordByWord}
-                  disabled={isWordByWordMode || !audioEnabled}
-                >
-                  <SkipForward className="h-4 w-4" />
-                  <span className="ml-2">Word by Word</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAnalysis(!showAnalysis)}
-                >
-                  <Brain className="h-4 w-4 mr-2" />
-                  {showAnalysis ? 'Hide' : 'Show'} Analysis
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={createDictationExercise}
-                >
-                  <Mic className="h-4 w-4 mr-2" />
-                  Create as Dictation
-                </Button>
-              </div>
-
-              {/* Enhanced Analysis Panel */}
-              {showAnalysis && currentSentence?.analysis && (
-                <div className="space-y-4 border-t pt-4">
-                  {/* Translation */}
-                  {currentSentence.analysis.translation && (
-                    <div>
-                      <h4 className="font-semibold text-sm mb-2">Translation:</h4>
-                      <p className="text-muted-foreground italic">
-                        {currentSentence.analysis.translation}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Word Analysis */}
-                  {currentSentence.analysis.words && currentSentence.analysis.words.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-sm mb-3">Word Analysis:</h4>
-                      <div className="grid gap-2">
-                        {currentSentence.analysis.words.map((word, index) => (
-                          <div key={index} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                            <Badge
-                              variant="outline"
-                              className={`${getDifficultyColor(word.difficulty || 'easy')} text-xs`}
-                            >
-                              {word.word}
-                            </Badge>
-                            <div className="flex-1 space-y-1">
-                              <p className="text-sm font-medium">{word.definition}</p>
-                              {word.partOfSpeech && (
-                                <p className="text-xs text-muted-foreground">
-                                  {word.partOfSpeech}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Grammar Points */}
-                  {currentSentence.analysis.grammar && currentSentence.analysis.grammar.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-sm mb-2">Grammar Points:</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {currentSentence.analysis.grammar.map((point, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {point}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+          {currentView === 'sentence' ? (
+            <>
+              {/* Progress Bar - Only show in sentence view */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Sentence {currentSentenceIndex + 1} of {exercise.content.sentences.length}</span>
+                  <span>{Math.round(progress)}% complete</span>
                 </div>
+                <Progress value={progress} className="h-2" />
+              </div>
+
+              {/* Current Sentence */}
+              <Card>
+                <CardContent className="p-6 space-y-4">
+                  <div className="space-y-4">
+                    <EnhancedInteractiveText
+                      text={currentSentence?.text || ''}
+                      words={currentSentence?.analysis?.words}
+                      language={exercise.language}
+                      onWordClick={(word) => console.log('Word clicked:', word)}
+                      enableTooltips={true}
+                      enableBidirectionalCreation={true}
+                    />
+                    
+                    {isWordByWordMode && (
+                      <div className="text-sm text-muted-foreground bg-blue-50 p-2 rounded">
+                        Word-by-word playback active... ({currentWordIndex + 1} of {currentSentence?.text.split(/\s+/).length})
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Audio Controls */}
+                  <div className="flex items-center gap-2 pt-2 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={playAudio}
+                      disabled={isPlaying || !audioEnabled}
+                    >
+                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      <span className="ml-2">Play Sentence</span>
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={playWordByWord}
+                      disabled={isWordByWordMode || !audioEnabled}
+                    >
+                      <SkipForward className="h-4 w-4" />
+                      <span className="ml-2">Word by Word</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAnalysis(!showAnalysis)}
+                    >
+                      <Brain className="h-4 w-4 mr-2" />
+                      {showAnalysis ? 'Hide' : 'Show'} Analysis
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={createDictationExercise}
+                    >
+                      <Mic className="h-4 w-4 mr-2" />
+                      Create as Dictation
+                    </Button>
+                  </div>
+
+                  {/* Analysis Panel */}
+                  {showAnalysis && currentSentence?.analysis && (
+                    <div className="space-y-4 border-t pt-4">
+                      {/* ... keep existing code (translation, word analysis, grammar points) */}
+                      {currentSentence.analysis.translation && (
+                        <div>
+                          <h4 className="font-semibold text-sm mb-2">Translation:</h4>
+                          <p className="text-muted-foreground italic">
+                            {currentSentence.analysis.translation}
+                          </p>
+                        </div>
+                      )}
+
+                      {currentSentence.analysis.words && currentSentence.analysis.words.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold text-sm mb-3">Word Analysis:</h4>
+                          <div className="grid gap-2">
+                            {currentSentence.analysis.words.map((word, index) => (
+                              <div key={index} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                                <Badge
+                                  variant="outline"
+                                  className={`${getDifficultyColor(word.difficulty || 'easy')} text-xs`}
+                                >
+                                  {word.word}
+                                </Badge>
+                                <div className="flex-1 space-y-1">
+                                  <p className="text-sm font-medium">{word.definition}</p>
+                                  {word.partOfSpeech && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {word.partOfSpeech}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {currentSentence.analysis.grammar && currentSentence.analysis.grammar.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold text-sm mb-2">Grammar Points:</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {currentSentence.analysis.grammar.map((point, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {point}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Navigation Controls */}
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  onClick={restartExercise}
+                  className="flex items-center gap-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Restart
+                </Button>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={previousSentence}
+                    disabled={currentSentenceIndex === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  
+                  <Button
+                    onClick={nextSentence}
+                    disabled={currentSentenceIndex >= exercise.content.sentences.length - 1}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Exercise Complete */}
+              {currentSentenceIndex >= exercise.content.sentences.length - 1 && (
+                <Card className="border-green-200 bg-green-50">
+                  <CardContent className="p-4 text-center">
+                    <h3 className="font-semibold text-green-800 mb-2">
+                      🎉 Exercise Complete!
+                    </h3>
+                    <p className="text-green-700 text-sm">
+                      Great job! You've completed this reading exercise.
+                    </p>
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
-
-          {/* Navigation Controls */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={restartExercise}
-              className="flex items-center gap-2"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Restart
-            </Button>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={previousSentence}
-                disabled={currentSentenceIndex === 0}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </Button>
-              
-              <Button
-                onClick={nextSentence}
-                disabled={currentSentenceIndex >= exercise.content.sentences.length - 1}
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Exercise Complete */}
-          {currentSentenceIndex >= exercise.content.sentences.length - 1 && (
-            <Card className="border-green-200 bg-green-50">
-              <CardContent className="p-4 text-center">
-                <h3 className="font-semibold text-green-800 mb-2">
-                  🎉 Exercise Complete!
-                </h3>
-                <p className="text-green-700 text-sm">
-                  Great job! You've completed this reading exercise.
-                </p>
-              </CardContent>
-            </Card>
+            </>
+          ) : (
+            /* All Text View */
+            <AllTextView
+              exercise={exercise}
+              audioEnabled={audioEnabled}
+              onCreateDictation={createDictationExercise}
+            />
           )}
         </div>
 
