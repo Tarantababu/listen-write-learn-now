@@ -66,8 +66,19 @@ async function generateContentInChunks(topic: string, language: string, difficul
   const chunks = [];
   let totalWordCount = 0;
   
-  // Generate story outline first
-  const outline = await generateStoryOutline(topic, language, difficulty_level, target_length, numChunks, grammar_focus);
+  // Generate story outline first with fallback
+  let outline;
+  try {
+    outline = await generateStoryOutline(topic, language, difficulty_level, target_length, numChunks, grammar_focus);
+  } catch (error) {
+    console.warn('Story outline generation failed, using fallback approach:', error);
+    // Fallback: create a simple outline
+    outline = {
+      sections: Array.from({ length: numChunks }, (_, i) => `${topic} - Part ${i + 1} of ${numChunks}`),
+      characters: ['main character'],
+      setting: `story about ${topic}`
+    };
+  }
   
   for (let i = 0; i < numChunks; i++) {
     const chunkTopic = outline.sections[i] || `${topic} - Part ${i + 1}`;
@@ -124,8 +135,33 @@ Return ONLY a JSON object in this format:
   "setting": "where the story takes place"
 }`;
 
-  const response = await callOpenAI(prompt, 800);
-  return JSON.parse(response);
+  try {
+    // callOpenAI already returns parsed JSON, so no need to JSON.parse again
+    const outline = await callOpenAI(prompt, 800);
+    
+    // Validate the outline structure
+    if (!outline || typeof outline !== 'object') {
+      throw new Error('Invalid outline format: not an object');
+    }
+    
+    if (!outline.sections || !Array.isArray(outline.sections) || outline.sections.length === 0) {
+      throw new Error('Invalid outline format: missing or empty sections array');
+    }
+    
+    // Ensure we have the right number of sections
+    if (outline.sections.length < numChunks) {
+      console.warn(`Outline has ${outline.sections.length} sections, expected ${numChunks}. Padding with generic sections.`);
+      while (outline.sections.length < numChunks) {
+        outline.sections.push(`${topic} - Additional section ${outline.sections.length + 1}`);
+      }
+    }
+    
+    console.log(`Generated outline with ${outline.sections.length} sections`);
+    return outline;
+  } catch (error) {
+    console.error('Error generating story outline:', error);
+    throw error;
+  }
 }
 
 async function generateSingleChunk(
