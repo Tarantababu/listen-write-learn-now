@@ -6,7 +6,7 @@ import { Volume2, Plus } from 'lucide-react';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { toast } from 'sonner';
-import { TextSelectionManager } from './TextSelectionManager';
+import { SimplifiedTextSelectionManager } from './SimplifiedTextSelectionManager';
 import { Language } from '@/types';
 
 interface Word {
@@ -113,105 +113,116 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
   };
 
   const renderInteractiveText = () => {
+    // For pure text with overlays, we need to render the text as a single block
+    // and let the overlay system handle word highlighting
+    if (enableTextSelection) {
+      return (
+        <div className="leading-relaxed text-lg text-gray-800">
+          {text}
+        </div>
+      );
+    }
+
+    // For non-selection mode, render with interactive word tooltips
     const words = text.split(/(\s+)/);
     
-    return words.map((word, index) => {
-      if (/^\s+$/.test(word)) {
-        return <span key={index}>{word}</span>;
-      }
+    return (
+      <div className="leading-relaxed text-lg text-gray-800">
+        {words.map((word, index) => {
+          if (/^\s+$/.test(word)) {
+            return <span key={index}>{word}</span>;
+          }
 
-      const wordInfo = getWordInfo(word);
-      
-      if (wordInfo && enableTooltips) {
-        return (
-          <Popover key={index}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                className="inline-flex items-center h-auto p-0.5 font-normal text-base leading-relaxed text-gray-800 hover:bg-gray-50 hover:text-gray-800 border-b border-transparent hover:border-gray-200 transition-colors duration-300"
-                onMouseEnter={() => setHoveredWord(word)}
-                onMouseLeave={() => setHoveredWord(null)}
-                onClick={() => onWordClick?.(word)}
-              >
-                {word}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 shadow-lg border-gray-200" side="top" sideOffset={8}>
-              <Card className="border-0 shadow-none">
-                <div className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-lg text-gray-900">{wordInfo.word}</h4>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => playWordAudio(wordInfo.word)}
-                        disabled={playingWord === wordInfo.word}
-                        className="h-8 w-8 p-0 hover:bg-gray-100 text-gray-600 transition-colors duration-200"
-                      >
-                        <Volume2 className="h-4 w-4" />
-                      </Button>
-                      {enableBidirectionalCreation && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => createBidirectionalExercise(wordInfo.word, wordInfo.definition)}
-                          title="Create translation exercise"
-                          className="h-8 w-8 p-0 hover:bg-gray-100 text-gray-600 transition-colors duration-200"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
+          const wordInfo = getWordInfo(word);
+          
+          if (wordInfo && enableTooltips) {
+            return (
+              <Popover key={index}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="inline-flex items-center h-auto p-0.5 font-normal text-base leading-relaxed text-gray-800 hover:bg-gray-50 hover:text-gray-800 border-b border-transparent hover:border-gray-200 transition-colors duration-300"
+                    onMouseEnter={() => setHoveredWord(word)}
+                    onMouseLeave={() => setHoveredWord(null)}
+                    onClick={() => onWordClick?.(word)}
+                  >
+                    {word}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 shadow-lg border-gray-200" side="top" sideOffset={8}>
+                  <Card className="border-0 shadow-none">
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-lg text-gray-900">{wordInfo.word}</h4>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => playWordAudio(wordInfo.word)}
+                            disabled={playingWord === wordInfo.word}
+                            className="h-8 w-8 p-0 hover:bg-gray-100 text-gray-600 transition-colors duration-200"
+                          >
+                            <Volume2 className="h-4 w-4" />
+                          </Button>
+                          {enableBidirectionalCreation && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => createBidirectionalExercise(wordInfo.word, wordInfo.definition)}
+                              title="Create translation exercise"
+                              className="h-8 w-8 p-0 hover:bg-gray-100 text-gray-600 transition-colors duration-200"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {wordInfo.partOfSpeech && (
+                        <div className="text-sm text-gray-600 italic">{wordInfo.partOfSpeech}</div>
                       )}
-                    </div>
-                  </div>
-                  
-                  {wordInfo.partOfSpeech && (
-                    <div className="text-sm text-gray-600 italic">{wordInfo.partOfSpeech}</div>
-                  )}
-                  
-                  {wordInfo.definition && (
-                    <div className="bg-gray-50 rounded-md p-3 border border-gray-200">
-                      <p className="text-sm text-gray-800 leading-relaxed">
-                        <span className="font-medium text-gray-900">Definition:</span> {wordInfo.definition}
-                      </p>
-                    </div>
-                  )}
-                  
-                  <div className="pt-2 border-t border-gray-100">
-                    <div className="text-xs text-gray-500 flex items-center gap-4">
-                      <span className="flex items-center gap-1">
-                        <Volume2 className="h-3 w-3" />
-                        Click to hear
-                      </span>
-                      {enableBidirectionalCreation && (
-                        <span className="flex items-center gap-1">
-                          <Plus className="h-3 w-3" />
-                          + for exercise
-                        </span>
+                      
+                      {wordInfo.definition && (
+                        <div className="bg-gray-50 rounded-md p-3 border border-gray-200">
+                          <p className="text-sm text-gray-800 leading-relaxed">
+                            <span className="font-medium text-gray-900">Definition:</span> {wordInfo.definition}
+                          </p>
+                        </div>
                       )}
+                      
+                      <div className="pt-2 border-t border-gray-100">
+                        <div className="text-xs text-gray-500 flex items-center gap-4">
+                          <span className="flex items-center gap-1">
+                            <Volume2 className="h-3 w-3" />
+                            Click to hear
+                          </span>
+                          {enableBidirectionalCreation && (
+                            <span className="flex items-center gap-1">
+                              <Plus className="h-3 w-3" />
+                              + for exercise
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </Card>
-            </PopoverContent>
-          </Popover>
-        );
-      }
+                  </Card>
+                </PopoverContent>
+              </Popover>
+            );
+          }
 
-      return <span key={index} className="text-base leading-relaxed text-gray-800">{word}</span>;
-    });
+          return <span key={index} className="text-base leading-relaxed text-gray-800">{word}</span>;
+        })}
+      </div>
+    );
   };
 
-  const textContent = (
-    <div className="leading-relaxed text-lg text-gray-800">
-      {renderInteractiveText()}
-    </div>
-  );
+  const textContent = renderInteractiveText();
 
-  // Conditionally wrap with TextSelectionManager if text selection is enabled
+  // Conditionally wrap with SimplifiedTextSelectionManager if text selection is enabled
   if (enableTextSelection) {
     return (
-      <TextSelectionManager
+      <SimplifiedTextSelectionManager
         onCreateDictation={handleCreateDictation}
         onCreateBidirectional={handleCreateBidirectional}
         exerciseId={exerciseId}
@@ -222,7 +233,7 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
         enableContextMenu={enableContextMenu}
       >
         {textContent}
-      </TextSelectionManager>
+      </SimplifiedTextSelectionManager>
     );
   }
 
