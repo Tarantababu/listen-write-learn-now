@@ -6,19 +6,15 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
-  Play, 
-  Pause, 
-  Volume2, 
-  VolumeX, 
-  Settings, 
   BookOpen,
   Mic,
-  Plus,
-  SkipBack,
-  SkipForward
+  Plus
 } from 'lucide-react';
 import { ReadingExercise } from '@/types/reading';
 import { EnhancedInteractiveText } from './EnhancedInteractiveText';
+import { AudioWordSynchronizer } from './AudioWordSynchronizer';
+import { SynchronizedText } from './SynchronizedText';
+import { AdvancedAudioControls } from './AdvancedAudioControls';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { toast } from 'sonner';
@@ -34,6 +30,7 @@ interface ReadingFocusedModalProps {
   enableVocabularyIntegration?: boolean;
   enableEnhancedHighlighting?: boolean;
   enableFullTextAudio?: boolean;
+  enableWordSynchronization?: boolean; // New feature flag for Phase 2
 }
 
 export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
@@ -45,7 +42,8 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   enableTextSelection = true,
   enableVocabularyIntegration = true,
   enableEnhancedHighlighting = true,
-  enableFullTextAudio = true
+  enableFullTextAudio = true,
+  enableWordSynchronization = true // Default to true for Phase 2
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -54,8 +52,9 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   const [audioSpeed, setAudioSpeed] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string>('');
+  const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1);
   
-  const audioRef = useRef<HTMLAudioElement>(null);
   const isMobile = useIsMobile();
 
   // Generate full-text audio
@@ -65,12 +64,8 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     try {
       setIsGeneratingAudio(true);
       const fullText = exercise.content.sentences.map(s => s.text).join(' ');
-      const audioUrl = await readingExerciseService.generateAudio(fullText, exercise.language);
-      
-      if (audioRef.current) {
-        audioRef.current.src = audioUrl;
-        audioRef.current.load();
-      }
+      const generatedAudioUrl = await readingExerciseService.generateAudio(fullText, exercise.language);
+      setAudioUrl(generatedAudioUrl);
     } catch (error) {
       console.error('Error generating full-text audio:', error);
       toast.error('Failed to generate audio');
@@ -86,36 +81,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     }
   }, [exercise, isOpen, enableFullTextAudio]);
 
-  // Audio event handlers
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handleLoadedMetadata = () => {
-      setAudioDuration(audio.duration);
-    };
-
-    const handleTimeUpdate = () => {
-      setCurrentPosition(audio.currentTime);
-    };
-
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentPosition(0);
-    };
-
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('ended', handleEnded);
-
-    return () => {
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  }, []);
-
-  const togglePlayPause = async () => {
+  const togglePlayPause = async (audioRef: React.RefObject<HTMLAudioElement>) => {
     if (!audioRef.current || !audioEnabled) return;
 
     try {
@@ -132,27 +98,48 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     }
   };
 
-  const skipBackward = () => {
+  const skipBackward = (audioRef: React.RefObject<HTMLAudioElement>) => {
     if (!audioRef.current) return;
     audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
   };
 
-  const skipForward = () => {
+  const skipForward = (audioRef: React.RefObject<HTMLAudioElement>) => {
     if (!audioRef.current) return;
     audioRef.current.currentTime = Math.min(audioDuration, audioRef.current.currentTime + 10);
   };
 
-  const changeSpeed = (newSpeed: number) => {
-    setAudioSpeed(newSpeed);
-    if (audioRef.current) {
-      audioRef.current.playbackRate = newSpeed;
-    }
+  const restart = (audioRef: React.RefObject<HTMLAudioElement>) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = 0;
+    setCurrentPosition(0);
+    setHighlightedWordIndex(-1);
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const seekTo = (audioRef: React.RefObject<HTMLAudioElement>, time: number) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = time;
+  };
+
+  const changeSpeed = (newSpeed: number) => {
+    setAudioSpeed(newSpeed);
+  };
+
+  const handleWordHighlight = (wordIndex: number) => {
+    setHighlightedWordIndex(wordIndex);
+  };
+
+  const handleTimeUpdate = (currentTime: number) => {
+    setCurrentPosition(currentTime);
+  };
+
+  const handleLoadedMetadata = (duration: number) => {
+    setAudioDuration(duration);
+  };
+
+  const handleEnded = () => {
+    setIsPlaying(false);
+    setCurrentPosition(0);
+    setHighlightedWordIndex(-1);
   };
 
   const handleCreateDictation = (selectedText: string) => {
@@ -174,6 +161,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   if (!exercise) return null;
 
   const fullText = exercise.content.sentences.map(s => s.text).join(' ');
+  const totalWords = fullText.split(/\s+/).length;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -195,101 +183,53 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                   <Badge variant="outline" className="text-xs capitalize">
                     {exercise.difficulty_level}
                   </Badge>
+                  {enableWordSynchronization && (
+                    <Badge variant="outline" className="text-xs">
+                      Word Sync
+                    </Badge>
+                  )}
                 </div>
               </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setAudioEnabled(!audioEnabled)}
-              >
-                {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSettings(!showSettings)}
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         </DialogHeader>
 
-        {/* Audio Controls */}
+        {/* Advanced Audio Controls */}
         {enableFullTextAudio && (
-          <Card className="flex-shrink-0 p-4 mb-4">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={skipBackward}
-                    disabled={!audioEnabled || isGeneratingAudio}
-                  >
-                    <SkipBack className="h-4 w-4" />
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={togglePlayPause}
-                    disabled={!audioEnabled || isGeneratingAudio}
-                  >
-                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={skipForward}
-                    disabled={!audioEnabled || isGeneratingAudio}
-                  >
-                    <SkipForward className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="text-sm text-muted-foreground">
-                  {formatTime(currentPosition)} / {formatTime(audioDuration)}
-                </div>
-              </div>
-
-              {/* Progress bar */}
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${audioDuration > 0 ? (currentPosition / audioDuration) * 100 : 0}%` }}
+          <div className="flex-shrink-0 mb-4">
+            <AudioWordSynchronizer
+              audioUrl={audioUrl}
+              text={fullText}
+              onWordHighlight={handleWordHighlight}
+              onTimeUpdate={handleTimeUpdate}
+              isPlaying={isPlaying}
+              playbackRate={audioSpeed}
+              onLoadedMetadata={handleLoadedMetadata}
+              onEnded={handleEnded}
+            >
+              {(audioRef) => (
+                <AdvancedAudioControls
+                  isPlaying={isPlaying}
+                  isGeneratingAudio={isGeneratingAudio}
+                  audioEnabled={audioEnabled}
+                  currentPosition={currentPosition}
+                  audioDuration={audioDuration}
+                  audioSpeed={audioSpeed}
+                  showSettings={showSettings}
+                  highlightedWordIndex={highlightedWordIndex}
+                  totalWords={totalWords}
+                  onTogglePlayPause={() => togglePlayPause(audioRef)}
+                  onSkipBackward={() => skipBackward(audioRef)}
+                  onSkipForward={() => skipForward(audioRef)}
+                  onRestart={() => restart(audioRef)}
+                  onToggleAudio={() => setAudioEnabled(!audioEnabled)}
+                  onToggleSettings={() => setShowSettings(!showSettings)}
+                  onChangeSpeed={changeSpeed}
+                  onSeek={(time) => seekTo(audioRef, time)}
                 />
-              </div>
-
-              {/* Speed controls */}
-              {showSettings && (
-                <div className="flex items-center gap-2 pt-2 border-t">
-                  <span className="text-sm text-muted-foreground">Speed:</span>
-                  {[0.5, 0.75, 1, 1.25, 1.5].map(speed => (
-                    <Button
-                      key={speed}
-                      variant={audioSpeed === speed ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => changeSpeed(speed)}
-                      className="text-xs"
-                    >
-                      {speed}x
-                    </Button>
-                  ))}
-                </div>
               )}
-
-              {isGeneratingAudio && (
-                <div className="text-center text-sm text-muted-foreground">
-                  Generating audio...
-                </div>
-              )}
-            </div>
-          </Card>
+            </AudioWordSynchronizer>
+          </div>
         )}
 
         <Separator className="flex-shrink-0" />
@@ -297,18 +237,27 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
         {/* Main Reading Content */}
         <div className="flex-1 overflow-auto">
           <Card className="p-6 h-full">
-            <EnhancedInteractiveText
-              text={fullText}
-              language={exercise.language}
-              enableTooltips={true}
-              enableBidirectionalCreation={true}
-              enableTextSelection={enableTextSelection}
-              vocabularyIntegration={enableVocabularyIntegration}
-              enhancedHighlighting={enableEnhancedHighlighting}
-              exerciseId={exercise.id}
-              onCreateDictation={handleCreateDictation}
-              onCreateBidirectional={handleCreateBidirectional}
-            />
+            {enableWordSynchronization && enableFullTextAudio ? (
+              <SynchronizedText
+                text={fullText}
+                highlightedWordIndex={highlightedWordIndex}
+                enableWordHighlighting={true}
+                className={isMobile ? 'text-base' : 'text-lg'}
+              />
+            ) : (
+              <EnhancedInteractiveText
+                text={fullText}
+                language={exercise.language}
+                enableTooltips={true}
+                enableBidirectionalCreation={true}
+                enableTextSelection={enableTextSelection}
+                vocabularyIntegration={enableVocabularyIntegration}
+                enhancedHighlighting={enableEnhancedHighlighting}
+                exerciseId={exercise.id}
+                onCreateDictation={handleCreateDictation}
+                onCreateBidirectional={handleCreateBidirectional}
+              />
+            )}
           </Card>
         </div>
 
@@ -335,16 +284,6 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
             </div>
           </div>
         )}
-
-        <audio
-          ref={audioRef}
-          onLoadedMetadata={() => setAudioDuration(audioRef.current?.duration || 0)}
-          onTimeUpdate={() => setCurrentPosition(audioRef.current?.currentTime || 0)}
-          onEnded={() => {
-            setIsPlaying(false);
-            setCurrentPosition(0);
-          }}
-        />
       </DialogContent>
     </Dialog>
   );

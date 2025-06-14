@@ -7,6 +7,7 @@ export interface ReadingFeatureFlags {
   enableEnhancedHighlighting: boolean;
   enableAdvancedFeatures: boolean;
   enableEnhancedModal: boolean;
+  enableWordSynchronization: boolean; // New flag for Phase 2
 }
 
 // Default feature flags - all disabled for backward compatibility
@@ -16,6 +17,7 @@ export const defaultFeatureFlags: ReadingFeatureFlags = {
   enableEnhancedHighlighting: false,
   enableAdvancedFeatures: false,
   enableEnhancedModal: false,
+  enableWordSynchronization: false,
 };
 
 // Development feature flags - can be enabled for testing
@@ -24,7 +26,8 @@ export const developmentFeatureFlags: ReadingFeatureFlags = {
   enableVocabularyIntegration: true,
   enableEnhancedHighlighting: true,
   enableAdvancedFeatures: true,
-  enableEnhancedModal: true, // Enable the new modal in development
+  enableEnhancedModal: true,
+  enableWordSynchronization: true, // Enable word sync in development
 };
 
 // Production rollout phases
@@ -34,6 +37,7 @@ export const productionPhase1: ReadingFeatureFlags = {
   enableEnhancedHighlighting: true,
   enableAdvancedFeatures: true,
   enableEnhancedModal: false,
+  enableWordSynchronization: false,
 };
 
 export const productionPhase2: ReadingFeatureFlags = {
@@ -41,7 +45,8 @@ export const productionPhase2: ReadingFeatureFlags = {
   enableVocabularyIntegration: true,
   enableEnhancedHighlighting: true,
   enableAdvancedFeatures: true,
-  enableEnhancedModal: false,
+  enableEnhancedModal: true,
+  enableWordSynchronization: true, // Enable word sync in phase 2
 };
 
 export const productionPhase3: ReadingFeatureFlags = {
@@ -49,7 +54,8 @@ export const productionPhase3: ReadingFeatureFlags = {
   enableVocabularyIntegration: true,
   enableEnhancedHighlighting: true,
   enableAdvancedFeatures: true,
-  enableEnhancedModal: true, // Enable new modal in final phase
+  enableEnhancedModal: true,
+  enableWordSynchronization: true,
 };
 
 // Utility function to get feature flags based on environment

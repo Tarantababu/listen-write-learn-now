@@ -301,6 +301,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
         enableVocabularyIntegration={featureFlags.enableVocabularyIntegration}
         enableEnhancedHighlighting={featureFlags.enableEnhancedHighlighting}
         enableFullTextAudio={featureFlags.enableAdvancedFeatures}
+        enableWordSynchronization={featureFlags.enableWordSynchronization}
       />
     );
   }
