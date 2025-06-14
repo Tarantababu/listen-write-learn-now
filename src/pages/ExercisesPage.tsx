@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Archive, Move, Edit, Trash2, Play, ArrowLeftRight, Mic } from 'lucide-react';
+import { Plus, Archive, Move, Edit, Trash2, Play, ArrowLeftRight, Mic, BookOpen } from 'lucide-react';
 import { ExerciseFormModal } from '@/components/exercises/ExerciseFormModal';
 import PracticeModal from '@/components/exercises/PracticeModal';
 import MoveExerciseModal from '@/components/MoveExerciseModal';
@@ -21,6 +21,7 @@ import FilterBar from '@/components/exercises/FilterBar';
 import ExerciseGrid from '@/components/exercises/ExerciseGrid';
 import CreateExerciseCard from '@/components/exercises/CreateExerciseCard';
 import BidirectionalPage from './BidirectionalPage';
+import { ReadingExercisesSection } from '@/components/reading/ReadingExercisesSection';
 import PopoverHint from '@/components/PopoverHint';
 
 // Memoized components to prevent unnecessary re-renders
@@ -170,10 +171,14 @@ const ExercisesPage: React.FC = () => {
       </div>
 
       <Tabs defaultValue="dictation" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="dictation" className="flex items-center gap-2">
             <Mic className="h-4 w-4" />
             Dictation Method
+          </TabsTrigger>
+          <TabsTrigger value="reading" className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4" />
+            Reading & Listening
           </TabsTrigger>
           <TabsTrigger value="bidirectional" className="flex items-center gap-2 relative">
             <ArrowLeftRight className="h-4 w-4" />
@@ -241,6 +246,10 @@ const ExercisesPage: React.FC = () => {
             totalPages={totalPages}
             onPageChange={setCurrentPage}
           />
+        </TabsContent>
+
+        <TabsContent value="reading">
+          <ReadingExercisesSection />
         </TabsContent>
 
         <TabsContent value="bidirectional">

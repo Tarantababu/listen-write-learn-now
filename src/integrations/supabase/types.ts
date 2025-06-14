@@ -792,6 +792,139 @@ export type Database = {
           },
         ]
       }
+      reading_exercise_progress: {
+        Row: {
+          completed_at: string | null
+          completion_percentage: number | null
+          created_at: string
+          id: string
+          last_sentence_index: number | null
+          reading_exercise_id: string
+          sentences_completed: number | null
+          total_sentences: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string
+          id?: string
+          last_sentence_index?: number | null
+          reading_exercise_id: string
+          sentences_completed?: number | null
+          total_sentences?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string
+          id?: string
+          last_sentence_index?: number | null
+          reading_exercise_id?: string
+          sentences_completed?: number | null
+          total_sentences?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_exercise_progress_reading_exercise_id_fkey"
+            columns: ["reading_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "reading_exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reading_exercise_sentences: {
+        Row: {
+          analysis: Json | null
+          audio_url: string | null
+          created_at: string
+          id: string
+          reading_exercise_id: string
+          sentence_index: number
+          text: string
+        }
+        Insert: {
+          analysis?: Json | null
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          reading_exercise_id: string
+          sentence_index: number
+          text: string
+        }
+        Update: {
+          analysis?: Json | null
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          reading_exercise_id?: string
+          sentence_index?: number
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reading_exercise_sentences_reading_exercise_id_fkey"
+            columns: ["reading_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "reading_exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reading_exercises: {
+        Row: {
+          archived: boolean | null
+          audio_url: string | null
+          content: Json
+          created_at: string
+          difficulty_level: string
+          grammar_focus: string | null
+          id: string
+          language: string
+          target_length: number
+          title: string
+          topic: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean | null
+          audio_url?: string | null
+          content: Json
+          created_at?: string
+          difficulty_level: string
+          grammar_focus?: string | null
+          id?: string
+          language: string
+          target_length?: number
+          title: string
+          topic: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived?: boolean | null
+          audio_url?: string | null
+          content?: Json
+          created_at?: string
+          difficulty_level?: string
+          grammar_focus?: string | null
+          id?: string
+          language?: string
+          target_length?: number
+          title?: string
+          topic?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       security_logs: {
         Row: {
           created_at: string
@@ -1431,6 +1564,14 @@ export type Database = {
           language_param: string
           level_param: string
           description_param: string
+        }
+        Returns: undefined
+      }
+      update_reading_exercise_progress: {
+        Args: {
+          exercise_id_param: string
+          user_id_param: string
+          sentence_index_param: number
         }
         Returns: undefined
       }
