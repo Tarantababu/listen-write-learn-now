@@ -40,6 +40,17 @@ export interface BidirectionalMasteredWord {
   mastered_at: string;
 }
 
+export interface WordTranslation {
+  original: string;
+  translation: string;
+}
+
+export interface BidirectionalTranslation {
+  normalTranslation: string;
+  literalTranslation: string;
+  wordTranslations: WordTranslation[];
+}
+
 export interface SpacedRepetitionConfig {
   correctMultiplier: number;
   incorrectMultiplier: number;

@@ -31,9 +31,15 @@ interface AnalysisContent {
   englishTranslation: string
 }
 
+interface WordTranslation {
+  original: string
+  translation: string
+}
+
 interface BidirectionalTranslation {
   normalTranslation: string
   literalTranslation: string
+  wordTranslations: WordTranslation[]
 }
 
 serve(async (req) => {
@@ -110,17 +116,24 @@ async function generateBidirectionalTranslation(
   apiKey: string
 ): Promise<BidirectionalTranslation> {
   const prompt = `
-Translate this ${sourceLanguage} sentence into ${targetLanguage} in two different ways:
+Translate this ${sourceLanguage} sentence into ${targetLanguage} in two different ways and provide word-by-word translations:
 
 1. Normal Translation: A natural, fluent translation that sounds native in ${targetLanguage}
 2. Literal Translation: A word-by-word translation that maintains the original sentence structure as much as possible
+3. Word Translations: Individual word translations in the same order as the original sentence
 
 Sentence: "${text}"
+
+IMPORTANT: For word translations, provide each word from the original sentence with its most direct translation, even if some words don't have direct equivalents (use closest meaning or indicate with parentheses like "(no direct equivalent)").
 
 Return the response as a valid JSON object with these fields:
 {
   "normalTranslation": "The natural, fluent translation",
-  "literalTranslation": "The word-by-word translation"
+  "literalTranslation": "The word-by-word translation",
+  "wordTranslations": [
+    {"original": "word1", "translation": "translation1"},
+    {"original": "word2", "translation": "translation2"}
+  ]
 }
 `
 
@@ -134,7 +147,7 @@ Return the response as a valid JSON object with these fields:
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are a professional translator that provides accurate translations. Always respond with valid JSON.' },
+          { role: 'system', content: 'You are a professional translator that provides accurate translations with word-by-word breakdowns. Always respond with valid JSON.' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.2
@@ -158,7 +171,8 @@ Return the response as a valid JSON object with these fields:
       
       return {
         normalTranslation: "Translation could not be generated.",
-        literalTranslation: "Literal translation could not be generated."
+        literalTranslation: "Literal translation could not be generated.",
+        wordTranslations: []
       }
     }
   } catch (error) {

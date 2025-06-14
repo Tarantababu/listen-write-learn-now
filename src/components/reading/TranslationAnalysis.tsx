@@ -15,9 +15,15 @@ interface TranslationAnalysisProps {
   onClose: () => void;
 }
 
+interface WordTranslation {
+  original: string;
+  translation: string;
+}
+
 interface BidirectionalTranslation {
   normalTranslation: string;
   literalTranslation: string;
+  wordTranslations: WordTranslation[];
 }
 
 export const TranslationAnalysis: React.FC<TranslationAnalysisProps> = ({
@@ -84,29 +90,23 @@ export const TranslationAnalysis: React.FC<TranslationAnalysisProps> = ({
     }
   };
 
-  const renderWordByWord = (originalText: string, literalTranslation: string) => {
-    const originalWords = originalText.split(/\s+/);
-    const translatedWords = literalTranslation.split(/\s+/);
-    
-    // Create pairs, handling cases where word counts might differ
-    const maxLength = Math.max(originalWords.length, translatedWords.length);
-    const pairs = [];
-    
-    for (let i = 0; i < maxLength; i++) {
-      pairs.push({
-        original: originalWords[i] || '',
-        translation: translatedWords[i] || ''
-      });
+  const renderWordByWord = (wordTranslations: WordTranslation[]) => {
+    if (!wordTranslations || wordTranslations.length === 0) {
+      return (
+        <div className="text-sm text-gray-500 italic">
+          Word-by-word breakdown not available
+        </div>
+      );
     }
 
     return (
       <div className="space-y-2">
         <h4 className="font-medium text-sm text-gray-700">Word-by-word breakdown:</h4>
         <div className="flex flex-wrap gap-2">
-          {pairs.map((pair, index) => (
+          {wordTranslations.map((wordPair, index) => (
             <div key={index} className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-              <div className="text-sm font-medium text-gray-900">{pair.original}</div>
-              <div className="text-xs text-gray-600 mt-1">{pair.translation}</div>
+              <div className="text-sm font-medium text-gray-900">{wordPair.original}</div>
+              <div className="text-xs text-gray-600 mt-1">{wordPair.translation}</div>
             </div>
           ))}
         </div>
@@ -178,7 +178,7 @@ export const TranslationAnalysis: React.FC<TranslationAnalysisProps> = ({
 
           {/* Word-by-word Analysis */}
           <Card className="p-4">
-            {renderWordByWord(text, translation.literalTranslation)}
+            {renderWordByWord(translation.wordTranslations)}
           </Card>
 
           {/* Literal Translation */}
