@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -117,29 +116,36 @@ const LENGTH_OPTIONS = [
 const AI_CREATION_STEPS: ProgressStep[] = [
   {
     id: 'content-generation',
-    label: 'Content Generation',
-    description: 'AI is writing your personalized reading passage',
+    label: 'Content Planning',
+    description: 'AI is analyzing your requirements and planning the content',
     status: 'pending',
-    estimatedTime: 8
+    estimatedTime: 3
+  },
+  {
+    id: 'chunked-generation',
+    label: 'Smart Generation',
+    description: 'Using advanced chunking for optimal content creation',
+    status: 'pending',
+    estimatedTime: 12
   },
   {
     id: 'text-processing',
-    label: 'Text Analysis',
-    description: 'Processing vocabulary and grammar analysis',
+    label: 'Content Assembly',
+    description: 'Combining and optimizing the generated content',
     status: 'pending',
     estimatedTime: 3
   },
   {
     id: 'audio-generation',
     label: 'Audio Creation',
-    description: 'Generating high-quality pronunciation audio',
+    description: 'Generating high-quality pronunciation audio in background',
     status: 'pending',
-    estimatedTime: 12
+    estimatedTime: 5
   },
   {
     id: 'finalization',
     label: 'Finalizing',
-    description: 'Preparing your exercise for practice',
+    description: 'Preparing your exercise for immediate use',
     status: 'pending',
     estimatedTime: 2
   }
@@ -158,7 +164,7 @@ const CUSTOM_CREATION_STEPS: ProgressStep[] = [
     label: 'Audio Creation',
     description: 'Generating high-quality pronunciation audio',
     status: 'pending',
-    estimatedTime: 15
+    estimatedTime: 8
   },
   {
     id: 'finalization',
@@ -255,8 +261,12 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         i === stepIndex ? { ...s, status: 'active' } : s
       ));
       
-      // Simulate step duration with more realistic timing for audio generation
-      const stepDuration = step.estimatedTime || 2;
+      // Adaptive timing based on content length
+      let stepDuration = step.estimatedTime || 2;
+      if (step.id === 'chunked-generation' && formData.target_length > 2000) {
+        stepDuration = Math.min(20, Math.floor(formData.target_length / 200));
+      }
+      
       for (let i = 0; i <= stepDuration; i++) {
         await new Promise(resolve => setTimeout(resolve, 1000));
         const stepProgress = (i / stepDuration) * 100;
@@ -279,7 +289,6 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     setIsCreating(true);
     setCurrentTab('progress');
     
-    // Set the appropriate creation steps based on content source
     const stepsToUse = formData.contentSource === 'ai' ? AI_CREATION_STEPS : CUSTOM_CREATION_STEPS;
     setCreationSteps(stepsToUse);
     setEstimatedTimeRemaining(stepsToUse.reduce((sum, step) => sum + step.estimatedTime, 0));
@@ -288,7 +297,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
       // Start progress simulation
       simulateCreationProgress();
       
-      // Create the actual exercise with different parameters based on content source
+      // Create the actual exercise
       if (formData.contentSource === 'ai') {
         await readingExerciseService.createReadingExercise({
           title: formData.title,
@@ -299,7 +308,6 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
           language: settings.selectedLanguage
         });
       } else {
-        // For custom text, we'll need to update the service to handle custom content
         await readingExerciseService.createReadingExercise({
           title: formData.title,
           topic: 'Custom Content',
@@ -311,7 +319,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         });
       }
       
-      toast.success('Reading exercise created successfully with audio! Ready to practice.');
+      toast.success('Reading exercise created successfully! Audio generation continues in background.');
       onSuccess();
       handleClose();
     } catch (error) {

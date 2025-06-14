@@ -11,7 +11,8 @@ import {
   Sparkles, 
   FileText, 
   Volume2,
-  X
+  X,
+  Layers
 } from 'lucide-react';
 
 interface ProgressStep {
@@ -33,6 +34,7 @@ interface ReadingExerciseCreationProgressProps {
 const STEP_ICONS = {
   'content-generation': Sparkles,
   'text-processing': FileText,
+  'chunked-generation': Layers,
   'audio-generation': Volume2,
   'finalization': CheckCircle
 };
@@ -52,7 +54,7 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
           <h3 className="text-lg font-semibold">Creating Your Reading Exercise</h3>
         </div>
         <p className="text-sm text-muted-foreground">
-          AI is crafting a personalized reading experience for you
+          Using advanced chunking strategy for optimal content generation
         </p>
         {estimatedTimeRemaining && (
           <Badge variant="outline" className="text-xs">
@@ -116,6 +118,11 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
                         {step.estimatedTime && isActive && (
                           <Badge variant="outline" className="text-xs">
                             ~{step.estimatedTime}s
+                          </Badge>
+                        )}
+                        {step.id === 'chunked-generation' && isActive && (
+                          <Badge variant="secondary" className="text-xs">
+                            Advanced Strategy
                           </Badge>
                         )}
                       </div>
