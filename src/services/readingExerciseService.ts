@@ -29,7 +29,7 @@ export class ReadingExerciseService {
     return {
       ...data,
       difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
-      content: data.content as ReadingExercise['content']
+      content: data.content as unknown as ReadingExercise['content']
     };
   }
 
@@ -53,7 +53,7 @@ export class ReadingExerciseService {
     return (data || []).map(exercise => ({
       ...exercise,
       difficulty_level: exercise.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
-      content: exercise.content as ReadingExercise['content']
+      content: exercise.content as unknown as ReadingExercise['content']
     }));
   }
 
@@ -68,7 +68,7 @@ export class ReadingExerciseService {
     return {
       ...data,
       difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
-      content: data.content as ReadingExercise['content']
+      content: data.content as unknown as ReadingExercise['content']
     };
   }
 
