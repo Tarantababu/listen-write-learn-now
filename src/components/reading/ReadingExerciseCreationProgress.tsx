@@ -14,7 +14,9 @@ import {
   X,
   Layers,
   AlertTriangle,
-  Zap
+  Zap,
+  Shield,
+  RefreshCw
 } from 'lucide-react';
 
 interface ProgressStep {
@@ -55,19 +57,19 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
     <div className="space-y-6">
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary animate-pulse" />
-          <h3 className="text-lg font-semibold">Creating Your Reading Exercise</h3>
+          <Shield className="h-5 w-5 text-primary animate-pulse" />
+          <h3 className="text-lg font-semibold">Creating Your Protected Reading Exercise</h3>
         </div>
         
         {hasOptimizations && (
           <div className="flex items-center justify-center gap-2 text-sm text-green-600">
             <Zap className="h-4 w-4" />
-            <span>Using optimized generation strategy</span>
+            <span>Enhanced generation with error recovery active</span>
           </div>
         )}
         
         <p className="text-sm text-muted-foreground">
-          Enhanced performance with timeout protection and parallel processing
+          Advanced protection ensures successful generation with intelligent fallbacks
         </p>
         
         {estimatedTimeRemaining && (
@@ -124,7 +126,7 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
                       {isCompleted ? (
                         <CheckCircle className="h-5 w-5" />
                       ) : isError ? (
-                        <AlertTriangle className="h-5 w-5" />
+                        <RefreshCw className="h-5 w-5" />
                       ) : isActive ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
                       ) : (
@@ -142,8 +144,8 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
                         )}
                         {step.id === 'optimized-generation' && isActive && (
                           <Badge variant="secondary" className="text-xs">
-                            <Zap className="h-3 w-3 mr-1" />
-                            Optimized
+                            <Shield className="h-3 w-3 mr-1" />
+                            Protected
                           </Badge>
                         )}
                         {step.id === 'chunked-generation' && isActive && (
@@ -157,8 +159,8 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
                       </p>
                       
                       {isError && (
-                        <div className="mt-2 text-xs text-red-600">
-                          Processing failed, but we'll continue with available content
+                        <div className="mt-2 text-xs text-orange-600">
+                          Using enhanced fallback - your exercise will still be created successfully
                         </div>
                       )}
                     </div>
@@ -168,7 +170,7 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
                       ${isCompleted 
                         ? 'bg-green-500 border-green-500' 
                         : isError
-                          ? 'bg-red-500 border-red-500'
+                          ? 'bg-orange-500 border-orange-500'
                           : isActive 
                             ? 'border-primary bg-primary/20 animate-pulse' 
                             : 'border-muted-foreground/30'
@@ -184,14 +186,14 @@ export const ReadingExerciseCreationProgress: React.FC<ReadingExerciseCreationPr
         {hasOptimizations && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <div className="flex items-start gap-2">
-              <Zap className="h-4 w-4 text-blue-600 mt-0.5" />
+              <Shield className="h-4 w-4 text-blue-600 mt-0.5" />
               <div className="text-sm">
-                <div className="font-medium text-blue-800">Performance Optimizations Active</div>
+                <div className="font-medium text-blue-800">Enhanced Protection Features</div>
                 <div className="text-blue-600 mt-1">
-                  • Intelligent chunking strategy<br/>
-                  • Timeout protection with graceful fallback<br/>
-                  • Parallel processing for faster generation<br/>
-                  • Enhanced error recovery
+                  • Smart timeout protection with automatic retry<br/>
+                  • Graceful fallback content if generation is complex<br/>
+                  • Progressive generation with partial success handling<br/>
+                  • Enhanced error recovery ensures usable results
                 </div>
               </div>
             </div>

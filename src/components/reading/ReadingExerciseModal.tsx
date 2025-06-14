@@ -19,7 +19,8 @@ import {
   ArrowLeft,
   FileText,
   Book,
-  AlertTriangle
+  AlertTriangle,
+  Shield
 } from 'lucide-react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { readingExerciseService } from '@/services/readingExerciseService';
@@ -68,6 +69,7 @@ const DIFFICULTY_OPTIONS = [
   }
 ];
 
+// Updated length options with smart limits and better warnings
 const LENGTH_OPTIONS = [
   {
     value: 300,
@@ -75,7 +77,8 @@ const LENGTH_OPTIONS = [
     subtitle: '~300 words',
     description: 'Quick daily practice session (2-3 min)',
     icon: Zap,
-    recommended: false
+    recommended: false,
+    reliability: 'excellent'
   },
   {
     value: 700,
@@ -83,7 +86,8 @@ const LENGTH_OPTIONS = [
     subtitle: '~700 words',
     description: 'Standard focused learning (4-5 min)',
     icon: Target,
-    recommended: true
+    recommended: true,
+    reliability: 'excellent'
   },
   {
     value: 1200,
@@ -91,7 +95,8 @@ const LENGTH_OPTIONS = [
     subtitle: '~1,200 words',
     description: 'Deep dive into topics (7-8 min)',
     icon: BookOpen,
-    recommended: true
+    recommended: true,
+    reliability: 'very-good'
   },
   {
     value: 2000,
@@ -100,49 +105,43 @@ const LENGTH_OPTIONS = [
     description: 'Comprehensive exploration (10-12 min)',
     icon: Book,
     recommended: false,
-    warning: 'May take longer to generate'
+    warning: 'Uses enhanced chunking strategy',
+    reliability: 'good'
   },
   {
     value: 3000,
-    label: 'Article Length',
+    label: 'Maximum Length',
     subtitle: '~3,000 words',
     description: 'Full article experience (15-18 min)',
-    icon: FileText,
-    recommended: false,
-    warning: 'Extended generation time'
-  },
-  {
-    value: 4000,
-    label: 'Essay Length',
-    subtitle: '~4,000 words',
-    description: 'Complete story or essay (20-25 min)',
     icon: GraduationCap,
     recommended: false,
-    warning: 'Uses advanced chunking strategy'
+    warning: 'Advanced generation with fallback protection',
+    reliability: 'fair',
+    isMaximum: true
   }
 ];
 
-const OPTIMIZED_AI_CREATION_STEPS: ProgressStep[] = [
+const ENHANCED_AI_CREATION_STEPS: ProgressStep[] = [
   {
     id: 'content-generation',
-    label: 'Content Planning',
-    description: 'AI is analyzing requirements with optimized strategy',
+    label: 'Smart Planning',
+    description: 'AI analyzing requirements with intelligent chunking strategy',
     status: 'pending',
-    estimatedTime: 2
+    estimatedTime: 3
   },
   {
     id: 'optimized-generation',
-    label: 'Smart Generation',
-    description: 'Using enhanced chunking with timeout protection',
+    label: 'Protected Generation',
+    description: 'Enhanced generation with timeout protection and fallback',
     status: 'pending',
-    estimatedTime: 15
+    estimatedTime: 20
   },
   {
     id: 'text-processing',
     label: 'Content Assembly',
     description: 'Combining and validating generated content',
     status: 'pending',
-    estimatedTime: 2
+    estimatedTime: 3
   },
   {
     id: 'audio-generation',
@@ -154,9 +153,9 @@ const OPTIMIZED_AI_CREATION_STEPS: ProgressStep[] = [
   {
     id: 'finalization',
     label: 'Finalizing',
-    description: 'Preparing your exercise for immediate use',
+    description: 'Preparing your exercise with error recovery',
     status: 'pending',
-    estimatedTime: 1
+    estimatedTime: 2
   }
 ];
 
@@ -164,7 +163,7 @@ const CUSTOM_CREATION_STEPS: ProgressStep[] = [
   {
     id: 'text-processing',
     label: 'Text Analysis',
-    description: 'Processing your text with optimized parsing',
+    description: 'Processing your text with enhanced parsing',
     status: 'pending',
     estimatedTime: 3
   },
@@ -192,10 +191,10 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const { settings } = useUserSettingsContext();
   const [currentTab, setCurrentTab] = useState('setup');
   const [isCreating, setIsCreating] = useState(false);
-  const [creationSteps, setCreationSteps] = useState<ProgressStep[]>(OPTIMIZED_AI_CREATION_STEPS);
+  const [creationSteps, setCreationSteps] = useState<ProgressStep[]>(ENHANCED_AI_CREATION_STEPS);
   const [currentStep, setCurrentStep] = useState(0);
   const [overallProgress, setOverallProgress] = useState(0);
-  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(25);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(30);
 
   const [formData, setFormData] = useState({
     contentSource: 'ai' as 'ai' | 'custom',
@@ -210,21 +209,21 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   // Update validation logic based on content source
   const canProceed = formData.contentSource === 'ai' 
     ? formData.selectedTopic && formData.title.trim()
-    : formData.customText.trim() && formData.customText.length <= 4000 && formData.title.trim();
+    : formData.customText.trim() && formData.customText.length <= 3000 && formData.title.trim();
 
   // Calculate total estimated time based on content source and optimizations
-  const currentCreationSteps = formData.contentSource === 'ai' ? OPTIMIZED_AI_CREATION_STEPS : CUSTOM_CREATION_STEPS;
+  const currentCreationSteps = formData.contentSource === 'ai' ? ENHANCED_AI_CREATION_STEPS : CUSTOM_CREATION_STEPS;
   const totalEstimatedTime = currentCreationSteps.reduce((sum, step) => sum + (step.estimatedTime || 0), 0);
 
   const getEstimatedTime = () => {
     if (formData.contentSource === 'custom') return totalEstimatedTime;
     
-    // Adjust time based on target length with optimizations
+    // Adjust time based on target length with enhanced protections
     const baseTime = totalEstimatedTime;
-    if (formData.target_length <= 1500) return baseTime;
-    if (formData.target_length <= 2500) return baseTime + 5;
-    if (formData.target_length <= 3500) return baseTime + 10;
-    return baseTime + 15; // For very long content with chunking
+    if (formData.target_length <= 1200) return baseTime;
+    if (formData.target_length <= 2000) return baseTime + 8;
+    if (formData.target_length <= 3000) return baseTime + 15;
+    return baseTime + 20; // Maximum protection for 3000+ words
   };
 
   const handleContentSourceSelect = (source: 'ai' | 'custom') => {
@@ -270,7 +269,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     }));
   };
 
-  const simulateOptimizedCreationProgress = async () => {
+  const simulateEnhancedCreationProgress = async () => {
     const steps = [...currentCreationSteps];
     let stepIndex = 0;
     
@@ -280,10 +279,16 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         i === stepIndex ? { ...s, status: 'active' } : s
       ));
       
-      // Adaptive timing based on content length and optimizations
-      let stepDuration = step.estimatedTime || 2;
-      if (step.id === 'optimized-generation' && formData.target_length > 2000) {
-        stepDuration = Math.min(20, Math.floor(formData.target_length / 250)); // Faster due to optimizations
+      // Enhanced timing with better estimates
+      let stepDuration = step.estimatedTime || 3;
+      if (step.id === 'optimized-generation') {
+        if (formData.target_length <= 1200) {
+          stepDuration = 15;
+        } else if (formData.target_length <= 2000) {
+          stepDuration = 20;
+        } else {
+          stepDuration = 25; // Maximum time for protected generation
+        }
       }
       
       for (let i = 0; i <= stepDuration; i++) {
@@ -308,15 +313,15 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     setIsCreating(true);
     setCurrentTab('progress');
     
-    const stepsToUse = formData.contentSource === 'ai' ? OPTIMIZED_AI_CREATION_STEPS : CUSTOM_CREATION_STEPS;
+    const stepsToUse = formData.contentSource === 'ai' ? ENHANCED_AI_CREATION_STEPS : CUSTOM_CREATION_STEPS;
     setCreationSteps(stepsToUse);
     setEstimatedTimeRemaining(getEstimatedTime());
     
     try {
       // Start progress simulation
-      simulateOptimizedCreationProgress();
+      simulateEnhancedCreationProgress();
       
-      // Create the actual exercise
+      // Create the actual exercise with enhanced error handling
       if (formData.contentSource === 'ai') {
         await readingExerciseService.createReadingExercise({
           title: formData.title,
@@ -344,13 +349,16 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     } catch (error) {
       console.error('Error creating reading exercise:', error);
       
-      // Handle timeout errors gracefully
-      if (error.message?.includes('timeout') || error.message?.includes('504')) {
-        toast.warning('Generation took longer than expected, but your exercise may still be created. Please check your exercises list.');
-        // Still call onSuccess in case the exercise was partially created
+      // Enhanced error handling with specific messages
+      if (error.message?.includes('timeout') || error.message?.includes('504') || error.message?.includes('408')) {
+        toast.warning('Generation took longer than expected, but your exercise may still be created. Please check your exercises list in a few moments.');
+        // Still call onSuccess as the exercise might be partially created
+        onSuccess();
+      } else if (error.message?.includes('fallback')) {
+        toast.info('Used enhanced fallback content due to generation complexity. Your exercise is ready to use!');
         onSuccess();
       } else {
-        toast.error('Failed to create reading exercise. Please try again with a shorter length.');
+        toast.error('Failed to create reading exercise. Try a shorter length or different topic.');
       }
       
       setIsCreating(false);
@@ -365,10 +373,10 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     setTimeout(() => {
       setCurrentTab('setup');
       setIsCreating(false);
-      setCreationSteps(OPTIMIZED_AI_CREATION_STEPS);
+      setCreationSteps(ENHANCED_AI_CREATION_STEPS);
       setCurrentStep(0);
       setOverallProgress(0);
-      setEstimatedTimeRemaining(25);
+      setEstimatedTimeRemaining(30);
       setFormData({
         contentSource: 'ai',
         title: '',
@@ -384,7 +392,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const handleCancel = () => {
     setIsCreating(false);
     setCurrentTab('setup');
-    setCreationSteps(OPTIMIZED_AI_CREATION_STEPS);
+    setCreationSteps(ENHANCED_AI_CREATION_STEPS);
     setCurrentStep(0);
     setOverallProgress(0);
     toast.info('Exercise creation cancelled');
@@ -400,14 +408,14 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span>AI-Powered Reading Exercise</span>
+                <span>Enhanced AI Reading Exercise</span>
                 <Badge variant="secondary" className="text-xs">
-                  <Zap className="h-3 w-3 mr-1" />
-                  Optimized
+                  <Shield className="h-3 w-3 mr-1" />
+                  Protected
                 </Badge>
               </div>
               <p className="text-sm font-normal text-muted-foreground mt-1">
-                Enhanced with timeout protection and intelligent chunking
+                Enhanced with timeout protection, error recovery, and smart fallbacks
               </p>
             </div>
           </DialogTitle>
@@ -516,6 +524,13 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                         <div className="grid gap-2">
                           {LENGTH_OPTIONS.map((option) => {
                             const IconComponent = option.icon;
+                            const reliabilityColors = {
+                              'excellent': 'text-green-600',
+                              'very-good': 'text-blue-600',
+                              'good': 'text-yellow-600',
+                              'fair': 'text-orange-600'
+                            };
+                            
                             return (
                               <Card
                                 key={option.value}
@@ -525,6 +540,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                                     ? 'ring-2 ring-primary shadow-md' 
                                     : 'hover:shadow-sm'
                                   }
+                                  ${option.isMaximum ? 'border-orange-200 bg-orange-50/30' : ''}
                                 `}
                                 onClick={() => setFormData(prev => ({ 
                                   ...prev, 
@@ -546,16 +562,26 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                                               Recommended
                                             </Badge>
                                           )}
+                                          {option.isMaximum && (
+                                            <Badge variant="outline" className="text-xs border-orange-300 text-orange-600">
+                                              Max Length
+                                            </Badge>
+                                          )}
                                         </div>
                                         <p className="text-sm text-muted-foreground">
                                           {option.description}
                                         </p>
-                                        {option.warning && (
-                                          <div className="flex items-center gap-1 mt-1">
-                                            <AlertTriangle className="h-3 w-3 text-amber-500" />
-                                            <span className="text-xs text-amber-600">{option.warning}</span>
-                                          </div>
-                                        )}
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <span className={`text-xs font-medium ${reliabilityColors[option.reliability]}`}>
+                                            {option.reliability.replace('-', ' ')} reliability
+                                          </span>
+                                          {option.warning && (
+                                            <div className="flex items-center gap-1">
+                                              <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                              <span className="text-xs text-amber-600">{option.warning}</span>
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                     <div className={`
@@ -641,7 +667,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                       <CustomTextInput
                         value={formData.customText}
                         onChange={(value) => setFormData(prev => ({ ...prev, customText: value }))}
-                        maxLength={4000}
+                        maxLength={3000}
                       />
                     </div>
                   </div>
@@ -656,16 +682,32 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                 onGrammarToggle={handleGrammarToggle}
               />
 
+              {/* Enhanced Protection Notice */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div className="text-sm">
+                    <div className="font-medium text-blue-800 mb-2">Enhanced Generation Protection Active</div>
+                    <div className="text-blue-600 space-y-1">
+                      <div>• <strong>Smart timeout protection</strong> with graceful fallbacks</div>
+                      <div>• <strong>Error recovery</strong> ensures you get usable content</div>
+                      <div>• <strong>Intelligent chunking</strong> for reliable long content</div>
+                      <div>• <strong>Progressive generation</strong> with partial success handling</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Action Buttons */}
               <div className="flex justify-between items-center pt-4 border-t">
                 <div className="text-sm text-muted-foreground">
                   {canProceed && (
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
-                      <span>Estimated time: ~{getEstimatedTime()}s</span>
+                      <span>Est. time: ~{getEstimatedTime()}s</span>
                       <Badge variant="secondary" className="text-xs">
-                        <Zap className="h-3 w-3 mr-1" />
-                        Optimized
+                        <Shield className="h-3 w-3 mr-1" />
+                        Protected
                       </Badge>
                     </div>
                   )}
