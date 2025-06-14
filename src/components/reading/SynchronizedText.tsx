@@ -20,6 +20,12 @@ interface SelectionBoundary {
   selectionType: 'single' | 'phrase' | 'sentence' | 'paragraph';
 }
 
+interface TextSegment {
+  content: string;
+  isWord: boolean;
+  wordIndex?: number;
+}
+
 export const SynchronizedText: React.FC<SynchronizedTextProps> = ({
   text,
   highlightedWordIndex,
@@ -31,7 +37,37 @@ export const SynchronizedText: React.FC<SynchronizedTextProps> = ({
   const [hoveredWordIndex, setHoveredWordIndex] = useState(-1);
   const [selectionBoundary, setSelectionBoundary] = useState<SelectionBoundary | null>(null);
 
-  const words = text.split(/\s+/);
+  // Split text into segments preserving spaces
+  const createTextSegments = (text: string): TextSegment[] => {
+    const segments: TextSegment[] = [];
+    let wordIndex = 0;
+    
+    // Split on word boundaries while preserving spaces
+    const parts = text.split(/(\s+)/);
+    
+    for (const part of parts) {
+      if (/^\s+$/.test(part)) {
+        // This is whitespace
+        segments.push({
+          content: part,
+          isWord: false
+        });
+      } else if (part.trim().length > 0) {
+        // This is a word
+        segments.push({
+          content: part,
+          isWord: true,
+          wordIndex: wordIndex
+        });
+        wordIndex++;
+      }
+    }
+    
+    return segments;
+  };
+
+  const segments = createTextSegments(text);
+  const words = segments.filter(seg => seg.isWord).map(seg => seg.content);
 
   const handleWordHover = (wordIndex: number, word: string, isHovering: boolean) => {
     setHoveredWordIndex(isHovering ? wordIndex : -1);
@@ -88,25 +124,34 @@ export const SynchronizedText: React.FC<SynchronizedTextProps> = ({
     >
       <EnhancedTextHighlighter
         selectedText={selectionBoundary?.selectedWords.join(' ') || ''}
-        selectionRange={null} // Will be handled by the detector
+        selectionRange={null}
         highlightedWordIndex={highlightedWordIndex}
         hoveredWordIndex={hoveredWordIndex}
         enhancedHighlighting={true}
         wordSyncColor={highlightColor}
       >
-        <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
-          {words.map((word, index) => (
-            <EnhancedWordSpan
-              key={`${index}-${word}`}
-              word={word}
-              index={index}
-              isHighlighted={enableWordHighlighting && index === highlightedWordIndex}
-              isSelected={isWordSelected(index)}
-              onWordClick={onWordClick}
-              onWordHover={handleWordHover}
-              highlightColor={highlightColor}
-            />
-          ))}
+        <div className="inline">
+          {segments.map((segment, index) => {
+            if (!segment.isWord) {
+              // Render whitespace as-is
+              return <span key={`space-${index}`}>{segment.content}</span>;
+            }
+
+            // Render word with enhanced span
+            const wordIndex = segment.wordIndex!;
+            return (
+              <EnhancedWordSpan
+                key={`word-${wordIndex}-${segment.content}`}
+                word={segment.content}
+                index={wordIndex}
+                isHighlighted={enableWordHighlighting && wordIndex === highlightedWordIndex}
+                isSelected={isWordSelected(wordIndex)}
+                onWordClick={onWordClick}
+                onWordHover={handleWordHover}
+                highlightColor={highlightColor}
+              />
+            );
+          })}
         </div>
       </EnhancedTextHighlighter>
     </SmartSelectionDetector>

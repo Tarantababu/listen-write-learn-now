@@ -10,8 +10,8 @@ export interface TextSelectionInfo {
 }
 
 export const analyzeTextSelection = (text: string): TextSelectionInfo => {
-  // Preserve original spacing but trim only leading/trailing whitespace
-  const cleanText = text.replace(/^\s+|\s+$/g, '').replace(/\s+/g, ' ');
+  // Only trim leading/trailing whitespace, preserve internal spaces
+  const cleanText = text.replace(/^\s+|\s+$/g, '');
   const words = cleanText.split(/\s+/).filter(word => word.length > 0);
   const wordCount = words.length;
   const characterCount = cleanText.length;
@@ -67,8 +67,8 @@ export const getSelectionRecommendation = (info: TextSelectionInfo): string => {
 };
 
 export const cleanTextForExercise = (text: string, exerciseType: 'dictation' | 'vocabulary' | 'translation'): string => {
-  // First normalize whitespace while preserving single spaces between words
-  let cleaned = text.replace(/^\s+|\s+$/g, '').replace(/\s+/g, ' ');
+  // Preserve original spacing - only trim leading/trailing whitespace
+  let cleaned = text.replace(/^\s+|\s+$/g, '');
   
   // For vocabulary, clean punctuation more aggressively
   if (exerciseType === 'vocabulary') {

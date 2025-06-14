@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { SelectionPopup } from './SelectionPopup';
 import { TextHighlighter } from './TextHighlighter';
@@ -71,7 +70,7 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     }
 
     const range = selection.getRangeAt(0);
-    // Get the raw text with preserved spacing
+    // Get the raw text preserving original spacing
     const rawText = range.toString();
 
     if (!containerRef.current?.contains(range.commonAncestorContainer)) {
@@ -80,8 +79,8 @@ export const TextSelectionManager: React.FC<TextSelectionManagerProps> = ({
     }
 
     if (rawText.length > 0) {
-      // Clean up the text but preserve proper spacing between words
-      const cleanedText = rawText.replace(/^\s+|\s+$/g, '').replace(/\s+/g, ' ');
+      // Only trim leading/trailing whitespace, preserve internal spacing
+      const cleanedText = rawText.replace(/^\s+|\s+$/g, '');
       
       console.log('Raw selected text:', JSON.stringify(rawText));
       console.log('Cleaned selected text:', JSON.stringify(cleanedText));
