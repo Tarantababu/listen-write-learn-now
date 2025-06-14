@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
 import { Loader2, BookOpen, Volume2, Brain, Sparkles, X } from 'lucide-react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { readingExerciseService } from '@/services/readingExerciseService';
@@ -49,6 +49,8 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
 }) => {
   const { settings } = useUserSettingsContext();
   const [isLoading, setIsLoading] = useState(false);
+  const [creationProgress, setCreationProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState('');
   const [currentTab, setCurrentTab] = useState('topic');
   const [selectedGrammarFocus, setSelectedGrammarFocus] = useState<string[]>([]);
   const [formData, setFormData] = useState({
@@ -89,18 +91,32 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setCreationProgress(0);
+    setCurrentStep('Preparing exercise...');
 
     try {
+      // Step 1: Validate and prepare data
+      setCreationProgress(20);
+      setCurrentStep('Generating content with AI...');
+      
       const grammarFocus = [
         ...getSelectedGrammarLabels(),
         ...(formData.custom_grammar_focus ? [formData.custom_grammar_focus] : [])
       ].join(', ');
 
+      // Step 2: Create exercise
+      setCreationProgress(60);
+      setCurrentStep('Creating exercise...');
+      
       await readingExerciseService.createReadingExercise({
         ...formData,
         language: settings.selectedLanguage,
         grammar_focus: grammarFocus || undefined
       });
+      
+      // Step 3: Finalizing
+      setCreationProgress(100);
+      setCurrentStep('Exercise created successfully!');
       
       toast.success('Reading exercise created successfully!');
       onSuccess();
@@ -116,9 +132,13 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
       });
       setSelectedGrammarFocus([]);
       setCurrentTab('topic');
+      setCreationProgress(0);
+      setCurrentStep('');
     } catch (error) {
       console.error('Error creating reading exercise:', error);
       toast.error('Failed to create reading exercise. Please try again.');
+      setCreationProgress(0);
+      setCurrentStep('');
     } finally {
       setIsLoading(false);
     }
@@ -143,13 +163,26 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
           </DialogTitle>
         </DialogHeader>
 
+        {isLoading && (
+          <div className="space-y-4 mb-6 p-4 bg-muted/30 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm font-medium">{currentStep}</span>
+            </div>
+            <Progress value={creationProgress} className="w-full" />
+            <div className="text-xs text-muted-foreground">
+              Please wait while we create your personalized exercise...
+            </div>
+          </div>
+        )}
+
         <Tabs value={currentTab} onValueChange={setCurrentTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="topic">1. Choose Topic</TabsTrigger>
-            <TabsTrigger value="details" disabled={!formData.topic}>
+            <TabsTrigger value="topic" disabled={isLoading}>1. Choose Topic</TabsTrigger>
+            <TabsTrigger value="details" disabled={!formData.topic || isLoading}>
               2. Configure
             </TabsTrigger>
-            <TabsTrigger value="grammar" disabled={!formData.title}>
+            <TabsTrigger value="grammar" disabled={!formData.title || isLoading}>
               3. Grammar Focus
             </TabsTrigger>
           </TabsList>
@@ -167,13 +200,14 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
                 value={formData.topic}
                 onChange={(e) => setFormData(prev => ({ ...prev, topic: e.target.value }))}
                 placeholder="e.g., sustainable living, digital nomads, cooking traditions"
+                disabled={isLoading}
               />
             </div>
 
             <div className="flex justify-end">
               <Button 
                 onClick={() => setCurrentTab('details')}
-                disabled={!canProceedToNext()}
+                disabled={!canProceedToNext() || isLoading}
               >
                 Next: Configure Exercise
               </Button>
@@ -262,12 +296,12 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
             </div>
 
             <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setCurrentTab('topic')}>
+              <Button variant="outline" onClick={() => setCurrentTab('topic')} disabled={isLoading}>
                 Back: Topic
               </Button>
               <Button 
                 onClick={() => setCurrentTab('grammar')}
-                disabled={!canProceedToNext()}
+                disabled={!canProceedToNext() || isLoading}
               >
                 Next: Grammar Focus
               </Button>
@@ -340,7 +374,7 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
             </div>
 
             <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setCurrentTab('details')}>
+              <Button variant="outline" onClick={() => setCurrentTab('details')} disabled={isLoading}>
                 Back: Configure
               </Button>
               <Button onClick={handleSubmit} disabled={isLoading}>
