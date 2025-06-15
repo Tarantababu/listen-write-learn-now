@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise, ReadingExerciseProgress, CreateReadingExerciseRequest } from '@/types/reading';
 import { enhancedAudioService } from '@/services/enhancedAudioService';
@@ -64,8 +65,8 @@ export class ReadingExerciseService {
 
     console.log(`[READING SERVICE] Exercise created successfully: ${data.id}`);
 
-    // Start enhanced background audio generation
-    this.generateAudioInBackgroundEnhanced(data.id, content, request.language);
+    // Start simplified background audio generation
+    this.generateAudioInBackground(data.id, content, request.language);
 
     return {
       ...data,
@@ -419,118 +420,64 @@ export class ReadingExerciseService {
     return data;
   }
 
-  private async generateAudioInBackgroundEnhanced(exerciseId: string, content: any, language: string): Promise<void> {
+  // Simplified background audio generation
+  private async generateAudioInBackground(exerciseId: string, content: any, language: string): Promise<void> {
     try {
-      console.log(`[ENHANCED BACKGROUND AUDIO] Starting generation for exercise ${exerciseId}`);
+      console.log(`[BACKGROUND AUDIO] Starting generation for exercise ${exerciseId}`);
       
       // Update status to generating
       await supabase
         .from('reading_exercises')
         .update({ 
-          audio_generation_status: 'generating',
-          metadata: {
-            audio_generation_started: new Date().toISOString(),
-            enhanced_audio_enabled: true
-          }
+          audio_generation_status: 'generating'
         })
         .eq('id', exerciseId);
 
-      // Prepare batch audio generation items
-      const audioItems = [];
-      
-      // Add full text audio
+      // Generate full text audio
       const fullText = content.sentences.map((s: any) => s.text).join(' ');
-      if (fullText.trim()) {
-        audioItems.push({
-          id: 'full_text',
-          text: fullText,
-          language
-        });
+      
+      if (!fullText.trim()) {
+        throw new Error('No text content available for audio generation');
       }
 
-      // Add individual sentence audio
-      content.sentences.forEach((sentence: any, index: number) => {
-        if (sentence.text && sentence.text.trim()) {
-          audioItems.push({
-            id: `sentence_${index}`,
-            text: sentence.text,
-            language
-          });
-        }
-      });
-
-      // Generate audio using enhanced batch processing
-      const results = await enhancedAudioService.generateBatchAudio(audioItems, {
-        maxConcurrent: 2,
+      console.log(`[BACKGROUND AUDIO] Generating audio for ${fullText.length} characters`);
+      
+      const result = await enhancedAudioService.generateSingleAudio(fullText, language, {
         quality: 'standard',
-        retryFailures: true
+        background: true
       });
 
-      // Process results and update content
-      const fullTextResult = results.get('full_text');
-      const updatedSentences = content.sentences.map((sentence: any, index: number) => {
-        const sentenceResult = results.get(`sentence_${index}`);
-        return {
-          ...sentence,
-          audio_url: sentenceResult?.success ? sentenceResult.audioUrl : null
-        };
-      });
-
-      const updatedContent = {
-        ...content,
-        sentences: updatedSentences,
-        full_text_audio_url: fullTextResult?.success ? fullTextResult.audioUrl : null,
-        audio_metadata: {
-          generated_at: new Date().toISOString(),
-          success_rate: Array.from(results.values()).filter(r => r.success).length / results.size,
-          enhanced_generation: true
-        }
-      };
-
-      // Prepare update data with all necessary fields
-      const updateData: any = { 
-        content: updatedContent,
-        audio_generation_status: 'completed',
-        metadata: {
-          audio_generation_completed: new Date().toISOString(),
-          enhanced_audio_enabled: true,
-          success_rate: Array.from(results.values()).filter(r => r.success).length / results.size
-        }
-      };
-
-      // Set the dedicated URL fields for easier retrieval
-      if (fullTextResult?.success && fullTextResult.audioUrl) {
-        updateData.full_text_audio_url = fullTextResult.audioUrl;
-        updateData.audio_url = fullTextResult.audioUrl; // Also set fallback field
-        console.log(`[ENHANCED BACKGROUND AUDIO] Setting audio URLs: ${fullTextResult.audioUrl}`);
+      if (!result.success || !result.audioUrl) {
+        throw new Error(result.error || 'Audio generation failed');
       }
 
-      // Update the exercise with all the generated data
+      console.log(`[BACKGROUND AUDIO] Audio generated: ${result.audioUrl}`);
+
+      // Update exercise with audio URL - simplified approach
       const { error: updateError } = await supabase
         .from('reading_exercises')
-        .update(updateData)
+        .update({
+          audio_generation_status: 'completed',
+          audio_url: result.audioUrl,
+          full_text_audio_url: result.audioUrl
+        })
         .eq('id', exerciseId);
 
       if (updateError) {
-        console.error(`[ENHANCED BACKGROUND AUDIO] Failed to update exercise ${exerciseId}:`, updateError);
+        console.error(`[BACKGROUND AUDIO] Failed to update exercise ${exerciseId}:`, updateError);
         throw updateError;
       }
 
-      console.log(`[ENHANCED BACKGROUND AUDIO] Completed for exercise ${exerciseId} with ${Array.from(results.values()).filter(r => r.success).length}/${results.size} successful generations`);
-      console.log(`[ENHANCED BACKGROUND AUDIO] Full text audio URL saved: ${fullTextResult?.audioUrl}`);
+      console.log(`[BACKGROUND AUDIO] Successfully completed for exercise ${exerciseId}`);
 
     } catch (error) {
-      console.error(`[ENHANCED BACKGROUND AUDIO] Failed for exercise ${exerciseId}:`, error);
+      console.error(`[BACKGROUND AUDIO] Failed for exercise ${exerciseId}:`, error);
       
-      // Update status to failed with error details
+      // Update status to failed
       await supabase
         .from('reading_exercises')
         .update({ 
-          audio_generation_status: 'failed',
-          metadata: {
-            audio_generation_failed: new Date().toISOString(),
-            error: error.message
-          }
+          audio_generation_status: 'failed'
         })
         .eq('id', exerciseId);
     }
@@ -541,7 +488,7 @@ export class ReadingExerciseService {
     
     const result = await enhancedAudioService.generateSingleAudio(text, language, {
       quality: 'standard',
-      background: true
+      background: false
     });
 
     if (result.success && result.audioUrl) {
@@ -564,47 +511,12 @@ export class ReadingExerciseService {
       .update({ 
         audio_generation_status: 'pending',
         audio_url: null,
-        full_text_audio_url: null,
-        metadata: {
-          ...exercise.metadata,
-          retry_started: new Date().toISOString()
-        }
+        full_text_audio_url: null
       })
       .eq('id', exerciseId);
     
-    await this.generateAudioInBackgroundEnhanced(exerciseId, exercise.content, exercise.language);
-  }
-
-  async validateAndFixAudioUrls(exerciseId: string): Promise<void> {
-    console.log(`[VALIDATE AUDIO] Checking audio URLs for exercise: ${exerciseId}`);
-    
-    const exercise = await this.getReadingExercise(exerciseId);
-    
-    let needsUpdate = false;
-    const updateData: any = {};
-    
-    // Check if we have audio URLs but status is not completed
-    if ((exercise.audio_url || exercise.full_text_audio_url) && exercise.audio_generation_status !== 'completed') {
-      console.log(`[VALIDATE AUDIO] Found audio URLs but status is ${exercise.audio_generation_status}, fixing status`);
-      updateData.audio_generation_status = 'completed';
-      needsUpdate = true;
-    }
-    
-    // Check if status is completed but no audio URLs
-    if (exercise.audio_generation_status === 'completed' && !exercise.audio_url && !exercise.full_text_audio_url) {
-      console.log(`[VALIDATE AUDIO] Status is completed but no audio URLs found, resetting for regeneration`);
-      updateData.audio_generation_status = 'pending';
-      needsUpdate = true;
-    }
-    
-    if (needsUpdate) {
-      await supabase
-        .from('reading_exercises')
-        .update(updateData)
-        .eq('id', exerciseId);
-      
-      console.log(`[VALIDATE AUDIO] Updated exercise ${exerciseId} with corrected status`);
-    }
+    // Start background generation
+    this.generateAudioInBackground(exerciseId, exercise.content, exercise.language);
   }
 }
 

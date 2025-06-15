@@ -1,4 +1,3 @@
-
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
@@ -24,6 +23,7 @@ import { FullScreenReadingOverlay } from './FullScreenReadingOverlay'
 import { useFullScreenReading } from '@/hooks/use-full-screen-reading'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { readingExerciseService } from '@/services/readingExerciseService'
+import { AudioUtils } from '@/utils/audioUtils'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -69,124 +69,143 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   const [audioUrl, setAudioUrl] = useState<string>('')
   const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1)
   const [showTranslationAnalysis, setShowTranslationAnalysis] = useState(false)
+  const [audioInitialized, setAudioInitialized] = useState(false)
   
   const { viewMode, cycleViewMode, isFullScreen } = useFullScreenReading()
   const isMobile = useIsMobile()
 
-  // Debug logging for feature flags
-  useEffect(() => {
-    if (exercise && isOpen) {
-      console.log('ReadingFocusedModal feature flags:', {
-        enableTextSelection,
-        enableWordSynchronization,
-        enableContextMenu,
-        enableSelectionFeedback,
-        enableVocabularyIntegration,
-        enableFullTextAudio,
-        exerciseId: exercise.id,
-        exerciseLanguage: exercise.language
-      });
-    }
-  }, [exercise, isOpen, enableTextSelection, enableWordSynchronization, enableContextMenu, enableSelectionFeedback]);
-
-  // Enhanced audio URL initialization with better validation and retry logic
+  // Simplified audio initialization with better error handling
   useEffect(() => {
     if (!exercise || !isOpen || !enableFullTextAudio) {
-      console.log('[AUDIO INIT] Skipping audio initialization - conditions not met');
+      setAudioUrl('');
+      setAudioInitialized(false);
       return;
     }
 
     const initializeAudio = async () => {
-      console.log('[AUDIO INIT] Starting initialization for exercise:', {
-        exerciseId: exercise.id,
-        fullTextAudioUrl: exercise.full_text_audio_url,
-        audioUrl: exercise.audio_url,
-        audioGenerationStatus: exercise.audio_generation_status
-      });
-
-      // First, validate and fix any inconsistent states
-      try {
-        await readingExerciseService.validateAndFixAudioUrls(exercise.id);
-      } catch (error) {
-        console.warn('[AUDIO INIT] Validation failed:', error);
-      }
-
-      // Check for existing audio URLs in order of preference
-      const existingAudioUrl = exercise.full_text_audio_url || exercise.audio_url;
+      console.log('[AUDIO INIT] Starting initialization for exercise:', exercise.id);
       
-      if (existingAudioUrl) {
-        console.log('[AUDIO INIT] Found existing audio URL:', existingAudioUrl);
+      try {
+        // Get the preferred audio URL using our utility
+        const preferredAudioUrl = AudioUtils.getPreferredAudioUrl(exercise);
         
-        // Validate that the URL is accessible
-        try {
-          const response = await fetch(existingAudioUrl, { method: 'HEAD' });
-          if (response.ok) {
-            console.log('[AUDIO INIT] Existing audio URL is valid, using it');
-            setAudioUrl(existingAudioUrl);
+        if (preferredAudioUrl) {
+          console.log('[AUDIO INIT] Found existing audio URL:', preferredAudioUrl);
+          
+          // Validate accessibility
+          const isAccessible = await AudioUtils.validateAudioAccessibility(preferredAudioUrl);
+          
+          if (isAccessible) {
+            console.log('[AUDIO INIT] Audio URL is valid and accessible');
+            setAudioUrl(preferredAudioUrl);
+            setAudioInitialized(true);
             return;
           } else {
-            console.warn('[AUDIO INIT] Existing audio URL is not accessible:', response.status);
+            console.warn('[AUDIO INIT] Audio URL is not accessible, will regenerate');
           }
-        } catch (error) {
-          console.warn('[AUDIO INIT] Failed to validate existing audio URL:', error);
         }
-      }
 
-      // Handle different audio generation statuses
-      switch (exercise.audio_generation_status) {
-        case 'completed':
-          if (!existingAudioUrl) {
-            console.warn('[AUDIO INIT] Status is completed but no audio URL found, triggering regeneration');
-            generateFullTextAudio();
-          }
-          break;
-          
-        case 'generating':
-          console.log('[AUDIO INIT] Audio generation is in progress');
-          setIsGeneratingAudio(true);
-          break;
-          
-        case 'failed':
-          console.log('[AUDIO INIT] Previous audio generation failed, user can retry manually');
-          break;
-          
-        case 'pending':
-        default:
-          console.log('[AUDIO INIT] No existing audio, starting generation');
-          generateFullTextAudio();
-          break;
+        // Handle different statuses
+        switch (exercise.audio_generation_status) {
+          case 'completed':
+            if (!preferredAudioUrl) {
+              console.log('[AUDIO INIT] Status completed but no URL, regenerating');
+              await generateAudio();
+            }
+            break;
+            
+          case 'generating':
+            console.log('[AUDIO INIT] Audio generation in progress');
+            setIsGeneratingAudio(true);
+            // Poll for completion
+            pollForAudioCompletion();
+            break;
+            
+          case 'failed':
+            console.log('[AUDIO INIT] Previous generation failed');
+            break;
+            
+          case 'pending':
+          default:
+            console.log('[AUDIO INIT] Starting new audio generation');
+            await generateAudio();
+            break;
+        }
+        
+        setAudioInitialized(true);
+      } catch (error) {
+        console.error('[AUDIO INIT] Initialization failed:', error);
+        setAudioInitialized(true);
       }
     };
 
     initializeAudio();
-  }, [exercise, isOpen, enableFullTextAudio]);
+  }, [exercise?.id, isOpen, enableFullTextAudio]);
 
-  // Generate full-text audio with enhanced error handling and status tracking
-  const generateFullTextAudio = async () => {
-    if (!exercise || !enableFullTextAudio) return;
+  const generateAudio = async () => {
+    if (!exercise) return;
     
     try {
       setIsGeneratingAudio(true);
-      console.log('[AUDIO GENERATION] Starting new audio generation for exercise:', exercise.id);
       
       const fullText = exercise.content.sentences.map(s => s.text).join(' ');
-      
       if (!fullText.trim()) {
-        throw new Error('No text content available for audio generation');
+        throw new Error('No text content available');
       }
       
-      const generatedAudioUrl = await readingExerciseService.generateAudio(fullText, exercise.language);
+      console.log('[AUDIO GENERATION] Starting for exercise:', exercise.id);
+      const audioUrl = await readingExerciseService.generateAudio(fullText, exercise.language);
       
-      console.log('[AUDIO GENERATION] Successfully generated audio:', generatedAudioUrl);
-      setAudioUrl(generatedAudioUrl);
-      
+      console.log('[AUDIO GENERATION] Success:', audioUrl);
+      setAudioUrl(audioUrl);
       toast.success('Audio generated successfully');
     } catch (error) {
-      console.error('[AUDIO GENERATION] Error generating full-text audio:', error);
-      toast.error('Failed to generate audio. Please try again.');
+      console.error('[AUDIO GENERATION] Failed:', error);
+      toast.error('Failed to generate audio');
     } finally {
       setIsGeneratingAudio(false);
     }
+  };
+
+  const pollForAudioCompletion = async () => {
+    if (!exercise) return;
+    
+    const maxAttempts = 30; // 30 seconds
+    let attempts = 0;
+    
+    const poll = async () => {
+      if (attempts >= maxAttempts) {
+        console.log('[AUDIO POLL] Timeout reached');
+        setIsGeneratingAudio(false);
+        return;
+      }
+      
+      try {
+        const updatedExercise = await readingExerciseService.getReadingExercise(exercise.id);
+        const audioUrl = AudioUtils.getPreferredAudioUrl(updatedExercise);
+        
+        if (updatedExercise.audio_generation_status === 'completed' && audioUrl) {
+          console.log('[AUDIO POLL] Audio generation completed:', audioUrl);
+          setAudioUrl(audioUrl);
+          setIsGeneratingAudio(false);
+          return;
+        }
+        
+        if (updatedExercise.audio_generation_status === 'failed') {
+          console.log('[AUDIO POLL] Audio generation failed');
+          setIsGeneratingAudio(false);
+          return;
+        }
+        
+        attempts++;
+        setTimeout(poll, 1000);
+      } catch (error) {
+        console.error('[AUDIO POLL] Error:', error);
+        setIsGeneratingAudio(false);
+      }
+    };
+    
+    poll();
   };
 
   const togglePlayPause = async (audioRef: React.RefObject<HTMLAudioElement>) => {
@@ -277,32 +296,15 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     
     console.log('[AUDIO RETRY] Starting retry for exercise:', exercise.id);
     setIsGeneratingAudio(true);
-    setAudioUrl(''); // Clear current audio URL
+    setAudioUrl('');
     
     try {
       await readingExerciseService.retryAudioGeneration(exercise.id);
-      
-      // Wait a moment then try to get the new audio URL
-      setTimeout(async () => {
-        try {
-          const updatedExercise = await readingExerciseService.getReadingExercise(exercise.id);
-          const newAudioUrl = updatedExercise.full_text_audio_url || updatedExercise.audio_url;
-          
-          if (newAudioUrl) {
-            console.log('[AUDIO RETRY] Successfully got new audio URL:', newAudioUrl);
-            setAudioUrl(newAudioUrl);
-            toast.success('Audio regenerated successfully');
-          }
-        } catch (error) {
-          console.error('[AUDIO RETRY] Failed to get updated audio URL:', error);
-        } finally {
-          setIsGeneratingAudio(false);
-        }
-      }, 2000);
-      
+      pollForAudioCompletion();
+      toast.success('Audio regeneration started');
     } catch (error) {
-      console.error('[AUDIO RETRY] Failed to retry audio generation:', error);
-      toast.error('Failed to regenerate audio. Please try again.');
+      console.error('[AUDIO RETRY] Failed:', error);
+      toast.error('Failed to start audio regeneration');
       setIsGeneratingAudio(false);
     }
   };
@@ -311,8 +313,6 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
 
   const fullText = exercise.content.sentences.map(s => s.text).join(' ')
   const totalWords = fullText.split(/\s+/).length
-
-  // Cast exercise.language to Language type to fix TypeScript error
   const exerciseLanguage = exercise.language as Language
 
   // Enhanced text size scaling for better full-screen reading
@@ -338,7 +338,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   const renderReadingContent = () => (
     <>
       {/* Advanced Audio Controls */}
-      {enableFullTextAudio && !showTranslationAnalysis && (
+      {enableFullTextAudio && !showTranslationAnalysis && audioInitialized && (
         <div className={cn(
           "flex-shrink-0",
           isFullScreen ? "mb-8" : "mb-4"
@@ -535,17 +535,12 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     </>
   );
 
-  // Enhanced debugging and rendering logic
-  console.log('ReadingFocusedModal rendering decision:', {
-    exerciseId: exercise.id,
-    audioGenerationStatus: exercise.audio_generation_status,
-    hasFullTextAudioUrl: !!exercise.full_text_audio_url,
-    hasAudioUrl: !!exercise.audio_url,
-    currentAudioUrlInState: !!audioUrl,
-    enableFullTextAudio,
-    isGeneratingAudio,
-    viewMode
-  });
+  const showAudioBadge = audioInitialized && (
+    enableWordSynchronization && audioUrl ||
+    exercise.audio_generation_status === 'completed' ||
+    exercise.audio_generation_status === 'generating' ||
+    exercise.audio_generation_status === 'failed'
+  );
 
   return (
     <>
@@ -568,14 +563,14 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                   <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold line-clamp-2`}>
                     {exercise.title}
                   </DialogTitle>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <Badge variant="secondary" className="text-xs">
                       {exercise.language}
                     </Badge>
                     <Badge variant="outline" className="text-xs capitalize">
                       {exercise.difficulty_level}
                     </Badge>
-                    {enableWordSynchronization && audioUrl && (
+                    {showAudioBadge && enableWordSynchronization && audioUrl && (
                       <Badge variant="outline" className="text-xs">
                         Audio Sync
                       </Badge>
@@ -585,7 +580,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                         Enhanced Selection
                       </Badge>
                     )}
-                    {/* Enhanced audio status indicator */}
+                    {/* Simplified audio status indicator */}
                     {exercise.audio_generation_status && (
                       <Badge 
                         variant={
