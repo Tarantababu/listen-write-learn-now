@@ -91,10 +91,7 @@ export const SimpleCreationProgress: React.FC<EnhancedCreationProgressProps> = (
           <h3 className="text-lg font-semibold">Creating Your Reading Exercise</h3>
         </div>
         
-        {showOptimizations && status === 'generating' && <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
-            <Zap className="h-4 w-4" />
-            <span>Enhanced AI generation with intelligent optimization</span>
-          </div>}
+        {showOptimizations && status === 'generating'}
 
         {/* Enhanced Strategy Display */}
         {qualityMetrics?.generationStrategy && <div className="flex items-center justify-center gap-2">
