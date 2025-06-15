@@ -361,9 +361,9 @@ export const ReadingFocusedModal: React.FC<any> = ({
                       <SynchronizedTextWithSelection
                         text={fullText}
                         highlightedWordIndex={highlightedWordIndex}
+                        /** Enable word highlighting only, disable all interactive features */
                         enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
                         className={'text-base'}
-                        // In audio tab, disable context actions for max clarity
                         enableTextSelection={false}
                         enableVocabulary={false}
                         enhancedHighlighting={false}
