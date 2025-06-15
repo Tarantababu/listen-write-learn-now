@@ -1,5 +1,4 @@
 
-
 export interface ReadingExercise {
   id: string;
   user_id: string;
@@ -96,5 +95,5 @@ export interface CreateReadingExerciseRequest {
   grammar_focus?: string;
   topic: string;
   customText?: string;
+  skipAIAnalysis?: boolean; // New flag to bypass OpenAI completely
 }
-

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from '../_shared/cors.ts'
 
@@ -24,25 +23,32 @@ serve(async (req) => {
       topic, 
       language, 
       difficulty_level, 
-      target_length = 500, // Provide default value here
+      target_length = 500,
       grammar_focus,
       customText,
       isCustomText = false,
+      skipAIAnalysis = false,
       directGeneration = false
     } = await req.json()
 
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured')
-    }
-
-    console.log(`[ENHANCED GENERATION] Target: ${target_length} words, Strategy: ${directGeneration ? 'direct' : 'intelligent'}`);
+    console.log(`[GENERATION] Target: ${target_length} words, Custom: ${isCustomText}, Skip AI: ${skipAIAnalysis}`);
 
     let content;
 
     if (isCustomText && customText) {
-      content = await processCustomTextPreserved(customText, language, difficulty_level, grammar_focus, timeoutController.signal);
+      if (skipAIAnalysis) {
+        // Process custom text locally without any OpenAI calls
+        content = await processCustomTextLocally(customText, language, difficulty_level);
+      } else {
+        // Use the existing AI-enhanced custom text processing
+        content = await processCustomTextPreserved(customText, language, difficulty_level, grammar_focus, timeoutController.signal);
+      }
     } else {
-      // Enhanced strategy selection with smarter thresholds
+      // Regular AI generation for non-custom text
+      if (!openAIApiKey) {
+        throw new Error('OpenAI API key not configured')
+      }
+
       const strategy = determineOptimalStrategy(target_length, difficulty_level);
       
       if (strategy === 'direct') {
@@ -56,7 +62,6 @@ serve(async (req) => {
           timeoutController.signal
         );
       } else {
-        // Advanced adaptive chunking for very large content
         content = await generateContentWithAdaptiveChunking(
           topic, language, difficulty_level, target_length, grammar_focus, 
           timeoutController.signal
@@ -67,7 +72,7 @@ serve(async (req) => {
     clearTimeout(functionTimeout);
     
     const duration = Date.now() - startTime;
-    console.log(`[ENHANCED SUCCESS] Completed in ${duration}ms, Generated ${content.analysis?.wordCount || 0} words with strategy: ${content.analysis?.generationStrategy || 'unknown'}`);
+    console.log(`[SUCCESS] Completed in ${duration}ms, Generated ${content.analysis?.wordCount || 0} words with strategy: ${content.analysis?.generationStrategy || 'unknown'}`);
 
     return new Response(JSON.stringify(content), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -77,11 +82,10 @@ serve(async (req) => {
     clearTimeout(functionTimeout);
     const duration = Date.now() - startTime;
     
-    console.error(`[ENHANCED ERROR] After ${duration}ms:`, error);
+    console.error(`[ERROR] After ${duration}ms:`, error);
     
-    // Enhanced error handling with smart recovery
     if (error.name === 'AbortError' || error.message.includes('timeout')) {
-      console.warn('[SMART RECOVERY] Using intelligent fallback due to timeout');
+      console.warn('[RECOVERY] Using intelligent fallback due to timeout');
       const fallbackContent = generateIntelligentFallback(target_length || 500, language, topic, difficulty_level);
       
       return new Response(JSON.stringify(fallbackContent), {
@@ -90,7 +94,6 @@ serve(async (req) => {
       });
     }
     
-    // Enhanced error response with recovery suggestions
     const errorResponse = {
       error: error.message,
       recoveryData: generateRecoveryData(target_length || 500, language, topic, difficulty_level),
@@ -106,6 +109,75 @@ serve(async (req) => {
     )
   }
 })
+
+// NEW FUNCTION: Process custom text locally without any AI calls
+async function processCustomTextLocally(
+  customText: string, 
+  language: string, 
+  difficulty_level: string
+) {
+  console.log(`[LOCAL PROCESSING] Processing ${customText.length} characters locally without AI`);
+  
+  // Split text into sentences
+  const sentences = splitTextIntoSentencesBasic(customText);
+  console.log(`[LOCAL PROCESSING] Split into ${sentences.length} sentences`);
+  
+  // Process each sentence with basic analysis (no AI)
+  const processedSentences = sentences.map((sentence, index) => ({
+    id: `sentence-${index + 1}`,
+    text: sentence.trim(),
+    analysis: {
+      words: extractBasicWords(sentence).map(word => ({
+        word: word,
+        definition: 'Definition not available (local processing)',
+        partOfSpeech: 'unknown',
+        difficulty: 'medium'
+      })),
+      grammar: ['Basic sentence structure'],
+      translation: 'Translation not available (local processing)'
+    }
+  }));
+  
+  // Calculate word count
+  const totalWordCount = sentences.reduce((count, sentence) => {
+    return count + sentence.split(/\s+/).filter(word => word.length > 0).length;
+  }, 0);
+  
+  console.log(`[LOCAL PROCESSING] Successfully processed ${totalWordCount} words locally`);
+  
+  return {
+    sentences: processedSentences,
+    analysis: {
+      wordCount: totalWordCount,
+      readingTime: Math.ceil(totalWordCount / 200),
+      grammarPoints: ['Basic text structure', 'Reading comprehension'],
+      generationStrategy: 'local_processing',
+      localProcessing: true,
+      aiAnalysis: false
+    }
+  };
+}
+
+// Helper function for basic sentence splitting
+function splitTextIntoSentencesBasic(text: string): string[] {
+  // Simple sentence splitting on punctuation
+  const sentences = text
+    .split(/[.!?]+/)
+    .map(sentence => sentence.trim())
+    .filter(sentence => sentence.length > 0);
+  
+  return sentences.length > 0 ? sentences : [text.trim()];
+}
+
+// Helper function for basic word extraction
+function extractBasicWords(sentence: string): string[] {
+  return sentence
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')
+    .split(/\s+/)
+    .filter(word => word.length > 2)
+    .slice(0, 5); // Limit to 5 words per sentence
+}
 
 // NEW FUNCTION: Process custom text while preserving the original
 async function processCustomTextPreserved(

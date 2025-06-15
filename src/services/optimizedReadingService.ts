@@ -1,367 +1,277 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { ReadingExercise } from '@/types/reading';
+import { CreateReadingExerciseRequest, ReadingExercise } from '@/types/reading';
 
-export class OptimizedReadingService {
-  
-  async getReadingExercises(language?: string): Promise<ReadingExercise[]> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+interface ProgressCallback {
+  (progress: {
+    progress: number;
+    status: 'generating' | 'completed' | 'error';
+    message: string;
+    estimatedTime?: number;
+    qualityMetrics?: {
+      vocabularyDiversity?: number;
+      coherenceScore?: number;
+      generationStrategy?: string;
+      recoveryUsed?: boolean;
+    };
+  }): void;
+}
 
-    console.log('[OPTIMIZED READING SERVICE] Fetching reading exercises for user:', user.id, 'language:', language || 'all');
-
-    let query = supabase
-      .from('reading_exercises')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('archived', false)
-      .order('created_at', { ascending: false });
-
-    if (language) {
-      query = query.eq('language', language);
-    }
-
-    const { data, error } = await query;
-    if (error) {
-      console.error('[OPTIMIZED READING SERVICE] Database query error:', error);
-      throw error;
-    }
-
-    console.log('[OPTIMIZED READING SERVICE] Raw database results:', data?.length || 0, 'exercises');
+class OptimizedReadingService {
+  async createReadingExercise(
+    request: CreateReadingExerciseRequest,
+    onProgress?: ProgressCallback
+  ): Promise<ReadingExercise> {
+    console.log('[OPTIMIZED SERVICE] Creating reading exercise with request:', request);
     
-    const mappedExercises = (data || []).map(exercise => this.mapExerciseFromDb(exercise));
+    const startTime = Date.now();
     
-    console.log('[OPTIMIZED READING SERVICE] Mapped exercises:', mappedExercises.length);
-
-    return mappedExercises;
-  }
-
-  async createReadingExercise(exerciseData: any, onProgress?: (progress: any) => void): Promise<ReadingExercise> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    console.log('[OPTIMIZED READING SERVICE] Creating reading exercise without audio generation');
-
     try {
-      const { data, error } = await supabase.functions.invoke('generate-reading-content', {
-        body: {
-          ...exerciseData,
-          user_id: user.id,
-          optimized: true,
-          // Skip audio generation during creation
-          skipAudio: true,
-          target_length: exerciseData.target_length || 500
+      if (onProgress) {
+        onProgress({
+          progress: 10,
+          status: 'generating',
+          message: request.skipAIAnalysis ? 'Starting local text processing...' : 'Initializing enhanced generation system...',
+          estimatedTime: request.skipAIAnalysis ? 2000 : 8000
+        });
+      }
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User must be authenticated to create reading exercises');
+      }
+
+      if (onProgress) {
+        onProgress({
+          progress: 25,
+          status: 'generating',
+          message: request.skipAIAnalysis ? 'Processing your text locally...' : 'Calling enhanced content generation...',
+          estimatedTime: request.skipAIAnalysis ? 1500 : 6000
+        });
+      }
+
+      // Call the edge function with the new skipAIAnalysis parameter
+      const { data: contentData, error: contentError } = await supabase.functions.invoke(
+        'generate-reading-content',
+        {
+          body: {
+            topic: request.topic,
+            language: request.language,
+            difficulty_level: request.difficulty_level,
+            target_length: request.target_length,
+            grammar_focus: request.grammar_focus,
+            customText: request.customText,
+            isCustomText: !!request.customText,
+            skipAIAnalysis: request.skipAIAnalysis || false, // Pass the new flag
+            directGeneration: false
+          }
         }
+      );
+
+      if (contentError) {
+        console.error('[OPTIMIZED SERVICE] Content generation error:', contentError);
+        throw new Error(`Content generation failed: ${contentError.message}`);
+      }
+
+      if (onProgress) {
+        onProgress({
+          progress: 60,
+          status: 'generating',
+          message: request.skipAIAnalysis ? 'Finalizing local processing...' : 'Content generated! Processing quality metrics...',
+          estimatedTime: request.skipAIAnalysis ? 500 : 3000,
+          qualityMetrics: contentData.analysis?.qualityMetrics
+        });
+      }
+
+      console.log('[OPTIMIZED SERVICE] Content generated successfully:', {
+        wordCount: contentData.analysis?.wordCount,
+        sentences: contentData.sentences?.length,
+        strategy: contentData.analysis?.generationStrategy
       });
 
-      if (error) {
-        console.error('[OPTIMIZED READING SERVICE] Exercise creation error:', error);
-        
-        if (error.message?.includes('timeout') || error.message?.includes('504')) {
-          console.warn('[OPTIMIZED READING SERVICE] Timeout detected, retrying with smaller target length');
-          
-          const retryData = {
-            ...exerciseData,
-            target_length: Math.min(exerciseData.target_length || 500, 300)
-          };
-          
-          const retryResult = await supabase.functions.invoke('generate-reading-content', {
-            body: {
-              ...retryData,
-              user_id: user.id,
-              optimized: true,
-              skipAudio: true
-            }
-          });
-          
-          if (retryResult.error) {
-            throw retryResult.error;
-          }
-          
-          return this.processCreatedExercise(retryResult.data, exerciseData);
-        }
-        
-        throw error;
+      if (onProgress) {
+        onProgress({
+          progress: 80,
+          status: 'generating',
+          message: 'Saving exercise to database...',
+          estimatedTime: 1000
+        });
       }
 
-      if (!data) {
-        throw new Error('Failed to create exercise - no data returned');
-      }
-
-      if (!data.id && !data.sentences) {
-        throw new Error('Failed to create exercise - invalid response format');
-      }
-
-      return this.processCreatedExercise(data, exerciseData);
-      
-    } catch (error) {
-      console.error('[OPTIMIZED READING SERVICE] Unexpected error:', error);
-      throw new Error(`Failed to create reading exercise: ${error.message}`);
-    }
-  }
-
-  private async processCreatedExercise(data: any, originalData: any): Promise<ReadingExercise> {
-    if (data.id) {
-      return this.getReadingExercise(data.id);
-    }
-    
-    if (data.sentences && Array.isArray(data.sentences)) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-      
-      const { data: createdExercise, error: createError } = await supabase
+      // Save to database
+      const { data: exerciseData, error: insertError } = await supabase
         .from('reading_exercises')
         .insert({
           user_id: user.id,
-          title: originalData.title,
-          language: originalData.language,
-          difficulty_level: originalData.difficulty_level,
-          target_length: originalData.target_length || 500,
-          grammar_focus: originalData.grammar_focus,
-          topic: originalData.topic,
-          content: data,
-          // Start with pending audio status instead of generating during creation
+          title: request.title,
+          language: request.language,
+          difficulty_level: request.difficulty_level,
+          target_length: request.target_length,
+          grammar_focus: request.grammar_focus,
+          topic: request.topic,
+          content: contentData,
           audio_generation_status: 'pending',
           metadata: {
-            generation_method: 'optimized_workflow',
+            generation_method: contentData.analysis?.generationStrategy || 'unknown',
             created_at: new Date().toISOString(),
-            audio_on_demand: true
+            enhanced_audio_enabled: true,
+            skipAIAnalysis: request.skipAIAnalysis,
+            localProcessing: contentData.analysis?.localProcessing
           }
         })
         .select()
         .single();
+
+      if (insertError) {
+        console.error('[OPTIMIZED SERVICE] Database insert error:', insertError);
+        throw new Error(`Failed to save exercise: ${insertError.message}`);
+      }
+
+      if (onProgress) {
+        onProgress({
+          progress: 90,
+          status: 'generating',
+          message: request.skipAIAnalysis ? 'Exercise ready! Audio will be generated in background...' : 'Scheduling audio generation...',
+          estimatedTime: 500
+        });
+      }
+
+      // Queue audio generation in the background (for both local and AI processing)
+      this.queueAudioGeneration(exerciseData.id).catch(error => {
+        console.warn('[OPTIMIZED SERVICE] Audio generation queue failed:', error);
+      });
+
+      if (onProgress) {
+        const duration = Date.now() - startTime;
+        onProgress({
+          progress: 100,
+          status: 'completed',
+          message: request.skipAIAnalysis 
+            ? `Local processing completed in ${Math.round(duration / 1000)}s! Exercise ready for practice.`
+            : `Enhanced exercise created in ${Math.round(duration / 1000)}s! Audio generation started.`,
+          qualityMetrics: contentData.analysis?.qualityMetrics
+        });
+      }
+
+      console.log('[OPTIMIZED SERVICE] Exercise created successfully:', {
+        id: exerciseData.id,
+        processingMethod: contentData.analysis?.generationStrategy,
+        duration: Date.now() - startTime
+      });
+
+      return exerciseData;
+
+    } catch (error) {
+      console.error('[OPTIMIZED SERVICE] Exercise creation failed:', error);
       
-      if (createError) {
-        console.error('[OPTIMIZED READING SERVICE] Database insert error:', createError);
-        throw createError;
+      if (onProgress) {
+        onProgress({
+          progress: 0,
+          status: 'error',
+          message: `Creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        });
       }
       
-      return this.mapExerciseFromDb(createdExercise);
-    }
-    
-    throw new Error('Invalid response format from exercise creation');
-  }
-
-  async deleteReadingExercise(id: string): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    console.log('[OPTIMIZED READING SERVICE] Deleting reading exercise:', id);
-
-    const { error } = await supabase
-      .from('reading_exercises')
-      .update({ archived: true })
-      .eq('id', id)
-      .eq('user_id', user.id);
-
-    if (error) {
-      console.error('[OPTIMIZED READING SERVICE] Delete error:', error);
       throw error;
     }
   }
 
-  async refreshExerciseFromDb(id: string): Promise<ReadingExercise> {
-    console.log('[OPTIMIZED READING SERVICE] Refreshing exercise from database:', id);
-
-    const { data, error } = await supabase
-      .from('reading_exercises')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      console.error('[OPTIMIZED READING SERVICE] Refresh query error:', error);
-      throw error;
-    }
-
-    const refreshed = this.mapExerciseFromDb(data);
-    console.log('[OPTIMIZED READING SERVICE] Exercise refreshed:', {
-      id: refreshed.id,
-      audio_status: refreshed.audio_generation_status,
-      has_audio_url: !!refreshed.audio_url,
-      has_full_text_audio_url: !!refreshed.full_text_audio_url
-    });
-
-    return refreshed;
-  }
-
-  // New method for on-demand audio generation
-  async generateAudioOnDemand(exerciseId: string): Promise<boolean> {
-    console.log('[OPTIMIZED READING SERVICE] Starting on-demand audio generation for:', exerciseId);
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
+  private async queueAudioGeneration(exerciseId: string): Promise<void> {
     try {
-      // Get exercise details
-      const exercise = await this.getReadingExercise(exerciseId);
+      console.log('[OPTIMIZED SERVICE] Queueing audio generation for exercise:', exerciseId);
       
       // Update status to generating
       await supabase
         .from('reading_exercises')
-        .update({
+        .update({ 
           audio_generation_status: 'generating',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', exerciseId);
-
-      // Extract full text from exercise content
-      const fullText = exercise.content.sentences.map(s => s.text).join(' ');
-      
-      if (!fullText.trim()) {
-        throw new Error('No text content found for audio generation');
-      }
-
-      // Generate audio using enhanced audio service
-      const { enhancedAudioService } = await import('@/services/enhancedAudioService');
-      const result = await enhancedAudioService.generateSingleAudio(
-        fullText, 
-        exercise.language, 
-        { quality: 'standard', priority: 'high' }
-      );
-
-      if (result.success && result.audioUrl) {
-        // Update exercise with audio URL
-        await supabase
-          .from('reading_exercises')
-          .update({
-            audio_url: result.audioUrl,
-            full_text_audio_url: result.audioUrl,
-            audio_generation_status: 'completed',
-            metadata: {
-              ...(typeof exercise.metadata === 'object' ? exercise.metadata : {}),
-              audio_generated_on_demand: true,
-              audio_generated_at: new Date().toISOString(),
-              audio_metadata: result.metadata
-            }
-          })
-          .eq('id', exerciseId);
-
-        console.log('[OPTIMIZED READING SERVICE] On-demand audio generation successful');
-        return true;
-      } else {
-        // Update status to failed
-        await supabase
-          .from('reading_exercises')
-          .update({
-            audio_generation_status: 'failed',
-            metadata: {
-              ...(typeof exercise.metadata === 'object' ? exercise.metadata : {}),
-              audio_error: result.error,
-              audio_failed_at: new Date().toISOString()
-            }
-          })
-          .eq('id', exerciseId);
-
-        console.error('[OPTIMIZED READING SERVICE] On-demand audio generation failed:', result.error);
-        return false;
-      }
-    } catch (error) {
-      console.error('[OPTIMIZED READING SERVICE] On-demand audio generation error:', error);
-      
-      // Update status to failed
-      await supabase
-        .from('reading_exercises')
-        .update({
-          audio_generation_status: 'failed',
           metadata: {
-            audio_error: error.message,
-            audio_failed_at: new Date().toISOString()
+            audio_generation_started: new Date().toISOString()
           }
         })
         .eq('id', exerciseId);
 
+      // Call audio generation function
+      const { error } = await supabase.functions.invoke('generate-reading-audio', {
+        body: { exerciseId }
+      });
+
+      if (error) {
+        console.error('[OPTIMIZED SERVICE] Audio generation queue error:', error);
+        await supabase
+          .from('reading_exercises')
+          .update({ 
+            audio_generation_status: 'failed',
+            metadata: {
+              audio_generation_failed: new Date().toISOString(),
+              error: error.message
+            }
+          })
+          .eq('id', exerciseId);
+      }
+    } catch (error) {
+      console.error('[OPTIMIZED SERVICE] Audio queue error:', error);
+    }
+  }
+
+  async generateAudioOnDemand(exerciseId: string): Promise<boolean> {
+    try {
+      console.log('[OPTIMIZED SERVICE] Generating audio on demand for exercise:', exerciseId);
+      
+      const { data, error } = await supabase.functions.invoke('generate-reading-audio', {
+        body: { exerciseId, onDemand: true }
+      });
+
+      if (error) {
+        console.error('[OPTIMIZED SERVICE] On-demand audio generation error:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('[OPTIMIZED SERVICE] On-demand audio generation failed:', error);
       return false;
     }
   }
 
-  private mapExerciseFromDb(exercise: any): ReadingExercise {
-    const mapped: ReadingExercise = {
-      id: exercise.id,
-      user_id: exercise.user_id,
-      title: exercise.title,
-      language: exercise.language,
-      difficulty_level: exercise.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
-      target_length: exercise.target_length,
-      grammar_focus: exercise.grammar_focus,
-      topic: exercise.topic,
-      content: this.parseContentFromDatabase(exercise.content),
-      audio_url: exercise.audio_url,
-      full_text_audio_url: exercise.full_text_audio_url,
-      audio_generation_status: (exercise.audio_generation_status || 'pending') as 'pending' | 'generating' | 'completed' | 'failed',
-      metadata: this.parseMetadataFromDatabase(exercise.metadata),
-      created_at: exercise.created_at,
-      updated_at: exercise.updated_at,
-      archived: exercise.archived || false
-    };
-
-    return mapped;
-  }
-
-  private parseContentFromDatabase(content: any): ReadingExercise['content'] {
-    if (!content) {
-      return { sentences: [] };
-    }
-    
-    if (typeof content === 'object' && content !== null) {
-      return content as ReadingExercise['content'];
-    }
-    
-    if (typeof content === 'string') {
-      try {
-        return JSON.parse(content) as ReadingExercise['content'];
-      } catch {
-        return { sentences: [] };
-      }
-    }
-    
-    return { sentences: [] };
-  }
-
-  private parseMetadataFromDatabase(metadata: any): ReadingExercise['metadata'] {
-    if (!metadata) return undefined;
-    
-    if (typeof metadata === 'object' && metadata !== null) {
-      return metadata;
-    }
-    
-    if (typeof metadata === 'string') {
-      try {
-        return JSON.parse(metadata);
-      } catch {
-        return undefined;
-      }
-    }
-    
-    return undefined;
-  }
-
-  async getReadingExercise(id: string): Promise<ReadingExercise> {
-    console.log('[OPTIMIZED READING SERVICE] Fetching single exercise:', id);
-
+  async refreshExerciseFromDb(exerciseId: string): Promise<ReadingExercise> {
     const { data, error } = await supabase
       .from('reading_exercises')
       .select('*')
-      .eq('id', id)
+      .eq('id', exerciseId)
       .single();
 
     if (error) {
-      console.error('[OPTIMIZED READING SERVICE] Single exercise query error:', error);
-      throw error;
+      throw new Error(`Failed to refresh exercise: ${error.message}`);
     }
 
-    const mapped = this.mapExerciseFromDb(data);
-    
-    console.log('[OPTIMIZED READING SERVICE] Single exercise mapped successfully');
-
-    return mapped;
+    return data;
   }
 
-  // Enhanced method to trigger audio generation for an exercise
-  async triggerAudioGeneration(exerciseId: string): Promise<boolean> {
-    console.log('[OPTIMIZED READING SERVICE] Triggering audio generation for:', exerciseId);
-    
-    return this.generateAudioOnDemand(exerciseId);
+  async getReadingExercises(userId: string): Promise<ReadingExercise[]> {
+    const { data, error } = await supabase
+      .from('reading_exercises')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('archived', false)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch reading exercises: ${error.message}`);
+    }
+
+    return data || [];
+  }
+
+  async deleteReadingExercise(exerciseId: string): Promise<void> {
+    const { error } = await supabase
+      .from('reading_exercises')
+      .update({ archived: true })
+      .eq('id', exerciseId);
+
+    if (error) {
+      throw new Error(`Failed to delete reading exercise: ${error.message}`);
+    }
   }
 }
 
