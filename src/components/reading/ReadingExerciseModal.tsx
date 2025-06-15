@@ -186,14 +186,14 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
       <Dialog open={isOpen} onOpenChange={() => {}}>
         <DialogContent className={`${
           isMobile 
-            ? 'w-full h-full max-w-full max-h-full m-0 rounded-none p-4' 
+            ? 'w-full h-full max-w-full max-h-full m-0 rounded-none p-3' 
             : 'max-w-3xl max-h-[90vh]'
         } overflow-y-auto border-0 shadow-2xl bg-gradient-to-br from-white via-blue-50/30 to-purple-50/20 dark:from-gray-900 dark:via-blue-950/20 dark:to-purple-950/10`}>
-          <DialogHeader className={`text-center space-y-4 pb-6 border-b border-gradient-to-r from-blue-200/50 via-purple-200/50 to-pink-200/50 ${isMobile ? 'pb-4' : ''}`}>
-            <DialogTitle className={`flex items-center justify-center gap-3 font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent ${isMobile ? 'text-xl' : 'text-2xl'}`}>
+          <DialogHeader className={`text-center space-y-3 pb-4 border-b border-gradient-to-r from-blue-200/50 via-purple-200/50 to-pink-200/50`}>
+            <DialogTitle className={`flex items-center justify-center gap-2 font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent ${isMobile ? 'text-lg' : 'text-2xl'}`}>
               <div className="relative">
-                <Brain className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-blue-600`} />
-                <Sparkles className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-purple-500 absolute -top-1 -right-1 animate-pulse`} />
+                <Brain className={`${isMobile ? 'h-5 w-5' : 'h-7 w-7'} text-blue-600`} />
+                <Sparkles className={`${isMobile ? 'h-2 w-2' : 'h-4 w-4'} text-purple-500 absolute -top-1 -right-1 animate-pulse`} />
               </div>
               Creating Your Enhanced Reading Exercise
             </DialogTitle>
@@ -217,27 +217,27 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className={`${
         isMobile 
-          ? 'w-full h-full max-w-full max-h-full m-0 rounded-none p-4' 
+          ? 'w-full h-full max-w-full max-h-full m-0 rounded-none p-3' 
           : 'max-w-4xl max-h-[90vh]'
       } overflow-y-auto border-0 shadow-2xl bg-gradient-to-br from-white via-blue-50/30 to-purple-50/20 dark:from-gray-900 dark:via-blue-950/20 dark:to-purple-950/10`}>
-        <DialogHeader className={`text-center space-y-4 pb-6 border-b border-gradient-to-r from-blue-200/50 via-purple-200/50 to-pink-200/50 ${isMobile ? 'pb-4 space-y-3' : ''}`}>
-          <DialogTitle className={`flex items-center justify-center gap-3 font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent ${isMobile ? 'text-xl flex-col gap-2' : 'text-2xl'}`}>
+        <DialogHeader className={`text-center space-y-3 pb-4 border-b border-gradient-to-r from-blue-200/50 via-purple-200/50 to-pink-200/50`}>
+          <DialogTitle className={`flex items-center justify-center gap-2 font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent ${isMobile ? 'text-lg flex-col gap-1' : 'text-2xl'}`}>
             <div className="relative">
-              <BookOpen className={`${isMobile ? 'h-6 w-6' : 'h-7 w-7'} text-blue-600`} />
-              <Sparkles className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-purple-500 absolute -top-1 -right-1 animate-pulse`} />
+              <BookOpen className={`${isMobile ? 'h-5 w-5' : 'h-7 w-7'} text-blue-600`} />
+              <Sparkles className={`${isMobile ? 'h-2 w-2' : 'h-4 w-4'} text-purple-500 absolute -top-1 -right-1 animate-pulse`} />
             </div>
             Create Enhanced Reading Exercise
           </DialogTitle>
-          <p className={`text-muted-foreground mx-auto leading-relaxed ${isMobile ? 'text-sm max-w-full' : 'max-w-md'}`}>
+          <p className={`text-muted-foreground mx-auto leading-relaxed ${isMobile ? 'text-xs max-w-full px-2' : 'max-w-md'}`}>
             Generate personalized reading content with AI-powered enhancements and quality optimization
           </p>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className={`space-y-6 ${isMobile ? 'space-y-4 p-0' : 'p-6'}`}>
+        <form onSubmit={handleSubmit} className={`space-y-4 ${isMobile ? 'p-0' : 'p-6'}`}>
           {/* Title Section with Enhanced Design */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <Label htmlFor="title" className={`font-semibold flex items-center gap-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
-              <Target className="h-4 w-4 text-blue-500" />
+              <Target className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-blue-500`} />
               Exercise Title
             </Label>
             <Input
@@ -246,14 +246,14 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter a descriptive title for your exercise..."
               required
-              className={`border-2 border-blue-100 focus:border-blue-400 transition-all duration-200 rounded-xl shadow-sm ${isMobile ? 'h-12 text-base' : 'h-12 text-lg'}`}
+              className={`border-2 border-blue-100 focus:border-blue-400 transition-all duration-200 rounded-xl shadow-sm ${isMobile ? 'h-11 text-sm' : 'h-12 text-lg'}`}
             />
           </div>
 
           {/* Content Source with Enhanced Cards */}
-          <div className="space-y-4">
-            <h3 className={`font-semibold flex items-center gap-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-              <Brain className="h-5 w-5 text-purple-500" />
+          <div className="space-y-3">
+            <h3 className={`font-semibold flex items-center gap-2 ${isMobile ? 'text-sm' : 'text-lg'}`}>
+              <Brain className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-500`} />
               Content Source
             </h3>
             <ContentSourceSelector
@@ -263,9 +263,9 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
           </div>
 
           {contentSource === 'ai' ? (
-            <div className={isMobile ? 'space-y-6' : 'space-y-8'}>
+            <div className="space-y-4">
               {/* Topic Selection with Enhanced UI */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 p-6 rounded-2xl border border-blue-200 dark:border-blue-800">
+              <div className={`bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 ${isMobile ? 'p-3' : 'p-6'} rounded-2xl border border-blue-200 dark:border-blue-800`}>
                 <TopicMandalaSelector
                   selectedTopic={topic}
                   onTopicSelect={setTopic}
@@ -274,32 +274,32 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
               </div>
 
               {/* Settings Grid with Enhanced Layout */}
-              <div className={`grid gap-6 ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-2'}`}>
-                <div className="space-y-3">
+              <div className="grid gap-4 grid-cols-1">
+                <div className="space-y-2">
                   <Label htmlFor="difficulty" className={`font-semibold flex items-center gap-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
-                    <TrendingUp className="h-4 w-4 text-green-500" />
+                    <TrendingUp className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-green-500`} />
                     Difficulty Level
                   </Label>
                   <Select value={difficultyLevel} onValueChange={(value: any) => setDifficultyLevel(value)}>
-                    <SelectTrigger className={`border-2 border-green-100 focus:border-green-400 rounded-xl ${isMobile ? 'h-12 text-base' : 'h-12'}`}>
+                    <SelectTrigger className={`border-2 border-green-100 focus:border-green-400 rounded-xl ${isMobile ? 'h-11 text-sm' : 'h-12'}`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="beginner" className="py-3">
+                      <SelectItem value="beginner" className={isMobile ? 'py-2' : 'py-3'}>
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                          <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full bg-green-400`}></div>
                           <span>Beginner</span>
                         </div>
                       </SelectItem>
-                      <SelectItem value="intermediate" className="py-3">
+                      <SelectItem value="intermediate" className={isMobile ? 'py-2' : 'py-3'}>
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                          <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full bg-yellow-400`}></div>
                           <span>Intermediate</span>
                         </div>
                       </SelectItem>
-                      <SelectItem value="advanced" className="py-3">
+                      <SelectItem value="advanced" className={isMobile ? 'py-2' : 'py-3'}>
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                          <div className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full bg-red-400`}></div>
                           <span>Advanced</span>
                         </div>
                       </SelectItem>
@@ -307,27 +307,27 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                   </Select>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <Label htmlFor="length" className={`font-semibold flex items-center gap-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
-                    <Clock className="h-4 w-4 text-orange-500" />
+                    <Clock className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-orange-500`} />
                     Target Length
                   </Label>
                   <Select value={targetLength.toString()} onValueChange={(value) => setTargetLength(Number(value))}>
-                    <SelectTrigger className={`border-2 border-orange-100 focus:border-orange-400 rounded-xl ${isMobile ? 'h-12 text-base' : 'h-12'}`}>
+                    <SelectTrigger className={`border-2 border-orange-100 focus:border-orange-400 rounded-xl ${isMobile ? 'h-11 text-sm' : 'h-12'}`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {lengthOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value.toString()} className="py-3">
+                        <SelectItem key={option.value} value={option.value.toString()} className={isMobile ? 'py-2' : 'py-3'}>
                           <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <span className={`font-medium ${isMobile ? 'text-sm' : ''}`}>{option.label}</span>
-                              <span className={`bg-gradient-to-r from-blue-500 to-purple-500 text-white px-2 py-1 rounded-full ${isMobile ? 'text-xs' : 'text-xs'}`}>
+                            <div className="flex items-center gap-1">
+                              <span className={`font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>{option.label}</span>
+                              <span className={`bg-gradient-to-r from-blue-500 to-purple-500 text-white px-1.5 py-0.5 rounded-full text-xs`}>
                                 {option.strategy}
                               </span>
                             </div>
                             {option.recommended && (
-                              <span className={`text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>{option.recommended}</span>
+                              <span className={`text-muted-foreground text-xs`}>{option.recommended}</span>
                             )}
                           </div>
                         </SelectItem>
@@ -339,15 +339,15 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
 
               {/* Enhanced Strategy Information */}
               <Alert className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
-                <AlertDescription className={`text-blue-800 dark:text-blue-200 ${isMobile ? 'text-sm' : ''}`}>
+                <TrendingUp className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
+                <AlertDescription className={`text-blue-800 dark:text-blue-200 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                   <strong className="text-blue-900 dark:text-blue-100">Generation Strategy:</strong> {getGenerationStrategy()} - This strategy is optimized for {targetLength} words to ensure quality and coherence.
                   {isLongContent && " Advanced adaptive chunking will be used for optimal results."}
                 </AlertDescription>
               </Alert>
 
               {/* Grammar Focus with Enhanced Container */}
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 p-6 rounded-2xl border border-purple-200 dark:border-purple-800">
+              <div className={`bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 ${isMobile ? 'p-3' : 'p-6'} rounded-2xl border border-purple-200 dark:border-purple-800`}>
                 <GrammarFocusSelector
                   selectedGrammar={grammarFocus}
                   onGrammarToggle={handleGrammarToggle}
@@ -356,7 +356,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
               </div>
             </div>
           ) : (
-            <div className="bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-950/30 dark:to-slate-950/30 p-6 rounded-2xl border border-gray-200 dark:border-gray-800">
+            <div className={`bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-950/30 dark:to-slate-950/30 ${isMobile ? 'p-3' : 'p-6'} rounded-2xl border border-gray-200 dark:border-gray-800`}>
               <CustomTextInput
                 value={customText}
                 onChange={setCustomText}
@@ -367,36 +367,36 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
 
           {/* Enhanced Feature Highlight */}
           <Alert className="border-2 border-gradient-to-r from-yellow-200 to-orange-200 bg-gradient-to-r from-yellow-50 via-orange-50 to-red-50 dark:from-yellow-950/30 dark:via-orange-950/30 dark:to-red-950/30">
-            <Zap className="h-5 w-5 text-yellow-600" />
-            <AlertDescription className={`text-yellow-800 dark:text-yellow-200 ${isMobile ? 'text-sm' : ''}`}>
+            <Zap className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-yellow-600`} />
+            <AlertDescription className={`text-yellow-800 dark:text-yellow-200 ${isMobile ? 'text-xs' : 'text-sm'}`}>
               <strong className="text-yellow-900 dark:text-yellow-100">Enhanced Generation:</strong> Our optimized system uses intelligent strategies, quality metrics, and smart recovery to ensure successful creation. Audio generation happens automatically in the background.
             </AlertDescription>
           </Alert>
 
           {/* Enhanced Action Buttons */}
-          <div className={`flex gap-4 pt-6 border-t border-gradient-to-r from-blue-200/50 via-purple-200/50 to-pink-200/50 ${isMobile ? 'flex-col pt-4' : 'justify-end'}`}>
+          <div className={`flex gap-3 pt-4 border-t border-gradient-to-r from-blue-200/50 via-purple-200/50 to-pink-200/50 ${isMobile ? 'flex-col' : 'justify-end'}`}>
             <Button 
               type="button" 
               variant="outline" 
               onClick={handleClose}
-              className={`rounded-xl border-2 hover:bg-gray-50 transition-all duration-200 ${isMobile ? 'h-12 text-base' : 'px-8 py-3 h-12'}`}
+              className={`rounded-xl border-2 hover:bg-gray-50 transition-all duration-200 ${isMobile ? 'h-11 text-sm' : 'px-8 py-3 h-12'}`}
             >
               Cancel
             </Button>
             <Button 
               type="submit" 
               disabled={isCreating}
-              className={`rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white font-semibold shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? 'h-12 text-base' : 'px-8 py-3 h-12'}`}
+              className={`rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white font-semibold shadow-lg transition-all duration-200 transform hover:scale-[1.02] ${isMobile ? 'h-11 text-sm' : 'px-8 py-3 h-12'}`}
             >
               {isCreating ? (
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <div className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'} border-2 border-white border-t-transparent rounded-full animate-spin`}></div>
                   Creating...
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  {isMobile ? 'Create Exercise' : 'Create Enhanced Exercise'}
+                  <Sparkles className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                  Create Enhanced Exercise
                 </div>
               )}
             </Button>
