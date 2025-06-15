@@ -160,12 +160,7 @@ const ExercisesPage: React.FC = () => {
   }, []);
   return <div className="container mx-auto px-4 py-8">
       {/* Unified Header for better alignment */}
-      <div className="mb-8 text-center space-y-2">
-        <h1 className="text-3xl font-bold">Exercises</h1>
-        <p className="text-muted-foreground text-base">
-          Practice your language skills with different exercise types and progress methods.
-        </p>
-      </div>
+      
 
       <Tabs defaultValue="dictation" className="space-y-6">
         <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 h-auto md:h-12 mb-4 rounded-lg shadow-sm">
