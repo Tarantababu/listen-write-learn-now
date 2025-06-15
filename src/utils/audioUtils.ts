@@ -27,7 +27,7 @@ export class AudioUtils {
     
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000); // Reduced timeout for faster response
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // Increased timeout for better reliability
       
       const response = await fetch(url, { 
         method: 'HEAD',
@@ -52,7 +52,7 @@ export class AudioUtils {
   }
 
   static getPreferredAudioUrl(exercise: any): string | null {
-    // Simplified priority: full_text_audio_url > audio_url
+    // Enhanced priority: full_text_audio_url > audio_url
     const candidates = [
       exercise.full_text_audio_url,
       exercise.audio_url
@@ -60,10 +60,15 @@ export class AudioUtils {
 
     for (const url of candidates) {
       if (this.isValidAudioUrl(url)) {
+        console.log(`[AUDIO UTILS] Found valid audio URL: ${url}`);
         return url;
       }
     }
 
+    console.warn(`[AUDIO UTILS] No valid audio URL found in exercise:`, {
+      full_text_audio_url: exercise.full_text_audio_url,
+      audio_url: exercise.audio_url
+    });
     return null;
   }
 
@@ -78,17 +83,19 @@ export class AudioUtils {
           audio.removeEventListener('canplaythrough', onLoad);
           audio.removeEventListener('error', onError);
           reject(new Error('Audio preload timeout'));
-        }, 8000); // Reduced timeout
+        }, 10000); // Increased timeout
         
         const onLoad = () => {
           clearTimeout(timeout);
           audio.removeEventListener('error', onError);
+          console.log(`[AUDIO UTILS] Audio preloaded successfully: ${url}`);
           resolve(audio);
         };
         
         const onError = () => {
           clearTimeout(timeout);
           audio.removeEventListener('canplaythrough', onLoad);
+          console.error(`[AUDIO UTILS] Audio preload failed: ${url}`);
           reject(new Error('Audio preload failed'));
         };
         
@@ -117,14 +124,14 @@ export class AudioUtils {
     return Math.max(1, Math.ceil(textLength / charsPerSecond));
   }
 
-  // New utility methods for optimized workflow
+  // Enhanced utility methods for optimized workflow
   static async validateAudioQuickly(url: string): Promise<boolean> {
     if (!this.isValidAudioUrl(url)) return false;
     
     try {
       // Quick HEAD request with short timeout
       const controller = new AbortController();
-      setTimeout(() => controller.abort(), 1000);
+      setTimeout(() => controller.abort(), 2000);
       
       const response = await fetch(url, { 
         method: 'HEAD',
@@ -145,5 +152,57 @@ export class AudioUtils {
     }
     
     return { type: 'audio', source: 'legacy' };
+  }
+
+  // New comprehensive audio status check
+  static async getAudioStatus(exercise: any): Promise<{
+    hasAudio: boolean;
+    isAccessible: boolean | null;
+    preferredUrl: string | null;
+    fallbackUrl: string | null;
+    metadata: any;
+  }> {
+    console.log(`[AUDIO UTILS] Getting audio status for exercise:`, {
+      id: exercise.id,
+      audio_generation_status: exercise.audio_generation_status,
+      has_audio_url: !!exercise.audio_url,
+      has_full_text_audio_url: !!exercise.full_text_audio_url
+    });
+
+    const preferredUrl = this.getPreferredAudioUrl(exercise);
+    const fallbackUrl = exercise.audio_url !== preferredUrl ? exercise.audio_url : null;
+    
+    if (!preferredUrl) {
+      return {
+        hasAudio: false,
+        isAccessible: null,
+        preferredUrl: null,
+        fallbackUrl: null,
+        metadata: this.getAudioMetadata('')
+      };
+    }
+
+    // Check accessibility of preferred URL
+    const isAccessible = await this.validateAudioAccessibility(preferredUrl, false);
+    
+    return {
+      hasAudio: true,
+      isAccessible,
+      preferredUrl,
+      fallbackUrl,
+      metadata: this.getAudioMetadata(preferredUrl)
+    };
+  }
+
+  // Enhanced audio regeneration check
+  static shouldRegenerateAudio(exercise: any): boolean {
+    const status = exercise.audio_generation_status;
+    const hasUrls = exercise.audio_url || exercise.full_text_audio_url;
+    
+    // Need regeneration if:
+    // 1. Status is failed
+    // 2. Status is completed but no URLs exist
+    // 3. Status is pending for too long (could add timestamp check)
+    return status === 'failed' || (status === 'completed' && !hasUrls);
   }
 }

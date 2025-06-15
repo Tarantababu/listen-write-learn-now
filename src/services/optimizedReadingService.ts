@@ -163,6 +163,32 @@ export class OptimizedReadingService {
     }
   }
 
+  // Enhanced method to refresh exercise data from database
+  async refreshExerciseFromDb(id: string): Promise<ReadingExercise> {
+    console.log('[OPTIMIZED READING SERVICE] Refreshing exercise from database:', id);
+
+    const { data, error } = await supabase
+      .from('reading_exercises')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('[OPTIMIZED READING SERVICE] Refresh query error:', error);
+      throw error;
+    }
+
+    const refreshed = this.mapExerciseFromDb(data);
+    console.log('[OPTIMIZED READING SERVICE] Exercise refreshed:', {
+      id: refreshed.id,
+      audio_status: refreshed.audio_generation_status,
+      has_audio_url: !!refreshed.audio_url,
+      has_full_text_audio_url: !!refreshed.full_text_audio_url
+    });
+
+    return refreshed;
+  }
+
   private mapExerciseFromDb(exercise: any): ReadingExercise {
     const mapped: ReadingExercise = {
       id: exercise.id,
@@ -243,6 +269,37 @@ export class OptimizedReadingService {
     console.log('[OPTIMIZED READING SERVICE] Single exercise mapped successfully');
 
     return mapped;
+  }
+
+  // New method to trigger audio generation for an exercise
+  async triggerAudioGeneration(exerciseId: string): Promise<boolean> {
+    console.log('[OPTIMIZED READING SERVICE] Triggering audio generation for:', exerciseId);
+    
+    try {
+      // Update status to generating
+      const { error: updateError } = await supabase
+        .from('reading_exercises')
+        .update({
+          audio_generation_status: 'generating',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', exerciseId);
+
+      if (updateError) {
+        console.error('[OPTIMIZED READING SERVICE] Failed to update status:', updateError);
+        return false;
+      }
+
+      // Call the enhanced audio service
+      const success = await import('@/services/enhancedAudioService').then(module => 
+        module.enhancedAudioService.validateAndFixExerciseAudio(exerciseId)
+      );
+
+      return success;
+    } catch (error) {
+      console.error('[OPTIMIZED READING SERVICE] Audio generation trigger failed:', error);
+      return false;
+    }
   }
 }
 
