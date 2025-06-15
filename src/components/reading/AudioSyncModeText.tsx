@@ -18,6 +18,7 @@ interface AudioSyncModeTextProps {
   enhancedHighlighting?: boolean;
   vocabularyIntegration?: boolean;
   enableContextMenu?: boolean;
+  className?: string;
 }
 
 export const AudioSyncModeText: React.FC<AudioSyncModeTextProps> = ({
@@ -33,7 +34,8 @@ export const AudioSyncModeText: React.FC<AudioSyncModeTextProps> = ({
   enableVocabulary = false,
   enhancedHighlighting = false,
   vocabularyIntegration = false,
-  enableContextMenu = true
+  enableContextMenu = true,
+  className
 }) => {
   console.log('AudioSyncModeText rendering:', {
     highlightedWordIndex,
@@ -42,26 +44,28 @@ export const AudioSyncModeText: React.FC<AudioSyncModeTextProps> = ({
   });
 
   return (
-    <TextSelectionManager
-      onCreateDictation={onCreateDictation}
-      onCreateBidirectional={onCreateBidirectional}
-      disabled={false}
-      exerciseId={exerciseId}
-      exerciseLanguage={exerciseLanguage}
-      enableVocabulary={enableVocabulary}
-      enhancedHighlighting={enhancedHighlighting}
-      vocabularyIntegration={vocabularyIntegration}
-      enableContextMenu={enableContextMenu}
-      isReadingMode={false}
-    >
-      <SynchronizedText
-        text={text}
-        highlightedWordIndex={highlightedWordIndex}
-        onWordClick={onWordClick}
-        enableWordHighlighting={enableWordHighlighting}
-        highlightColor={highlightColor}
-        className="leading-relaxed"
-      />
-    </TextSelectionManager>
+    <div className={className}>
+      <TextSelectionManager
+        onCreateDictation={onCreateDictation}
+        onCreateBidirectional={onCreateBidirectional}
+        disabled={false}
+        exerciseId={exerciseId}
+        exerciseLanguage={exerciseLanguage}
+        enableVocabulary={enableVocabulary}
+        enhancedHighlighting={enhancedHighlighting}
+        vocabularyIntegration={vocabularyIntegration}
+        enableContextMenu={enableContextMenu}
+        isReadingMode={false}
+      >
+        <SynchronizedText
+          text={text}
+          highlightedWordIndex={highlightedWordIndex}
+          onWordClick={onWordClick}
+          enableWordHighlighting={enableWordHighlighting}
+          highlightColor={highlightColor}
+          className="leading-relaxed"
+        />
+      </TextSelectionManager>
+    </div>
   );
 };

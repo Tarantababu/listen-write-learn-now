@@ -13,6 +13,7 @@ interface ReadingModeTextProps {
   enhancedHighlighting?: boolean;
   vocabularyIntegration?: boolean;
   enableContextMenu?: boolean;
+  className?: string;
 }
 
 export const ReadingModeText: React.FC<ReadingModeTextProps> = ({
@@ -22,7 +23,8 @@ export const ReadingModeText: React.FC<ReadingModeTextProps> = ({
   exerciseId,
   exerciseLanguage,
   enableVocabulary = false,
-  vocabularyIntegration = false
+  vocabularyIntegration = false,
+  className
 }) => {
   console.log('ReadingModeText rendering with enhanced bidirectional support:', {
     textLength: text.length,
@@ -31,14 +33,16 @@ export const ReadingModeText: React.FC<ReadingModeTextProps> = ({
   });
 
   return (
-    <TextSelectionPanel
-      text={text}
-      onCreateDictation={onCreateDictation}
-      onCreateBidirectional={onCreateBidirectional}
-      exerciseId={exerciseId}
-      exerciseLanguage={exerciseLanguage}
-      enableVocabulary={enableVocabulary}
-      vocabularyIntegration={vocabularyIntegration}
-    />
+    <div className={className}>
+      <TextSelectionPanel
+        text={text}
+        onCreateDictation={onCreateDictation}
+        onCreateBidirectional={onCreateBidirectional}
+        exerciseId={exerciseId}
+        exerciseLanguage={exerciseLanguage}
+        enableVocabulary={enableVocabulary}
+        vocabularyIntegration={vocabularyIntegration}
+      />
+    </div>
   );
 };
