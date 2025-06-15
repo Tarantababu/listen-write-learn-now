@@ -8,8 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Book, Eye, Mic, Settings, X } from 'lucide-react';
 import { Exercise, Language } from '@/types';
 import { EnhancedInteractiveText } from './EnhancedInteractiveText';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-is-mobile';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface EnhancedReadingExerciseModalProps {
   isOpen: boolean;
@@ -85,7 +87,7 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`${isMobile ? 'w-full h-full max-w-full max-h-full m-0 rounded-none' : 'max-w-4xl max-h-[90vh]'} overflow-hidden flex flex-col`}>
+      <DialogContent className={`${isMobile ? 'w-full h-full max-w-full max-h-full m-0 rounded-none' : 'max-w-6xl max-h-[90vh]'} overflow-hidden flex flex-col`}>
         <DialogHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -106,43 +108,12 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
                 </div>
               </div>
             </div>
-            
-            {enableAdvancedFeatures && !isMobile && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => togglePreference('textSelection')}
-                  className={userPreferences.textSelection ? 'bg-blue-50 text-blue-600' : ''}
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                  Selection
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => togglePreference('vocabularyIntegration')}
-                  className={userPreferences.vocabularyIntegration ? 'bg-green-50 text-green-600' : ''}
-                >
-                  <Book className="h-4 w-4 mr-1" />
-                  Vocab
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => togglePreference('enhancedHighlighting')}
-                  className={userPreferences.enhancedHighlighting ? 'bg-purple-50 text-purple-600' : ''}
-                >
-                  <Settings className="h-4 w-4 mr-1" />
-                  Highlight
-                </Button>
-              </div>
-            )}
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden md:p-6 md:bg-muted/5">
           {enableAdvancedFeatures ? (
+            isMobile ? (
             <Tabs value={activeView} onValueChange={(value) => setActiveView(value as 'read' | 'practice')} className="h-full flex flex-col">
               <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
                 <TabsTrigger value="read" className="flex items-center gap-2">
@@ -182,6 +153,76 @@ export const EnhancedReadingExerciseModal: React.FC<EnhancedReadingExerciseModal
                 </Card>
               </TabsContent>
             </Tabs>
+            ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+                <div className="lg:col-span-2 h-full overflow-hidden flex flex-col">
+                    <Card className="p-6 h-full overflow-y-auto">
+                        <EnhancedInteractiveText
+                            text={exercise.text}
+                            language={exercise.language}
+                            enableTooltips={true}
+                            enableBidirectionalCreation={true}
+                            enableTextSelection={userPreferences.textSelection}
+                            vocabularyIntegration={userPreferences.vocabularyIntegration}
+                            enhancedHighlighting={userPreferences.enhancedHighlighting}
+                            exerciseId={exercise.id}
+                            onCreateDictation={handleCreateDictation}
+                            onCreateBidirectional={handleCreateBidirectional}
+                        />
+                    </Card>
+                </div>
+                <div className="lg:col-span-1 h-full overflow-y-auto space-y-6">
+                    <Card className="p-6">
+                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                            <Mic className="h-5 w-5" />
+                            Practice Mode
+                        </h3>
+                        <div className="text-center text-muted-foreground border rounded-lg p-6 bg-muted/20">
+                            <Mic className="h-10 w-10 mx-auto mb-3 text-gray-400" />
+                            <p className="font-medium">Coming Soon</p>
+                            <p className="text-sm mt-1">Interactive practice will be available here.</p>
+                        </div>
+                    </Card>
+                    <Card>
+                        <div className="p-6">
+                            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <Settings className="h-5 w-5" />
+                                Display Options
+                            </h3>
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="text-selection" className="flex flex-col space-y-1 pr-4">
+                                        <span>Text Selection</span>
+                                        <span className="font-normal leading-snug text-muted-foreground text-xs">
+                                            Highlight text to create new exercises.
+                                        </span>
+                                    </Label>
+                                    <Switch id="text-selection" checked={userPreferences.textSelection} onCheckedChange={() => togglePreference('textSelection')} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="vocab-integration" className="flex flex-col space-y-1 pr-4">
+                                        <span>Vocabulary Help</span>
+                                        <span className="font-normal leading-snug text-muted-foreground text-xs">
+                                            Show definitions for known vocabulary.
+                                        </span>
+                                    </Label>
+                                    <Switch id="vocab-integration" checked={userPreferences.vocabularyIntegration} onCheckedChange={() => togglePreference('vocabularyIntegration')} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="enhanced-highlighting" className="flex flex-col space-y-1 pr-4">
+                                        <span>Enhanced Highlighting</span>
+                                        <span className="font-normal leading-snug text-muted-foreground text-xs">
+                                            Apply advanced visual styles to highlights.
+                                        </span>
+                                    </Label>
+                                    <Switch id="enhanced-highlighting" checked={userPreferences.enhancedHighlighting} onCheckedChange={() => togglePreference('enhancedHighlighting')} />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            </div>
+            )
           ) : (
             // Fallback to basic reading view for backward compatibility
             <div className="h-full overflow-auto p-6">
