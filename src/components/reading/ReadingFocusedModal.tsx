@@ -1,4 +1,3 @@
-
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
@@ -374,7 +373,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                   <SynchronizedTextWithSelection
                     text={fullText}
                     highlightedWordIndex={highlightedWordIndex}
-                    enableWordHighlighting={enableWordSynchronization && hasAudio}
+                    enableWordHighlighting={Boolean(enableWordSynchronization && hasAudio)}
                     className={cn(
                       "transition-all duration-300",
                       getTextSize(),
@@ -384,11 +383,11 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     onCreateBidirectional={handleCreateBidirectional}
                     exerciseId={exercise.id}
                     exerciseLanguage={exerciseLanguage}
-                    enableTextSelection={enableTextSelection}
-                    enableVocabulary={enableVocabularyIntegration}
-                    enhancedHighlighting={enableEnhancedHighlighting}
-                    vocabularyIntegration={enableVocabularyIntegration}
-                    enableContextMenu={enableContextMenu}
+                    enableTextSelection={Boolean(enableTextSelection)}
+                    enableVocabulary={Boolean(enableVocabularyIntegration)}
+                    enhancedHighlighting={Boolean(enableEnhancedHighlighting)}
+                    vocabularyIntegration={Boolean(enableVocabularyIntegration)}
+                    enableContextMenu={Boolean(enableContextMenu)}
                   />
                 ) : (
                   <EnhancedInteractiveText
@@ -430,7 +429,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                   <SynchronizedTextWithSelection
                     text={fullText}
                     highlightedWordIndex={highlightedWordIndex}
-                    enableWordHighlighting={enableWordSynchronization && hasAudio}
+                    enableWordHighlighting={Boolean(enableWordSynchronization && hasAudio)}
                     className={cn(
                       "transition-all duration-300",
                       getTextSize()
@@ -439,11 +438,11 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     onCreateBidirectional={handleCreateBidirectional}
                     exerciseId={exercise.id}
                     exerciseLanguage={exerciseLanguage}
-                    enableTextSelection={enableTextSelection}
-                    enableVocabulary={enableVocabularyIntegration}
-                    enhancedHighlighting={enableEnhancedHighlighting}
-                    vocabularyIntegration={enableVocabularyIntegration}
-                    enableContextMenu={enableContextMenu}
+                    enableTextSelection={Boolean(enableTextSelection)}
+                    enableVocabulary={Boolean(enableVocabularyIntegration)}
+                    enhancedHighlighting={Boolean(enableEnhancedHighlighting)}
+                    vocabularyIntegration={Boolean(enableVocabularyIntegration)}
+                    enableContextMenu={Boolean(enableContextMenu)}
                   />
                 ) : (
                   <EnhancedInteractiveText
