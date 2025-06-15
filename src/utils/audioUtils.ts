@@ -13,12 +13,21 @@ export class AudioUtils {
     }
   }
 
-  static async validateAudioAccessibility(url: string): Promise<boolean> {
-    if (!this.isValidAudioUrl(url)) return false;
+  static async validateAudioAccessibility(url: string, skipAccessibilityCheck = false): Promise<boolean> {
+    if (!this.isValidAudioUrl(url)) {
+      console.warn(`[AUDIO UTILS] Invalid audio URL format: ${url}`);
+      return false;
+    }
+    
+    // If we're skipping accessibility check (fallback mode), just validate URL format
+    if (skipAccessibilityCheck) {
+      console.log(`[AUDIO UTILS] Skipping accessibility check for ${url} - assuming accessible`);
+      return true;
+    }
     
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // Reduced timeout
       
       const response = await fetch(url, { 
         method: 'HEAD',
@@ -26,9 +35,18 @@ export class AudioUtils {
       });
       
       clearTimeout(timeoutId);
-      return response.ok;
+      const isAccessible = response.ok;
+      
+      if (!isAccessible) {
+        console.warn(`[AUDIO UTILS] Audio not accessible (${response.status}): ${url}`);
+      } else {
+        console.log(`[AUDIO UTILS] Audio accessible: ${url}`);
+      }
+      
+      return isAccessible;
     } catch (error) {
-      console.warn(`[AUDIO UTILS] URL validation failed for ${url}:`, error);
+      console.warn(`[AUDIO UTILS] Accessibility check failed for ${url}:`, error);
+      // Don't treat network errors as definitive failures
       return false;
     }
   }

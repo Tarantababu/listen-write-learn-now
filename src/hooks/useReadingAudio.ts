@@ -18,6 +18,7 @@ interface UseReadingAudioReturn {
   duration: number;
   hasAudioIssue: boolean;
   isRetrying: boolean;
+  accessibilityUncertain: boolean;
   setIsPlaying: (playing: boolean) => void;
   setCurrentPosition: (position: number) => void;
   setDuration: (duration: number) => void;
@@ -36,6 +37,7 @@ export const useReadingAudio = ({
   const [duration, setDuration] = useState(0);
   const [hasAudioIssue, setHasAudioIssue] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [accessibilityUncertain, setAccessibilityUncertain] = useState(false);
 
   const retryAudioGeneration = async () => {
     if (!exercise) return;
@@ -43,6 +45,7 @@ export const useReadingAudio = ({
     console.log('[READING AUDIO] Manual retry triggered for exercise:', exercise.id);
     setIsRetrying(true);
     setHasAudioIssue(false);
+    setAccessibilityUncertain(false);
     
     try {
       const success = await enhancedAudioService.validateAndFixExerciseAudio(exercise.id);
@@ -79,6 +82,7 @@ export const useReadingAudio = ({
       setAudioUrl('');
       setIsInitialized(false);
       setHasAudioIssue(false);
+      setAccessibilityUncertain(false);
       return;
     }
 
@@ -102,6 +106,7 @@ export const useReadingAudio = ({
           
           console.warn('[READING AUDIO] Exercise marked as completed but no audio URLs found');
           setHasAudioIssue(true);
+          setAccessibilityUncertain(false);
           
           if (autoRetry) {
             console.log('[READING AUDIO] Auto-retry enabled, attempting to fix...');
@@ -122,23 +127,35 @@ export const useReadingAudio = ({
         if (preferredAudioUrl) {
           console.log('[READING AUDIO] Found audio URL:', preferredAudioUrl);
           
-          // Validate accessibility
-          const isAccessible = await AudioUtils.validateAudioAccessibility(preferredAudioUrl);
-          
-          console.log('[READING AUDIO] Audio accessibility check result:', isAccessible);
+          // Try strict validation first
+          let isAccessible = await AudioUtils.validateAudioAccessibility(preferredAudioUrl, false);
           
           if (isAccessible) {
-            console.log('[READING AUDIO] Audio URL is valid and accessible, setting audioUrl state');
+            console.log('[READING AUDIO] Audio URL is accessible, setting audioUrl state');
             setAudioUrl(preferredAudioUrl);
             setHasAudioIssue(false);
+            setAccessibilityUncertain(false);
           } else {
-            console.warn('[READING AUDIO] Audio URL is not accessible');
-            setAudioUrl('');
-            setHasAudioIssue(true);
+            console.warn('[READING AUDIO] Audio URL failed accessibility check, trying fallback mode');
+            // Try fallback mode (skip accessibility check for network issues)
+            const isValidFormat = await AudioUtils.validateAudioAccessibility(preferredAudioUrl, true);
+            
+            if (isValidFormat) {
+              console.log('[READING AUDIO] Using fallback mode - assuming audio is accessible');
+              setAudioUrl(preferredAudioUrl);
+              setHasAudioIssue(false);
+              setAccessibilityUncertain(true); // Mark as uncertain
+            } else {
+              console.error('[READING AUDIO] Audio URL format is invalid');
+              setAudioUrl('');
+              setHasAudioIssue(true);
+              setAccessibilityUncertain(false);
+            }
           }
         } else {
           console.warn('[READING AUDIO] No audio URL found for exercise');
           setAudioUrl('');
+          setAccessibilityUncertain(false);
           
           // Only mark as issue if it should have audio (status completed)
           if (exercise.audio_generation_status === 'completed') {
@@ -151,6 +168,7 @@ export const useReadingAudio = ({
         console.log('[READING AUDIO] Initialization complete:', {
           audioUrl: preferredAudioUrl || '',
           hasAudioIssue: !preferredAudioUrl && exercise.audio_generation_status === 'completed',
+          accessibilityUncertain,
           isInitialized: true
         });
         
@@ -158,6 +176,7 @@ export const useReadingAudio = ({
         console.error('[READING AUDIO] Initialization failed:', error);
         setAudioUrl('');
         setHasAudioIssue(true);
+        setAccessibilityUncertain(false);
         setIsInitialized(true);
       }
     };
@@ -177,6 +196,7 @@ export const useReadingAudio = ({
     audioUrlValue: audioUrl,
     isInitialized,
     hasAudioIssue,
+    accessibilityUncertain,
     isRetrying,
     exercise_id: exercise?.id
   });
@@ -189,6 +209,7 @@ export const useReadingAudio = ({
     duration,
     hasAudioIssue,
     isRetrying,
+    accessibilityUncertain,
     setIsPlaying,
     setCurrentPosition,
     setDuration,

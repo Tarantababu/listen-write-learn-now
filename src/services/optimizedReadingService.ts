@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise } from '@/types/reading';
 
@@ -54,6 +53,51 @@ export class OptimizedReadingService {
     }
 
     return mappedExercises;
+  }
+
+  async createReadingExercise(exerciseData: any, onProgress?: (progress: any) => void): Promise<ReadingExercise> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    console.log('[OPTIMIZED READING SERVICE] Creating reading exercise');
+
+    // Call the generate-reading-content edge function
+    const { data, error } = await supabase.functions.invoke('generate-reading-content', {
+      body: {
+        ...exerciseData,
+        user_id: user.id
+      }
+    });
+
+    if (error) {
+      console.error('[OPTIMIZED READING SERVICE] Exercise creation error:', error);
+      throw error;
+    }
+
+    if (!data || !data.id) {
+      throw new Error('Failed to create exercise');
+    }
+
+    // Fetch the created exercise
+    return this.getReadingExercise(data.id);
+  }
+
+  async deleteReadingExercise(id: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    console.log('[OPTIMIZED READING SERVICE] Deleting reading exercise:', id);
+
+    const { error } = await supabase
+      .from('reading_exercises')
+      .update({ archived: true })
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('[OPTIMIZED READING SERVICE] Delete error:', error);
+      throw error;
+    }
   }
 
   private mapExerciseFromDb(exercise: any): ReadingExercise {

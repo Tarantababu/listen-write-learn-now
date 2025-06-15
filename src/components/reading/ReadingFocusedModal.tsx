@@ -13,7 +13,8 @@ import {
   Languages,
   RefreshCw,
   AlertTriangle,
-  Volume2
+  Volume2,
+  Info
 } from 'lucide-react'
 import { ReadingExercise } from '@/types/reading'
 import { Language } from '@/types'
@@ -91,6 +92,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     audioUrl,
     isInitialized: audioInitialized,
     hasAudioIssue,
+    accessibilityUncertain,
     isRetrying,
     setIsPlaying: updatePlayingState,
     setCurrentPosition: updateCurrentPosition,
@@ -109,11 +111,12 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
       audioUrlValue: audioUrl,
       audioInitialized,
       hasAudioIssue,
+      accessibilityUncertain,
       isRetrying,
       enableFullTextAudio,
       isOpen
     });
-  }, [audioUrl, audioInitialized, hasAudioIssue, isRetrying, enableFullTextAudio, isOpen]);
+  }, [audioUrl, audioInitialized, hasAudioIssue, accessibilityUncertain, isRetrying, enableFullTextAudio, isOpen]);
 
   const togglePlayPause = async (audioRef: React.RefObject<HTMLAudioElement>) => {
     if (!audioRef.current || !audioEnabled || !audioUrl) return;
@@ -240,16 +243,19 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     }
   };
 
-  // Enhanced audio availability check - Fixed the logic here
-  const hasAudio = audioInitialized && audioUrl && !hasAudioIssue;
-  const showAudioIssueWarning = audioInitialized && hasAudioIssue;
+  // More permissive audio availability check
+  const hasAudio = audioInitialized && audioUrl;
+  const showAudioIssueWarning = audioInitialized && hasAudioIssue && !audioUrl;
+  const showAccessibilityWarning = audioInitialized && audioUrl && accessibilityUncertain;
 
   console.log('[READING MODAL] Audio status computed:', {
     audioInitialized,
     audioUrl: !!audioUrl,
     hasAudioIssue,
+    accessibilityUncertain,
     hasAudio,
     showAudioIssueWarning,
+    showAccessibilityWarning,
     exercise_audio_status: exercise.audio_generation_status
   });
 
@@ -287,8 +293,18 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
         </Alert>
       )}
 
-      {/* Advanced Audio Controls - show if audio is available OR show loading if audio is being initialized */}
-      {enableFullTextAudio && !showTranslationAnalysis && (hasAudio || !audioInitialized) && (
+      {/* Accessibility Warning */}
+      {showAccessibilityWarning && !showTranslationAnalysis && (
+        <Alert className="mb-4 border-blue-200 bg-blue-50">
+          <Info className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            Audio is available but network connectivity may affect playback quality.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Audio Controls - More permissive display logic */}
+      {enableFullTextAudio && !showTranslationAnalysis && (
         <div className={cn(
           "flex-shrink-0",
           isFullScreen ? "mb-8" : "mb-4"
@@ -326,7 +342,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                 />
               )}
             </AudioWordSynchronizer>
-          ) : (
+          ) : audioInitialized ? null : (
             <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg">
               <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mr-3" />
               <span className="text-blue-700">Loading audio...</span>
@@ -529,14 +545,16 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     {exercise.audio_generation_status && (
                       <Badge 
                         variant={
-                          hasAudio ? 'default' : 
+                          hasAudio && !accessibilityUncertain ? 'default' : 
+                          hasAudio && accessibilityUncertain ? 'outline' :
                           hasAudioIssue ? 'destructive' :
                           exercise.audio_generation_status === 'failed' ? 'destructive' : 'outline'
                         }
                         className="text-xs"
                       >
                         Audio: {
-                          hasAudio ? 'Ready' :
+                          hasAudio && !accessibilityUncertain ? 'Ready' :
+                          hasAudio && accessibilityUncertain ? 'Available' :
                           hasAudioIssue ? 'Issue' :
                           exercise.audio_generation_status
                         }
