@@ -288,6 +288,15 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     );
   }
 
+  // --- Make sure setContentSource only accepts 'ai' | 'custom' ---
+  // If ContentSourceSelector ever returns a `string`, cast/narrow it.
+  // If needed, you can also wrap in a type guard:
+  const handleSourceSelect = (source: unknown) => {
+    if (source === 'ai' || source === 'custom') {
+      setContentSource(source);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -309,7 +318,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
 
           <ContentSourceSelector
             selectedSource={contentSource}
-            onSourceSelect={setContentSource}
+            onSourceSelect={handleSourceSelect}
           />
 
           {contentSource === 'ai' ? (
