@@ -43,6 +43,11 @@ interface BidirectionalTranslation {
   wordTranslations: WordTranslation[]
 }
 
+const MAX_RETRIES = 3
+const RETRY_DELAY = 1000 // 1 second
+const MAX_TOKENS_OPTIMIZED = 1000
+const MAX_TOKENS_FALLBACK = 600
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -72,7 +77,7 @@ serve(async (req) => {
 
     // Handle optimized bidirectional translation request
     if (type === 'optimized_bidirectional_translation') {
-      const translation = await generateOptimizedBidirectionalTranslation(
+      const translation = await generateOptimizedBidirectionalTranslationWithRetry(
         text, 
         language, 
         supportLanguage || 'english', 
@@ -90,7 +95,7 @@ serve(async (req) => {
 
     // Handle bidirectional translation request
     if (type === 'bidirectional_translation') {
-      const translation = await generateBidirectionalTranslation(text, language, supportLanguage || 'english', openAIApiKey)
+      const translation = await generateBidirectionalTranslationWithRetry(text, language, supportLanguage || 'english', openAIApiKey)
       return new Response(
         JSON.stringify(translation),
         {
@@ -128,15 +133,58 @@ serve(async (req) => {
   }
 })
 
-async function generateOptimizedBidirectionalTranslation(
+async function generateOptimizedBidirectionalTranslationWithRetry(
   text: string,
   sourceLanguage: string,
   targetLanguage: string,
   apiKey: string,
   chunkIndex?: number
 ): Promise<BidirectionalTranslation> {
+  let lastError: Error | null = null
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`[OPTIMIZED TRANSLATION] Attempt ${attempt}/${MAX_RETRIES} for chunk ${chunkIndex ?? 'unknown'}`)
+      
+      const result = await generateOptimizedBidirectionalTranslation(
+        text,
+        sourceLanguage,
+        targetLanguage,
+        apiKey,
+        chunkIndex,
+        attempt > 1 // Use fallback mode after first attempt
+      )
+      
+      console.log(`[OPTIMIZED TRANSLATION] Success on attempt ${attempt}`)
+      return result
+    } catch (error) {
+      lastError = error as Error
+      console.error(`[OPTIMIZED TRANSLATION] Attempt ${attempt} failed:`, error)
+      
+      if (attempt < MAX_RETRIES) {
+        console.log(`[OPTIMIZED TRANSLATION] Retrying in ${RETRY_DELAY}ms...`)
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt))
+      }
+    }
+  }
+
+  console.error(`[OPTIMIZED TRANSLATION] All ${MAX_RETRIES} attempts failed, using fallback`)
+  return createFallbackTranslation(text, sourceLanguage, targetLanguage, chunkIndex)
+}
+
+async function generateOptimizedBidirectionalTranslation(
+  text: string,
+  sourceLanguage: string,
+  targetLanguage: string,
+  apiKey: string,
+  chunkIndex?: number,
+  useFallbackMode: boolean = false
+): Promise<BidirectionalTranslation> {
+  const maxTokens = useFallbackMode ? MAX_TOKENS_FALLBACK : MAX_TOKENS_OPTIMIZED
+  const wordLimit = useFallbackMode ? 15 : 25
+  
   const prompt = `
-Translate this ${sourceLanguage} text segment into ${targetLanguage}. This is ${chunkIndex !== undefined ? `segment ${chunkIndex + 1}` : 'a text segment'}.
+Translate this ${sourceLanguage} text segment into ${targetLanguage}. ${chunkIndex !== undefined ? `This is segment ${chunkIndex + 1}.` : ''}
 
 TEXT: "${text}"
 
@@ -153,8 +201,9 @@ Provide ONLY a JSON response with these exact fields:
 IMPORTANT:
 - normalTranslation: Make it sound natural to native ${targetLanguage} speakers
 - literalTranslation: Keep original word order as much as possible to show structure
-- wordTranslations: Include significant content words (nouns, verbs, adjectives), skip articles/prepositions unless crucial
-- Return ONLY valid JSON, no explanations
+- wordTranslations: Include up to ${wordLimit} significant content words (nouns, verbs, adjectives), skip articles/prepositions unless crucial
+- Return ONLY valid JSON, no explanations or additional text
+- Ensure JSON is properly closed with all brackets and braces
 `
 
   try {
@@ -169,12 +218,12 @@ IMPORTANT:
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert translator. Respond only with valid JSON. Focus on accuracy and efficiency.' 
+            content: `You are an expert translator. Respond only with valid JSON. ${useFallbackMode ? 'Keep responses concise.' : 'Focus on accuracy and completeness.'}` 
           },
           { role: 'user', content: prompt }
         ],
         temperature: 0.1,
-        max_tokens: 1000
+        max_tokens: maxTokens
       })
     })
     
@@ -187,22 +236,101 @@ IMPORTANT:
     const data = await response.json()
     const content = data.choices[0].message.content.trim()
     
+    console.log(`[OPTIMIZED TRANSLATION] Raw response length: ${content.length}`)
+    
+    // Enhanced JSON parsing with cleanup
+    const cleanedContent = cleanJsonResponse(content)
+    
     try {
-      return JSON.parse(content)
-    } catch (e) {
-      console.error('Failed to parse optimized translation response as JSON:', e)
-      console.log('Raw response:', content)
+      const parsed = JSON.parse(cleanedContent)
+      
+      // Validate required fields
+      if (!parsed.normalTranslation || !parsed.literalTranslation || !Array.isArray(parsed.wordTranslations)) {
+        throw new Error('Missing required fields in response')
+      }
       
       return {
-        normalTranslation: "Translation could not be generated for this segment.",
-        literalTranslation: "Literal translation could not be generated for this segment.",
-        wordTranslations: []
+        normalTranslation: parsed.normalTranslation,
+        literalTranslation: parsed.literalTranslation,
+        wordTranslations: parsed.wordTranslations.slice(0, wordLimit) // Limit word translations
       }
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError)
+      console.log('Cleaned content:', cleanedContent)
+      throw new Error(`Failed to parse JSON response: ${parseError.message}`)
     }
   } catch (error) {
-    console.error('Error generating optimized bidirectional translation:', error)
+    console.error('Error in generateOptimizedBidirectionalTranslation:', error)
     throw error
   }
+}
+
+function cleanJsonResponse(content: string): string {
+  // Remove any text before the first {
+  let cleaned = content.substring(content.indexOf('{'))
+  
+  // Find the last complete } that closes the JSON
+  let braceCount = 0
+  let lastValidIndex = -1
+  
+  for (let i = 0; i < cleaned.length; i++) {
+    if (cleaned[i] === '{') {
+      braceCount++
+    } else if (cleaned[i] === '}') {
+      braceCount--
+      if (braceCount === 0) {
+        lastValidIndex = i
+        break
+      }
+    }
+  }
+  
+  if (lastValidIndex > -1) {
+    cleaned = cleaned.substring(0, lastValidIndex + 1)
+  }
+  
+  // Remove any trailing text after the JSON
+  return cleaned.trim()
+}
+
+function createFallbackTranslation(
+  text: string,
+  sourceLanguage: string,
+  targetLanguage: string,
+  chunkIndex?: number
+): BidirectionalTranslation {
+  console.log(`[FALLBACK TRANSLATION] Creating fallback for chunk ${chunkIndex ?? 'unknown'}`)
+  
+  return {
+    normalTranslation: `Translation unavailable for this ${sourceLanguage} text segment. The content could not be processed due to technical limitations.`,
+    literalTranslation: `Literal translation unavailable for this ${sourceLanguage} text segment.`,
+    wordTranslations: []
+  }
+}
+
+async function generateBidirectionalTranslationWithRetry(
+  text: string,
+  sourceLanguage: string,
+  targetLanguage: string,
+  apiKey: string
+): Promise<BidirectionalTranslation> {
+  let lastError: Error | null = null
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const result = await generateBidirectionalTranslation(text, sourceLanguage, targetLanguage, apiKey)
+      return result
+    } catch (error) {
+      lastError = error as Error
+      console.error(`[BIDIRECTIONAL TRANSLATION] Attempt ${attempt} failed:`, error)
+      
+      if (attempt < MAX_RETRIES) {
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt))
+      }
+    }
+  }
+
+  return createFallbackTranslation(text, sourceLanguage, targetLanguage)
 }
 
 async function generateBidirectionalTranslation(
@@ -246,7 +374,8 @@ Return the response as a valid JSON object with these fields:
           { role: 'system', content: 'You are a professional translator that provides accurate translations with word-by-word breakdowns. Always respond with valid JSON.' },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.2
+        temperature: 0.2,
+        max_tokens: 800
       })
     })
     
@@ -259,8 +388,10 @@ Return the response as a valid JSON object with these fields:
     const data = await response.json()
     const content = data.choices[0].message.content.trim()
     
+    const cleanedContent = cleanJsonResponse(content)
+    
     try {
-      return JSON.parse(content)
+      return JSON.parse(cleanedContent)
     } catch (e) {
       console.error('Failed to parse bidirectional translation response as JSON:', e)
       console.log('Raw response:', content)
