@@ -81,7 +81,6 @@ const PracticeModal: React.FC<PracticeModalProps> = ({
             <DictationPractice
               exercise={exercise}
               onComplete={onComplete}
-              onBack={handleBackToMenu}
             />
           </div>
         )}
