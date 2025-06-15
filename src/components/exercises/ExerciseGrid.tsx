@@ -40,7 +40,7 @@ const ExerciseGrid: React.FC<ExerciseGridProps> = ({
   const shouldShowCreateCard = paginatedExercises.length < exercisesPerPage;
 
   if (paginatedExercises.length === 0) {
-    return <EmptyStateMessage onCreateClick={onCreateClick} />;
+    return <EmptyStateMessage onCreateExercise={onCreateClick} />;
   }
 
   return (

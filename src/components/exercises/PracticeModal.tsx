@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Exercise } from '@/types';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DictationPractice } from '@/components/DictationPractice';
+import DictationPractice from '@/components/DictationPractice';
 import LearningOptionsMenu from '@/components/exercises/LearningOptionsMenu';
 
 interface PracticeModalProps {
