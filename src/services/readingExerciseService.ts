@@ -51,7 +51,8 @@ export class ReadingExerciseService {
         metadata: {
           generation_method: wasPartialGeneration ? 'enhanced_fallback' : 'full_generation',
           enhanced_audio_enabled: true,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          audio_retry_count: 0
         }
       })
       .select()
@@ -64,7 +65,7 @@ export class ReadingExerciseService {
 
     console.log(`[READING SERVICE] Exercise created successfully: ${data.id}`);
 
-    // Start enhanced background audio generation
+    // Start enhanced background audio generation with immediate status update
     this.generateAudioInBackgroundEnhanced(data.id, content, request.language);
 
     return {
@@ -423,89 +424,110 @@ export class ReadingExerciseService {
     try {
       console.log(`[ENHANCED BACKGROUND AUDIO] Starting generation for exercise ${exerciseId}`);
       
-      // Update status to generating
+      // Update status to generating with detailed metadata
       await supabase
         .from('reading_exercises')
         .update({ 
           audio_generation_status: 'generating',
           metadata: {
             audio_generation_started: new Date().toISOString(),
-            enhanced_audio_enabled: true
+            enhanced_audio_enabled: true,
+            generation_attempt: 1
           }
         })
         .eq('id', exerciseId);
 
-      // Prepare batch audio generation items
+      // Prepare batch audio generation items with validation
       const audioItems = [];
       
       // Add full text audio
-      const fullText = content.sentences.map((s: any) => s.text).join(' ');
-      if (fullText.trim()) {
+      const fullText = content.sentences?.map((s: any) => s.text).join(' ') || '';
+      if (fullText.trim() && fullText.length > 0) {
         audioItems.push({
           id: 'full_text',
-          text: fullText,
+          text: fullText.trim(),
           language
         });
       }
 
-      // Add individual sentence audio
-      content.sentences.forEach((sentence: any, index: number) => {
-        if (sentence.text && sentence.text.trim()) {
-          audioItems.push({
-            id: `sentence_${index}`,
-            text: sentence.text,
-            language
-          });
-        }
-      });
+      // Add individual sentence audio with validation
+      if (content.sentences && Array.isArray(content.sentences)) {
+        content.sentences.forEach((sentence: any, index: number) => {
+          if (sentence.text && sentence.text.trim() && sentence.text.length > 0) {
+            audioItems.push({
+              id: `sentence_${index}`,
+              text: sentence.text.trim(),
+              language
+            });
+          }
+        });
+      }
 
-      // Generate audio using enhanced batch processing
-      const results = await enhancedAudioService.generateBatchAudio(audioItems, {
-        maxConcurrent: 2,
-        quality: 'standard',
-        retryFailures: true
-      });
+      if (audioItems.length === 0) {
+        throw new Error('No valid text content found for audio generation');
+      }
+
+      console.log(`[ENHANCED BACKGROUND AUDIO] Processing ${audioItems.length} audio items`);
+
+      // Generate audio using enhanced batch processing with timeout
+      const results = await Promise.race([
+        enhancedAudioService.generateBatchAudio(audioItems, {
+          maxConcurrent: 2,
+          quality: 'standard',
+          retryFailures: true
+        }),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Batch audio generation timeout')), 120000)
+        )
+      ]);
 
       // Process results and update content
       const fullTextResult = results.get('full_text');
-      const updatedSentences = content.sentences.map((sentence: any, index: number) => {
+      const updatedSentences = content.sentences?.map((sentence: any, index: number) => {
         const sentenceResult = results.get(`sentence_${index}`);
         return {
           ...sentence,
           audio_url: sentenceResult?.success ? sentenceResult.audioUrl : null
         };
-      });
+      }) || [];
 
+      const successRate = Array.from(results.values()).filter(r => r.success).length / results.size;
+      
       const updatedContent = {
         ...content,
         sentences: updatedSentences,
         full_text_audio_url: fullTextResult?.success ? fullTextResult.audioUrl : null,
         audio_metadata: {
           generated_at: new Date().toISOString(),
-          success_rate: Array.from(results.values()).filter(r => r.success).length / results.size,
-          enhanced_generation: true
+          success_rate: successRate,
+          enhanced_generation: true,
+          total_items: audioItems.length,
+          successful_items: Array.from(results.values()).filter(r => r.success).length
         }
       };
 
-      // Prepare update data with all necessary fields
+      // Prepare comprehensive update data
       const updateData: any = { 
         content: updatedContent,
-        audio_generation_status: 'completed',
+        audio_generation_status: successRate > 0.5 ? 'completed' : 'failed',
         metadata: {
           audio_generation_completed: new Date().toISOString(),
           enhanced_audio_enabled: true,
-          success_rate: Array.from(results.values()).filter(r => r.success).length / results.size
+          success_rate: successRate,
+          total_audio_items: audioItems.length,
+          successful_audio_items: Array.from(results.values()).filter(r => r.success).length,
+          generation_duration: Date.now() - new Date().getTime()
         }
       };
 
-      // Set the dedicated URL fields for easier retrieval
+      // Set dedicated URL fields if full text audio was successful
       if (fullTextResult?.success && fullTextResult.audioUrl) {
         updateData.full_text_audio_url = fullTextResult.audioUrl;
-        updateData.audio_url = fullTextResult.audioUrl; // Also set fallback field
+        updateData.audio_url = fullTextResult.audioUrl; // Fallback field
         console.log(`[ENHANCED BACKGROUND AUDIO] Setting audio URLs: ${fullTextResult.audioUrl}`);
       }
 
-      // Update the exercise with all the generated data
+      // Update the exercise with comprehensive data
       const { error: updateError } = await supabase
         .from('reading_exercises')
         .update(updateData)
@@ -516,23 +538,52 @@ export class ReadingExerciseService {
         throw updateError;
       }
 
-      console.log(`[ENHANCED BACKGROUND AUDIO] Completed for exercise ${exerciseId} with ${Array.from(results.values()).filter(r => r.success).length}/${results.size} successful generations`);
-      console.log(`[ENHANCED BACKGROUND AUDIO] Full text audio URL saved: ${fullTextResult?.audioUrl}`);
+      const successCount = Array.from(results.values()).filter(r => r.success).length;
+      console.log(`[ENHANCED BACKGROUND AUDIO] Completed for exercise ${exerciseId} with ${successCount}/${results.size} successful generations`);
+      
+      if (fullTextResult?.audioUrl) {
+        console.log(`[ENHANCED BACKGROUND AUDIO] Full text audio URL saved: ${fullTextResult.audioUrl}`);
+      }
 
     } catch (error) {
       console.error(`[ENHANCED BACKGROUND AUDIO] Failed for exercise ${exerciseId}:`, error);
       
-      // Update status to failed with error details
+      // Update retry count and status
+      const currentMetadata = await this.getExerciseMetadata(exerciseId);
+      const retryCount = (currentMetadata?.audio_retry_count || 0) + 1;
+      
       await supabase
         .from('reading_exercises')
         .update({ 
           audio_generation_status: 'failed',
           metadata: {
+            ...currentMetadata,
             audio_generation_failed: new Date().toISOString(),
-            error: error.message
+            error: error.message,
+            audio_retry_count: retryCount,
+            last_error_details: {
+              message: error.message,
+              stack: error.stack,
+              timestamp: new Date().toISOString()
+            }
           }
         })
         .eq('id', exerciseId);
+    }
+  }
+
+  private async getExerciseMetadata(exerciseId: string): Promise<any> {
+    try {
+      const { data } = await supabase
+        .from('reading_exercises')
+        .select('metadata')
+        .eq('id', exerciseId)
+        .single();
+      
+      return this.parseMetadataFromDatabase(data?.metadata);
+    } catch (error) {
+      console.warn('Failed to get exercise metadata:', error);
+      return {};
     }
   }
 
@@ -557,6 +608,12 @@ export class ReadingExerciseService {
     console.log(`[RETRY AUDIO] Starting retry for exercise: ${exerciseId}`);
     
     const exercise = await this.getReadingExercise(exerciseId);
+    const currentRetryCount = exercise.metadata?.audio_retry_count || 0;
+    
+    if (currentRetryCount >= 3) {
+      console.warn(`[RETRY AUDIO] Maximum retry attempts reached for exercise ${exerciseId}`);
+      throw new Error('Maximum retry attempts reached for audio generation');
+    }
     
     // Reset the audio generation status before retrying
     await supabase
@@ -567,7 +624,8 @@ export class ReadingExerciseService {
         full_text_audio_url: null,
         metadata: {
           ...exercise.metadata,
-          retry_started: new Date().toISOString()
+          retry_started: new Date().toISOString(),
+          audio_retry_count: currentRetryCount + 1
         }
       })
       .eq('id', exerciseId);
@@ -604,6 +662,33 @@ export class ReadingExerciseService {
         .eq('id', exerciseId);
       
       console.log(`[VALIDATE AUDIO] Updated exercise ${exerciseId} with corrected status`);
+    }
+  }
+
+  async getAudioGenerationStatus(exerciseId: string): Promise<{
+    status: string;
+    progress?: number;
+    error?: string;
+    retryCount?: number;
+    canRetry?: boolean;
+  }> {
+    try {
+      const exercise = await this.getReadingExercise(exerciseId);
+      const metadata = exercise.metadata || {};
+      
+      return {
+        status: exercise.audio_generation_status || 'pending',
+        progress: metadata.success_rate ? Math.round(metadata.success_rate * 100) : undefined,
+        error: metadata.error,
+        retryCount: metadata.audio_retry_count || 0,
+        canRetry: (metadata.audio_retry_count || 0) < 3
+      };
+    } catch (error) {
+      console.error('Failed to get audio generation status:', error);
+      return {
+        status: 'unknown',
+        error: 'Failed to check status'
+      };
     }
   }
 }

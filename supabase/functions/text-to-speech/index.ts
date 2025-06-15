@@ -20,7 +20,11 @@ serve(async (req) => {
       throw new Error('Text is required for audio generation');
     }
 
-    console.log(`[TTS] Generating audio for text (${text.length} chars) in ${language}`);
+    if (text.length > 4096) {
+      throw new Error('Text is too long. Maximum length is 4096 characters.');
+    }
+
+    console.log(`[TTS] Starting generation for ${text.length} chars in ${language} with ${quality} quality`);
 
     // Get OpenAI API key
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -33,7 +37,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Determine voice based on language
+    // Determine voice based on language with fallback
     const voiceMap: Record<string, string> = {
       'english': 'alloy',
       'spanish': 'nova', 
@@ -48,30 +52,53 @@ serve(async (req) => {
 
     console.log(`[TTS] Using voice: ${voice}, model: ${model}`);
 
-    // Generate speech using OpenAI
-    const response = await fetch('https://api.openai.com/v1/audio/speech', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: model,
-        input: text.substring(0, 4096), // OpenAI limit
-        voice: voice,
-        response_format: 'mp3',
-        speed: 1.0
-      }),
-    });
+    // Generate speech using OpenAI with retry logic
+    let response;
+    let retryCount = 0;
+    const maxRetries = 2;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[TTS] OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
+    while (retryCount <= maxRetries) {
+      try {
+        response = await fetch('https://api.openai.com/v1/audio/speech', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openaiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: model,
+            input: text.substring(0, 4096), // Ensure we don't exceed OpenAI limit
+            voice: voice,
+            response_format: 'mp3',
+            speed: 1.0
+          }),
+        });
+
+        if (response.ok) {
+          break; // Success, exit retry loop
+        } else {
+          const errorText = await response.text();
+          console.error(`[TTS] OpenAI API error (attempt ${retryCount + 1}):`, errorText);
+          
+          if (retryCount === maxRetries) {
+            throw new Error(`OpenAI API error after ${maxRetries + 1} attempts: ${response.status} ${errorText}`);
+          }
+        }
+      } catch (fetchError) {
+        console.error(`[TTS] Network error (attempt ${retryCount + 1}):`, fetchError);
+        
+        if (retryCount === maxRetries) {
+          throw new Error(`Network error after ${maxRetries + 1} attempts: ${fetchError.message}`);
+        }
+      }
+      
+      retryCount++;
+      // Wait before retry (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
     }
 
     // Get audio data
-    const audioBuffer = await response.arrayBuffer();
+    const audioBuffer = await response!.arrayBuffer();
     const audioData = new Uint8Array(audioBuffer);
 
     console.log(`[TTS] Generated audio: ${audioData.length} bytes`);
@@ -85,35 +112,60 @@ serve(async (req) => {
     
     console.log(`[TTS] Uploading to storage: ${filename}`);
 
-    // Ensure the audio bucket exists
-    const { data: buckets } = await supabase.storage.listBuckets();
-    const audioBucket = buckets?.find(bucket => bucket.name === 'audio');
-    
-    if (!audioBucket) {
-      console.log('[TTS] Creating audio bucket');
-      const { error: bucketError } = await supabase.storage.createBucket('audio', {
-        public: true,
-        allowedMimeTypes: ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm'],
-        fileSizeLimit: 52428800 // 50MB
-      });
+    // Ensure the audio bucket exists with proper error handling
+    try {
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const audioBucket = buckets?.find(bucket => bucket.name === 'audio');
       
-      if (bucketError) {
-        console.error('[TTS] Failed to create audio bucket:', bucketError);
-        throw new Error(`Failed to create audio bucket: ${bucketError.message}`);
+      if (!audioBucket) {
+        console.log('[TTS] Creating audio bucket');
+        const { error: bucketError } = await supabase.storage.createBucket('audio', {
+          public: true,
+          allowedMimeTypes: ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm'],
+          fileSizeLimit: 52428800 // 50MB
+        });
+        
+        if (bucketError) {
+          console.error('[TTS] Failed to create audio bucket:', bucketError);
+          throw new Error(`Failed to create audio bucket: ${bucketError.message}`);
+        }
+      }
+    } catch (bucketError) {
+      console.error('[TTS] Bucket check/creation failed:', bucketError);
+      // Continue anyway, bucket might exist but we can't list it
+    }
+
+    // Upload to Supabase Storage with retry logic
+    let uploadAttempts = 0;
+    const maxUploadAttempts = 3;
+    let uploadData, uploadError;
+
+    while (uploadAttempts < maxUploadAttempts) {
+      const result = await supabase.storage
+        .from('audio')
+        .upload(filename, audioData, {
+          contentType: 'audio/mpeg',
+          upsert: false
+        });
+
+      uploadData = result.data;
+      uploadError = result.error;
+
+      if (!uploadError) {
+        break; // Success
+      }
+
+      uploadAttempts++;
+      console.error(`[TTS] Storage upload error (attempt ${uploadAttempts}):`, uploadError);
+
+      if (uploadAttempts < maxUploadAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * uploadAttempts));
       }
     }
 
-    // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('audio')
-      .upload(filename, audioData, {
-        contentType: 'audio/mpeg',
-        upsert: false
-      });
-
     if (uploadError) {
-      console.error('[TTS] Storage upload error:', uploadError);
-      throw new Error(`Failed to upload audio: ${uploadError.message}`);
+      console.error('[TTS] Final storage upload error:', uploadError);
+      throw new Error(`Failed to upload audio after ${maxUploadAttempts} attempts: ${uploadError.message}`);
     }
 
     // Get public URL using the correct method
@@ -129,21 +181,36 @@ serve(async (req) => {
     const audioUrl = urlData.publicUrl;
     console.log(`[TTS] Audio uploaded successfully: ${audioUrl}`);
 
-    // Verify the URL is accessible
-    try {
-      const verifyResponse = await fetch(audioUrl, { method: 'HEAD' });
-      if (!verifyResponse.ok) {
-        console.warn(`[TTS] Audio URL verification failed: ${verifyResponse.status}`);
-        // Don't throw here, just log the warning
-      } else {
-        console.log(`[TTS] Audio URL verified successfully`);
+    // Enhanced verification with multiple attempts
+    let verificationPassed = false;
+    for (let i = 0; i < 3; i++) {
+      try {
+        const verifyResponse = await fetch(audioUrl, { 
+          method: 'HEAD',
+          signal: AbortSignal.timeout(5000)
+        });
+        
+        if (verifyResponse.ok) {
+          verificationPassed = true;
+          console.log(`[TTS] Audio URL verified successfully on attempt ${i + 1}`);
+          break;
+        } else {
+          console.warn(`[TTS] Audio URL verification failed (attempt ${i + 1}): ${verifyResponse.status}`);
+        }
+      } catch (verifyError) {
+        console.warn(`[TTS] Audio URL verification error (attempt ${i + 1}):`, verifyError);
       }
-    } catch (verifyError) {
-      console.warn(`[TTS] Audio URL verification error:`, verifyError);
-      // Don't throw here, just log the warning
+      
+      if (i < 2) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
     }
 
-    // Return response with audio URL and metadata
+    if (!verificationPassed) {
+      console.warn('[TTS] Audio URL verification failed after 3 attempts, but continuing');
+    }
+
+    // Return enhanced response with metadata
     return new Response(
       JSON.stringify({
         success: true,
@@ -156,7 +223,9 @@ serve(async (req) => {
         quality: quality,
         language: language,
         storage_path: filename,
-        public_url: audioUrl
+        public_url: audioUrl,
+        verification_passed: verificationPassed,
+        generation_time: Date.now() - timestamp
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -169,7 +238,8 @@ serve(async (req) => {
       JSON.stringify({ 
         success: false,
         error: error.message || 'Audio generation failed',
-        details: error.toString()
+        details: error.toString(),
+        timestamp: new Date().toISOString()
       }),
       {
         status: 400,
