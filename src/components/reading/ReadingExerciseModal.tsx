@@ -106,7 +106,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
           target_length: targetLength,
           grammar_focus: grammarFocus.join(', ') || undefined,
           topic: 'Custom Content',
-          content: customTextAnalysis,
+          content: customTextAnalysis as any, // <--- FIX HERE
           audio_generation_status: 'pending'
         })
         .select()
