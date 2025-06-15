@@ -6,7 +6,7 @@ interface AudioGenerationOptions {
   priority?: 'normal' | 'high';
 }
 
-interface AudioGenerationResult {
+export interface AudioGenerationResult {
   success: boolean;
   audioUrl?: string;
   error?: string;
@@ -20,7 +20,46 @@ interface AudioGenerationResult {
   };
 }
 
+export interface AudioGenerationProgress {
+  isGenerating: boolean;
+  progress: number;
+  stage: 'initializing' | 'processing' | 'uploading' | 'finalizing' | 'complete';
+  estimatedTimeRemaining: number;
+  currentItem?: string;
+  totalItems?: number;
+  completedItems?: number;
+}
+
 export class EnhancedAudioService {
+  private progressCallback?: (progress: AudioGenerationProgress) => void;
+  private abortController?: AbortController;
+
+  setProgressCallback(callback: (progress: AudioGenerationProgress) => void) {
+    this.progressCallback = callback;
+  }
+
+  abort() {
+    if (this.abortController) {
+      this.abortController.abort();
+    }
+  }
+
+  private updateProgress(progress: Partial<AudioGenerationProgress>) {
+    if (this.progressCallback) {
+      this.progressCallback({
+        isGenerating: true,
+        progress: 0,
+        stage: 'initializing',
+        estimatedTimeRemaining: 0,
+        ...progress
+      });
+    }
+  }
+
+  estimateGenerationTime(textLength: number): number {
+    // Rough estimate: 1-2 seconds per 100 characters
+    return Math.max(5, Math.ceil(textLength / 50));
+  }
   
   async generateSingleAudio(
     text: string, 
@@ -30,7 +69,14 @@ export class EnhancedAudioService {
     
     console.log(`[ENHANCED AUDIO] Starting generation for ${text.length} characters in ${language}`);
     
+    this.abortController = new AbortController();
+    
     try {
+      this.updateProgress({
+        stage: 'initializing',
+        progress: 10
+      });
+
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text: text.trim(),
@@ -38,6 +84,11 @@ export class EnhancedAudioService {
           quality: options.quality || 'standard',
           priority: options.priority || 'normal'
         }
+      });
+
+      this.updateProgress({
+        stage: 'processing',
+        progress: 50
       });
 
       if (error) {
@@ -52,8 +103,18 @@ export class EnhancedAudioService {
 
       console.log('[ENHANCED AUDIO] Function response:', data);
 
+      this.updateProgress({
+        stage: 'uploading',
+        progress: 80
+      });
+
       if (data.success && data.audioUrl) {
         console.log(`[ENHANCED AUDIO] Successfully generated audio: ${data.audioUrl}`);
+        
+        this.updateProgress({
+          stage: 'complete',
+          progress: 100
+        });
         
         return {
           success: true,
@@ -106,8 +167,14 @@ export class EnhancedAudioService {
       if (exercise.audio_generation_status === 'completed' && !exercise.audio_url && !exercise.full_text_audio_url) {
         console.log('[ENHANCED AUDIO] Found completed exercise without audio URLs, regenerating...');
         
-        // Extract full text
-        const fullText = exercise.content?.sentences?.map((s: any) => s.text).join(' ') || '';
+        // Extract full text safely
+        let fullText = '';
+        if (exercise.content && typeof exercise.content === 'object') {
+          const content = exercise.content as any;
+          if (content.sentences && Array.isArray(content.sentences)) {
+            fullText = content.sentences.map((s: any) => s.text).join(' ');
+          }
+        }
         
         if (!fullText.trim()) {
           console.error('[ENHANCED AUDIO] No text content found for regeneration');
@@ -129,7 +196,7 @@ export class EnhancedAudioService {
               full_text_audio_url: result.audioUrl,
               audio_generation_status: 'completed',
               metadata: {
-                ...exercise.metadata,
+                ...(typeof exercise.metadata === 'object' ? exercise.metadata : {}),
                 audio_regenerated_at: new Date().toISOString(),
                 audio_metadata: result.metadata
               }
