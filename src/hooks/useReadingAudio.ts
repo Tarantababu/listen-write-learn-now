@@ -65,6 +65,15 @@ export const useReadingAudio = ({
   };
 
   useEffect(() => {
+    console.log('[READING AUDIO] useEffect triggered with:', {
+      exercise_id: exercise?.id,
+      exercise_title: exercise?.title,
+      enabled,
+      exercise_audio_url: exercise?.audio_url,
+      exercise_full_text_audio_url: exercise?.full_text_audio_url,
+      exercise_audio_status: exercise?.audio_generation_status
+    });
+
     if (!exercise || !enabled) {
       console.log('[READING AUDIO] Clearing state - no exercise or disabled');
       setAudioUrl('');
@@ -80,7 +89,9 @@ export const useReadingAudio = ({
         language: exercise.language,
         audio_status: exercise.audio_generation_status,
         has_audio_url: !!exercise.audio_url,
-        has_full_text_audio_url: !!exercise.full_text_audio_url
+        has_full_text_audio_url: !!exercise.full_text_audio_url,
+        audio_url_value: exercise.audio_url,
+        full_text_audio_url_value: exercise.full_text_audio_url
       });
       
       try {
@@ -106,14 +117,18 @@ export const useReadingAudio = ({
         // Get the preferred audio URL
         const preferredAudioUrl = AudioUtils.getPreferredAudioUrl(exercise);
         
+        console.log('[READING AUDIO] Preferred audio URL result:', preferredAudioUrl);
+        
         if (preferredAudioUrl) {
           console.log('[READING AUDIO] Found audio URL:', preferredAudioUrl);
           
           // Validate accessibility
           const isAccessible = await AudioUtils.validateAudioAccessibility(preferredAudioUrl);
           
+          console.log('[READING AUDIO] Audio accessibility check result:', isAccessible);
+          
           if (isAccessible) {
-            console.log('[READING AUDIO] Audio URL is valid and accessible');
+            console.log('[READING AUDIO] Audio URL is valid and accessible, setting audioUrl state');
             setAudioUrl(preferredAudioUrl);
             setHasAudioIssue(false);
           } else {
@@ -132,6 +147,13 @@ export const useReadingAudio = ({
         }
         
         setIsInitialized(true);
+        
+        console.log('[READING AUDIO] Initialization complete:', {
+          audioUrl: preferredAudioUrl || '',
+          hasAudioIssue: !preferredAudioUrl && exercise.audio_generation_status === 'completed',
+          isInitialized: true
+        });
+        
       } catch (error) {
         console.error('[READING AUDIO] Initialization failed:', error);
         setAudioUrl('');
@@ -141,7 +163,23 @@ export const useReadingAudio = ({
     };
 
     initializeAudio();
-  }, [exercise?.id, exercise?.audio_url, exercise?.full_text_audio_url, exercise?.audio_generation_status, enabled, autoRetry]);
+  }, [
+    exercise?.id, 
+    exercise?.audio_url, 
+    exercise?.full_text_audio_url, 
+    exercise?.audio_generation_status, 
+    enabled, 
+    autoRetry
+  ]);
+
+  console.log('[READING AUDIO] Current hook state:', {
+    audioUrl: !!audioUrl,
+    audioUrlValue: audioUrl,
+    isInitialized,
+    hasAudioIssue,
+    isRetrying,
+    exercise_id: exercise?.id
+  });
 
   return {
     audioUrl,

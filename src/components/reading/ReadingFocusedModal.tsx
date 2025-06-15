@@ -1,4 +1,3 @@
-
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
@@ -63,6 +62,18 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   enableSelectionFeedback = true,
   enableSmartTextProcessing = true
 }) => {
+  // Log exercise data on component mount and updates
+  useEffect(() => {
+    console.log('[READING MODAL] Exercise prop updated:', {
+      exercise_id: exercise?.id,
+      exercise_title: exercise?.title,
+      exercise_audio_url: exercise?.audio_url,
+      exercise_full_text_audio_url: exercise?.full_text_audio_url,
+      exercise_audio_status: exercise?.audio_generation_status,
+      isOpen
+    });
+  }, [exercise, isOpen]);
+
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [currentPosition, setCurrentPosition] = useState(0)
@@ -90,6 +101,19 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     enabled: enableFullTextAudio && isOpen,
     autoRetry: false
   });
+
+  // Log audio hook results
+  useEffect(() => {
+    console.log('[READING MODAL] Audio hook results:', {
+      audioUrl: !!audioUrl,
+      audioUrlValue: audioUrl,
+      audioInitialized,
+      hasAudioIssue,
+      isRetrying,
+      enableFullTextAudio,
+      isOpen
+    });
+  }, [audioUrl, audioInitialized, hasAudioIssue, isRetrying, enableFullTextAudio, isOpen]);
 
   const togglePlayPause = async (audioRef: React.RefObject<HTMLAudioElement>) => {
     if (!audioRef.current || !audioEnabled || !audioUrl) return;
@@ -220,11 +244,12 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   const hasAudio = audioInitialized && audioUrl && !hasAudioIssue;
   const showAudioIssueWarning = audioInitialized && hasAudioIssue;
 
-  console.log('[READING MODAL] Audio status:', {
+  console.log('[READING MODAL] Audio status computed:', {
     audioInitialized,
     audioUrl: !!audioUrl,
     hasAudioIssue,
     hasAudio,
+    showAudioIssueWarning,
     exercise_audio_status: exercise.audio_generation_status
   });
 
