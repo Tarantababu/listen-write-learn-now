@@ -14,6 +14,7 @@ import { SimpleCreationProgress } from './SimpleCreationProgress';
 import { AlertTriangle, Info, TrendingUp, Brain, Zap } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { clientAnalyzeCustomText } from '@/utils/clientAnalyzeCustomText';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ReadingExerciseModalProps {
   isOpen: boolean;
@@ -144,7 +145,11 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title.trim() || (contentSource === 'ai' && !topic.trim()) || (contentSource === 'custom' && !customText.trim())) {
+    if (
+      !title.trim() ||
+      (contentSource === 'ai' && !topic.trim()) ||
+      (contentSource === 'custom' && !customText.trim())
+    ) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
