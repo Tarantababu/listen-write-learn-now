@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,7 @@ import { CustomTextInput } from './CustomTextInput';
 import { GrammarFocusSelector } from './GrammarFocusSelector';
 import { TopicMandalaSelector } from './TopicMandalaSelector';
 import { SimpleCreationProgress } from './SimpleCreationProgress';
-import { AlertTriangle, Info, TrendingUp, Brain, Zap, Sparkles, BookOpen, Target, Clock, FileText } from 'lucide-react';
+import { AlertTriangle, Info, TrendingUp, Brain, Zap, Sparkles, BookOpen, Target, Clock } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -48,7 +49,6 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const [grammarFocus, setGrammarFocus] = useState<string[]>([]);
   const [contentSource, setContentSource] = useState<'ai' | 'custom'>('ai');
   const [customText, setCustomText] = useState('');
-  const [skipAIAnalysis, setSkipAIAnalysis] = useState(false); // New state for skipping AI
   const [isCreating, setIsCreating] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
   const [progress, setProgress] = useState<EnhancedGenerationProgress>({
@@ -82,7 +82,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
       return;
     }
 
-    console.log('[MODAL] Starting exercise creation with skipAIAnalysis:', skipAIAnalysis);
+    console.log('[ENHANCED MODAL] Starting enhanced exercise creation');
     setIsCreating(true);
     setShowProgress(true);
 
@@ -94,8 +94,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         target_length: targetLength,
         grammar_focus: grammarFocus.join(', ') || undefined,
         topic: contentSource === 'ai' ? topic.trim() : 'Custom Content',
-        customText: contentSource === 'custom' ? customText.trim() : undefined,
-        skipAIAnalysis: contentSource === 'custom' && skipAIAnalysis // Only skip AI for custom text when requested
+        customText: contentSource === 'custom' ? customText.trim() : undefined
       }, (progressUpdate) => {
         setProgress(progressUpdate);
       });
@@ -104,44 +103,46 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         onSuccess();
       }
       
-      // Enhanced success handling - Fixed to access qualityMetrics correctly
-      const processingMethod = exercise.content?.analysis?.qualityMetrics?.generationStrategy || exercise.content?.analysis?.generationStrategy;
-      const isLocalProcessing = processingMethod === 'local_processing';
+      // Enhanced success handling with metadata-based quality assessment
+      const isEnhancedContent = exercise.metadata?.enhanced_audio_enabled;
+      const generationMethod = exercise.content?.metadata?.generation_method;
+      const processingType = exercise.content?.metadata?.processing_type;
       
       const getSuccessMessage = () => {
-        if (isLocalProcessing) {
-          return "Exercise created with local processing! Your custom text has been structured for reading practice.";
-        } else if (contentSource === 'custom') {
-          return "Custom text exercise created with AI analysis! Enhanced with vocabulary and grammar insights.";
+        if (processingType === 'recovery') {
+          return "Exercise created with smart recovery! Our enhanced system ensured successful creation.";
+        } else if (isEnhancedContent) {
+          return `Enhanced exercise created successfully with ${generationMethod || 'optimized'} generation!`;
         } else {
           return `Your ${targetLength}-word reading exercise has been created successfully.`;
         }
       };
       
       toast({
-        title: isLocalProcessing ? "Local Processing Complete" : "Exercise Created Successfully",
+        title: isEnhancedContent ? "Enhanced Exercise Created" : "Exercise Created Successfully",
         description: getSuccessMessage(),
         variant: "default"
       });
       
-      console.log('[MODAL] Exercise creation completed with method:', processingMethod);
+      console.log('[ENHANCED MODAL] Exercise creation completed with enhanced features');
       
+      // Auto-close after success with quality summary
       setTimeout(() => {
         handleClose();
       }, 2000);
       
     } catch (error) {
-      console.error('[MODAL] Exercise creation failed:', error);
+      console.error('[ENHANCED MODAL] Exercise creation failed:', error);
       
       setProgress({
         progress: 0,
         status: 'error',
-        message: 'Failed to create exercise. Please try again.'
+        message: 'Failed to create exercise. Our enhanced system tried multiple recovery methods.'
       });
       
       toast({
         title: "Creation Error",
-        description: "There was an issue creating your exercise. Please try again.",
+        description: "There was an issue creating your exercise. Our enhanced system attempted multiple recovery methods. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -158,7 +159,6 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
       setGrammarFocus([]);
       setContentSource('ai');
       setCustomText('');
-      setSkipAIAnalysis(false);
       setShowProgress(false);
       setProgress({ progress: 0, status: 'generating', message: 'Initializing...' });
       onClose();
@@ -176,7 +176,6 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const selectedLengthOption = lengthOptions.find(opt => opt.value === targetLength);
   const isLongContent = targetLength >= 2000;
   const getGenerationStrategy = () => {
-    if (contentSource === 'custom' && skipAIAnalysis) return 'Local Processing';
     if (targetLength <= 800) return 'Enhanced Direct';
     if (targetLength <= 1500) return 'Smart Chunking';
     return 'Adaptive Chunking';
@@ -196,7 +195,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                 <Brain className={`${isMobile ? 'h-5 w-5' : 'h-7 w-7'} text-blue-600`} />
                 <Sparkles className={`${isMobile ? 'h-2 w-2' : 'h-4 w-4'} text-purple-500 absolute -top-1 -right-1 animate-pulse`} />
               </div>
-              {skipAIAnalysis ? 'Processing Your Text Locally' : 'Creating Your Enhanced Reading Exercise'}
+              Creating Your Enhanced Reading Exercise
             </DialogTitle>
           </DialogHeader>
           
@@ -206,7 +205,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
             message={progress.message}
             estimatedTime={progress.estimatedTime}
             onCancel={handleClose}
-            showOptimizations={!skipAIAnalysis}
+            showOptimizations={true}
             qualityMetrics={progress.qualityMetrics}
           />
         </DialogContent>
@@ -235,7 +234,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className={`space-y-4 ${isMobile ? 'p-0' : 'p-6'}`}>
-          {/* Title Section */}
+          {/* Title Section with Enhanced Design */}
           <div className="space-y-2">
             <Label htmlFor="title" className={`font-semibold flex items-center gap-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
               <Target className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-blue-500`} />
@@ -251,7 +250,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
             />
           </div>
 
-          {/* Content Source */}
+          {/* Content Source with Enhanced Cards */}
           <div className="space-y-3">
             <h3 className={`font-semibold flex items-center gap-2 ${isMobile ? 'text-sm' : 'text-lg'}`}>
               <Brain className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-purple-500`} />
@@ -265,7 +264,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
 
           {contentSource === 'ai' ? (
             <div className="space-y-4">
-              {/* Topic Selection */}
+              {/* Topic Selection with Enhanced UI */}
               <div className={`bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 ${isMobile ? 'p-3' : 'p-6'} rounded-2xl border border-blue-200 dark:border-blue-800`}>
                 <TopicMandalaSelector
                   selectedTopic={topic}
@@ -274,7 +273,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                 />
               </div>
 
-              {/* Settings Grid */}
+              {/* Settings Grid with Enhanced Layout */}
               <div className="grid gap-4 grid-cols-1">
                 <div className="space-y-2">
                   <Label htmlFor="difficulty" className={`font-semibold flex items-center gap-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
@@ -338,7 +337,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                 </div>
               </div>
 
-              {/* Strategy Information */}
+              {/* Enhanced Strategy Information */}
               <Alert className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
                 <TrendingUp className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
                 <AlertDescription className={`text-blue-800 dark:text-blue-200 ${isMobile ? 'text-xs' : 'text-sm'}`}>
@@ -347,7 +346,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
                 </AlertDescription>
               </Alert>
 
-              {/* Grammar Focus */}
+              {/* Grammar Focus with Enhanced Container */}
               <div className={`bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 ${isMobile ? 'p-3' : 'p-6'} rounded-2xl border border-purple-200 dark:border-purple-800`}>
                 <GrammarFocusSelector
                   selectedGrammar={grammarFocus}
@@ -357,63 +356,24 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {/* Custom Text Input */}
-              <div className={`bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-950/30 dark:to-slate-950/30 ${isMobile ? 'p-3' : 'p-6'} rounded-2xl border border-gray-200 dark:border-gray-800`}>
-                <CustomTextInput
-                  value={customText}
-                  onChange={setCustomText}
-                  maxLength={4000}
-                />
-              </div>
-
-              {/* Processing Option for Custom Text */}
-              <Alert className="border-2 border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/30">
-                <FileText className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-yellow-600`} />
-                <AlertDescription className="space-y-3">
-                  <div className={`text-yellow-800 dark:text-yellow-200 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                    <strong className="text-yellow-900 dark:text-yellow-100">Processing Options:</strong>
-                  </div>
-                  
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      id="skipAI"
-                      checked={skipAIAnalysis}
-                      onChange={(e) => setSkipAIAnalysis(e.target.checked)}
-                      className="mt-1"
-                    />
-                    <div className="space-y-1">
-                      <Label htmlFor="skipAI" className={`text-yellow-900 dark:text-yellow-100 font-medium cursor-pointer ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                        Use Local Processing (Skip AI Analysis)
-                      </Label>
-                      <p className={`text-yellow-700 dark:text-yellow-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                        {skipAIAnalysis 
-                          ? 'Your text will be processed locally without AI analysis. Faster but with basic vocabulary support.'
-                          : 'Your text will be enhanced with AI-powered vocabulary analysis, translations, and grammar insights.'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </AlertDescription>
-              </Alert>
+            <div className={`bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-950/30 dark:to-slate-950/30 ${isMobile ? 'p-3' : 'p-6'} rounded-2xl border border-gray-200 dark:border-gray-800`}>
+              <CustomTextInput
+                value={customText}
+                onChange={setCustomText}
+                maxLength={4000}
+              />
             </div>
           )}
 
-          {/* Feature Highlight */}
+          {/* Enhanced Feature Highlight */}
           <Alert className="border-2 border-gradient-to-r from-yellow-200 to-orange-200 bg-gradient-to-r from-yellow-50 via-orange-50 to-red-50 dark:from-yellow-950/30 dark:via-orange-950/30 dark:to-red-950/30">
             <Zap className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-yellow-600`} />
             <AlertDescription className={`text-yellow-800 dark:text-yellow-200 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-              <strong className="text-yellow-900 dark:text-yellow-100">
-                {contentSource === 'custom' && skipAIAnalysis ? 'Local Processing:' : 'Enhanced Generation:'}
-              </strong> {contentSource === 'custom' && skipAIAnalysis 
-                ? 'Your text will be processed locally for immediate use. Audio generation will still happen automatically in the background.'
-                : 'Our optimized system uses intelligent strategies, quality metrics, and smart recovery to ensure successful creation. Audio generation happens automatically in the background.'
-              }
+              <strong className="text-yellow-900 dark:text-yellow-100">Enhanced Generation:</strong> Our optimized system uses intelligent strategies, quality metrics, and smart recovery to ensure successful creation. Audio generation happens automatically in the background.
             </AlertDescription>
           </Alert>
 
-          {/* Action Buttons */}
+          {/* Enhanced Action Buttons */}
           <div className={`flex gap-3 pt-4 border-t border-gradient-to-r from-blue-200/50 via-purple-200/50 to-pink-200/50 ${isMobile ? 'flex-col' : 'justify-end'}`}>
             <Button 
               type="button" 
@@ -431,16 +391,12 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
               {isCreating ? (
                 <div className="flex items-center gap-2">
                   <div className={`${isMobile ? 'w-3 h-3' : 'w-4 h-4'} border-2 border-white border-t-transparent rounded-full animate-spin`}></div>
-                  {contentSource === 'custom' && skipAIAnalysis ? 'Processing...' : 'Creating...'}
+                  Creating...
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  {contentSource === 'custom' && skipAIAnalysis ? (
-                    <FileText className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
-                  ) : (
-                    <Sparkles className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
-                  )}
-                  {contentSource === 'custom' && skipAIAnalysis ? 'Process Text Locally' : 'Create Enhanced Exercise'}
+                  <Sparkles className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                  Create Enhanced Exercise
                 </div>
               )}
             </Button>

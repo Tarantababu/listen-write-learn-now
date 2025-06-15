@@ -1,10 +1,10 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from '../_shared/cors.ts'
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
 const FUNCTION_TIMEOUT = 50000;
 const OPENAI_TIMEOUT = 35000;
-const MAX_RETRIES = 2;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -26,53 +26,40 @@ serve(async (req) => {
       target_length = 500,
       grammar_focus,
       customText,
-      isCustomText = false,
-      skipAIAnalysis = false,
-      directGeneration = false
+      isCustomText = false
     } = await req.json()
 
-    console.log(`[GENERATION] Target: ${target_length} words, Custom: ${isCustomText}, Skip AI: ${skipAIAnalysis}`);
+    if (!openAIApiKey && !isCustomText) {
+      throw new Error('OpenAI API key not configured')
+    }
+
+    console.log(`[SIMPLIFIED GENERATION] Custom text: ${isCustomText}, Target: ${target_length} words`);
 
     let content;
 
     if (isCustomText && customText) {
-      if (skipAIAnalysis) {
-        // Process custom text locally without any OpenAI calls
-        content = await processCustomTextLocally(customText, language, difficulty_level);
-      } else {
-        // Use the existing AI-enhanced custom text processing
-        content = await processCustomTextPreserved(customText, language, difficulty_level, grammar_focus, timeoutController.signal);
-      }
+      // For custom text, just return the text as-is without AI processing
+      content = {
+        text: customText.trim(),
+        metadata: {
+          generation_method: 'custom_text',
+          original_length: customText.length,
+          word_count: customText.split(/\s+/).filter(word => word.length > 0).length,
+          processing_type: 'direct_input'
+        }
+      };
     } else {
-      // Regular AI generation for non-custom text
-      if (!openAIApiKey) {
-        throw new Error('OpenAI API key not configured')
-      }
-
-      const strategy = determineOptimalStrategy(target_length, difficulty_level);
-      
-      if (strategy === 'direct') {
-        content = await generateContentDirect(
-          topic, language, difficulty_level, target_length, grammar_focus, 
-          timeoutController.signal
-        );
-      } else if (strategy === 'smart_chunking') {
-        content = await generateContentWithSmartChunking(
-          topic, language, difficulty_level, target_length, grammar_focus, 
-          timeoutController.signal
-        );
-      } else {
-        content = await generateContentWithAdaptiveChunking(
-          topic, language, difficulty_level, target_length, grammar_focus, 
-          timeoutController.signal
-        );
-      }
+      // For AI generation, create the content using OpenAI
+      content = await generateContentWithAI(
+        topic, language, difficulty_level, target_length, grammar_focus, 
+        timeoutController.signal
+      );
     }
 
     clearTimeout(functionTimeout);
     
     const duration = Date.now() - startTime;
-    console.log(`[SUCCESS] Completed in ${duration}ms, Generated ${content.analysis?.wordCount || 0} words with strategy: ${content.analysis?.generationStrategy || 'unknown'}`);
+    console.log(`[SIMPLIFIED SUCCESS] Completed in ${duration}ms, Generated ${content.metadata?.word_count || 0} words`);
 
     return new Response(JSON.stringify(content), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -82,11 +69,12 @@ serve(async (req) => {
     clearTimeout(functionTimeout);
     const duration = Date.now() - startTime;
     
-    console.error(`[ERROR] After ${duration}ms:`, error);
+    console.error(`[SIMPLIFIED ERROR] After ${duration}ms:`, error);
     
+    // Enhanced error handling with smart recovery
     if (error.name === 'AbortError' || error.message.includes('timeout')) {
-      console.warn('[RECOVERY] Using intelligent fallback due to timeout');
-      const fallbackContent = generateIntelligentFallback(target_length || 500, language, topic, difficulty_level);
+      console.warn('[SMART RECOVERY] Using intelligent fallback due to timeout');
+      const fallbackContent = generateSimpleFallback(target_length || 500, language, topic, difficulty_level);
       
       return new Response(JSON.stringify(fallbackContent), {
         status: 200,
@@ -94,14 +82,11 @@ serve(async (req) => {
       });
     }
     
-    const errorResponse = {
-      error: error.message,
-      recoveryData: generateRecoveryData(target_length || 500, language, topic, difficulty_level),
-      fallbackAvailable: true
-    };
-    
     return new Response(
-      JSON.stringify(errorResponse),
+      JSON.stringify({ 
+        error: error.message,
+        fallback_content: generateSimpleFallback(target_length || 500, language, topic, difficulty_level)
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -110,322 +95,7 @@ serve(async (req) => {
   }
 })
 
-// NEW FUNCTION: Process custom text locally without any AI calls
-async function processCustomTextLocally(
-  customText: string, 
-  language: string, 
-  difficulty_level: string
-) {
-  console.log(`[LOCAL PROCESSING] Processing ${customText.length} characters locally without AI`);
-  
-  // Split text into sentences
-  const sentences = splitTextIntoSentencesBasic(customText);
-  console.log(`[LOCAL PROCESSING] Split into ${sentences.length} sentences`);
-  
-  // Process each sentence with basic analysis (no AI)
-  const processedSentences = sentences.map((sentence, index) => ({
-    id: `sentence-${index + 1}`,
-    text: sentence.trim(),
-    analysis: {
-      words: extractBasicWords(sentence).map(word => ({
-        word: word,
-        definition: 'Definition not available (local processing)',
-        partOfSpeech: 'unknown',
-        difficulty: 'medium'
-      })),
-      grammar: ['Basic sentence structure'],
-      translation: 'Translation not available (local processing)'
-    }
-  }));
-  
-  // Calculate word count
-  const totalWordCount = sentences.reduce((count, sentence) => {
-    return count + sentence.split(/\s+/).filter(word => word.length > 0).length;
-  }, 0);
-  
-  console.log(`[LOCAL PROCESSING] Successfully processed ${totalWordCount} words locally`);
-  
-  return {
-    sentences: processedSentences,
-    analysis: {
-      wordCount: totalWordCount,
-      readingTime: Math.ceil(totalWordCount / 200),
-      grammarPoints: ['Basic text structure', 'Reading comprehension'],
-      generationStrategy: 'local_processing',
-      localProcessing: true,
-      aiAnalysis: false
-    }
-  };
-}
-
-// Helper function for basic sentence splitting
-function splitTextIntoSentencesBasic(text: string): string[] {
-  // Simple sentence splitting on punctuation
-  const sentences = text
-    .split(/[.!?]+/)
-    .map(sentence => sentence.trim())
-    .filter(sentence => sentence.length > 0);
-  
-  return sentences.length > 0 ? sentences : [text.trim()];
-}
-
-// Helper function for basic word extraction
-function extractBasicWords(sentence: string): string[] {
-  return sentence
-    .toLowerCase()
-    .replace(/[^\w\s]/g, '')
-    .split(/\s+/)
-    .filter(word => word.length > 2)
-    .slice(0, 5); // Limit to 5 words per sentence
-}
-
-// NEW FUNCTION: Process custom text while preserving the original
-async function processCustomTextPreserved(
-  customText: string, 
-  language: string, 
-  difficulty_level: string, 
-  grammar_focus?: string,
-  signal?: AbortSignal
-) {
-  console.log(`[CUSTOM TEXT PRESERVED] Processing ${customText.length} characters with text preservation`);
-  
-  // Step 1: Split text into sentences while preserving original text
-  const sentences = splitTextIntoSentences(customText);
-  console.log(`[CUSTOM TEXT PRESERVED] Split into ${sentences.length} sentences`);
-  
-  // Step 2: Process each sentence for analysis only (not modification)
-  const processedSentences = [];
-  
-  for (let i = 0; i < sentences.length; i++) {
-    const sentence = sentences[i];
-    console.log(`[CUSTOM TEXT PRESERVED] Analyzing sentence ${i + 1}/${sentences.length}`);
-    
-    try {
-      const analysis = await analyzeCustomSentence(sentence, language, difficulty_level, signal);
-      
-      processedSentences.push({
-        id: `sentence-${i + 1}`,
-        text: sentence, // PRESERVE ORIGINAL TEXT
-        analysis: analysis
-      });
-    } catch (error) {
-      console.error(`[CUSTOM TEXT PRESERVED] Error analyzing sentence ${i + 1}:`, error);
-      // Fallback analysis for this sentence
-      processedSentences.push({
-        id: `sentence-${i + 1}`,
-        text: sentence, // PRESERVE ORIGINAL TEXT
-        analysis: {
-          words: extractKeyWords(sentence).map(word => ({
-            word: word,
-            definition: 'Definition not available',
-            partOfSpeech: 'unknown',
-            difficulty: 'medium',
-            contextualUsage: `Used in: "${sentence.slice(0, 50)}..."`
-          })),
-          grammar: ['Grammar analysis not available'],
-          translation: 'Translation not available',
-          complexity: 'moderate',
-          keyPhrases: []
-        }
-      });
-    }
-    
-    // Small delay between analyses to avoid rate limiting
-    if (i < sentences.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-  }
-  
-  // Step 3: Calculate overall analysis
-  const totalWordCount = sentences.reduce((count, sentence) => {
-    return count + sentence.split(/\s+/).filter(word => word.length > 0).length;
-  }, 0);
-  
-  const allGrammarPoints = new Set();
-  processedSentences.forEach(sentence => {
-    if (sentence.analysis.grammar) {
-      sentence.analysis.grammar.forEach(point => allGrammarPoints.add(point));
-    }
-  });
-  
-  console.log(`[CUSTOM TEXT PRESERVED] Successfully processed with ${totalWordCount} words preserved`);
-  
-  return {
-    sentences: processedSentences,
-    analysis: {
-      wordCount: totalWordCount,
-      readingTime: Math.ceil(totalWordCount / 200),
-      grammarPoints: Array.from(allGrammarPoints),
-      customTextAnalysis: {
-        originalLength: customText.length,
-        processingMethod: 'text_preservation',
-        preservedMeaning: true,
-        textModified: false, // KEY: No text modification
-        educationalEnhancements: ['vocabulary analysis', 'grammar analysis', 'contextual understanding']
-      },
-      generationStrategy: 'custom_text_preserved',
-      enhancedFeatures: {
-        textPreservation: true,
-        originalContentIntact: true,
-        analysisOnly: true
-      }
-    }
-  };
-}
-
-// Helper function to split text into sentences
-function splitTextIntoSentences(text: string): string[] {
-  // Split on sentence-ending punctuation, but preserve the punctuation
-  const sentences = text
-    .split(/(?<=[.!?])\s+/)
-    .map(sentence => sentence.trim())
-    .filter(sentence => sentence.length > 0);
-  
-  // If no proper sentence endings found, treat as single sentence
-  if (sentences.length === 0) {
-    return [text.trim()];
-  }
-  
-  return sentences;
-}
-
-// Helper function to extract key words from a sentence
-function extractKeyWords(sentence: string): string[] {
-  const words = sentence
-    .toLowerCase()
-    .replace(/[^\w\s]/g, '') // Remove punctuation
-    .split(/\s+/)
-    .filter(word => word.length > 2) // Only words longer than 2 characters
-    .filter(word => !isCommonWord(word)); // Filter out common words
-  
-  // Return up to 5 key words
-  return words.slice(0, 5);
-}
-
-// Helper function to identify common words to filter out
-function isCommonWord(word: string): boolean {
-  const commonWords = new Set([
-    'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her', 'was', 'one',
-    'our', 'had', 'out', 'day', 'get', 'use', 'man', 'new', 'now', 'way', 'may', 'say',
-    'each', 'which', 'she', 'how', 'its', 'who', 'oil', 'sit', 'call', 'this', 'that',
-    'with', 'have', 'from', 'they', 'know', 'want', 'been', 'good', 'much', 'some',
-    'time', 'very', 'when', 'come', 'here', 'just', 'like', 'long', 'make', 'many',
-    'over', 'such', 'take', 'than', 'them', 'well', 'were'
-  ]);
-  
-  return commonWords.has(word);
-}
-
-// Analyze a single sentence without modifying it
-async function analyzeCustomSentence(
-  sentence: string,
-  language: string,
-  difficulty_level: string,
-  signal?: AbortSignal
-) {
-  const prompt = `Analyze this ${language} sentence for ${difficulty_level} level learners. DO NOT modify or rewrite the sentence - only provide analysis.
-
-ORIGINAL SENTENCE (DO NOT CHANGE): "${sentence}"
-
-Provide ONLY analysis in this JSON format:
-{
-  "words": [
-    {
-      "word": "important word from the original sentence",
-      "definition": "clear English definition or translation",
-      "partOfSpeech": "noun/verb/adjective/etc",
-      "difficulty": "easy/medium/hard",
-      "contextualUsage": "how this word is used in the original sentence"
-    }
-  ],
-  "grammar": ["specific grammar point 1", "specific grammar point 2"],
-  "translation": "accurate English translation of the EXACT original sentence",
-  "complexity": "easy/moderate/complex",
-  "keyPhrases": ["important phrase 1", "important phrase 2"]
-}
-
-CRITICAL: 
-- DO NOT modify the original sentence in any way
-- Focus on educational analysis only
-- Select words that would help a ${difficulty_level} learner
-- Provide accurate translations and definitions
-- Return ONLY valid JSON`;
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a language analysis expert. You analyze text without modifying it. Always respond with valid JSON only. Focus on educational value and accuracy.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 1000,
-        response_format: { type: "json_object" }
-      }),
-      signal: signal
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[CUSTOM ANALYSIS ERROR] ${response.status}: ${errorText}`);
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-
-    return parseCustomAnalysis(content);
-  } catch (error) {
-    console.error('Error in analyzeCustomSentence:', error);
-    throw error;
-  }
-}
-
-// Parse and validate the analysis response
-function parseCustomAnalysis(content: string) {
-  try {
-    const parsed = JSON.parse(content);
-    
-    // Validate and sanitize the response
-    return {
-      words: Array.isArray(parsed.words) ? 
-        parsed.words.slice(0, 5).map(word => ({
-          word: word.word || '',
-          definition: word.definition || '',
-          partOfSpeech: word.partOfSpeech || '',
-          difficulty: word.difficulty || 'medium',
-          contextualUsage: word.contextualUsage || word.definition || ''
-        })) : [],
-      grammar: Array.isArray(parsed.grammar) ? parsed.grammar.slice(0, 3) : [],
-      translation: parsed.translation || '',
-      complexity: parsed.complexity || 'moderate',
-      keyPhrases: Array.isArray(parsed.keyPhrases) ? parsed.keyPhrases.slice(0, 3) : []
-    };
-  } catch (error) {
-    console.error('Error parsing custom analysis:', error);
-    throw new Error('Failed to parse analysis response');
-  }
-}
-
-function determineOptimalStrategy(targetLength: number, difficultyLevel: string): 'direct' | 'smart_chunking' | 'adaptive_chunking' {
-  if (targetLength <= 800) return 'direct';
-  if (targetLength <= 1500) return 'smart_chunking';
-  return 'adaptive_chunking';
-}
-
-async function generateContentDirect(
+async function generateContentWithAI(
   topic: string, 
   language: string, 
   difficulty_level: string, 
@@ -433,358 +103,9 @@ async function generateContentDirect(
   grammar_focus?: string,
   signal?: AbortSignal
 ) {
-  console.log(`[DIRECT GENERATION] Creating ${target_length} words with enhanced prompting`);
+  console.log(`[AI GENERATION] Creating ${target_length} words about ${topic}`);
   
-  const enhancedPrompt = createEnhancedPrompt(topic, language, difficulty_level, target_length, grammar_focus);
-  const maxTokens = calculateOptimalTokens(target_length);
-  
-  return await callOpenAIEnhanced(enhancedPrompt, maxTokens, OPENAI_TIMEOUT, signal, 'direct');
-}
-
-async function generateContentWithSmartChunking(
-  topic: string, 
-  language: string, 
-  difficulty_level: string, 
-  target_length: number, 
-  grammar_focus?: string,
-  signal?: AbortSignal
-) {
-  console.log(`[SMART CHUNKING] Creating ${target_length} words with intelligent chunking`);
-  
-  const chunkStrategy = calculateSmartChunkStrategy(target_length);
-  const chunks = [];
-  let totalWordCount = 0;
-  
-  for (let i = 0; i < chunkStrategy.numChunks; i++) {
-    const chunkSize = calculateChunkSize(i, chunkStrategy, target_length, totalWordCount);
-    
-    if (chunkSize <= 0) break;
-    
-    console.log(`[SMART CHUNK ${i + 1}/${chunkStrategy.numChunks}] Generating ${chunkSize} words`);
-    
-    try {
-      const chunk = await generateEnhancedChunk(
-        topic, language, difficulty_level, chunkSize, 
-        grammar_focus, i === 0, i === chunkStrategy.numChunks - 1, 
-        i > 0 ? chunks[chunks.length - 1] : null, signal, 'smart_chunking'
-      );
-      
-      chunks.push(chunk);
-      totalWordCount += chunk.analysis?.wordCount || 0;
-      
-      if (i < chunkStrategy.numChunks - 1) {
-        await new Promise(resolve => setTimeout(resolve, 150));
-      }
-    } catch (error) {
-      console.error(`[SMART CHUNK ${i + 1} ERROR]`, error);
-      
-      if (chunks.length === 0) {
-        chunks.push(createEnhancedEmergencyChunk(topic, language, difficulty_level, chunkSize));
-      } else {
-        console.warn(`[SMART CHUNK ${i + 1} SKIP] Continuing with existing chunks`);
-        break;
-      }
-    }
-  }
-  
-  return combineChunksEnhanced(chunks, target_length, 'smart_chunking');
-}
-
-async function generateContentWithAdaptiveChunking(
-  topic: string, 
-  language: string, 
-  difficulty_level: string, 
-  target_length: number, 
-  grammar_focus?: string,
-  signal?: AbortSignal
-) {
-  console.log(`[ADAPTIVE CHUNKING] Creating ${target_length} words with adaptive strategy`);
-  
-  const adaptiveStrategy = calculateAdaptiveStrategy(target_length, difficulty_level);
-  const chunks = [];
-  let totalWordCount = 0;
-  
-  for (let i = 0; i < adaptiveStrategy.phases.length; i++) {
-    const phase = adaptiveStrategy.phases[i];
-    
-    try {
-      const chunk = await generateAdaptiveChunk(
-        topic, language, difficulty_level, phase.targetWords, 
-        grammar_focus, phase.isIntro, phase.isConclusion, 
-        chunks.length > 0 ? chunks[chunks.length - 1] : null, 
-        signal, phase.focus
-      );
-      
-      chunks.push(chunk);
-      totalWordCount += chunk.analysis?.wordCount || 0;
-      
-      if (i < adaptiveStrategy.phases.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, phase.delay));
-      }
-    } catch (error) {
-      console.error(`[ADAPTIVE PHASE ${i + 1} ERROR]`, error);
-      
-      if (chunks.length === 0) {
-        chunks.push(createEnhancedEmergencyChunk(topic, language, difficulty_level, phase.targetWords));
-      } else {
-        break;
-      }
-    }
-  }
-  
-  return combineChunksEnhanced(chunks, target_length, 'adaptive_chunking');
-}
-
-function createEnhancedPrompt(topic: string, language: string, difficulty: string, targetLength: number, grammarFocus?: string): string {
-  const complexityLevel = difficulty === 'beginner' ? 'simple' : difficulty === 'intermediate' ? 'moderate' : 'sophisticated';
-  
-  return `Create a ${language} reading exercise for ${difficulty} learners.
-
-Topic: ${topic}
-Target: EXACTLY ${targetLength} words
-Complexity: ${complexityLevel} vocabulary and sentence structure
-${grammarFocus ? `Grammar emphasis: ${grammarFocus}` : ''}
-
-REQUIREMENTS:
-- Write exactly ${targetLength} words (count carefully)
-- Create 4-12 natural, flowing sentences
-- Use ${difficulty}-appropriate vocabulary with variety
-- Ensure logical progression and coherence
-
-Return ONLY this JSON:
-{
-  "sentences": [
-    {
-      "id": "sentence-1",
-      "text": "sentence in ${language}",
-      "analysis": {
-        "words": [
-          {
-            "word": "word",
-            "definition": "clear definition",
-            "partOfSpeech": "noun/verb/adjective/etc",
-            "difficulty": "easy/medium/hard"
-          }
-        ],
-        "grammar": ["specific grammar points"],
-        "translation": "accurate English translation"
-      }
-    }
-  ],
-  "analysis": {
-    "wordCount": ${targetLength},
-    "readingTime": ${Math.ceil(targetLength / 200)},
-    "grammarPoints": ["grammar concepts covered"]
-  }
-}`;
-}
-
-function calculateOptimalTokens(targetLength: number): number {
-  const baseTokens = 1000;
-  const wordsToTokensRatio = 1.3;
-  const analysisTokens = 800;
-  
-  return Math.min(6000, baseTokens + Math.ceil(targetLength * wordsToTokensRatio) + analysisTokens);
-}
-
-function calculateSmartChunkStrategy(targetLength: number): { numChunks: number; baseChunkSize: number; strategy: string } {
-  if (targetLength <= 1200) {
-    return { numChunks: 2, baseChunkSize: Math.ceil(targetLength / 2), strategy: 'balanced_split' };
-  } else if (targetLength <= 2000) {
-    return { numChunks: 3, baseChunkSize: Math.ceil(targetLength / 3), strategy: 'three_part_harmony' };
-  } else {
-    const numChunks = Math.ceil(targetLength / 700);
-    return { numChunks, baseChunkSize: Math.ceil(targetLength / numChunks), strategy: 'progressive_build' };
-  }
-}
-
-function calculateChunkSize(index: number, strategy: any, targetLength: number, currentTotal: number): number {
-  const remaining = targetLength - currentTotal;
-  const chunksLeft = strategy.numChunks - index;
-  
-  if (chunksLeft === 1) {
-    return Math.max(150, remaining);
-  }
-  
-  const idealSize = Math.ceil(remaining / chunksLeft);
-  return Math.max(200, Math.min(idealSize, strategy.baseChunkSize));
-}
-
-function calculateAdaptiveStrategy(targetLength: number, difficulty: string): { phases: any[]; strategy: string } {
-  const phases = [];
-  const wordsPerPhase = Math.ceil(targetLength / 4);
-  
-  phases.push({
-    targetWords: Math.ceil(wordsPerPhase * 0.8),
-    isIntro: true,
-    isConclusion: false,
-    focus: 'introduction_and_context',
-    delay: 200
-  });
-  
-  phases.push({
-    targetWords: wordsPerPhase,
-    isIntro: false,
-    isConclusion: false,
-    focus: 'development_and_detail',
-    delay: 250
-  });
-  
-  phases.push({
-    targetWords: wordsPerPhase,
-    isIntro: false,
-    isConclusion: false,
-    focus: 'expansion_and_examples',
-    delay: 200
-  });
-  
-  phases.push({
-    targetWords: targetLength - (phases[0].targetWords + phases[1].targetWords + phases[2].targetWords),
-    isIntro: false,
-    isConclusion: true,
-    focus: 'conclusion_and_synthesis',
-    delay: 0
-  });
-  
-  return { phases, strategy: 'adaptive_progressive' };
-}
-
-async function generateEnhancedChunk(
-  topic: string, 
-  language: string, 
-  difficulty_level: string, 
-  target_length: number, 
-  grammar_focus?: string,
-  isFirstChunk: boolean = false,
-  isLastChunk: boolean = false,
-  previousChunk: any = null,
-  signal?: AbortSignal,
-  strategy: string = 'smart_chunking'
-) {
-  const contextInfo = previousChunk ? 
-    `Continue seamlessly from: "${previousChunk.sentences?.[previousChunk.sentences.length - 1]?.text?.slice(0, 80) || ''}"` :
-    '';
-    
-  const chunkRole = isFirstChunk ? 'introduction and setup' : 
-                   isLastChunk ? 'conclusion and wrap-up' : 
-                   'development and continuation';
-    
-  const prompt = `${isFirstChunk ? 'Begin' : 'Continue'} a cohesive ${language} text for ${difficulty_level} learners.
-
-Topic: ${topic}
-Role: Handle ${chunkRole}
-${contextInfo}
-Target: EXACTLY ${target_length} words
-${grammar_focus ? `Grammar focus: ${grammar_focus}` : ''}
-
-REQUIREMENTS:
-- Write exactly ${target_length} words
-- Create 3-8 natural sentences with good flow
-- ${isFirstChunk ? 'Establish clear context and engage the reader' : 'Maintain narrative continuity'}
-- ${isLastChunk ? 'Provide satisfying conclusion' : 'End in a way that flows naturally to next section'}
-
-Return ONLY this JSON:
-{
-  "sentences": [
-    {
-      "id": "sentence-1",
-      "text": "sentence in ${language}",
-      "analysis": {
-        "words": [
-          {
-            "word": "word",
-            "definition": "clear definition",
-            "partOfSpeech": "noun/verb/adjective/etc",
-            "difficulty": "easy/medium/hard"
-          }
-        ],
-        "grammar": ["grammar points"],
-        "translation": "accurate English translation"
-      }
-    }
-  ],
-  "analysis": {
-    "wordCount": ${target_length},
-    "readingTime": ${Math.ceil(target_length / 200)},
-    "grammarPoints": ["grammar concepts covered"]
-  }
-}`;
-
-  const maxTokens = calculateOptimalTokens(target_length);
-  return await callOpenAIEnhanced(prompt, maxTokens, 25000, signal, strategy);
-}
-
-async function generateAdaptiveChunk(
-  topic: string, 
-  language: string, 
-  difficulty_level: string, 
-  target_length: number, 
-  grammar_focus?: string,
-  isIntro: boolean = false,
-  isConclusion: boolean = false,
-  previousChunk: any = null,
-  signal?: AbortSignal,
-  focus: string = 'general'
-) {
-  const prompt = `Create a ${focus.replace('_', ' ')} section for a ${language} text on ${topic}.
-
-Target: EXACTLY ${target_length} words
-Level: ${difficulty_level}
-Focus: ${focus}
-${grammar_focus ? `Grammar emphasis: ${grammar_focus}` : ''}
-${previousChunk ? `Continue from: "${previousChunk.sentences?.[previousChunk.sentences.length - 1]?.text?.slice(0, 60) || ''}"` : ''}
-
-REQUIREMENTS:
-- Write exactly ${target_length} words
-- ${isIntro ? 'Create engaging introduction that sets context' : ''}
-- ${isConclusion ? 'Provide thoughtful conclusion that ties themes together' : ''}
-- ${!isIntro && !isConclusion ? 'Develop content with appropriate depth and detail' : ''}
-
-Return ONLY this JSON:
-{
-  "sentences": [
-    {
-      "id": "sentence-1",
-      "text": "sentence in ${language}",
-      "analysis": {
-        "words": [
-          {
-            "word": "word",
-            "definition": "definition",
-            "partOfSpeech": "part of speech",
-            "difficulty": "easy/medium/hard"
-          }
-        ],
-        "grammar": ["grammar points"],
-        "translation": "English translation"
-      }
-    }
-  ],
-  "analysis": {
-    "wordCount": ${target_length},
-    "readingTime": ${Math.ceil(target_length / 200)},
-    "grammarPoints": ["grammar concepts"]
-  }
-}`;
-
-  return await callOpenAIEnhanced(prompt, calculateOptimalTokens(target_length), 30000, signal, 'adaptive_chunking');
-}
-
-async function callOpenAIEnhanced(
-  prompt: string, 
-  maxTokens: number, 
-  timeout: number = OPENAI_TIMEOUT,
-  signal?: AbortSignal,
-  strategy: string = 'unknown'
-) {
-  console.log(`[ENHANCED OPENAI] Strategy: ${strategy}, max_tokens: ${maxTokens}, timeout: ${timeout}ms`);
-  
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-  
-  if (signal) {
-    signal.addEventListener('abort', () => controller.abort());
-  }
+  const prompt = createSimplePrompt(topic, language, difficulty_level, target_length, grammar_focus);
   
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -798,7 +119,7 @@ async function callOpenAIEnhanced(
         messages: [
           {
             role: 'system',
-            content: 'You are an expert language teacher and content creator. Create educational content that is engaging, accurate, and pedagogically sound. Always respond with valid JSON only.'
+            content: 'You are an expert language teacher. Create educational content that is engaging and appropriate for the specified level. Always respond with just the text content, no formatting or additional structure.'
           },
           {
             role: 'user',
@@ -806,257 +127,83 @@ async function callOpenAIEnhanced(
           }
         ],
         temperature: 0.7,
-        max_tokens: maxTokens,
-        response_format: { type: "json_object" }
+        max_tokens: calculateTokens(target_length),
       }),
-      signal: controller.signal
+      signal: signal
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[ENHANCED OPENAI ERROR] ${response.status}: ${errorText}`);
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText.slice(0, 100)}`);
+      console.error(`[AI GENERATION ERROR] ${response.status}: ${errorText}`);
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
-
-    console.log(`[ENHANCED OPENAI SUCCESS] Strategy: ${strategy}, Response received`);
-
-    return parseAndValidateEnhanced(content, strategy);
+    const generatedText = data.choices[0].message.content.trim();
+    
+    const wordCount = generatedText.split(/\s+/).filter(word => word.length > 0).length;
+    
+    console.log(`[AI GENERATION SUCCESS] Generated ${wordCount} words`);
+    
+    return {
+      text: generatedText,
+      metadata: {
+        generation_method: 'ai_generated',
+        word_count: wordCount,
+        target_length: target_length,
+        topic: topic,
+        language: language,
+        difficulty_level: difficulty_level,
+        grammar_focus: grammar_focus,
+        processing_type: 'openai_completion'
+      }
+    };
   } catch (error) {
-    clearTimeout(timeoutId);
-    
-    if (error.name === 'AbortError') {
-      console.error(`[ENHANCED OPENAI TIMEOUT] Strategy: ${strategy}`);
-      throw new Error(`OpenAI request timed out for strategy: ${strategy}`);
-    }
-    
-    console.error(`[ENHANCED OPENAI ERROR] Strategy: ${strategy}`, error);
+    console.error('Error in generateContentWithAI:', error);
     throw error;
   }
 }
 
-function parseAndValidateEnhanced(content: string, strategy: string) {
-  try {
-    // Enhanced JSON parsing with better error handling
-    let parsedContent;
-    try {
-      parsedContent = JSON.parse(content);
-    } catch (parseError) {
-      console.error(`[JSON PARSE ERROR] Strategy: ${strategy}, Content length: ${content.length}`);
-      
-      // Try to fix common JSON issues
-      let fixedContent = content;
-      
-      // Remove any text before the first {
-      const firstBrace = fixedContent.indexOf('{');
-      if (firstBrace > 0) {
-        fixedContent = fixedContent.substring(firstBrace);
-      }
-      
-      // Remove any text after the last }
-      const lastBrace = fixedContent.lastIndexOf('}');
-      if (lastBrace >= 0 && lastBrace < fixedContent.length - 1) {
-        fixedContent = fixedContent.substring(0, lastBrace + 1);
-      }
-      
-      // Try parsing again
-      try {
-        parsedContent = JSON.parse(fixedContent);
-        console.log(`[JSON PARSE RECOVERED] Strategy: ${strategy}`);
-      } catch (secondParseError) {
-        console.error(`[JSON PARSE FAILED] Strategy: ${strategy}, both attempts failed`);
-        throw new Error(`Failed to parse JSON response for strategy: ${strategy}`);
-      }
-    }
-    
-    if (!parsedContent?.sentences || !Array.isArray(parsedContent.sentences)) {
-      console.warn(`[VALIDATION WARNING] Invalid sentence structure for strategy: ${strategy}`);
-      throw new Error(`Invalid response structure for strategy: ${strategy}`);
-    }
+function createSimplePrompt(topic: string, language: string, difficulty: string, targetLength: number, grammarFocus?: string): string {
+  return `Write a ${language} text about ${topic} for ${difficulty} level learners.
 
-    // Enhanced validation and sanitization
-    parsedContent.sentences = parsedContent.sentences.map((sentence: any, index: number) => ({
-      ...sentence,
-      id: sentence.id || `sentence-${index + 1}`,
-      analysis: {
-        words: Array.isArray(sentence.analysis?.words) ? 
-          sentence.analysis.words.slice(0, 8).map((word: any) => ({
-            word: word.word || '',
-            definition: word.definition || '',
-            partOfSpeech: word.partOfSpeech || '',
-            difficulty: word.difficulty || 'medium',
-            contextualUsage: word.contextualUsage || word.definition || ''
-          })) : [],
-        grammar: Array.isArray(sentence.analysis?.grammar) ? sentence.analysis.grammar : [],
-        translation: sentence.analysis?.translation || '',
-        complexity: sentence.analysis?.complexity || 'moderate',
-        keyPhrases: sentence.analysis?.keyPhrases || []
-      }
-    }));
+Requirements:
+- Write approximately ${targetLength} words
+- Use vocabulary appropriate for ${difficulty} level
+- Create natural, flowing sentences
+- Make the content engaging and educational
+${grammarFocus ? `- Focus on using ${grammarFocus} grammar structures` : ''}
 
-    // Calculate accurate word count
-    const actualWordCount = parsedContent.sentences.reduce((count: number, sentence: any) => {
-      return count + (sentence.text?.split(/\s+/).filter((word: string) => word.length > 0).length || 0);
-    }, 0);
-
-    // Enhanced analysis section
-    if (!parsedContent.analysis) {
-      parsedContent.analysis = {};
-    }
-    
-    parsedContent.analysis = {
-      ...parsedContent.analysis,
-      wordCount: actualWordCount,
-      readingTime: Math.ceil(actualWordCount / 200),
-      grammarPoints: Array.isArray(parsedContent.analysis.grammarPoints) ? 
-        parsedContent.analysis.grammarPoints : [],
-      generationStrategy: strategy,
-      enhancedGeneration: true
-    };
-
-    console.log(`[ENHANCED VALIDATION] Strategy: ${strategy}, ${actualWordCount} words processed`);
-    return parsedContent;
-  } catch (error) {
-    console.error(`[ENHANCED PARSE ERROR] Strategy: ${strategy}`, error);
-    throw new Error(`Failed to parse response for strategy: ${strategy} - ${error.message}`);
-  }
+Write only the text content without any formatting, titles, or additional structure. Just provide the readable text.`;
 }
 
-function combineChunksEnhanced(chunks: any[], target_length: number, strategy: string) {
-  console.log(`[ENHANCED COMBINING] Strategy: ${strategy}, ${chunks.length} chunks`);
-  
-  const allSentences = [];
-  const allGrammarPoints = new Set();
-  let totalWordCount = 0;
-  let sentenceCounter = 1;
-  
-  for (const chunk of chunks) {
-    if (chunk.sentences) {
-      for (const sentence of chunk.sentences) {
-        allSentences.push({
-          ...sentence,
-          id: `sentence-${sentenceCounter++}`
-        });
-        
-        if (sentence.analysis?.grammar) {
-          sentence.analysis.grammar.forEach((point: string) => allGrammarPoints.add(point));
-        }
-      }
-      
-      totalWordCount += chunk.analysis?.wordCount || 0;
-    }
-  }
-  
-  console.log(`[ENHANCED COMBINATION] Strategy: ${strategy}, ${totalWordCount} words, ${allSentences.length} sentences`);
-  
-  return {
-    sentences: allSentences,
-    analysis: {
-      wordCount: totalWordCount,
-      readingTime: Math.ceil(totalWordCount / 200),
-      grammarPoints: Array.from(allGrammarPoints),
-      generationStrategy: strategy,
-      chunksUsed: chunks.length,
-      enhancedGeneration: true
-    }
-  };
+function calculateTokens(targetLength: number): number {
+  // Rough estimate: 1 word ≈ 1.3 tokens, plus some buffer for response
+  return Math.min(4000, Math.ceil(targetLength * 1.5) + 500);
 }
 
-function createEnhancedEmergencyChunk(topic: string, language: string, difficulty: string, wordCount: number) {
-  const sentences = [];
-  const wordsPerSentence = Math.max(10, Math.floor(wordCount / Math.max(3, Math.floor(wordCount / 20))));
-  const sentenceCount = Math.ceil(wordCount / wordsPerSentence);
+function generateSimpleFallback(target_length: number, language: string, topic?: string, difficulty?: string) {
+  console.log('[SIMPLE FALLBACK] Creating fallback content');
   
-  for (let i = 0; i < sentenceCount; i++) {
-    sentences.push({
-      id: `emergency-sentence-${i + 1}`,
-      text: `This is emergency content for ${topic} in ${language}. System protection activated.`,
-      analysis: {
-        words: [
-          {
-            word: 'emergency',
-            definition: 'A serious situation requiring immediate action',
-            partOfSpeech: 'adjective',
-            difficulty: 'medium'
-          }
-        ],
-        grammar: ['emergency content'],
-        translation: 'Emergency content with system protection.'
-      }
-    });
-  }
+  const sentences = [
+    `This is a ${language} reading exercise about ${topic || 'general topics'}.`,
+    `The content is designed for ${difficulty || 'intermediate'} level learners.`,
+    `Reading exercises help improve vocabulary and comprehension skills.`,
+    `Practice regularly to see improvement in your language abilities.`,
+    `This fallback content ensures you always have something to read.`
+  ];
+  
+  const fallbackText = sentences.join(' ');
+  const wordCount = fallbackText.split(/\s+/).filter(word => word.length > 0).length;
   
   return {
-    sentences,
-    analysis: {
-      wordCount: wordCount,
-      readingTime: Math.ceil(wordCount / 200),
-      grammarPoints: ['emergency content'],
-      generationStrategy: 'enhanced_emergency'
+    text: fallbackText,
+    metadata: {
+      generation_method: 'fallback',
+      word_count: wordCount,
+      target_length: target_length,
+      processing_type: 'emergency_fallback',
+      fallback_reason: 'System protection activated'
     }
-  };
-}
-
-function generateIntelligentFallback(target_length: number, language: string, topic?: string, difficulty?: string) {
-  console.log('[INTELLIGENT FALLBACK] Creating enhanced fallback content');
-  
-  const sentences = [];
-  const wordsPerSentence = Math.max(15, Math.floor(target_length / 7));
-  const numSentences = Math.ceil(target_length / wordsPerSentence);
-  
-  for (let i = 0; i < numSentences; i++) {
-    sentences.push({
-      id: `fallback-sentence-${i + 1}`,
-      text: `This is intelligent fallback content for your ${language} reading exercise about ${topic || 'general topics'}. The system has implemented smart recovery protocols.`,
-      analysis: {
-        words: [
-          {
-            word: 'intelligent',
-            definition: 'Having advanced reasoning capabilities',
-            partOfSpeech: 'adjective',
-            difficulty: 'medium'
-          },
-          {
-            word: 'protocols',
-            definition: 'Systematic procedures or rules',
-            partOfSpeech: 'noun',
-            difficulty: 'hard'
-          }
-        ],
-        grammar: ['intelligent fallback', 'recovery protocols'],
-        translation: 'Intelligent fallback content with recovery protocols.'
-      }
-    });
-  }
-  
-  return {
-    sentences,
-    analysis: {
-      wordCount: sentences.reduce((count, s) => count + s.text.split(' ').length, 0),
-      readingTime: Math.ceil(target_length / 200),
-      grammarPoints: ['intelligent fallback', 'smart recovery'],
-      generationStrategy: 'intelligent_fallback',
-      fallbackInfo: {
-        method: 'intelligent_fallback',
-        reason: 'Enhanced protection activated',
-        isUsable: true
-      }
-    }
-  };
-}
-
-function generateRecoveryData(target_length: number, language: string, topic?: string, difficulty?: string) {
-  return {
-    recoveryMethod: 'intelligent_fallback',
-    targetLength: target_length,
-    language: language,
-    topic: topic || 'general',
-    difficulty: difficulty || 'intermediate',
-    fallbackQuality: 'high',
-    estimatedQuality: 'excellent'
   };
 }

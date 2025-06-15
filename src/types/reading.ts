@@ -9,33 +9,13 @@ export interface ReadingExercise {
   grammar_focus?: string;
   topic: string;
   content: {
-    sentences: ReadingSentence[];
-    analysis?: {
-      wordCount: number;
-      readingTime: number;
-      grammarPoints: string[];
-      enhancedGeneration?: boolean;
-      qualityMetrics?: {
-        vocabularyDiversity?: number;
-        coherenceScore?: number;
-        generationStrategy?: string;
-        recoveryUsed?: boolean;
-      };
-      fallbackInfo?: {
-        method: string;
-        reason: string;
-        isUsable: boolean;
-        originalTargetLength?: number;
-        actualLength?: number;
-        recoveryMethod?: string;
-        note?: string;
-      };
-      recoveryInfo?: {
-        originalTargetLength: number;
-        actualLength: number;
-        recoveryMethod: string;
-        note: string;
-      };
+    text: string;
+    metadata?: {
+      generation_method?: string;
+      word_count?: number;
+      target_length?: number;
+      processing_type?: string;
+      [key: string]: any;
     };
   };
   audio_url?: string;
@@ -51,27 +31,13 @@ export interface ReadingExercise {
     error?: string;
     success_rate?: number;
     retry_started?: string;
+    audio_on_demand?: boolean;
+    processing_type?: string;
     [key: string]: any;
   };
   created_at: string;
   updated_at: string;
   archived: boolean;
-}
-
-export interface ReadingSentence {
-  id: string;
-  text: string;
-  audio_url?: string;
-  analysis?: {
-    words: Array<{
-      word: string;
-      definition?: string;
-      partOfSpeech?: string;
-      difficulty?: 'easy' | 'medium' | 'hard';
-    }>;
-    grammar?: string[];
-    translation?: string;
-  };
 }
 
 export interface ReadingExerciseProgress {
@@ -95,5 +61,5 @@ export interface CreateReadingExerciseRequest {
   grammar_focus?: string;
   topic: string;
   customText?: string;
-  skipAIAnalysis?: boolean; // New flag to bypass OpenAI completely
+  isCustomText?: boolean;
 }

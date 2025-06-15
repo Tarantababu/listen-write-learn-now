@@ -43,8 +43,12 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
   const [isRetryingAudio, setIsRetryingAudio] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const fullText = exercise.content.sentences.map(s => s.text).join(' ');
-  const allWords = exercise.content.sentences.flatMap(s => s.analysis?.words || []);
+  // Get full text from simplified content structure
+  const fullText = exercise.content.text || '';
+  
+  // Split text into sentences for basic counting (simplified approach)
+  const estimatedSentences = fullText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const estimatedWordCount = fullText.split(/\s+/).filter(word => word.length > 0).length;
 
   // Check if audio is available for this exercise
   const preferredAudioUrl = AudioUtils.getPreferredAudioUrl(exercise);
@@ -110,442 +114,290 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
         audioRef.current.src = preferredAudioUrl;
         await audioRef.current.play();
         
-        // Simulate sentence highlighting based on reading speed
-        const avgWordsPerSentence = fullText.split(' ').length / exercise.content.sentences.length;
-        const highlightDuration = (avgWordsPerSentence / 150) * 60 * 1000; // Assuming 150 words per minute
-        
-        for (let i = 0; i < exercise.content.sentences.length; i++) {
-          setCurrentPlayingSentence(i);
-          await new Promise(resolve => setTimeout(resolve, highlightDuration));
-        }
+        // Simulate sentence highlighting for user feedback
+        let currentSentence = 0;
+        const sentenceInterval = setInterval(() => {
+          setCurrentPlayingSentence(currentSentence);
+          currentSentence++;
+          
+          if (currentSentence >= estimatedSentences.length) {
+            clearInterval(sentenceInterval);
+            setCurrentPlayingSentence(-1);
+          }
+        }, 3000); // Rough estimate of 3 seconds per sentence
       } else {
         throw new Error('Audio player not available');
       }
     } catch (error) {
-      console.error('Error in sentence-by-sentence playback:', error);
+      console.error('Error playing sentence-by-sentence audio:', error);
       toast.error('Audio playback failed');
-    } finally {
+      setIsPlaying(false);
+    }
+  };
+
+  const pauseAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
       setIsPlaying(false);
       setCurrentPlayingSentence(-1);
     }
   };
 
-  const createDictationFromFullText = async () => {
-    try {
-      const dictationExercise = {
-        title: `Dictation: ${exercise.title}`,
-        text: fullText,
-        language: exercise.language as Language,
-        tags: ['dictation', 'from-reading', 'full-text'],
-        directoryId: null
-      };
-      
-      await addExercise(dictationExercise);
-      toast.success('Full text dictation exercise created!');
-    } catch (error) {
-      console.error('Error creating dictation exercise:', error);
-      toast.error('Failed to create dictation exercise');
+  const createDictationFromSelection = (selectedText: string) => {
+    if (onCreateDictationFromSelection) {
+      onCreateDictationFromSelection(selectedText);
+    } else {
+      toast.success(`Dictation exercise created for: "${selectedText.substring(0, 50)}..."`);
     }
   };
 
-  // Handle audio progress tracking
+  const createBidirectionalFromSelection = (selectedText: string) => {
+    if (onCreateBidirectionalFromSelection) {
+      onCreateBidirectionalFromSelection(selectedText);
+    } else {
+      toast.success(`Translation exercise created for: "${selectedText.substring(0, 50)}..."`);
+    }
+  };
+
+  // Set up audio event listeners
   useEffect(() => {
     const audio = audioRef.current;
-    if (audio) {
-      const updateProgress = () => {
-        if (audio.duration) {
-          setAudioProgress((audio.currentTime / audio.duration) * 100);
-        }
-      };
+    if (!audio) return;
 
-      const handleEnded = () => {
-        setIsPlaying(false);
-        setCurrentPlayingSentence(-1);
-        setAudioProgress(0);
-      };
-      
-      audio.addEventListener('timeupdate', updateProgress);
-      audio.addEventListener('ended', handleEnded);
-      
-      return () => {
-        audio.removeEventListener('timeupdate', updateProgress);
-        audio.removeEventListener('ended', handleEnded);
-      };
-    }
+    const handleLoadedMetadata = () => {
+      console.log('[ALL TEXT VIEW] Audio loaded successfully');
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentPlayingSentence(-1);
+      setAudioProgress(0);
+    };
+
+    const handleTimeUpdate = () => {
+      if (audio.duration) {
+        const progress = (audio.currentTime / audio.duration) * 100;
+        setAudioProgress(progress);
+      }
+    };
+
+    const handleError = (e: any) => {
+      console.error('[ALL TEXT VIEW] Audio error:', e);
+      setIsPlaying(false);
+      setHasAudioIssue(true);
+      toast.error('Audio playback failed');
+    };
+
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('error', handleError);
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('error', handleError);
+    };
   }, []);
-
-  // Auto-hide selection help after 7 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSelectionHelp(false);
-    }, 7000);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  const renderHighlightedText = () => {
-    if (currentPlayingSentence === -1) {
-      return (
-        <EnhancedInteractiveText
-          text={fullText}
-          words={allWords}
-          language={exercise.language}
-          enableTooltips={true}
-          enableBidirectionalCreation={true}
-        />
-      );
-    }
-
-    return (
-      <div className="leading-relaxed text-lg">
-        {exercise.content.sentences.map((sentence, index) => (
-          <span
-            key={index}
-            className={`transition-all duration-500 ${
-              index === currentPlayingSentence 
-                ? 'bg-blue-100 px-2 py-1 rounded-md shadow-sm border border-blue-200' 
-                : ''
-            }`}
-          >
-            <EnhancedInteractiveText
-              text={sentence.text}
-              words={sentence.analysis?.words || []}
-              language={exercise.language}
-              enableTooltips={true}
-              enableBidirectionalCreation={true}
-            />
-            {index < exercise.content.sentences.length - 1 ? ' ' : ''}
-          </span>
-        ))}
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-6">
-      {/* Enhanced Selection Help Banner */}
-      {showSelectionHelp && (onCreateDictationFromSelection || onCreateBidirectionalFromSelection) && (
-        <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <CardContent className={`${isMobile ? 'p-4' : 'p-5'}`}>
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Info className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} text-blue-600`} />
+      {/* Audio hidden element */}
+      <audio ref={audioRef} />
+
+      {/* Exercise Info */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">{exercise.title}</h3>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="secondary">{exercise.language}</Badge>
+                <Badge variant="outline" className="capitalize">{exercise.difficulty_level}</Badge>
               </div>
-              <div className="flex-1">
-                <h4 className={`font-semibold text-blue-900 mb-2 ${isMobile ? 'text-sm' : 'text-base'}`}>
-                  Interactive Text Selection
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">
+                ~{estimatedSentences.length} sentences
+              </p>
+              <p className="text-sm text-muted-foreground">
+                ~{estimatedWordCount} words
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Audio Controls */}
+      {audioEnabled && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Volume2 className="h-4 w-4" />
+                  Audio Playback
                 </h4>
-                <p className={`text-blue-800 leading-relaxed ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                  {isMobile 
-                    ? 'Tap and hold any text to create custom exercises. Select words, phrases, or sentences to generate targeted practice materials.'
-                    : 'Select any portion of text to create personalized dictation or translation exercises. Perfect for focusing on challenging vocabulary or grammar patterns.'
-                  }
-                </p>
-                <div className="flex items-center gap-4 mt-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-                    <span className="text-xs text-blue-700">Dictation</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-purple-600 rounded-full"></div>
-                    <span className="text-xs text-blue-700">Translation</span>
-                  </div>
-                </div>
+                
+                {hasAudioIssue && (
+                  <Button
+                    onClick={handleRetryAudio}
+                    disabled={isRetryingAudio}
+                    variant="outline"
+                    size="sm"
+                    className="text-orange-600 border-orange-200"
+                  >
+                    {isRetryingAudio ? (
+                      <>
+                        <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                        Fixing...
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Fix Audio
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSelectionHelp(false)}
-                className="text-blue-600 hover:text-blue-800 hover:bg-blue-100 transition-colors duration-200"
-              >
-                ×
-              </Button>
+
+              {hasAudio ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={isPlaying ? pauseAudio : playFullText}
+                      variant={isPlaying ? "secondary" : "default"}
+                      size="sm"
+                    >
+                      {isPlaying ? <Pause className="h-4 w-4 mr-1" /> : <Play className="h-4 w-4 mr-1" />}
+                      {isPlaying ? 'Pause' : 'Play Full Text'}
+                    </Button>
+                    
+                    <Button
+                      onClick={playSentenceBysentence}
+                      variant="outline"
+                      size="sm"
+                      disabled={isPlaying}
+                    >
+                      <Brain className="h-4 w-4 mr-1" />
+                      Guided Reading
+                    </Button>
+                  </div>
+
+                  {isPlaying && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Progress</span>
+                        <span>{Math.round(audioProgress)}%</span>
+                      </div>
+                      <Progress value={audioProgress} className="h-1" />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Audio is not available for this exercise.
+                    {hasAudioIssue && " There seems to be an issue with the audio generation."}
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Audio Issue Warning */}
-      {hasAudioIssue && (
-        <Alert className="border-orange-200 bg-orange-50">
-          <AlertTriangle className="h-4 w-4 text-orange-600" />
-          <AlertDescription className="text-orange-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <strong>Audio Issue Detected:</strong> This exercise should have audio but it's not available.
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRetryAudio}
-                disabled={isRetryingAudio}
-                className="ml-2 border-orange-300 text-orange-700 hover:bg-orange-100"
-              >
-                {isRetryingAudio ? (
-                  <>
-                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                    Regenerating...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                    Fix Audio
-                  </>
-                )}
-              </Button>
-            </div>
+      {/* Text Selection Help */}
+      {showSelectionHelp && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>Select any text to create dictation or translation exercises from it.</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSelectionHelp(false)}
+            >
+              Dismiss
+            </Button>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Enhanced Audio Control Panel */}
-      <Card className="border-gray-200 shadow-sm">
-        <CardHeader className={`${isMobile ? 'p-4' : 'p-5'} pb-3`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Volume2 className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <h3 className={`font-semibold text-gray-900 ${isMobile ? 'text-sm' : 'text-base'}`}>
-                  Audio Playback
-                </h3>
-                <p className={`text-gray-500 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                  {hasAudio ? 'Listen to the full text or sentence by sentence' : 'Audio not available for this exercise'}
-                </p>
-              </div>
-            </div>
-            <Badge variant="outline" className="text-xs font-medium">
-              {exercise.language.toUpperCase()}
-            </Badge>
-          </div>
-          {isPlaying && audioProgress > 0 && (
-            <div className="mt-3">
-              <Progress value={audioProgress} className="h-2" />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>Playing...</span>
-                <span>{Math.round(audioProgress)}%</span>
-              </div>
-            </div>
-          )}
-        </CardHeader>
-        <CardContent className={`${isMobile ? 'p-4' : 'p-5'} pt-0`}>
-          <div className={`flex gap-3 ${isMobile ? 'flex-col' : 'flex-wrap'}`}>
-            <Button
-              onClick={playFullText}
-              disabled={isPlaying || !audioEnabled || !hasAudio}
-              className={`flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 ${
-                isMobile ? 'w-full justify-center py-2.5' : ''
-              }`}
-            >
-              {isPlaying && currentPlayingSentence === -1 ? (
-                <Pause className="h-4 w-4" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              <span className={`font-medium ${isMobile ? 'text-sm' : 'text-sm'}`}>
-                Play Full Text
-              </span>
-            </Button>
-            
-            <Button
-              variant="outline"
-              onClick={playSentenceBysentence}
-              disabled={isPlaying || !audioEnabled || !hasAudio}
-              className={`flex items-center gap-2 border-gray-300 hover:bg-gray-50 transition-colors duration-200 ${
-                isMobile ? 'w-full justify-center py-2.5' : ''
-              }`}
-            >
-              <Volume2 className="h-4 w-4" />
-              <span className={`font-medium ${isMobile ? 'text-sm' : 'text-sm'}`}>
-                Sentence by Sentence
-              </span>
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={createDictationFromFullText}
-              className={`flex items-center gap-2 border-blue-300 text-blue-700 hover:bg-blue-50 transition-colors duration-200 ${
-                isMobile ? 'w-full justify-center py-2.5' : ''
-              }`}
-            >
-              <Mic className="h-4 w-4" />
-              <span className={`font-medium ${isMobile ? 'text-sm' : 'text-sm'}`}>
-                Create Dictation
-              </span>
-            </Button>
-          </div>
-          
-          {!hasAudio && !hasAudioIssue && (
-            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                Audio is not available for this exercise. Audio generation happens during exercise creation.
-              </p>
-            </div>
-          )}
-          
-          {isPlaying && currentPlayingSentence !== -1 && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+      {/* Main Text Content */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            {/* Quick Actions */}
+            <div className="flex items-center justify-between border-b pb-4">
+              <h4 className="font-medium">Reading Content</h4>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-                <span className={`text-blue-800 font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                  Playing sentence {currentPlayingSentence + 1} of {exercise.content.sentences.length}
-                </span>
+                <Button
+                  onClick={onCreateDictation}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Mic className="h-4 w-4 mr-1" />
+                  Full Dictation
+                </Button>
+                <Button
+                  onClick={() => setShowAnalysis(!showAnalysis)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <BarChart3 className="h-4 w-4 mr-1" />
+                  {showAnalysis ? 'Hide' : 'Show'} Stats
+                </Button>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Enhanced Text Display */}
-      <Card className="border-gray-200 shadow-sm">
-        <CardHeader className={`${isMobile ? 'p-4' : 'p-5'} pb-3`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <FileText className="h-5 w-5 text-green-600" />
+            {/* Text Analysis (if shown) */}
+            {showAnalysis && (
+              <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                <h5 className="font-medium text-sm">Text Statistics</h5>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Words:</span>
+                    <p className="font-medium">{estimatedWordCount}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Sentences:</span>
+                    <p className="font-medium">{estimatedSentences.length}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Est. Reading Time:</span>
+                    <p className="font-medium">{Math.ceil(estimatedWordCount / 200)} min</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Difficulty:</span>
+                    <p className="font-medium capitalize">{exercise.difficulty_level}</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className={`font-semibold text-gray-900 ${isMobile ? 'text-sm' : 'text-base'}`}>
-                  Reading Text
-                </h3>
-                <p className={`text-gray-500 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                  Click on words for definitions and pronunciation
-                </p>
-              </div>
+            )}
+
+            {/* Interactive Text */}
+            <div className="prose max-w-none">
+              <TextSelectionManager
+                onCreateDictation={createDictationFromSelection}
+                onCreateBidirectional={createBidirectionalFromSelection}
+              >
+                <EnhancedInteractiveText
+                  text={fullText}
+                  language={exercise.language as Language}
+                  enableTooltips={true}
+                  enableBidirectionalCreation={true}
+                  exerciseId={exercise.id}
+                  className="text-lg leading-relaxed"
+                />
+              </TextSelectionManager>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAnalysis(!showAnalysis)}
-              className="flex items-center gap-2 border-gray-300 hover:bg-gray-50"
-            >
-              <BarChart3 className="h-4 w-4" />
-              <span className={isMobile ? 'text-xs' : 'text-sm'}>
-                {showAnalysis ? 'Hide' : 'Show'} Analysis
-              </span>
-            </Button>
           </div>
-        </CardHeader>
-        <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0`}>
-          <TextSelectionManager
-            onCreateDictation={onCreateDictationFromSelection || (() => {})}
-            onCreateBidirectional={onCreateBidirectionalFromSelection || (() => {})}
-            disabled={!onCreateDictationFromSelection && !onCreateBidirectionalFromSelection}
-          >
-            <div className="prose prose-lg max-w-none">
-              {renderHighlightedText()}
-            </div>
-          </TextSelectionManager>
         </CardContent>
       </Card>
-
-      {/* Enhanced Analysis Panel */}
-      {showAnalysis && (
-        <Card className="border-gray-200 shadow-sm">
-          <CardHeader className={`${isMobile ? 'p-4' : 'p-5'} pb-3`}>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Brain className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <h3 className={`font-semibold text-gray-900 ${isMobile ? 'text-sm' : 'text-base'}`}>
-                  Text Analysis
-                </h3>
-                <p className={`text-gray-500 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                  Reading statistics and vocabulary breakdown
-                </p>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className={`${isMobile ? 'p-4' : 'p-6'} pt-0 space-y-6`}>
-            {/* Enhanced Statistics Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
-                <div className="text-2xl font-bold text-blue-700 mb-1">
-                  {exercise.content.sentences.length}
-                </div>
-                <div className="text-sm text-blue-600 font-medium">Sentences</div>
-              </div>
-              <div className="text-center p-4 bg-green-50 rounded-xl border border-green-200">
-                <div className="text-2xl font-bold text-green-700 mb-1">
-                  {exercise.content.analysis?.wordCount || fullText.split(/\s+/).length}
-                </div>
-                <div className="text-sm text-green-600 font-medium">Words</div>
-              </div>
-              <div className="text-center p-4 bg-orange-50 rounded-xl border border-orange-200">
-                <div className="text-2xl font-bold text-orange-700 mb-1">
-                  {exercise.content.analysis?.readingTime || Math.ceil(fullText.split(/\s+/).length / 200)}
-                </div>
-                <div className="text-sm text-orange-600 font-medium">Min Read</div>
-              </div>
-              <div className="text-center p-4 bg-purple-50 rounded-xl border border-purple-200">
-                <div className="text-2xl font-bold text-purple-700 mb-1 capitalize">
-                  {exercise.difficulty_level}
-                </div>
-                <div className="text-sm text-purple-600 font-medium">Level</div>
-              </div>
-            </div>
-
-            {/* Grammar Points */}
-            {exercise.content.analysis?.grammarPoints && exercise.content.analysis.grammarPoints.length > 0 && (
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                  Grammar Focus
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {exercise.content.analysis.grammarPoints.map((point, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs bg-blue-100 text-blue-800 border border-blue-200">
-                      {point}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Enhanced Vocabulary Overview */}
-            {allWords.length > 0 && (
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                  Key Vocabulary ({allWords.length} words)
-                </h4>
-                <div className="grid gap-3 max-h-64 overflow-y-auto pr-2">
-                  {allWords.slice(0, 20).map((word, index) => (
-                    <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors duration-200">
-                      <Badge
-                        variant="outline"
-                        className={`text-xs font-medium ${
-                          word.difficulty === 'easy' ? 'border-green-300 text-green-700 bg-green-50' :
-                          word.difficulty === 'medium' ? 'border-yellow-300 text-yellow-700 bg-yellow-50' :
-                          word.difficulty === 'hard' ? 'border-red-300 text-red-700 bg-red-50' :
-                          'border-gray-300 text-gray-700 bg-gray-50'
-                        }`}
-                      >
-                        {word.word}
-                      </Badge>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 text-sm">{word.definition}</p>
-                        {word.partOfSpeech && (
-                          <p className="text-xs text-gray-500 mt-1 italic">{word.partOfSpeech}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {allWords.length > 20 && (
-                    <div className="text-center p-3 text-sm text-gray-500 bg-gray-50 rounded-lg border border-gray-200">
-                      And {allWords.length - 20} more words...
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      <audio ref={audioRef} />
     </div>
   );
 };
