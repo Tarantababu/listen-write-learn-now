@@ -175,8 +175,8 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         difficulty_level: difficultyLevel,
         target_length: targetLength,
         grammar_focus: grammarFocus.join(', ') || undefined,
-        topic: contentSource === 'ai' ? topic.trim() : 'Custom Content',
-        customText: contentSource === 'custom' ? customText.trim() : undefined
+        topic: topic.trim(),
+        customText: undefined
       }, (progressUpdate) => {
         setProgress(progressUpdate);
       });
