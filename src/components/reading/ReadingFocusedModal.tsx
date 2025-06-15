@@ -1,3 +1,4 @@
+
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
@@ -88,29 +89,68 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     }
   }, [exercise, isOpen, enableTextSelection, enableWordSynchronization, enableContextMenu, enableSelectionFeedback]);
 
-  // Generate full-text audio
+  // Initialize audio from existing URLs or generate if needed
+  useEffect(() => {
+    if (exercise && isOpen && enableFullTextAudio) {
+      console.log('[AUDIO INIT] Checking for existing audio URLs:', {
+        exerciseId: exercise.id,
+        fullTextAudioUrl: exercise.full_text_audio_url,
+        audioUrl: exercise.audio_url,
+        audioGenerationStatus: exercise.audio_generation_status
+      });
+
+      // First, check if we have a full text audio URL
+      if (exercise.full_text_audio_url) {
+        console.log('[AUDIO INIT] Using existing full text audio URL');
+        setAudioUrl(exercise.full_text_audio_url);
+        return;
+      }
+
+      // Fallback to the general audio_url field
+      if (exercise.audio_url) {
+        console.log('[AUDIO INIT] Using existing audio URL');
+        setAudioUrl(exercise.audio_url);
+        return;
+      }
+
+      // Check if audio generation is still in progress
+      if (exercise.audio_generation_status === 'generating') {
+        console.log('[AUDIO INIT] Audio generation in progress');
+        return;
+      }
+
+      // Only generate audio if no existing URLs and generation hasn't failed
+      if (exercise.audio_generation_status !== 'failed') {
+        console.log('[AUDIO INIT] No existing audio found, generating new audio');
+        generateFullTextAudio();
+      } else {
+        console.log('[AUDIO INIT] Audio generation previously failed, not retrying automatically');
+      }
+    }
+  }, [exercise, isOpen, enableFullTextAudio]);
+
+  // Generate full-text audio only when needed
   const generateFullTextAudio = async () => {
     if (!exercise || !enableFullTextAudio) return;
     
     try {
       setIsGeneratingAudio(true);
+      console.log('[AUDIO GENERATION] Starting new audio generation for exercise:', exercise.id);
+      
       const fullText = exercise.content.sentences.map(s => s.text).join(' ');
       const generatedAudioUrl = await readingExerciseService.generateAudio(fullText, exercise.language);
+      
+      console.log('[AUDIO GENERATION] Successfully generated audio:', generatedAudioUrl);
       setAudioUrl(generatedAudioUrl);
+      
+      toast.success('Audio generated successfully');
     } catch (error) {
-      console.error('Error generating full-text audio:', error);
+      console.error('[AUDIO GENERATION] Error generating full-text audio:', error);
       toast.error('Failed to generate audio');
     } finally {
       setIsGeneratingAudio(false);
     }
   };
-
-  // Initialize audio when exercise changes
-  useEffect(() => {
-    if (exercise && isOpen && enableFullTextAudio) {
-      generateFullTextAudio();
-    }
-  }, [exercise, isOpen, enableFullTextAudio]);
 
   const togglePlayPause = async (audioRef: React.RefObject<HTMLAudioElement>) => {
     if (!audioRef.current || !audioEnabled) return;
@@ -195,6 +235,11 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     setShowTranslationAnalysis(true);
   };
 
+  const handleRetryAudioGeneration = () => {
+    console.log('[AUDIO RETRY] Retrying audio generation for exercise:', exercise?.id);
+    generateFullTextAudio();
+  };
+
   if (!exercise) return null
 
   const fullText = exercise.content.sentences.map(s => s.text).join(' ')
@@ -260,6 +305,8 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                 onToggleSettings={() => setShowSettings(!showSettings)}
                 onChangeSpeed={changeSpeed}
                 onSeek={(time) => seekTo(audioRef, time)}
+                // Add retry functionality for failed audio generation
+                onRetryGeneration={exercise.audio_generation_status === 'failed' ? handleRetryAudioGeneration : undefined}
               />
             )}
           </AudioWordSynchronizer>
@@ -424,7 +471,8 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     enableFullTextAudio,
     hasAudioUrl: !!audioUrl,
     exerciseId: exercise.id,
-    viewMode
+    viewMode,
+    audioGenerationStatus: exercise.audio_generation_status
   })
 
   return (
@@ -463,6 +511,16 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     {enableContextMenu && (
                       <Badge variant="outline" className="text-xs">
                         Enhanced Selection
+                      </Badge>
+                    )}
+                    {/* Audio status indicator */}
+                    {exercise.audio_generation_status && (
+                      <Badge 
+                        variant={exercise.audio_generation_status === 'completed' ? 'default' : 
+                               exercise.audio_generation_status === 'failed' ? 'destructive' : 'secondary'}
+                        className="text-xs"
+                      >
+                        Audio: {exercise.audio_generation_status}
                       </Badge>
                     )}
                   </div>

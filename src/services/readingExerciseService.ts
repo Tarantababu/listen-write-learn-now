@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise, ReadingExerciseProgress, CreateReadingExerciseRequest } from '@/types/reading';
 import { enhancedAudioService } from '@/services/enhancedAudioService';
@@ -465,22 +464,34 @@ export class ReadingExerciseService {
         }
       };
 
-      // Update exercise with enhanced audio content and proper URLs
+      // CRITICAL FIX: Update exercise with both content and dedicated URL fields
+      const updateData: any = { 
+        content: updatedContent,
+        audio_generation_status: 'completed',
+        metadata: {
+          audio_generation_completed: new Date().toISOString(),
+          enhanced_audio_enabled: true,
+          success_rate: Array.from(results.values()).filter(r => r.success).length / results.size
+        }
+      };
+
+      // Set the full_text_audio_url field for easier retrieval
+      if (fullTextResult?.success) {
+        updateData.full_text_audio_url = fullTextResult.audioUrl;
+      }
+
+      // Also set the general audio_url field as fallback
+      if (fullTextResult?.success) {
+        updateData.audio_url = fullTextResult.audioUrl;
+      }
+
       await supabase
         .from('reading_exercises')
-        .update({ 
-          content: updatedContent,
-          full_text_audio_url: fullTextResult?.success ? fullTextResult.audioUrl : null,
-          audio_generation_status: 'completed',
-          metadata: {
-            audio_generation_completed: new Date().toISOString(),
-            enhanced_audio_enabled: true,
-            success_rate: Array.from(results.values()).filter(r => r.success).length / results.size
-          }
-        })
+        .update(updateData)
         .eq('id', exerciseId);
 
       console.log(`[ENHANCED BACKGROUND AUDIO] Completed for exercise ${exerciseId} with ${Array.from(results.values()).filter(r => r.success).length}/${results.size} successful generations`);
+      console.log(`[ENHANCED BACKGROUND AUDIO] Full text audio URL saved: ${fullTextResult?.audioUrl}`);
 
     } catch (error) {
       console.error(`[ENHANCED BACKGROUND AUDIO] Failed for exercise ${exerciseId}:`, error);

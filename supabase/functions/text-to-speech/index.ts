@@ -76,12 +76,12 @@ serve(async (req) => {
 
     console.log(`[TTS] Generated audio: ${audioData.length} bytes`);
 
-    // Create unique filename
+    // Create unique filename with better organization
     const timestamp = new Date().getTime();
     const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
     const hashArray = Array.from(new Uint8Array(hash.slice(0, 8)));
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    const filename = `audio_${timestamp}_${hashHex}.mp3`;
+    const filename = `${language}/${timestamp}_${hashHex}.mp3`;
     
     console.log(`[TTS] Uploading to storage: ${filename}`);
 
@@ -98,13 +98,25 @@ serve(async (req) => {
       throw new Error(`Failed to upload audio: ${uploadError.message}`);
     }
 
-    // Get public URL
+    // Get public URL - CRITICAL: Use the correct format
     const { data: urlData } = supabase.storage
       .from('audio')
       .getPublicUrl(filename);
 
     const audioUrl = urlData.publicUrl;
     console.log(`[TTS] Audio uploaded successfully: ${audioUrl}`);
+
+    // Verify the URL is accessible
+    try {
+      const verifyResponse = await fetch(audioUrl, { method: 'HEAD' });
+      if (!verifyResponse.ok) {
+        console.warn(`[TTS] Audio URL verification failed: ${verifyResponse.status}`);
+      } else {
+        console.log(`[TTS] Audio URL verified successfully`);
+      }
+    } catch (verifyError) {
+      console.warn(`[TTS] Audio URL verification error:`, verifyError);
+    }
 
     // Return response with audio URL and metadata
     return new Response(
@@ -117,7 +129,9 @@ serve(async (req) => {
         size: audioData.length,
         voice: voice,
         quality: quality,
-        language: language
+        language: language,
+        storage_path: filename,
+        public_url: audioUrl
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
