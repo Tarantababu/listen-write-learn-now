@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -22,7 +23,6 @@ import CreateExerciseCard from '@/components/exercises/CreateExerciseCard';
 import BidirectionalPage from './BidirectionalPage';
 import { ReadingExercisesSection } from '@/components/reading/ReadingExercisesSection';
 import PopoverHint from '@/components/PopoverHint';
-import { useAudioProgress } from '@/hooks/useAudioProgress';
 
 // Memoized components to prevent unnecessary re-renders
 const MemoizedExerciseGrid = React.memo(ExerciseGrid);
@@ -44,9 +44,6 @@ const ExercisesPage: React.FC = () => {
   const { directories } = useDirectoryContext();
   const { settings } = useUserSettingsContext();
   const { dueReviewsCount } = useBidirectionalReviews();
-
-  // Audio progress state management
-  const audioProgress = useAudioProgress();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -241,7 +238,6 @@ const ExercisesPage: React.FC = () => {
             onMove={handleMoveExercise}
             onCreateClick={onCreateExercise}
             canEdit={true}
-            audioProgress={audioProgress}
           />
 
           {/* Pagination */}
@@ -274,7 +270,6 @@ const ExercisesPage: React.FC = () => {
         isOpen={!!practiceExercise}
         onOpenChange={(open) => !open && handleModalClose('practice')}
         onComplete={onCompleteExercise}
-        audioProgress={audioProgress}
       />
 
       <MoveExerciseModal

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Headphones, AlertTriangle, Clock, BookOpen, TrendingUp, Users, Star, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useGTM } from '@/hooks/use-gtm';
-import { AudioProgressIndicator } from '@/components/AudioProgressIndicator';
 
 interface LearningOptionsMenuProps {
   onStartReadingAnalysis: () => void;
@@ -15,15 +13,6 @@ interface LearningOptionsMenuProps {
   analysisAllowed?: boolean;
   isSubscribed?: boolean;
   loadingAnalysisCheck?: boolean;
-  audioProgress?: {
-    isGenerating: boolean;
-    progress: number;
-    estimatedTimeRemaining: number;
-    stage: 'initializing' | 'processing' | 'uploading' | 'finalizing' | 'complete';
-    startProgress: () => void;
-    completeProgress: () => void;
-    resetProgress: () => void;
-  };
 }
 
 const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
@@ -32,8 +21,7 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
   exerciseTitle,
   analysisAllowed = true,
   isSubscribed = false,
-  loadingAnalysisCheck = false,
-  audioProgress
+  loadingAnalysisCheck = false
 }) => {
   const {
     trackFeatureUsed,
@@ -106,22 +94,6 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
               <p className="text-sm text-muted-foreground">Choose your learning approach</p>
             </div>
           </div>
-          
-          {/* Audio Generation Progress */}
-          {audioProgress?.isGenerating && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              className="mb-4 p-4 bg-muted/30 rounded-lg"
-            >
-              <AudioProgressIndicator
-                isGenerating={audioProgress.isGenerating}
-                progress={audioProgress.progress}
-                estimatedTimeRemaining={audioProgress.estimatedTimeRemaining}
-                stage={audioProgress.stage}
-              />
-            </motion.div>
-          )}
           
           {/* Smart Recommendation Banner */}
           <motion.div 
@@ -222,7 +194,7 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
                 <Button 
                   onClick={handleReadingAnalysisClick} 
                   variant="ghost" 
-                  disabled={!analysisAllowed || loadingAnalysisCheck || audioProgress?.isGenerating} 
+                  disabled={!analysisAllowed || loadingAnalysisCheck} 
                   className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent" 
                   data-gtm-cta-type="start_exercise" 
                   data-gtm-cta-location="learning_options_menu" 
@@ -304,7 +276,6 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
                 <Button 
                   onClick={handleDictationClick} 
                   variant="ghost" 
-                  disabled={audioProgress?.isGenerating}
                   className="h-auto py-8 px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent" 
                   data-gtm-cta-type="start_exercise" 
                   data-gtm-cta-location="learning_options_menu" 

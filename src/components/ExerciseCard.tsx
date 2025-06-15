@@ -1,210 +1,94 @@
-import React, { useState } from 'react';
-import { Exercise } from '@/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React from 'react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Play, 
-  Edit, 
-  Trash2, 
-  Move, 
-  Archive,
-  CheckCircle,
-  Target,
-  Calendar,
-  Tag
-} from 'lucide-react';
+import { Exercise } from '@/types';
+import { BookOpenCheck, Edit, Trash2, CheckCircle, FolderInput, Calendar } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { format } from 'date-fns';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import LearningOptionsMenu from '@/components/exercises/LearningOptionsMenu';
-
+import { getLanguageFlag } from '@/utils/languageUtils';
 interface ExerciseCardProps {
   exercise: Exercise;
-  onPractice: (exercise: Exercise) => void;
-  onEdit?: (exercise: Exercise) => void;
-  onDelete?: (exercise: Exercise) => void;
-  onMove?: (exercise: Exercise) => void;
-  onToggleArchive?: (exercise: Exercise) => void;
-  audioProgress?: {
-    isGenerating: boolean;
-    progress: number;
-    estimatedTimeRemaining: number;
-    stage: 'initializing' | 'processing' | 'uploading' | 'finalizing' | 'complete';
-    startProgress: () => void;
-    completeProgress: () => void;
-    resetProgress: () => void;
-  };
+  onPractice: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onMove?: () => void;
+  canEdit?: boolean;
+  canMove?: boolean; // New prop to control move functionality visibility
 }
-
-export const ExerciseCard: React.FC<ExerciseCardProps> = ({
+const ExerciseCard: React.FC<ExerciseCardProps> = ({
   exercise,
   onPractice,
   onEdit,
   onDelete,
   onMove,
-  onToggleArchive,
-  audioProgress
+  canEdit = true,
+  canMove = true // Default to true so all users can move exercises
 }) => {
-  const [showLearningOptions, setShowLearningOptions] = useState(false);
+  const {
+    settings
+  } = useUserSettingsContext();
 
-  const handleStartDictation = () => {
-    setShowLearningOptions(false);
-    onPractice(exercise);
-  };
+  // Format the date
+  const formattedDate = format(new Date(exercise.createdAt), 'MMM d, yyyy');
 
-  const handleStartReadingAnalysis = () => {
-    setShowLearningOptions(false);
-    // This would trigger reading analysis mode
-    // For now, we'll use the same practice function
-    onPractice(exercise);
-  };
-
-  const truncateText = (text: string, maxLength: number = 100) => {
+  // Truncate text if it's too long
+  const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
   };
 
-  const getCompletionStatus = () => {
-    if (exercise.isCompleted) {
-      return { icon: CheckCircle, color: 'text-green-600', label: 'Completed' };
-    }
-    if (exercise.completionCount > 0) {
-      return { icon: Target, color: 'text-yellow-600', label: `${exercise.completionCount}/3` };
-    }
-    return { icon: Play, color: 'text-blue-600', label: 'Start' };
-  };
-
-  const status = getCompletionStatus();
-  const StatusIcon = status.icon;
-
-  return (
-    <>
-      <Card className="hover:shadow-lg transition-shadow duration-200 cursor-pointer group">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg font-semibold mb-1 line-clamp-2">
-                {exercise.title}
-              </CardTitle>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-3 w-3" />
-                <span>{format(exercise.createdAt, 'MMM d, yyyy')}</span>
-              </div>
-            </div>
-            
-            {(onEdit || onDelete || onMove || onToggleArchive) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
-                    <span className="sr-only">Open menu</span>
-                    <div className="h-4 w-4 flex flex-col justify-center">
-                      <div className="w-1 h-1 bg-current rounded-full mb-0.5"></div>
-                      <div className="w-1 h-1 bg-current rounded-full mb-0.5"></div>
-                      <div className="w-1 h-1 bg-current rounded-full"></div>
-                    </div>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {onEdit && (
-                    <DropdownMenuItem onClick={() => onEdit(exercise)}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                  )}
-                  {onMove && (
-                    <DropdownMenuItem onClick={() => onMove(exercise)}>
-                      <Move className="mr-2 h-4 w-4" />
-                      Move
-                    </DropdownMenuItem>
-                  )}
-                  {onToggleArchive && (
-                    <DropdownMenuItem onClick={() => onToggleArchive(exercise)}>
-                      <Archive className="mr-2 h-4 w-4" />
-                      {exercise.archived ? 'Unarchive' : 'Archive'}
-                    </DropdownMenuItem>
-                  )}
-                  {onDelete && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={() => onDelete(exercise)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+  // Get language flag
+  const languageFlag = getLanguageFlag(exercise.language);
+  return <Card className={cn("overflow-hidden h-full flex flex-col transition-all", exercise.isCompleted && "border-green-500/30 bg-green-50/30 dark:bg-green-950/10")}>
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg line-clamp-1">
+              {truncateText(exercise.title, 50)}
+            </CardTitle>
+            {exercise.isCompleted && <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />}
           </div>
-        </CardHeader>
+          <div className="text-lg" title={exercise.language}>
+            {languageFlag}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-grow pb-2">
+        <p className="text-sm text-muted-foreground line-clamp-4 mb-3">
+          {truncateText(exercise.text, 200)}
+        </p>
         
-        <CardContent className="pt-0">
-          <CardDescription className="text-sm text-muted-foreground mb-4 line-clamp-3">
-            {truncateText(exercise.text)}
-          </CardDescription>
-          
-          {/* Tags */}
-          {exercise.tags && exercise.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-4">
-              {exercise.tags.slice(0, 3).map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs">
-                  <Tag className="h-2 w-2 mr-1" />
-                  {tag}
-                </Badge>
-              ))}
-              {exercise.tags.length > 3 && (
-                <Badge variant="outline" className="text-xs">
-                  +{exercise.tags.length - 3} more
-                </Badge>
-              )}
-            </div>
-          )}
-          
-          {/* Action Button */}
-          <Button 
-            onClick={() => setShowLearningOptions(true)}
-            className="w-full"
-            variant={exercise.isCompleted ? "secondary" : "default"}
-          >
-            <StatusIcon className={`mr-2 h-4 w-4 ${status.color}`} />
-            {status.label}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Learning Options Dialog */}
-      <Dialog open={showLearningOptions} onOpenChange={setShowLearningOptions}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Choose Learning Method</DialogTitle>
-            <DialogDescription>
-              Select how you want to practice this exercise
-            </DialogDescription>
-          </DialogHeader>
-          <LearningOptionsMenu
-            onStartReadingAnalysis={handleStartReadingAnalysis}
-            onStartDictation={handleStartDictation}
-            exerciseTitle={exercise.title}
-            audioProgress={audioProgress}
-          />
-        </DialogContent>
-      </Dialog>
-    </>
-  );
+        <div className="flex flex-wrap gap-2 mt-2">
+          {exercise.tags?.length > 0 && exercise.tags.slice(0, 3).map((tag, index) => <Badge key={index} variant="secondary" className="text-xs py-0">
+              {truncateText(tag, 15)}
+            </Badge>)}
+          {exercise.tags?.length > 3 && <Badge variant="outline" className="text-xs py-0">
+              +{exercise.tags.length - 3} more
+            </Badge>}
+        </div>
+        
+        <div className="flex items-center text-xs text-muted-foreground mt-3">
+          <Calendar className="h-3 w-3 mr-1" />
+          <span>{formattedDate}</span>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between pt-2">
+        <Button variant="default" size="sm" onClick={onPractice}>
+          <BookOpenCheck className="h-4 w-4 mr-2" />
+          Practice
+        </Button>
+        <div className="flex gap-1">
+          {onMove && canMove}
+          {onEdit && canEdit && <Button variant="outline" size="icon" onClick={onEdit} className="h-8 w-8">
+              <Edit className="h-4 w-4" />
+            </Button>}
+          {onDelete && <Button variant="outline" size="icon" onClick={onDelete} className="h-8 w-8 text-destructive hover:text-destructive">
+              <Trash2 className="h-4 w-4" />
+            </Button>}
+        </div>
+      </CardFooter>
+    </Card>;
 };
+export default ExerciseCard;
