@@ -299,8 +299,8 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   if (showProgress) {
     return (
       <Dialog open={isOpen} onOpenChange={() => {}}>
-        <DialogContent className={isMobile ? "w-full h-full max-w-full max-h-full m-0 rounded-none flex flex-col" : "max-w-2xl max-h-[90vh] overflow-y-auto"}>
-          <DialogHeader>
+        <DialogContent className={isMobile ? "w-full h-full max-w-full max-h-full m-0 rounded-none flex flex-col" : "max-w-3xl max-h-[90vh] overflow-hidden"}>
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Brain className="h-5 w-5" />
               Creating Your Enhanced Reading Exercise
@@ -332,128 +332,223 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className={isMobile ? "w-screen h-screen max-w-full max-h-full m-0 rounded-none flex flex-col" : "max-w-2xl max-h-[90vh]"}>
-        <DialogHeader className={isMobile ? "p-4 border-b flex-shrink-0" : ""}>
-          <DialogTitle>Create Enhanced Reading Exercise</DialogTitle>
+      <DialogContent className={isMobile ? 
+        "w-screen h-screen max-w-full max-h-full m-0 rounded-none flex flex-col" : 
+        "max-w-5xl max-h-[95vh] p-0 overflow-hidden flex flex-col"
+      }>
+        {/* Header */}
+        <DialogHeader className={isMobile ? "p-4 border-b flex-shrink-0" : "px-8 pt-6 pb-4 border-b flex-shrink-0"}>
+          <DialogTitle className="flex items-center gap-3">
+            <div className="bg-blue-100 p-2 rounded-full">
+              <Brain className="h-5 w-5 text-blue-600" />
+            </div>
+            Create Enhanced Reading Exercise
+          </DialogTitle>
         </DialogHeader>
-        <div className={isMobile ? "flex-1 overflow-y-auto" : "overflow-y-auto"}>
-            <div className={isMobile ? 'p-4' : 'p-6'}>
-                {!isLanguageSupported && (
-                  <Alert variant="destructive" className="mb-4">
-                    <AlertTriangle className="h-5 w-5" />
-                    <AlertDescription>
-                      <strong>Sorry!</strong> The selected language <span className="font-semibold">{language}</span> is not currently supported for creating new reading exercises.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                <form id={formId} onSubmit={handleSubmit} className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Exercise Title</Label>
-                    <Input
-                      id="title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Enter exercise title..."
-                      required
-                      disabled={!isLanguageSupported}
-                    />
-                  </div>
 
+        {/* Main Content */}
+        <div className={`flex-1 overflow-hidden ${isMobile ? '' : 'grid grid-cols-1 lg:grid-cols-3 gap-0'}`}>
+          {/* Primary Form Section */}
+          <div className={`${isMobile ? 'flex-1 overflow-y-auto' : 'lg:col-span-2 overflow-y-auto border-r'}`}>
+            <div className={isMobile ? 'p-4' : 'p-8'}>
+              {!isLanguageSupported && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertTriangle className="h-5 w-5" />
+                  <AlertDescription>
+                    <strong>Sorry!</strong> The selected language <span className="font-semibold">{language}</span> is not currently supported for creating new reading exercises.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <form id={formId} onSubmit={handleSubmit} className="space-y-8">
+                {/* Exercise Title */}
+                <div className="space-y-3">
+                  <Label htmlFor="title" className="text-base font-medium">Exercise Title</Label>
+                  <Input
+                    id="title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Enter a descriptive title for your exercise..."
+                    required
+                    disabled={!isLanguageSupported}
+                    className="h-12 text-base"
+                  />
+                </div>
+
+                {/* Content Source Selection */}
+                <div>
                   <ContentSourceSelector
                     selectedSource={contentSource}
                     onSourceSelect={handleSourceSelect}
                   />
+                </div>
 
-                  {contentSource === 'ai' ? (
-                    <>
-                      <TopicMandalaSelector
-                        selectedTopic={topic}
-                        onTopicSelect={setTopic}
-                        language={language}
-                      />
+                {/* AI Content Configuration */}
+                {contentSource === 'ai' && (
+                  <div className="space-y-8">
+                    {/* Topic Selection */}
+                    <TopicMandalaSelector
+                      selectedTopic={topic}
+                      onTopicSelect={setTopic}
+                      language={language}
+                    />
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="difficulty">Difficulty Level</Label>
-                          <Select value={difficultyLevel} onValueChange={(value: any) => setDifficultyLevel(value)}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="beginner">Beginner</SelectItem>
-                              <SelectItem value="intermediate">Intermediate</SelectItem>
-                              <SelectItem value="advanced">Advanced</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="length">Target Length</Label>
-                          <Select value={targetLength.toString()} onValueChange={(value) => setTargetLength(Number(value))}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {lengthOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value.toString()}>
-                                  <div className="flex flex-col">
-                                    <div className="flex items-center gap-2">
-                                      <span>{option.label}</span>
-                                      <span className="text-xs bg-blue-100 text-blue-700 px-1 rounded">
-                                        {option.strategy}
-                                      </span>
-                                    </div>
-                                    {option.recommended && (
-                                      <span className="text-xs text-muted-foreground">{option.recommended}</span>
-                                    )}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                    {/* Exercise Parameters */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <Label htmlFor="difficulty" className="text-base font-medium">Difficulty Level</Label>
+                        <Select value={difficultyLevel} onValueChange={(value: any) => setDifficultyLevel(value)}>
+                          <SelectTrigger className="h-12">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="beginner">
+                              <div className="flex flex-col">
+                                <span className="font-medium">Beginner</span>
+                                <span className="text-xs text-muted-foreground">Simple vocabulary and grammar</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="intermediate">
+                              <div className="flex flex-col">
+                                <span className="font-medium">Intermediate</span>
+                                <span className="text-xs text-muted-foreground">Moderate complexity</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="advanced">
+                              <div className="flex flex-col">
+                                <span className="font-medium">Advanced</span>
+                                <span className="text-xs text-muted-foreground">Complex structures and vocabulary</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
-                      {/* Enhanced Strategy Information */}
-                      <Alert>
-                        <TrendingUp className="h-4 w-4" />
-                        <AlertDescription>
-                          <strong>Generation Strategy:</strong> {getGenerationStrategy()} - This strategy is optimized for {targetLength} words to ensure quality and coherence.
-                          {isLongContent && " Advanced adaptive chunking will be used for optimal results."}
-                        </AlertDescription>
-                      </Alert>
+                      <div className="space-y-3">
+                        <Label htmlFor="length" className="text-base font-medium">Target Length</Label>
+                        <Select value={targetLength.toString()} onValueChange={(value) => setTargetLength(Number(value))}>
+                          <SelectTrigger className="h-12">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {lengthOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value.toString()}>
+                                <div className="flex flex-col">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{option.label}</span>
+                                    <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                                      {option.strategy}
+                                    </span>
+                                  </div>
+                                  {option.recommended && (
+                                    <span className="text-xs text-muted-foreground">{option.recommended}</span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
 
-                      <GrammarFocusSelector
-                        selectedGrammar={grammarFocus}
-                        onGrammarToggle={handleGrammarToggle}
-                        maxSelections={3}
-                      />
-                    </>
-                  ) : (
-                    <CustomTextInput
-                      value={customText}
-                      onChange={setCustomText}
-                      maxLength={4000}
+                    {/* Grammar Focus */}
+                    <GrammarFocusSelector
+                      selectedGrammar={grammarFocus}
+                      onGrammarToggle={handleGrammarToggle}
+                      maxSelections={3}
                     />
-                  )}
+                  </div>
+                )}
 
-                  <Alert>
-                    <Zap className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Enhanced Generation:</strong> Our optimized system uses intelligent strategies, quality metrics, and smart recovery to ensure successful creation. Audio generation happens automatically in the background.
-                    </AlertDescription>
-                  </Alert>
-                </form>
+                {/* Custom Text Input */}
+                {contentSource === 'custom' && (
+                  <CustomTextInput
+                    value={customText}
+                    onChange={setCustomText}
+                    maxLength={4000}
+                  />
+                )}
+              </form>
             </div>
+          </div>
+
+          {/* Sidebar - Desktop/Tablet Only */}
+          {!isMobile && (
+            <div className="lg:col-span-1 bg-muted/30 p-8 space-y-6">
+              {/* Generation Strategy Info */}
+              <Alert>
+                <TrendingUp className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <div className="font-medium">Generation Strategy</div>
+                    <div className="text-sm">{getGenerationStrategy()}</div>
+                    <div className="text-xs text-muted-foreground">
+                      Optimized for {targetLength} words to ensure quality and coherence.
+                      {isLongContent && " Advanced adaptive chunking will be used for optimal results."}
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+
+              {/* Enhanced Features Info */}
+              <Alert>
+                <Zap className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <div className="font-medium">Enhanced Generation</div>
+                    <div className="text-sm space-y-1">
+                      <div>• Intelligent quality metrics</div>
+                      <div>• Smart recovery mechanisms</div>
+                      <div>• Automatic audio generation</div>
+                      <div>• Advanced chunking strategies</div>
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+
+              {/* Quick Tips */}
+              <div className="bg-background rounded-lg p-4 border">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  Quick Tips
+                </h4>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <div>• Choose topics you're genuinely interested in</div>
+                  <div>• Start with shorter exercises to build confidence</div>
+                  <div>• Select 1-3 grammar focuses for best results</div>
+                  <div>• Custom text provides instant exercise creation</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-        <div className={`flex justify-end gap-3 flex-shrink-0 ${isMobile ? 'p-4 border-t' : 'px-6 pb-6'}`}>
-            <Button type="button" variant="outline" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button type="submit" form={formId} disabled={isCreating || !isLanguageSupported}>
-              {isCreating ? 'Creating...' : 'Create Enhanced Exercise'}
-            </Button>
+
+        {/* Footer Actions */}
+        <div className={`flex justify-end gap-3 flex-shrink-0 border-t bg-background ${isMobile ? 'p-4' : 'px-8 py-6'}`}>
+          <Button type="button" variant="outline" onClick={handleClose} className="min-w-24">
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            form={formId} 
+            disabled={isCreating || !isLanguageSupported}
+            className="min-w-32"
+          >
+            {isCreating ? 'Creating...' : 'Create Exercise'}
+          </Button>
         </div>
+
+        {/* Mobile-only enhancement info */}
+        {isMobile && (
+          <div className="p-4 border-t bg-muted/30">
+            <Alert>
+              <Zap className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Enhanced Generation:</strong> Our optimized system uses intelligent strategies, quality metrics, and smart recovery to ensure successful creation.
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
