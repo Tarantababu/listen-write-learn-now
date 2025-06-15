@@ -20,7 +20,6 @@ export interface AudioGenerationResult {
     duration?: number;
     size?: number;
     quality?: string;
-    retryCount?: number;
   };
 }
 
@@ -51,172 +50,113 @@ export class EnhancedAudioService {
       priority?: 'high' | 'normal' | 'low';
       quality?: 'standard' | 'high';
       background?: boolean;
-      maxRetries?: number;
     } = {}
   ): Promise<AudioGenerationResult> {
-    const { 
-      priority = 'normal', 
-      quality = 'standard', 
-      background = false,
-      maxRetries = 2
-    } = options;
+    const { priority = 'normal', quality = 'standard', background = false } = options;
     
-    let lastError: any = null;
-    
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        this.abortController = new AbortController();
-        
-        if (!background) {
-          this.updateProgress({
-            stage: 'initializing',
-            progress: 0,
-            estimatedTimeRemaining: this.estimateGenerationTime(text.length),
-            currentItem: attempt > 0 ? `Retry ${attempt}: Preparing audio...` : 'Preparing audio generation...'
-          });
-        }
-
-        // Enhanced text validation and preprocessing
-        if (!text || text.trim().length === 0) {
-          throw new Error('Text is required for audio generation');
-        }
-
-        if (text.length > 4096) {
-          console.warn('[ENHANCED AUDIO] Text too long, truncating to 4096 characters');
-          text = text.substring(0, 4096);
-        }
-
-        const processedText = this.preprocessTextForAudio(text);
-        
-        if (!background) {
-          this.updateProgress({
-            stage: 'processing',
-            progress: 25,
-            currentItem: attempt > 0 ? `Retry ${attempt}: Generating audio...` : 'Generating audio...'
-          });
-        }
-
-        console.log(`[ENHANCED AUDIO] Generating audio (attempt ${attempt + 1}/${maxRetries + 1}) for ${processedText.length} characters in ${language}`);
-
-        const { data, error } = await supabase.functions.invoke('text-to-speech', {
-          body: {
-            text: processedText,
-            language,
-            quality,
-            priority
-          },
-          headers: {
-            'x-generation-mode': background ? 'background' : 'foreground',
-            'x-retry-attempt': attempt.toString()
-          }
+    try {
+      this.abortController = new AbortController();
+      
+      if (!background) {
+        this.updateProgress({
+          stage: 'initializing',
+          progress: 0,
+          estimatedTimeRemaining: this.estimateGenerationTime(text.length),
+          currentItem: 'Preparing audio generation...'
         });
-
-        if (error) {
-          console.error(`[ENHANCED AUDIO] Generation error (attempt ${attempt + 1}):`, error);
-          lastError = new Error(error.message || 'Failed to generate audio');
-          
-          if (attempt < maxRetries) {
-            console.log(`[ENHANCED AUDIO] Retrying in ${(attempt + 1) * 1000}ms...`);
-            await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1000));
-            continue;
-          }
-          throw lastError;
-        }
-
-        if (!data || !data.success) {
-          console.error(`[ENHANCED AUDIO] Invalid response (attempt ${attempt + 1}):`, data);
-          lastError = new Error(data?.error || 'Invalid response from audio service');
-          
-          if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1000));
-            continue;
-          }
-          throw lastError;
-        }
-
-        // Validate that we have a proper audio URL
-        const audioUrl = data.audio_url || data.audioUrl;
-        if (!audioUrl) {
-          console.error(`[ENHANCED AUDIO] No audio URL in response (attempt ${attempt + 1}):`, data);
-          lastError = new Error('No audio URL returned from service');
-          
-          if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1000));
-            continue;
-          }
-          throw lastError;
-        }
-
-        // Validate the URL format
-        if (!this.isValidUrl(audioUrl)) {
-          console.error(`[ENHANCED AUDIO] Invalid audio URL format (attempt ${attempt + 1}):`, audioUrl);
-          lastError = new Error('Invalid audio URL format returned');
-          
-          if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1000));
-            continue;
-          }
-          throw lastError;
-        }
-
-        if (!background) {
-          this.updateProgress({
-            stage: 'finalizing',
-            progress: 90,
-            currentItem: 'Validating audio...'
-          });
-        }
-
-        // Enhanced validation with multiple checks
-        const isAccessible = await this.validateAudioUrlEnhanced(audioUrl);
-        if (!isAccessible && attempt < maxRetries) {
-          console.warn(`[ENHANCED AUDIO] Generated audio URL not accessible (attempt ${attempt + 1}), retrying...`);
-          lastError = new Error('Generated audio URL is not accessible');
-          await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1000));
-          continue;
-        }
-
-        const result: AudioGenerationResult = {
-          success: true,
-          audioUrl: audioUrl,
-          metadata: {
-            duration: data.duration,
-            size: data.size,
-            quality: quality,
-            retryCount: attempt
-          }
-        };
-
-        if (!background) {
-          this.updateProgress({
-            stage: 'complete',
-            progress: 100,
-            currentItem: attempt > 0 ? `Audio generated successfully after ${attempt + 1} attempts!` : 'Audio generation complete!'
-          });
-        }
-
-        console.log(`[ENHANCED AUDIO] Successfully generated audio (attempt ${attempt + 1}): ${audioUrl}`);
-        return result;
-
-      } catch (error) {
-        console.error(`[ENHANCED AUDIO] Generation failed (attempt ${attempt + 1}):`, error);
-        lastError = error;
-        
-        if (attempt < maxRetries) {
-          console.log(`[ENHANCED AUDIO] Will retry attempt ${attempt + 2}/${maxRetries + 1}`);
-          continue;
-        }
       }
+
+      // Enhanced text processing for better audio quality
+      const processedText = this.preprocessTextForAudio(text);
+      
+      if (!background) {
+        this.updateProgress({
+          stage: 'processing',
+          progress: 25,
+          currentItem: 'Generating audio...'
+        });
+      }
+
+      console.log(`[ENHANCED AUDIO] Generating audio for ${processedText.length} characters in ${language}`);
+
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: {
+          text: processedText,
+          language,
+          quality,
+          priority
+        },
+        headers: {
+          'x-generation-mode': background ? 'background' : 'foreground'
+        }
+      });
+
+      if (error) {
+        console.error('[ENHANCED AUDIO] Generation error:', error);
+        throw new Error(error.message || 'Failed to generate audio');
+      }
+
+      if (!data || !data.success) {
+        console.error('[ENHANCED AUDIO] Invalid response from TTS service:', data);
+        throw new Error(data?.error || 'Invalid response from audio service');
+      }
+
+      // Validate that we have a proper audio URL
+      const audioUrl = data.audio_url || data.audioUrl;
+      if (!audioUrl) {
+        console.error('[ENHANCED AUDIO] No audio URL in response:', data);
+        throw new Error('No audio URL returned from service');
+      }
+
+      // Validate the URL format
+      if (!this.isValidUrl(audioUrl)) {
+        console.error('[ENHANCED AUDIO] Invalid audio URL format:', audioUrl);
+        throw new Error('Invalid audio URL format returned');
+      }
+
+      if (!background) {
+        this.updateProgress({
+          stage: 'finalizing',
+          progress: 90,
+          currentItem: 'Validating audio...'
+        });
+      }
+
+      // Quick validation of the audio URL accessibility
+      const isAccessible = await this.validateAudioUrl(audioUrl);
+      if (!isAccessible) {
+        console.warn('[ENHANCED AUDIO] Generated audio URL may not be accessible:', audioUrl);
+        // Don't fail here, just log the warning
+      }
+
+      const result: AudioGenerationResult = {
+        success: true,
+        audioUrl: audioUrl,
+        metadata: {
+          duration: data.duration,
+          size: data.size,
+          quality: quality
+        }
+      };
+
+      if (!background) {
+        this.updateProgress({
+          stage: 'complete',
+          progress: 100,
+          currentItem: 'Audio generation complete!'
+        });
+      }
+
+      console.log(`[ENHANCED AUDIO] Successfully generated audio: ${audioUrl}`);
+      return result;
+
+    } catch (error) {
+      console.error('[ENHANCED AUDIO] Generation failed:', error);
+      return {
+        success: false,
+        error: error.message || 'Audio generation failed'
+      };
     }
-
-    console.error(`[ENHANCED AUDIO] All ${maxRetries + 1} attempts failed:`, lastError);
-    return {
-      success: false,
-      error: lastError?.message || 'Audio generation failed after multiple attempts',
-      metadata: {
-        retryCount: maxRetries
-      }
-    };
   }
 
   async generateBatchAudio(
@@ -227,10 +167,10 @@ export class EnhancedAudioService {
       retryFailures?: boolean;
     } = {}
   ): Promise<Map<string, AudioGenerationResult>> {
-    const { maxConcurrent = 2, quality = 'standard', retryFailures = true } = options;
+    const { maxConcurrent = 3, quality = 'standard', retryFailures = true } = options;
     const results = new Map<string, AudioGenerationResult>();
     
-    console.log(`[ENHANCED BATCH] Starting batch generation for ${items.length} items with max ${maxConcurrent} concurrent`);
+    console.log(`[ENHANCED BATCH] Starting batch generation for ${items.length} items`);
     
     this.updateProgress({
       stage: 'initializing',
@@ -244,15 +184,12 @@ export class EnhancedAudioService {
     const batches = this.createBatches(items, maxConcurrent);
     let completedCount = 0;
 
-    for (const [batchIndex, batch] of batches.entries()) {
-      console.log(`[ENHANCED BATCH] Processing batch ${batchIndex + 1}/${batches.length} with ${batch.length} items`);
-      
+    for (const batch of batches) {
       const batchPromises = batch.map(async (item) => {
         try {
           const result = await this.generateSingleAudio(item.text, item.language, {
             quality,
-            background: true,
-            maxRetries: 1 // Reduce retries in batch mode for speed
+            background: true
           });
           
           results.set(item.id, result);
@@ -260,17 +197,16 @@ export class EnhancedAudioService {
           
           this.updateProgress({
             stage: 'processing',
-            progress: (completedCount / items.length) * 80, // Reserve 20% for final processing
+            progress: (completedCount / items.length) * 100,
             completedItems: completedCount,
-            currentItem: `Generated audio for item ${completedCount}/${items.length} (${item.id})`
+            currentItem: `Generated audio for item ${completedCount}/${items.length}`
           });
 
           return { id: item.id, result };
         } catch (error) {
           const errorResult: AudioGenerationResult = {
             success: false,
-            error: error.message,
-            metadata: { retryCount: 0 }
+            error: error.message
           };
           results.set(item.id, errorResult);
           completedCount++;
@@ -281,18 +217,13 @@ export class EnhancedAudioService {
 
       await Promise.allSettled(batchPromises);
       
-      // Adaptive delay between batches based on success rate
-      if (batchIndex < batches.length - 1) {
-        const batchResults = Array.from(results.values()).slice(-batch.length);
-        const successRate = batchResults.filter(r => r.success).length / batchResults.length;
-        const delay = successRate < 0.5 ? 3000 : successRate < 0.8 ? 2000 : 1000;
-        
-        console.log(`[ENHANCED BATCH] Batch ${batchIndex + 1} success rate: ${(successRate * 100).toFixed(1)}%, waiting ${delay}ms`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+      // Small delay between batches to prevent rate limiting
+      if (batches.indexOf(batch) < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
-    // Enhanced retry logic for failed items
+    // Retry failed items if requested
     if (retryFailures) {
       const failedItems = Array.from(results.entries())
         .filter(([_, result]) => !result.success)
@@ -300,28 +231,24 @@ export class EnhancedAudioService {
         .filter(Boolean);
 
       if (failedItems.length > 0) {
-        console.log(`[ENHANCED BATCH] Retrying ${failedItems.length} failed items with enhanced parameters`);
+        console.log(`[ENHANCED BATCH] Retrying ${failedItems.length} failed items`);
         
         this.updateProgress({
           stage: 'processing',
-          progress: 85,
-          currentItem: `Retrying ${failedItems.length} failed items with enhanced settings...`
+          progress: 95,
+          currentItem: `Retrying ${failedItems.length} failed items...`
         });
 
         for (const item of failedItems) {
           try {
             const retryResult = await this.generateSingleAudio(item.text, item.language, {
               quality,
-              background: true,
-              maxRetries: 2 // More retries for failed items
+              background: true
             });
             results.set(item.id, retryResult);
-            
-            if (retryResult.success) {
-              console.log(`[ENHANCED BATCH] Successfully retried item ${item.id}`);
-            }
+            console.log(`[ENHANCED BATCH] Successfully retried item ${item.id}`);
           } catch (error) {
-            console.warn(`[ENHANCED BATCH] Enhanced retry failed for item ${item.id}:`, error);
+            console.warn(`[ENHANCED BATCH] Retry failed for item ${item.id}:`, error);
           }
         }
       }
@@ -335,12 +262,7 @@ export class EnhancedAudioService {
     });
 
     const successCount = Array.from(results.values()).filter(r => r.success).length;
-    const failureCount = items.length - successCount;
-    
     console.log(`[ENHANCED BATCH] Completed with ${successCount}/${items.length} successful generations`);
-    if (failureCount > 0) {
-      console.warn(`[ENHANCED BATCH] ${failureCount} items failed generation`);
-    }
 
     return results;
   }
@@ -353,18 +275,14 @@ export class EnhancedAudioService {
       .replace(/([.!?])\s*([A-Z])/g, '$1 $2') // Ensure proper sentence spacing
       .replace(/([,;:])\s*/g, '$1 ') // Normalize punctuation spacing
       .replace(/\b(Dr|Mr|Ms|Mrs|Prof)\./g, '$1') // Handle common abbreviations
-      .replace(/\b(\d+)\.(\d+)\b/g, '$1 point $2') // Handle decimal numbers
-      .replace(/\n+/g, '. ') // Convert line breaks to sentence breaks
-      .replace(/\s*\.\s*\./g, '.'); // Remove double periods
+      .replace(/\b(\d+)\.(\d+)\b/g, '$1 point $2'); // Handle decimal numbers
   }
 
   private estimateGenerationTime(textLength: number): number {
-    // Enhanced estimation based on text length and system load
-    const baseTime = 8; // 8 seconds base
-    const timePerChar = 0.03; // 30ms per character (reduced from 50ms)
-    const complexity = textLength > 2000 ? 1.5 : textLength > 1000 ? 1.2 : 1.0;
-    
-    return Math.max(baseTime, (textLength * timePerChar * complexity));
+    // Estimate based on text length (rough calculation)
+    const baseTime = 5; // 5 seconds base
+    const timePerChar = 0.05; // 50ms per character
+    return Math.max(baseTime, textLength * timePerChar);
   }
 
   private createBatches<T>(items: T[], batchSize: number): T[][] {
@@ -378,10 +296,7 @@ export class EnhancedAudioService {
   private isValidUrl(url: string): boolean {
     try {
       const parsedUrl = new URL(url);
-      return (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') &&
-             parsedUrl.hostname.length > 0 &&
-             !parsedUrl.hostname.includes('localhost') &&
-             !parsedUrl.hostname.includes('127.0.0.1');
+      return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
     } catch {
       return false;
     }
@@ -393,46 +308,22 @@ export class EnhancedAudioService {
     }
   }
 
-  private async validateAudioUrlEnhanced(url: string): Promise<boolean> {
-    const maxAttempts = 3;
-    
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
-        
-        const response = await fetch(url, { 
-          method: 'HEAD',
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (response.ok) {
-          // Additional validation: check content type
-          const contentType = response.headers.get('content-type');
-          if (contentType && (contentType.includes('audio') || contentType.includes('mpeg'))) {
-            console.log(`[ENHANCED AUDIO] URL validation successful (attempt ${attempt + 1}): ${url}`);
-            return true;
-          } else {
-            console.warn(`[ENHANCED AUDIO] Invalid content type (attempt ${attempt + 1}): ${contentType}`);
-          }
-        } else {
-          console.warn(`[ENHANCED AUDIO] URL validation failed (attempt ${attempt + 1}): ${response.status}`);
-        }
-        
-      } catch (error) {
-        console.warn(`[ENHANCED AUDIO] URL validation error (attempt ${attempt + 1}):`, error.message);
-      }
+  async validateAudioUrl(url: string): Promise<boolean> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
       
-      // Wait before retry
-      if (attempt < maxAttempts - 1) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
+      const response = await fetch(url, { 
+        method: 'HEAD',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch (error) {
+      console.warn(`[ENHANCED AUDIO] URL validation failed for ${url}:`, error);
+      return false;
     }
-    
-    console.error(`[ENHANCED AUDIO] URL validation failed after ${maxAttempts} attempts: ${url}`);
-    return false;
   }
 
   async getAudioMetadata(url: string): Promise<{ duration?: number; size?: number } | null> {
@@ -443,7 +334,7 @@ export class EnhancedAudioService {
           audio.removeEventListener('loadedmetadata', onLoad);
           audio.removeEventListener('error', onError);
           resolve(null);
-        }, 15000); // 15 second timeout
+        }, 10000); // 10 second timeout
         
         const onLoad = () => {
           clearTimeout(timeout);

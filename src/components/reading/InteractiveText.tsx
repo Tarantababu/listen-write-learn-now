@@ -5,7 +5,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Card } from '@/components/ui/card';
 import { Volume2, BookOpen } from 'lucide-react';
 import { readingExerciseService } from '@/services/readingExerciseService';
-import { ReadingSentence } from '@/types/reading';
 import { toast } from 'sonner';
 
 interface Word {
@@ -17,45 +16,18 @@ interface Word {
 
 interface InteractiveTextProps {
   text: string;
-  sentences?: ReadingSentence[];
   words?: Word[];
   language: string;
-  exerciseId?: string;
-  enableTooltips?: boolean;
-  enableTextSelection?: boolean;
-  enableHighlighting?: boolean;
-  enableWordSync?: boolean;
-  enableContextMenu?: boolean;
-  enableSmartProcessing?: boolean;
   onWordClick?: (word: string) => void;
-  onTextSelection?: (selectedText: string) => void;
-  onCreateDictation?: (selectedText: string) => void;
-  onCreateBidirectional?: (selectedText: string) => void;
-  currentAudio?: HTMLAudioElement | null;
-  isPlaying?: boolean;
 }
 
 export const InteractiveText: React.FC<InteractiveTextProps> = ({
   text,
-  sentences = [],
   words = [],
   language,
-  exerciseId,
-  enableTooltips = false,
-  enableTextSelection = false,
-  enableHighlighting = false,
-  enableWordSync = false,
-  enableContextMenu = false,
-  enableSmartProcessing = false,
-  onWordClick,
-  onTextSelection,
-  onCreateDictation,
-  onCreateBidirectional,
-  currentAudio,
-  isPlaying = false
+  onWordClick
 }) => {
   const [playingWord, setPlayingWord] = useState<string | null>(null);
-  const [selectedText, setSelectedText] = useState<string>('');
 
   const playWordAudio = async (word: string) => {
     try {
@@ -85,53 +57,24 @@ export const InteractiveText: React.FC<InteractiveTextProps> = ({
     }
   };
 
-  const handleTextSelectionChange = () => {
-    if (!enableTextSelection) return;
-    
-    const selection = window.getSelection();
-    if (selection && selection.toString().trim()) {
-      const selected = selection.toString().trim();
-      setSelectedText(selected);
-      if (onTextSelection) {
-        onTextSelection(selected);
-      }
-    }
-  };
-
-  const handleCreateDictation = () => {
-    if (selectedText && onCreateDictation) {
-      onCreateDictation(selectedText);
-    }
-  };
-
-  const handleCreateBidirectional = () => {
-    if (selectedText && onCreateBidirectional) {
-      onCreateBidirectional(selectedText);
-    }
-  };
-
   const renderInteractiveText = () => {
-    const textWords = text.split(/(\s+)/);
+    const words = text.split(/(\s+)/);
     
-    return textWords.map((word, index) => {
+    return words.map((word, index) => {
       if (/^\s+$/.test(word)) {
         return <span key={index}>{word}</span>;
       }
 
       const wordInfo = getWordInfo(word);
       
-      if (wordInfo && enableTooltips) {
+      if (wordInfo) {
         return (
           <Popover key={index}>
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
-                className={`inline-flex items-center gap-1 h-auto p-1 text-base font-normal hover:${getDifficultyColor(wordInfo.difficulty)} rounded-sm border border-transparent hover:border-current transition-all ${
-                  enableHighlighting ? 'hover:bg-blue-100' : ''
-                }`}
-                onClick={() => {
-                  if (onWordClick) onWordClick(word);
-                }}
+                className={`inline-flex items-center gap-1 h-auto p-1 text-base font-normal hover:${getDifficultyColor(wordInfo.difficulty)} rounded-sm border border-transparent hover:border-current transition-all`}
+                onClick={() => onWordClick?.(word)}
               >
                 {word}
               </Button>
@@ -175,59 +118,13 @@ export const InteractiveText: React.FC<InteractiveTextProps> = ({
         );
       }
 
-      return (
-        <span 
-          key={index}
-          className={enableHighlighting ? 'hover:bg-blue-100 transition-colors' : ''}
-          onClick={() => {
-            if (onWordClick) onWordClick(word);
-          }}
-        >
-          {word}
-        </span>
-      );
+      return <span key={index}>{word}</span>;
     });
   };
 
   return (
-    <div 
-      className="leading-relaxed text-lg"
-      onMouseUp={handleTextSelectionChange}
-      onTouchEnd={handleTextSelectionChange}
-    >
+    <div className="leading-relaxed text-lg">
       {renderInteractiveText()}
-      
-      {/* Selection Actions */}
-      {enableTextSelection && selectedText && (enableContextMenu || onCreateDictation || onCreateBidirectional) && (
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="flex items-center gap-2 text-sm text-blue-800 mb-2">
-            <BookOpen className="h-4 w-4" />
-            Selected: "{selectedText.substring(0, 50)}{selectedText.length > 50 ? '...' : ''}"
-          </div>
-          <div className="flex gap-2">
-            {onCreateDictation && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleCreateDictation}
-                className="text-xs"
-              >
-                Create Dictation
-              </Button>
-            )}
-            {onCreateBidirectional && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleCreateBidirectional}
-                className="text-xs"
-              >
-                Create Translation
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

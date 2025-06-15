@@ -1,31 +1,47 @@
 
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Volume2, X, Play, Pause, RotateCcw, AlertCircle } from 'lucide-react';
-import { ReadingExercise } from '@/types/reading';
-import { InteractiveText } from './InteractiveText';
-import { AudioGenerationStatus } from './AudioGenerationStatus';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { toast } from 'sonner';
+import type React from "react"
+import { useState, useRef, useEffect } from "react"
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { 
+  BookOpen,
+  Mic,
+  Plus,
+  Languages
+} from 'lucide-react'
+import { ReadingExercise } from '@/types/reading'
+import { Language } from '@/types'
+import { EnhancedInteractiveText } from './EnhancedInteractiveText'
+import { AudioWordSynchronizer } from './AudioWordSynchronizer'
+import { SynchronizedTextWithSelection } from './SynchronizedTextWithSelection'
+import { AdvancedAudioControls } from './AdvancedAudioControls'
+import { SimpleTranslationAnalysis } from './SimpleTranslationAnalysis'
+import { ReadingViewToggle } from '@/components/ui/reading-view-toggle'
+import { FullScreenReadingOverlay } from './FullScreenReadingOverlay'
+import { useFullScreenReading } from '@/hooks/use-full-screen-reading'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { readingExerciseService } from '@/services/readingExerciseService'
+import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 
 interface ReadingFocusedModalProps {
-  exercise: ReadingExercise | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onCreateDictation?: (selectedText: string) => void;
-  onCreateBidirectional?: (selectedText: string) => void;
+  exercise: ReadingExercise | null
+  isOpen: boolean
+  onClose: () => void
+  onCreateDictation?: (selectedText: string) => void
+  onCreateBidirectional?: (selectedText: string) => void
   // Feature flags
-  enableTextSelection?: boolean;
-  enableVocabularyIntegration?: boolean;
-  enableEnhancedHighlighting?: boolean;
-  enableFullTextAudio?: boolean;
-  enableWordSynchronization?: boolean;
-  enableContextMenu?: boolean;
-  enableSelectionFeedback?: boolean;
-  enableSmartTextProcessing?: boolean;
+  enableTextSelection?: boolean
+  enableVocabularyIntegration?: boolean
+  enableEnhancedHighlighting?: boolean
+  enableFullTextAudio?: boolean
+  enableWordSynchronization?: boolean
+  enableContextMenu?: boolean
+  enableSelectionFeedback?: boolean
+  enableSmartTextProcessing?: boolean
 }
 
 export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
@@ -34,300 +50,593 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   onClose,
   onCreateDictation,
   onCreateBidirectional,
-  enableTextSelection = false,
-  enableVocabularyIntegration = false,
-  enableEnhancedHighlighting = false,
-  enableFullTextAudio = false,
-  enableWordSynchronization = false,
-  enableContextMenu = false,
-  enableSelectionFeedback = false,
-  enableSmartTextProcessing = false
+  enableTextSelection = true,
+  enableVocabularyIntegration = true,
+  enableEnhancedHighlighting = true,
+  enableFullTextAudio = true,
+  enableWordSynchronization = true,
+  enableContextMenu = true,
+  enableSelectionFeedback = true,
+  enableSmartTextProcessing = true
 }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
-  const [audioError, setAudioError] = useState<string | null>(null);
-  const [audioGenerationStatus, setAudioGenerationStatus] = useState<string>('pending');
-  const isMobile = useIsMobile();
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [audioEnabled, setAudioEnabled] = useState(true)
+  const [currentPosition, setCurrentPosition] = useState(0)
+  const [audioDuration, setAudioDuration] = useState(0)
+  const [audioSpeed, setAudioSpeed] = useState(1)
+  const [showSettings, setShowSettings] = useState(false)
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
+  const [audioUrl, setAudioUrl] = useState<string>('')
+  const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1)
+  const [showTranslationAnalysis, setShowTranslationAnalysis] = useState(false)
+  
+  const { viewMode, cycleViewMode, isFullScreen } = useFullScreenReading()
+  const isMobile = useIsMobile()
 
+  // Debug logging for feature flags
   useEffect(() => {
-    // Cleanup audio when modal closes or exercise changes
-    return () => {
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.src = '';
-        setCurrentAudio(null);
-        setIsPlaying(false);
-      }
-    };
-  }, [exercise?.id, isOpen]);
+    if (exercise && isOpen) {
+      console.log('ReadingFocusedModal feature flags:', {
+        enableTextSelection,
+        enableWordSynchronization,
+        enableContextMenu,
+        enableSelectionFeedback,
+        enableVocabularyIntegration,
+        enableFullTextAudio,
+        exerciseId: exercise.id,
+        exerciseLanguage: exercise.language
+      });
+    }
+  }, [exercise, isOpen, enableTextSelection, enableWordSynchronization, enableContextMenu, enableSelectionFeedback]);
 
-  const playFullTextAudio = async () => {
-    if (!exercise) return;
-
-    // Check if we have a full text audio URL
-    const audioUrl = exercise.full_text_audio_url || exercise.audio_url;
-    
-    if (!audioUrl) {
-      setAudioError('No audio available for this exercise');
-      toast.error('Audio is not available yet');
+  // Enhanced audio URL initialization with better validation and retry logic
+  useEffect(() => {
+    if (!exercise || !isOpen || !enableFullTextAudio) {
+      console.log('[AUDIO INIT] Skipping audio initialization - conditions not met');
       return;
     }
 
-    try {
-      if (currentAudio && !currentAudio.paused) {
-        // Pause current audio
-        currentAudio.pause();
-        setIsPlaying(false);
-        return;
+    const initializeAudio = async () => {
+      console.log('[AUDIO INIT] Starting initialization for exercise:', {
+        exerciseId: exercise.id,
+        fullTextAudioUrl: exercise.full_text_audio_url,
+        audioUrl: exercise.audio_url,
+        audioGenerationStatus: exercise.audio_generation_status
+      });
+
+      // First, validate and fix any inconsistent states
+      try {
+        await readingExerciseService.validateAndFixAudioUrls(exercise.id);
+      } catch (error) {
+        console.warn('[AUDIO INIT] Validation failed:', error);
       }
 
-      // Create new audio instance
-      const audio = new Audio(audioUrl);
-      setCurrentAudio(audio);
-      setAudioError(null);
+      // Check for existing audio URLs in order of preference
+      const existingAudioUrl = exercise.full_text_audio_url || exercise.audio_url;
+      
+      if (existingAudioUrl) {
+        console.log('[AUDIO INIT] Found existing audio URL:', existingAudioUrl);
+        
+        // Validate that the URL is accessible
+        try {
+          const response = await fetch(existingAudioUrl, { method: 'HEAD' });
+          if (response.ok) {
+            console.log('[AUDIO INIT] Existing audio URL is valid, using it');
+            setAudioUrl(existingAudioUrl);
+            return;
+          } else {
+            console.warn('[AUDIO INIT] Existing audio URL is not accessible:', response.status);
+          }
+        } catch (error) {
+          console.warn('[AUDIO INIT] Failed to validate existing audio URL:', error);
+        }
+      }
 
-      audio.addEventListener('loadstart', () => {
-        console.log('[AUDIO] Loading started for:', audioUrl);
-      });
-
-      audio.addEventListener('canplay', () => {
-        console.log('[AUDIO] Can start playing');
-        setIsPlaying(true);
-        audio.play().catch(error => {
-          console.error('[AUDIO] Play failed:', error);
-          setAudioError('Failed to play audio');
-          setIsPlaying(false);
-        });
-      });
-
-      audio.addEventListener('ended', () => {
-        console.log('[AUDIO] Playback ended');
-        setIsPlaying(false);
-      });
-
-      audio.addEventListener('error', (e) => {
-        console.error('[AUDIO] Audio error:', e);
-        setAudioError('Failed to load audio');
-        setIsPlaying(false);
-        toast.error('Audio playback failed');
-      });
-
-      // Start loading the audio
-      audio.load();
-
-    } catch (error) {
-      console.error('[AUDIO] Error creating audio:', error);
-      setAudioError('Failed to initialize audio');
-      setIsPlaying(false);
-      toast.error('Audio initialization failed');
-    }
-  };
-
-  const stopAudio = () => {
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.currentTime = 0;
-      setIsPlaying(false);
-    }
-  };
-
-  const getAudioButtonState = () => {
-    if (audioGenerationStatus === 'generating' || audioGenerationStatus === 'pending') {
-      return { disabled: true, text: 'Generating Audio...', icon: Volume2 };
-    }
-    
-    if (audioGenerationStatus === 'failed') {
-      return { disabled: true, text: 'Audio Failed', icon: AlertCircle };
-    }
-
-    const hasAudio = exercise?.full_text_audio_url || exercise?.audio_url;
-    if (!hasAudio) {
-      return { disabled: true, text: 'No Audio Available', icon: Volume2 };
-    }
-
-    return {
-      disabled: false,
-      text: isPlaying ? 'Pause Audio' : 'Play Full Text',
-      icon: isPlaying ? Pause : Play
+      // Handle different audio generation statuses
+      switch (exercise.audio_generation_status) {
+        case 'completed':
+          if (!existingAudioUrl) {
+            console.warn('[AUDIO INIT] Status is completed but no audio URL found, triggering regeneration');
+            generateFullTextAudio();
+          }
+          break;
+          
+        case 'generating':
+          console.log('[AUDIO INIT] Audio generation is in progress');
+          setIsGeneratingAudio(true);
+          break;
+          
+        case 'failed':
+          console.log('[AUDIO INIT] Previous audio generation failed, user can retry manually');
+          break;
+          
+        case 'pending':
+        default:
+          console.log('[AUDIO INIT] No existing audio, starting generation');
+          generateFullTextAudio();
+          break;
+      }
     };
+
+    initializeAudio();
+  }, [exercise, isOpen, enableFullTextAudio]);
+
+  // Generate full-text audio with enhanced error handling and status tracking
+  const generateFullTextAudio = async () => {
+    if (!exercise || !enableFullTextAudio) return;
+    
+    try {
+      setIsGeneratingAudio(true);
+      console.log('[AUDIO GENERATION] Starting new audio generation for exercise:', exercise.id);
+      
+      const fullText = exercise.content.sentences.map(s => s.text).join(' ');
+      
+      if (!fullText.trim()) {
+        throw new Error('No text content available for audio generation');
+      }
+      
+      const generatedAudioUrl = await readingExerciseService.generateAudio(fullText, exercise.language);
+      
+      console.log('[AUDIO GENERATION] Successfully generated audio:', generatedAudioUrl);
+      setAudioUrl(generatedAudioUrl);
+      
+      toast.success('Audio generated successfully');
+    } catch (error) {
+      console.error('[AUDIO GENERATION] Error generating full-text audio:', error);
+      toast.error('Failed to generate audio. Please try again.');
+    } finally {
+      setIsGeneratingAudio(false);
+    }
   };
 
-  const handleTextSelection = (selectedText: string) => {
-    console.log('[MODAL] Text selected:', selectedText);
-    // Handle text selection based on feature flags
-    if (enableSelectionFeedback) {
-      toast.success(`Selected: "${selectedText.substring(0, 50)}${selectedText.length > 50 ? '...' : ''}"`);
+  const togglePlayPause = async (audioRef: React.RefObject<HTMLAudioElement>) => {
+    if (!audioRef.current || !audioEnabled) return;
+
+    try {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        await audioRef.current.play();
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error('Audio playback error:', error);
+      toast.error('Audio playback failed');
     }
+  };
+
+  const skipBackward = (audioRef: React.RefObject<HTMLAudioElement>) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+  };
+
+  const skipForward = (audioRef: React.RefObject<HTMLAudioElement>) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = Math.min(audioDuration, audioRef.current.currentTime + 10);
+  };
+
+  const restart = (audioRef: React.RefObject<HTMLAudioElement>) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = 0;
+    setCurrentPosition(0);
+    setHighlightedWordIndex(-1);
+  };
+
+  const seekTo = (audioRef: React.RefObject<HTMLAudioElement>, time: number) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = time;
+  };
+
+  const changeSpeed = (newSpeed: number) => {
+    setAudioSpeed(newSpeed);
+  };
+
+  const handleWordHighlight = (wordIndex: number) => {
+    setHighlightedWordIndex(wordIndex);
+  };
+
+  const handleTimeUpdate = (currentTime: number) => {
+    setCurrentPosition(currentTime);
+  };
+
+  const handleLoadedMetadata = (duration: number) => {
+    setAudioDuration(duration);
+  };
+
+  const handleEnded = () => {
+    setIsPlaying(false);
+    setCurrentPosition(0);
+    setHighlightedWordIndex(-1);
   };
 
   const handleCreateDictation = (selectedText: string) => {
+    console.log('Creating dictation for:', selectedText);
     if (onCreateDictation) {
       onCreateDictation(selectedText);
     } else {
-      toast.success(`Dictation exercise ready for: "${selectedText.substring(0, 50)}${selectedText.length > 50 ? '...' : ''}"`);
+      toast.success(`Ready to create dictation exercise for: "${selectedText.substring(0, 50)}${selectedText.length > 50 ? '...' : ''}"`);
     }
   };
 
   const handleCreateBidirectional = (selectedText: string) => {
+    console.log('Creating bidirectional for:', selectedText);
     if (onCreateBidirectional) {
       onCreateBidirectional(selectedText);
     } else {
-      toast.success(`Translation exercise ready for: "${selectedText.substring(0, 50)}${selectedText.length > 50 ? '...' : ''}"`);
+      toast.success(`Ready to create translation exercise for: "${selectedText.substring(0, 50)}${selectedText.length > 50 ? '...' : ''}"`);
     }
   };
 
-  if (!exercise) return null;
+  const handleAnalyzeTranslation = () => {
+    setShowTranslationAnalysis(true);
+  };
 
-  const audioButton = getAudioButtonState();
-  const IconComponent = audioButton.icon;
+  const handleRetryAudioGeneration = async () => {
+    if (!exercise) return;
+    
+    console.log('[AUDIO RETRY] Starting retry for exercise:', exercise.id);
+    setIsGeneratingAudio(true);
+    setAudioUrl(''); // Clear current audio URL
+    
+    try {
+      await readingExerciseService.retryAudioGeneration(exercise.id);
+      
+      // Wait a moment then try to get the new audio URL
+      setTimeout(async () => {
+        try {
+          const updatedExercise = await readingExerciseService.getReadingExercise(exercise.id);
+          const newAudioUrl = updatedExercise.full_text_audio_url || updatedExercise.audio_url;
+          
+          if (newAudioUrl) {
+            console.log('[AUDIO RETRY] Successfully got new audio URL:', newAudioUrl);
+            setAudioUrl(newAudioUrl);
+            toast.success('Audio regenerated successfully');
+          }
+        } catch (error) {
+          console.error('[AUDIO RETRY] Failed to get updated audio URL:', error);
+        } finally {
+          setIsGeneratingAudio(false);
+        }
+      }, 2000);
+      
+    } catch (error) {
+      console.error('[AUDIO RETRY] Failed to retry audio generation:', error);
+      toast.error('Failed to regenerate audio. Please try again.');
+      setIsGeneratingAudio(false);
+    }
+  };
+
+  if (!exercise) return null
+
+  const fullText = exercise.content.sentences.map(s => s.text).join(' ')
+  const totalWords = fullText.split(/\s+/).length
+
+  // Cast exercise.language to Language type to fix TypeScript error
+  const exerciseLanguage = exercise.language as Language
+
+  // Enhanced text size scaling for better full-screen reading
+  const getTextSize = () => {
+    if (isMobile) {
+      switch (viewMode) {
+        case 'normal': return 'text-base leading-relaxed';
+        case 'expanded': return 'text-lg leading-relaxed';
+        case 'fullscreen': return 'text-2xl leading-loose max-w-none';
+        default: return 'text-base leading-relaxed';
+      }
+    } else {
+      switch (viewMode) {
+        case 'normal': return 'text-lg leading-relaxed';
+        case 'expanded': return 'text-xl leading-relaxed';
+        case 'fullscreen': return 'text-3xl leading-loose max-w-none';
+        default: return 'text-lg leading-relaxed';
+      }
+    }
+  };
+
+  // Render the reading content with optimized full-screen layout
+  const renderReadingContent = () => (
+    <>
+      {/* Advanced Audio Controls */}
+      {enableFullTextAudio && !showTranslationAnalysis && (
+        <div className={cn(
+          "flex-shrink-0",
+          isFullScreen ? "mb-8" : "mb-4"
+        )}>
+          <AudioWordSynchronizer
+            audioUrl={audioUrl}
+            text={fullText}
+            onWordHighlight={handleWordHighlight}
+            onTimeUpdate={handleTimeUpdate}
+            isPlaying={isPlaying}
+            playbackRate={audioSpeed}
+            onLoadedMetadata={handleLoadedMetadata}
+            onEnded={handleEnded}
+          >
+            {(audioRef) => (
+              <AdvancedAudioControls
+                isPlaying={isPlaying}
+                isGeneratingAudio={isGeneratingAudio}
+                audioEnabled={audioEnabled}
+                currentPosition={currentPosition}
+                audioDuration={audioDuration}
+                audioSpeed={audioSpeed}
+                showSettings={showSettings}
+                highlightedWordIndex={highlightedWordIndex}
+                totalWords={totalWords}
+                onTogglePlayPause={() => togglePlayPause(audioRef)}
+                onSkipBackward={() => skipBackward(audioRef)}
+                onSkipForward={() => skipForward(audioRef)}
+                onRestart={() => restart(audioRef)}
+                onToggleAudio={() => setAudioEnabled(!audioEnabled)}
+                onToggleSettings={() => setShowSettings(!showSettings)}
+                onChangeSpeed={changeSpeed}
+                onSeek={(time) => seekTo(audioRef, time)}
+                onRetryGeneration={
+                  (exercise.audio_generation_status === 'failed' || 
+                   (exercise.audio_generation_status === 'completed' && !audioUrl)) 
+                    ? handleRetryAudioGeneration 
+                    : undefined
+                }
+              />
+            )}
+          </AudioWordSynchronizer>
+        </div>
+      )}
+
+      {!isFullScreen && <Separator className="flex-shrink-0" />}
+
+      {/* Main Content - Optimized for full-screen reading */}
+      <div className="flex-1 overflow-auto min-h-0">
+        {isFullScreen ? (
+          // Full-screen mode: Remove Card wrapper and maximize text area
+          <div className={cn(
+            "h-full w-full",
+            isFullScreen && "px-4 py-2"
+          )}>
+            {showTranslationAnalysis ? (
+              <SimpleTranslationAnalysis
+                text={fullText}
+                sourceLanguage={exerciseLanguage}
+                onClose={() => setShowTranslationAnalysis(false)}
+              />
+            ) : (
+              <>
+                {enableTextSelection ? (
+                  <SynchronizedTextWithSelection
+                    text={fullText}
+                    highlightedWordIndex={highlightedWordIndex}
+                    enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
+                    className={cn(
+                      "transition-all duration-300",
+                      getTextSize(),
+                      isFullScreen && "w-full"
+                    )}
+                    onCreateDictation={handleCreateDictation}
+                    onCreateBidirectional={handleCreateBidirectional}
+                    exerciseId={exercise.id}
+                    exerciseLanguage={exerciseLanguage}
+                    enableTextSelection={true}
+                    enableVocabulary={enableVocabularyIntegration}
+                    enhancedHighlighting={enableEnhancedHighlighting}
+                    vocabularyIntegration={enableVocabularyIntegration}
+                    enableContextMenu={enableContextMenu}
+                  />
+                ) : (
+                  <EnhancedInteractiveText
+                    text={fullText}
+                    language={exerciseLanguage}
+                    enableTooltips={true}
+                    enableBidirectionalCreation={true}
+                    enableTextSelection={false}
+                    vocabularyIntegration={false}
+                    enhancedHighlighting={false}
+                    exerciseId={exercise.id}
+                    onCreateDictation={handleCreateDictation}
+                    onCreateBidirectional={handleCreateBidirectional}
+                    className={cn(
+                      "transition-all duration-300",
+                      getTextSize(),
+                      isFullScreen && "w-full"
+                    )}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+          // Normal/expanded mode: Keep Card wrapper
+          <Card className={cn(
+            "h-full transition-all duration-300",
+            viewMode === 'expanded' ? "p-8" : "p-6"
+          )}>
+            {showTranslationAnalysis ? (
+              <SimpleTranslationAnalysis
+                text={fullText}
+                sourceLanguage={exerciseLanguage}
+                onClose={() => setShowTranslationAnalysis(false)}
+              />
+            ) : (
+              <>
+                {enableTextSelection ? (
+                  <SynchronizedTextWithSelection
+                    text={fullText}
+                    highlightedWordIndex={highlightedWordIndex}
+                    enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
+                    className={cn(
+                      "transition-all duration-300",
+                      getTextSize()
+                    )}
+                    onCreateDictation={handleCreateDictation}
+                    onCreateBidirectional={handleCreateBidirectional}
+                    exerciseId={exercise.id}
+                    exerciseLanguage={exerciseLanguage}
+                    enableTextSelection={true}
+                    enableVocabulary={enableVocabularyIntegration}
+                    enhancedHighlighting={enableEnhancedHighlighting}
+                    vocabularyIntegration={enableVocabularyIntegration}
+                    enableContextMenu={enableContextMenu}
+                  />
+                ) : (
+                  <EnhancedInteractiveText
+                    text={fullText}
+                    language={exerciseLanguage}
+                    enableTooltips={true}
+                    enableBidirectionalCreation={true}
+                    enableTextSelection={false}
+                    vocabularyIntegration={false}
+                    enhancedHighlighting={false}
+                    exerciseId={exercise.id}
+                    onCreateDictation={handleCreateDictation}
+                    onCreateBidirectional={handleCreateBidirectional}
+                    className={cn(
+                      "transition-all duration-300",
+                      getTextSize()
+                    )}
+                  />
+                )}
+              </>
+            )}
+          </Card>
+        )}
+      </div>
+
+      {/* Quick Actions - Mobile (only show when not in full-screen) */}
+      {isMobile && !showTranslationAnalysis && !isFullScreen && (
+        <div className="flex-shrink-0 border-t p-4 bg-gray-50">
+          <div className="flex justify-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleCreateDictation(fullText)}
+            >
+              <Mic className="h-4 w-4 mr-1" />
+              Dictation
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleCreateBidirectional(fullText)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Translation
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAnalyzeTranslation}
+            >
+              <Languages className="h-4 w-4 mr-1" />
+              Analyze
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  // Enhanced debugging and rendering logic
+  console.log('ReadingFocusedModal rendering decision:', {
+    exerciseId: exercise.id,
+    audioGenerationStatus: exercise.audio_generation_status,
+    hasFullTextAudioUrl: !!exercise.full_text_audio_url,
+    hasAudioUrl: !!exercise.audio_url,
+    currentAudioUrlInState: !!audioUrl,
+    enableFullTextAudio,
+    isGeneratingAudio,
+    viewMode
+  });
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`${isMobile ? 'w-full h-full max-w-full max-h-full m-0 rounded-none' : 'max-w-4xl max-h-[90vh]'} overflow-hidden flex flex-col`}>
-        <DialogHeader className="flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary/10 p-2 rounded-full">
-                <Volume2 className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <DialogTitle className="text-lg font-semibold">{exercise.title}</DialogTitle>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="secondary" className="text-xs">
-                    {exercise.language}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    {exercise.difficulty_level}
-                  </Badge>
-                  {exercise.audio_generation_status === 'completed' && (
-                    <Badge variant="outline" className="text-xs text-green-600">
-                      Audio Ready
+    <>
+      <Dialog open={isOpen && !isFullScreen} onOpenChange={onClose}>
+        <DialogContent className={cn(
+          "overflow-hidden flex flex-col transition-all duration-300",
+          isMobile 
+            ? "w-full h-full max-w-full max-h-full m-0 rounded-none" 
+            : viewMode === 'expanded'
+              ? "max-w-7xl max-h-[95vh]" 
+              : "max-w-4xl max-h-[95vh]"
+        )}>
+          <DialogHeader className="flex-shrink-0 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-100 p-2 rounded-full">
+                  <BookOpen className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold line-clamp-2`}>
+                    {exercise.title}
+                  </DialogTitle>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="secondary" className="text-xs">
+                      {exercise.language}
                     </Badge>
-                  )}
+                    <Badge variant="outline" className="text-xs capitalize">
+                      {exercise.difficulty_level}
+                    </Badge>
+                    {enableWordSynchronization && audioUrl && (
+                      <Badge variant="outline" className="text-xs">
+                        Audio Sync
+                      </Badge>
+                    )}
+                    {enableContextMenu && (
+                      <Badge variant="outline" className="text-xs">
+                        Enhanced Selection
+                      </Badge>
+                    )}
+                    {/* Enhanced audio status indicator */}
+                    {exercise.audio_generation_status && (
+                      <Badge 
+                        variant={
+                          exercise.audio_generation_status === 'completed' ? 'default' : 
+                          exercise.audio_generation_status === 'failed' ? 'destructive' : 
+                          exercise.audio_generation_status === 'generating' ? 'secondary' : 'outline'
+                        }
+                        className="text-xs"
+                      >
+                        Audio: {exercise.audio_generation_status}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {enableFullTextAudio && (
-                <>
-                  <Button
-                    onClick={playFullTextAudio}
-                    disabled={audioButton.disabled}
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <IconComponent className="h-4 w-4" />
-                    {!isMobile && audioButton.text}
-                  </Button>
-                  
-                  {isPlaying && (
-                    <Button
-                      onClick={stopAudio}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                    </Button>
-                  )}
-                </>
-              )}
               
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-auto p-6">
-          {/* Audio Generation Status */}
-          <AudioGenerationStatus 
-            exerciseId={exercise.id}
-            onStatusChange={setAudioGenerationStatus}
-          />
-
-          {/* Audio Error Display */}
-          {audioError && (
-            <Card className="mb-4 border-red-200 bg-red-50">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 text-red-700">
-                  <AlertCircle className="h-4 w-4" />
-                  <p className="text-sm">{audioError}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Interactive Reading Content */}
-          <Card className="min-h-[400px]">
-            <CardContent className="p-6">
-              <InteractiveText
-                text={exercise.content.sentences.map(s => s.text).join(' ')}
-                sentences={exercise.content.sentences}
-                language={exercise.language}
-                exerciseId={exercise.id}
-                enableTooltips={enableVocabularyIntegration}
-                enableTextSelection={enableTextSelection}
-                enableHighlighting={enableEnhancedHighlighting}
-                enableWordSync={enableWordSynchronization}
-                enableContextMenu={enableContextMenu}
-                enableSmartProcessing={enableSmartTextProcessing}
-                onTextSelection={handleTextSelection}
-                onCreateDictation={handleCreateDictation}
-                onCreateBidirectional={handleCreateBidirectional}
-                currentAudio={currentAudio}
-                isPlaying={isPlaying}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Exercise Analysis */}
-          {exercise.content.analysis && (
-            <Card className="mt-4">
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-2">Exercise Analysis</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">Word Count:</span>
-                    <p className="font-medium">{exercise.content.analysis.wordCount}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Reading Time:</span>
-                    <p className="font-medium">{exercise.content.analysis.readingTime} min</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Sentences:</span>
-                    <p className="font-medium">{exercise.content.sentences.length}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Difficulty:</span>
-                    <p className="font-medium capitalize">{exercise.difficulty_level}</p>
-                  </div>
-                </div>
+              <div className="flex items-center gap-2">
+                <ReadingViewToggle
+                  viewMode={viewMode}
+                  onToggle={cycleViewMode}
+                />
                 
-                {exercise.content.analysis.grammarPoints && exercise.content.analysis.grammarPoints.length > 0 && (
-                  <div className="mt-3">
-                    <span className="text-gray-600 text-sm">Grammar Focus:</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {exercise.content.analysis.grammarPoints.map((point, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {point}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAnalyzeTranslation}
+                  className="flex items-center gap-2"
+                >
+                  <Languages className="h-4 w-4" />
+                  Analyze
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {renderReadingContent()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Full-screen overlay */}
+      <FullScreenReadingOverlay
+        title={exercise.title}
+        language={exercise.language}
+        difficulty={exercise.difficulty_level}
+        viewMode={viewMode}
+        onToggleView={cycleViewMode}
+        onClose={onClose}
+        onAnalyze={handleAnalyzeTranslation}
+      >
+        {renderReadingContent()}
+      </FullScreenReadingOverlay>
+    </>
+  )
+}
