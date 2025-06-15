@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { BookOpen, Clock, Volume2, Brain, Play, Trash2, Edit } from 'lucide-react';
 import { ReadingExercise } from '@/types/reading';
 import { useIsMobile } from '@/hooks/use-mobile';
+
 interface ReadingExerciseCardProps {
   exercise: ReadingExercise;
   progress?: number;
@@ -13,6 +15,7 @@ interface ReadingExerciseCardProps {
   onDelete: (exercise: ReadingExercise) => void;
   onEdit?: (exercise: ReadingExercise) => void;
 }
+
 export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
   exercise,
   progress = 0,
@@ -21,20 +24,20 @@ export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
   onEdit
 }) => {
   const isMobile = useIsMobile();
+
   const getDifficultyColor = (level: string) => {
     switch (level) {
-      case 'beginner':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'intermediate':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'advanced':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'beginner': return 'bg-green-100 text-green-800 border-green-200';
+      case 'intermediate': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'advanced': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
+
   const estimatedReadingTime = Math.ceil((exercise.content.analysis?.wordCount || exercise.target_length) / 200);
-  return <Card className={`h-full hover:shadow-md transition-all duration-200 ${isMobile ? 'touch-manipulation' : ''}`}>
+
+  return (
+    <Card className={`h-full hover:shadow-md transition-all duration-200 ${isMobile ? 'touch-manipulation' : ''}`}>
       <CardHeader className={isMobile ? 'pb-2' : 'pb-3'}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -46,7 +49,10 @@ export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
               {exercise.grammar_focus && ` • Focus: ${exercise.grammar_focus}`}
             </CardDescription>
           </div>
-          <Badge variant="outline" className={`${getDifficultyColor(exercise.difficulty_level)} shrink-0 capitalize ${isMobile ? 'text-xs' : 'text-xs'}`}>
+          <Badge 
+            variant="outline" 
+            className={`${getDifficultyColor(exercise.difficulty_level)} shrink-0 capitalize ${isMobile ? 'text-xs' : 'text-xs'}`}
+          >
             {exercise.difficulty_level}
           </Badge>
         </div>
@@ -84,36 +90,61 @@ export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
         </div>
 
         {/* Progress */}
-        {progress > 0 && <div className="space-y-2">
+        {progress > 0 && (
+          <div className="space-y-2">
             <div className={`flex justify-between text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
               <span>Progress</span>
               <span>{Math.round(progress)}%</span>
             </div>
             <Progress value={progress} className="h-2" />
-          </div>}
+          </div>
+        )}
 
         {/* Features */}
-        
+        <div className={`flex items-center gap-2 text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
+          <Volume2 className={`${isMobile ? 'h-3 w-3' : 'h-3 w-3'}`} />
+          <span>Interactive audio</span>
+          <span>•</span>
+          <Brain className={`${isMobile ? 'h-3 w-3' : 'h-3 w-3'}`} />
+          <span>Clickable words</span>
+        </div>
 
         {/* Actions */}
         <div className={`flex gap-2 pt-2 ${isMobile ? 'flex-col' : ''}`}>
-          <Button onClick={() => onPractice(exercise)} className={`${isMobile ? 'w-full py-3' : 'flex-1'}`} size={isMobile ? 'default' : 'sm'}>
+          <Button 
+            onClick={() => onPractice(exercise)}
+            className={`${isMobile ? 'w-full py-3' : 'flex-1'}`}
+            size={isMobile ? 'default' : 'sm'}
+          >
             <Play className={`mr-1 ${isMobile ? 'h-4 w-4' : 'h-3 w-3'}`} />
             {progress > 0 ? 'Continue' : 'Start'}
           </Button>
           
           <div className={`flex gap-2 ${isMobile ? 'w-full' : ''}`}>
-            {onEdit && <Button variant="ghost" size={isMobile ? 'default' : 'sm'} onClick={() => onEdit(exercise)} className={`text-muted-foreground hover:text-primary ${isMobile ? 'flex-1 py-3' : ''}`}>
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size={isMobile ? 'default' : 'sm'}
+                onClick={() => onEdit(exercise)}
+                className={`text-muted-foreground hover:text-primary ${isMobile ? 'flex-1 py-3' : ''}`}
+              >
                 <Edit className={`${isMobile ? 'h-4 w-4' : 'h-3 w-3'}`} />
                 {isMobile && <span className="ml-2">Edit</span>}
-              </Button>}
+              </Button>
+            )}
             
-            <Button variant="ghost" size={isMobile ? 'default' : 'sm'} onClick={() => onDelete(exercise)} className={`text-muted-foreground hover:text-destructive ${isMobile ? 'flex-1 py-3' : ''}`}>
+            <Button
+              variant="ghost"
+              size={isMobile ? 'default' : 'sm'}
+              onClick={() => onDelete(exercise)}
+              className={`text-muted-foreground hover:text-destructive ${isMobile ? 'flex-1 py-3' : ''}`}
+            >
               <Trash2 className={`${isMobile ? 'h-4 w-4' : 'h-3 w-3'}`} />
               {isMobile && <span className="ml-2">Delete</span>}
             </Button>
           </div>
         </div>
       </CardContent>
-    </Card>;
+    </Card>
+  );
 };
