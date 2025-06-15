@@ -232,7 +232,7 @@ export const ReadingFocusedModal: React.FC<any> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
-        className={`${isMobile ? "w-full h-full max-w-full max-h-full m-0 rounded-none p-0 flex flex-col bg-white dark:bg-zinc-950" : "max-w-4xl max-h-[95vh]"} overflow-hidden flex flex-col`}
+        className={`${isMobile ? 'w-full h-full max-w-full max-h-full m-0 rounded-none p-0 flex flex-col' : 'max-w-4xl max-h-[95vh]'} overflow-hidden flex flex-col`}
         style={{ touchAction: "manipulation" }}
       >
         <DialogHeader className={`flex-shrink-0 ${isMobile?"py-2 px-4 border-b":'pb-4'}`}>
@@ -278,206 +278,201 @@ export const ReadingFocusedModal: React.FC<any> = ({
 
         {/* Main Content */}
         <div
-          className={`flex-1 min-h-0 relative overflow-auto bg-white dark:bg-zinc-950`}
+          className={`flex-1 min-h-0 relative overflow-auto bg-background`}
           {...bodyTouchEvents}
         >
-          {/* Remove Card wrapper in minimal mode */}
-          {isMobile ? (
-            <>
-              {/* Text tab */}
-              {mobileTab === "text" && (
-                <div className="p-4">
-                  {/* ... keep SynchronizedTextWithSelection/EnhancedInteractiveText logic ... */}
-                  {enableTextSelection ? (
-                    <SynchronizedTextWithSelection
-                      text={fullText}
-                      highlightedWordIndex={highlightedWordIndex}
-                      enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
-                      className={"text-base"}
-                      onCreateDictation={handleCreateDictation}
-                      onCreateBidirectional={handleCreateBidirectional}
-                      exerciseId={exercise.id}
-                      exerciseLanguage={exerciseLanguage}
-                      enableTextSelection={true}
-                      enableVocabulary={enableVocabularyIntegration}
-                      enhancedHighlighting={enableEnhancedHighlighting}
-                      vocabularyIntegration={enableVocabularyIntegration}
-                      enableContextMenu={enableContextMenu}
-                    />
-                  ) : (
-                    <EnhancedInteractiveText
-                      text={fullText}
-                      language={exerciseLanguage}
-                      enableTooltips={true}
-                      enableBidirectionalCreation={true}
-                      enableTextSelection={false}
-                      vocabularyIntegration={false}
-                      enhancedHighlighting={false}
-                      exerciseId={exercise.id}
-                      onCreateDictation={handleCreateDictation}
-                      onCreateBidirectional={handleCreateBidirectional}
-                    />
-                  )}
-                </div>
-              )}
-              {/* Audio tab: minimalistic overlay layout */}
-              {mobileTab === "audio" && (
-                // Main scrollable area is full height minus the controls (which are sticky to bottom)
-                <div className="flex flex-col h-full relative bg-white dark:bg-zinc-950">
-                  {/* Controls: sticky at bottom */}
-                  <div className="w-full sticky bottom-0 left-0 z-50">
-                    <AudioWordSynchronizer
-                      audioUrl={audioUrl}
-                      text={fullText}
-                      onWordHighlight={handleWordHighlight}
-                      onTimeUpdate={handleTimeUpdate}
-                      isPlaying={isPlaying}
-                      playbackRate={audioSpeed}
-                      onLoadedMetadata={handleLoadedMetadata}
-                      onEnded={handleEnded}
-                    >
-                      {(audioRef) => (
-                        <AdvancedAudioControls
-                          isPlaying={isPlaying}
-                          isGeneratingAudio={isGeneratingAudio}
-                          audioEnabled={audioEnabled}
-                          currentPosition={currentPosition}
-                          audioDuration={audioDuration}
-                          audioSpeed={audioSpeed}
-                          showSettings={showSettings}
-                          highlightedWordIndex={highlightedWordIndex}
-                          totalWords={totalWords}
-                          onTogglePlayPause={() => togglePlayPause(audioRef)}
-                          onSkipBackward={() => skipBackward(audioRef)}
-                          onSkipForward={() => skipForward(audioRef)}
-                          onRestart={() => restart(audioRef)}
-                          onToggleAudio={() => setAudioEnabled(!audioEnabled)}
-                          onToggleSettings={() => setShowSettings(!showSettings)}
-                          onChangeSpeed={changeSpeed}
-                          onSeek={(time) => seekTo(audioRef, time)}
-                        />
-                      )}
-                    </AudioWordSynchronizer>
-                  </div>
-                  {/* Reading text (audio sync, highlight only, minimal) */}
-                  <div className="flex-1 overflow-auto p-4 pt-2 pb-[100px]">
-                    <SynchronizedTextWithSelection
-                      text={fullText}
-                      highlightedWordIndex={highlightedWordIndex}
-                      enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
-                      className={"text-base"}
-                      enableTextSelection={false}
-                      enableVocabulary={false}
-                      enhancedHighlighting={false}
-                      vocabularyIntegration={false}
-                      enableContextMenu={false}
-                      exerciseId={exercise.id}
-                      exerciseLanguage={exerciseLanguage}
-                      onCreateDictation={handleCreateDictation}
-                      onCreateBidirectional={handleCreateBidirectional}
-                    />
-                  </div>
-                </div>
-              )}
-              {/* Analyze tab */}
-              {mobileTab === "analyze" && (
-                // ... keep existing analyze tab code same ...
-                <div className="p-4">
-                  <SimpleTranslationAnalysis
-                    text={fullText}
-                    sourceLanguage={exerciseLanguage}
-                    onClose={() => setMobileTab("text")}
-                  />
-                </div>
-              )}
-            </>
-          ) : (
-            // ... keep desktop structure the same ...
-            // ... keep existing code ("desktop main UI and logic") the same ...
-            showTranslationAnalysis ? (
-              <SimpleTranslationAnalysis
-                text={fullText}
-                sourceLanguage={exerciseLanguage}
-                onClose={() => setShowTranslationAnalysis(false)}
-              />
-            ) : (
+          <Card className={`p-0 h-full bg-transparent shadow-none border-none`}>
+            {/* Mobile tabs content */}
+            {isMobile ? (
               <>
-                {enableFullTextAudio && (
-                  <div className="flex-shrink-0 mb-4">
-                    <AudioWordSynchronizer
-                      audioUrl={audioUrl}
-                      text={fullText}
-                      onWordHighlight={handleWordHighlight}
-                      onTimeUpdate={handleTimeUpdate}
-                      isPlaying={isPlaying}
-                      playbackRate={audioSpeed}
-                      onLoadedMetadata={handleLoadedMetadata}
-                      onEnded={handleEnded}
-                    >
-                      {(audioRef) => (
-                        <AdvancedAudioControls
-                          isPlaying={isPlaying}
-                          isGeneratingAudio={isGeneratingAudio}
-                          audioEnabled={audioEnabled}
-                          currentPosition={currentPosition}
-                          audioDuration={audioDuration}
-                          audioSpeed={audioSpeed}
-                          showSettings={showSettings}
-                          highlightedWordIndex={highlightedWordIndex}
-                          totalWords={totalWords}
-                          onTogglePlayPause={() => togglePlayPause(audioRef)}
-                          onSkipBackward={() => skipBackward(audioRef)}
-                          onSkipForward={() => skipForward(audioRef)}
-                          onRestart={() => restart(audioRef)}
-                          onToggleAudio={() => setAudioEnabled(!audioEnabled)}
-                          onToggleSettings={() => setShowSettings(!showSettings)}
-                          onChangeSpeed={changeSpeed}
-                          onSeek={(time) => seekTo(audioRef, time)}
-                        />
-                      )}
-                    </AudioWordSynchronizer>
+                {/* Text tab */}
+                {mobileTab==='text' && (
+                  <div className="p-4">
+                    {enableTextSelection ? (
+                      <SynchronizedTextWithSelection
+                        text={fullText}
+                        highlightedWordIndex={highlightedWordIndex}
+                        enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
+                        className={'text-base'}
+                        onCreateDictation={handleCreateDictation}
+                        onCreateBidirectional={handleCreateBidirectional}
+                        exerciseId={exercise.id}
+                        exerciseLanguage={exerciseLanguage}
+                        enableTextSelection={true}
+                        enableVocabulary={enableVocabularyIntegration}
+                        enhancedHighlighting={enableEnhancedHighlighting}
+                        vocabularyIntegration={enableVocabularyIntegration}
+                        enableContextMenu={enableContextMenu}
+                      />
+                    ) : (
+                      <EnhancedInteractiveText
+                        text={fullText}
+                        language={exerciseLanguage}
+                        enableTooltips={true}
+                        enableBidirectionalCreation={true}
+                        enableTextSelection={false}
+                        vocabularyIntegration={false}
+                        enhancedHighlighting={false}
+                        exerciseId={exercise.id}
+                        onCreateDictation={handleCreateDictation}
+                        onCreateBidirectional={handleCreateBidirectional}
+                      />
+                    )}
                   </div>
                 )}
-                <div>
-                  {/* ... keep desktop text rendering code same ... */}
-                  {enableTextSelection ? (
-                    <SynchronizedTextWithSelection
+                {/* Audio tab */}
+                {mobileTab==='audio' && (
+                  <div className="flex flex-col gap-0 h-full">
+                    <div className="sticky top-0 z-10 bg-background p-4 pb-1 border-b">
+                      <AudioWordSynchronizer
+                        audioUrl={audioUrl}
+                        text={fullText}
+                        onWordHighlight={handleWordHighlight}
+                        onTimeUpdate={handleTimeUpdate}
+                        isPlaying={isPlaying}
+                        playbackRate={audioSpeed}
+                        onLoadedMetadata={handleLoadedMetadata}
+                        onEnded={handleEnded}
+                      >
+                        {(audioRef) => (
+                          <AdvancedAudioControls
+                            isPlaying={isPlaying}
+                            isGeneratingAudio={isGeneratingAudio}
+                            audioEnabled={audioEnabled}
+                            currentPosition={currentPosition}
+                            audioDuration={audioDuration}
+                            audioSpeed={audioSpeed}
+                            showSettings={showSettings}
+                            highlightedWordIndex={highlightedWordIndex}
+                            totalWords={totalWords}
+                            onTogglePlayPause={() => togglePlayPause(audioRef)}
+                            onSkipBackward={() => skipBackward(audioRef)}
+                            onSkipForward={() => skipForward(audioRef)}
+                            onRestart={() => restart(audioRef)}
+                            onToggleAudio={() => setAudioEnabled(!audioEnabled)}
+                            onToggleSettings={() => setShowSettings(!showSettings)}
+                            onChangeSpeed={changeSpeed}
+                            onSeek={(time) => seekTo(audioRef, time)}
+                          />
+                        )}
+                      </AudioWordSynchronizer>
+                    </div>
+                    <div className="flex-1 overflow-auto p-4">
+                      <SynchronizedTextWithSelection
+                        text={fullText}
+                        highlightedWordIndex={highlightedWordIndex}
+                        enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
+                        className={'text-base'}
+                        // In audio tab, disable context actions for max clarity
+                        enableTextSelection={false}
+                        enableVocabulary={false}
+                        enhancedHighlighting={false}
+                        vocabularyIntegration={false}
+                        enableContextMenu={false}
+                        exerciseId={exercise.id}
+                        exerciseLanguage={exerciseLanguage}
+                        onCreateDictation={handleCreateDictation}
+                        onCreateBidirectional={handleCreateBidirectional}
+                      />
+                    </div>
+                  </div>
+                )}
+                {/* Analyze tab */}
+                {mobileTab==='analyze' && (
+                  <div className="p-4">
+                    <SimpleTranslationAnalysis
                       text={fullText}
-                      highlightedWordIndex={highlightedWordIndex}
-                      enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
-                      className={"text-lg"}
-                      onCreateDictation={handleCreateDictation}
-                      onCreateBidirectional={handleCreateBidirectional}
-                      exerciseId={exercise.id}
-                      exerciseLanguage={exerciseLanguage}
-                      enableTextSelection={true}
-                      enableVocabulary={enableVocabularyIntegration}
-                      enhancedHighlighting={enableEnhancedHighlighting}
-                      vocabularyIntegration={enableVocabularyIntegration}
-                      enableContextMenu={enableContextMenu}
+                      sourceLanguage={exerciseLanguage}
+                      onClose={() => setMobileTab('text')}
                     />
-                  ) : (
-                    <EnhancedInteractiveText
-                      text={fullText}
-                      language={exerciseLanguage}
-                      enableTooltips={true}
-                      enableBidirectionalCreation={true}
-                      enableTextSelection={false}
-                      vocabularyIntegration={false}
-                      enhancedHighlighting={false}
-                      exerciseId={exercise.id}
-                      onCreateDictation={handleCreateDictation}
-                      onCreateBidirectional={handleCreateBidirectional}
-                    />
-                  )}
-                </div>
+                  </div>
+                )}
               </>
-            )
-          )}
+            ):(
+              // Desktop: Existing structure, with possibility to toggle translation analysis
+              showTranslationAnalysis ? (
+                <SimpleTranslationAnalysis
+                  text={fullText}
+                  sourceLanguage={exerciseLanguage}
+                  onClose={() => setShowTranslationAnalysis(false)}
+                />
+              ) : (
+                <>
+                  {enableFullTextAudio && (
+                    <div className="flex-shrink-0 mb-4">
+                      <AudioWordSynchronizer
+                        audioUrl={audioUrl}
+                        text={fullText}
+                        onWordHighlight={handleWordHighlight}
+                        onTimeUpdate={handleTimeUpdate}
+                        isPlaying={isPlaying}
+                        playbackRate={audioSpeed}
+                        onLoadedMetadata={handleLoadedMetadata}
+                        onEnded={handleEnded}
+                      >
+                        {(audioRef) => (
+                          <AdvancedAudioControls
+                            isPlaying={isPlaying}
+                            isGeneratingAudio={isGeneratingAudio}
+                            audioEnabled={audioEnabled}
+                            currentPosition={currentPosition}
+                            audioDuration={audioDuration}
+                            audioSpeed={audioSpeed}
+                            showSettings={showSettings}
+                            highlightedWordIndex={highlightedWordIndex}
+                            totalWords={totalWords}
+                            onTogglePlayPause={() => togglePlayPause(audioRef)}
+                            onSkipBackward={() => skipBackward(audioRef)}
+                            onSkipForward={() => skipForward(audioRef)}
+                            onRestart={() => restart(audioRef)}
+                            onToggleAudio={() => setAudioEnabled(!audioEnabled)}
+                            onToggleSettings={() => setShowSettings(!showSettings)}
+                            onChangeSpeed={changeSpeed}
+                            onSeek={(time) => seekTo(audioRef, time)}
+                          />
+                        )}
+                      </AudioWordSynchronizer>
+                    </div>
+                  )}
+                  <div>
+                    {enableTextSelection ? (
+                      <SynchronizedTextWithSelection
+                        text={fullText}
+                        highlightedWordIndex={highlightedWordIndex}
+                        enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
+                        className={'text-lg'}
+                        onCreateDictation={handleCreateDictation}
+                        onCreateBidirectional={handleCreateBidirectional}
+                        exerciseId={exercise.id}
+                        exerciseLanguage={exerciseLanguage}
+                        enableTextSelection={true}
+                        enableVocabulary={enableVocabularyIntegration}
+                        enhancedHighlighting={enableEnhancedHighlighting}
+                        vocabularyIntegration={enableVocabularyIntegration}
+                        enableContextMenu={enableContextMenu}
+                      />
+                    ) : (
+                      <EnhancedInteractiveText
+                        text={fullText}
+                        language={exerciseLanguage}
+                        enableTooltips={true}
+                        enableBidirectionalCreation={true}
+                        enableTextSelection={false}
+                        vocabularyIntegration={false}
+                        enhancedHighlighting={false}
+                        exerciseId={exercise.id}
+                        onCreateDictation={handleCreateDictation}
+                        onCreateBidirectional={handleCreateBidirectional}
+                      />
+                    )}
+                  </div>
+                </>
+              )
+            )}
+          </Card>
         </div>
-        {/* Mobile: Bottom quick actions, unchanged */}
-        {isMobile && mobileTab === "text" && (
-          // ... keep bottom actions the same ...
+        {/* Mobile: Bottom quick actions - keep existing, but add tap styles */}
+        {isMobile && mobileTab==='text' && (
           <div className="flex-shrink-0 border-t p-4 bg-gray-50">
             <div className="flex justify-center gap-2">
               <Button
@@ -502,7 +497,7 @@ export const ReadingFocusedModal: React.FC<any> = ({
                 variant="outline"
                 size="sm"
                 className="touch-manipulation active:bg-primary/20"
-                onClick={() => setMobileTab("analyze")}
+                onClick={() => setMobileTab('analyze')}
               >
                 <Languages className="h-4 w-4 mr-1" />
                 Analyze
