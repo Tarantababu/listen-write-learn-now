@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -13,6 +14,7 @@ import {
   Settings
 } from 'lucide-react';
 import { AudioWaveformPulse } from './AudioWaveformPulse';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AdvancedAudioControlsProps {
   isPlaying: boolean;
@@ -53,6 +55,8 @@ export const AdvancedAudioControls: React.FC<AdvancedAudioControlsProps> = ({
   onChangeSpeed,
   onSeek
 }) => {
+  const isMobile = useIsMobile();
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -67,14 +71,35 @@ export const AdvancedAudioControls: React.FC<AdvancedAudioControlsProps> = ({
     onSeek(newTime);
   };
 
+  // Dynamic classes for mobile vs desktop
+  const btnSize = isMobile ? "icon" : "sm";
+  const ctrlBtnMin = isMobile ? "min-w-[48px] min-h-[48px]" : "";
+  const ctrlBtnClass = `touch-manipulation ${ctrlBtnMin} rounded-full active:scale-95 focus-visible:ring-2 transition duration-100`;
+  const playBtnSize = isMobile ? "icon" : "lg";
+  const playBtnWH = isMobile ? "w-14 h-14" : "w-16 h-12";
+  const playBtnClass = `touch-manipulation rounded-full ${playBtnWH} flex items-center justify-center active:scale-95 transition duration-100`;
+
+  // Mobile: increase spacing between controls
+  const mainCtrlGap = isMobile ? "gap-4" : "gap-2";
+
+  // Progress bar hit area + visual
+  const progressH = isMobile ? "h-5" : "h-3";
+  const progressClass = `w-full bg-gray-200 rounded-full ${progressH} cursor-pointer relative`;
+  const progressFGClass = `bg-blue-600 ${progressH} rounded-full transition-all duration-300`;
+
+  // Word progress indicator thicker on mobile
+  const wordIndicatorClass = `absolute top-0 ${progressH} w-1 ${isMobile ? "bg-yellow-400" : "bg-yellow-500"} rounded-full transition-all duration-300`;
+
   return (
-    <Card className="p-4 space-y-4">
-      {/* Status Display */}
+    <Card className={`p-4 space-y-4 ${isMobile ? 'select-none' : ''}`}>
+      {/* Status/Settings Row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs">
-            Word {highlightedWordIndex + 1} of {totalWords}
-          </Badge>
+          {!isMobile && (
+            <Badge variant="outline" className="text-xs">
+              Word {highlightedWordIndex + 1} of {totalWords}
+            </Badge>
+          )}
           {isGeneratingAudio && (
             <AudioWaveformPulse className="ml-2" />
           )}
@@ -83,76 +108,94 @@ export const AdvancedAudioControls: React.FC<AdvancedAudioControlsProps> = ({
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
-            size="sm"
+            size={btnSize}
             onClick={onToggleAudio}
+            className={ctrlBtnClass}
+            aria-label={audioEnabled ? "Mute audio" : "Unmute audio"}
+            tabIndex={0}
           >
-            {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            {audioEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
           </Button>
           <Button
             variant="ghost"
-            size="sm"
+            size={btnSize}
             onClick={onToggleSettings}
+            className={ctrlBtnClass}
+            aria-label="Audio settings"
+            tabIndex={0}
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-5 w-5" />
           </Button>
         </div>
       </div>
 
       {/* Main Controls */}
-      <div className="flex items-center justify-center gap-2">
+      <div className={`flex items-center justify-center ${mainCtrlGap}`}>
         <Button
           variant="outline"
-          size="sm"
+          size={btnSize}
           onClick={onRestart}
           disabled={!audioEnabled || isGeneratingAudio}
+          className={ctrlBtnClass}
+          aria-label="Restart audio"
         >
-          <RotateCcw className="h-4 w-4" />
+          <RotateCcw className="h-6 w-6" />
         </Button>
         
         <Button
           variant="outline"
-          size="sm"
+          size={btnSize}
           onClick={onSkipBackward}
           disabled={!audioEnabled || isGeneratingAudio}
+          className={ctrlBtnClass}
+          aria-label="Skip back 10 seconds"
         >
-          <SkipBack className="h-4 w-4" />
+          <SkipBack className="h-6 w-6" />
         </Button>
         
         <Button
           variant="default"
-          size="lg"
+          size={playBtnSize}
           onClick={onTogglePlayPause}
           disabled={!audioEnabled || isGeneratingAudio}
-          className="w-16 h-12"
+          className={playBtnClass}
+          aria-label={isPlaying ? "Pause" : "Play"}
         >
-          {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+          {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8" />}
         </Button>
         
         <Button
           variant="outline"
-          size="sm"
+          size={btnSize}
           onClick={onSkipForward}
           disabled={!audioEnabled || isGeneratingAudio}
+          className={ctrlBtnClass}
+          aria-label="Skip forward 10 seconds"
         >
-          <SkipForward className="h-4 w-4" />
+          <SkipForward className="h-6 w-6" />
         </Button>
       </div>
 
       {/* Progress Bar */}
       <div className="space-y-2">
         <div 
-          className="w-full bg-gray-200 rounded-full h-3 cursor-pointer relative"
+          className={progressClass}
           onClick={handleProgressClick}
+          role="slider"
+          aria-valuemin={0}
+          aria-valuemax={audioDuration}
+          aria-valuenow={currentPosition}
+          aria-label="Audio progress"
         >
           <div 
-            className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+            className={progressFGClass}
             style={{ width: `${audioDuration > 0 ? (currentPosition / audioDuration) * 100 : 0}%` }}
           />
           
           {/* Word progress indicator */}
           {totalWords > 0 && (
             <div 
-              className="absolute top-0 h-3 w-1 bg-yellow-500 rounded-full transition-all duration-300"
+              className={wordIndicatorClass}
               style={{ 
                 left: `${totalWords > 0 ? (highlightedWordIndex / totalWords) * 100 : 0}%`,
                 transform: 'translateX(-50%)'
@@ -161,7 +204,7 @@ export const AdvancedAudioControls: React.FC<AdvancedAudioControlsProps> = ({
           )}
         </div>
         
-        <div className="flex justify-between text-sm text-muted-foreground">
+        <div className={`flex justify-between text-sm text-muted-foreground ${isMobile ? "text-base font-medium" : ""}`}>
           <span>{formatTime(currentPosition)}</span>
           <span>{formatTime(audioDuration)}</span>
         </div>
@@ -169,15 +212,16 @@ export const AdvancedAudioControls: React.FC<AdvancedAudioControlsProps> = ({
 
       {/* Speed Controls */}
       {showSettings && (
-        <div className="flex items-center justify-center gap-2 pt-2 border-t">
-          <span className="text-sm text-muted-foreground mr-2">Speed:</span>
+        <div className={`flex items-center justify-center gap-1 pt-2 border-t ${isMobile ? "gap-2 pt-3" : ""}`}>
+          <span className={`text-sm text-muted-foreground ${isMobile ? "mr-2" : "mr-2"}`}>Speed:</span>
           {[0.5, 0.75, 1, 1.25, 1.5, 2].map(speed => (
             <Button
               key={speed}
               variant={audioSpeed === speed ? "default" : "outline"}
-              size="sm"
+              size={isMobile ? "sm" : "sm"}
               onClick={() => onChangeSpeed(speed)}
-              className="text-xs px-2"
+              className={`text-xs px-2 ${isMobile ? "min-w-[40px] min-h-[32px] rounded-lg touch-manipulation active:scale-95" : ""}`}
+              aria-label={`Set speed to ${speed}x`}
             >
               {speed}x
             </Button>
