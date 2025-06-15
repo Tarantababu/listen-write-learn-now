@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,7 +11,8 @@ import {
   RotateCcw,
   Volume2,
   VolumeX,
-  Settings
+  Settings,
+  RefreshCw
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
@@ -32,6 +34,7 @@ interface AdvancedAudioControlsProps {
   onToggleSettings: () => void;
   onChangeSpeed: (speed: number) => void;
   onSeek?: (time: number) => void;
+  onRetryGeneration?: () => void;
 }
 
 export const AdvancedAudioControls: React.FC<AdvancedAudioControlsProps> = ({
@@ -51,7 +54,8 @@ export const AdvancedAudioControls: React.FC<AdvancedAudioControlsProps> = ({
   onToggleAudio,
   onToggleSettings,
   onChangeSpeed,
-  onSeek
+  onSeek,
+  onRetryGeneration
 }) => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -84,6 +88,16 @@ export const AdvancedAudioControls: React.FC<AdvancedAudioControlsProps> = ({
         </div>
         
         <div className="flex items-center gap-2">
+          {onRetryGeneration && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onRetryGeneration}
+              title="Retry audio generation"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
