@@ -225,7 +225,7 @@ export const ReadingFocusedModal: React.FC<any> = ({
                   </Badge>
                   
                   {enableWordSynchronization && <Badge variant="outline" className="text-xs">Word Sync</Badge>}
-                  {enableContextMenu && <Badge variant="outline" className="text-xs">Enhanced Selection</Badge>}
+                  {enableContextMenu}
                 </div>
               </div>
             </div>
