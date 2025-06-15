@@ -28,9 +28,10 @@ const MemoizedExerciseGrid = React.memo(ExerciseGrid);
 const MemoizedBidirectionalPage = React.memo(BidirectionalPage);
 const MemoizedFilterBar = React.memo(FilterBar);
 const MemoizedPaginationControls = React.memo(PaginationControls);
-
 const ExercisesPage: React.FC = () => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const {
     exercises,
     addExercise,
@@ -38,12 +39,17 @@ const ExercisesPage: React.FC = () => {
     deleteExercise,
     markProgress,
     refreshExercises,
-    loading,
+    loading
   } = useExerciseContext();
-  const { directories } = useDirectoryContext();
-  const { settings } = useUserSettingsContext();
-  const { dueReviewsCount } = useBidirectionalReviews();
-
+  const {
+    directories
+  } = useDirectoryContext();
+  const {
+    settings
+  } = useUserSettingsContext();
+  const {
+    dueReviewsCount
+  } = useBidirectionalReviews();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [editingExercise, setEditingExercise] = useState(null);
@@ -53,7 +59,6 @@ const ExercisesPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
   const exercisesPerPage = 12;
-
   useEffect(() => {
     if (user) {
       refreshExercises();
@@ -64,8 +69,7 @@ const ExercisesPage: React.FC = () => {
   const filteredExercises = useMemo(() => {
     return exercises.filter(exercise => {
       const matchesLanguage = exercise.language === settings.selectedLanguage;
-      const matchesSearch = exercise.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           exercise.text.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = exercise.title.toLowerCase().includes(searchTerm.toLowerCase()) || exercise.text.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesTag = !selectedTag || exercise.tags.includes(selectedTag);
       return matchesLanguage && matchesSearch && matchesTag;
     });
@@ -73,67 +77,62 @@ const ExercisesPage: React.FC = () => {
 
   // Memoize unique tags to prevent unnecessary recalculations
   const allTags = useMemo(() => {
-    return [...new Set(
-      exercises
-        .filter(exercise => exercise.language === settings.selectedLanguage)
-        .flatMap(exercise => exercise.tags)
-    )];
+    return [...new Set(exercises.filter(exercise => exercise.language === settings.selectedLanguage).flatMap(exercise => exercise.tags))];
   }, [exercises, settings.selectedLanguage]);
 
   // Memoize pagination calculations
-  const { totalPages, paginatedExercises } = useMemo(() => {
+  const {
+    totalPages,
+    paginatedExercises
+  } = useMemo(() => {
     const total = Math.ceil(filteredExercises.length / exercisesPerPage);
-    const paginated = filteredExercises.slice(
-      (currentPage - 1) * exercisesPerPage,
-      currentPage * exercisesPerPage
-    );
-    return { totalPages: total, paginatedExercises: paginated };
+    const paginated = filteredExercises.slice((currentPage - 1) * exercisesPerPage, currentPage * exercisesPerPage);
+    return {
+      totalPages: total,
+      paginatedExercises: paginated
+    };
   }, [filteredExercises, currentPage, exercisesPerPage]);
 
   // Memoized event handlers to prevent unnecessary re-renders
   const onCreateExercise = useCallback(() => {
     setIsCreating(true);
   }, []);
-
-  const onSaveExercise = useCallback(async (exerciseToSave) => {
+  const onSaveExercise = useCallback(async exerciseToSave => {
     if (exerciseToSave.id) {
       await updateExercise(exerciseToSave.id, exerciseToSave);
     } else {
       await addExercise(exerciseToSave);
     }
   }, [updateExercise, addExercise]);
-
-  const handleDeleteExercise = useCallback((exercise) => {
+  const handleDeleteExercise = useCallback(exercise => {
     setDeleteExerciseId(exercise.id);
   }, []);
-
   const confirmDeleteExercise = useCallback(async () => {
     if (deleteExerciseId) {
       await deleteExercise(deleteExerciseId);
       setDeleteExerciseId(null);
     }
   }, [deleteExerciseId, deleteExercise]);
-
-  const handleToggleArchive = useCallback(async (exercise) => {
-    await updateExercise(exercise.id, { archived: !exercise.archived });
+  const handleToggleArchive = useCallback(async exercise => {
+    await updateExercise(exercise.id, {
+      archived: !exercise.archived
+    });
   }, [updateExercise]);
-
-  const handleMoveExercise = useCallback((exercise) => {
+  const handleMoveExercise = useCallback(exercise => {
     setMoveExerciseData(exercise);
   }, []);
-
-  const confirmMoveExercise = useCallback(async (directoryId) => {
+  const confirmMoveExercise = useCallback(async directoryId => {
     if (moveExerciseData) {
-      await updateExercise(moveExerciseData.id, { directoryId });
+      await updateExercise(moveExerciseData.id, {
+        directoryId
+      });
       setMoveExerciseData(null);
     }
   }, [moveExerciseData, updateExercise]);
-
-  const handlePractice = useCallback((exercise) => {
+  const handlePractice = useCallback(exercise => {
     setPracticeExercise(exercise);
   }, []);
-
-  const onCompleteExercise = useCallback(async (accuracy) => {
+  const onCompleteExercise = useCallback(async accuracy => {
     if (practiceExercise) {
       await markProgress(practiceExercise.id, accuracy);
       // Don't close the modal here - let the user close it manually
@@ -159,9 +158,7 @@ const ExercisesPage: React.FC = () => {
         break;
     }
   }, []);
-
-  return (
-    <div className="container mx-auto px-4 py-8">
+  return <div className="container mx-auto px-4 py-8">
       {/* Unified Header for better alignment */}
       <div className="mb-8 text-center space-y-2">
         <h1 className="text-3xl font-bold">Exercises</h1>
@@ -186,11 +183,9 @@ const ExercisesPage: React.FC = () => {
             <ArrowLeftRight className="h-4 w-4" />
             <span className="hidden md:inline">Bidirectional Method</span>
             <span className="md:hidden">Bidirectional</span>
-            {dueReviewsCount > 0 && (
-              <Badge variant="destructive" className="ml-2 h-5 min-w-5 text-xs">
+            {dueReviewsCount > 0 && <Badge variant="destructive" className="ml-2 h-5 min-w-5 text-xs">
                 {dueReviewsCount}
-              </Badge>
-            )}
+              </Badge>}
             <PopoverHint className="ml-1" triggerClassName="text-muted-foreground/60 hover:text-muted-foreground">
               <div className="space-y-3">
                 <div>
@@ -217,14 +212,7 @@ const ExercisesPage: React.FC = () => {
 
         {/* Dictation Tab */}
         <TabsContent value="dictation" className="space-y-8">
-          <div className="mb-3 text-center">
-            <h2 className="text-xl font-semibold flex justify-center items-center gap-2">
-              <Mic className="h-5 w-5 text-blue-500" /> Dictation Practice Method
-            </h2>
-            <p className="text-gray-500 text-sm mt-1">
-              Sharpen your listening and transcription skills with dictation exercises.
-            </p>
-          </div>
+          
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
             <CreateExerciseCard onClick={onCreateExercise} />
@@ -233,35 +221,16 @@ const ExercisesPage: React.FC = () => {
 
           {/* Search and Filter in unified box */}
           <div className="flex flex-col md:flex-row gap-4 md:items-center shadow-sm bg-background border border-muted px-4 py-3 rounded-lg mb-4">
-            <MemoizedFilterBar
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              selectedTag={selectedTag}
-              setSelectedTag={setSelectedTag}
-              allTags={allTags}
-            />
+            <MemoizedFilterBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedTag={selectedTag} setSelectedTag={setSelectedTag} allTags={allTags} />
             {/* Could add more search options if needed */}
           </div>
 
           {/* Aligned Grid */}
-          <MemoizedExerciseGrid
-            paginatedExercises={paginatedExercises}
-            exercisesPerPage={exercisesPerPage}
-            onPractice={handlePractice}
-            onEdit={setEditingExercise}
-            onDelete={handleDeleteExercise}
-            onMove={handleMoveExercise}
-            onCreateClick={onCreateExercise}
-            canEdit={true}
-          />
+          <MemoizedExerciseGrid paginatedExercises={paginatedExercises} exercisesPerPage={exercisesPerPage} onPractice={handlePractice} onEdit={setEditingExercise} onDelete={handleDeleteExercise} onMove={handleMoveExercise} onCreateClick={onCreateExercise} canEdit={true} />
 
           {/* Pagination, consistent gap on all */}
           <div className="mt-6 flex justify-center">
-            <MemoizedPaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
+            <MemoizedPaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
           </div>
         </TabsContent>
 
@@ -298,34 +267,13 @@ const ExercisesPage: React.FC = () => {
       </Tabs>
 
       {/* Modals for Dictation Method */}
-      <ExerciseFormModal
-        isOpen={isCreating || !!editingExercise}
-        onOpenChange={(open) => !open && handleModalClose('create')}
-        initialValues={editingExercise}
-        mode={editingExercise ? 'edit' : 'create'}
-      />
+      <ExerciseFormModal isOpen={isCreating || !!editingExercise} onOpenChange={open => !open && handleModalClose('create')} initialValues={editingExercise} mode={editingExercise ? 'edit' : 'create'} />
 
-      <PracticeModal
-        exercise={practiceExercise}
-        isOpen={!!practiceExercise}
-        onOpenChange={(open) => !open && handleModalClose('practice')}
-        onComplete={onCompleteExercise}
-      />
+      <PracticeModal exercise={practiceExercise} isOpen={!!practiceExercise} onOpenChange={open => !open && handleModalClose('practice')} onComplete={onCompleteExercise} />
 
-      <MoveExerciseModal
-        exercise={moveExerciseData}
-        isOpen={!!moveExerciseData}
-        onOpenChange={(open) => !open && handleModalClose('move')}
-        onSuccess={() => setMoveExerciseData(null)}
-      />
+      <MoveExerciseModal exercise={moveExerciseData} isOpen={!!moveExerciseData} onOpenChange={open => !open && handleModalClose('move')} onSuccess={() => setMoveExerciseData(null)} />
 
-      <DeleteExerciseDialog
-        isOpen={!!deleteExerciseId}
-        onOpenChange={(open) => !open && handleModalClose('delete')}
-        onConfirm={confirmDeleteExercise}
-      />
-    </div>
-  );
+      <DeleteExerciseDialog isOpen={!!deleteExerciseId} onOpenChange={open => !open && handleModalClose('delete')} onConfirm={confirmDeleteExercise} />
+    </div>;
 };
-
 export default ExercisesPage;
