@@ -236,14 +236,7 @@ const ExercisesPage: React.FC = () => {
 
         {/* Reading Tab */}
         <TabsContent value="reading" className="space-y-8">
-          <div className="mb-3 text-center">
-            <h2 className="text-xl font-semibold flex justify-center items-center gap-2">
-              <BookOpen className="h-5 w-5 text-green-600" /> Reading & Listening Practice
-            </h2>
-            <p className="text-gray-500 text-sm mt-1">
-              Strengthen comprehension and listening skills with curated and AI-generated reading.
-            </p>
-          </div>
+          
           {/* The section is already very visually consistent with new grid/card system */}
           <div>
             <ReadingExercisesSection />
