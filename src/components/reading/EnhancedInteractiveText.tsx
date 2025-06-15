@@ -1,10 +1,8 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card } from '@/components/ui/card';
 import { Volume2, Plus } from 'lucide-react';
-import { readingExerciseService } from '@/services/readingExerciseService';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { toast } from 'sonner';
 import { TextSelectionManager } from './TextSelectionManager';
@@ -54,23 +52,8 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
   enableContextMenu = true,
   className
 }) => {
-  const [playingWord, setPlayingWord] = useState<string | null>(null);
   const [hoveredWord, setHoveredWord] = useState<string | null>(null);
   const { addExercise } = useExerciseContext();
-
-  const playWordAudio = async (word: string) => {
-    try {
-      setPlayingWord(word);
-      const audioUrl = await readingExerciseService.generateAudio(word, language);
-      const audio = new Audio(audioUrl);
-      await audio.play();
-    } catch (error) {
-      console.error('Error playing word audio:', error);
-      toast.error('Audio playback failed');
-    } finally {
-      setPlayingWord(null);
-    }
-  };
 
   const createBidirectionalExercise = async (word: string, definition?: string) => {
     if (!enableBidirectionalCreation) return;
@@ -145,15 +128,6 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
                   <div className="flex items-center justify-between">
                     <h4 className="font-semibold text-lg text-gray-900">{wordInfo.word}</h4>
                     <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => playWordAudio(wordInfo.word)}
-                        disabled={playingWord === wordInfo.word}
-                        className="h-8 w-8 p-0 hover:bg-gray-100 text-gray-600 transition-colors duration-200"
-                      >
-                        <Volume2 className="h-4 w-4" />
-                      </Button>
                       {enableBidirectionalCreation && (
                         <Button
                           size="sm"
@@ -182,10 +156,6 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
                   
                   <div className="pt-2 border-t border-gray-100">
                     <div className="text-xs text-gray-500 flex items-center gap-4">
-                      <span className="flex items-center gap-1">
-                        <Volume2 className="h-3 w-3" />
-                        Click to hear
-                      </span>
                       {enableBidirectionalCreation && (
                         <span className="flex items-center gap-1">
                           <Plus className="h-3 w-3" />

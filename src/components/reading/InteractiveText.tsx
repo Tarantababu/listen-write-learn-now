@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card } from '@/components/ui/card';
 import { Volume2, BookOpen } from 'lucide-react';
-import { readingExerciseService } from '@/services/readingExerciseService';
 import { toast } from 'sonner';
 
 interface Word {
@@ -27,21 +26,7 @@ export const InteractiveText: React.FC<InteractiveTextProps> = ({
   language,
   onWordClick
 }) => {
-  const [playingWord, setPlayingWord] = useState<string | null>(null);
-
-  const playWordAudio = async (word: string) => {
-    try {
-      setPlayingWord(word);
-      const audioUrl = await readingExerciseService.generateAudio(word, language);
-      const audio = new Audio(audioUrl);
-      await audio.play();
-    } catch (error) {
-      console.error('Error playing word audio:', error);
-      toast.error('Audio playback failed');
-    } finally {
-      setPlayingWord(null);
-    }
-  };
+  const [hoveredWord, setHoveredWord] = useState<string | null>(null);
 
   const getWordInfo = (wordText: string): Word | undefined => {
     const cleanWord = wordText.toLowerCase().replace(/[.,!?;:"'()]/g, '');
@@ -87,10 +72,10 @@ export const InteractiveText: React.FC<InteractiveTextProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => playWordAudio(wordInfo.word)}
-                      disabled={playingWord === wordInfo.word}
+                      onClick={() => toast.info('Individual word audio is not available. Use the full text audio instead.')}
+                      title="Audio not available for individual words"
                     >
-                      <Volume2 className="h-4 w-4" />
+                      <Volume2 className="h-4 w-4 opacity-50" />
                     </Button>
                   </div>
                   

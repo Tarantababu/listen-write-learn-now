@@ -7,13 +7,13 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Play, Pause, Volume2, Brain, Mic, Info, BarChart3, Clock, FileText } from 'lucide-react';
 import { ReadingExercise } from '@/types/reading';
-import { readingExerciseService } from '@/services/readingExerciseService';
 import { EnhancedInteractiveText } from './EnhancedInteractiveText';
 import { TextSelectionManager } from './TextSelectionManager';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { Language } from '@/types';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AudioUtils } from '@/utils/audioUtils';
 
 interface AllTextViewProps {
   exercise: ReadingExercise;
@@ -47,15 +47,20 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
     
     try {
       setIsPlaying(true);
-      const audioUrl = await readingExerciseService.generateAudio(fullText, exercise.language);
       
-      if (audioRef.current) {
+      // Use the pre-generated audio URL from the exercise
+      const audioUrl = AudioUtils.getPreferredAudioUrl(exercise);
+      
+      if (audioUrl && audioRef.current) {
         audioRef.current.src = audioUrl;
         await audioRef.current.play();
+      } else {
+        throw new Error('No audio available for this exercise');
       }
     } catch (error) {
       console.error('Error playing full text audio:', error);
-      toast.error('Audio playback failed');
+      toast.error('Audio playback failed - no audio available for this exercise');
+      setIsPlaying(false);
     }
   };
 
@@ -65,25 +70,28 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
     try {
       setIsPlaying(true);
       
-      for (let i = 0; i < exercise.content.sentences.length; i++) {
-        setCurrentPlayingSentence(i);
-        const sentence = exercise.content.sentences[i];
+      // For sentence-by-sentence, we'll play the full audio but show visual feedback
+      // This is a simplified approach since we don't have individual sentence audio
+      const audioUrl = AudioUtils.getPreferredAudioUrl(exercise);
+      
+      if (audioUrl && audioRef.current) {
+        audioRef.current.src = audioUrl;
+        await audioRef.current.play();
         
-        const audioUrl = sentence.audio_url || 
-          await readingExerciseService.generateAudio(sentence.text, exercise.language);
+        // Simulate sentence highlighting based on reading speed
+        const avgWordsPerSentence = fullText.split(' ').length / exercise.content.sentences.length;
+        const highlightDuration = (avgWordsPerSentence / 150) * 60 * 1000; // Assuming 150 words per minute
         
-        const audio = new Audio(audioUrl);
-        await new Promise((resolve, reject) => {
-          audio.onended = resolve;
-          audio.onerror = reject;
-          audio.play();
-        });
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
+        for (let i = 0; i < exercise.content.sentences.length; i++) {
+          setCurrentPlayingSentence(i);
+          await new Promise(resolve => setTimeout(resolve, highlightDuration));
+        }
+      } else {
+        throw new Error('No audio available for this exercise');
       }
     } catch (error) {
       console.error('Error in sentence-by-sentence playback:', error);
-      toast.error('Audio playback failed');
+      toast.error('Audio playback failed - no audio available for this exercise');
     } finally {
       setIsPlaying(false);
       setCurrentPlayingSentence(-1);
@@ -181,6 +189,9 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
     );
   };
 
+  // Check if audio is available for this exercise
+  const hasAudio = AudioUtils.getPreferredAudioUrl(exercise) !== null;
+
   return (
     <div className="space-y-6">
       {/* Enhanced Selection Help Banner */}
@@ -238,7 +249,7 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
                   Audio Playback
                 </h3>
                 <p className={`text-gray-500 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                  Listen to the full text or sentence by sentence
+                  {hasAudio ? 'Listen to the full text or sentence by sentence' : 'Audio not available for this exercise'}
                 </p>
               </div>
             </div>
@@ -260,7 +271,7 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
           <div className={`flex gap-3 ${isMobile ? 'flex-col' : 'flex-wrap'}`}>
             <Button
               onClick={playFullText}
-              disabled={isPlaying || !audioEnabled}
+              disabled={isPlaying || !audioEnabled || !hasAudio}
               className={`flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 ${
                 isMobile ? 'w-full justify-center py-2.5' : ''
               }`}
@@ -278,7 +289,7 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
             <Button
               variant="outline"
               onClick={playSentenceBysentence}
-              disabled={isPlaying || !audioEnabled}
+              disabled={isPlaying || !audioEnabled || !hasAudio}
               className={`flex items-center gap-2 border-gray-300 hover:bg-gray-50 transition-colors duration-200 ${
                 isMobile ? 'w-full justify-center py-2.5' : ''
               }`}
@@ -302,6 +313,14 @@ export const AllTextView: React.FC<AllTextViewProps> = ({
               </span>
             </Button>
           </div>
+          
+          {!hasAudio && (
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                Audio is not available for this exercise. Audio generation happens during exercise creation.
+              </p>
+            </div>
+          )}
           
           {isPlaying && currentPlayingSentence !== -1 && (
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
