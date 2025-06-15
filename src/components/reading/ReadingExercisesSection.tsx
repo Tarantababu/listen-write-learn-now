@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, BookOpen, Volume2, Brain, Sparkles, Loader2, Zap, Lock } from 'lucide-react';
+import { Plus, Search, BookOpen, Volume2, Brain, Sparkles, Loader2, Zap } from 'lucide-react';
 import { ReadingExerciseModal } from './ReadingExerciseModal';
 import { ReadingFocusedModal } from './ReadingFocusedModal';
 import { ReadingExerciseCard } from './ReadingExerciseCard';
@@ -12,14 +12,12 @@ import { optimizedReadingService } from '@/services/optimizedReadingService';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { useReadingExerciseLimits } from '@/hooks/use-reading-exercise-limits';
 import { ReadingExercise } from '@/types/reading';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import { getReadingFeatureFlags } from '@/utils/featureFlags';
 import { supabase } from '@/integrations/supabase/client';
 import { SUPPORTED_LANGUAGES } from '@/constants/languages';
-
 export const ReadingExercisesSection: React.FC = () => {
   const {
     settings
@@ -30,7 +28,6 @@ export const ReadingExercisesSection: React.FC = () => {
   const {
     subscription
   } = useSubscription();
-  const exerciseLimit = useReadingExerciseLimits(settings.selectedLanguage);
   const isMobile = useIsMobile();
   const [exercises, setExercises] = useState<ReadingExercise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,16 +47,14 @@ export const ReadingExercisesSection: React.FC = () => {
   const featureFlags = getReadingFeatureFlags();
 
   // Mock exercise limit for bidirectional exercises
-  const bidirectionalExerciseLimit = {
+  const exerciseLimit = {
     canCreate: subscription.isSubscribed || true,
     currentCount: 0,
     limit: subscription.isSubscribed ? Infinity : 10
   };
-
   useEffect(() => {
     loadExercises();
   }, [settings.selectedLanguage]);
-
   const loadExercises = async () => {
     try {
       setLoading(true);
@@ -72,7 +67,6 @@ export const ReadingExercisesSection: React.FC = () => {
       setLoading(false);
     }
   };
-
   const handleDeleteExercise = async (exercise: ReadingExercise) => {
     try {
       await optimizedReadingService.deleteReadingExercise(exercise.id);
@@ -83,15 +77,6 @@ export const ReadingExercisesSection: React.FC = () => {
       toast.error('Failed to delete exercise');
     }
   };
-
-  const handleCreateExercise = () => {
-    if (!exerciseLimit.canCreate) {
-      toast.error(`You've reached the limit of ${exerciseLimit.limit} reading exercises. Upgrade to create more!`);
-      return;
-    }
-    setIsCreateModalOpen(true);
-  };
-
   const generateAudioForText = async (text: string, language: string): Promise<string | undefined> => {
     try {
       console.log('Generating audio for dictation text:', text.substring(0, 50) + '...');
@@ -121,7 +106,6 @@ export const ReadingExercisesSection: React.FC = () => {
       throw error;
     }
   };
-
   const handleCreateDictation = async (selectedText: string) => {
     if (creatingDictation) return;
     setCreatingDictation(true);
@@ -160,25 +144,21 @@ export const ReadingExercisesSection: React.FC = () => {
       setCreatingDictation(false);
     }
   };
-
   const handleCreateBidirectional = async (selectedText: string) => {
     console.log('Opening bidirectional dialog for text:', selectedText);
     setSelectedTextForBidirectional(selectedText);
     setIsBidirectionalDialogOpen(true);
   };
-
   const handleBidirectionalExerciseCreated = () => {
     console.log('Bidirectional exercise created successfully');
     setIsBidirectionalDialogOpen(false);
     setSelectedTextForBidirectional('');
   };
-
   const filteredExercises = exercises.filter(exercise => {
     const matchesSearch = exercise.title.toLowerCase().includes(searchTerm.toLowerCase()) || exercise.topic.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDifficulty = selectedDifficulty === 'all' || exercise.difficulty_level === selectedDifficulty;
     return matchesSearch && matchesDifficulty;
   });
-
   if (loading) {
     return <div className="space-y-6">
         <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
@@ -199,41 +179,12 @@ export const ReadingExercisesSection: React.FC = () => {
         </div>
       </div>;
   }
-
   return <div className="space-y-6">
-      {/* Exercise Limit Card for Free Users */}
-      {!subscription.isSubscribed && (
-        <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                <BookOpen className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-medium text-amber-900 dark:text-amber-100">
-                  Reading Exercise Limit
-                </h3>
-                <p className="text-sm text-amber-700 dark:text-amber-300">
-                  {exerciseLimit.isLoading ? (
-                    "Checking your usage..."
-                  ) : (
-                    <>
-                      You've used {exerciseLimit.currentCount} of {exerciseLimit.limit} free reading exercises.
-                      {!exerciseLimit.canCreate && " Upgrade to create unlimited exercises!"}
-                    </>
-                  )}
-                </p>
-              </div>
-              {!exerciseLimit.canCreate && (
-                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                  <Lock className="h-4 w-4" />
-                  <span className="text-sm font-medium">Limit Reached</span>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Header */}
+      
+
+      {/* Enhanced Feature Highlights */}
+      
 
       {/* Controls */}
       <div className={`flex gap-4 ${isMobile ? 'flex-col px-4' : 'flex-col md:flex-row'}`}>
@@ -254,22 +205,9 @@ export const ReadingExercisesSection: React.FC = () => {
             </SelectContent>
           </Select>
         </div>
-        <Button 
-          onClick={handleCreateExercise} 
-          className={isMobile ? 'w-full py-3' : ''}
-          disabled={exerciseLimit.isLoading || !exerciseLimit.canCreate}
-        >
-          {!exerciseLimit.canCreate ? (
-            <>
-              <Lock className="h-4 w-4 mr-2" />
-              Limit Reached
-            </>
-          ) : (
-            <>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Exercise
-            </>
-          )}
+        <Button onClick={() => setIsCreateModalOpen(true)} className={isMobile ? 'w-full py-3' : ''}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Exercise
         </Button>
       </div>
 
@@ -298,7 +236,7 @@ export const ReadingExercisesSection: React.FC = () => {
             <p className={`text-muted-foreground mb-4 ${isMobile ? 'text-sm' : ''}`}>
               {exercises.length === 0 ? 'Create your first reading exercise with our optimized system!' : 'No exercises match your current search filters.'}
             </p>
-            {exercises.length === 0 && exerciseLimit.canCreate && <Button onClick={handleCreateExercise} className={isMobile ? 'w-full py-3' : ''}>
+            {exercises.length === 0 && <Button onClick={() => setIsCreateModalOpen(true)} className={isMobile ? 'w-full py-3' : ''}>
                 <Plus className="h-4 w-4 mr-2" />
                 Create Your First Exercise
               </Button>}
@@ -308,16 +246,7 @@ export const ReadingExercisesSection: React.FC = () => {
         </div>}
 
       {/* Modals */}
-      <ReadingExerciseModal 
-        isOpen={isCreateModalOpen} 
-        onClose={() => setIsCreateModalOpen(false)} 
-        onSuccess={() => {
-          loadExercises();
-          // Refresh exercise limits to show updated count
-          window.location.reload();
-        }} 
-        language={settings.selectedLanguage} 
-      />
+      <ReadingExerciseModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} onSuccess={loadExercises} language={settings.selectedLanguage} />
 
       {/* Enhanced Reading Modal with all feature flags */}
       <ReadingFocusedModal exercise={practiceExercise} isOpen={!!practiceExercise} onClose={() => setPracticeExercise(null)} onCreateDictation={handleCreateDictation} onCreateBidirectional={handleCreateBidirectional} enableTextSelection={featureFlags.enableTextSelection} enableVocabularyIntegration={featureFlags.enableVocabularyIntegration} enableEnhancedHighlighting={featureFlags.enableEnhancedHighlighting} enableFullTextAudio={featureFlags.enableAdvancedFeatures} enableWordSynchronization={featureFlags.enableWordSynchronization} enableContextMenu={featureFlags.enableContextMenu} enableSelectionFeedback={featureFlags.enableSelectionFeedback} enableSmartTextProcessing={featureFlags.enableSmartTextProcessing} />
@@ -326,6 +255,6 @@ export const ReadingExercisesSection: React.FC = () => {
       <BidirectionalCreateDialog isOpen={isBidirectionalDialogOpen} onClose={() => {
       setIsBidirectionalDialogOpen(false);
       setSelectedTextForBidirectional('');
-    }} onExerciseCreated={handleBidirectionalExerciseCreated} exerciseLimit={bidirectionalExerciseLimit} targetLanguage={settings.selectedLanguage} supportedLanguages={SUPPORTED_LANGUAGES} prefilledText={selectedTextForBidirectional} />
+    }} onExerciseCreated={handleBidirectionalExerciseCreated} exerciseLimit={exerciseLimit} targetLanguage={settings.selectedLanguage} supportedLanguages={SUPPORTED_LANGUAGES} prefilledText={selectedTextForBidirectional} />
     </div>;
 };
