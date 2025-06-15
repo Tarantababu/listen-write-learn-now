@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -163,26 +162,30 @@ const ExercisesPage: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Exercises</h1>
-        <p className="text-muted-foreground">
-          Practice your language skills with different exercise types
+      {/* Unified Header for better alignment */}
+      <div className="mb-8 text-center space-y-2">
+        <h1 className="text-3xl font-bold">Exercises</h1>
+        <p className="text-muted-foreground text-base">
+          Practice your language skills with different exercise types and progress methods.
         </p>
       </div>
 
       <Tabs defaultValue="dictation" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 h-auto md:h-10">
-          <TabsTrigger value="dictation" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 h-auto md:h-12 mb-4 rounded-lg shadow-sm">
+          <TabsTrigger value="dictation" className="flex items-center gap-2 md:justify-center px-4 py-3 md:py-0 rounded-none data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900">
             <Mic className="h-4 w-4" />
-            Dictation Method
+            <span className="hidden md:inline">Dictation Method</span>
+            <span className="md:hidden">Dictation</span>
           </TabsTrigger>
-          <TabsTrigger value="reading" className="flex items-center gap-2">
+          <TabsTrigger value="reading" className="flex items-center gap-2 md:justify-center px-4 py-3 md:py-0 rounded-none data-[state=active]:bg-green-100 data-[state=active]:text-green-900">
             <BookOpen className="h-4 w-4" />
-            Reading & Listening
+            <span className="hidden md:inline">Reading & Listening</span>
+            <span className="md:hidden">Reading</span>
           </TabsTrigger>
-          <TabsTrigger value="bidirectional" className="flex items-center gap-2 relative">
+          <TabsTrigger value="bidirectional" className="flex items-center gap-2 md:justify-center px-4 py-3 md:py-0 rounded-none data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 relative">
             <ArrowLeftRight className="h-4 w-4" />
-            Bidirectional Method
+            <span className="hidden md:inline">Bidirectional Method</span>
+            <span className="md:hidden">Bidirectional</span>
             {dueReviewsCount > 0 && (
               <Badge variant="destructive" className="ml-2 h-5 min-w-5 text-xs">
                 {dueReviewsCount}
@@ -212,23 +215,35 @@ const ExercisesPage: React.FC = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dictation" className="space-y-6">
-          {/* Exercise Types */}
+        {/* Dictation Tab */}
+        <TabsContent value="dictation" className="space-y-8">
+          <div className="mb-3 text-center">
+            <h2 className="text-xl font-semibold flex justify-center items-center gap-2">
+              <Mic className="h-5 w-5 text-blue-500" /> Dictation Practice Method
+            </h2>
+            <p className="text-gray-500 text-sm mt-1">
+              Sharpen your listening and transcription skills with dictation exercises.
+            </p>
+          </div>
+
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
             <CreateExerciseCard onClick={onCreateExercise} />
             {/* Add more exercise type cards here as needed */}
           </div>
 
-          {/* Search and Filter Bar */}
-          <MemoizedFilterBar
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            selectedTag={selectedTag}
-            setSelectedTag={setSelectedTag}
-            allTags={allTags}
-          />
+          {/* Search and Filter in unified box */}
+          <div className="flex flex-col md:flex-row gap-4 md:items-center shadow-sm bg-background border border-muted px-4 py-3 rounded-lg mb-4">
+            <MemoizedFilterBar
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              selectedTag={selectedTag}
+              setSelectedTag={setSelectedTag}
+              allTags={allTags}
+            />
+            {/* Could add more search options if needed */}
+          </div>
 
-          {/* Exercises Grid */}
+          {/* Aligned Grid */}
           <MemoizedExerciseGrid
             paginatedExercises={paginatedExercises}
             exercisesPerPage={exercisesPerPage}
@@ -240,20 +255,45 @@ const ExercisesPage: React.FC = () => {
             canEdit={true}
           />
 
-          {/* Pagination */}
-          <MemoizedPaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
+          {/* Pagination, consistent gap on all */}
+          <div className="mt-6 flex justify-center">
+            <MemoizedPaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         </TabsContent>
 
-        <TabsContent value="reading">
-          <ReadingExercisesSection />
+        {/* Reading Tab */}
+        <TabsContent value="reading" className="space-y-8">
+          <div className="mb-3 text-center">
+            <h2 className="text-xl font-semibold flex justify-center items-center gap-2">
+              <BookOpen className="h-5 w-5 text-green-600" /> Reading & Listening Practice
+            </h2>
+            <p className="text-gray-500 text-sm mt-1">
+              Strengthen comprehension and listening skills with curated and AI-generated reading.
+            </p>
+          </div>
+          {/* The section is already very visually consistent with new grid/card system */}
+          <div>
+            <ReadingExercisesSection />
+          </div>
         </TabsContent>
 
-        <TabsContent value="bidirectional">
-          <MemoizedBidirectionalPage />
+        {/* Bidirectional Tab */}
+        <TabsContent value="bidirectional" className="space-y-8">
+          <div className="mb-3 text-center">
+            <h2 className="text-xl font-semibold flex justify-center items-center gap-2">
+              <ArrowLeftRight className="h-5 w-5 text-purple-700" /> Bidirectional Method
+            </h2>
+            <p className="text-gray-500 text-sm mt-1">
+              Test your translation skills in both directions for maximum retention.
+            </p>
+          </div>
+          <div>
+            <MemoizedBidirectionalPage />
+          </div>
         </TabsContent>
       </Tabs>
 
