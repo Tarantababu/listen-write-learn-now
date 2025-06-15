@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from '../_shared/cors.ts'
 
@@ -26,8 +25,6 @@ serve(async (req) => {
       difficulty_level, 
       target_length = 500, // Provide default value here
       grammar_focus,
-      customText,
-      isCustomText = false,
       directGeneration = false
     } = await req.json()
 
@@ -39,29 +36,25 @@ serve(async (req) => {
 
     let content;
 
-    if (isCustomText && customText) {
-      content = await processCustomTextPreserved(customText, language, difficulty_level, grammar_focus, timeoutController.signal);
+    // Enhanced strategy selection with smarter thresholds
+    const strategy = determineOptimalStrategy(target_length, difficulty_level);
+    
+    if (strategy === 'direct') {
+      content = await generateContentDirect(
+        topic, language, difficulty_level, target_length, grammar_focus, 
+        timeoutController.signal
+      );
+    } else if (strategy === 'smart_chunking') {
+      content = await generateContentWithSmartChunking(
+        topic, language, difficulty_level, target_length, grammar_focus, 
+        timeoutController.signal
+      );
     } else {
-      // Enhanced strategy selection with smarter thresholds
-      const strategy = determineOptimalStrategy(target_length, difficulty_level);
-      
-      if (strategy === 'direct') {
-        content = await generateContentDirect(
-          topic, language, difficulty_level, target_length, grammar_focus, 
-          timeoutController.signal
-        );
-      } else if (strategy === 'smart_chunking') {
-        content = await generateContentWithSmartChunking(
-          topic, language, difficulty_level, target_length, grammar_focus, 
-          timeoutController.signal
-        );
-      } else {
-        // Advanced adaptive chunking for very large content
-        content = await generateContentWithAdaptiveChunking(
-          topic, language, difficulty_level, target_length, grammar_focus, 
-          timeoutController.signal
-        );
-      }
+      // Advanced adaptive chunking for very large content
+      content = await generateContentWithAdaptiveChunking(
+        topic, language, difficulty_level, target_length, grammar_focus, 
+        timeoutController.signal
+      );
     }
 
     clearTimeout(functionTimeout);
@@ -106,246 +99,6 @@ serve(async (req) => {
     )
   }
 })
-
-// NEW FUNCTION: Process custom text while preserving the original
-async function processCustomTextPreserved(
-  customText: string, 
-  language: string, 
-  difficulty_level: string, 
-  grammar_focus?: string,
-  signal?: AbortSignal
-) {
-  console.log(`[CUSTOM TEXT PRESERVED] Processing ${customText.length} characters with text preservation`);
-  
-  // Step 1: Split text into sentences while preserving original text
-  const sentences = splitTextIntoSentences(customText);
-  console.log(`[CUSTOM TEXT PRESERVED] Split into ${sentences.length} sentences`);
-  
-  // Step 2: Process each sentence for analysis only (not modification)
-  const processedSentences = [];
-  
-  for (let i = 0; i < sentences.length; i++) {
-    const sentence = sentences[i];
-    console.log(`[CUSTOM TEXT PRESERVED] Analyzing sentence ${i + 1}/${sentences.length}`);
-    
-    try {
-      const analysis = await analyzeCustomSentence(sentence, language, difficulty_level, signal);
-      
-      processedSentences.push({
-        id: `sentence-${i + 1}`,
-        text: sentence, // PRESERVE ORIGINAL TEXT
-        analysis: analysis
-      });
-    } catch (error) {
-      console.error(`[CUSTOM TEXT PRESERVED] Error analyzing sentence ${i + 1}:`, error);
-      // Fallback analysis for this sentence
-      processedSentences.push({
-        id: `sentence-${i + 1}`,
-        text: sentence, // PRESERVE ORIGINAL TEXT
-        analysis: {
-          words: extractKeyWords(sentence).map(word => ({
-            word: word,
-            definition: 'Definition not available',
-            partOfSpeech: 'unknown',
-            difficulty: 'medium',
-            contextualUsage: `Used in: "${sentence.slice(0, 50)}..."`
-          })),
-          grammar: ['Grammar analysis not available'],
-          translation: 'Translation not available',
-          complexity: 'moderate',
-          keyPhrases: []
-        }
-      });
-    }
-    
-    // Small delay between analyses to avoid rate limiting
-    if (i < sentences.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-  }
-  
-  // Step 3: Calculate overall analysis
-  const totalWordCount = sentences.reduce((count, sentence) => {
-    return count + sentence.split(/\s+/).filter(word => word.length > 0).length;
-  }, 0);
-  
-  const allGrammarPoints = new Set();
-  processedSentences.forEach(sentence => {
-    if (sentence.analysis.grammar) {
-      sentence.analysis.grammar.forEach(point => allGrammarPoints.add(point));
-    }
-  });
-  
-  console.log(`[CUSTOM TEXT PRESERVED] Successfully processed with ${totalWordCount} words preserved`);
-  
-  return {
-    sentences: processedSentences,
-    analysis: {
-      wordCount: totalWordCount,
-      readingTime: Math.ceil(totalWordCount / 200),
-      grammarPoints: Array.from(allGrammarPoints),
-      customTextAnalysis: {
-        originalLength: customText.length,
-        processingMethod: 'text_preservation',
-        preservedMeaning: true,
-        textModified: false, // KEY: No text modification
-        educationalEnhancements: ['vocabulary analysis', 'grammar analysis', 'contextual understanding']
-      },
-      generationStrategy: 'custom_text_preserved',
-      enhancedFeatures: {
-        textPreservation: true,
-        originalContentIntact: true,
-        analysisOnly: true
-      }
-    }
-  };
-}
-
-// Helper function to split text into sentences
-function splitTextIntoSentences(text: string): string[] {
-  // Split on sentence-ending punctuation, but preserve the punctuation
-  const sentences = text
-    .split(/(?<=[.!?])\s+/)
-    .map(sentence => sentence.trim())
-    .filter(sentence => sentence.length > 0);
-  
-  // If no proper sentence endings found, treat as single sentence
-  if (sentences.length === 0) {
-    return [text.trim()];
-  }
-  
-  return sentences;
-}
-
-// Helper function to extract key words from a sentence
-function extractKeyWords(sentence: string): string[] {
-  const words = sentence
-    .toLowerCase()
-    .replace(/[^\w\s]/g, '') // Remove punctuation
-    .split(/\s+/)
-    .filter(word => word.length > 2) // Only words longer than 2 characters
-    .filter(word => !isCommonWord(word)); // Filter out common words
-  
-  // Return up to 5 key words
-  return words.slice(0, 5);
-}
-
-// Helper function to identify common words to filter out
-function isCommonWord(word: string): boolean {
-  const commonWords = new Set([
-    'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her', 'was', 'one',
-    'our', 'had', 'out', 'day', 'get', 'use', 'man', 'new', 'now', 'way', 'may', 'say',
-    'each', 'which', 'she', 'how', 'its', 'who', 'oil', 'sit', 'call', 'this', 'that',
-    'with', 'have', 'from', 'they', 'know', 'want', 'been', 'good', 'much', 'some',
-    'time', 'very', 'when', 'come', 'here', 'just', 'like', 'long', 'make', 'many',
-    'over', 'such', 'take', 'than', 'them', 'well', 'were'
-  ]);
-  
-  return commonWords.has(word);
-}
-
-// Analyze a single sentence without modifying it
-async function analyzeCustomSentence(
-  sentence: string,
-  language: string,
-  difficulty_level: string,
-  signal?: AbortSignal
-) {
-  const prompt = `Analyze this ${language} sentence for ${difficulty_level} level learners. DO NOT modify or rewrite the sentence - only provide analysis.
-
-ORIGINAL SENTENCE (DO NOT CHANGE): "${sentence}"
-
-Provide ONLY analysis in this JSON format:
-{
-  "words": [
-    {
-      "word": "important word from the original sentence",
-      "definition": "clear English definition or translation",
-      "partOfSpeech": "noun/verb/adjective/etc",
-      "difficulty": "easy/medium/hard",
-      "contextualUsage": "how this word is used in the original sentence"
-    }
-  ],
-  "grammar": ["specific grammar point 1", "specific grammar point 2"],
-  "translation": "accurate English translation of the EXACT original sentence",
-  "complexity": "easy/moderate/complex",
-  "keyPhrases": ["important phrase 1", "important phrase 2"]
-}
-
-CRITICAL: 
-- DO NOT modify the original sentence in any way
-- Focus on educational analysis only
-- Select words that would help a ${difficulty_level} learner
-- Provide accurate translations and definitions
-- Return ONLY valid JSON`;
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a language analysis expert. You analyze text without modifying it. Always respond with valid JSON only. Focus on educational value and accuracy.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 1000,
-        response_format: { type: "json_object" }
-      }),
-      signal: signal
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[CUSTOM ANALYSIS ERROR] ${response.status}: ${errorText}`);
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-
-    return parseCustomAnalysis(content);
-  } catch (error) {
-    console.error('Error in analyzeCustomSentence:', error);
-    throw error;
-  }
-}
-
-// Parse and validate the analysis response
-function parseCustomAnalysis(content: string) {
-  try {
-    const parsed = JSON.parse(content);
-    
-    // Validate and sanitize the response
-    return {
-      words: Array.isArray(parsed.words) ? 
-        parsed.words.slice(0, 5).map(word => ({
-          word: word.word || '',
-          definition: word.definition || '',
-          partOfSpeech: word.partOfSpeech || '',
-          difficulty: word.difficulty || 'medium',
-          contextualUsage: word.contextualUsage || word.definition || ''
-        })) : [],
-      grammar: Array.isArray(parsed.grammar) ? parsed.grammar.slice(0, 3) : [],
-      translation: parsed.translation || '',
-      complexity: parsed.complexity || 'moderate',
-      keyPhrases: Array.isArray(parsed.keyPhrases) ? parsed.keyPhrases.slice(0, 3) : []
-    };
-  } catch (error) {
-    console.error('Error parsing custom analysis:', error);
-    throw new Error('Failed to parse analysis response');
-  }
-}
 
 function determineOptimalStrategy(targetLength: number, difficultyLevel: string): 'direct' | 'smart_chunking' | 'adaptive_chunking' {
   if (targetLength <= 800) return 'direct';
