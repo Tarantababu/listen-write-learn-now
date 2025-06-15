@@ -1,8 +1,10 @@
 
 import React from 'react';
 import { Exercise } from '@/types';
-import ExerciseCard from '@/components/ExerciseCard';
+import { ExerciseCard } from '@/components/ExerciseCard';
+import LearningOptionsMenu from '@/components/exercises/LearningOptionsMenu';
 import CreateExerciseCard from '@/components/exercises/CreateExerciseCard';
+import EmptyStateMessage from '@/components/exercises/EmptyStateMessage';
 
 interface ExerciseGridProps {
   paginatedExercises: Exercise[];
@@ -13,10 +15,18 @@ interface ExerciseGridProps {
   onMove: (exercise: Exercise) => void;
   onCreateClick: () => void;
   canEdit: boolean;
+  audioProgress?: {
+    isGenerating: boolean;
+    progress: number;
+    estimatedTimeRemaining: number;
+    stage: 'initializing' | 'processing' | 'uploading' | 'finalizing' | 'complete';
+    startProgress: () => void;
+    completeProgress: () => void;
+    resetProgress: () => void;
+  };
 }
 
-// Memoized component to prevent unnecessary re-renders
-const ExerciseGrid: React.FC<ExerciseGridProps> = React.memo(({
+const ExerciseGrid: React.FC<ExerciseGridProps> = ({
   paginatedExercises,
   exercisesPerPage,
   onPractice,
@@ -24,45 +34,34 @@ const ExerciseGrid: React.FC<ExerciseGridProps> = React.memo(({
   onDelete,
   onMove,
   onCreateClick,
-  canEdit
+  canEdit,
+  audioProgress
 }) => {
-  // Memoize filler count calculation
-  const fillerCount = React.useMemo(() => 
-    Math.max(0, exercisesPerPage - paginatedExercises.length - 1), 
-    [exercisesPerPage, paginatedExercises.length]
-  );
-  
-  // Memoize fillers array
-  const fillers = React.useMemo(() => 
-    Array(fillerCount).fill(null), 
-    [fillerCount]
-  );
+  const shouldShowCreateCard = paginatedExercises.length < exercisesPerPage;
+
+  if (paginatedExercises.length === 0) {
+    return <EmptyStateMessage onCreateClick={onCreateClick} />;
+  }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {paginatedExercises.map((exercise) => (
         <ExerciseCard
           key={exercise.id}
           exercise={exercise}
-          onPractice={() => onPractice(exercise)}
-          onEdit={() => onEdit(exercise)}
-          onDelete={() => onDelete(exercise)}
-          onMove={() => onMove(exercise)}
-          canEdit={canEdit}
-          canMove={true}
+          onPractice={onPractice}
+          onEdit={canEdit ? onEdit : undefined}
+          onDelete={canEdit ? onDelete : undefined}
+          onMove={canEdit ? onMove : undefined}
+          audioProgress={audioProgress}
         />
       ))}
       
-      {fillers.map((_, index) => (
-        <div 
-          key={`filler-${index}`} 
-          className="border border-dashed rounded-md h-60 border-transparent" 
-        />
-      ))}
+      {shouldShowCreateCard && canEdit && (
+        <CreateExerciseCard onClick={onCreateClick} />
+      )}
     </div>
   );
-});
-
-ExerciseGrid.displayName = 'ExerciseGrid';
+};
 
 export default ExerciseGrid;
