@@ -1,4 +1,5 @@
 
+
 export interface ReadingExercise {
   id: string;
   user_id: string;
@@ -41,6 +42,18 @@ export interface ReadingExercise {
   audio_url?: string;
   full_text_audio_url?: string;
   audio_generation_status?: 'pending' | 'generating' | 'completed' | 'failed';
+  metadata?: {
+    generation_method?: string;
+    enhanced_audio_enabled?: boolean;
+    created_at?: string;
+    audio_generation_started?: string;
+    audio_generation_completed?: string;
+    audio_generation_failed?: string;
+    error?: string;
+    success_rate?: number;
+    retry_started?: string;
+    [key: string]: any;
+  };
   created_at: string;
   updated_at: string;
   archived: boolean;
@@ -84,3 +97,4 @@ export interface CreateReadingExerciseRequest {
   topic: string;
   customText?: string;
 }
+
