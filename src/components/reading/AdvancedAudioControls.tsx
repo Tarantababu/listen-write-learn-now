@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -13,6 +12,7 @@ import {
   VolumeX,
   Settings
 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 interface AdvancedAudioControlsProps {
   isPlaying: boolean;
@@ -147,9 +147,10 @@ export const AdvancedAudioControls: React.FC<AdvancedAudioControlsProps> = ({
           className="w-full bg-gray-200 rounded-full h-3 cursor-pointer relative"
           onClick={handleProgressClick}
         >
-          <div 
-            className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-            style={{ width: `${audioDuration > 0 ? (currentPosition / audioDuration) * 100 : 0}%` }}
+          <Progress
+            value={audioDuration > 0 ? (currentPosition / audioDuration) * 100 : 0}
+            className="h-3"
+            indicatorClassName="bg-blue-600"
           />
           
           {/* Word progress indicator */}
