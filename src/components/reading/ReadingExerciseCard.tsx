@@ -34,7 +34,11 @@ export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
     }
   };
 
-  const estimatedReadingTime = Math.ceil((exercise.content.analysis?.wordCount || exercise.target_length) / 200);
+  // Calculate stats from simplified content structure
+  const fullText = exercise.content.text || '';
+  const estimatedWordCount = fullText.split(/\s+/).filter(word => word.length > 0).length;
+  const estimatedSentenceCount = fullText.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+  const estimatedReadingTime = Math.ceil(estimatedWordCount / 200);
 
   return (
     <Card className={`h-full hover:shadow-md transition-all duration-200 ${isMobile ? 'touch-manipulation' : ''}`}>
@@ -66,7 +70,7 @@ export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
               <BookOpen className={`text-muted-foreground ${isMobile ? 'h-3 w-3' : 'h-3 w-3'}`} />
             </div>
             <p className={`text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
-              {exercise.content.sentences?.length || 0} sentences
+              {estimatedSentenceCount} sentences
             </p>
           </div>
           
@@ -84,7 +88,7 @@ export const ReadingExerciseCard: React.FC<ReadingExerciseCardProps> = ({
               <Brain className={`text-muted-foreground ${isMobile ? 'h-3 w-3' : 'h-3 w-3'}`} />
             </div>
             <p className={`text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
-              {exercise.content.analysis?.wordCount || exercise.target_length} words
+              {estimatedWordCount} words
             </p>
           </div>
         </div>
