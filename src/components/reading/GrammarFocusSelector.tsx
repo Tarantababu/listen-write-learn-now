@@ -5,35 +5,21 @@ import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 
 const GRAMMAR_OPTIONS = [
-  // Verb Forms & Tenses
-  { id: 'present-tense', label: 'Present Tense', category: 'Verb Forms' },
-  { id: 'past-tense', label: 'Past Tense', category: 'Verb Forms' },
-  { id: 'future-tense', label: 'Future Tense', category: 'Verb Forms' },
-  { id: 'perfect-aspects', label: 'Perfect Aspects', category: 'Verb Forms' },
-  { id: 'progressive-aspects', label: 'Progressive Aspects', category: 'Verb Forms' },
-  
-  // Sentence Structure
-  { id: 'word-order', label: 'Word Order', category: 'Sentence Structure' },
-  { id: 'complex-sentences', label: 'Complex Sentences', category: 'Sentence Structure' },
-  { id: 'passive-voice', label: 'Passive Voice', category: 'Sentence Structure' },
-  
-  // Modality & Mood
-  { id: 'modal-verbs', label: 'Modal Verbs', category: 'Modality & Mood' },
-  { id: 'conditionals', label: 'Conditionals', category: 'Modality & Mood' },
-  { id: 'subjunctive', label: 'Subjunctive', category: 'Modality & Mood' },
-  
-  // Noun Systems
-  { id: 'articles', label: 'Articles', category: 'Noun Systems' },
-  { id: 'gender-agreement', label: 'Gender Agreement', category: 'Noun Systems' },
-  { id: 'case-systems', label: 'Case Systems', category: 'Noun Systems' }
+  { id: 'present-tense', label: 'Present Tense' },
+  { id: 'past-tense', label: 'Past Tense' },
+  { id: 'future-tense', label: 'Future Tense' },
+  { id: 'perfect-aspects', label: 'Perfect Aspects' },
+  { id: 'progressive-aspects', label: 'Progressive Aspects' },
+  { id: 'word-order', label: 'Word Order' },
+  { id: 'complex-sentences', label: 'Complex Sentences' },
+  { id: 'passive-voice', label: 'Passive Voice' },
+  { id: 'modal-verbs', label: 'Modal Verbs' },
+  { id: 'conditionals', label: 'Conditionals' },
+  { id: 'subjunctive', label: 'Subjunctive' },
+  { id: 'articles', label: 'Articles' },
+  { id: 'gender-agreement', label: 'Gender Agreement' },
+  { id: 'case-systems', label: 'Case Systems' }
 ];
-
-const GRAMMAR_CATEGORIES = {
-  'Verb Forms': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
-  'Sentence Structure': 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800',
-  'Modality & Mood': 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800',
-  'Noun Systems': 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800'
-};
 
 interface GrammarFocusSelectorProps {
   selectedGrammar: string[];
@@ -46,14 +32,6 @@ export const GrammarFocusSelector: React.FC<GrammarFocusSelectorProps> = ({
   onGrammarToggle,
   maxSelections = 3
 }) => {
-  const groupedGrammar = GRAMMAR_OPTIONS.reduce((acc, option) => {
-    if (!acc[option.category]) {
-      acc[option.category] = [];
-    }
-    acc[option.category].push(option);
-    return acc;
-  }, {} as Record<string, typeof GRAMMAR_OPTIONS>);
-
   const canSelectMore = selectedGrammar.length < maxSelections;
 
   return (
@@ -100,41 +78,30 @@ export const GrammarFocusSelector: React.FC<GrammarFocusSelectorProps> = ({
         </div>
       )}
 
-      <div className="space-y-4">
-        {Object.entries(groupedGrammar).map(([category, options]) => (
-          <div key={category} className="space-y-2">
-            <h5 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <span className={`px-2 py-1 rounded-md text-xs font-medium ${GRAMMAR_CATEGORIES[category as keyof typeof GRAMMAR_CATEGORIES]}`}>
-                {category}
-              </span>
-            </h5>
-            <div className="flex flex-wrap gap-2">
-              {options.map((option) => {
-                const isSelected = selectedGrammar.includes(option.id);
-                const isDisabled = !isSelected && !canSelectMore;
-                
-                return (
-                  <Badge
-                    key={option.id}
-                    variant={isSelected ? "default" : "outline"}
-                    className={`
-                      cursor-pointer transition-all
-                      ${!isSelected && canSelectMore ? 'hover:bg-muted' : ''}
-                      ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
-                    `}
-                    onClick={() => {
-                      if (!isDisabled || isSelected) {
-                        onGrammarToggle(option.id);
-                      }
-                    }}
-                  >
-                    {option.label}
-                  </Badge>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+      <div className="flex flex-wrap gap-2">
+        {GRAMMAR_OPTIONS.map((option) => {
+          const isSelected = selectedGrammar.includes(option.id);
+          const isDisabled = !isSelected && !canSelectMore;
+          
+          return (
+            <Badge
+              key={option.id}
+              variant={isSelected ? "default" : "outline"}
+              className={`
+                cursor-pointer transition-all
+                ${!isSelected && canSelectMore ? 'hover:bg-muted' : ''}
+                ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
+              onClick={() => {
+                if (!isDisabled || isSelected) {
+                  onGrammarToggle(option.id);
+                }
+              }}
+            >
+              {option.label}
+            </Badge>
+          );
+        })}
       </div>
     </div>
   );
