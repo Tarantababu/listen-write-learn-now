@@ -64,6 +64,11 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   });
   const { toast } = useToast();
 
+  // Define isLanguageSupported for use in the form/UI logic
+  const isLanguageSupported = SUPPORTED_LANGUAGES
+    .map(l => l.toLowerCase())
+    .includes(language.trim().toLowerCase());
+
   // Enhanced length options with strategy indicators
   const lengthOptions = [
     { value: 300, label: '300 words (~2 min)', recommended: 'Quick practice', strategy: 'Direct' },
@@ -423,7 +428,6 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
               value={customText}
               onChange={setCustomText}
               maxLength={4000}
-              disabled={!isLanguageSupported}
             />
           )}
 
