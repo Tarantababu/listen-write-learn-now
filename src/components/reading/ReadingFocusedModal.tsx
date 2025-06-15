@@ -1,4 +1,3 @@
-
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
@@ -204,33 +203,33 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   // Cast exercise.language to Language type to fix TypeScript error
   const exerciseLanguage = exercise.language as Language
 
-  // Get text size based on view mode
+  // Enhanced text size scaling for better full-screen reading
   const getTextSize = () => {
     if (isMobile) {
       switch (viewMode) {
-        case 'normal': return 'text-base';
+        case 'normal': return 'text-base leading-relaxed';
         case 'expanded': return 'text-lg leading-relaxed';
-        case 'fullscreen': return 'text-xl leading-loose';
-        default: return 'text-base';
+        case 'fullscreen': return 'text-2xl leading-loose max-w-none';
+        default: return 'text-base leading-relaxed';
       }
     } else {
       switch (viewMode) {
-        case 'normal': return 'text-lg';
+        case 'normal': return 'text-lg leading-relaxed';
         case 'expanded': return 'text-xl leading-relaxed';
-        case 'fullscreen': return 'text-2xl leading-loose';
-        default: return 'text-lg';
+        case 'fullscreen': return 'text-3xl leading-loose max-w-none';
+        default: return 'text-lg leading-relaxed';
       }
     }
   };
 
-  // Render the reading content
+  // Render the reading content with optimized full-screen layout
   const renderReadingContent = () => (
     <>
       {/* Advanced Audio Controls */}
       {enableFullTextAudio && !showTranslationAnalysis && (
         <div className={cn(
           "flex-shrink-0",
-          isFullScreen ? "mb-6" : "mb-4"
+          isFullScreen ? "mb-8" : "mb-4"
         )}>
           <AudioWordSynchronizer
             audioUrl={audioUrl}
@@ -269,65 +268,122 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
 
       {!isFullScreen && <Separator className="flex-shrink-0" />}
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <Card className={cn(
-          "h-full transition-all duration-300",
-          isFullScreen ? "border-none shadow-none bg-transparent" : viewMode === 'expanded' ? "p-8" : "p-6"
-        )}>
-          {showTranslationAnalysis ? (
-            <SimpleTranslationAnalysis
-              text={fullText}
-              sourceLanguage={exerciseLanguage}
-              onClose={() => setShowTranslationAnalysis(false)}
-            />
-          ) : (
-            <>
-              {enableTextSelection ? (
-                // Text selection is enabled - use the hybrid component
-                <SynchronizedTextWithSelection
-                  text={fullText}
-                  highlightedWordIndex={highlightedWordIndex}
-                  enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
-                  className={cn(
-                    "transition-all duration-300",
-                    getTextSize()
-                  )}
-                  onCreateDictation={handleCreateDictation}
-                  onCreateBidirectional={handleCreateBidirectional}
-                  exerciseId={exercise.id}
-                  exerciseLanguage={exerciseLanguage}
-                  enableTextSelection={true}
-                  enableVocabulary={enableVocabularyIntegration}
-                  enhancedHighlighting={enableEnhancedHighlighting}
-                  vocabularyIntegration={enableVocabularyIntegration}
-                  enableContextMenu={enableContextMenu}
-                />
-              ) : (
-                // Text selection is disabled - use enhanced interactive text
-                <EnhancedInteractiveText
-                  text={fullText}
-                  language={exerciseLanguage}
-                  enableTooltips={true}
-                  enableBidirectionalCreation={true}
-                  enableTextSelection={false}
-                  vocabularyIntegration={false}
-                  enhancedHighlighting={false}
-                  exerciseId={exercise.id}
-                  onCreateDictation={handleCreateDictation}
-                  onCreateBidirectional={handleCreateBidirectional}
-                  className={cn(
-                    "transition-all duration-300",
-                    getTextSize()
-                  )}
-                />
-              )}
-            </>
-          )}
-        </Card>
+      {/* Main Content - Optimized for full-screen reading */}
+      <div className="flex-1 overflow-auto min-h-0">
+        {isFullScreen ? (
+          // Full-screen mode: Remove Card wrapper and maximize text area
+          <div className={cn(
+            "h-full w-full",
+            isFullScreen && "px-4 py-2"
+          )}>
+            {showTranslationAnalysis ? (
+              <SimpleTranslationAnalysis
+                text={fullText}
+                sourceLanguage={exerciseLanguage}
+                onClose={() => setShowTranslationAnalysis(false)}
+              />
+            ) : (
+              <>
+                {enableTextSelection ? (
+                  <SynchronizedTextWithSelection
+                    text={fullText}
+                    highlightedWordIndex={highlightedWordIndex}
+                    enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
+                    className={cn(
+                      "transition-all duration-300",
+                      getTextSize(),
+                      isFullScreen && "w-full"
+                    )}
+                    onCreateDictation={handleCreateDictation}
+                    onCreateBidirectional={handleCreateBidirectional}
+                    exerciseId={exercise.id}
+                    exerciseLanguage={exerciseLanguage}
+                    enableTextSelection={true}
+                    enableVocabulary={enableVocabularyIntegration}
+                    enhancedHighlighting={enableEnhancedHighlighting}
+                    vocabularyIntegration={enableVocabularyIntegration}
+                    enableContextMenu={enableContextMenu}
+                  />
+                ) : (
+                  <EnhancedInteractiveText
+                    text={fullText}
+                    language={exerciseLanguage}
+                    enableTooltips={true}
+                    enableBidirectionalCreation={true}
+                    enableTextSelection={false}
+                    vocabularyIntegration={false}
+                    enhancedHighlighting={false}
+                    exerciseId={exercise.id}
+                    onCreateDictation={handleCreateDictation}
+                    onCreateBidirectional={handleCreateBidirectional}
+                    className={cn(
+                      "transition-all duration-300",
+                      getTextSize(),
+                      isFullScreen && "w-full"
+                    )}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+          // Normal/expanded mode: Keep Card wrapper
+          <Card className={cn(
+            "h-full transition-all duration-300",
+            viewMode === 'expanded' ? "p-8" : "p-6"
+          )}>
+            {showTranslationAnalysis ? (
+              <SimpleTranslationAnalysis
+                text={fullText}
+                sourceLanguage={exerciseLanguage}
+                onClose={() => setShowTranslationAnalysis(false)}
+              />
+            ) : (
+              <>
+                {enableTextSelection ? (
+                  <SynchronizedTextWithSelection
+                    text={fullText}
+                    highlightedWordIndex={highlightedWordIndex}
+                    enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
+                    className={cn(
+                      "transition-all duration-300",
+                      getTextSize()
+                    )}
+                    onCreateDictation={handleCreateDictation}
+                    onCreateBidirectional={handleCreateBidirectional}
+                    exerciseId={exercise.id}
+                    exerciseLanguage={exerciseLanguage}
+                    enableTextSelection={true}
+                    enableVocabulary={enableVocabularyIntegration}
+                    enhancedHighlighting={enableEnhancedHighlighting}
+                    vocabularyIntegration={enableVocabularyIntegration}
+                    enableContextMenu={enableContextMenu}
+                  />
+                ) : (
+                  <EnhancedInteractiveText
+                    text={fullText}
+                    language={exerciseLanguage}
+                    enableTooltips={true}
+                    enableBidirectionalCreation={true}
+                    enableTextSelection={false}
+                    vocabularyIntegration={false}
+                    enhancedHighlighting={false}
+                    exerciseId={exercise.id}
+                    onCreateDictation={handleCreateDictation}
+                    onCreateBidirectional={handleCreateBidirectional}
+                    className={cn(
+                      "transition-all duration-300",
+                      getTextSize()
+                    )}
+                  />
+                )}
+              </>
+            )}
+          </Card>
+        )}
       </div>
 
-      {/* Quick Actions - Mobile */}
+      {/* Quick Actions - Mobile (only show when not in full-screen) */}
       {isMobile && !showTranslationAnalysis && !isFullScreen && (
         <div className="flex-shrink-0 border-t p-4 bg-gray-50">
           <div className="flex justify-center gap-2">
@@ -414,13 +470,11 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
               </div>
               
               <div className="flex items-center gap-2">
-                {/* Reading View Toggle */}
                 <ReadingViewToggle
                   viewMode={viewMode}
                   onToggle={cycleViewMode}
                 />
                 
-                {/* Analyze Button */}
                 <Button
                   variant="outline"
                   size="sm"

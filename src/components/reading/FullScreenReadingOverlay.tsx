@@ -35,9 +35,9 @@ export const FullScreenReadingOverlay: React.FC<FullScreenReadingOverlayProps> =
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background">
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur-sm">
+      <div className="flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur-sm flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs">
@@ -82,10 +82,10 @@ export const FullScreenReadingOverlay: React.FC<FullScreenReadingOverlayProps> =
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto">
+      {/* Content - Full width and height utilization */}
+      <div className="flex-1 overflow-auto min-h-0">
         <div className={cn(
-          "container mx-auto py-8 px-6 max-w-4xl",
+          "h-full w-full px-8 py-6",
           className
         )}>
           {children}
