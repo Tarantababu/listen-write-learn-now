@@ -71,8 +71,29 @@ export class ReadingExerciseService {
       ...data,
       difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
       audio_generation_status: 'pending' as 'pending' | 'generating' | 'completed' | 'failed',
-      content: data.content as unknown as ReadingExercise['content']
+      content: data.content as unknown as ReadingExercise['content'],
+      metadata: this.parseMetadataFromDatabase(data.metadata)
     };
+  }
+
+  private parseMetadataFromDatabase(metadata: any): ReadingExercise['metadata'] {
+    if (!metadata) return undefined;
+    
+    // If metadata is already an object, return it
+    if (typeof metadata === 'object' && metadata !== null) {
+      return metadata;
+    }
+    
+    // If it's a string, try to parse it
+    if (typeof metadata === 'string') {
+      try {
+        return JSON.parse(metadata);
+      } catch {
+        return undefined;
+      }
+    }
+    
+    return undefined;
   }
 
   private isTimeoutError(error: any): boolean {
@@ -302,7 +323,8 @@ export class ReadingExerciseService {
       ...exercise,
       difficulty_level: exercise.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
       audio_generation_status: (exercise.audio_generation_status || 'pending') as 'pending' | 'generating' | 'completed' | 'failed',
-      content: exercise.content as unknown as ReadingExercise['content']
+      content: exercise.content as unknown as ReadingExercise['content'],
+      metadata: this.parseMetadataFromDatabase(exercise.metadata)
     }));
   }
 
@@ -318,7 +340,8 @@ export class ReadingExerciseService {
       ...data,
       difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
       audio_generation_status: (data.audio_generation_status || 'pending') as 'pending' | 'generating' | 'completed' | 'failed',
-      content: data.content as unknown as ReadingExercise['content']
+      content: data.content as unknown as ReadingExercise['content'],
+      metadata: this.parseMetadataFromDatabase(data.metadata)
     };
   }
 

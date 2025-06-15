@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise, CreateReadingExerciseRequest } from '@/types/reading';
 
@@ -112,7 +111,8 @@ export class OptimizedReadingService {
         ...data,
         difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
         audio_generation_status: 'pending' as const,
-        content: this.parseContentFromDatabase(data.content)
+        content: this.parseContentFromDatabase(data.content),
+        metadata: this.parseMetadataFromDatabase(data.metadata)
       };
 
     } catch (error) {
@@ -169,7 +169,8 @@ export class OptimizedReadingService {
             ...data,
             difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
             audio_generation_status: 'pending' as const,
-            content: this.parseContentFromDatabase(data.content)
+            content: this.parseContentFromDatabase(data.content),
+            metadata: this.parseMetadataFromDatabase(data.metadata)
           };
         } catch (recoveryError) {
           console.error('[ENHANCED SERVICE] Recovery also failed:', recoveryError);
@@ -185,6 +186,26 @@ export class OptimizedReadingService {
       this.generationMetrics.delete(sessionId);
       throw error;
     }
+  }
+
+  private parseMetadataFromDatabase(metadata: any): ReadingExercise['metadata'] {
+    if (!metadata) return undefined;
+    
+    // If metadata is already an object, return it
+    if (typeof metadata === 'object' && metadata !== null) {
+      return metadata;
+    }
+    
+    // If it's a string, try to parse it
+    if (typeof metadata === 'string') {
+      try {
+        return JSON.parse(metadata);
+      } catch {
+        return undefined;
+      }
+    }
+    
+    return undefined;
   }
 
   private generateSessionId(): string {
@@ -476,7 +497,8 @@ export class OptimizedReadingService {
       ...exercise,
       difficulty_level: exercise.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
       audio_generation_status: (exercise.audio_generation_status || 'pending') as 'pending' | 'generating' | 'completed' | 'failed',
-      content: this.parseContentFromDatabase(exercise.content)
+      content: this.parseContentFromDatabase(exercise.content),
+      metadata: this.parseMetadataFromDatabase(exercise.metadata)
     }));
   }
 
