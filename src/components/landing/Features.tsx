@@ -114,6 +114,24 @@ export function Features() {
                 </svg>
               </Link>
             </div>
+
+            {/* --- ADD UPDATED FRAZIER BADGE HERE --- */}
+            <div className="flex justify-center mt-8">
+              <a
+                href="https://fazier.com/launches/lwlnow-master-any-language-3x-faster"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2"
+              >
+                <img
+                  src="https://fazier.com/api/v1/public/badges/embed_image.svg?launch_id=4638&badge_type=daily&theme=light"
+                  width="270"
+                  alt="Fazier badge"
+                  style={{ display: 'block' }}
+                />
+              </a>
+            </div>
+            {/* ---------------------- */}
           </AnimatedGroup>
           
           {/* Hidden for now as per design */}
