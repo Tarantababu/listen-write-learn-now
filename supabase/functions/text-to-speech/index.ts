@@ -85,6 +85,24 @@ serve(async (req) => {
     
     console.log(`[TTS] Uploading to storage: ${filename}`);
 
+    // Ensure the audio bucket exists
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const audioBucket = buckets?.find(bucket => bucket.name === 'audio');
+    
+    if (!audioBucket) {
+      console.log('[TTS] Creating audio bucket');
+      const { error: bucketError } = await supabase.storage.createBucket('audio', {
+        public: true,
+        allowedMimeTypes: ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm'],
+        fileSizeLimit: 52428800 // 50MB
+      });
+      
+      if (bucketError) {
+        console.error('[TTS] Failed to create audio bucket:', bucketError);
+        throw new Error(`Failed to create audio bucket: ${bucketError.message}`);
+      }
+    }
+
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('audio')
@@ -98,10 +116,15 @@ serve(async (req) => {
       throw new Error(`Failed to upload audio: ${uploadError.message}`);
     }
 
-    // Get public URL - CRITICAL: Use the correct format
+    // Get public URL using the correct method
     const { data: urlData } = supabase.storage
       .from('audio')
       .getPublicUrl(filename);
+
+    // Ensure we have a valid URL
+    if (!urlData?.publicUrl) {
+      throw new Error('Failed to generate public URL for audio file');
+    }
 
     const audioUrl = urlData.publicUrl;
     console.log(`[TTS] Audio uploaded successfully: ${audioUrl}`);
@@ -111,11 +134,13 @@ serve(async (req) => {
       const verifyResponse = await fetch(audioUrl, { method: 'HEAD' });
       if (!verifyResponse.ok) {
         console.warn(`[TTS] Audio URL verification failed: ${verifyResponse.status}`);
+        // Don't throw here, just log the warning
       } else {
         console.log(`[TTS] Audio URL verified successfully`);
       }
     } catch (verifyError) {
       console.warn(`[TTS] Audio URL verification error:`, verifyError);
+      // Don't throw here, just log the warning
     }
 
     // Return response with audio URL and metadata

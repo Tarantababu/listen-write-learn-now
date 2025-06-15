@@ -89,47 +89,79 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     }
   }, [exercise, isOpen, enableTextSelection, enableWordSynchronization, enableContextMenu, enableSelectionFeedback]);
 
-  // Initialize audio from existing URLs or generate if needed
+  // Enhanced audio URL initialization with better validation and retry logic
   useEffect(() => {
-    if (exercise && isOpen && enableFullTextAudio) {
-      console.log('[AUDIO INIT] Checking for existing audio URLs:', {
+    if (!exercise || !isOpen || !enableFullTextAudio) {
+      console.log('[AUDIO INIT] Skipping audio initialization - conditions not met');
+      return;
+    }
+
+    const initializeAudio = async () => {
+      console.log('[AUDIO INIT] Starting initialization for exercise:', {
         exerciseId: exercise.id,
         fullTextAudioUrl: exercise.full_text_audio_url,
         audioUrl: exercise.audio_url,
         audioGenerationStatus: exercise.audio_generation_status
       });
 
-      // First, check if we have a full text audio URL
-      if (exercise.full_text_audio_url) {
-        console.log('[AUDIO INIT] Using existing full text audio URL');
-        setAudioUrl(exercise.full_text_audio_url);
-        return;
+      // First, validate and fix any inconsistent states
+      try {
+        await readingExerciseService.validateAndFixAudioUrls(exercise.id);
+      } catch (error) {
+        console.warn('[AUDIO INIT] Validation failed:', error);
       }
 
-      // Fallback to the general audio_url field
-      if (exercise.audio_url) {
-        console.log('[AUDIO INIT] Using existing audio URL');
-        setAudioUrl(exercise.audio_url);
-        return;
+      // Check for existing audio URLs in order of preference
+      const existingAudioUrl = exercise.full_text_audio_url || exercise.audio_url;
+      
+      if (existingAudioUrl) {
+        console.log('[AUDIO INIT] Found existing audio URL:', existingAudioUrl);
+        
+        // Validate that the URL is accessible
+        try {
+          const response = await fetch(existingAudioUrl, { method: 'HEAD' });
+          if (response.ok) {
+            console.log('[AUDIO INIT] Existing audio URL is valid, using it');
+            setAudioUrl(existingAudioUrl);
+            return;
+          } else {
+            console.warn('[AUDIO INIT] Existing audio URL is not accessible:', response.status);
+          }
+        } catch (error) {
+          console.warn('[AUDIO INIT] Failed to validate existing audio URL:', error);
+        }
       }
 
-      // Check if audio generation is still in progress
-      if (exercise.audio_generation_status === 'generating') {
-        console.log('[AUDIO INIT] Audio generation in progress');
-        return;
+      // Handle different audio generation statuses
+      switch (exercise.audio_generation_status) {
+        case 'completed':
+          if (!existingAudioUrl) {
+            console.warn('[AUDIO INIT] Status is completed but no audio URL found, triggering regeneration');
+            generateFullTextAudio();
+          }
+          break;
+          
+        case 'generating':
+          console.log('[AUDIO INIT] Audio generation is in progress');
+          setIsGeneratingAudio(true);
+          break;
+          
+        case 'failed':
+          console.log('[AUDIO INIT] Previous audio generation failed, user can retry manually');
+          break;
+          
+        case 'pending':
+        default:
+          console.log('[AUDIO INIT] No existing audio, starting generation');
+          generateFullTextAudio();
+          break;
       }
+    };
 
-      // Only generate audio if no existing URLs and generation hasn't failed
-      if (exercise.audio_generation_status !== 'failed') {
-        console.log('[AUDIO INIT] No existing audio found, generating new audio');
-        generateFullTextAudio();
-      } else {
-        console.log('[AUDIO INIT] Audio generation previously failed, not retrying automatically');
-      }
-    }
+    initializeAudio();
   }, [exercise, isOpen, enableFullTextAudio]);
 
-  // Generate full-text audio only when needed
+  // Generate full-text audio with enhanced error handling and status tracking
   const generateFullTextAudio = async () => {
     if (!exercise || !enableFullTextAudio) return;
     
@@ -138,6 +170,11 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
       console.log('[AUDIO GENERATION] Starting new audio generation for exercise:', exercise.id);
       
       const fullText = exercise.content.sentences.map(s => s.text).join(' ');
+      
+      if (!fullText.trim()) {
+        throw new Error('No text content available for audio generation');
+      }
+      
       const generatedAudioUrl = await readingExerciseService.generateAudio(fullText, exercise.language);
       
       console.log('[AUDIO GENERATION] Successfully generated audio:', generatedAudioUrl);
@@ -146,7 +183,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
       toast.success('Audio generated successfully');
     } catch (error) {
       console.error('[AUDIO GENERATION] Error generating full-text audio:', error);
-      toast.error('Failed to generate audio');
+      toast.error('Failed to generate audio. Please try again.');
     } finally {
       setIsGeneratingAudio(false);
     }
@@ -235,9 +272,39 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     setShowTranslationAnalysis(true);
   };
 
-  const handleRetryAudioGeneration = () => {
-    console.log('[AUDIO RETRY] Retrying audio generation for exercise:', exercise?.id);
-    generateFullTextAudio();
+  const handleRetryAudioGeneration = async () => {
+    if (!exercise) return;
+    
+    console.log('[AUDIO RETRY] Starting retry for exercise:', exercise.id);
+    setIsGeneratingAudio(true);
+    setAudioUrl(''); // Clear current audio URL
+    
+    try {
+      await readingExerciseService.retryAudioGeneration(exercise.id);
+      
+      // Wait a moment then try to get the new audio URL
+      setTimeout(async () => {
+        try {
+          const updatedExercise = await readingExerciseService.getReadingExercise(exercise.id);
+          const newAudioUrl = updatedExercise.full_text_audio_url || updatedExercise.audio_url;
+          
+          if (newAudioUrl) {
+            console.log('[AUDIO RETRY] Successfully got new audio URL:', newAudioUrl);
+            setAudioUrl(newAudioUrl);
+            toast.success('Audio regenerated successfully');
+          }
+        } catch (error) {
+          console.error('[AUDIO RETRY] Failed to get updated audio URL:', error);
+        } finally {
+          setIsGeneratingAudio(false);
+        }
+      }, 2000);
+      
+    } catch (error) {
+      console.error('[AUDIO RETRY] Failed to retry audio generation:', error);
+      toast.error('Failed to regenerate audio. Please try again.');
+      setIsGeneratingAudio(false);
+    }
   };
 
   if (!exercise) return null
@@ -305,8 +372,12 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                 onToggleSettings={() => setShowSettings(!showSettings)}
                 onChangeSpeed={changeSpeed}
                 onSeek={(time) => seekTo(audioRef, time)}
-                // Add retry functionality for failed audio generation
-                onRetryGeneration={exercise.audio_generation_status === 'failed' ? handleRetryAudioGeneration : undefined}
+                onRetryGeneration={
+                  (exercise.audio_generation_status === 'failed' || 
+                   (exercise.audio_generation_status === 'completed' && !audioUrl)) 
+                    ? handleRetryAudioGeneration 
+                    : undefined
+                }
               />
             )}
           </AudioWordSynchronizer>
@@ -464,16 +535,17 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     </>
   );
 
-  // Simplified rendering logic with proper debug logging
+  // Enhanced debugging and rendering logic
   console.log('ReadingFocusedModal rendering decision:', {
-    enableTextSelection,
-    enableWordSynchronization,
-    enableFullTextAudio,
-    hasAudioUrl: !!audioUrl,
     exerciseId: exercise.id,
-    viewMode,
-    audioGenerationStatus: exercise.audio_generation_status
-  })
+    audioGenerationStatus: exercise.audio_generation_status,
+    hasFullTextAudioUrl: !!exercise.full_text_audio_url,
+    hasAudioUrl: !!exercise.audio_url,
+    currentAudioUrlInState: !!audioUrl,
+    enableFullTextAudio,
+    isGeneratingAudio,
+    viewMode
+  });
 
   return (
     <>
@@ -503,9 +575,9 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     <Badge variant="outline" className="text-xs capitalize">
                       {exercise.difficulty_level}
                     </Badge>
-                    {enableWordSynchronization && (
+                    {enableWordSynchronization && audioUrl && (
                       <Badge variant="outline" className="text-xs">
-                        Word Sync
+                        Audio Sync
                       </Badge>
                     )}
                     {enableContextMenu && (
@@ -513,11 +585,14 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                         Enhanced Selection
                       </Badge>
                     )}
-                    {/* Audio status indicator */}
+                    {/* Enhanced audio status indicator */}
                     {exercise.audio_generation_status && (
                       <Badge 
-                        variant={exercise.audio_generation_status === 'completed' ? 'default' : 
-                               exercise.audio_generation_status === 'failed' ? 'destructive' : 'secondary'}
+                        variant={
+                          exercise.audio_generation_status === 'completed' ? 'default' : 
+                          exercise.audio_generation_status === 'failed' ? 'destructive' : 
+                          exercise.audio_generation_status === 'generating' ? 'secondary' : 'outline'
+                        }
                         className="text-xs"
                       >
                         Audio: {exercise.audio_generation_status}

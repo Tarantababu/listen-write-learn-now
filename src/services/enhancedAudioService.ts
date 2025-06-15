@@ -77,6 +77,8 @@ export class EnhancedAudioService {
         });
       }
 
+      console.log(`[ENHANCED AUDIO] Generating audio for ${processedText.length} characters in ${language}`);
+
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text: processedText,
@@ -90,21 +92,46 @@ export class EnhancedAudioService {
       });
 
       if (error) {
-        console.error('Audio generation error:', error);
+        console.error('[ENHANCED AUDIO] Generation error:', error);
         throw new Error(error.message || 'Failed to generate audio');
+      }
+
+      if (!data || !data.success) {
+        console.error('[ENHANCED AUDIO] Invalid response from TTS service:', data);
+        throw new Error(data?.error || 'Invalid response from audio service');
+      }
+
+      // Validate that we have a proper audio URL
+      const audioUrl = data.audio_url || data.audioUrl;
+      if (!audioUrl) {
+        console.error('[ENHANCED AUDIO] No audio URL in response:', data);
+        throw new Error('No audio URL returned from service');
+      }
+
+      // Validate the URL format
+      if (!this.isValidUrl(audioUrl)) {
+        console.error('[ENHANCED AUDIO] Invalid audio URL format:', audioUrl);
+        throw new Error('Invalid audio URL format returned');
       }
 
       if (!background) {
         this.updateProgress({
           stage: 'finalizing',
           progress: 90,
-          currentItem: 'Finalizing audio...'
+          currentItem: 'Validating audio...'
         });
+      }
+
+      // Quick validation of the audio URL accessibility
+      const isAccessible = await this.validateAudioUrl(audioUrl);
+      if (!isAccessible) {
+        console.warn('[ENHANCED AUDIO] Generated audio URL may not be accessible:', audioUrl);
+        // Don't fail here, just log the warning
       }
 
       const result: AudioGenerationResult = {
         success: true,
-        audioUrl: data.audio_url || data.audioUrl,
+        audioUrl: audioUrl,
         metadata: {
           duration: data.duration,
           size: data.size,
@@ -120,10 +147,11 @@ export class EnhancedAudioService {
         });
       }
 
+      console.log(`[ENHANCED AUDIO] Successfully generated audio: ${audioUrl}`);
       return result;
 
     } catch (error) {
-      console.error('Enhanced audio generation failed:', error);
+      console.error('[ENHANCED AUDIO] Generation failed:', error);
       return {
         success: false,
         error: error.message || 'Audio generation failed'
@@ -141,6 +169,8 @@ export class EnhancedAudioService {
   ): Promise<Map<string, AudioGenerationResult>> {
     const { maxConcurrent = 3, quality = 'standard', retryFailures = true } = options;
     const results = new Map<string, AudioGenerationResult>();
+    
+    console.log(`[ENHANCED BATCH] Starting batch generation for ${items.length} items`);
     
     this.updateProgress({
       stage: 'initializing',
@@ -180,6 +210,7 @@ export class EnhancedAudioService {
           };
           results.set(item.id, errorResult);
           completedCount++;
+          console.error(`[ENHANCED BATCH] Failed to generate audio for item ${item.id}:`, error);
           return { id: item.id, result: errorResult };
         }
       });
@@ -200,6 +231,8 @@ export class EnhancedAudioService {
         .filter(Boolean);
 
       if (failedItems.length > 0) {
+        console.log(`[ENHANCED BATCH] Retrying ${failedItems.length} failed items`);
+        
         this.updateProgress({
           stage: 'processing',
           progress: 95,
@@ -213,8 +246,9 @@ export class EnhancedAudioService {
               background: true
             });
             results.set(item.id, retryResult);
+            console.log(`[ENHANCED BATCH] Successfully retried item ${item.id}`);
           } catch (error) {
-            console.warn(`Retry failed for item ${item.id}:`, error);
+            console.warn(`[ENHANCED BATCH] Retry failed for item ${item.id}:`, error);
           }
         }
       }
@@ -226,6 +260,9 @@ export class EnhancedAudioService {
       completedItems: items.length,
       currentItem: 'Batch audio generation complete!'
     });
+
+    const successCount = Array.from(results.values()).filter(r => r.success).length;
+    console.log(`[ENHANCED BATCH] Completed with ${successCount}/${items.length} successful generations`);
 
     return results;
   }
@@ -256,6 +293,15 @@ export class EnhancedAudioService {
     return batches;
   }
 
+  private isValidUrl(url: string): boolean {
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
   abort() {
     if (this.abortController) {
       this.abortController.abort();
@@ -264,9 +310,18 @@ export class EnhancedAudioService {
 
   async validateAudioUrl(url: string): Promise<boolean> {
     try {
-      const response = await fetch(url, { method: 'HEAD' });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
+      const response = await fetch(url, { 
+        method: 'HEAD',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
       return response.ok;
-    } catch {
+    } catch (error) {
+      console.warn(`[ENHANCED AUDIO] URL validation failed for ${url}:`, error);
       return false;
     }
   }
@@ -275,13 +330,29 @@ export class EnhancedAudioService {
     try {
       const audio = new Audio(url);
       return new Promise((resolve) => {
-        audio.addEventListener('loadedmetadata', () => {
+        const timeout = setTimeout(() => {
+          audio.removeEventListener('loadedmetadata', onLoad);
+          audio.removeEventListener('error', onError);
+          resolve(null);
+        }, 10000); // 10 second timeout
+        
+        const onLoad = () => {
+          clearTimeout(timeout);
+          audio.removeEventListener('error', onError);
           resolve({
             duration: audio.duration,
             size: undefined // Size would need to be tracked during generation
           });
-        });
-        audio.addEventListener('error', () => resolve(null));
+        };
+        
+        const onError = () => {
+          clearTimeout(timeout);
+          audio.removeEventListener('loadedmetadata', onLoad);
+          resolve(null);
+        };
+        
+        audio.addEventListener('loadedmetadata', onLoad);
+        audio.addEventListener('error', onError);
       });
     } catch {
       return null;
