@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import { TopicMandalaSelector } from './TopicMandalaSelector';
 import { SimpleCreationProgress } from './SimpleCreationProgress';
 import { AlertTriangle, Info, TrendingUp, Brain, Zap } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { clientAnalyzeCustomText } from '@/utils/clientAnalyzeCustomText';
 
 interface ReadingExerciseModalProps {
   isOpen: boolean;
@@ -68,6 +68,79 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     { value: 3000, label: '3000 words (~15 min)', recommended: 'Maximum length', strategy: 'Adaptive' }
   ];
 
+  // NEW: Helper to handle the complete creation with custom text
+  const handleCustomTextCreation = async () => {
+    setIsCreating(true);
+    setShowProgress(true);
+
+    setProgress({
+      progress: 15,
+      status: 'generating',
+      message: 'Analyzing custom text instantly...',
+      estimatedTime: 1
+    });
+    try {
+      // 1. Analyze on client
+      const customTextAnalysis = clientAnalyzeCustomText(customText.trim());
+
+      // 2. Save immediately to database (simulate as if server generated)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      setProgress({
+        progress: 50,
+        status: 'generating',
+        message: 'Saving your custom exercise...',
+        estimatedTime: 1
+      });
+
+      // The reading_exercises table structure may require adaptation, but for now we'll save to it
+      const { data, error } = await supabase
+        .from('reading_exercises')
+        .insert({
+          user_id: user.id,
+          title: title.trim(),
+          language,
+          difficulty_level: difficultyLevel,
+          target_length: targetLength,
+          grammar_focus: grammarFocus.join(', ') || undefined,
+          topic: 'Custom Content',
+          content: customTextAnalysis,
+          audio_generation_status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setProgress({
+        progress: 100,
+        status: 'completed',
+        message: 'Custom exercise created instantly!',
+        estimatedTime: 0
+      });
+
+      if (onSuccess) onSuccess();
+
+      setTimeout(() => {
+        handleClose();
+      }, 700);
+    } catch (error: any) {
+      setProgress({
+        progress: 0,
+        status: 'error',
+        message: 'Failed to save custom exercise: ' + (error?.message || error),
+      });
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to save custom exercise.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -77,6 +150,12 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         description: "Please fill in all required fields.",
         variant: "destructive"
       });
+      return;
+    }
+
+    if (contentSource === 'custom') {
+      // Use new lightning fast custom text path!
+      await handleCustomTextCreation();
       return;
     }
 
