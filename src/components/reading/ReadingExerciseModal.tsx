@@ -12,7 +12,7 @@ import { CustomTextInput } from './CustomTextInput';
 import { GrammarFocusSelector } from './GrammarFocusSelector';
 import { TopicMandalaSelector } from './TopicMandalaSelector';
 import { SimpleCreationProgress } from './SimpleCreationProgress';
-import { AlertTriangle, Info, TrendingUp, Brain, Zap } from 'lucide-react';
+import { AlertTriangle, Info, TrendingUp, Brain, Zap, Sparkles, BookOpen, Target, Clock } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ReadingExerciseModalProps {
@@ -182,10 +182,13 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   if (showProgress) {
     return (
       <Dialog open={isOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Brain className="h-5 w-5" />
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-0 shadow-2xl bg-gradient-to-br from-white via-blue-50/30 to-purple-50/20 dark:from-gray-900 dark:via-blue-950/20 dark:to-purple-950/10">
+          <DialogHeader className="text-center space-y-4 pb-6 border-b border-gradient-to-r from-blue-200/50 via-purple-200/50 to-pink-200/50">
+            <DialogTitle className="flex items-center justify-center gap-3 text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <div className="relative">
+                <Brain className="h-7 w-7 text-blue-600" />
+                <Sparkles className="h-4 w-4 text-purple-500 absolute -top-1 -right-1 animate-pulse" />
+              </div>
               Creating Your Enhanced Reading Exercise
             </DialogTitle>
           </DialogHeader>
@@ -206,64 +209,110 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create Enhanced Reading Exercise</DialogTitle>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto border-0 shadow-2xl bg-gradient-to-br from-white via-blue-50/30 to-purple-50/20 dark:from-gray-900 dark:via-blue-950/20 dark:to-purple-950/10">
+        <DialogHeader className="text-center space-y-4 pb-6 border-b border-gradient-to-r from-blue-200/50 via-purple-200/50 to-pink-200/50">
+          <DialogTitle className="flex items-center justify-center gap-3 text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <div className="relative">
+              <BookOpen className="h-7 w-7 text-blue-600" />
+              <Sparkles className="h-4 w-4 text-purple-500 absolute -top-1 -right-1 animate-pulse" />
+            </div>
+            Create Enhanced Reading Exercise
+          </DialogTitle>
+          <p className="text-muted-foreground max-w-md mx-auto leading-relaxed">
+            Generate personalized reading content with AI-powered enhancements and quality optimization
+          </p>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="title">Exercise Title</Label>
+        <form onSubmit={handleSubmit} className="space-y-8 p-6">
+          {/* Title Section with Enhanced Design */}
+          <div className="space-y-3">
+            <Label htmlFor="title" className="text-base font-semibold flex items-center gap-2">
+              <Target className="h-4 w-4 text-blue-500" />
+              Exercise Title
+            </Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter exercise title..."
+              placeholder="Enter a descriptive title for your exercise..."
               required
+              className="h-12 text-lg border-2 border-blue-100 focus:border-blue-400 transition-all duration-200 rounded-xl shadow-sm"
             />
           </div>
 
-          <ContentSourceSelector
-            selectedSource={contentSource}
-            onSourceSelect={setContentSource}
-          />
+          {/* Content Source with Enhanced Cards */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Brain className="h-5 w-5 text-purple-500" />
+              Content Source
+            </h3>
+            <ContentSourceSelector
+              selectedSource={contentSource}
+              onSourceSelect={setContentSource}
+            />
+          </div>
 
           {contentSource === 'ai' ? (
-            <>
-              <TopicMandalaSelector
-                selectedTopic={topic}
-                onTopicSelect={setTopic}
-                language={language}
-              />
+            <div className="space-y-8">
+              {/* Topic Selection with Enhanced UI */}
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 p-6 rounded-2xl border border-blue-200 dark:border-blue-800">
+                <TopicMandalaSelector
+                  selectedTopic={topic}
+                  onTopicSelect={setTopic}
+                  language={language}
+                />
+              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="difficulty">Difficulty Level</Label>
+              {/* Settings Grid with Enhanced Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <Label htmlFor="difficulty" className="text-base font-semibold flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-green-500" />
+                    Difficulty Level
+                  </Label>
                   <Select value={difficultyLevel} onValueChange={(value: any) => setDifficultyLevel(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 border-2 border-green-100 focus:border-green-400 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="beginner">Beginner</SelectItem>
-                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                      <SelectItem value="advanced">Advanced</SelectItem>
+                      <SelectItem value="beginner" className="py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                          <span>Beginner</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="intermediate" className="py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                          <span>Intermediate</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="advanced" className="py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                          <span>Advanced</span>
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="length">Target Length</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="length" className="text-base font-semibold flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-orange-500" />
+                    Target Length
+                  </Label>
                   <Select value={targetLength.toString()} onValueChange={(value) => setTargetLength(Number(value))}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 border-2 border-orange-100 focus:border-orange-400 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {lengthOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value.toString()}>
-                          <div className="flex flex-col">
+                        <SelectItem key={option.value} value={option.value.toString()} className="py-3">
+                          <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
-                              <span>{option.label}</span>
-                              <span className="text-xs bg-blue-100 text-blue-700 px-1 rounded">
+                              <span className="font-medium">{option.label}</span>
+                              <span className="text-xs bg-gradient-to-r from-blue-500 to-purple-500 text-white px-2 py-1 rounded-full">
                                 {option.strategy}
                               </span>
                             </div>
@@ -279,41 +328,67 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
               </div>
 
               {/* Enhanced Strategy Information */}
-              <Alert>
-                <TrendingUp className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Generation Strategy:</strong> {getGenerationStrategy()} - This strategy is optimized for {targetLength} words to ensure quality and coherence.
+              <Alert className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
+                <TrendingUp className="h-5 w-5 text-blue-600" />
+                <AlertDescription className="text-blue-800 dark:text-blue-200">
+                  <strong className="text-blue-900 dark:text-blue-100">Generation Strategy:</strong> {getGenerationStrategy()} - This strategy is optimized for {targetLength} words to ensure quality and coherence.
                   {isLongContent && " Advanced adaptive chunking will be used for optimal results."}
                 </AlertDescription>
               </Alert>
 
-              <GrammarFocusSelector
-                selectedGrammar={grammarFocus}
-                onGrammarToggle={handleGrammarToggle}
-                maxSelections={3}
-              />
-            </>
+              {/* Grammar Focus with Enhanced Container */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 p-6 rounded-2xl border border-purple-200 dark:border-purple-800">
+                <GrammarFocusSelector
+                  selectedGrammar={grammarFocus}
+                  onGrammarToggle={handleGrammarToggle}
+                  maxSelections={3}
+                />
+              </div>
+            </div>
           ) : (
-            <CustomTextInput
-              value={customText}
-              onChange={setCustomText}
-              maxLength={4000}
-            />
+            <div className="bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-950/30 dark:to-slate-950/30 p-6 rounded-2xl border border-gray-200 dark:border-gray-800">
+              <CustomTextInput
+                value={customText}
+                onChange={setCustomText}
+                maxLength={4000}
+              />
+            </div>
           )}
 
-          <Alert>
-            <Zap className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Enhanced Generation:</strong> Our optimized system uses intelligent strategies, quality metrics, and smart recovery to ensure successful creation. Audio generation happens automatically in the background.
+          {/* Enhanced Feature Highlight */}
+          <Alert className="border-2 border-gradient-to-r from-yellow-200 to-orange-200 bg-gradient-to-r from-yellow-50 via-orange-50 to-red-50 dark:from-yellow-950/30 dark:via-orange-950/30 dark:to-red-950/30">
+            <Zap className="h-5 w-5 text-yellow-600" />
+            <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+              <strong className="text-yellow-900 dark:text-yellow-100">Enhanced Generation:</strong> Our optimized system uses intelligent strategies, quality metrics, and smart recovery to ensure successful creation. Audio generation happens automatically in the background.
             </AlertDescription>
           </Alert>
 
-          <div className="flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={handleClose}>
+          {/* Enhanced Action Buttons */}
+          <div className="flex justify-end gap-4 pt-6 border-t border-gradient-to-r from-blue-200/50 via-purple-200/50 to-pink-200/50">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleClose}
+              className="px-8 py-3 h-12 rounded-xl border-2 hover:bg-gray-50 transition-all duration-200"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isCreating}>
-              {isCreating ? 'Creating...' : 'Create Enhanced Exercise'}
+            <Button 
+              type="submit" 
+              disabled={isCreating}
+              className="px-8 py-3 h-12 rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white font-semibold shadow-lg transition-all duration-200 transform hover:scale-[1.02]"
+            >
+              {isCreating ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Creating...
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Create Enhanced Exercise
+                </div>
+              )}
             </Button>
           </div>
         </form>
