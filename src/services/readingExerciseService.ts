@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise, ReadingExerciseProgress, CreateReadingExerciseRequest } from '@/types/reading';
+import { enhancedAudioService } from '@/services/enhancedAudioService';
 
 export class ReadingExerciseService {
   
@@ -35,7 +36,7 @@ export class ReadingExerciseService {
       }
     }
     
-    // Generate audio in background for better performance
+    // Create exercise first, then generate audio in background
     const { data, error } = await supabase
       .from('reading_exercises')
       .insert({
@@ -65,8 +66,8 @@ export class ReadingExerciseService {
 
     console.log(`[ENHANCED SERVICE] Exercise created successfully: ${data.id} (method: ${wasPartialGeneration ? 'fallback' : 'standard'})`);
 
-    // Start background audio generation
-    this.generateAudioInBackground(data.id, content, request.language);
+    // Start enhanced background audio generation
+    this.generateAudioInBackgroundEnhanced(data.id, content, request.language);
 
     return {
       ...data,
@@ -419,9 +420,9 @@ export class ReadingExerciseService {
     return data;
   }
 
-  private async generateAudioInBackground(exerciseId: string, content: any, language: string): Promise<void> {
+  private async generateAudioInBackgroundEnhanced(exerciseId: string, content: any, language: string): Promise<void> {
     try {
-      console.log(`[BACKGROUND AUDIO] Starting generation for exercise ${exerciseId}`);
+      console.log(`[ENHANCED BACKGROUND AUDIO] Starting generation for exercise ${exerciseId}`);
       
       // Update status to generating
       await supabase
@@ -429,22 +430,72 @@ export class ReadingExerciseService {
         .update({ audio_generation_status: 'generating' })
         .eq('id', exerciseId);
 
-      // Generate audio for content
-      const contentWithAudio = await this.generateAudioForContent(content, language);
+      // Prepare batch audio generation items
+      const audioItems = [];
       
-      // Update exercise with audio URLs
+      // Add full text audio
+      const fullText = content.sentences.map((s: any) => s.text).join(' ');
+      if (fullText.trim()) {
+        audioItems.push({
+          id: 'full_text',
+          text: fullText,
+          language
+        });
+      }
+
+      // Add individual sentence audio
+      content.sentences.forEach((sentence: any, index: number) => {
+        if (sentence.text && sentence.text.trim()) {
+          audioItems.push({
+            id: `sentence_${index}`,
+            text: sentence.text,
+            language
+          });
+        }
+      });
+
+      // Generate audio using enhanced batch processing
+      const results = await enhancedAudioService.generateBatchAudio(audioItems, {
+        maxConcurrent: 2,
+        quality: 'standard',
+        retryFailures: true
+      });
+
+      // Process results and update content
+      const fullTextResult = results.get('full_text');
+      const updatedSentences = content.sentences.map((sentence: any, index: number) => {
+        const sentenceResult = results.get(`sentence_${index}`);
+        return {
+          ...sentence,
+          audio_url: sentenceResult?.success ? sentenceResult.audioUrl : null
+        };
+      });
+
+      const updatedContent = {
+        ...content,
+        sentences: updatedSentences,
+        full_text_audio_url: fullTextResult?.success ? fullTextResult.audioUrl : null,
+        audio_metadata: {
+          generated_at: new Date().toISOString(),
+          success_rate: Array.from(results.values()).filter(r => r.success).length / results.size,
+          enhanced_generation: true
+        }
+      };
+
+      // Update exercise with enhanced audio content
       await supabase
         .from('reading_exercises')
         .update({ 
-          content: contentWithAudio,
-          full_text_audio_url: contentWithAudio.full_text_audio_url,
+          content: updatedContent,
+          full_text_audio_url: fullTextResult?.success ? fullTextResult.audioUrl : null,
           audio_generation_status: 'completed'
         })
         .eq('id', exerciseId);
 
-      console.log(`[BACKGROUND AUDIO] Completed for exercise ${exerciseId}`);
+      console.log(`[ENHANCED BACKGROUND AUDIO] Completed for exercise ${exerciseId} with ${Array.from(results.values()).filter(r => r.success).length}/${results.size} successful generations`);
+
     } catch (error) {
-      console.error(`[BACKGROUND AUDIO] Failed for exercise ${exerciseId}:`, error);
+      console.error(`[ENHANCED BACKGROUND AUDIO] Failed for exercise ${exerciseId}:`, error);
       
       // Update status to failed
       await supabase
@@ -454,118 +505,23 @@ export class ReadingExerciseService {
     }
   }
 
-  private async generateAudioForContent(content: any, language: string): Promise<any> {
-    try {
-      console.log('Generating audio for reading exercise content');
-      
-      const fullText = content.sentences.map((s: any) => s.text).join(' ');
-      
-      const batchSize = 5;
-      const sentenceBatches = [];
-      
-      for (let i = 0; i < content.sentences.length; i += batchSize) {
-        sentenceBatches.push(content.sentences.slice(i, i + batchSize));
-      }
-
-      let fullAudioUrl = null;
-      const sentencesWithAudio = [...content.sentences];
-
-      try {
-        fullAudioUrl = await this.generateAudio(fullText, language);
-      } catch (error) {
-        console.warn('Full text audio generation failed:', error);
-      }
-
-      for (const batch of sentenceBatches) {
-        const batchPromises = batch.map(async (sentence: any, localIndex: number) => {
-          const globalIndex = sentenceBatches.indexOf(batch) * batchSize + localIndex;
-          try {
-            const audioUrl = await this.generateAudio(sentence.text, language);
-            sentencesWithAudio[globalIndex] = { ...sentence, audio_url: audioUrl };
-          } catch (error) {
-            console.warn(`Audio generation failed for sentence ${globalIndex}:`, error);
-            sentencesWithAudio[globalIndex] = { ...sentence, audio_url: null };
-          }
-        });
-
-        await Promise.allSettled(batchPromises);
-        
-        if (sentenceBatches.indexOf(batch) < sentenceBatches.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-
-      return {
-        ...content,
-        sentences: sentencesWithAudio,
-        full_text_audio_url: fullAudioUrl
-      };
-
-    } catch (error) {
-      console.error('Error generating audio during exercise creation:', error);
-      
-      return {
-        ...content,
-        sentences: content.sentences.map((sentence: any) => ({
-          ...sentence,
-          audio_url: null
-        })),
-        full_text_audio_url: null
-      };
-    }
-  }
-
   async generateAudio(text: string, language: string): Promise<string> {
-    try {
-      console.log('Calling text-to-speech function for:', text.substring(0, 50) + '...');
-      
-      const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: {
-          text,
-          language
-        }
-      });
+    // Use enhanced audio service for compatibility
+    const result = await enhancedAudioService.generateSingleAudio(text, language, {
+      quality: 'standard',
+      background: true
+    });
 
-      if (error) {
-        console.error('Error invoking text-to-speech function:', error);
-        throw error;
-      }
-
-      if (!data) {
-        console.warn('No data received from text-to-speech function');
-        throw new Error('No audio data received');
-      }
-
-      if (data.audio_url) {
-        console.log('Audio generated successfully, URL:', data.audio_url);
-        return data.audio_url;
-      }
-
-      if (data.audioUrl) {
-        console.log('Audio generated successfully (legacy format), URL:', data.audioUrl);
-        return data.audioUrl;
-      }
-
-      console.error('No audio URL in response:', data);
-      throw new Error('No audio URL in response');
-    } catch (error) {
-      console.error('Error generating audio:', error);
-      throw error;
+    if (result.success) {
+      return result.audioUrl!;
+    } else {
+      throw new Error(result.error || 'Audio generation failed');
     }
   }
 
   async retryAudioGeneration(exerciseId: string): Promise<void> {
     const exercise = await this.getReadingExercise(exerciseId);
-    const contentWithAudio = await this.generateAudioForContent(exercise.content, exercise.language);
-    
-    await supabase
-      .from('reading_exercises')
-      .update({ 
-        content: contentWithAudio,
-        full_text_audio_url: contentWithAudio.full_text_audio_url,
-        audio_generation_status: 'completed'
-      })
-      .eq('id', exerciseId);
+    await this.generateAudioInBackgroundEnhanced(exerciseId, exercise.content, exercise.language);
   }
 }
 

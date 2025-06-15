@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -14,12 +15,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Exercise, Language } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import PopoverHint from './PopoverHint';
-import { useAudioProgress } from '@/hooks/useAudioProgress';
-import { AudioProgressIndicator } from '@/components/AudioProgressIndicator';
+import { useEnhancedAudioProgress } from '@/hooks/useEnhancedAudioProgress';
+import { EnhancedAudioProgressIndicator } from '@/components/EnhancedAudioProgressIndicator';
+import { enhancedAudioService } from '@/services/enhancedAudioService';
 
 interface ExerciseFormProps {
   onSuccess?: () => void;
@@ -36,7 +36,6 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   
   const [title, setTitle] = useState(initialValues?.title || '');
   const [text, setText] = useState(initialValues?.text || '');
-  // Language is now set from user settings, but not shown in the form
   const language = initialValues?.language || settings.selectedLanguage;
   const [directoryId, setDirectoryId] = useState<string | null>(
     initialValues?.directoryId || currentDirectoryId
@@ -46,15 +45,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
 
-  const {
-    isGenerating: isGeneratingAudio,
-    progress,
-    estimatedTimeRemaining,
-    stage,
-    startProgress,
-    completeProgress,
-    resetProgress
-  } = useAudioProgress();
+  const audioState = useEnhancedAudioProgress();
 
   // Update directory when currentDirectoryId changes (for new exercises)
   useEffect(() => {
@@ -93,45 +84,23 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
 
   const generateAudio = async (text: string, language: Language): Promise<string | null> => {
     try {
-      startProgress();
-      toast.info(`Generating audio file...`);
-
-      const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: { 
-          text, 
-          language
-        }
+      audioState.startProgress(enhancedAudioService['estimateGenerationTime'](text.length));
+      
+      const result = await enhancedAudioService.generateSingleAudio(text, language, {
+        quality: 'standard',
+        priority: 'high'
       });
 
-      if (error) {
-        console.error('Error invoking text-to-speech function:', error);
-        throw error;
+      if (result.success) {
+        audioState.completeProgress();
+        return result.audioUrl || null;
+      } else {
+        audioState.setError(result.error || 'Audio generation failed');
+        return null;
       }
-
-      if (!data) {
-        throw new Error('No data received from text-to-speech function');
-      }
-
-      // Handle the correct response format: { audio_url: "..." }
-      if (data.audio_url) {
-        console.log('Audio generated successfully, URL:', data.audio_url);
-        completeProgress();
-        toast.success(`Audio file generated successfully`);
-        return data.audio_url;
-      }
-
-      // Legacy fallback for old response format (backward compatibility)
-      if (data.audioUrl) {
-        console.log('Audio generated successfully (legacy format), URL:', data.audioUrl);
-        toast.success(`Audio file generated successfully`);
-        return data.audioUrl;
-      }
-
-      throw new Error('No audio URL received in response');
     } catch (error) {
       console.error('Error generating audio:', error);
-      resetProgress();
-      toast.error(`Failed to generate audio: ${error.message}`);
+      audioState.setError(error.message || 'Audio generation failed');
       return null;
     }
   };
@@ -144,7 +113,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     try {
       setIsSaving(true);
 
-      // Generate audio - passing the current language for database association
+      // Generate audio with enhanced service
       const audioUrl = await generateAudio(text, language);
       
       if (initialValues?.id) {
@@ -182,6 +151,11 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     }
   };
 
+  const handleRetryAudio = () => {
+    audioState.resetProgress();
+    generateAudio(text, language);
+  };
+
   // Build a directory path string for each directory
   const getDirectoryPath = (dirId: string | null): string => {
     if (!dirId) return "Root";
@@ -200,25 +174,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     return path.join(" / ") || "Root";
   };
 
-  // Language display names - keeping this for reference even though we don't show the dropdown anymore
-  const languageDisplayNames: Record<Language, string> = {
-    'english': 'English',
-    'german': 'German (Deutsch)',
-    'french': 'French (Français)',
-    'spanish': 'Spanish (Español)',
-    'portuguese': 'Portuguese (Português)',
-    'italian': 'Italian (Italiano)',
-    'dutch': 'Dutch (Nederlands)',
-    'turkish': 'Turkish (Türkçe)',
-    'swedish': 'Swedish (Svenska)',
-    'norwegian': 'Norwegian (Norsk)',
-    'russian': 'Russian (Русский)',
-    'polish': 'Polish (Polski)',
-    'chinese': 'Chinese (中文)',
-    'japanese': 'Japanese (日本語)',
-    'korean': 'Korean (한국어)',
-    'arabic': 'Arabic (العربية)'
-  };
+  const isFormDisabled = isSaving || audioState.isGenerating;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -230,21 +186,19 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Enter a title for your exercise"
           className={errors.title ? "border-destructive" : ""}
-          disabled={isSaving || isGeneratingAudio}
+          disabled={isFormDisabled}
         />
         {errors.title && (
           <p className="text-xs text-destructive mt-1">{errors.title}</p>
         )}
       </div>
       
-      {/* Language selection div has been removed - language is now automatically set from user settings */}
-      
       <div>
         <Label htmlFor="directory">Directory</Label>
         <Select 
           value={directoryId || "root"} 
           onValueChange={(value) => setDirectoryId(value === "root" ? null : value)}
-          disabled={isSaving || isGeneratingAudio}
+          disabled={isFormDisabled}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select a directory" />
@@ -268,7 +222,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           onChange={(e) => setText(e.target.value)}
           placeholder="Enter the text for dictation practice"
           className={`min-h-32 ${errors.text ? "border-destructive" : ""}`}
-          disabled={isSaving || isGeneratingAudio}
+          disabled={isFormDisabled}
         />
         {errors.text && (
           <p className="text-xs text-destructive mt-1">{errors.text}</p>
@@ -283,13 +237,13 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
             placeholder="Add tags (e.g., travel, grammar)"
-            disabled={isSaving || isGeneratingAudio}
+            disabled={isFormDisabled}
           />
           <Button 
             type="button" 
             variant="outline" 
             onClick={handleAddTag}
-            disabled={isSaving || isGeneratingAudio}
+            disabled={isFormDisabled}
           >
             Add
           </Button>
@@ -307,7 +261,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
                   type="button"
                   onClick={() => handleRemoveTag(tag)}
                   className="text-muted-foreground hover:text-destructive"
-                  disabled={isSaving || isGeneratingAudio}
+                  disabled={isFormDisabled}
                 >
                   &times;
                 </button>
@@ -317,30 +271,27 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
         )}
       </div>
       
-      {/* Audio Generation Progress */}
-      {isGeneratingAudio && (
-        <div className="p-4 bg-muted/30 rounded-lg">
-          <AudioProgressIndicator
-            isGenerating={isGeneratingAudio}
-            progress={progress}
-            estimatedTimeRemaining={estimatedTimeRemaining}
-            stage={stage}
-          />
-        </div>
+      {/* Enhanced Audio Generation Progress */}
+      {(audioState.isGenerating || audioState.error || audioState.stage === 'complete') && (
+        <EnhancedAudioProgressIndicator
+          state={audioState}
+          onCancel={audioState.cancelProgress}
+          onRetry={handleRetryAudio}
+        />
       )}
       
       <div className="flex justify-end">
-        <Button type="submit" disabled={isSaving || isGeneratingAudio}>
-          {(isSaving || isGeneratingAudio) && (
+        <Button type="submit" disabled={isFormDisabled}>
+          {isFormDisabled && (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           )}
           {initialValues?.id 
-            ? isGeneratingAudio 
+            ? audioState.isGenerating 
               ? 'Generating Audio...' 
               : isSaving 
                 ? 'Updating...' 
                 : 'Update Exercise'
-            : isGeneratingAudio 
+            : audioState.isGenerating 
               ? 'Generating Audio...' 
               : isSaving 
                 ? 'Creating...' 
