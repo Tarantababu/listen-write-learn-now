@@ -122,8 +122,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
 
   if (!currentExercise) return null
 
-  // Get full text from simplified content structure
-  const fullText = currentExercise.content.text || ''
+  const fullText = currentExercise.content.sentences.map(s => s.text).join(' ')
   const exerciseLanguage = currentExercise.language as Language
 
   // Enhanced text size scaling for better full-screen reading

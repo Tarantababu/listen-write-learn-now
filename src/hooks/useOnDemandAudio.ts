@@ -96,13 +96,6 @@ export const useOnDemandAudio = ({
       setError(null);
 
       try {
-        console.log('[AUDIO HOOK] Checking audio status for simplified exercise:', {
-          id: exercise.id,
-          hasText: !!exercise.content?.text,
-          textLength: exercise.content?.text?.length || 0,
-          audioStatus: exercise.audio_generation_status
-        });
-
         const status = await AudioUtils.getAudioStatus(exercise);
         
         if (status.hasAudio && status.isAccessible && status.preferredUrl) {
@@ -157,14 +150,6 @@ export const useOnDemandAudio = ({
   const generateAudio = useCallback(async () => {
     if (!exercise?.id || isGenerating) return;
 
-    // Check if we have text content in the simplified format
-    const textContent = exercise.content?.text;
-    if (!textContent || textContent.trim().length === 0) {
-      setError('No text content available for audio generation');
-      setAudioStatus('error');
-      return;
-    }
-
     setIsGenerating(true);
     setError(null);
     setAudioStatus('generating');
@@ -203,7 +188,7 @@ export const useOnDemandAudio = ({
     } finally {
       setIsGenerating(false);
     }
-  }, [exercise?.id, exercise?.content?.text, isGenerating]);
+  }, [exercise?.id, isGenerating]);
 
   const play = useCallback(async () => {
     if (!audioRef.current || !audioUrl) return;

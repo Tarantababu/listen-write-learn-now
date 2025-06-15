@@ -37,9 +37,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
   const [audioLoading, setAudioLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Split text into sentences for practice mode
-  const fullText = exercise?.content?.text || '';
-  const sentences = fullText.split(/[.!?]+/).filter(s => s.trim().length > 0).map(s => s.trim());
+  const sentences = exercise?.content?.sentences || [];
   const currentSentence = sentences[currentSentenceIndex];
 
   useEffect(() => {
@@ -246,7 +244,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
                     
                     <div className="flex items-center gap-2">
                       {/* Audio Controls */}
-                      {exercise.full_text_audio_url ? (
+                      {currentSentence.audio_url ? (
                         <div className="flex items-center gap-2">
                           {audioError && (
                             <div className="flex items-center gap-1 text-red-600">
@@ -266,7 +264,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
                           ) : (
                             <Button 
                               size="sm" 
-                              onClick={() => handlePlayAudio(exercise.full_text_audio_url)}
+                              onClick={() => handlePlayAudio(currentSentence.audio_url)}
                               variant="outline"
                             >
                               <Play className="h-4 w-4" />
@@ -283,7 +281,7 @@ export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
                   </div>
                   
                   <div className="text-lg leading-relaxed">
-                    {currentSentence}
+                    {currentSentence.text}
                   </div>
                 </div>
               </CardContent>

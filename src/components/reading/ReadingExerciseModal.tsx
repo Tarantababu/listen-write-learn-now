@@ -103,16 +103,16 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         onSuccess();
       }
       
-      // Enhanced success handling with metadata-based quality assessment
-      const isEnhancedContent = exercise.metadata?.enhanced_audio_enabled;
-      const generationMethod = exercise.content?.metadata?.generation_method;
-      const processingType = exercise.content?.metadata?.processing_type;
+      // Enhanced success handling with quality assessment
+      const isEnhancedContent = exercise.content?.analysis?.enhancedGeneration;
+      const qualityLevel = exercise.content?.analysis?.qualityMetrics?.coherenceScore || 0;
+      const usedRecovery = exercise.content?.analysis?.fallbackInfo?.isUsable;
       
       const getSuccessMessage = () => {
-        if (processingType === 'recovery') {
+        if (usedRecovery) {
           return "Exercise created with smart recovery! Our enhanced system ensured successful creation.";
         } else if (isEnhancedContent) {
-          return `Enhanced exercise created successfully with ${generationMethod || 'optimized'} generation!`;
+          return `Enhanced exercise created successfully! Quality score: ${Math.round(qualityLevel * 100)}%`;
         } else {
           return `Your ${targetLength}-word reading exercise has been created successfully.`;
         }
