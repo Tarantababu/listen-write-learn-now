@@ -42,26 +42,101 @@ export class OptimizedReadingService {
 
     console.log('[OPTIMIZED READING SERVICE] Creating reading exercise with streamlined workflow');
 
-    // Call the optimized generate-reading-content edge function
-    const { data, error } = await supabase.functions.invoke('generate-reading-content', {
-      body: {
-        ...exerciseData,
-        user_id: user.id,
-        optimized: true
+    // Enhanced error handling for the edge function call
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-reading-content', {
+        body: {
+          ...exerciseData,
+          user_id: user.id,
+          optimized: true,
+          // Ensure target_length has a default value
+          target_length: exerciseData.target_length || 500
+        }
+      });
+
+      if (error) {
+        console.error('[OPTIMIZED READING SERVICE] Exercise creation error:', error);
+        
+        // Enhanced error handling - check if it's a recoverable error
+        if (error.message?.includes('timeout') || error.message?.includes('504')) {
+          console.warn('[OPTIMIZED READING SERVICE] Timeout detected, retrying with smaller target length');
+          
+          // Retry with smaller target length
+          const retryData = {
+            ...exerciseData,
+            target_length: Math.min(exerciseData.target_length || 500, 300)
+          };
+          
+          const retryResult = await supabase.functions.invoke('generate-reading-content', {
+            body: {
+              ...retryData,
+              user_id: user.id,
+              optimized: true
+            }
+          });
+          
+          if (retryResult.error) {
+            throw retryResult.error;
+          }
+          
+          return this.processCreatedExercise(retryResult.data, exerciseData);
+        }
+        
+        throw error;
       }
-    });
 
-    if (error) {
-      console.error('[OPTIMIZED READING SERVICE] Exercise creation error:', error);
-      throw error;
+      if (!data || !data.id) {
+        throw new Error('Failed to create exercise - no data returned');
+      }
+
+      return this.processCreatedExercise(data, exerciseData);
+      
+    } catch (error) {
+      console.error('[OPTIMIZED READING SERVICE] Unexpected error:', error);
+      throw new Error(`Failed to create reading exercise: ${error.message}`);
     }
+  }
 
-    if (!data || !data.id) {
-      throw new Error('Failed to create exercise');
+  private async processCreatedExercise(data: any, originalData: any): Promise<ReadingExercise> {
+    // If we got an exercise ID, fetch the complete exercise
+    if (data.id) {
+      return this.getReadingExercise(data.id);
     }
-
-    // Fetch the created exercise
-    return this.getReadingExercise(data.id);
+    
+    // If we got exercise content directly, create the exercise in the database
+    if (data.sentences && Array.isArray(data.sentences)) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      const { data: createdExercise, error: createError } = await supabase
+        .from('reading_exercises')
+        .insert({
+          user_id: user.id,
+          title: originalData.title,
+          language: originalData.language,
+          difficulty_level: originalData.difficulty_level,
+          target_length: originalData.target_length || 500,
+          grammar_focus: originalData.grammar_focus,
+          topic: originalData.topic,
+          content: data,
+          audio_generation_status: 'pending',
+          metadata: {
+            generation_method: 'optimized_workflow',
+            created_at: new Date().toISOString()
+          }
+        })
+        .select()
+        .single();
+      
+      if (createError) {
+        console.error('[OPTIMIZED READING SERVICE] Database insert error:', createError);
+        throw createError;
+      }
+      
+      return this.mapExerciseFromDb(createdExercise);
+    }
+    
+    throw new Error('Invalid response format from exercise creation');
   }
 
   async deleteReadingExercise(id: string): Promise<void> {

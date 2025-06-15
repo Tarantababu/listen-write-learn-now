@@ -1,10 +1,11 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from '../_shared/cors.ts'
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
-const FUNCTION_TIMEOUT = 50000; // Increased timeout for better reliability
-const OPENAI_TIMEOUT = 35000; // Enhanced OpenAI timeout
-const MAX_RETRIES = 2; // Improved retry strategy
+const FUNCTION_TIMEOUT = 50000;
+const OPENAI_TIMEOUT = 35000;
+const MAX_RETRIES = 2;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -23,7 +24,7 @@ serve(async (req) => {
       topic, 
       language, 
       difficulty_level, 
-      target_length, 
+      target_length = 500, // Provide default value here
       grammar_focus,
       customText,
       isCustomText = false,
@@ -81,7 +82,7 @@ serve(async (req) => {
     // Enhanced error handling with smart recovery
     if (error.name === 'AbortError' || error.message.includes('timeout')) {
       console.warn('[SMART RECOVERY] Using intelligent fallback due to timeout');
-      const fallbackContent = generateIntelligentFallback(target_length || 700, language, topic, difficulty_level);
+      const fallbackContent = generateIntelligentFallback(target_length || 500, language, topic, difficulty_level);
       
       return new Response(JSON.stringify(fallbackContent), {
         status: 200,
@@ -92,7 +93,7 @@ serve(async (req) => {
     // Enhanced error response with recovery suggestions
     const errorResponse = {
       error: error.message,
-      recoveryData: generateRecoveryData(target_length || 700, language, topic, difficulty_level),
+      recoveryData: generateRecoveryData(target_length || 500, language, topic, difficulty_level),
       fallbackAvailable: true
     };
     
@@ -264,12 +265,8 @@ Provide ONLY analysis in this JSON format:
       "difficulty": "easy/medium/hard",
       "contextualUsage": "how this word is used in the original sentence"
     }
-    // Include 3-5 most important/educational words
   ],
-  "grammar": [
-    "specific grammar point 1 demonstrated in this sentence",
-    "specific grammar point 2 demonstrated in this sentence"
-  ],
+  "grammar": ["specific grammar point 1", "specific grammar point 2"],
   "translation": "accurate English translation of the EXACT original sentence",
   "complexity": "easy/moderate/complex",
   "keyPhrases": ["important phrase 1", "important phrase 2"]
@@ -301,7 +298,7 @@ CRITICAL:
             content: prompt
           }
         ],
-        temperature: 0.3, // Lower temperature for more consistent analysis
+        temperature: 0.3,
         max_tokens: 1000,
         response_format: { type: "json_object" }
       }),
@@ -351,7 +348,6 @@ function parseCustomAnalysis(content: string) {
 }
 
 function determineOptimalStrategy(targetLength: number, difficultyLevel: string): 'direct' | 'smart_chunking' | 'adaptive_chunking' {
-  // Enhanced strategy selection based on multiple factors
   if (targetLength <= 800) return 'direct';
   if (targetLength <= 1500) return 'smart_chunking';
   return 'adaptive_chunking';
@@ -383,7 +379,6 @@ async function generateContentWithSmartChunking(
 ) {
   console.log(`[SMART CHUNKING] Creating ${target_length} words with intelligent chunking`);
   
-  // Enhanced chunking with better size calculation
   const chunkStrategy = calculateSmartChunkStrategy(target_length);
   const chunks = [];
   let totalWordCount = 0;
@@ -405,7 +400,6 @@ async function generateContentWithSmartChunking(
       chunks.push(chunk);
       totalWordCount += chunk.analysis?.wordCount || 0;
       
-      // Adaptive delay based on chunk complexity
       if (i < chunkStrategy.numChunks - 1) {
         await new Promise(resolve => setTimeout(resolve, 150));
       }
@@ -413,7 +407,6 @@ async function generateContentWithSmartChunking(
       console.error(`[SMART CHUNK ${i + 1} ERROR]`, error);
       
       if (chunks.length === 0) {
-        // Enhanced emergency chunk with better content
         chunks.push(createEnhancedEmergencyChunk(topic, language, difficulty_level, chunkSize));
       } else {
         console.warn(`[SMART CHUNK ${i + 1} SKIP] Continuing with existing chunks`);
@@ -435,7 +428,6 @@ async function generateContentWithAdaptiveChunking(
 ) {
   console.log(`[ADAPTIVE CHUNKING] Creating ${target_length} words with adaptive strategy`);
   
-  // Advanced adaptive chunking for very large content
   const adaptiveStrategy = calculateAdaptiveStrategy(target_length, difficulty_level);
   const chunks = [];
   let totalWordCount = 0;
@@ -454,7 +446,6 @@ async function generateContentWithAdaptiveChunking(
       chunks.push(chunk);
       totalWordCount += chunk.analysis?.wordCount || 0;
       
-      // Dynamic delay based on phase complexity
       if (i < adaptiveStrategy.phases.length - 1) {
         await new Promise(resolve => setTimeout(resolve, phase.delay));
       }
@@ -475,21 +466,20 @@ async function generateContentWithAdaptiveChunking(
 function createEnhancedPrompt(topic: string, language: string, difficulty: string, targetLength: number, grammarFocus?: string): string {
   const complexityLevel = difficulty === 'beginner' ? 'simple' : difficulty === 'intermediate' ? 'moderate' : 'sophisticated';
   
-  return `Create a ${language} reading exercise for ${difficulty} learners with enhanced quality.
+  return `Create a ${language} reading exercise for ${difficulty} learners.
 
 Topic: ${topic}
 Target: EXACTLY ${targetLength} words
 Complexity: ${complexityLevel} vocabulary and sentence structure
 ${grammarFocus ? `Grammar emphasis: ${grammarFocus}` : ''}
 
-ENHANCED REQUIREMENTS:
+REQUIREMENTS:
 - Write exactly ${targetLength} words (count carefully)
 - Create 4-12 natural, flowing sentences
 - Use ${difficulty}-appropriate vocabulary with variety
 - Ensure logical progression and coherence
-- Include contextual richness appropriate for level
 
-Return ONLY this JSON with enhanced analysis:
+Return ONLY this JSON:
 {
   "sentences": [
     {
@@ -501,30 +491,23 @@ Return ONLY this JSON with enhanced analysis:
             "word": "word",
             "definition": "clear definition",
             "partOfSpeech": "noun/verb/adjective/etc",
-            "difficulty": "easy/medium/hard",
-            "contextualUsage": "how it's used in this context"
+            "difficulty": "easy/medium/hard"
           }
         ],
-        "grammar": ["specific grammar points demonstrated"],
-        "translation": "accurate English translation",
-        "complexity": "sentence complexity level",
-        "keyPhrases": ["important phrases to highlight"]
+        "grammar": ["specific grammar points"],
+        "translation": "accurate English translation"
       }
     }
   ],
   "analysis": {
     "wordCount": ${targetLength},
     "readingTime": ${Math.ceil(targetLength / 200)},
-    "grammarPoints": ["comprehensive grammar concepts covered"],
-    "vocabularyLevel": "${difficulty}",
-    "thematicCoherence": "how well the content flows thematically",
-    "learningObjectives": ["what learners will gain from this text"]
+    "grammarPoints": ["grammar concepts covered"]
   }
 }`;
 }
 
 function calculateOptimalTokens(targetLength: number): number {
-  // Enhanced token calculation with better efficiency
   const baseTokens = 1000;
   const wordsToTokensRatio = 1.3;
   const analysisTokens = 800;
@@ -548,10 +531,9 @@ function calculateChunkSize(index: number, strategy: any, targetLength: number, 
   const chunksLeft = strategy.numChunks - index;
   
   if (chunksLeft === 1) {
-    return Math.max(150, remaining); // Ensure minimum viable chunk size
+    return Math.max(150, remaining);
   }
   
-  // Smart distribution to avoid very small final chunks
   const idealSize = Math.ceil(remaining / chunksLeft);
   return Math.max(200, Math.min(idealSize, strategy.baseChunkSize));
 }
@@ -623,14 +605,13 @@ ${contextInfo}
 Target: EXACTLY ${target_length} words
 ${grammar_focus ? `Grammar focus: ${grammar_focus}` : ''}
 
-ENHANCED CHUNK REQUIREMENTS:
+REQUIREMENTS:
 - Write exactly ${target_length} words
 - Create 3-8 natural sentences with good flow
 - ${isFirstChunk ? 'Establish clear context and engage the reader' : 'Maintain narrative continuity'}
-- ${isLastChunk ? 'Provide satisfying conclusion without abrupt ending' : 'End in a way that flows naturally to next section'}
-- Ensure vocabulary appropriate for ${difficulty_level} level
+- ${isLastChunk ? 'Provide satisfying conclusion' : 'End in a way that flows naturally to next section'}
 
-Return ONLY this JSON with enhanced analysis:
+Return ONLY this JSON:
 {
   "sentences": [
     {
@@ -642,22 +623,18 @@ Return ONLY this JSON with enhanced analysis:
             "word": "word",
             "definition": "clear definition",
             "partOfSpeech": "noun/verb/adjective/etc",
-            "difficulty": "easy/medium/hard",
-            "contextualUsage": "how it's used here"
+            "difficulty": "easy/medium/hard"
           }
         ],
-        "grammar": ["grammar points in this sentence"],
-        "translation": "accurate English translation",
-        "complexity": "sentence complexity assessment"
+        "grammar": ["grammar points"],
+        "translation": "accurate English translation"
       }
     }
   ],
   "analysis": {
     "wordCount": ${target_length},
     "readingTime": ${Math.ceil(target_length / 200)},
-    "grammarPoints": ["grammar concepts covered"],
-    "chunkRole": "${chunkRole}",
-    "continuityScore": "${isFirstChunk ? 'N/A' : 'how well this continues from previous chunk'}"
+    "grammarPoints": ["grammar concepts covered"]
   }
 }`;
 
@@ -685,12 +662,11 @@ Focus: ${focus}
 ${grammar_focus ? `Grammar emphasis: ${grammar_focus}` : ''}
 ${previousChunk ? `Continue from: "${previousChunk.sentences?.[previousChunk.sentences.length - 1]?.text?.slice(0, 60) || ''}"` : ''}
 
-ADAPTIVE REQUIREMENTS:
+REQUIREMENTS:
 - Write exactly ${target_length} words
 - ${isIntro ? 'Create engaging introduction that sets context' : ''}
 - ${isConclusion ? 'Provide thoughtful conclusion that ties themes together' : ''}
 - ${!isIntro && !isConclusion ? 'Develop content with appropriate depth and detail' : ''}
-- Maintain ${difficulty_level} appropriate language complexity
 
 Return ONLY this JSON:
 {
@@ -715,9 +691,7 @@ Return ONLY this JSON:
   "analysis": {
     "wordCount": ${target_length},
     "readingTime": ${Math.ceil(target_length / 200)},
-    "grammarPoints": ["grammar concepts"],
-    "sectionFocus": "${focus}",
-    "adaptiveStrategy": "adaptive_progressive"
+    "grammarPoints": ["grammar concepts"]
   }
 }`;
 
@@ -752,7 +726,7 @@ async function callOpenAIEnhanced(
         messages: [
           {
             role: 'system',
-            content: 'You are an expert language teacher and content creator. Create educational content that is engaging, accurate, and pedagogically sound. Always respond with valid JSON only. Focus on quality and educational value.'
+            content: 'You are an expert language teacher and content creator. Create educational content that is engaging, accurate, and pedagogically sound. Always respond with valid JSON only.'
           },
           {
             role: 'user',
@@ -795,10 +769,40 @@ async function callOpenAIEnhanced(
 
 function parseAndValidateEnhanced(content: string, strategy: string) {
   try {
-    const parsedContent = JSON.parse(content);
+    // Enhanced JSON parsing with better error handling
+    let parsedContent;
+    try {
+      parsedContent = JSON.parse(content);
+    } catch (parseError) {
+      console.error(`[JSON PARSE ERROR] Strategy: ${strategy}, Content length: ${content.length}`);
+      
+      // Try to fix common JSON issues
+      let fixedContent = content;
+      
+      // Remove any text before the first {
+      const firstBrace = fixedContent.indexOf('{');
+      if (firstBrace > 0) {
+        fixedContent = fixedContent.substring(firstBrace);
+      }
+      
+      // Remove any text after the last }
+      const lastBrace = fixedContent.lastIndexOf('}');
+      if (lastBrace >= 0 && lastBrace < fixedContent.length - 1) {
+        fixedContent = fixedContent.substring(0, lastBrace + 1);
+      }
+      
+      // Try parsing again
+      try {
+        parsedContent = JSON.parse(fixedContent);
+        console.log(`[JSON PARSE RECOVERED] Strategy: ${strategy}`);
+      } catch (secondParseError) {
+        console.error(`[JSON PARSE FAILED] Strategy: ${strategy}, both attempts failed`);
+        throw new Error(`Failed to parse JSON response for strategy: ${strategy}`);
+      }
+    }
     
     if (!parsedContent?.sentences || !Array.isArray(parsedContent.sentences)) {
-      console.warn(`[ENHANCED PARSE WARNING] Invalid sentence structure for strategy: ${strategy}`);
+      console.warn(`[VALIDATION WARNING] Invalid sentence structure for strategy: ${strategy}`);
       throw new Error(`Invalid response structure for strategy: ${strategy}`);
     }
 
@@ -839,19 +843,10 @@ function parseAndValidateEnhanced(content: string, strategy: string) {
       grammarPoints: Array.isArray(parsedContent.analysis.grammarPoints) ? 
         parsedContent.analysis.grammarPoints : [],
       generationStrategy: strategy,
-      qualityMetrics: {
-        vocabularyDiversity: calculateVocabularyDiversity(parsedContent.sentences),
-        sentenceVariety: calculateSentenceVariety(parsedContent.sentences),
-        coherenceScore: calculateCoherenceScore(parsedContent.sentences)
-      },
-      enhancedFeatures: {
-        contextualRichness: true,
-        pedagogicalStructure: true,
-        adaptiveComplexity: true
-      }
+      enhancedGeneration: true
     };
 
-    console.log(`[ENHANCED VALIDATION] Strategy: ${strategy}, ${actualWordCount} words processed with enhanced features`);
+    console.log(`[ENHANCED VALIDATION] Strategy: ${strategy}, ${actualWordCount} words processed`);
     return parsedContent;
   } catch (error) {
     console.error(`[ENHANCED PARSE ERROR] Strategy: ${strategy}`, error);
@@ -859,52 +854,11 @@ function parseAndValidateEnhanced(content: string, strategy: string) {
   }
 }
 
-function calculateVocabularyDiversity(sentences: any[]): number {
-  const allWords = sentences.flatMap(s => 
-    (s.text || '').toLowerCase().split(/\s+/).filter((w: string) => w.length > 0)
-  );
-  const uniqueWords = new Set(allWords);
-  return allWords.length > 0 ? Number((uniqueWords.size / allWords.length).toFixed(2)) : 0;
-}
-
-function calculateSentenceVariety(sentences: any[]): number {
-  if (sentences.length === 0) return 0;
-  const lengths = sentences.map(s => (s.text || '').split(/\s+/).length);
-  const avgLength = lengths.reduce((a, b) => a + b, 0) / lengths.length;
-  const variance = lengths.reduce((sum, len) => sum + Math.pow(len - avgLength, 2), 0) / lengths.length;
-  return Number((Math.sqrt(variance) / avgLength).toFixed(2));
-}
-
-function calculateCoherenceScore(sentences: any[]): number {
-  // Simple coherence heuristic based on sentence connections
-  if (sentences.length < 2) return 1.0;
-  
-  let connections = 0;
-  for (let i = 1; i < sentences.length; i++) {
-    const prev = (sentences[i-1].text || '').toLowerCase();
-    const curr = (sentences[i].text || '').toLowerCase();
-    
-    // Look for connecting words, repeated themes, etc.
-    const connectingWords = ['and', 'but', 'however', 'therefore', 'then', 'also', 'furthermore'];
-    const hasConnection = connectingWords.some(word => curr.includes(word)) || 
-                         prev.split(' ').some(word => curr.includes(word) && word.length > 3);
-    
-    if (hasConnection) connections++;
-  }
-  
-  return Number((connections / (sentences.length - 1)).toFixed(2));
-}
-
 function combineChunksEnhanced(chunks: any[], target_length: number, strategy: string) {
   console.log(`[ENHANCED COMBINING] Strategy: ${strategy}, ${chunks.length} chunks`);
   
   const allSentences = [];
   const allGrammarPoints = new Set();
-  const qualityMetrics = {
-    vocabularyDiversity: 0,
-    sentenceVariety: 0,
-    coherenceScore: 0
-  };
   let totalWordCount = 0;
   let sentenceCounter = 1;
   
@@ -922,25 +876,10 @@ function combineChunksEnhanced(chunks: any[], target_length: number, strategy: s
       }
       
       totalWordCount += chunk.analysis?.wordCount || 0;
-      
-      // Aggregate quality metrics
-      if (chunk.analysis?.qualityMetrics) {
-        qualityMetrics.vocabularyDiversity += chunk.analysis.qualityMetrics.vocabularyDiversity || 0;
-        qualityMetrics.sentenceVariety += chunk.analysis.qualityMetrics.sentenceVariety || 0;
-        qualityMetrics.coherenceScore += chunk.analysis.qualityMetrics.coherenceScore || 0;
-      }
     }
   }
   
-  // Calculate overall quality metrics
-  const numChunks = chunks.length;
-  if (numChunks > 0) {
-    qualityMetrics.vocabularyDiversity = Number((qualityMetrics.vocabularyDiversity / numChunks).toFixed(2));
-    qualityMetrics.sentenceVariety = Number((qualityMetrics.sentenceVariety / numChunks).toFixed(2));
-    qualityMetrics.coherenceScore = Number((qualityMetrics.coherenceScore / numChunks).toFixed(2));
-  }
-  
-  console.log(`[ENHANCED COMBINATION] Strategy: ${strategy}, ${totalWordCount} words, ${allSentences.length} sentences, Quality: ${JSON.stringify(qualityMetrics)}`);
+  console.log(`[ENHANCED COMBINATION] Strategy: ${strategy}, ${totalWordCount} words, ${allSentences.length} sentences`);
   
   return {
     sentences: allSentences,
@@ -950,15 +889,7 @@ function combineChunksEnhanced(chunks: any[], target_length: number, strategy: s
       grammarPoints: Array.from(allGrammarPoints),
       generationStrategy: strategy,
       chunksUsed: chunks.length,
-      qualityMetrics,
-      enhancedGeneration: true,
-      optimizedProcessing: true,
-      pedagogicalStructure: {
-        hasIntroduction: allSentences.length > 0,
-        hasBody: allSentences.length > 2,
-        hasConclusion: allSentences.length > 1,
-        overallFlow: qualityMetrics.coherenceScore > 0.5 ? 'good' : 'adequate'
-      }
+      enhancedGeneration: true
     }
   };
 }
@@ -970,22 +901,19 @@ function createEnhancedEmergencyChunk(topic: string, language: string, difficult
   
   for (let i = 0; i < sentenceCount; i++) {
     sentences.push({
-      id: `enhanced-emergency-sentence-${i + 1}`,
-      text: `This is enhanced emergency content for ${topic} in ${language}. Advanced system protection has been activated with intelligent recovery mechanisms.`,
+      id: `emergency-sentence-${i + 1}`,
+      text: `This is emergency content for ${topic} in ${language}. System protection activated.`,
       analysis: {
         words: [
           {
-            word: 'enhanced',
-            definition: 'Improved and optimized',
+            word: 'emergency',
+            definition: 'A serious situation requiring immediate action',
             partOfSpeech: 'adjective',
-            difficulty: 'medium',
-            contextualUsage: 'Used to describe improved system capabilities'
+            difficulty: 'medium'
           }
         ],
-        grammar: ['enhanced emergency content', 'system protection'],
-        translation: 'Enhanced emergency content with advanced system protection.',
-        complexity: 'moderate',
-        keyPhrases: ['system protection', 'intelligent recovery']
+        grammar: ['emergency content'],
+        translation: 'Emergency content with system protection.'
       }
     });
   }
@@ -995,19 +923,14 @@ function createEnhancedEmergencyChunk(topic: string, language: string, difficult
     analysis: {
       wordCount: wordCount,
       readingTime: Math.ceil(wordCount / 200),
-      grammarPoints: ['enhanced emergency content', 'system protection'],
-      generationStrategy: 'enhanced_emergency',
-      qualityMetrics: {
-        vocabularyDiversity: 0.8,
-        sentenceVariety: 0.5,
-        coherenceScore: 0.9
-      }
+      grammarPoints: ['emergency content'],
+      generationStrategy: 'enhanced_emergency'
     }
   };
 }
 
 function generateIntelligentFallback(target_length: number, language: string, topic?: string, difficulty?: string) {
-  console.log('[INTELLIGENT FALLBACK] Creating enhanced fallback content with smart recovery');
+  console.log('[INTELLIGENT FALLBACK] Creating enhanced fallback content');
   
   const sentences = [];
   const wordsPerSentence = Math.max(15, Math.floor(target_length / 7));
@@ -1015,29 +938,25 @@ function generateIntelligentFallback(target_length: number, language: string, to
   
   for (let i = 0; i < numSentences; i++) {
     sentences.push({
-      id: `intelligent-fallback-sentence-${i + 1}`,
-      text: `This is intelligent fallback content for your ${language} reading exercise about ${topic || 'general topics'}. The enhanced generation system has implemented smart recovery protocols to ensure successful creation with optimal learning outcomes.`,
+      id: `fallback-sentence-${i + 1}`,
+      text: `This is intelligent fallback content for your ${language} reading exercise about ${topic || 'general topics'}. The system has implemented smart recovery protocols.`,
       analysis: {
         words: [
           {
             word: 'intelligent',
             definition: 'Having advanced reasoning capabilities',
             partOfSpeech: 'adjective',
-            difficulty: 'medium',
-            contextualUsage: 'Describes the advanced nature of the fallback system'
+            difficulty: 'medium'
           },
           {
             word: 'protocols',
             definition: 'Systematic procedures or rules',
             partOfSpeech: 'noun',
-            difficulty: 'hard',
-            contextualUsage: 'Refers to the systematic recovery procedures'
+            difficulty: 'hard'
           }
         ],
-        grammar: ['intelligent fallback', 'enhanced generation', 'recovery protocols'],
-        translation: 'Intelligent fallback content with enhanced generation and recovery protocols.',
-        complexity: 'moderate',
-        keyPhrases: ['smart recovery', 'optimal learning outcomes']
+        grammar: ['intelligent fallback', 'recovery protocols'],
+        translation: 'Intelligent fallback content with recovery protocols.'
       }
     });
   }
@@ -1047,24 +966,12 @@ function generateIntelligentFallback(target_length: number, language: string, to
     analysis: {
       wordCount: sentences.reduce((count, s) => count + s.text.split(' ').length, 0),
       readingTime: Math.ceil(target_length / 200),
-      grammarPoints: ['intelligent fallback', 'enhanced generation', 'smart recovery'],
+      grammarPoints: ['intelligent fallback', 'smart recovery'],
       generationStrategy: 'intelligent_fallback',
       fallbackInfo: {
         method: 'intelligent_fallback',
-        reason: 'Enhanced protection activated for reliable creation with optimal learning outcomes',
-        isUsable: true,
-        recoveryLevel: 'advanced',
-        qualityAssurance: true
-      },
-      qualityMetrics: {
-        vocabularyDiversity: 0.85,
-        sentenceVariety: 0.6,
-        coherenceScore: 0.95
-      },
-      enhancedFeatures: {
-        smartRecovery: true,
-        contextualRichness: true,
-        pedagogicalStructure: true
+        reason: 'Enhanced protection activated',
+        isUsable: true
       }
     }
   };
@@ -1072,19 +979,12 @@ function generateIntelligentFallback(target_length: number, language: string, to
 
 function generateRecoveryData(target_length: number, language: string, topic?: string, difficulty?: string) {
   return {
-    recoveryMethod: 'intelligent_fallback_with_enhanced_features',
+    recoveryMethod: 'intelligent_fallback',
     targetLength: target_length,
     language: language,
     topic: topic || 'general',
     difficulty: difficulty || 'intermediate',
     fallbackQuality: 'high',
-    features: {
-      smartRecovery: true,
-      enhancedAnalysis: true,
-      pedagogicalStructure: true,
-      qualityMetrics: true
-    },
-    estimatedQuality: 'excellent',
-    recommendedAction: 'Use intelligent fallback for optimal results'
+    estimatedQuality: 'excellent'
   };
 }
