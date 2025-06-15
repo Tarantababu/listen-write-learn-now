@@ -51,7 +51,7 @@ export const SynchronizedTextWithSelection: React.FC<SynchronizedTextWithSelecti
     console.log('Text selection disabled, rendering basic synchronized text');
     return (
       <div className={className}>
-        <div className="text-gray-900 dark:text-gray-100 leading-relaxed w-full">
+        <div className="text-gray-900 dark:text-gray-100 leading-relaxed">
           {text}
         </div>
       </div>

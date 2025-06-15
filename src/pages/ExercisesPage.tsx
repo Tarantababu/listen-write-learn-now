@@ -12,25 +12,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Archive, Move, Edit, Trash2, Play, ArrowLeftRight, Mic, BookOpen } from 'lucide-react';
-import { MobileExerciseFormModal } from '@/components/exercises/MobileExerciseFormModal';
+import { ExerciseFormModal } from '@/components/exercises/ExerciseFormModal';
 import PracticeModal from '@/components/exercises/PracticeModal';
 import MoveExerciseModal from '@/components/MoveExerciseModal';
 import DeleteExerciseDialog from '@/components/exercises/DeleteExerciseDialog';
-import { StandardCreateExerciseCard } from '@/components/exercises/StandardCreateExerciseCard';
-import { StandardFilterBar } from '@/components/exercises/StandardFilterBar';
-import { StandardPaginationControls } from '@/components/exercises/StandardPaginationControls';
-import { StandardTabLayout } from '@/components/exercises/StandardTabLayout';
-import { MobileExerciseGrid } from '@/components/exercises/MobileExerciseGrid';
+import PaginationControls from '@/components/exercises/PaginationControls';
+import FilterBar from '@/components/exercises/FilterBar';
+import ExerciseGrid from '@/components/exercises/ExerciseGrid';
+import CreateExerciseCard from '@/components/exercises/CreateExerciseCard';
 import BidirectionalPage from './BidirectionalPage';
 import { ReadingExercisesSection } from '@/components/reading/ReadingExercisesSection';
 import PopoverHint from '@/components/PopoverHint';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 // Memoized components to prevent unnecessary re-renders
-const MemoizedMobileExerciseGrid = React.memo(MobileExerciseGrid);
+const MemoizedExerciseGrid = React.memo(ExerciseGrid);
 const MemoizedBidirectionalPage = React.memo(BidirectionalPage);
-const MemoizedStandardFilterBar = React.memo(StandardFilterBar);
-const MemoizedStandardPaginationControls = React.memo(StandardPaginationControls);
+const MemoizedFilterBar = React.memo(FilterBar);
+const MemoizedPaginationControls = React.memo(PaginationControls);
 
 const ExercisesPage: React.FC = () => {
   const { user } = useAuth();
@@ -46,7 +44,6 @@ const ExercisesPage: React.FC = () => {
   const { directories } = useDirectoryContext();
   const { settings } = useUserSettingsContext();
   const { dueReviewsCount } = useBidirectionalReviews();
-  const isMobile = useIsMobile();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -56,9 +53,7 @@ const ExercisesPage: React.FC = () => {
   const [deleteExerciseId, setDeleteExerciseId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
-  
-  // Mobile-optimized pagination
-  const exercisesPerPage = isMobile ? 6 : 12;
+  const exercisesPerPage = 12;
 
   useEffect(() => {
     if (user) {
@@ -95,37 +90,6 @@ const ExercisesPage: React.FC = () => {
     );
     return { totalPages: total, paginatedExercises: paginated };
   }, [filteredExercises, currentPage, exercisesPerPage]);
-
-  // Tab options for standardized layout
-  const tabOptions = useMemo(() => [
-    {
-      value: "dictation",
-      label: "Dictation Method",
-      icon: <Mic className="h-4 w-4" />,
-      count: filteredExercises.length
-    },
-    {
-      value: "reading",
-      label: "Reading & Listening",
-      icon: <BookOpen className="h-4 w-4" />
-    },
-    {
-      value: "bidirectional",
-      label: "Bidirectional Method",
-      icon: <ArrowLeftRight className="h-4 w-4" />,
-      badge: dueReviewsCount > 0 ? (
-        <Badge variant="destructive" className="ml-2 h-5 min-w-5 text-xs">
-          {dueReviewsCount}
-        </Badge>
-      ) : undefined
-    }
-  ], [filteredExercises.length, dueReviewsCount]);
-
-  // Tag filter options
-  const tagFilterOptions = useMemo(() => 
-    allTags.map(tag => ({ value: tag, label: tag })), 
-    [allTags]
-  );
 
   // Memoized event handlers to prevent unnecessary re-renders
   const onCreateExercise = useCallback(() => {
@@ -173,6 +137,8 @@ const ExercisesPage: React.FC = () => {
   const onCompleteExercise = useCallback(async (accuracy) => {
     if (practiceExercise) {
       await markProgress(practiceExercise.id, accuracy);
+      // Don't close the modal here - let the user close it manually
+      // The modal will stay open to show results
     }
   }, [practiceExercise, markProgress]);
 
@@ -196,40 +162,74 @@ const ExercisesPage: React.FC = () => {
   }, []);
 
   return (
-    <div className={`container mx-auto py-8 ${isMobile ? 'px-0' : 'px-4'}`}>
-      <div className={`mb-8 ${isMobile ? 'px-4' : ''}`}>
-        <h1 className={`font-bold mb-2 ${isMobile ? 'text-2xl' : 'text-3xl'}`}>Exercises</h1>
-        <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Exercises</h1>
+        <p className="text-muted-foreground">
           Practice your language skills with different exercise types
         </p>
       </div>
 
       <Tabs defaultValue="dictation" className="space-y-6">
-        <StandardTabLayout tabs={tabOptions} />
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="dictation" className="flex items-center gap-2">
+            <Mic className="h-4 w-4" />
+            Dictation Method
+          </TabsTrigger>
+          <TabsTrigger value="reading" className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4" />
+            Reading & Listening
+          </TabsTrigger>
+          <TabsTrigger value="bidirectional" className="flex items-center gap-2 relative">
+            <ArrowLeftRight className="h-4 w-4" />
+            Bidirectional Method
+            {dueReviewsCount > 0 && (
+              <Badge variant="destructive" className="ml-2 h-5 min-w-5 text-xs">
+                {dueReviewsCount}
+              </Badge>
+            )}
+            <PopoverHint className="ml-1" triggerClassName="text-muted-foreground/60 hover:text-muted-foreground">
+              <div className="space-y-3">
+                <div>
+                  <h4 className="font-semibold mb-2">How the Bidirectional Method works:</h4>
+                  <ul className="text-sm space-y-2 list-disc list-inside">
+                    <li><strong>Forward practice:</strong> Translate from your native language to your target language</li>
+                    <li><strong>Backward practice:</strong> Translate from your target language back to your native language</li>
+                    <li><strong>Spaced repetition:</strong> Review sentences at optimal intervals for long-term retention</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Getting the most out of it:</h4>
+                  <ul className="text-sm space-y-1 list-disc list-inside">
+                    <li>Practice daily for best results</li>
+                    <li>Focus on accuracy over speed</li>
+                    <li>Review difficult sentences more frequently</li>
+                    <li>Use both literal and natural translations</li>
+                  </ul>
+                </div>
+              </div>
+            </PopoverHint>
+          </TabsTrigger>
+        </TabsList>
 
         <TabsContent value="dictation" className="space-y-6">
-          {/* Create Exercise Section */}
-          <StandardCreateExerciseCard 
-            onClick={onCreateExercise}
-            title="Create New Exercise"
-            description="Add your own text and generate audio for practice"
-            icon={<Mic className="h-6 w-6 text-primary" />}
-            buttonText="Create Exercise"
-          />
+          {/* Exercise Types */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+            <CreateExerciseCard onClick={onCreateExercise} />
+            {/* Add more exercise type cards here as needed */}
+          </div>
 
           {/* Search and Filter Bar */}
-          <MemoizedStandardFilterBar
+          <MemoizedFilterBar
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
-            selectedFilter={selectedTag}
-            setSelectedFilter={setSelectedTag}
-            filterOptions={tagFilterOptions}
-            filterPlaceholder="All Tags"
-            searchPlaceholder="Search exercises..."
+            selectedTag={selectedTag}
+            setSelectedTag={setSelectedTag}
+            allTags={allTags}
           />
 
           {/* Exercises Grid */}
-          <MemoizedMobileExerciseGrid
+          <MemoizedExerciseGrid
             paginatedExercises={paginatedExercises}
             exercisesPerPage={exercisesPerPage}
             onPractice={handlePractice}
@@ -241,7 +241,7 @@ const ExercisesPage: React.FC = () => {
           />
 
           {/* Pagination */}
-          <MemoizedStandardPaginationControls
+          <MemoizedPaginationControls
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
@@ -258,7 +258,7 @@ const ExercisesPage: React.FC = () => {
       </Tabs>
 
       {/* Modals for Dictation Method */}
-      <MobileExerciseFormModal
+      <ExerciseFormModal
         isOpen={isCreating || !!editingExercise}
         onOpenChange={(open) => !open && handleModalClose('create')}
         initialValues={editingExercise}

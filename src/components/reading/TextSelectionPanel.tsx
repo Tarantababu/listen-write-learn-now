@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,9 +11,6 @@ import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Language } from '@/types';
 import { analyzeTextSelection, cleanTextForExercise, TextSelectionInfo } from '@/utils/textSelection';
-import { TextExpansionToggle } from '@/components/ui/text-expansion-toggle';
-import { useTextExpansion } from '@/hooks/use-text-expansion';
-import { cn } from '@/lib/utils';
 import AudioPlayer from '@/components/AudioPlayer';
 
 interface VocabularyInfo {
@@ -45,8 +43,7 @@ export const TextSelectionPanel: React.FC<TextSelectionPanelProps> = ({
   const [vocabularyInfo, setVocabularyInfo] = useState<VocabularyInfo | null>(null);
   const [isGeneratingVocabulary, setIsGeneratingVocabulary] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
-  const { isTextExpanded, toggleTextExpansion } = useTextExpansion();
+
   const { addVocabularyItem, canCreateMore } = useVocabularyContext();
 
   const handleSelectionChange = useCallback(() => {
@@ -240,26 +237,14 @@ export const TextSelectionPanel: React.FC<TextSelectionPanelProps> = ({
     <div className="space-y-4">
       {/* Text Display Area */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Reading Text
-          </label>
-          <TextExpansionToggle
-            isExpanded={isTextExpanded}
-            onToggle={toggleTextExpansion}
-            size="sm"
-          />
-        </div>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Reading Text
+        </label>
         <Textarea
           ref={textareaRef}
           value={text}
           readOnly
-          className={cn(
-            "resize-y cursor-text transition-all duration-300",
-            isTextExpanded 
-              ? "min-h-[300px] text-xl leading-relaxed p-6" 
-              : "min-h-[200px] text-base leading-relaxed"
-          )}
+          className="min-h-[200px] resize-y text-base leading-relaxed cursor-text"
           onSelect={handleSelectionChange}
           onMouseUp={handleSelectionChange}
           onKeyUp={handleSelectionChange}
@@ -284,10 +269,7 @@ export const TextSelectionPanel: React.FC<TextSelectionPanelProps> = ({
               </Badge>
             </div>
             <div className="bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
-              <p className={cn(
-                "font-medium text-gray-900 dark:text-gray-100 break-words transition-all duration-300",
-                isTextExpanded ? "text-base" : "text-sm"
-              )}>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">
                 "{getDisplayText(selectedText, 60)}"
               </p>
             </div>

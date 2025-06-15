@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -33,7 +32,6 @@ interface EnhancedInteractiveTextProps {
   onCreateBidirectional?: (selectedText: string) => void;
   // Simplified Phase 3 props - focus on core functionality
   enableContextMenu?: boolean;
-  className?: string;
 }
 
 export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = ({
@@ -51,8 +49,7 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
   onCreateDictation,
   onCreateBidirectional,
   // Simplified Phase 3 props
-  enableContextMenu = true,
-  className
+  enableContextMenu = true
 }) => {
   const [playingWord, setPlayingWord] = useState<string | null>(null);
   const [hoveredWord, setHoveredWord] = useState<string | null>(null);
@@ -206,7 +203,7 @@ export const EnhancedInteractiveText: React.FC<EnhancedInteractiveTextProps> = (
   };
 
   const textContent = (
-    <div className={`leading-relaxed text-lg text-gray-800 ${className || ''}`}>
+    <div className="leading-relaxed text-lg text-gray-800">
       {renderInteractiveText()}
     </div>
   );
