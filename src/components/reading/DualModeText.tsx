@@ -1,31 +1,31 @@
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { BookOpen, Volume2 } from 'lucide-react';
-import { ReadingModeText } from './ReadingModeText';
-import { AudioSyncModeText } from './AudioSyncModeText';
-import { Language } from '@/types';
+import React, { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { BookOpen, Volume2 } from 'lucide-react'
+import { ReadingModeText } from './ReadingModeText'
+import { AudioSyncModeText } from './AudioSyncModeText'
+import { Language } from '@/types'
 
 interface DualModeTextProps {
-  text: string;
-  highlightedWordIndex: number;
-  onWordClick?: (wordIndex: number, word: string) => void;
-  enableWordHighlighting?: boolean;
-  highlightColor?: string;
-  className?: string;
+  text: string
+  highlightedWordIndex: number
+  onWordClick?: (wordIndex: number, word: string) => void
+  enableWordHighlighting?: boolean
+  highlightColor?: string
+  className?: string
   // Text selection props
-  onCreateDictation: (selectedText: string) => void;
-  onCreateBidirectional: (selectedText: string) => void;
-  exerciseId?: string;
-  exerciseLanguage?: Language;
-  enableVocabulary?: boolean;
-  enhancedHighlighting?: boolean;
-  vocabularyIntegration?: boolean;
-  enableContextMenu?: boolean;
+  onCreateDictation: (selectedText: string) => void
+  onCreateBidirectional: (selectedText: string) => void
+  exerciseId?: string
+  exerciseLanguage?: Language
+  enableVocabulary?: boolean
+  enhancedHighlighting?: boolean
+  vocabularyIntegration?: boolean
+  enableContextMenu?: boolean
 }
 
-type TextMode = 'reading' | 'audio-sync';
+type TextMode = 'reading' | 'audio-sync'
 
 export const DualModeText: React.FC<DualModeTextProps> = ({
   text,
@@ -43,19 +43,19 @@ export const DualModeText: React.FC<DualModeTextProps> = ({
   vocabularyIntegration = false,
   enableContextMenu = true
 }) => {
-  const [mode, setMode] = useState<TextMode>('reading');
+  const [mode, setMode] = useState<TextMode>('reading')
 
   console.log('DualModeText props:', {
     mode,
     highlightedWordIndex,
     enableWordHighlighting,
     textLength: text.length
-  });
+  })
 
   const handleModeSwitch = (newMode: TextMode) => {
-    setMode(newMode);
-    console.log('Switching text mode to:', newMode);
-  };
+    setMode(newMode)
+    console.log('Switching text mode to:', newMode)
+  }
 
   return (
     <div className="space-y-4">
@@ -112,6 +112,7 @@ export const DualModeText: React.FC<DualModeTextProps> = ({
             enhancedHighlighting={enhancedHighlighting}
             vocabularyIntegration={vocabularyIntegration}
             enableContextMenu={enableContextMenu}
+            className={className}
           />
         ) : (
           <AudioSyncModeText
@@ -128,6 +129,7 @@ export const DualModeText: React.FC<DualModeTextProps> = ({
             enhancedHighlighting={enhancedHighlighting}
             vocabularyIntegration={vocabularyIntegration}
             enableContextMenu={enableContextMenu}
+            className={className}
           />
         )}
       </div>
@@ -141,5 +143,5 @@ export const DualModeText: React.FC<DualModeTextProps> = ({
         )}
       </div>
     </div>
-  );
-};
+  )
+}

@@ -1,41 +1,45 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import type React from "react"
+import { useState, useRef, useEffect } from "react"
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import { 
   BookOpen,
   Mic,
   Plus,
   Languages
-} from 'lucide-react';
-import { ReadingExercise } from '@/types/reading';
-import { Language } from '@/types';
-import { EnhancedInteractiveText } from './EnhancedInteractiveText';
-import { AudioWordSynchronizer } from './AudioWordSynchronizer';
-import { SynchronizedTextWithSelection } from './SynchronizedTextWithSelection';
-import { AdvancedAudioControls } from './AdvancedAudioControls';
-import { SimpleTranslationAnalysis } from './SimpleTranslationAnalysis';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { readingExerciseService } from '@/services/readingExerciseService';
-import { toast } from 'sonner';
+} from 'lucide-react'
+import { ReadingExercise } from '@/types/reading'
+import { Language } from '@/types'
+import { EnhancedInteractiveText } from './EnhancedInteractiveText'
+import { AudioWordSynchronizer } from './AudioWordSynchronizer'
+import { SynchronizedTextWithSelection } from './SynchronizedTextWithSelection'
+import { AdvancedAudioControls } from './AdvancedAudioControls'
+import { SimpleTranslationAnalysis } from './SimpleTranslationAnalysis'
+import { TextExpansionToggle } from '@/components/ui/text-expansion-toggle'
+import { useTextExpansion } from '@/hooks/use-text-expansion'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { readingExerciseService } from '@/services/readingExerciseService'
+import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 
 interface ReadingFocusedModalProps {
-  exercise: ReadingExercise | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onCreateDictation?: (selectedText: string) => void;
-  onCreateBidirectional?: (selectedText: string) => void;
+  exercise: ReadingExercise | null
+  isOpen: boolean
+  onClose: () => void
+  onCreateDictation?: (selectedText: string) => void
+  onCreateBidirectional?: (selectedText: string) => void
   // Feature flags
-  enableTextSelection?: boolean;
-  enableVocabularyIntegration?: boolean;
-  enableEnhancedHighlighting?: boolean;
-  enableFullTextAudio?: boolean;
-  enableWordSynchronization?: boolean;
-  enableContextMenu?: boolean;
-  enableSelectionFeedback?: boolean;
-  enableSmartTextProcessing?: boolean;
+  enableTextSelection?: boolean
+  enableVocabularyIntegration?: boolean
+  enableEnhancedHighlighting?: boolean
+  enableFullTextAudio?: boolean
+  enableWordSynchronization?: boolean
+  enableContextMenu?: boolean
+  enableSelectionFeedback?: boolean
+  enableSmartTextProcessing?: boolean
 }
 
 export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
@@ -53,18 +57,19 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   enableSelectionFeedback = true,
   enableSmartTextProcessing = true
 }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(true);
-  const [currentPosition, setCurrentPosition] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(0);
-  const [audioSpeed, setAudioSpeed] = useState(1);
-  const [showSettings, setShowSettings] = useState(false);
-  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string>('');
-  const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1);
-  const [showTranslationAnalysis, setShowTranslationAnalysis] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [audioEnabled, setAudioEnabled] = useState(true)
+  const [currentPosition, setCurrentPosition] = useState(0)
+  const [audioDuration, setAudioDuration] = useState(0)
+  const [audioSpeed, setAudioSpeed] = useState(1)
+  const [showSettings, setShowSettings] = useState(false)
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
+  const [audioUrl, setAudioUrl] = useState<string>('')
+  const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1)
+  const [showTranslationAnalysis, setShowTranslationAnalysis] = useState(false)
   
-  const isMobile = useIsMobile();
+  const { isTextExpanded, toggleTextExpansion } = useTextExpansion()
+  const isMobile = useIsMobile()
 
   // Debug logging for feature flags
   useEffect(() => {
@@ -189,13 +194,13 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     setShowTranslationAnalysis(true);
   };
 
-  if (!exercise) return null;
+  if (!exercise) return null
 
-  const fullText = exercise.content.sentences.map(s => s.text).join(' ');
-  const totalWords = fullText.split(/\s+/).length;
+  const fullText = exercise.content.sentences.map(s => s.text).join(' ')
+  const totalWords = fullText.split(/\s+/).length
 
   // Cast exercise.language to Language type to fix TypeScript error
-  const exerciseLanguage = exercise.language as Language;
+  const exerciseLanguage = exercise.language as Language
 
   // Simplified rendering logic with proper debug logging
   console.log('ReadingFocusedModal rendering decision:', {
@@ -204,11 +209,18 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     enableFullTextAudio,
     hasAudioUrl: !!audioUrl,
     exerciseId: exercise.id
-  });
+  })
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`${isMobile ? 'w-full h-full max-w-full max-h-full m-0 rounded-none' : 'max-w-4xl max-h-[95vh]'} overflow-hidden flex flex-col`}>
+      <DialogContent className={cn(
+        "overflow-hidden flex flex-col transition-all duration-300",
+        isMobile 
+          ? "w-full h-full max-w-full max-h-full m-0 rounded-none" 
+          : isTextExpanded 
+            ? "max-w-7xl max-h-[95vh]" 
+            : "max-w-4xl max-h-[95vh]"
+      )}>
         <DialogHeader className="flex-shrink-0 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -240,16 +252,24 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
               </div>
             </div>
             
-            {/* Analyze Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleAnalyzeTranslation}
-              className="flex items-center gap-2"
-            >
-              <Languages className="h-4 w-4" />
-              Analyze
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Text Expansion Toggle */}
+              <TextExpansionToggle
+                isExpanded={isTextExpanded}
+                onToggle={toggleTextExpansion}
+              />
+              
+              {/* Analyze Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAnalyzeTranslation}
+                className="flex items-center gap-2"
+              >
+                <Languages className="h-4 w-4" />
+                Analyze
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
@@ -295,7 +315,10 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
 
         {/* Main Content */}
         <div className="flex-1 overflow-auto">
-          <Card className="p-6 h-full">
+          <Card className={cn(
+            "h-full transition-all duration-300",
+            isTextExpanded ? "p-8" : "p-6"
+          )}>
             {showTranslationAnalysis ? (
               <SimpleTranslationAnalysis
                 text={fullText}
@@ -310,7 +333,16 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     text={fullText}
                     highlightedWordIndex={highlightedWordIndex}
                     enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
-                    className={isMobile ? 'text-base' : 'text-lg'}
+                    className={cn(
+                      "transition-all duration-300",
+                      isMobile 
+                        ? isTextExpanded 
+                          ? 'text-xl leading-relaxed' 
+                          : 'text-base'
+                        : isTextExpanded 
+                          ? 'text-2xl leading-relaxed' 
+                          : 'text-lg'
+                    )}
                     onCreateDictation={handleCreateDictation}
                     onCreateBidirectional={handleCreateBidirectional}
                     exerciseId={exercise.id}
@@ -334,6 +366,16 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     exerciseId={exercise.id}
                     onCreateDictation={handleCreateDictation}
                     onCreateBidirectional={handleCreateBidirectional}
+                    className={cn(
+                      "transition-all duration-300",
+                      isMobile 
+                        ? isTextExpanded 
+                          ? 'text-xl leading-relaxed' 
+                          : 'text-base'
+                        : isTextExpanded 
+                          ? 'text-2xl leading-relaxed' 
+                          : 'text-lg'
+                    )}
                   />
                 )}
               </>
@@ -374,5 +416,5 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
         )}
       </DialogContent>
     </Dialog>
-  );
-};
+  )
+}
