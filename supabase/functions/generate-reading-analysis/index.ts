@@ -45,8 +45,19 @@ interface BidirectionalTranslation {
 
 const MAX_RETRIES = 3
 const RETRY_DELAY = 1000 // 1 second
-const MAX_TOKENS_OPTIMIZED = 1000
-const MAX_TOKENS_FALLBACK = 600
+
+// Enhanced token limits based on text length
+const getTokenLimits = (textLength: number) => {
+  if (textLength < 500) {
+    return { maxTokens: 1200, wordLimit: 25 }
+  } else if (textLength < 1000) {
+    return { maxTokens: 1800, wordLimit: 20 }
+  } else if (textLength < 2000) {
+    return { maxTokens: 2500, wordLimit: 15 }
+  } else {
+    return { maxTokens: 3000, wordLimit: 12 }
+  }
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -73,24 +84,6 @@ serve(async (req) => {
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
     if (!openAIApiKey) {
       throw new Error('OpenAI API key is not configured')
-    }
-
-    // Handle optimized bidirectional translation request
-    if (type === 'optimized_bidirectional_translation') {
-      const translation = await generateOptimizedBidirectionalTranslationWithRetry(
-        text, 
-        language, 
-        supportLanguage || 'english', 
-        openAIApiKey,
-        chunkIndex
-      )
-      return new Response(
-        JSON.stringify(translation),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      )
     }
 
     // Handle bidirectional translation request
@@ -133,78 +126,81 @@ serve(async (req) => {
   }
 })
 
-async function generateOptimizedBidirectionalTranslationWithRetry(
+async function generateBidirectionalTranslationWithRetry(
   text: string,
   sourceLanguage: string,
   targetLanguage: string,
-  apiKey: string,
-  chunkIndex?: number
+  apiKey: string
 ): Promise<BidirectionalTranslation> {
   let lastError: Error | null = null
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      console.log(`[OPTIMIZED TRANSLATION] Attempt ${attempt}/${MAX_RETRIES} for chunk ${chunkIndex ?? 'unknown'}`)
+      console.log(`[BIDIRECTIONAL TRANSLATION] Attempt ${attempt}/${MAX_RETRIES}`)
       
-      const result = await generateOptimizedBidirectionalTranslation(
+      const result = await generateBidirectionalTranslation(
         text,
         sourceLanguage,
         targetLanguage,
         apiKey,
-        chunkIndex,
         attempt > 1 // Use fallback mode after first attempt
       )
       
-      console.log(`[OPTIMIZED TRANSLATION] Success on attempt ${attempt}`)
+      console.log(`[BIDIRECTIONAL TRANSLATION] Success on attempt ${attempt}`)
       return result
     } catch (error) {
       lastError = error as Error
-      console.error(`[OPTIMIZED TRANSLATION] Attempt ${attempt} failed:`, error)
+      console.error(`[BIDIRECTIONAL TRANSLATION] Attempt ${attempt} failed:`, error)
       
       if (attempt < MAX_RETRIES) {
-        console.log(`[OPTIMIZED TRANSLATION] Retrying in ${RETRY_DELAY}ms...`)
+        console.log(`[BIDIRECTIONAL TRANSLATION] Retrying in ${RETRY_DELAY}ms...`)
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt))
       }
     }
   }
 
-  console.error(`[OPTIMIZED TRANSLATION] All ${MAX_RETRIES} attempts failed, using fallback`)
-  return createFallbackTranslation(text, sourceLanguage, targetLanguage, chunkIndex)
+  console.error(`[BIDIRECTIONAL TRANSLATION] All ${MAX_RETRIES} attempts failed, using fallback`)
+  return createFallbackTranslation(text, sourceLanguage, targetLanguage)
 }
 
-async function generateOptimizedBidirectionalTranslation(
+async function generateBidirectionalTranslation(
   text: string,
   sourceLanguage: string,
   targetLanguage: string,
   apiKey: string,
-  chunkIndex?: number,
   useFallbackMode: boolean = false
 ): Promise<BidirectionalTranslation> {
-  const maxTokens = useFallbackMode ? MAX_TOKENS_FALLBACK : MAX_TOKENS_OPTIMIZED
-  const wordLimit = useFallbackMode ? 15 : 25
+  const textLength = text.length
+  const { maxTokens, wordLimit } = getTokenLimits(textLength)
   
+  console.log(`[BIDIRECTIONAL TRANSLATION] Text length: ${textLength}, Max tokens: ${maxTokens}, Word limit: ${wordLimit}`)
+
+  // Enhanced prompt with better structure and clearer instructions
   const prompt = `
-Translate this ${sourceLanguage} text segment into ${targetLanguage}. ${chunkIndex !== undefined ? `This is segment ${chunkIndex + 1}.` : ''}
+You are a professional translator. Translate this ${sourceLanguage} text to ${targetLanguage}.
 
-TEXT: "${text}"
+TEXT TO TRANSLATE:
+"${text}"
 
-Provide ONLY a JSON response with these exact fields:
+Provide your response as a JSON object with these exact fields. ENSURE the JSON is complete and properly closed:
+
 {
-  "normalTranslation": "Natural, fluent translation in ${targetLanguage}",
-  "literalTranslation": "Word-order preserving translation showing structure",
+  "normalTranslation": "Natural, fluent translation that sounds native to ${targetLanguage} speakers",
+  "literalTranslation": "Word-order preserving translation that shows the original structure",
   "wordTranslations": [
-    {"original": "word1", "translation": "translation1"},
-    {"original": "word2", "translation": "translation2"}
+    {"original": "word", "translation": "meaning"}
   ]
 }
 
-IMPORTANT:
-- normalTranslation: Make it sound natural to native ${targetLanguage} speakers
-- literalTranslation: Keep original word order as much as possible to show structure
-- wordTranslations: Include up to ${wordLimit} significant content words (nouns, verbs, adjectives), skip articles/prepositions unless crucial
-- Return ONLY valid JSON, no explanations or additional text
-- Ensure JSON is properly closed with all brackets and braces
-`
+CRITICAL INSTRUCTIONS:
+- normalTranslation: Make it sound completely natural in ${targetLanguage}
+- literalTranslation: Keep the original word order to show sentence structure
+- wordTranslations: Include up to ${wordLimit} significant words (nouns, verbs, adjectives) - skip common articles/prepositions
+- Return ONLY valid JSON - no explanations, no markdown formatting
+- Ensure ALL JSON brackets and braces are properly closed
+- If the text is very long, prioritize accuracy over completeness
+
+Begin your JSON response now:`
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -218,7 +214,7 @@ IMPORTANT:
         messages: [
           { 
             role: 'system', 
-            content: `You are an expert translator. Respond only with valid JSON. ${useFallbackMode ? 'Keep responses concise.' : 'Focus on accuracy and completeness.'}` 
+            content: `You are an expert translator that responds only with valid JSON. ${useFallbackMode ? 'Keep responses concise due to length constraints.' : 'Focus on accuracy and completeness.'}` 
           },
           { role: 'user', content: prompt }
         ],
@@ -236,10 +232,10 @@ IMPORTANT:
     const data = await response.json()
     const content = data.choices[0].message.content.trim()
     
-    console.log(`[OPTIMIZED TRANSLATION] Raw response length: ${content.length}`)
+    console.log(`[BIDIRECTIONAL TRANSLATION] Raw response length: ${content.length}`)
     
-    // Enhanced JSON parsing with cleanup
-    const cleanedContent = cleanJsonResponse(content)
+    // Enhanced JSON parsing with multiple cleanup strategies
+    const cleanedContent = enhancedJsonCleanup(content)
     
     try {
       const parsed = JSON.parse(cleanedContent)
@@ -249,162 +245,150 @@ IMPORTANT:
         throw new Error('Missing required fields in response')
       }
       
+      // Ensure word translations don't exceed limit
+      const limitedWordTranslations = parsed.wordTranslations.slice(0, wordLimit)
+      
       return {
         normalTranslation: parsed.normalTranslation,
         literalTranslation: parsed.literalTranslation,
-        wordTranslations: parsed.wordTranslations.slice(0, wordLimit) // Limit word translations
+        wordTranslations: limitedWordTranslations
       }
     } catch (parseError) {
       console.error('JSON parse error:', parseError)
-      console.log('Cleaned content:', cleanedContent)
+      console.log('Cleaned content:', cleanedContent.substring(0, 500) + '...')
+      
+      // Try to extract partial data if possible
+      const partialData = extractPartialTranslation(content, sourceLanguage, targetLanguage)
+      if (partialData) {
+        console.log('Using partial extraction fallback')
+        return partialData
+      }
+      
       throw new Error(`Failed to parse JSON response: ${parseError.message}`)
     }
   } catch (error) {
-    console.error('Error in generateOptimizedBidirectionalTranslation:', error)
+    console.error('Error in generateBidirectionalTranslation:', error)
     throw error
   }
 }
 
-function cleanJsonResponse(content: string): string {
-  // Remove any text before the first {
-  let cleaned = content.substring(content.indexOf('{'))
+function enhancedJsonCleanup(content: string): string {
+  // Remove any markdown formatting
+  let cleaned = content.replace(/```json\s*/g, '').replace(/```\s*$/g, '')
   
-  // Find the last complete } that closes the JSON
+  // Find the first opening brace
+  const startIndex = cleaned.indexOf('{')
+  if (startIndex === -1) {
+    throw new Error('No JSON object found in response')
+  }
+  
+  cleaned = cleaned.substring(startIndex)
+  
+  // Enhanced brace matching to find the complete JSON object
   let braceCount = 0
   let lastValidIndex = -1
+  let inString = false
+  let escapeNext = false
   
   for (let i = 0; i < cleaned.length; i++) {
-    if (cleaned[i] === '{') {
-      braceCount++
-    } else if (cleaned[i] === '}') {
-      braceCount--
-      if (braceCount === 0) {
-        lastValidIndex = i
-        break
+    const char = cleaned[i]
+    
+    if (escapeNext) {
+      escapeNext = false
+      continue
+    }
+    
+    if (char === '\\') {
+      escapeNext = true
+      continue
+    }
+    
+    if (char === '"' && !escapeNext) {
+      inString = !inString
+      continue
+    }
+    
+    if (!inString) {
+      if (char === '{') {
+        braceCount++
+      } else if (char === '}') {
+        braceCount--
+        if (braceCount === 0) {
+          lastValidIndex = i
+          break
+        }
       }
     }
   }
   
   if (lastValidIndex > -1) {
     cleaned = cleaned.substring(0, lastValidIndex + 1)
+  } else {
+    // If we can't find a complete JSON, try to fix common issues
+    cleaned = attemptJsonRepair(cleaned)
   }
   
-  // Remove any trailing text after the JSON
   return cleaned.trim()
+}
+
+function attemptJsonRepair(content: string): string {
+  // Remove any trailing incomplete content
+  const lastCompleteField = content.lastIndexOf('"}')
+  if (lastCompleteField > -1) {
+    let truncated = content.substring(0, lastCompleteField + 2)
+    
+    // Try to close the array if it's open
+    if (truncated.includes('"wordTranslations": [') && !truncated.includes(']}')) {
+      truncated += ']}' 
+    }
+    
+    // Close the main object
+    if (!truncated.endsWith('}')) {
+      truncated += '}'
+    }
+    
+    return truncated
+  }
+  
+  return content
+}
+
+function extractPartialTranslation(
+  content: string,
+  sourceLanguage: string,
+  targetLanguage: string
+): BidirectionalTranslation | null {
+  try {
+    // Try to extract at least the normal translation using regex
+    const normalMatch = content.match(/"normalTranslation":\s*"([^"]*(?:\\.[^"]*)*)"/s)
+    const literalMatch = content.match(/"literalTranslation":\s*"([^"]*(?:\\.[^"]*)*)"/s)
+    
+    if (normalMatch && literalMatch) {
+      console.log('Extracted partial translation data')
+      return {
+        normalTranslation: normalMatch[1].replace(/\\"/g, '"'),
+        literalTranslation: literalMatch[1].replace(/\\"/g, '"'),
+        wordTranslations: [] // Empty array as fallback
+      }
+    }
+  } catch (error) {
+    console.error('Error extracting partial translation:', error)
+  }
+  
+  return null
 }
 
 function createFallbackTranslation(
   text: string,
   sourceLanguage: string,
-  targetLanguage: string,
-  chunkIndex?: number
+  targetLanguage: string
 ): BidirectionalTranslation {
-  console.log(`[FALLBACK TRANSLATION] Creating fallback for chunk ${chunkIndex ?? 'unknown'}`)
+  console.log(`[FALLBACK TRANSLATION] Creating fallback for ${sourceLanguage} to ${targetLanguage}`)
   
   return {
-    normalTranslation: `Translation unavailable for this ${sourceLanguage} text segment. The content could not be processed due to technical limitations.`,
-    literalTranslation: `Literal translation unavailable for this ${sourceLanguage} text segment.`,
+    normalTranslation: `Translation service temporarily unavailable for this ${sourceLanguage} text. The content discusses various topics and may require manual translation for best results.`,
+    literalTranslation: `Word-by-word translation unavailable for this ${sourceLanguage} text segment.`,
     wordTranslations: []
-  }
-}
-
-async function generateBidirectionalTranslationWithRetry(
-  text: string,
-  sourceLanguage: string,
-  targetLanguage: string,
-  apiKey: string
-): Promise<BidirectionalTranslation> {
-  let lastError: Error | null = null
-
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const result = await generateBidirectionalTranslation(text, sourceLanguage, targetLanguage, apiKey)
-      return result
-    } catch (error) {
-      lastError = error as Error
-      console.error(`[BIDIRECTIONAL TRANSLATION] Attempt ${attempt} failed:`, error)
-      
-      if (attempt < MAX_RETRIES) {
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt))
-      }
-    }
-  }
-
-  return createFallbackTranslation(text, sourceLanguage, targetLanguage)
-}
-
-async function generateBidirectionalTranslation(
-  text: string,
-  sourceLanguage: string,
-  targetLanguage: string,
-  apiKey: string
-): Promise<BidirectionalTranslation> {
-  const prompt = `
-Translate this ${sourceLanguage} sentence into ${targetLanguage} in two different ways and provide word-by-word translations:
-
-1. Normal Translation: A natural, fluent translation that sounds native in ${targetLanguage}
-2. Literal Translation: A word-by-word translation that maintains the original sentence structure as much as possible
-3. Word Translations: Individual word translations in the same order as the original sentence
-
-Sentence: "${text}"
-
-IMPORTANT: For word translations, provide each word from the original sentence with its most direct translation, even if some words don't have direct equivalents (use closest meaning or indicate with parentheses like "(no direct equivalent)").
-
-Return the response as a valid JSON object with these fields:
-{
-  "normalTranslation": "The natural, fluent translation",
-  "literalTranslation": "The word-by-word translation",
-  "wordTranslations": [
-    {"original": "word1", "translation": "translation1"},
-    {"original": "word2", "translation": "translation2"}
-  ]
-}
-`
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'You are a professional translator that provides accurate translations with word-by-word breakdowns. Always respond with valid JSON.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.2,
-        max_tokens: 800
-      })
-    })
-    
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.error('OpenAI API error:', errorData)
-      throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText}`)
-    }
-
-    const data = await response.json()
-    const content = data.choices[0].message.content.trim()
-    
-    const cleanedContent = cleanJsonResponse(content)
-    
-    try {
-      return JSON.parse(cleanedContent)
-    } catch (e) {
-      console.error('Failed to parse bidirectional translation response as JSON:', e)
-      console.log('Raw response:', content)
-      
-      return {
-        normalTranslation: "Translation could not be generated.",
-        literalTranslation: "Literal translation could not be generated.",
-        wordTranslations: []
-      }
-    }
-  } catch (error) {
-    console.error('Error generating bidirectional translation:', error)
-    throw error
   }
 }
 
