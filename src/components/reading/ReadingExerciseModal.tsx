@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -105,8 +104,8 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         onSuccess();
       }
       
-      // Enhanced success handling
-      const processingMethod = exercise.content?.analysis?.generationStrategy;
+      // Enhanced success handling - Fixed to access qualityMetrics correctly
+      const processingMethod = exercise.content?.analysis?.qualityMetrics?.generationStrategy || exercise.content?.analysis?.generationStrategy;
       const isLocalProcessing = processingMethod === 'local_processing';
       
       const getSuccessMessage = () => {

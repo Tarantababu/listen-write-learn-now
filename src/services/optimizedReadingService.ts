@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { CreateReadingExerciseRequest, ReadingExercise } from '@/types/reading';
 
@@ -159,7 +160,11 @@ class OptimizedReadingService {
         duration: Date.now() - startTime
       });
 
-      return exerciseData;
+      // Type assertion to fix the difficulty_level type mismatch
+      return {
+        ...exerciseData,
+        difficulty_level: exerciseData.difficulty_level as 'beginner' | 'intermediate' | 'advanced'
+      } as ReadingExercise;
 
     } catch (error) {
       console.error('[OPTIMIZED SERVICE] Exercise creation failed:', error);
@@ -245,7 +250,11 @@ class OptimizedReadingService {
       throw new Error(`Failed to refresh exercise: ${error.message}`);
     }
 
-    return data;
+    // Type assertion to fix the difficulty_level type mismatch
+    return {
+      ...data,
+      difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced'
+    } as ReadingExercise;
   }
 
   async getReadingExercises(userId: string): Promise<ReadingExercise[]> {
@@ -260,7 +269,11 @@ class OptimizedReadingService {
       throw new Error(`Failed to fetch reading exercises: ${error.message}`);
     }
 
-    return data || [];
+    // Type assertion to fix the difficulty_level type mismatch
+    return (data || []).map(exercise => ({
+      ...exercise,
+      difficulty_level: exercise.difficulty_level as 'beginner' | 'intermediate' | 'advanced'
+    })) as ReadingExercise[];
   }
 
   async deleteReadingExercise(exerciseId: string): Promise<void> {
