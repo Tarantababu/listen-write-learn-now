@@ -1482,6 +1482,10 @@ export type Database = {
         Args: { user_id_param: string; target_language_param: string }
         Returns: number
       }
+      get_user_reading_exercise_count: {
+        Args: { user_id_param: string; language_param: string }
+        Returns: number
+      }
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
