@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React from 'react';
+import { DualModeText } from './DualModeText';
 import { Language } from '@/types';
-import { cn } from '@/lib/utils';
 
 interface SynchronizedTextWithSelectionProps {
   text: string;
@@ -10,6 +10,7 @@ interface SynchronizedTextWithSelectionProps {
   enableWordHighlighting?: boolean;
   highlightColor?: string;
   className?: string;
+  // Text selection props
   onCreateDictation: (selectedText: string) => void;
   onCreateBidirectional: (selectedText: string) => void;
   exerciseId?: string;
@@ -38,91 +39,42 @@ export const SynchronizedTextWithSelection: React.FC<SynchronizedTextWithSelecti
   vocabularyIntegration = false,
   enableContextMenu = true
 }) => {
-  const [selectedText, setSelectedText] = useState('');
-
-  console.log('SynchronizedTextWithSelection - Simplified format:', {
+  console.log('SynchronizedTextWithSelection props:', {
     enableTextSelection,
     enableContextMenu,
-    textLength: text.length,
-    hasText: !!text
+    vocabularyIntegration,
+    textLength: text.length
   });
 
-  const handleTextSelection = () => {
-    if (enableTextSelection) {
-      const selection = window.getSelection();
-      const selectionText = selection?.toString().trim();
-      if (selectionText && selectionText.length > 2) {
-        setSelectedText(selectionText);
-      }
-    }
-  };
-
-  const handleCreateDictation = () => {
-    if (selectedText) {
-      onCreateDictation(selectedText);
-      setSelectedText('');
-    }
-  };
-
-  const handleCreateBidirectional = () => {
-    if (selectedText) {
-      onCreateBidirectional(selectedText);
-      setSelectedText('');
-    }
-  };
-
   if (!enableTextSelection) {
-    console.log('Text selection disabled, rendering basic text');
+    // If text selection is disabled, render basic synchronized text without selection capabilities
+    console.log('Text selection disabled, rendering basic synchronized text');
     return (
-      <div className={cn("text-gray-900 dark:text-gray-100 leading-relaxed w-full", className)}>
-        {text}
+      <div className={className}>
+        <div className="text-gray-900 dark:text-gray-100 leading-relaxed w-full">
+          {text}
+        </div>
       </div>
     );
   }
 
+  // Render the dual-mode text component with both reading and audio sync modes
   return (
-    <div className={cn("w-full", className)}>
-      <div 
-        className={cn(
-          "text-gray-900 dark:text-gray-100 leading-relaxed w-full cursor-text select-text",
-          enableTextSelection && "hover:bg-blue-50 p-2 rounded transition-colors"
-        )}
-        onMouseUp={handleTextSelection}
-        style={{ lineHeight: '1.8' }}
-      >
-        {text}
-      </div>
-      
-      {/* Selection Actions */}
-      {selectedText && (
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-medium text-blue-800">
-              Selected: "{selectedText.substring(0, 50)}{selectedText.length > 50 ? '...' : ''}"
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleCreateDictation}
-              className="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-800 rounded transition-colors"
-            >
-              Create Dictation
-            </button>
-            <button
-              onClick={handleCreateBidirectional}
-              className="px-3 py-1 text-sm bg-green-100 hover:bg-green-200 text-green-800 rounded transition-colors"
-            >
-              Create Translation
-            </button>
-            <button
-              onClick={() => setSelectedText('')}
-              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 rounded transition-colors"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    <DualModeText
+      text={text}
+      highlightedWordIndex={highlightedWordIndex}
+      onWordClick={onWordClick}
+      enableWordHighlighting={enableWordHighlighting}
+      highlightColor={highlightColor}
+      className={className}
+      onCreateDictation={onCreateDictation}
+      onCreateBidirectional={onCreateBidirectional}
+      exerciseId={exerciseId}
+      exerciseLanguage={exerciseLanguage}
+      enableVocabulary={enableVocabulary}
+      enhancedHighlighting={enhancedHighlighting}
+      vocabularyIntegration={vocabularyIntegration}
+      enableContextMenu={enableContextMenu}
+    />
   );
 };
