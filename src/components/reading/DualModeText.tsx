@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -83,19 +82,6 @@ export const DualModeText: React.FC<DualModeTextProps> = ({
               Audio Sync
             </Button>
           </div>
-        </div>
-        
-        {/* Mode Description */}
-        <div className="flex items-center gap-2">
-          {mode === 'reading' ? (
-            <Badge variant="secondary" className="text-xs">
-              Optimized for text selection
-            </Badge>
-          ) : (
-            <Badge variant="secondary" className="text-xs">
-              Word-by-word audio sync
-            </Badge>
-          )}
         </div>
       </div>
 
