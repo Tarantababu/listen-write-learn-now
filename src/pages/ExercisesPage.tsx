@@ -245,14 +245,7 @@ const ExercisesPage: React.FC = () => {
 
         {/* Bidirectional Tab */}
         <TabsContent value="bidirectional" className="space-y-8">
-          <div className="mb-3 text-center">
-            <h2 className="text-xl font-semibold flex justify-center items-center gap-2">
-              <ArrowLeftRight className="h-5 w-5 text-purple-700" /> Bidirectional Method
-            </h2>
-            <p className="text-gray-500 text-sm mt-1">
-              Test your translation skills in both directions for maximum retention.
-            </p>
-          </div>
+          
           <div>
             <MemoizedBidirectionalPage />
           </div>
