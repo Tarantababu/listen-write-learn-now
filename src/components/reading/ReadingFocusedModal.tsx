@@ -111,7 +111,7 @@ export const ReadingFocusedModal: React.FC<any> = ({
     swipeStartX.current = null;
     if (Math.abs(deltaX) < 50) return;
     // Left swipe: go right in tabs, Right swipe: go left in tabs
-    const order = ['text', 'audio', 'analyze'];
+    const order = ['text', 'audio', 'analyze'] as const;
     const idx = order.indexOf(mobileTab);
     if (deltaX < 0 && idx < order.length-1) setMobileTab(order[idx+1]);
     if (deltaX > 0 && idx > 0) setMobileTab(order[idx-1]);
