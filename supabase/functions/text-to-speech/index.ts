@@ -37,14 +37,17 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Determine voice based on language
+    // Determine voice based on language with improved mapping
     const voiceMap: Record<string, string> = {
       'english': 'alloy',
       'spanish': 'nova', 
       'french': 'shimmer',
       'german': 'echo',
       'italian': 'fable',
-      'portuguese': 'onyx'
+      'portuguese': 'onyx',
+      'chinese': 'alloy',
+      'japanese': 'nova',
+      'korean': 'shimmer'
     };
     
     const voice = voiceMap[language.toLowerCase()] || 'alloy';
@@ -52,7 +55,7 @@ serve(async (req) => {
 
     console.log(`[TTS] Using voice: ${voice}, model: ${model}`);
 
-    // Generate speech using OpenAI
+    // Generate speech using OpenAI with improved error handling
     const response = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: {
@@ -80,16 +83,16 @@ serve(async (req) => {
 
     console.log(`[TTS] Generated audio: ${audioData.length} bytes`);
 
-    // Create unique filename with better organization
-    const timestamp = new Date().getTime();
+    // Create optimized filename with better organization
+    const timestamp = Date.now();
     const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
     const hashArray = Array.from(new Uint8Array(hash.slice(0, 8)));
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    const filename = `${language}/${timestamp}_${hashHex}.mp3`;
+    const filename = `tts/${language}/${timestamp}_${hashHex}.mp3`;
     
     console.log(`[TTS] Uploading to storage: ${filename}`);
 
-    // Ensure the audio bucket exists
+    // Ensure the audio bucket exists with optimized configuration
     const { data: buckets } = await supabase.storage.listBuckets();
     const audioBucket = buckets?.find(bucket => bucket.name === 'audio');
     
@@ -107,16 +110,33 @@ serve(async (req) => {
       }
     }
 
-    // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('audio')
-      .upload(filename, audioData, {
-        contentType: 'audio/mpeg',
-        upsert: false
-      });
+    // Upload to Supabase Storage with retry logic
+    let uploadAttempt = 0;
+    const maxRetries = 3;
+    let uploadData, uploadError;
+
+    while (uploadAttempt < maxRetries) {
+      const result = await supabase.storage
+        .from('audio')
+        .upload(filename, audioData, {
+          contentType: 'audio/mpeg',
+          upsert: false
+        });
+
+      uploadData = result.data;
+      uploadError = result.error;
+
+      if (!uploadError) break;
+      
+      uploadAttempt++;
+      if (uploadAttempt < maxRetries) {
+        console.warn(`[TTS] Upload attempt ${uploadAttempt} failed, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * uploadAttempt));
+      }
+    }
 
     if (uploadError) {
-      console.error('[TTS] Storage upload error:', uploadError);
+      console.error('[TTS] Storage upload error after retries:', uploadError);
       throw new Error(`Failed to upload audio: ${uploadError.message}`);
     }
 
@@ -134,36 +154,24 @@ serve(async (req) => {
     const audioUrl = urlData.publicUrl;
     console.log(`[TTS] Audio uploaded successfully: ${audioUrl}`);
 
-    // Verify the URL is accessible
-    try {
-      const verifyResponse = await fetch(audioUrl, { method: 'HEAD' });
-      if (!verifyResponse.ok) {
-        console.warn(`[TTS] Audio URL verification failed: ${verifyResponse.status}`);
-        // Don't throw here, just log the warning
-      } else {
-        console.log(`[TTS] Audio URL verified successfully`);
-      }
-    } catch (verifyError) {
-      console.warn(`[TTS] Audio URL verification error:`, verifyError);
-      // Don't throw here, just log the warning
-    }
-
-    // Return response with audio URL and metadata
+    // Optimized response structure
     const successResponse = {
       success: true,
-      audio_url: audioUrl,
-      audioUrl: audioUrl, // For compatibility
+      audioUrl: audioUrl,
       filename: filename,
-      duration: Math.ceil(text.length / 10), // Rough estimate
+      duration: Math.ceil(text.length / 12), // Improved estimate: ~12 chars per second
       size: audioData.length,
       voice: voice,
       quality: quality,
       language: language,
-      storage_path: filename,
-      public_url: audioUrl
+      metadata: {
+        model: model,
+        generated_at: new Date().toISOString(),
+        text_length: text.length
+      }
     };
 
-    console.log(`[TTS] Success response:`, { ...successResponse, audio_url: 'URL_SET' });
+    console.log(`[TTS] Success response generated`);
 
     return new Response(
       JSON.stringify(successResponse),
@@ -177,7 +185,8 @@ serve(async (req) => {
     const errorResponse = { 
       success: false,
       error: error.message || 'Audio generation failed',
-      details: error.toString()
+      details: error.toString(),
+      timestamp: new Date().toISOString()
     };
     
     console.log(`[TTS] Error response:`, errorResponse);

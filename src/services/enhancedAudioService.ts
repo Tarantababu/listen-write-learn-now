@@ -57,8 +57,10 @@ export class EnhancedAudioService {
   }
 
   estimateGenerationTime(textLength: number): number {
-    // Rough estimate: 1-2 seconds per 100 characters
-    return Math.max(5, Math.ceil(textLength / 50));
+    // Improved estimate: base time + text processing time
+    const baseTime = 3; // seconds
+    const processingTime = Math.ceil(textLength / 100); // 1 second per 100 chars
+    return Math.min(baseTime + processingTime, 30); // Cap at 30 seconds
   }
   
   async generateSingleAudio(
@@ -77,6 +79,21 @@ export class EnhancedAudioService {
         progress: 10
       });
 
+      // Validate input
+      if (!text.trim()) {
+        throw new Error('Text cannot be empty');
+      }
+
+      if (text.length > 4096) {
+        console.warn(`[ENHANCED AUDIO] Text truncated from ${text.length} to 4096 characters`);
+        text = text.substring(0, 4096);
+      }
+
+      this.updateProgress({
+        stage: 'processing',
+        progress: 30
+      });
+
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text: text.trim(),
@@ -87,8 +104,8 @@ export class EnhancedAudioService {
       });
 
       this.updateProgress({
-        stage: 'processing',
-        progress: 50
+        stage: 'uploading',
+        progress: 70
       });
 
       if (error) {
@@ -101,11 +118,11 @@ export class EnhancedAudioService {
         throw new Error('No data returned from audio generation service');
       }
 
-      console.log('[ENHANCED AUDIO] Function response:', data);
+      console.log('[ENHANCED AUDIO] Function response received');
 
       this.updateProgress({
-        stage: 'uploading',
-        progress: 80
+        stage: 'finalizing',
+        progress: 90
       });
 
       if (data.success && data.audioUrl) {
@@ -163,9 +180,15 @@ export class EnhancedAudioService {
       console.log(`[ENHANCED AUDIO] Has audio_url: ${!!exercise.audio_url}`);
       console.log(`[ENHANCED AUDIO] Has full_text_audio_url: ${!!exercise.full_text_audio_url}`);
 
-      // If marked as completed but no audio URL, regenerate
-      if (exercise.audio_generation_status === 'completed' && !exercise.audio_url && !exercise.full_text_audio_url) {
-        console.log('[ENHANCED AUDIO] Found completed exercise without audio URLs, regenerating...');
+      // Check if audio regeneration is needed
+      const needsRegeneration = (
+        exercise.audio_generation_status === 'completed' && 
+        !exercise.audio_url && 
+        !exercise.full_text_audio_url
+      ) || exercise.audio_generation_status === 'failed';
+
+      if (needsRegeneration) {
+        console.log('[ENHANCED AUDIO] Audio regeneration needed');
         
         // Extract full text safely
         let fullText = '';
@@ -208,7 +231,7 @@ export class EnhancedAudioService {
             return false;
           }
 
-          console.log(`[ENHANCED AUDIO] Successfully regenerated and stored audio for exercise: ${exerciseId}`);
+          console.log(`[ENHANCED AUDIO] Successfully regenerated audio for exercise: ${exerciseId}`);
           return true;
         } else {
           console.error('[ENHANCED AUDIO] Failed to regenerate audio:', result.error);
@@ -245,13 +268,11 @@ export class EnhancedAudioService {
     console.log(`[ENHANCED AUDIO] Starting batch validation of up to ${limit} exercises`);
     
     try {
-      // Get exercises that are marked as completed but missing audio URLs
+      // Get exercises that need audio regeneration
       const { data: exercises, error } = await supabase
         .from('reading_exercises')
         .select('id, title, language, audio_generation_status, audio_url, full_text_audio_url')
-        .eq('audio_generation_status', 'completed')
-        .is('audio_url', null)
-        .is('full_text_audio_url', null)
+        .or('and(audio_generation_status.eq.completed,audio_url.is.null,full_text_audio_url.is.null),audio_generation_status.eq.failed')
         .limit(limit);
 
       if (error) {
@@ -266,15 +287,28 @@ export class EnhancedAudioService {
 
       console.log(`[ENHANCED AUDIO] Found ${exercises.length} exercises that need audio regeneration`);
 
-      for (const exercise of exercises) {
-        console.log(`[ENHANCED AUDIO] Processing exercise: ${exercise.title} (${exercise.id})`);
-        await this.validateAndFixExerciseAudio(exercise.id);
+      // Process exercises concurrently with controlled concurrency
+      const concurrencyLimit = 3;
+      const results = [];
+      
+      for (let i = 0; i < exercises.length; i += concurrencyLimit) {
+        const batch = exercises.slice(i, i + concurrencyLimit);
+        const batchPromises = batch.map(exercise => {
+          console.log(`[ENHANCED AUDIO] Processing exercise: ${exercise.title} (${exercise.id})`);
+          return this.validateAndFixExerciseAudio(exercise.id);
+        });
         
-        // Add a small delay to avoid overwhelming the system
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const batchResults = await Promise.allSettled(batchPromises);
+        results.push(...batchResults);
+        
+        // Add a small delay between batches to avoid overwhelming the system
+        if (i + concurrencyLimit < exercises.length) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
       }
 
-      console.log('[ENHANCED AUDIO] Batch validation completed');
+      const successful = results.filter(r => r.status === 'fulfilled' && r.value).length;
+      console.log(`[ENHANCED AUDIO] Batch validation completed: ${successful}/${exercises.length} successful`);
     } catch (error) {
       console.error('[ENHANCED AUDIO] Batch validation error:', error);
     }

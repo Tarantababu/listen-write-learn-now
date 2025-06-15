@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise } from '@/types/reading';
 
@@ -28,29 +29,9 @@ export class OptimizedReadingService {
 
     console.log('[OPTIMIZED READING SERVICE] Raw database results:', data?.length || 0, 'exercises');
     
-    if (data && data.length > 0) {
-      console.log('[OPTIMIZED READING SERVICE] Sample raw exercise:', {
-        id: data[0].id,
-        title: data[0].title,
-        audio_url: data[0].audio_url,
-        full_text_audio_url: data[0].full_text_audio_url,
-        audio_generation_status: data[0].audio_generation_status
-      });
-    }
-
     const mappedExercises = (data || []).map(exercise => this.mapExerciseFromDb(exercise));
     
     console.log('[OPTIMIZED READING SERVICE] Mapped exercises:', mappedExercises.length);
-    
-    if (mappedExercises.length > 0) {
-      console.log('[OPTIMIZED READING SERVICE] Sample mapped exercise:', {
-        id: mappedExercises[0].id,
-        title: mappedExercises[0].title,
-        audio_url: mappedExercises[0].audio_url,
-        full_text_audio_url: mappedExercises[0].full_text_audio_url,
-        audio_generation_status: mappedExercises[0].audio_generation_status
-      });
-    }
 
     return mappedExercises;
   }
@@ -59,13 +40,14 @@ export class OptimizedReadingService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    console.log('[OPTIMIZED READING SERVICE] Creating reading exercise');
+    console.log('[OPTIMIZED READING SERVICE] Creating reading exercise with streamlined workflow');
 
-    // Call the generate-reading-content edge function
+    // Call the optimized generate-reading-content edge function
     const { data, error } = await supabase.functions.invoke('generate-reading-content', {
       body: {
         ...exerciseData,
-        user_id: user.id
+        user_id: user.id,
+        optimized: true
       }
     });
 
@@ -101,14 +83,6 @@ export class OptimizedReadingService {
   }
 
   private mapExerciseFromDb(exercise: any): ReadingExercise {
-    console.log('[OPTIMIZED READING SERVICE] Mapping exercise from DB:', {
-      id: exercise.id,
-      title: exercise.title,
-      audio_url: exercise.audio_url,
-      full_text_audio_url: exercise.full_text_audio_url,
-      audio_generation_status: exercise.audio_generation_status
-    });
-
     const mapped: ReadingExercise = {
       id: exercise.id,
       user_id: exercise.user_id,
@@ -119,22 +93,14 @@ export class OptimizedReadingService {
       grammar_focus: exercise.grammar_focus,
       topic: exercise.topic,
       content: this.parseContentFromDatabase(exercise.content),
-      audio_url: exercise.audio_url, // Explicitly preserve audio_url
-      full_text_audio_url: exercise.full_text_audio_url, // Explicitly preserve full_text_audio_url
+      audio_url: exercise.audio_url,
+      full_text_audio_url: exercise.full_text_audio_url,
       audio_generation_status: (exercise.audio_generation_status || 'pending') as 'pending' | 'generating' | 'completed' | 'failed',
       metadata: this.parseMetadataFromDatabase(exercise.metadata),
       created_at: exercise.created_at,
       updated_at: exercise.updated_at,
       archived: exercise.archived || false
     };
-
-    console.log('[OPTIMIZED READING SERVICE] Mapped exercise result:', {
-      id: mapped.id,
-      title: mapped.title,
-      audio_url: mapped.audio_url,
-      full_text_audio_url: mapped.full_text_audio_url,
-      audio_generation_status: mapped.audio_generation_status
-    });
 
     return mapped;
   }
@@ -191,23 +157,9 @@ export class OptimizedReadingService {
       throw error;
     }
 
-    console.log('[OPTIMIZED READING SERVICE] Single exercise raw data:', {
-      id: data.id,
-      title: data.title,
-      audio_url: data.audio_url,
-      full_text_audio_url: data.full_text_audio_url,
-      audio_generation_status: data.audio_generation_status
-    });
-
     const mapped = this.mapExerciseFromDb(data);
     
-    console.log('[OPTIMIZED READING SERVICE] Single exercise mapped:', {
-      id: mapped.id,
-      title: mapped.title,
-      audio_url: mapped.audio_url,
-      full_text_audio_url: mapped.full_text_audio_url,
-      audio_generation_status: mapped.audio_generation_status
-    });
+    console.log('[OPTIMIZED READING SERVICE] Single exercise mapped successfully');
 
     return mapped;
   }

@@ -27,7 +27,7 @@ export class AudioUtils {
     
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // Reduced timeout
+      const timeoutId = setTimeout(() => controller.abort(), 2000); // Reduced timeout for faster response
       
       const response = await fetch(url, { 
         method: 'HEAD',
@@ -52,7 +52,7 @@ export class AudioUtils {
   }
 
   static getPreferredAudioUrl(exercise: any): string | null {
-    // Priority: full_text_audio_url > audio_url
+    // Simplified priority: full_text_audio_url > audio_url
     const candidates = [
       exercise.full_text_audio_url,
       exercise.audio_url
@@ -78,7 +78,7 @@ export class AudioUtils {
           audio.removeEventListener('canplaythrough', onLoad);
           audio.removeEventListener('error', onError);
           reject(new Error('Audio preload timeout'));
-        }, 10000);
+        }, 8000); // Reduced timeout
         
         const onLoad = () => {
           clearTimeout(timeout);
@@ -112,10 +112,38 @@ export class AudioUtils {
   }
 
   static calculateEstimatedDuration(textLength: number): number {
-    // Rough estimate: ~150 words per minute, ~5 chars per word
-    const wordsPerMinute = 150;
-    const charsPerWord = 5;
-    const words = textLength / charsPerWord;
-    return Math.max(1, (words / wordsPerMinute) * 60);
+    // Improved estimate: ~12 characters per second (average reading speed with pauses)
+    const charsPerSecond = 12;
+    return Math.max(1, Math.ceil(textLength / charsPerSecond));
+  }
+
+  // New utility methods for optimized workflow
+  static async validateAudioQuickly(url: string): Promise<boolean> {
+    if (!this.isValidAudioUrl(url)) return false;
+    
+    try {
+      // Quick HEAD request with short timeout
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 1000);
+      
+      const response = await fetch(url, { 
+        method: 'HEAD',
+        signal: controller.signal
+      });
+      
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  static getAudioMetadata(url: string): { type: string; source: string } {
+    if (!url) return { type: 'none', source: 'none' };
+    
+    if (url.includes('tts/')) {
+      return { type: 'text-to-speech', source: 'optimized' };
+    }
+    
+    return { type: 'audio', source: 'legacy' };
   }
 }
