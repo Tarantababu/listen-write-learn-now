@@ -40,7 +40,7 @@ export class OptimizedReadingService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    console.log('[OPTIMIZED READING SERVICE] Creating reading exercise without audio generation');
+    console.log('[OPTIMIZED READING SERVICE] Creating simplified reading exercise');
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-reading-content', {
@@ -48,39 +48,12 @@ export class OptimizedReadingService {
           ...exerciseData,
           user_id: user.id,
           optimized: true,
-          // Skip audio generation during creation
-          skipAudio: true,
           target_length: exerciseData.target_length || 500
         }
       });
 
       if (error) {
         console.error('[OPTIMIZED READING SERVICE] Exercise creation error:', error);
-        
-        if (error.message?.includes('timeout') || error.message?.includes('504')) {
-          console.warn('[OPTIMIZED READING SERVICE] Timeout detected, retrying with smaller target length');
-          
-          const retryData = {
-            ...exerciseData,
-            target_length: Math.min(exerciseData.target_length || 500, 300)
-          };
-          
-          const retryResult = await supabase.functions.invoke('generate-reading-content', {
-            body: {
-              ...retryData,
-              user_id: user.id,
-              optimized: true,
-              skipAudio: true
-            }
-          });
-          
-          if (retryResult.error) {
-            throw retryResult.error;
-          }
-          
-          return this.processCreatedExercise(retryResult.data, exerciseData);
-        }
-        
         throw error;
       }
 
@@ -88,11 +61,14 @@ export class OptimizedReadingService {
         throw new Error('Failed to create exercise - no data returned');
       }
 
-      if (!data.id && !data.sentences) {
+      // Handle both successful response and fallback response
+      const content = data.text ? data : data.fallback_content;
+      
+      if (!content || !content.text) {
         throw new Error('Failed to create exercise - invalid response format');
       }
 
-      return this.processCreatedExercise(data, exerciseData);
+      return this.processCreatedExercise(content, exerciseData);
       
     } catch (error) {
       console.error('[OPTIMIZED READING SERVICE] Unexpected error:', error);
@@ -101,45 +77,45 @@ export class OptimizedReadingService {
   }
 
   private async processCreatedExercise(data: any, originalData: any): Promise<ReadingExercise> {
-    if (data.id) {
-      return this.getReadingExercise(data.id);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+    
+    console.log('[OPTIMIZED READING SERVICE] Processing simplified exercise data');
+    
+    // Store the simplified content format
+    const simplifiedContent = {
+      text: data.text,
+      metadata: data.metadata || {}
+    };
+    
+    const { data: createdExercise, error: createError } = await supabase
+      .from('reading_exercises')
+      .insert({
+        user_id: user.id,
+        title: originalData.title,
+        language: originalData.language,
+        difficulty_level: originalData.difficulty_level,
+        target_length: originalData.target_length || 500,
+        grammar_focus: originalData.grammar_focus,
+        topic: originalData.topic,
+        content: simplifiedContent,
+        audio_generation_status: 'pending',
+        metadata: {
+          generation_method: data.metadata?.generation_method || 'simplified_workflow',
+          created_at: new Date().toISOString(),
+          audio_on_demand: true,
+          processing_type: data.metadata?.processing_type || 'simplified'
+        }
+      })
+      .select()
+      .single();
+    
+    if (createError) {
+      console.error('[OPTIMIZED READING SERVICE] Database insert error:', createError);
+      throw createError;
     }
     
-    if (data.sentences && Array.isArray(data.sentences)) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-      
-      const { data: createdExercise, error: createError } = await supabase
-        .from('reading_exercises')
-        .insert({
-          user_id: user.id,
-          title: originalData.title,
-          language: originalData.language,
-          difficulty_level: originalData.difficulty_level,
-          target_length: originalData.target_length || 500,
-          grammar_focus: originalData.grammar_focus,
-          topic: originalData.topic,
-          content: data,
-          // Start with pending audio status instead of generating during creation
-          audio_generation_status: 'pending',
-          metadata: {
-            generation_method: 'optimized_workflow',
-            created_at: new Date().toISOString(),
-            audio_on_demand: true
-          }
-        })
-        .select()
-        .single();
-      
-      if (createError) {
-        console.error('[OPTIMIZED READING SERVICE] Database insert error:', createError);
-        throw createError;
-      }
-      
-      return this.mapExerciseFromDb(createdExercise);
-    }
-    
-    throw new Error('Invalid response format from exercise creation');
+    return this.mapExerciseFromDb(createdExercise);
   }
 
   async deleteReadingExercise(id: string): Promise<void> {
@@ -185,7 +161,6 @@ export class OptimizedReadingService {
     return refreshed;
   }
 
-  // New method for on-demand audio generation
   async generateAudioOnDemand(exerciseId: string): Promise<boolean> {
     console.log('[OPTIMIZED READING SERVICE] Starting on-demand audio generation for:', exerciseId);
     
@@ -193,10 +168,8 @@ export class OptimizedReadingService {
     if (!user) throw new Error('User not authenticated');
 
     try {
-      // Get exercise details
       const exercise = await this.getReadingExercise(exerciseId);
       
-      // Update status to generating
       await supabase
         .from('reading_exercises')
         .update({
@@ -205,8 +178,8 @@ export class OptimizedReadingService {
         })
         .eq('id', exerciseId);
 
-      // Extract full text from exercise content
-      const fullText = exercise.content.sentences.map(s => s.text).join(' ');
+      // Extract full text from simplified content format
+      const fullText = exercise.content.text || '';
       
       if (!fullText.trim()) {
         throw new Error('No text content found for audio generation');
@@ -221,7 +194,6 @@ export class OptimizedReadingService {
       );
 
       if (result.success && result.audioUrl) {
-        // Update exercise with audio URL
         await supabase
           .from('reading_exercises')
           .update({
@@ -240,7 +212,6 @@ export class OptimizedReadingService {
         console.log('[OPTIMIZED READING SERVICE] On-demand audio generation successful');
         return true;
       } else {
-        // Update status to failed
         await supabase
           .from('reading_exercises')
           .update({
@@ -259,7 +230,6 @@ export class OptimizedReadingService {
     } catch (error) {
       console.error('[OPTIMIZED READING SERVICE] On-demand audio generation error:', error);
       
-      // Update status to failed
       await supabase
         .from('reading_exercises')
         .update({
@@ -300,22 +270,33 @@ export class OptimizedReadingService {
 
   private parseContentFromDatabase(content: any): ReadingExercise['content'] {
     if (!content) {
-      return { sentences: [] };
+      return { text: '' };
     }
     
     if (typeof content === 'object' && content !== null) {
+      // Handle both new simplified format and legacy format
+      if (content.text) {
+        return { text: content.text, metadata: content.metadata };
+      }
+      // Legacy format with sentences array - convert to simple text
+      if (content.sentences && Array.isArray(content.sentences)) {
+        const text = content.sentences.map(s => s.text).join(' ');
+        return { text, metadata: content.metadata };
+      }
       return content as ReadingExercise['content'];
     }
     
     if (typeof content === 'string') {
       try {
-        return JSON.parse(content) as ReadingExercise['content'];
+        const parsed = JSON.parse(content);
+        return this.parseContentFromDatabase(parsed);
       } catch {
-        return { sentences: [] };
+        // If it's just a plain string, treat it as text content
+        return { text: content };
       }
     }
     
-    return { sentences: [] };
+    return { text: '' };
   }
 
   private parseMetadataFromDatabase(metadata: any): ReadingExercise['metadata'] {
@@ -357,7 +338,6 @@ export class OptimizedReadingService {
     return mapped;
   }
 
-  // Enhanced method to trigger audio generation for an exercise
   async triggerAudioGeneration(exerciseId: string): Promise<boolean> {
     console.log('[OPTIMIZED READING SERVICE] Triggering audio generation for:', exerciseId);
     
