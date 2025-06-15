@@ -141,7 +141,7 @@ export const useReadingAudio = ({
     };
 
     initializeAudio();
-  }, [exercise?.id, enabled, autoRetry]);
+  }, [exercise?.id, exercise?.audio_url, exercise?.full_text_audio_url, exercise?.audio_generation_status, enabled, autoRetry]);
 
   return {
     audioUrl,

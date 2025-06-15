@@ -216,9 +216,17 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     }
   };
 
-  // Enhanced audio availability check
-  const hasAudio = audioInitialized && audioUrl && exercise.audio_generation_status === 'completed';
-  const showAudioIssueWarning = audioInitialized && hasAudioIssue && exercise.audio_generation_status === 'completed';
+  // Enhanced audio availability check - Fixed the logic here
+  const hasAudio = audioInitialized && audioUrl && !hasAudioIssue;
+  const showAudioIssueWarning = audioInitialized && hasAudioIssue;
+
+  console.log('[READING MODAL] Audio status:', {
+    audioInitialized,
+    audioUrl: !!audioUrl,
+    hasAudioIssue,
+    hasAudio,
+    exercise_audio_status: exercise.audio_generation_status
+  });
 
   // Render the reading content with optimized full-screen layout
   const renderReadingContent = () => (
@@ -254,44 +262,51 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
         </Alert>
       )}
 
-      {/* Advanced Audio Controls - only show if audio is available */}
-      {enableFullTextAudio && !showTranslationAnalysis && hasAudio && (
+      {/* Advanced Audio Controls - show if audio is available OR show loading if audio is being initialized */}
+      {enableFullTextAudio && !showTranslationAnalysis && (hasAudio || !audioInitialized) && (
         <div className={cn(
           "flex-shrink-0",
           isFullScreen ? "mb-8" : "mb-4"
         )}>
-          <AudioWordSynchronizer
-            audioUrl={audioUrl}
-            text={fullText}
-            onWordHighlight={handleWordHighlight}
-            onTimeUpdate={handleTimeUpdate}
-            isPlaying={isPlaying}
-            playbackRate={audioSpeed}
-            onLoadedMetadata={handleLoadedMetadata}
-            onEnded={handleEnded}
-          >
-            {(audioRef) => (
-              <AdvancedAudioControls
-                isPlaying={isPlaying}
-                isGeneratingAudio={false}
-                audioEnabled={audioEnabled}
-                currentPosition={currentPosition}
-                audioDuration={audioDuration}
-                audioSpeed={audioSpeed}
-                showSettings={showSettings}
-                highlightedWordIndex={highlightedWordIndex}
-                totalWords={totalWords}
-                onTogglePlayPause={() => togglePlayPause(audioRef)}
-                onSkipBackward={() => skipBackward(audioRef)}
-                onSkipForward={() => skipForward(audioRef)}
-                onRestart={() => restart(audioRef)}
-                onToggleAudio={() => setAudioEnabled(!audioEnabled)}
-                onToggleSettings={() => setShowSettings(!showSettings)}
-                onChangeSpeed={changeSpeed}
-                onSeek={(time) => seekTo(audioRef, time)}
-              />
-            )}
-          </AudioWordSynchronizer>
+          {hasAudio ? (
+            <AudioWordSynchronizer
+              audioUrl={audioUrl}
+              text={fullText}
+              onWordHighlight={handleWordHighlight}
+              onTimeUpdate={handleTimeUpdate}
+              isPlaying={isPlaying}
+              playbackRate={audioSpeed}
+              onLoadedMetadata={handleLoadedMetadata}
+              onEnded={handleEnded}
+            >
+              {(audioRef) => (
+                <AdvancedAudioControls
+                  isPlaying={isPlaying}
+                  isGeneratingAudio={false}
+                  audioEnabled={audioEnabled}
+                  currentPosition={currentPosition}
+                  audioDuration={audioDuration}
+                  audioSpeed={audioSpeed}
+                  showSettings={showSettings}
+                  highlightedWordIndex={highlightedWordIndex}
+                  totalWords={totalWords}
+                  onTogglePlayPause={() => togglePlayPause(audioRef)}
+                  onSkipBackward={() => skipBackward(audioRef)}
+                  onSkipForward={() => skipForward(audioRef)}
+                  onRestart={() => restart(audioRef)}
+                  onToggleAudio={() => setAudioEnabled(!audioEnabled)}
+                  onToggleSettings={() => setShowSettings(!showSettings)}
+                  onChangeSpeed={changeSpeed}
+                  onSeek={(time) => seekTo(audioRef, time)}
+                />
+              )}
+            </AudioWordSynchronizer>
+          ) : (
+            <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg">
+              <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full mr-3" />
+              <span className="text-blue-700">Loading audio...</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -489,14 +504,15 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     {exercise.audio_generation_status && (
                       <Badge 
                         variant={
-                          exercise.audio_generation_status === 'completed' && hasAudio ? 'default' : 
-                          exercise.audio_generation_status === 'completed' && hasAudioIssue ? 'destructive' :
+                          hasAudio ? 'default' : 
+                          hasAudioIssue ? 'destructive' :
                           exercise.audio_generation_status === 'failed' ? 'destructive' : 'outline'
                         }
                         className="text-xs"
                       >
                         Audio: {
-                          exercise.audio_generation_status === 'completed' && hasAudioIssue ? 'Issue' :
+                          hasAudio ? 'Ready' :
+                          hasAudioIssue ? 'Issue' :
                           exercise.audio_generation_status
                         }
                       </Badge>
