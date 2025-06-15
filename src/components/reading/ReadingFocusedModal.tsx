@@ -17,6 +17,7 @@ import { AudioWordSynchronizer } from './AudioWordSynchronizer';
 import { SynchronizedTextWithSelection } from './SynchronizedTextWithSelection';
 import { AdvancedAudioControls } from './AdvancedAudioControls';
 import { SimpleTranslationAnalysis } from './SimpleTranslationAnalysis';
+import { SimpleAudioSyncText } from './SimpleAudioSyncText';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { toast } from 'sonner';
@@ -358,21 +359,12 @@ export const ReadingFocusedModal: React.FC<any> = ({
                       </AudioWordSynchronizer>
                     </div>
                     <div className="flex-1 overflow-auto p-4">
-                      <SynchronizedTextWithSelection
+                      {/* NON-INTERACTIVE text in audio tab: only highlights current word */}
+                      <SimpleAudioSyncText
                         text={fullText}
                         highlightedWordIndex={highlightedWordIndex}
-                        /** Enable word highlighting only, disable all interactive features */
                         enableWordHighlighting={enableWordSynchronization && enableFullTextAudio && !!audioUrl}
-                        className={'text-base'}
-                        enableTextSelection={false}
-                        enableVocabulary={false}
-                        enhancedHighlighting={false}
-                        vocabularyIntegration={false}
-                        enableContextMenu={false}
-                        exerciseId={exercise.id}
-                        exerciseLanguage={exerciseLanguage}
-                        onCreateDictation={handleCreateDictation}
-                        onCreateBidirectional={handleCreateBidirectional}
+                        className="text-base"
                       />
                     </div>
                   </div>
