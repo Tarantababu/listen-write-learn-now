@@ -184,63 +184,7 @@ export const ReadingExercisesSection: React.FC = () => {
       
 
       {/* Enhanced Feature Highlights */}
-      <div className={`grid gap-4 mb-8 ${isMobile ? 'grid-cols-1 px-4' : 'md:grid-cols-4'}`}>
-        <Card className={`text-center ${isMobile ? 'p-3' : 'p-4'}`}>
-          <CardHeader className={`p-0 ${isMobile ? 'pb-2' : 'pb-3'}`}>
-            <div className="flex justify-center">
-              <Zap className={`text-blue-500 ${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
-            </div>
-            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Optimized Generation</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <CardDescription className={isMobile ? 'text-xs' : 'text-sm'}>
-              Smart content creation with automatic strategy selection
-            </CardDescription>
-          </CardContent>
-        </Card>
-
-        <Card className={`text-center ${isMobile ? 'p-3' : 'p-4'}`}>
-          <CardHeader className={`p-0 ${isMobile ? 'pb-2' : 'pb-3'}`}>
-            <div className="flex justify-center">
-              <Volume2 className={`text-green-500 ${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
-            </div>
-            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Background Audio</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <CardDescription className={isMobile ? 'text-xs' : 'text-sm'}>
-              Audio generation happens automatically in the background
-            </CardDescription>
-          </CardContent>
-        </Card>
-
-        <Card className={`text-center ${isMobile ? 'p-3' : 'p-4'}`}>
-          <CardHeader className={`p-0 ${isMobile ? 'pb-2' : 'pb-3'}`}>
-            <div className="flex justify-center">
-              <Brain className={`text-purple-500 ${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
-            </div>
-            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Smart Recovery</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <CardDescription className={isMobile ? 'text-xs' : 'text-sm'}>
-              Intelligent fallbacks ensure successful exercise creation
-            </CardDescription>
-          </CardContent>
-        </Card>
-
-        <Card className={`text-center ${isMobile ? 'p-3' : 'p-4'}`}>
-          <CardHeader className={`p-0 ${isMobile ? 'pb-2' : 'pb-3'}`}>
-            <div className="flex justify-center">
-              <Sparkles className={`text-orange-500 ${isMobile ? 'h-6 w-6' : 'h-8 w-8'}`} />
-            </div>
-            <CardTitle className={isMobile ? 'text-sm' : 'text-base'}>Enhanced UX</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <CardDescription className={isMobile ? 'text-xs' : 'text-sm'}>
-              Simplified interface with real-time progress tracking
-            </CardDescription>
-          </CardContent>
-        </Card>
-      </div>
+      
 
       {/* Controls */}
       <div className={`flex gap-4 ${isMobile ? 'flex-col px-4' : 'flex-col md:flex-row'}`}>
