@@ -9,6 +9,9 @@ import { toast } from '@/components/ui/use-toast';
 import { AlertTriangle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ReadingAnalysisProgress from '@/components/ReadingAnalysisProgress';
+import { MobileReadingNavigation } from '@/components/reading/MobileReadingNavigation';
+import { MobileReadingTabs } from '@/components/reading/MobileReadingTabs';
+import { MobileWordCard } from '@/components/reading/MobileWordCard';
 
 interface ReadingAnalysisProps {
   exercise: Exercise;
@@ -47,6 +50,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
   const [analysis, setAnalysis] = useState<AnalysisContent | null>(null);
   const [selectedSentenceIndex, setSelectedSentenceIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('sentence');
   const { user } = useAuth();
   const isMobile = useIsMobile();
   
@@ -308,7 +312,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
   
   if (error || !analysis) {
     return (
-      <div className="p-6 space-y-4">
+      <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-4`}>
         <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-lg flex items-start">
           <AlertTriangle className="h-5 w-5 text-destructive mr-3 flex-shrink-0 mt-0.5" />
           <div>
@@ -317,11 +321,18 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
           </div>
         </div>
         
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={handleRetry}>
+        <div className={`flex ${isMobile ? 'flex-col gap-3' : 'justify-between'}`}>
+          <Button 
+            variant="outline" 
+            onClick={handleRetry}
+            className={isMobile ? 'w-full min-h-[48px] touch-manipulation' : ''}
+          >
             Try Again
           </Button>
-          <Button onClick={onComplete}>
+          <Button 
+            onClick={onComplete}
+            className={isMobile ? 'w-full min-h-[48px] touch-manipulation' : ''}
+          >
             Skip to Dictation
           </Button>
         </div>
@@ -331,8 +342,146 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
   
   const currentSentence = analysis.sentences[selectedSentenceIndex];
   
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-screen bg-background">
+        {/* Mobile Header */}
+        <div className="flex-shrink-0 bg-background border-b border-border p-4 safe-area-top">
+          <h2 className="text-lg font-bold truncate mb-2">{exercise.title}</h2>
+          <span className="text-sm text-muted-foreground">Reading Analysis</span>
+        </div>
+
+        {/* Mobile Tab Navigation */}
+        <div className="flex-shrink-0 p-4 bg-background">
+          <MobileReadingTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-hidden">
+          {activeTab === 'sentence' && (
+            <div className="h-full flex flex-col">
+              {/* Current Sentence Display */}
+              <div className="flex-shrink-0 bg-muted/30 p-4 border-b border-border">
+                <div className="text-center mb-3">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Sentence {selectedSentenceIndex + 1} of {analysis.sentences.length}
+                  </span>
+                </div>
+                <p className="text-lg font-medium leading-relaxed text-center">
+                  {currentSentence.text}
+                </p>
+              </div>
+
+              {/* Scrollable Analysis Content */}
+              <ScrollArea className="flex-1 p-4">
+                <div className="space-y-6 pb-20">
+                  {/* Key Words Section */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 flex items-center">
+                      Key Words
+                      <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                        {currentSentence.analysis.words.length}
+                      </span>
+                    </h3>
+                    <div className="space-y-3">
+                      {currentSentence.analysis.words.map((word, i) => (
+                        <MobileWordCard key={i} word={word} index={i} />
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Grammar Insights */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Grammar Insights</h3>
+                    <div className="space-y-2">
+                      {currentSentence.analysis.grammarInsights.map((insight, i) => (
+                        <div key={i} className="bg-card/50 border border-border/50 p-3 rounded-lg">
+                          <p className="text-sm leading-relaxed">{insight}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Sentence Structure */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Sentence Structure</h3>
+                    <div className="bg-card/50 border border-border/50 p-3 rounded-lg">
+                      <p className="text-sm leading-relaxed">{currentSentence.analysis.structure}</p>
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
+          {activeTab === 'patterns' && (
+            <ScrollArea className="h-full p-4">
+              <div className="space-y-4 pb-20">
+                <h3 className="text-xl font-semibold mb-4">Common Patterns</h3>
+                <div className="space-y-3">
+                  {analysis.commonPatterns.map((pattern, i) => (
+                    <div key={i} className="bg-card/50 border border-border/50 p-4 rounded-lg">
+                      <p className="text-sm leading-relaxed">{pattern}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </ScrollArea>
+          )}
+
+          {activeTab === 'summary' && (
+            <ScrollArea className="h-full p-4">
+              <div className="space-y-6 pb-20">
+                <div className="bg-card/50 border border-border/50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3">Text Summary</h3>
+                  <p className="text-sm leading-relaxed">{analysis.summary}</p>
+                </div>
+                
+                {analysis.englishTranslation && (
+                  <div className="bg-card/50 border border-border/50 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold mb-3">English Translation</h3>
+                    <p className="text-sm leading-relaxed">{analysis.englishTranslation}</p>
+                  </div>
+                )}
+                
+                <div className="bg-muted/30 border border-border/30 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-3">Full Text</h3>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{exercise.text}</p>
+                </div>
+              </div>
+            </ScrollArea>
+          )}
+        </div>
+
+        {/* Mobile Bottom Navigation */}
+        {activeTab === 'sentence' ? (
+          <MobileReadingNavigation
+            currentStep={selectedSentenceIndex + 1}
+            totalSteps={analysis.sentences.length}
+            onPrevious={handlePrevious}
+            onNext={handleNext}
+            onComplete={onComplete}
+            canGoNext={selectedSentenceIndex < analysis.sentences.length - 1}
+            canGoPrevious={selectedSentenceIndex > 0}
+            isLastStep={selectedSentenceIndex === analysis.sentences.length - 1}
+          />
+        ) : (
+          <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 safe-area-bottom">
+            <Button 
+              onClick={onComplete} 
+              className="w-full min-h-[48px] touch-manipulation bg-primary"
+            >
+              Continue to Dictation
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop view remains unchanged for backward compatibility
   return (
-    <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-4 md:space-y-6`}>
+    <div className="p-6 space-y-6">
       <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold mb-2 md:mb-4`}>{exercise.title} - Reading Analysis</h2>
       
       <Tabs defaultValue="sentence" className="w-full">
