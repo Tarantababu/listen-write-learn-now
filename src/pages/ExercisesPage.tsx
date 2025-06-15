@@ -12,23 +12,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Archive, Move, Edit, Trash2, Play, ArrowLeftRight, Mic, BookOpen } from 'lucide-react';
-import { ExerciseFormModal } from '@/components/exercises/ExerciseFormModal';
+import { MobileExerciseFormModal } from '@/components/exercises/MobileExerciseFormModal';
 import PracticeModal from '@/components/exercises/PracticeModal';
 import MoveExerciseModal from '@/components/MoveExerciseModal';
 import DeleteExerciseDialog from '@/components/exercises/DeleteExerciseDialog';
-import PaginationControls from '@/components/exercises/PaginationControls';
-import FilterBar from '@/components/exercises/FilterBar';
-import ExerciseGrid from '@/components/exercises/ExerciseGrid';
-import CreateExerciseCard from '@/components/exercises/CreateExerciseCard';
+import { MobilePaginationControls } from '@/components/exercises/MobilePaginationControls';
+import { MobileFilterBar } from '@/components/exercises/MobileFilterBar';
+import { MobileExerciseGrid } from '@/components/exercises/MobileExerciseGrid';
+import { MobileCreateExerciseCard } from '@/components/exercises/MobileCreateExerciseCard';
 import BidirectionalPage from './BidirectionalPage';
 import { ReadingExercisesSection } from '@/components/reading/ReadingExercisesSection';
 import PopoverHint from '@/components/PopoverHint';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Memoized components to prevent unnecessary re-renders
-const MemoizedExerciseGrid = React.memo(ExerciseGrid);
+const MemoizedMobileExerciseGrid = React.memo(MobileExerciseGrid);
 const MemoizedBidirectionalPage = React.memo(BidirectionalPage);
-const MemoizedFilterBar = React.memo(FilterBar);
-const MemoizedPaginationControls = React.memo(PaginationControls);
+const MemoizedMobileFilterBar = React.memo(MobileFilterBar);
+const MemoizedMobilePaginationControls = React.memo(MobilePaginationControls);
 
 const ExercisesPage: React.FC = () => {
   const { user } = useAuth();
@@ -44,6 +45,7 @@ const ExercisesPage: React.FC = () => {
   const { directories } = useDirectoryContext();
   const { settings } = useUserSettingsContext();
   const { dueReviewsCount } = useBidirectionalReviews();
+  const isMobile = useIsMobile();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -53,7 +55,9 @@ const ExercisesPage: React.FC = () => {
   const [deleteExerciseId, setDeleteExerciseId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
-  const exercisesPerPage = 12;
+  
+  // Mobile-optimized pagination
+  const exercisesPerPage = isMobile ? 6 : 12;
 
   useEffect(() => {
     if (user) {
@@ -137,8 +141,6 @@ const ExercisesPage: React.FC = () => {
   const onCompleteExercise = useCallback(async (accuracy) => {
     if (practiceExercise) {
       await markProgress(practiceExercise.id, accuracy);
-      // Don't close the modal here - let the user close it manually
-      // The modal will stay open to show results
     }
   }, [practiceExercise, markProgress]);
 
@@ -162,25 +164,45 @@ const ExercisesPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Exercises</h1>
-        <p className="text-muted-foreground">
+    <div className={`container mx-auto py-8 ${isMobile ? 'px-0' : 'px-4'}`}>
+      <div className={`mb-8 ${isMobile ? 'px-4' : ''}`}>
+        <h1 className={`font-bold mb-2 ${isMobile ? 'text-2xl' : 'text-3xl'}`}>Exercises</h1>
+        <p className={`text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
           Practice your language skills with different exercise types
         </p>
       </div>
 
       <Tabs defaultValue="dictation" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="dictation" className="flex items-center gap-2">
+        <TabsList className={`
+          ${isMobile 
+            ? 'grid w-full grid-cols-1 h-auto p-1 mx-4' 
+            : 'grid w-full grid-cols-3'
+          }
+        `}>
+          <TabsTrigger 
+            value="dictation" 
+            className={`flex items-center gap-2 ${
+              isMobile ? 'w-full justify-start px-4 py-3 mb-1 text-base' : ''
+            }`}
+          >
             <Mic className="h-4 w-4" />
             Dictation Method
           </TabsTrigger>
-          <TabsTrigger value="reading" className="flex items-center gap-2">
+          <TabsTrigger 
+            value="reading" 
+            className={`flex items-center gap-2 ${
+              isMobile ? 'w-full justify-start px-4 py-3 mb-1 text-base' : ''
+            }`}
+          >
             <BookOpen className="h-4 w-4" />
             Reading & Listening
           </TabsTrigger>
-          <TabsTrigger value="bidirectional" className="flex items-center gap-2 relative">
+          <TabsTrigger 
+            value="bidirectional" 
+            className={`flex items-center gap-2 relative ${
+              isMobile ? 'w-full justify-start px-4 py-3 text-base' : ''
+            }`}
+          >
             <ArrowLeftRight className="h-4 w-4" />
             Bidirectional Method
             {dueReviewsCount > 0 && (
@@ -188,39 +210,38 @@ const ExercisesPage: React.FC = () => {
                 {dueReviewsCount}
               </Badge>
             )}
-            <PopoverHint className="ml-1" triggerClassName="text-muted-foreground/60 hover:text-muted-foreground">
-              <div className="space-y-3">
-                <div>
-                  <h4 className="font-semibold mb-2">How the Bidirectional Method works:</h4>
-                  <ul className="text-sm space-y-2 list-disc list-inside">
-                    <li><strong>Forward practice:</strong> Translate from your native language to your target language</li>
-                    <li><strong>Backward practice:</strong> Translate from your target language back to your native language</li>
-                    <li><strong>Spaced repetition:</strong> Review sentences at optimal intervals for long-term retention</li>
-                  </ul>
+            {!isMobile && (
+              <PopoverHint className="ml-1" triggerClassName="text-muted-foreground/60 hover:text-muted-foreground">
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="font-semibold mb-2">How the Bidirectional Method works:</h4>
+                    <ul className="text-sm space-y-2 list-disc list-inside">
+                      <li><strong>Forward practice:</strong> Translate from your native language to your target language</li>
+                      <li><strong>Backward practice:</strong> Translate from your target language back to your native language</li>
+                      <li><strong>Spaced repetition:</strong> Review sentences at optimal intervals for long-term retention</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-2">Getting the most out of it:</h4>
+                    <ul className="text-sm space-y-1 list-disc list-inside">
+                      <li>Practice daily for best results</li>
+                      <li>Focus on accuracy over speed</li>
+                      <li>Review difficult sentences more frequently</li>
+                      <li>Use both literal and natural translations</li>
+                    </ul>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold mb-2">Getting the most out of it:</h4>
-                  <ul className="text-sm space-y-1 list-disc list-inside">
-                    <li>Practice daily for best results</li>
-                    <li>Focus on accuracy over speed</li>
-                    <li>Review difficult sentences more frequently</li>
-                    <li>Use both literal and natural translations</li>
-                  </ul>
-                </div>
-              </div>
-            </PopoverHint>
+              </PopoverHint>
+            )}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dictation" className="space-y-6">
-          {/* Exercise Types */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-            <CreateExerciseCard onClick={onCreateExercise} />
-            {/* Add more exercise type cards here as needed */}
-          </div>
+          {/* Create Exercise Section */}
+          <MobileCreateExerciseCard onClick={onCreateExercise} />
 
           {/* Search and Filter Bar */}
-          <MemoizedFilterBar
+          <MemoizedMobileFilterBar
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             selectedTag={selectedTag}
@@ -229,7 +250,7 @@ const ExercisesPage: React.FC = () => {
           />
 
           {/* Exercises Grid */}
-          <MemoizedExerciseGrid
+          <MemoizedMobileExerciseGrid
             paginatedExercises={paginatedExercises}
             exercisesPerPage={exercisesPerPage}
             onPractice={handlePractice}
@@ -241,7 +262,7 @@ const ExercisesPage: React.FC = () => {
           />
 
           {/* Pagination */}
-          <MemoizedPaginationControls
+          <MemoizedMobilePaginationControls
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
@@ -258,7 +279,7 @@ const ExercisesPage: React.FC = () => {
       </Tabs>
 
       {/* Modals for Dictation Method */}
-      <ExerciseFormModal
+      <MobileExerciseFormModal
         isOpen={isCreating || !!editingExercise}
         onOpenChange={(open) => !open && handleModalClose('create')}
         initialValues={editingExercise}
