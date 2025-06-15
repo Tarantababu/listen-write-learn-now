@@ -1,3 +1,4 @@
+
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
@@ -383,7 +384,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     onCreateBidirectional={handleCreateBidirectional}
                     exerciseId={exercise.id}
                     exerciseLanguage={exerciseLanguage}
-                    enableTextSelection={true}
+                    enableTextSelection={enableTextSelection}
                     enableVocabulary={enableVocabularyIntegration}
                     enhancedHighlighting={enableEnhancedHighlighting}
                     vocabularyIntegration={enableVocabularyIntegration}
@@ -438,7 +439,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     onCreateBidirectional={handleCreateBidirectional}
                     exerciseId={exercise.id}
                     exerciseLanguage={exerciseLanguage}
-                    enableTextSelection={true}
+                    enableTextSelection={enableTextSelection}
                     enableVocabulary={enableVocabularyIntegration}
                     enhancedHighlighting={enableEnhancedHighlighting}
                     vocabularyIntegration={enableVocabularyIntegration}
