@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -13,6 +12,7 @@ import {
   VolumeX,
   Settings
 } from 'lucide-react';
+import { AudioWaveformPulse } from './AudioWaveformPulse';
 
 interface AdvancedAudioControlsProps {
   isPlaying: boolean;
@@ -61,7 +61,6 @@ export const AdvancedAudioControls: React.FC<AdvancedAudioControlsProps> = ({
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onSeek || audioDuration === 0) return;
-    
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const newTime = (clickX / rect.width) * audioDuration;
@@ -77,9 +76,7 @@ export const AdvancedAudioControls: React.FC<AdvancedAudioControlsProps> = ({
             Word {highlightedWordIndex + 1} of {totalWords}
           </Badge>
           {isGeneratingAudio && (
-            <Badge variant="secondary" className="text-xs">
-              Generating audio...
-            </Badge>
+            <AudioWaveformPulse className="ml-2" />
           )}
         </div>
         
