@@ -40,16 +40,16 @@ export class OptimizedReadingService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    console.log('[OPTIMIZED READING SERVICE] Creating reading exercise with streamlined workflow');
+    console.log('[OPTIMIZED READING SERVICE] Creating reading exercise without audio generation');
 
-    // Enhanced error handling for the edge function call
     try {
       const { data, error } = await supabase.functions.invoke('generate-reading-content', {
         body: {
           ...exerciseData,
           user_id: user.id,
           optimized: true,
-          // Ensure target_length has a default value
+          // Skip audio generation during creation
+          skipAudio: true,
           target_length: exerciseData.target_length || 500
         }
       });
@@ -57,11 +57,9 @@ export class OptimizedReadingService {
       if (error) {
         console.error('[OPTIMIZED READING SERVICE] Exercise creation error:', error);
         
-        // Enhanced error handling - check if it's a recoverable error
         if (error.message?.includes('timeout') || error.message?.includes('504')) {
           console.warn('[OPTIMIZED READING SERVICE] Timeout detected, retrying with smaller target length');
           
-          // Retry with smaller target length
           const retryData = {
             ...exerciseData,
             target_length: Math.min(exerciseData.target_length || 500, 300)
@@ -71,7 +69,8 @@ export class OptimizedReadingService {
             body: {
               ...retryData,
               user_id: user.id,
-              optimized: true
+              optimized: true,
+              skipAudio: true
             }
           });
           
@@ -85,12 +84,10 @@ export class OptimizedReadingService {
         throw error;
       }
 
-      // Fixed logic: Check if we have valid data instead of requiring an ID
       if (!data) {
         throw new Error('Failed to create exercise - no data returned');
       }
 
-      // Check if data has either an ID or content structure
       if (!data.id && !data.sentences) {
         throw new Error('Failed to create exercise - invalid response format');
       }
@@ -104,12 +101,10 @@ export class OptimizedReadingService {
   }
 
   private async processCreatedExercise(data: any, originalData: any): Promise<ReadingExercise> {
-    // If we got an exercise ID, fetch the complete exercise
     if (data.id) {
       return this.getReadingExercise(data.id);
     }
     
-    // If we got exercise content directly, create the exercise in the database
     if (data.sentences && Array.isArray(data.sentences)) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
@@ -125,10 +120,12 @@ export class OptimizedReadingService {
           grammar_focus: originalData.grammar_focus,
           topic: originalData.topic,
           content: data,
+          // Start with pending audio status instead of generating during creation
           audio_generation_status: 'pending',
           metadata: {
             generation_method: 'optimized_workflow',
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            audio_on_demand: true
           }
         })
         .select()
@@ -163,7 +160,6 @@ export class OptimizedReadingService {
     }
   }
 
-  // Enhanced method to refresh exercise data from database
   async refreshExerciseFromDb(id: string): Promise<ReadingExercise> {
     console.log('[OPTIMIZED READING SERVICE] Refreshing exercise from database:', id);
 
@@ -187,6 +183,96 @@ export class OptimizedReadingService {
     });
 
     return refreshed;
+  }
+
+  // New method for on-demand audio generation
+  async generateAudioOnDemand(exerciseId: string): Promise<boolean> {
+    console.log('[OPTIMIZED READING SERVICE] Starting on-demand audio generation for:', exerciseId);
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      // Get exercise details
+      const exercise = await this.getReadingExercise(exerciseId);
+      
+      // Update status to generating
+      await supabase
+        .from('reading_exercises')
+        .update({
+          audio_generation_status: 'generating',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', exerciseId);
+
+      // Extract full text from exercise content
+      const fullText = exercise.content.sentences.map(s => s.text).join(' ');
+      
+      if (!fullText.trim()) {
+        throw new Error('No text content found for audio generation');
+      }
+
+      // Generate audio using enhanced audio service
+      const { enhancedAudioService } = await import('@/services/enhancedAudioService');
+      const result = await enhancedAudioService.generateSingleAudio(
+        fullText, 
+        exercise.language, 
+        { quality: 'standard', priority: 'high' }
+      );
+
+      if (result.success && result.audioUrl) {
+        // Update exercise with audio URL
+        await supabase
+          .from('reading_exercises')
+          .update({
+            audio_url: result.audioUrl,
+            full_text_audio_url: result.audioUrl,
+            audio_generation_status: 'completed',
+            metadata: {
+              ...(typeof exercise.metadata === 'object' ? exercise.metadata : {}),
+              audio_generated_on_demand: true,
+              audio_generated_at: new Date().toISOString(),
+              audio_metadata: result.metadata
+            }
+          })
+          .eq('id', exerciseId);
+
+        console.log('[OPTIMIZED READING SERVICE] On-demand audio generation successful');
+        return true;
+      } else {
+        // Update status to failed
+        await supabase
+          .from('reading_exercises')
+          .update({
+            audio_generation_status: 'failed',
+            metadata: {
+              ...(typeof exercise.metadata === 'object' ? exercise.metadata : {}),
+              audio_error: result.error,
+              audio_failed_at: new Date().toISOString()
+            }
+          })
+          .eq('id', exerciseId);
+
+        console.error('[OPTIMIZED READING SERVICE] On-demand audio generation failed:', result.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('[OPTIMIZED READING SERVICE] On-demand audio generation error:', error);
+      
+      // Update status to failed
+      await supabase
+        .from('reading_exercises')
+        .update({
+          audio_generation_status: 'failed',
+          metadata: {
+            audio_error: error.message,
+            audio_failed_at: new Date().toISOString()
+          }
+        })
+        .eq('id', exerciseId);
+
+      return false;
+    }
   }
 
   private mapExerciseFromDb(exercise: any): ReadingExercise {
@@ -271,35 +357,11 @@ export class OptimizedReadingService {
     return mapped;
   }
 
-  // New method to trigger audio generation for an exercise
+  // Enhanced method to trigger audio generation for an exercise
   async triggerAudioGeneration(exerciseId: string): Promise<boolean> {
     console.log('[OPTIMIZED READING SERVICE] Triggering audio generation for:', exerciseId);
     
-    try {
-      // Update status to generating
-      const { error: updateError } = await supabase
-        .from('reading_exercises')
-        .update({
-          audio_generation_status: 'generating',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', exerciseId);
-
-      if (updateError) {
-        console.error('[OPTIMIZED READING SERVICE] Failed to update status:', updateError);
-        return false;
-      }
-
-      // Call the enhanced audio service
-      const success = await import('@/services/enhancedAudioService').then(module => 
-        module.enhancedAudioService.validateAndFixExerciseAudio(exerciseId)
-      );
-
-      return success;
-    } catch (error) {
-      console.error('[OPTIMIZED READING SERVICE] Audio generation trigger failed:', error);
-      return false;
-    }
+    return this.generateAudioOnDemand(exerciseId);
   }
 }
 

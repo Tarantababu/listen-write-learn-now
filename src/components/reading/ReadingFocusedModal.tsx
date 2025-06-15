@@ -1,4 +1,3 @@
-
 import type React from "react"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
@@ -21,15 +20,13 @@ import {
 import { ReadingExercise } from '@/types/reading'
 import { Language } from '@/types'
 import { EnhancedInteractiveText } from './EnhancedInteractiveText'
-import { AudioWordSynchronizer } from './AudioWordSynchronizer'
 import { SynchronizedTextWithSelection } from './SynchronizedTextWithSelection'
-import { AdvancedAudioControls } from './AdvancedAudioControls'
+import { OnDemandAudioPlayer } from './OnDemandAudioPlayer'
 import { SimpleTranslationAnalysis } from './SimpleTranslationAnalysis'
 import { ReadingViewToggle } from '@/components/ui/reading-view-toggle'
 import { FullScreenReadingOverlay } from './FullScreenReadingOverlay'
 import { useFullScreenReading } from '@/hooks/use-full-screen-reading'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { useReadingAudio } from '@/hooks/useReadingAudio'
 import { optimizedReadingService } from '@/services/optimizedReadingService'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -61,11 +58,22 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   enableVocabularyIntegration = true,
   enableEnhancedHighlighting = true,
   enableFullTextAudio = true,
-  enableWordSynchronization = true,
+  enableWordSynchronization = false, // Disabled for now since we're using on-demand audio
   enableContextMenu = true,
   enableSelectionFeedback = true,
   enableSmartTextProcessing = true
 }) => {
+  const [showTranslationAnalysis, setShowTranslationAnalysis] = useState(false)
+  const [currentExercise, setCurrentExercise] = useState<ReadingExercise | null>(exercise)
+  
+  const { viewMode, cycleViewMode, isFullScreen } = useFullScreenReading()
+  const isMobile = useIsMobile()
+
+  // Update current exercise when prop changes
+  useEffect(() => {
+    setCurrentExercise(exercise);
+  }, [exercise]);
+
   // Log exercise data on component mount and updates
   useEffect(() => {
     console.log('[READING MODAL] Exercise prop updated:', {
@@ -78,68 +86,6 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     });
   }, [exercise, isOpen]);
 
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [audioEnabled, setAudioEnabled] = useState(true)
-  const [currentPosition, setCurrentPosition] = useState(0)
-  const [audioDuration, setAudioDuration] = useState(0)
-  const [audioSpeed, setAudioSpeed] = useState(1)
-  const [showSettings, setShowSettings] = useState(false)
-  const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1)
-  const [showTranslationAnalysis, setShowTranslationAnalysis] = useState(false)
-  const [currentExercise, setCurrentExercise] = useState<ReadingExercise | null>(exercise)
-  
-  const { viewMode, cycleViewMode, isFullScreen } = useFullScreenReading()
-  const isMobile = useIsMobile()
-
-  // Update current exercise when prop changes
-  useEffect(() => {
-    setCurrentExercise(exercise);
-  }, [exercise]);
-
-  // Enhanced audio hook with callbacks
-  const {
-    audioUrl,
-    isInitialized: audioInitialized,
-    isLoading: audioLoading,
-    hasAudioIssue,
-    accessibilityUncertain,
-    isRetrying,
-    audioStatus,
-    setIsPlaying: updatePlayingState,
-    setCurrentPosition: updateCurrentPosition,
-    setDuration: updateDuration,
-    retryAudioGeneration,
-    refreshAudioStatus
-  } = useReadingAudio({
-    exercise: currentExercise,
-    enabled: enableFullTextAudio && isOpen,
-    autoRetry: false,
-    onAudioReady: useCallback((url: string) => {
-      console.log('[READING MODAL] Audio ready:', url);
-      toast.success('Audio is ready to play');
-    }, []),
-    onAudioError: useCallback((error: string) => {
-      console.error('[READING MODAL] Audio error:', error);
-      // Don't show toast for every error, as some are expected during loading
-    }, [])
-  });
-
-  // Log audio hook results
-  useEffect(() => {
-    console.log('[READING MODAL] Audio hook results:', {
-      audioUrl: !!audioUrl,
-      audioUrlValue: audioUrl,
-      audioInitialized,
-      audioLoading,
-      hasAudioIssue,
-      accessibilityUncertain,
-      isRetrying,
-      audioStatus,
-      enableFullTextAudio,
-      isOpen
-    });
-  }, [audioUrl, audioInitialized, audioLoading, hasAudioIssue, accessibilityUncertain, isRetrying, audioStatus, enableFullTextAudio, isOpen]);
-
   const refreshExerciseData = useCallback(async () => {
     if (!currentExercise?.id) return;
     
@@ -147,81 +93,10 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
       console.log('[READING MODAL] Refreshing exercise data');
       const refreshedExercise = await optimizedReadingService.refreshExerciseFromDb(currentExercise.id);
       setCurrentExercise(refreshedExercise);
-      
-      // Also refresh audio status
-      await refreshAudioStatus();
     } catch (error) {
       console.error('[READING MODAL] Failed to refresh exercise data:', error);
     }
-  }, [currentExercise?.id, refreshAudioStatus]);
-
-  const togglePlayPause = async (audioRef: React.RefObject<HTMLAudioElement>) => {
-    if (!audioRef.current || !audioEnabled || !audioUrl) return;
-
-    try {
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-        updatePlayingState(false);
-      } else {
-        await audioRef.current.play();
-        setIsPlaying(true);
-        updatePlayingState(true);
-      }
-    } catch (error) {
-      console.error('Audio playback error:', error);
-      toast.error('Audio playback failed');
-    }
-  };
-
-  const skipBackward = (audioRef: React.RefObject<HTMLAudioElement>) => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
-  };
-
-  const skipForward = (audioRef: React.RefObject<HTMLAudioElement>) => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = Math.min(audioDuration, audioRef.current.currentTime + 10);
-  };
-
-  const restart = (audioRef: React.RefObject<HTMLAudioElement>) => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = 0;
-    setCurrentPosition(0);
-    updateCurrentPosition(0);
-    setHighlightedWordIndex(-1);
-  };
-
-  const seekTo = (audioRef: React.RefObject<HTMLAudioElement>, time: number) => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = time;
-  };
-
-  const changeSpeed = (newSpeed: number) => {
-    setAudioSpeed(newSpeed);
-  };
-
-  const handleWordHighlight = (wordIndex: number) => {
-    setHighlightedWordIndex(wordIndex);
-  };
-
-  const handleTimeUpdate = (currentTime: number) => {
-    setCurrentPosition(currentTime);
-    updateCurrentPosition(currentTime);
-  };
-
-  const handleLoadedMetadata = (duration: number) => {
-    setAudioDuration(duration);
-    updateDuration(duration);
-  };
-
-  const handleEnded = () => {
-    setIsPlaying(false);
-    updatePlayingState(false);
-    setCurrentPosition(0);
-    updateCurrentPosition(0);
-    setHighlightedWordIndex(-1);
-  };
+  }, [currentExercise?.id]);
 
   const handleCreateDictation = (selectedText: string) => {
     console.log('Creating dictation for:', selectedText);
@@ -245,44 +120,9 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     setShowTranslationAnalysis(true);
   };
 
-  const handleRetryAudio = async () => {
-    try {
-      await retryAudioGeneration();
-      toast.success('Audio regeneration started');
-      
-      // Refresh exercise data after a delay to get updated status
-      setTimeout(() => {
-        refreshExerciseData();
-      }, 2000);
-    } catch (error) {
-      console.error('Audio retry failed:', error);
-      toast.error('Failed to regenerate audio');
-    }
-  };
-
-  const handleGenerateAudio = async () => {
-    if (!currentExercise?.id) return;
-    
-    try {
-      toast.info('Starting audio generation...');
-      const success = await optimizedReadingService.triggerAudioGeneration(currentExercise.id);
-      
-      if (success) {
-        toast.success('Audio generation started successfully');
-        refreshExerciseData();
-      } else {
-        toast.error('Failed to start audio generation');
-      }
-    } catch (error) {
-      console.error('Audio generation failed:', error);
-      toast.error('Audio generation failed');
-    }
-  };
-
   if (!currentExercise) return null
 
   const fullText = currentExercise.content.sentences.map(s => s.text).join(' ')
-  const totalWords = fullText.split(/\s+/).length
   const exerciseLanguage = currentExercise.language as Language
 
   // Enhanced text size scaling for better full-screen reading
@@ -304,153 +144,20 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     }
   };
 
-  // Enhanced audio availability check
-  const hasAudio = audioInitialized && audioUrl && audioStatus === 'ready';
-  const showAudioIssueWarning = audioInitialized && (hasAudioIssue || audioStatus === 'error') && !audioUrl;
-  const showAccessibilityWarning = audioInitialized && audioUrl && accessibilityUncertain;
-  const showAudioMissing = audioInitialized && audioStatus === 'missing';
-  const showAudioLoading = audioLoading || audioStatus === 'loading';
-
-  console.log('[READING MODAL] Audio status computed:', {
-    audioInitialized,
-    audioUrl: !!audioUrl,
-    hasAudioIssue,
-    accessibilityUncertain,
-    audioStatus,
-    hasAudio,
-    showAudioIssueWarning,
-    showAccessibilityWarning,
-    showAudioMissing,
-    showAudioLoading,
-    exercise_audio_status: currentExercise.audio_generation_status
-  });
-
   // Render the reading content with optimized full-screen layout
   const renderReadingContent = () => (
     <>
-      {/* Audio Loading Indicator */}
-      {showAudioLoading && enableFullTextAudio && !showTranslationAnalysis && (
-        <Alert className="mb-4 border-blue-200 bg-blue-50">
-          <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
-          <AlertDescription className="text-blue-800">
-            <div className="flex items-center justify-between">
-              <span>Loading audio for this exercise...</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={refreshAudioStatus}
-                className="ml-2 border-blue-300 text-blue-700 hover:bg-blue-100"
-              >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                Refresh
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Audio Missing Warning */}
-      {showAudioMissing && enableFullTextAudio && !showTranslationAnalysis && (
-        <Alert className="mb-4 border-yellow-200 bg-yellow-50">
-          <AlertTriangle className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-yellow-800">
-            <div className="flex items-center justify-between">
-              <span>Audio is not available for this exercise</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleGenerateAudio}
-                className="ml-2 border-yellow-300 text-yellow-700 hover:bg-yellow-100"
-              >
-                <Volume2 className="h-3 w-3 mr-1" />
-                Generate Audio
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Audio Issue Warning */}
-      {showAudioIssueWarning && !showTranslationAnalysis && (
-        <Alert className="mb-4 border-orange-200 bg-orange-50">
-          <AlertTriangle className="h-4 w-4 text-orange-600" />
-          <AlertDescription className="text-orange-800">
-            <div className="flex items-center justify-between">
-              <span>Audio playback issue detected</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRetryAudio}
-                disabled={isRetrying}
-                className="ml-2 border-orange-300 text-orange-700 hover:bg-orange-100"
-              >
-                {isRetrying ? (
-                  <>
-                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                    Regenerating...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                    Fix Audio
-                  </>
-                )}
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Accessibility Warning */}
-      {showAccessibilityWarning && !showTranslationAnalysis && (
-        <Alert className="mb-4 border-blue-200 bg-blue-50">
-          <Info className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
-            Audio is available but network connectivity may affect playback quality.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Audio Controls - Enhanced display logic */}
+      {/* On-Demand Audio Player */}
       {enableFullTextAudio && !showTranslationAnalysis && (
         <div className={cn(
           "flex-shrink-0",
           isFullScreen ? "mb-8" : "mb-4"
         )}>
-          {hasAudio ? (
-            <AudioWordSynchronizer
-              audioUrl={audioUrl}
-              text={fullText}
-              onWordHighlight={handleWordHighlight}
-              onTimeUpdate={handleTimeUpdate}
-              isPlaying={isPlaying}
-              playbackRate={audioSpeed}
-              onLoadedMetadata={handleLoadedMetadata}
-              onEnded={handleEnded}
-            >
-              {(audioRef) => (
-                <AdvancedAudioControls
-                  isPlaying={isPlaying}
-                  isGeneratingAudio={false}
-                  audioEnabled={audioEnabled}
-                  currentPosition={currentPosition}
-                  audioDuration={audioDuration}
-                  audioSpeed={audioSpeed}
-                  showSettings={showSettings}
-                  highlightedWordIndex={highlightedWordIndex}
-                  totalWords={totalWords}
-                  onTogglePlayPause={() => togglePlayPause(audioRef)}
-                  onSkipBackward={() => skipBackward(audioRef)}
-                  onSkipForward={() => skipForward(audioRef)}
-                  onRestart={() => restart(audioRef)}
-                  onToggleAudio={() => setAudioEnabled(!audioEnabled)}
-                  onToggleSettings={() => setShowSettings(!showSettings)}
-                  onChangeSpeed={changeSpeed}
-                  onSeek={(time) => seekTo(audioRef, time)}
-                />
-              )}
-            </AudioWordSynchronizer>
-          ) : null}
+          <OnDemandAudioPlayer 
+            exercise={currentExercise}
+            autoGenerate={false}
+            compact={isFullScreen}
+          />
         </div>
       )}
 
@@ -475,8 +182,8 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                 {enableTextSelection ? (
                   <SynchronizedTextWithSelection
                     text={fullText}
-                    highlightedWordIndex={highlightedWordIndex}
-                    enableWordHighlighting={Boolean(enableWordSynchronization && hasAudio)}
+                    highlightedWordIndex={-1}
+                    enableWordHighlighting={false}
                     className={cn(
                       "transition-all duration-300",
                       getTextSize(),
@@ -531,8 +238,8 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                 {enableTextSelection ? (
                   <SynchronizedTextWithSelection
                     text={fullText}
-                    highlightedWordIndex={highlightedWordIndex}
-                    enableWordHighlighting={Boolean(enableWordSynchronization && hasAudio)}
+                    highlightedWordIndex={-1}
+                    enableWordHighlighting={false}
                     className={cn(
                       "transition-all duration-300",
                       getTextSize()
@@ -633,36 +340,12 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     <Badge variant="outline" className="text-xs capitalize">
                       {currentExercise.difficulty_level}
                     </Badge>
-                    {hasAudio && enableWordSynchronization && (
-                      <Badge variant="outline" className="text-xs">
-                        <Volume2 className="h-3 w-3 mr-1" />
-                        Audio Sync
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="text-xs">
+                      On-Demand Audio
+                    </Badge>
                     {enableContextMenu && (
                       <Badge variant="outline" className="text-xs">
                         Enhanced Selection
-                      </Badge>
-                    )}
-                    {/* Enhanced audio status indicator */}
-                    {currentExercise.audio_generation_status && (
-                      <Badge 
-                        variant={
-                          audioStatus === 'ready' ? 'default' : 
-                          audioStatus === 'loading' ? 'outline' :
-                          audioStatus === 'error' ? 'destructive' :
-                          audioStatus === 'missing' ? 'secondary' : 'outline'
-                        }
-                        className="text-xs"
-                      >
-                        Audio: {
-                          audioStatus === 'ready' ? 'Ready' :
-                          audioStatus === 'loading' ? 'Loading' :
-                          audioStatus === 'error' ? 'Error' :
-                          audioStatus === 'missing' ? 'Missing' :
-                          audioStatus === 'regenerating' ? 'Regenerating' :
-                          currentExercise.audio_generation_status
-                        }
                       </Badge>
                     )}
                   </div>
