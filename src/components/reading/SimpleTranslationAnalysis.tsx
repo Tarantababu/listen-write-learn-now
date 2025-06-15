@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Loader2, Languages, ArrowRight, AlertTriangle } from 'lucide-react';
 import { LanguageSelectWithFlag } from '@/components/bidirectional/LanguageSelectWithFlag';
 import { simpleTranslationService } from '@/services/simpleTranslationService';
 import { toast } from 'sonner';
+import { Progress } from '@/components/ui/progress';
 
 interface SimpleTranslationAnalysisProps {
   text: string;
@@ -36,6 +37,9 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
   const [translation, setTranslation] = useState<SimpleTranslationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [progressStep, setProgressStep] = useState('');
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const languageOptions = [
     { value: 'english', label: 'English' },
@@ -50,6 +54,14 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
     { value: 'norwegian', label: 'Norwegian' }
   ];
 
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
+
   const handleTranslate = async () => {
     if (!text.trim()) {
       toast.error('No text to translate');
@@ -59,7 +71,37 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
     setIsLoading(true);
     setError(null);
     setTranslation(null);
+    setProgress(0);
     
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+    
+    const steps = [
+      { percent: 0, message: 'Analyzing text structure...' },
+      { percent: 25, message: 'Generating natural translation...' },
+      { percent: 50, message: 'Creating literal breakdown...' },
+      { percent: 75, message: 'Finalizing word-by-word analysis...' },
+    ];
+    let currentStepIndex = 0;
+    setProgressStep(steps[0].message);
+
+    // Animate progress up to 95% to simulate backend work
+    progressIntervalRef.current = setInterval(() => {
+      setProgress(prev => {
+        const nextProgress = prev + 1;
+        if (currentStepIndex + 1 < steps.length && nextProgress >= steps[currentStepIndex + 1].percent) {
+          currentStepIndex++;
+          setProgressStep(steps[currentStepIndex].message);
+        }
+        if (nextProgress >= 95) {
+          if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+          return 95;
+        }
+        return nextProgress;
+      });
+    }, 150);
+
     try {
       console.log('Starting translation:', {
         textLength: text.length,
@@ -73,18 +115,24 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
         targetLanguage
       );
 
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+      setProgress(100);
+      setProgressStep('Completed!');
       console.log('Translation completed successfully');
       setTranslation(result);
       toast.success('Translation completed successfully');
-      
+      setTimeout(() => setIsLoading(false), 1000); // Keep showing 100% for a moment
+
     } catch (error) {
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
       console.error('Translation failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Translation failed';
       setError(errorMessage);
       toast.error('Translation failed', {
         description: errorMessage
       });
-    } finally {
+      setProgress(0);
+      setProgressStep('');
       setIsLoading(false);
     }
   };
@@ -144,7 +192,7 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
           {isLoading ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Translating...
+              Translating... ({progress}%)
             </>
           ) : (
             <>
@@ -153,6 +201,16 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
             </>
           )}
         </Button>
+        {isLoading && (
+          <div className="space-y-2 pt-2">
+            <Progress 
+              value={progress} 
+              className="w-full"
+              indicatorClassName={progress === 100 ? 'bg-green-500' : ''}
+            />
+            <p className="text-sm text-muted-foreground text-center">{progressStep}</p>
+          </div>
+        )}
       </div>
 
       {/* Error Display */}
