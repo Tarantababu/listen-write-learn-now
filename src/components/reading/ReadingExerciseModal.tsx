@@ -11,7 +11,7 @@ import { CustomTextInput } from './CustomTextInput';
 import { GrammarFocusSelector } from './GrammarFocusSelector';
 import { TopicMandalaSelector } from './TopicMandalaSelector';
 import { SimpleCreationProgress } from './SimpleCreationProgress';
-import { AlertTriangle, Info, TrendingUp, Brain, Zap, Smartphone } from 'lucide-react';
+import { AlertTriangle, Info, TrendingUp, Brain, Zap, Smartphone, BookOpen, Settings, Target } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { clientAnalyzeCustomText } from '@/utils/clientAnalyzeCustomText';
 import { supabase } from '@/integrations/supabase/client';
@@ -353,207 +353,259 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
           )}
         </DialogHeader>
 
-        {/* Mobile Content with Tabs */}
+        {/* Mobile Content with Aligned Tabs */}
         <div className="flex-1 overflow-hidden">
           {isMobile ? (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-3 m-0 rounded-none border-b h-12">
-                <TabsTrigger value="basics" className="text-xs">
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span>Basics</span>
-                    <span className="text-[10px] opacity-60">Title & Type</span>
+              {/* Aligned Tab Headers */}
+              <TabsList className="grid w-full grid-cols-3 m-0 rounded-none border-b h-14 bg-background">
+                <TabsTrigger value="basics" className="text-xs flex flex-col gap-1 h-full px-2">
+                  <div className="bg-blue-100 p-1 rounded-full">
+                    <BookOpen className="h-3 w-3 text-blue-600" />
+                  </div>
+                  <div className="text-center">
+                    <div className="font-medium text-xs">Basics</div>
+                    <div className="text-[10px] text-muted-foreground">Title & Source</div>
                   </div>
                 </TabsTrigger>
-                <TabsTrigger value="content" className="text-xs">
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span>Content</span>
-                    <span className="text-[10px] opacity-60">Topic & Text</span>
+                <TabsTrigger value="content" className="text-xs flex flex-col gap-1 h-full px-2">
+                  <div className="bg-green-100 p-1 rounded-full">
+                    <Target className="h-3 w-3 text-green-600" />
+                  </div>
+                  <div className="text-center">
+                    <div className="font-medium text-xs">Content</div>
+                    <div className="text-[10px] text-muted-foreground">Topic & Text</div>
                   </div>
                 </TabsTrigger>
-                <TabsTrigger value="settings" className="text-xs">
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span>Settings</span>
-                    <span className="text-[10px] opacity-60">Advanced</span>
+                <TabsTrigger value="settings" className="text-xs flex flex-col gap-1 h-full px-2">
+                  <div className="bg-purple-100 p-1 rounded-full">
+                    <Settings className="h-3 w-3 text-purple-600" />
+                  </div>
+                  <div className="text-center">
+                    <div className="font-medium text-xs">Settings</div>
+                    <div className="text-[10px] text-muted-foreground">Advanced</div>
                   </div>
                 </TabsTrigger>
               </TabsList>
 
               <form id={formId} onSubmit={handleSubmit} className="flex-1 overflow-hidden">
+                {/* Basics Tab - Aligned Layout */}
                 <TabsContent value="basics" className="h-full overflow-y-auto p-4 space-y-6 m-0">
-                  {/* Exercise Title */}
-                  <div className="space-y-3">
-                    <Label htmlFor="title" className="text-base font-medium">Exercise Title</Label>
-                    <Input
-                      id="title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Enter a descriptive title..."
-                      required
-                      disabled={!isLanguageSupported}
-                      className="h-12 text-base"
-                    />
-                  </div>
+                  <div className="space-y-6">
+                    {/* Section Header */}
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                      <div className="bg-blue-100 p-1.5 rounded-full">
+                        <BookOpen className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <h3 className="text-base font-semibold text-gray-900">Basic Information</h3>
+                    </div>
 
-                  {/* Content Source Selection */}
-                  <div className="space-y-3">
-                    <Label className="text-base font-medium">Content Source</Label>
-                    <ContentSourceSelector
-                      selectedSource={contentSource}
-                      onSourceSelect={handleSourceSelect}
-                    />
-                  </div>
+                    {/* Exercise Title */}
+                    <div className="space-y-3">
+                      <Label htmlFor="title" className="text-sm font-medium text-gray-700">Exercise Title</Label>
+                      <Input
+                        id="title"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="Enter a descriptive title..."
+                        required
+                        disabled={!isLanguageSupported}
+                        className="h-12 text-base border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-muted-foreground">Choose a clear, descriptive title for your exercise</p>
+                    </div>
 
-                  {/* Mobile tip */}
-                  <Alert>
-                    <Smartphone className="h-4 w-4" />
-                    <AlertDescription className="text-sm">
-                      <strong>Mobile Tip:</strong> Use the tabs above to navigate between sections. Swipe through to complete your exercise setup.
-                    </AlertDescription>
-                  </Alert>
+                    {/* Content Source Selection */}
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium text-gray-700">Content Source</Label>
+                      <ContentSourceSelector
+                        selectedSource={contentSource}
+                        onSourceSelect={handleSourceSelect}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {contentSource === 'ai' ? 'AI will generate content based on your topic' : 'Use your own text for instant exercise creation'}
+                      </p>
+                    </div>
+
+                    {/* Mobile tip */}
+                    <Alert className="bg-blue-50 border-blue-200">
+                      <Smartphone className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-sm text-blue-800">
+                        <strong>Mobile Tip:</strong> Use the tabs above to navigate between sections. Complete all required fields to create your exercise.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
                 </TabsContent>
 
+                {/* Content Tab - Aligned Layout */}
                 <TabsContent value="content" className="h-full overflow-y-auto p-4 space-y-6 m-0">
-                  {contentSource === 'ai' ? (
-                    <>
-                      {/* Topic Selection */}
-                      <div className="space-y-3">
-                        <Label className="text-base font-medium">Topic Selection</Label>
-                        <TopicMandalaSelector
-                          selectedTopic={topic}
-                          onTopicSelect={setTopic}
-                          language={language}
-                        />
+                  <div className="space-y-6">
+                    {/* Section Header */}
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                      <div className="bg-green-100 p-1.5 rounded-full">
+                        <Target className="h-4 w-4 text-green-600" />
                       </div>
+                      <h3 className="text-base font-semibold text-gray-900">Content Configuration</h3>
+                    </div>
 
-                      {/* Exercise Parameters - Mobile Optimized */}
-                      <div className="space-y-6">
+                    {contentSource === 'ai' ? (
+                      <>
+                        {/* Topic Selection */}
                         <div className="space-y-3">
-                          <Label htmlFor="difficulty" className="text-base font-medium">Difficulty Level</Label>
-                          <Select value={difficultyLevel} onValueChange={(value: any) => setDifficultyLevel(value)}>
-                            <SelectTrigger className="h-12">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="beginner">
-                                <div className="flex flex-col py-1">
-                                  <span className="font-medium">Beginner</span>
-                                  <span className="text-xs text-muted-foreground">Simple vocabulary and grammar</span>
-                                </div>
-                              </SelectItem>
-                              <SelectItem value="intermediate">
-                                <div className="flex flex-col py-1">
-                                  <span className="font-medium">Intermediate</span>
-                                  <span className="text-xs text-muted-foreground">Moderate complexity</span>
-                                </div>
-                              </SelectItem>
-                              <SelectItem value="advanced">
-                                <div className="flex flex-col py-1">
-                                  <span className="font-medium">Advanced</span>
-                                  <span className="text-xs text-muted-foreground">Complex structures and vocabulary</span>
-                                </div>
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Label className="text-sm font-medium text-gray-700">Topic Selection</Label>
+                          <TopicMandalaSelector
+                            selectedTopic={topic}
+                            onTopicSelect={setTopic}
+                            language={language}
+                          />
+                          <p className="text-xs text-muted-foreground">Choose a topic that interests you for better engagement</p>
                         </div>
 
-                        <div className="space-y-3">
-                          <Label htmlFor="length" className="text-base font-medium">Target Length</Label>
-                          <Select value={targetLength.toString()} onValueChange={(value) => setTargetLength(Number(value))}>
-                            <SelectTrigger className="h-12">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {lengthOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value.toString()}>
+                        {/* Exercise Parameters */}
+                        <div className="space-y-6">
+                          <div className="space-y-3">
+                            <Label htmlFor="difficulty" className="text-sm font-medium text-gray-700">Difficulty Level</Label>
+                            <Select value={difficultyLevel} onValueChange={(value: any) => setDifficultyLevel(value)}>
+                              <SelectTrigger className="h-12 border-gray-200 focus:border-green-500 focus:ring-green-500">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="beginner">
                                   <div className="flex flex-col py-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium">{option.label}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
-                                        {option.strategy}
-                                      </span>
-                                      {option.recommended && (
-                                        <span className="text-xs text-muted-foreground">{option.recommended}</span>
-                                      )}
-                                    </div>
+                                    <span className="font-medium">Beginner</span>
+                                    <span className="text-xs text-muted-foreground">Simple vocabulary and grammar</span>
                                   </div>
                                 </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                                <SelectItem value="intermediate">
+                                  <div className="flex flex-col py-1">
+                                    <span className="font-medium">Intermediate</span>
+                                    <span className="text-xs text-muted-foreground">Moderate complexity</span>
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="advanced">
+                                  <div className="flex flex-col py-1">
+                                    <span className="font-medium">Advanced</span>
+                                    <span className="text-xs text-muted-foreground">Complex structures and vocabulary</span>
+                                  </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">Match your current language proficiency level</p>
+                          </div>
+
+                          <div className="space-y-3">
+                            <Label htmlFor="length" className="text-sm font-medium text-gray-700">Target Length</Label>
+                            <Select value={targetLength.toString()} onValueChange={(value) => setTargetLength(Number(value))}>
+                              <SelectTrigger className="h-12 border-gray-200 focus:border-green-500 focus:ring-green-500">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {lengthOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value.toString()}>
+                                    <div className="flex flex-col py-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium">{option.label}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                                          {option.strategy}
+                                        </span>
+                                        {option.recommended && (
+                                          <span className="text-xs text-muted-foreground">{option.recommended}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">Choose length based on your available practice time</p>
+                          </div>
                         </div>
+                      </>
+                    ) : (
+                      /* Custom Text Input */
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium text-gray-700">Custom Text</Label>
+                        <CustomTextInput
+                          value={customText}
+                          onChange={setCustomText}
+                          maxLength={4000}
+                        />
+                        <p className="text-xs text-muted-foreground">Paste any text to create an instant reading exercise</p>
                       </div>
-                    </>
-                  ) : (
-                    /* Custom Text Input */
-                    <div className="space-y-3">
-                      <Label className="text-base font-medium">Custom Text</Label>
-                      <CustomTextInput
-                        value={customText}
-                        onChange={setCustomText}
-                        maxLength={4000}
-                      />
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </TabsContent>
 
+                {/* Settings Tab - Aligned Layout */}
                 <TabsContent value="settings" className="h-full overflow-y-auto p-4 space-y-6 m-0">
-                  {contentSource === 'ai' && (
-                    <>
-                      {/* Grammar Focus */}
-                      <div className="space-y-3">
-                        <Label className="text-base font-medium">Grammar Focus (Optional)</Label>
-                        <GrammarFocusSelector
-                          selectedGrammar={grammarFocus}
-                          onGrammarToggle={handleGrammarToggle}
-                          maxSelections={3}
-                        />
+                  <div className="space-y-6">
+                    {/* Section Header */}
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                      <div className="bg-purple-100 p-1.5 rounded-full">
+                        <Settings className="h-4 w-4 text-purple-600" />
                       </div>
+                      <h3 className="text-base font-semibold text-gray-900">Advanced Settings</h3>
+                    </div>
 
-                      {/* Generation Strategy Info */}
-                      <Alert>
-                        <TrendingUp className="h-4 w-4" />
-                        <AlertDescription>
-                          <div className="space-y-2">
-                            <div className="font-medium text-sm">Generation Strategy: {getGenerationStrategy()}</div>
-                            <div className="text-xs text-muted-foreground">
-                              Optimized for {targetLength} words to ensure quality and coherence.
-                              {isLongContent && " Advanced adaptive chunking will be used for optimal results."}
+                    {contentSource === 'ai' && (
+                      <>
+                        {/* Grammar Focus */}
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium text-gray-700">Grammar Focus (Optional)</Label>
+                          <GrammarFocusSelector
+                            selectedGrammar={grammarFocus}
+                            onGrammarToggle={handleGrammarToggle}
+                            maxSelections={3}
+                          />
+                          <p className="text-xs text-muted-foreground">Select up to 3 grammar points to focus on (optional)</p>
+                        </div>
+
+                        {/* Generation Strategy Info */}
+                        <Alert className="bg-purple-50 border-purple-200">
+                          <TrendingUp className="h-4 w-4 text-purple-600" />
+                          <AlertDescription>
+                            <div className="space-y-2">
+                              <div className="font-medium text-sm text-purple-800">Generation Strategy: {getGenerationStrategy()}</div>
+                              <div className="text-xs text-purple-700">
+                                Optimized for {targetLength} words to ensure quality and coherence.
+                                {isLongContent && " Advanced adaptive chunking will be used for optimal results."}
+                              </div>
                             </div>
-                          </div>
-                        </AlertDescription>
-                      </Alert>
+                          </AlertDescription>
+                        </Alert>
 
-                      {/* Enhanced Features Info */}
-                      <Alert>
-                        <Zap className="h-4 w-4" />
-                        <AlertDescription>
-                          <div className="space-y-2">
-                            <div className="font-medium text-sm">Enhanced Generation Features</div>
-                            <div className="text-xs space-y-1">
-                              <div>• Intelligent quality metrics</div>
-                              <div>• Smart recovery mechanisms</div>
-                              <div>• Automatic audio generation</div>
-                              <div>• Advanced chunking strategies</div>
+                        {/* Enhanced Features Info */}
+                        <Alert className="bg-purple-50 border-purple-200">
+                          <Zap className="h-4 w-4 text-purple-600" />
+                          <AlertDescription>
+                            <div className="space-y-2">
+                              <div className="font-medium text-sm text-purple-800">Enhanced Generation Features</div>
+                              <div className="text-xs space-y-1 text-purple-700">
+                                <div>• Intelligent quality metrics</div>
+                                <div>• Smart recovery mechanisms</div>
+                                <div>• Automatic audio generation</div>
+                                <div>• Advanced chunking strategies</div>
+                              </div>
                             </div>
-                          </div>
-                        </AlertDescription>
-                      </Alert>
-                    </>
-                  )}
+                          </AlertDescription>
+                        </Alert>
+                      </>
+                    )}
 
-                  {/* Quick Tips */}
-                  <div className="bg-background rounded-lg p-4 border">
-                    <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
-                      <Info className="h-4 w-4" />
-                      Quick Tips
-                    </h4>
-                    <div className="space-y-2 text-xs text-muted-foreground">
-                      <div>• Choose topics you're genuinely interested in</div>
-                      <div>• Start with shorter exercises to build confidence</div>
-                      <div>• Select 1-3 grammar focuses for best results</div>
-                      <div>• Custom text provides instant exercise creation</div>
+                    {/* Quick Tips */}
+                    <div className="bg-background rounded-lg p-4 border border-gray-200">
+                      <h4 className="font-medium mb-3 flex items-center gap-2 text-sm text-gray-900">
+                        <Info className="h-4 w-4 text-purple-600" />
+                        Quick Tips
+                      </h4>
+                      <div className="space-y-2 text-xs text-muted-foreground">
+                        <div>• Choose topics you're genuinely interested in</div>
+                        <div>• Start with shorter exercises to build confidence</div>
+                        <div>• Select 1-3 grammar focuses for best results</div>
+                        <div>• Custom text provides instant exercise creation</div>
+                      </div>
                     </div>
                   </div>
                 </TabsContent>
