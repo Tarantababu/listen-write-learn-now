@@ -8,6 +8,8 @@ import { ReadingExerciseModal } from './ReadingExerciseModal';
 import { ReadingFocusedModal } from './ReadingFocusedModal';
 import { ReadingExerciseCard } from './ReadingExerciseCard';
 import { BidirectionalCreateDialog } from '@/components/bidirectional/BidirectionalCreateDialog';
+import { StandardCreateExerciseCard } from '@/components/exercises/StandardCreateExerciseCard';
+import { StandardFilterBar } from '@/components/exercises/StandardFilterBar';
 import { optimizedReadingService } from '@/services/optimizedReadingService';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
@@ -18,6 +20,7 @@ import { toast } from 'sonner';
 import { getReadingFeatureFlags } from '@/utils/featureFlags';
 import { supabase } from '@/integrations/supabase/client';
 import { SUPPORTED_LANGUAGES } from '@/constants/languages';
+
 export const ReadingExercisesSection: React.FC = () => {
   const {
     settings
@@ -42,6 +45,13 @@ export const ReadingExercisesSection: React.FC = () => {
   // Bidirectional dialog states
   const [isBidirectionalDialogOpen, setIsBidirectionalDialogOpen] = useState(false);
   const [selectedTextForBidirectional, setSelectedTextForBidirectional] = useState('');
+
+  // Difficulty filter options for standardized filter
+  const difficultyFilterOptions = [
+    { value: 'beginner', label: 'Beginner' },
+    { value: 'intermediate', label: 'Intermediate' },
+    { value: 'advanced', label: 'Advanced' }
+  ];
 
   // Get feature flags for enhanced reading features
   const featureFlags = getReadingFeatureFlags();
@@ -180,36 +190,25 @@ export const ReadingExercisesSection: React.FC = () => {
       </div>;
   }
   return <div className="space-y-6">
-      {/* Header */}
-      
+      {/* Create Exercise Section - Standardized */}
+      <StandardCreateExerciseCard 
+        onClick={() => setIsCreateModalOpen(true)}
+        title="Create Reading Exercise"
+        description="Generate personalized reading content with AI-powered enhancements"
+        icon={<BookOpen className="h-6 w-6 text-primary" />}
+        buttonText="Create Exercise"
+      />
 
-      {/* Enhanced Feature Highlights */}
-      
-
-      {/* Controls */}
-      <div className={`flex gap-4 ${isMobile ? 'flex-col px-4' : 'flex-col md:flex-row'}`}>
-        <div className={`flex gap-4 ${isMobile ? 'flex-col' : 'flex-1'}`}>
-          <div className={`relative ${isMobile ? 'w-full' : 'flex-1'}`}>
-            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
-            <Input placeholder="Search exercises by title or topic..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className={`pl-10 ${isMobile ? 'text-base py-3' : ''}`} />
-          </div>
-          <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
-            <SelectTrigger className={isMobile ? 'w-full text-base py-3' : 'w-48'}>
-              <SelectValue placeholder="All levels" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              <SelectItem value="beginner">Beginner</SelectItem>
-              <SelectItem value="intermediate">Intermediate</SelectItem>
-              <SelectItem value="advanced">Advanced</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <Button onClick={() => setIsCreateModalOpen(true)} className={isMobile ? 'w-full py-3' : ''}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Exercise
-        </Button>
-      </div>
+      {/* Controls - Standardized */}
+      <StandardFilterBar
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        selectedFilter={selectedDifficulty === 'all' ? null : selectedDifficulty}
+        setSelectedFilter={(value) => setSelectedDifficulty(value || 'all')}
+        filterOptions={difficultyFilterOptions}
+        filterPlaceholder="All Levels"
+        searchPlaceholder="Search exercises by title or topic..."
+      />
 
       {/* Show loading indicator when creating dictation */}
       {creatingDictation && <Card className={`border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20 ${isMobile ? 'mx-4' : ''}`}>

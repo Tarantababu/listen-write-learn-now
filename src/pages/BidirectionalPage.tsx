@@ -5,12 +5,14 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Brain, BookOpen, Trophy, CheckCircle2 } from 'lucide-react';
+import { Plus, Brain, BookOpen, Trophy, CheckCircle2, ArrowLeftRight } from 'lucide-react';
 import { FlagIcon } from 'react-flag-kit';
 import { BidirectionalExerciseCard } from '@/components/bidirectional/BidirectionalExerciseCard';
 import { BidirectionalPracticeModal } from '@/components/bidirectional/BidirectionalPracticeModal';
 import { BidirectionalReviewModal } from '@/components/bidirectional/BidirectionalReviewModal';
 import { BidirectionalCreateDialog } from '@/components/bidirectional/BidirectionalCreateDialog';
+import { StandardCreateExerciseCard } from '@/components/exercises/StandardCreateExerciseCard';
+import { StandardTabLayout } from '@/components/exercises/StandardTabLayout';
 import { BidirectionalService } from '@/services/bidirectionalService';
 import type { BidirectionalExercise } from '@/types/bidirectional';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +20,7 @@ import { getLanguageFlagCode } from '@/utils/languageUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { BidirectionalReviewStack } from '@/components/bidirectional/BidirectionalReviewStack';
 import { SUPPORTED_LANGUAGES, getLanguageLabel } from '@/constants/languages';
+
 const BidirectionalPage: React.FC = () => {
   const {
     user
@@ -158,6 +161,29 @@ const BidirectionalPage: React.FC = () => {
   const getLanguageLabelLocal = (languageValue: string) => {
     return getLanguageLabel(languageValue);
   };
+
+  // Tab options for standardized layout
+  const bidirectionalTabOptions = [
+    {
+      value: "learning",
+      label: "Learning",
+      icon: <BookOpen className="h-3 w-3 sm:h-4 sm:w-4" />,
+      count: learningExercises.length
+    },
+    {
+      value: "reviewing", 
+      label: "Reviewing",
+      icon: <Brain className="h-3 w-3 sm:h-4 sm:w-4" />,
+      count: reviewingExercises.length
+    },
+    {
+      value: "mastered",
+      label: "Mastered", 
+      icon: <Trophy className="h-3 w-3 sm:h-4 sm:w-4" />,
+      count: masteredExercises.length
+    }
+  ];
+
   if (!user) {
     return <div className="container mx-auto px-4 py-8 text-center">
         <p>Please log in to access the Bidirectional Method.</p>
@@ -177,8 +203,8 @@ const BidirectionalPage: React.FC = () => {
   }
   return <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-full overflow-x-hidden">
       <div className="mb-6 sm:mb-8">
-        
-        <p className="text-sm sm:text-base text-muted-foreground">
+        <h1 className={`font-bold mb-2 ${isMobile ? 'text-2xl px-4' : 'text-3xl'}`}>Bidirectional Method</h1>
+        <p className={`text-muted-foreground ${isMobile ? 'text-sm px-4' : 'text-base'}`}>
           Practice translation in both directions with spaced repetition for{' '}
           <span className="inline-flex items-center gap-1 font-medium">
             <FlagIcon code={getLanguageFlagCode(targetLanguage)} size={16} />
@@ -188,7 +214,7 @@ const BidirectionalPage: React.FC = () => {
       </div>
 
       {/* Enhanced Due Reviews Section with Card Stack */}
-      <Card className={`mb-6 sm:mb-8 ${dueReviews.length > 0 ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800' : 'border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800'}`}>
+      <Card className={`mb-6 sm:mb-8 ${dueReviews.length > 0 ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800' : 'border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800'} ${isMobile ? 'mx-4' : ''}`}>
         <CardHeader className="pb-3">
           <CardTitle className={`flex items-center gap-2 text-lg ${dueReviews.length > 0 ? 'text-yellow-800 dark:text-yellow-200' : 'text-green-800 dark:text-green-200'}`}>
             {dueReviews.length > 0 ? <>
@@ -219,49 +245,23 @@ const BidirectionalPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Create Exercise Section - Now uses enhanced dialog */}
-      <Card className="mb-6 sm:mb-8">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-            <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
-            Create New Exercise for {getLanguageLabelLocal(targetLanguage)}
-            {!subscription.isSubscribed && <span className="text-sm text-muted-foreground">
-                ({exerciseLimit.currentCount}/{exerciseLimit.limit})
-              </span>}
-          </CardTitle>
-          <CardDescription className="text-sm">
-            Add a sentence to practice with the bidirectional method
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="w-full" size={isMobile ? "default" : "lg"}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Exercise
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Create Exercise Section - Standardized */}
+      <StandardCreateExerciseCard 
+        onClick={() => setIsCreateDialogOpen(true)}
+        title={`Create New Exercise for ${getLanguageLabelLocal(targetLanguage)}`}
+        description="Add a sentence to practice with the bidirectional method"
+        icon={<ArrowLeftRight className="h-6 w-6 text-primary" />}
+        buttonText="Create Exercise"
+      />
 
-      {/* Exercises Tabs */}
+      {/* Exercises Tabs - Standardized */}
       <Tabs defaultValue="learning" className="space-y-4 sm:space-y-6">
-        <TabsList className={`grid w-full ${isMobile ? 'grid-cols-1 h-auto p-1' : 'grid-cols-3'}`}>
-          <TabsTrigger value="learning" className={`flex items-center gap-2 ${isMobile ? 'w-full justify-start px-4 py-3 mb-1' : ''}`}>
-            <BookOpen className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="text-sm">Learning ({learningExercises.length})</span>
-          </TabsTrigger>
-          <TabsTrigger value="reviewing" className={`flex items-center gap-2 ${isMobile ? 'w-full justify-start px-4 py-3 mb-1' : ''}`}>
-            <Brain className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="text-sm">Reviewing ({reviewingExercises.length})</span>
-          </TabsTrigger>
-          <TabsTrigger value="mastered" className={`flex items-center gap-2 ${isMobile ? 'w-full justify-start px-4 py-3' : ''}`}>
-            <Trophy className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="text-sm">Mastered ({masteredExercises.length})</span>
-          </TabsTrigger>
-        </TabsList>
+        <StandardTabLayout tabs={bidirectionalTabOptions} />
 
         <TabsContent value="learning">
           {isLoading ? <div className="text-center py-8">Loading exercises...</div> : learningExercises.length > 0 ? <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {learningExercises.map(exercise => <BidirectionalExerciseCard key={exercise.id} exercise={exercise} onPractice={handlePractice} onReview={() => handleReview(exercise)} onDelete={handleDelete} />)}
-            </div> : <div className="text-center py-8 text-muted-foreground text-sm sm:text-base">
+            </div> : <div className={`text-center py-8 text-muted-foreground ${isMobile ? 'text-sm px-4' : 'text-base'}`}>
               No learning exercises yet for {getLanguageLabelLocal(targetLanguage)}. Create your first exercise above!
             </div>}
         </TabsContent>
@@ -269,7 +269,7 @@ const BidirectionalPage: React.FC = () => {
         <TabsContent value="reviewing">
           {isLoading ? <div className="text-center py-8">Loading exercises...</div> : reviewingExercises.length > 0 ? <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {reviewingExercises.map(exercise => <BidirectionalExerciseCard key={exercise.id} exercise={exercise} onPractice={handlePractice} onReview={() => handleReview(exercise)} onDelete={handleDelete} />)}
-            </div> : <div className="text-center py-8 text-muted-foreground text-sm sm:text-base">
+            </div> : <div className={`text-center py-8 text-muted-foreground ${isMobile ? 'text-sm px-4' : 'text-base'}`}>
               No exercises in review phase yet for {getLanguageLabelLocal(targetLanguage)}. Complete some learning exercises first!
             </div>}
         </TabsContent>
@@ -277,7 +277,7 @@ const BidirectionalPage: React.FC = () => {
         <TabsContent value="mastered">
           {isLoading ? <div className="text-center py-8">Loading exercises...</div> : masteredExercises.length > 0 ? <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {masteredExercises.map(exercise => <BidirectionalExerciseCard key={exercise.id} exercise={exercise} onPractice={handlePractice} onReview={() => handleReview(exercise)} />)}
-            </div> : <div className="text-center py-8 text-muted-foreground text-sm sm:text-base">
+            </div> : <div className={`text-center py-8 text-muted-foreground ${isMobile ? 'text-sm px-4' : 'text-base'}`}>
               No mastered exercises yet for {getLanguageLabelLocal(targetLanguage)}. Keep practicing!
             </div>}
         </TabsContent>
@@ -291,4 +291,5 @@ const BidirectionalPage: React.FC = () => {
       <BidirectionalReviewModal exercise={reviewExercise} reviewType={reviewType} isOpen={!!reviewExercise} onClose={() => setReviewExercise(null)} onReviewComplete={handleReviewComplete} />
     </div>;
 };
+
 export default BidirectionalPage;

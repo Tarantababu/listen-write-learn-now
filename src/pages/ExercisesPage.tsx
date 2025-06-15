@@ -16,10 +16,11 @@ import { MobileExerciseFormModal } from '@/components/exercises/MobileExerciseFo
 import PracticeModal from '@/components/exercises/PracticeModal';
 import MoveExerciseModal from '@/components/MoveExerciseModal';
 import DeleteExerciseDialog from '@/components/exercises/DeleteExerciseDialog';
-import { MobilePaginationControls } from '@/components/exercises/MobilePaginationControls';
-import { MobileFilterBar } from '@/components/exercises/MobileFilterBar';
+import { StandardCreateExerciseCard } from '@/components/exercises/StandardCreateExerciseCard';
+import { StandardFilterBar } from '@/components/exercises/StandardFilterBar';
+import { StandardPaginationControls } from '@/components/exercises/StandardPaginationControls';
+import { StandardTabLayout } from '@/components/exercises/StandardTabLayout';
 import { MobileExerciseGrid } from '@/components/exercises/MobileExerciseGrid';
-import { MobileCreateExerciseCard } from '@/components/exercises/MobileCreateExerciseCard';
 import BidirectionalPage from './BidirectionalPage';
 import { ReadingExercisesSection } from '@/components/reading/ReadingExercisesSection';
 import PopoverHint from '@/components/PopoverHint';
@@ -28,8 +29,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 // Memoized components to prevent unnecessary re-renders
 const MemoizedMobileExerciseGrid = React.memo(MobileExerciseGrid);
 const MemoizedBidirectionalPage = React.memo(BidirectionalPage);
-const MemoizedMobileFilterBar = React.memo(MobileFilterBar);
-const MemoizedMobilePaginationControls = React.memo(MobilePaginationControls);
+const MemoizedStandardFilterBar = React.memo(StandardFilterBar);
+const MemoizedStandardPaginationControls = React.memo(StandardPaginationControls);
 
 const ExercisesPage: React.FC = () => {
   const { user } = useAuth();
@@ -94,6 +95,37 @@ const ExercisesPage: React.FC = () => {
     );
     return { totalPages: total, paginatedExercises: paginated };
   }, [filteredExercises, currentPage, exercisesPerPage]);
+
+  // Tab options for standardized layout
+  const tabOptions = useMemo(() => [
+    {
+      value: "dictation",
+      label: "Dictation Method",
+      icon: <Mic className="h-4 w-4" />,
+      count: filteredExercises.length
+    },
+    {
+      value: "reading",
+      label: "Reading & Listening",
+      icon: <BookOpen className="h-4 w-4" />
+    },
+    {
+      value: "bidirectional",
+      label: "Bidirectional Method",
+      icon: <ArrowLeftRight className="h-4 w-4" />,
+      badge: dueReviewsCount > 0 ? (
+        <Badge variant="destructive" className="ml-2 h-5 min-w-5 text-xs">
+          {dueReviewsCount}
+        </Badge>
+      ) : undefined
+    }
+  ], [filteredExercises.length, dueReviewsCount]);
+
+  // Tag filter options
+  const tagFilterOptions = useMemo(() => 
+    allTags.map(tag => ({ value: tag, label: tag })), 
+    [allTags]
+  );
 
   // Memoized event handlers to prevent unnecessary re-renders
   const onCreateExercise = useCallback(() => {
@@ -173,80 +205,27 @@ const ExercisesPage: React.FC = () => {
       </div>
 
       <Tabs defaultValue="dictation" className="space-y-6">
-        <TabsList className={`
-          ${isMobile 
-            ? 'grid w-full grid-cols-1 h-auto p-1 mx-4' 
-            : 'grid w-full grid-cols-3'
-          }
-        `}>
-          <TabsTrigger 
-            value="dictation" 
-            className={`flex items-center gap-2 ${
-              isMobile ? 'w-full justify-start px-4 py-3 mb-1 text-base' : ''
-            }`}
-          >
-            <Mic className="h-4 w-4" />
-            Dictation Method
-          </TabsTrigger>
-          <TabsTrigger 
-            value="reading" 
-            className={`flex items-center gap-2 ${
-              isMobile ? 'w-full justify-start px-4 py-3 mb-1 text-base' : ''
-            }`}
-          >
-            <BookOpen className="h-4 w-4" />
-            Reading & Listening
-          </TabsTrigger>
-          <TabsTrigger 
-            value="bidirectional" 
-            className={`flex items-center gap-2 relative ${
-              isMobile ? 'w-full justify-start px-4 py-3 text-base' : ''
-            }`}
-          >
-            <ArrowLeftRight className="h-4 w-4" />
-            Bidirectional Method
-            {dueReviewsCount > 0 && (
-              <Badge variant="destructive" className="ml-2 h-5 min-w-5 text-xs">
-                {dueReviewsCount}
-              </Badge>
-            )}
-            {!isMobile && (
-              <PopoverHint className="ml-1" triggerClassName="text-muted-foreground/60 hover:text-muted-foreground">
-                <div className="space-y-3">
-                  <div>
-                    <h4 className="font-semibold mb-2">How the Bidirectional Method works:</h4>
-                    <ul className="text-sm space-y-2 list-disc list-inside">
-                      <li><strong>Forward practice:</strong> Translate from your native language to your target language</li>
-                      <li><strong>Backward practice:</strong> Translate from your target language back to your native language</li>
-                      <li><strong>Spaced repetition:</strong> Review sentences at optimal intervals for long-term retention</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Getting the most out of it:</h4>
-                    <ul className="text-sm space-y-1 list-disc list-inside">
-                      <li>Practice daily for best results</li>
-                      <li>Focus on accuracy over speed</li>
-                      <li>Review difficult sentences more frequently</li>
-                      <li>Use both literal and natural translations</li>
-                    </ul>
-                  </div>
-                </div>
-              </PopoverHint>
-            )}
-          </TabsTrigger>
-        </TabsList>
+        <StandardTabLayout tabs={tabOptions} />
 
         <TabsContent value="dictation" className="space-y-6">
           {/* Create Exercise Section */}
-          <MobileCreateExerciseCard onClick={onCreateExercise} />
+          <StandardCreateExerciseCard 
+            onClick={onCreateExercise}
+            title="Create New Exercise"
+            description="Add your own text and generate audio for practice"
+            icon={<Mic className="h-6 w-6 text-primary" />}
+            buttonText="Create Exercise"
+          />
 
           {/* Search and Filter Bar */}
-          <MemoizedMobileFilterBar
+          <MemoizedStandardFilterBar
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
-            selectedTag={selectedTag}
-            setSelectedTag={setSelectedTag}
-            allTags={allTags}
+            selectedFilter={selectedTag}
+            setSelectedFilter={setSelectedTag}
+            filterOptions={tagFilterOptions}
+            filterPlaceholder="All Tags"
+            searchPlaceholder="Search exercises..."
           />
 
           {/* Exercises Grid */}
@@ -262,7 +241,7 @@ const ExercisesPage: React.FC = () => {
           />
 
           {/* Pagination */}
-          <MemoizedMobilePaginationControls
+          <MemoizedStandardPaginationControls
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
