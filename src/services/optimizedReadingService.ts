@@ -85,8 +85,14 @@ export class OptimizedReadingService {
         throw error;
       }
 
-      if (!data || !data.id) {
+      // Fixed logic: Check if we have valid data instead of requiring an ID
+      if (!data) {
         throw new Error('Failed to create exercise - no data returned');
+      }
+
+      // Check if data has either an ID or content structure
+      if (!data.id && !data.sentences) {
+        throw new Error('Failed to create exercise - invalid response format');
       }
 
       return this.processCreatedExercise(data, exerciseData);
