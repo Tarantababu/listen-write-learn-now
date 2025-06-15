@@ -5,24 +5,34 @@ import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 
 const GRAMMAR_OPTIONS = [
-  { id: 'past-tense', label: 'Past Tense', category: 'Verbs' },
-  { id: 'future-tense', label: 'Future Tense', category: 'Verbs' },
-  { id: 'conditionals', label: 'Conditionals', category: 'Advanced' },
-  { id: 'passive-voice', label: 'Passive Voice', category: 'Advanced' },
-  { id: 'subjunctive', label: 'Subjunctive', category: 'Advanced' },
-  { id: 'articles', label: 'Articles', category: 'Basics' },
-  { id: 'prepositions', label: 'Prepositions', category: 'Basics' },
-  { id: 'pronouns', label: 'Pronouns', category: 'Basics' },
-  { id: 'adjectives', label: 'Adjectives', category: 'Basics' },
-  { id: 'adverbs', label: 'Adverbs', category: 'Basics' },
-  { id: 'modal-verbs', label: 'Modal Verbs', category: 'Verbs' },
-  { id: 'phrasal-verbs', label: 'Phrasal Verbs', category: 'Verbs' }
+  // Verb Forms & Tenses
+  { id: 'present-tense', label: 'Present Tense', category: 'Verb Forms' },
+  { id: 'past-tense', label: 'Past Tense', category: 'Verb Forms' },
+  { id: 'future-tense', label: 'Future Tense', category: 'Verb Forms' },
+  { id: 'perfect-aspects', label: 'Perfect Aspects', category: 'Verb Forms' },
+  { id: 'progressive-aspects', label: 'Progressive Aspects', category: 'Verb Forms' },
+  
+  // Sentence Structure
+  { id: 'word-order', label: 'Word Order', category: 'Sentence Structure' },
+  { id: 'complex-sentences', label: 'Complex Sentences', category: 'Sentence Structure' },
+  { id: 'passive-voice', label: 'Passive Voice', category: 'Sentence Structure' },
+  
+  // Modality & Mood
+  { id: 'modal-verbs', label: 'Modal Verbs', category: 'Modality & Mood' },
+  { id: 'conditionals', label: 'Conditionals', category: 'Modality & Mood' },
+  { id: 'subjunctive', label: 'Subjunctive', category: 'Modality & Mood' },
+  
+  // Noun Systems
+  { id: 'articles', label: 'Articles', category: 'Noun Systems' },
+  { id: 'gender-agreement', label: 'Gender Agreement', category: 'Noun Systems' },
+  { id: 'case-systems', label: 'Case Systems', category: 'Noun Systems' }
 ];
 
 const GRAMMAR_CATEGORIES = {
-  'Basics': 'bg-blue-100 text-blue-700 border-blue-200',
-  'Verbs': 'bg-green-100 text-green-700 border-green-200',
-  'Advanced': 'bg-purple-100 text-purple-700 border-purple-200'
+  'Verb Forms': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
+  'Sentence Structure': 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800',
+  'Modality & Mood': 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800',
+  'Noun Systems': 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800'
 };
 
 interface GrammarFocusSelectorProps {
@@ -93,8 +103,10 @@ export const GrammarFocusSelector: React.FC<GrammarFocusSelectorProps> = ({
       <div className="space-y-4">
         {Object.entries(groupedGrammar).map(([category, options]) => (
           <div key={category} className="space-y-2">
-            <h5 className="text-sm font-medium text-muted-foreground">
-              {category}
+            <h5 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <span className={`px-2 py-1 rounded-md text-xs font-medium ${GRAMMAR_CATEGORIES[category as keyof typeof GRAMMAR_CATEGORIES]}`}>
+                {category}
+              </span>
             </h5>
             <div className="flex flex-wrap gap-2">
               {options.map((option) => {
