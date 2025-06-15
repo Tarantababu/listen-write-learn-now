@@ -16,7 +16,7 @@ import { EnhancedInteractiveText } from './EnhancedInteractiveText';
 import { AudioWordSynchronizer } from './AudioWordSynchronizer';
 import { SynchronizedTextWithSelection } from './SynchronizedTextWithSelection';
 import { AdvancedAudioControls } from './AdvancedAudioControls';
-import { TranslationAnalysis } from './TranslationAnalysis';
+import { SimpleTranslationAnalysis } from './SimpleTranslationAnalysis';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { readingExerciseService } from '@/services/readingExerciseService';
 import { toast } from 'sonner';
@@ -297,7 +297,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
         <div className="flex-1 overflow-auto">
           <Card className="p-6 h-full">
             {showTranslationAnalysis ? (
-              <TranslationAnalysis
+              <SimpleTranslationAnalysis
                 text={fullText}
                 sourceLanguage={exerciseLanguage}
                 onClose={() => setShowTranslationAnalysis(false)}
