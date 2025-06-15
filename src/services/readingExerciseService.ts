@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise, ReadingExerciseProgress, CreateReadingExerciseRequest } from '@/types/reading';
 import { enhancedAudioService } from '@/services/enhancedAudioService';
@@ -8,27 +9,26 @@ export class ReadingExerciseService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    console.log(`[ENHANCED SERVICE] Creating exercise with target length: ${request.target_length}`);
+    console.log(`[READING SERVICE] Creating exercise with enhanced audio generation`);
 
     let content;
     let wasPartialGeneration = false;
     
     try {
       if (request.customText) {
-        content = await this.processCustomTextWithEnhancedTimeout(request);
+        content = await this.processCustomTextWithTimeout(request);
       } else {
-        content = await this.generateReadingContentWithEnhancedRecovery(request);
+        content = await this.generateReadingContentWithTimeout(request);
       }
     } catch (error) {
-      console.error('[ENHANCED SERVICE] Content generation failed:', error);
+      console.error('[READING SERVICE] Content generation failed:', error);
       
-      // Enhanced error recovery with detailed handling
       if (this.isTimeoutError(error)) {
-        console.warn('[ENHANCED SERVICE] Timeout detected - attempting partial recovery');
+        console.warn('[READING SERVICE] Timeout detected - attempting recovery');
         content = await this.attemptPartialRecovery(request, error);
         wasPartialGeneration = true;
       } else if (this.isGenerationError(error)) {
-        console.warn('[ENHANCED SERVICE] Generation error - using intelligent fallback');
+        console.warn('[READING SERVICE] Generation error - using fallback');
         content = this.createIntelligentFallback(request);
         wasPartialGeneration = true;
       } else {
@@ -36,7 +36,7 @@ export class ReadingExerciseService {
       }
     }
     
-    // Create exercise first, then generate audio in background
+    // Create exercise first with enhanced metadata
     const { data, error } = await supabase
       .from('reading_exercises')
       .insert({
@@ -49,10 +49,9 @@ export class ReadingExerciseService {
         topic: request.topic,
         content: content,
         audio_generation_status: 'pending',
-        // Add metadata about generation method
         metadata: {
           generation_method: wasPartialGeneration ? 'enhanced_fallback' : 'full_generation',
-          protection_used: true,
+          enhanced_audio_enabled: true,
           created_at: new Date().toISOString()
         }
       })
@@ -60,11 +59,11 @@ export class ReadingExerciseService {
       .single();
 
     if (error) {
-      console.error('[ENHANCED SERVICE] Database insert failed:', error);
+      console.error('[READING SERVICE] Database insert failed:', error);
       throw error;
     }
 
-    console.log(`[ENHANCED SERVICE] Exercise created successfully: ${data.id} (method: ${wasPartialGeneration ? 'fallback' : 'standard'})`);
+    console.log(`[READING SERVICE] Exercise created successfully: ${data.id}`);
 
     // Start enhanced background audio generation
     this.generateAudioInBackgroundEnhanced(data.id, content, request.language);
@@ -94,18 +93,13 @@ export class ReadingExerciseService {
     console.log('[PARTIAL RECOVERY] Attempting recovery with reduced scope');
     
     try {
-      // Try with reduced target length (60% of original)
       const reducedRequest = {
         ...request,
         target_length: Math.floor((request.target_length || 700) * 0.6)
       };
       
-      console.log(`[PARTIAL RECOVERY] Retrying with reduced length: ${reducedRequest.target_length}`);
-      
-      // Use direct generation with shorter timeout
       const partialContent = await this.generateContentDirectlyWithTimeout(reducedRequest, 30000);
       
-      // Add recovery metadata to content
       return {
         ...partialContent,
         analysis: {
@@ -114,12 +108,12 @@ export class ReadingExerciseService {
             originalTargetLength: request.target_length,
             actualLength: partialContent.analysis?.wordCount || reducedRequest.target_length,
             recoveryMethod: 'partial_generation',
-            note: 'Content was generated with enhanced recovery due to complexity'
+            note: 'Content was generated with enhanced recovery'
           }
         }
       };
     } catch (recoveryError) {
-      console.warn('[PARTIAL RECOVERY] Recovery failed, using intelligent fallback');
+      console.warn('[PARTIAL RECOVERY] Recovery failed, using fallback');
       return this.createIntelligentFallback(request);
     }
   }
@@ -130,7 +124,6 @@ export class ReadingExerciseService {
     );
 
     const generationPromise = this.generateReadingContentDirect(request);
-
     return await Promise.race([generationPromise, timeoutPromise]);
   }
 
@@ -142,7 +135,7 @@ export class ReadingExerciseService {
         difficulty_level: request.difficulty_level,
         target_length: request.target_length,
         grammar_focus: request.grammar_focus,
-        directGeneration: true // Flag for simplified generation
+        directGeneration: true
       }
     });
 
@@ -150,10 +143,9 @@ export class ReadingExerciseService {
     return data;
   }
 
-  private async generateReadingContentWithEnhancedRecovery(request: CreateReadingExerciseRequest) {
-    console.log(`[ENHANCED GENERATION] Starting with intelligent protection`);
+  private async generateReadingContentWithTimeout(request: CreateReadingExerciseRequest) {
+    console.log(`[ENHANCED GENERATION] Starting with timeout protection`);
     
-    // Smart timeout based on target length
     const smartTimeout = this.calculateSmartTimeout(request.target_length || 700);
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Enhanced generation timeout')), smartTimeout)
@@ -166,25 +158,24 @@ export class ReadingExerciseService {
       console.log(`[ENHANCED GENERATION] Completed successfully`);
       return content;
     } catch (error) {
-      console.error(`[ENHANCED GENERATION] Failed, initiating recovery:`, error);
-      throw error; // Let the main error handler deal with recovery
+      console.error(`[ENHANCED GENERATION] Failed:`, error);
+      throw error;
     }
   }
 
   private calculateSmartTimeout(targetLength: number): number {
-    // Dynamic timeout based on content length with caps
-    const baseTimeout = 35000; // 35 seconds base
-    const lengthMultiplier = Math.min(targetLength / 1000, 2.5); // Cap at 2.5x
-    const smartTimeout = Math.min(baseTimeout * lengthMultiplier, 55000); // Max 55 seconds
+    const baseTimeout = 35000;
+    const lengthMultiplier = Math.min(targetLength / 1000, 2.5);
+    const smartTimeout = Math.min(baseTimeout * lengthMultiplier, 55000);
     
     console.log(`[SMART TIMEOUT] Calculated ${smartTimeout}ms for ${targetLength} words`);
     return smartTimeout;
   }
 
-  private async processCustomTextWithEnhancedTimeout(request: CreateReadingExerciseRequest) {
-    console.log(`[ENHANCED CUSTOM] Processing with protection`);
+  private async processCustomTextWithTimeout(request: CreateReadingExerciseRequest) {
+    console.log(`[CUSTOM TEXT] Processing with timeout protection`);
     
-    const timeoutDuration = 25000; // Reduced timeout for custom text
+    const timeoutDuration = 25000;
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Custom text processing timeout')), timeoutDuration)
     );
@@ -193,10 +184,10 @@ export class ReadingExerciseService {
 
     try {
       const content = await Promise.race([processingPromise, timeoutPromise]);
-      console.log(`[ENHANCED CUSTOM] Processed successfully`);
+      console.log(`[CUSTOM TEXT] Processed successfully`);
       return content;
     } catch (error) {
-      console.error(`[ENHANCED CUSTOM] Processing failed:`, error);
+      console.error(`[CUSTOM TEXT] Processing failed:`, error);
       throw error;
     }
   }
@@ -207,19 +198,15 @@ export class ReadingExerciseService {
     const targetLength = request.target_length || 700;
     const sentences = [];
     
-    // Intelligent sentence generation based on topic and difficulty
     const topicTemplates = this.getTopicTemplates(request.topic || 'general');
-    const difficultyAdjustments = this.getDifficultyAdjustments(request.difficulty_level);
-    
     const sentenceCount = Math.max(5, Math.min(12, Math.floor(targetLength / 50)));
-    const wordsPerSentence = Math.floor(targetLength / sentenceCount);
     
     for (let i = 0; i < sentenceCount; i++) {
       const template = topicTemplates[i % topicTemplates.length];
-      const sentenceText = this.generateFallbackSentence(template, difficultyAdjustments, request.language);
+      const sentenceText = this.generateFallbackSentence(template, request.difficulty_level, request.language);
       
       sentences.push({
-        id: `intelligent-sentence-${i + 1}`,
+        id: `fallback-sentence-${i + 1}`,
         text: sentenceText,
         analysis: {
           words: this.generateSampleWordAnalysis(sentenceText, request.difficulty_level),
@@ -237,7 +224,7 @@ export class ReadingExerciseService {
         grammarPoints: this.getRelevantGrammarPoints(request.grammar_focus),
         fallbackInfo: {
           method: 'intelligent_fallback',
-          reason: 'Enhanced protection activated due to generation complexity',
+          reason: 'Enhanced protection activated',
           isUsable: true
         }
       }
@@ -265,27 +252,17 @@ export class ReadingExerciseService {
         'Each culture has its own unique cooking methods.',
         'Sharing meals brings people together across cultures.'
       ]
-      // Add more topic-specific templates as needed
     };
     
     return templates[topic] || templates['general'];
   }
 
-  private getDifficultyAdjustments(level: string) {
-    return {
-      beginner: { complexity: 'simple', vocabulary: 'basic' },
-      intermediate: { complexity: 'moderate', vocabulary: 'varied' },
-      advanced: { complexity: 'complex', vocabulary: 'sophisticated' }
-    }[level] || { complexity: 'simple', vocabulary: 'basic' };
-  }
-
-  private generateFallbackSentence(template: string, difficulty: any, language: string): string {
-    // This would ideally be language-specific, but for fallback we use English with a note
-    return `${template} [Enhanced fallback content - your exercise is ready for practice!]`;
+  private generateFallbackSentence(template: string, difficulty: string, language: string): string {
+    return `${template} [Enhanced content ready for practice!]`;
   }
 
   private generateSampleWordAnalysis(text: string, difficulty: string) {
-    const words = text.split(' ').slice(0, 3); // Analyze first 3 words
+    const words = text.split(' ').slice(0, 3);
     return words.map(word => ({
       word: word.toLowerCase().replace(/[^\w]/g, ''),
       definition: `Example definition for "${word}"`,
@@ -302,7 +279,7 @@ export class ReadingExerciseService {
   }
 
   private generateBasicTranslation(text: string, language: string): string {
-    return `Translation available - enhanced fallback content created for ${language} practice`;
+    return `Translation available - enhanced content for ${language} practice`;
   }
 
   async getReadingExercises(language?: string): Promise<ReadingExercise[]> {
@@ -427,7 +404,13 @@ export class ReadingExerciseService {
       // Update status to generating
       await supabase
         .from('reading_exercises')
-        .update({ audio_generation_status: 'generating' })
+        .update({ 
+          audio_generation_status: 'generating',
+          metadata: {
+            audio_generation_started: new Date().toISOString(),
+            enhanced_audio_enabled: true
+          }
+        })
         .eq('id', exerciseId);
 
       // Prepare batch audio generation items
@@ -482,13 +465,18 @@ export class ReadingExerciseService {
         }
       };
 
-      // Update exercise with enhanced audio content
+      // Update exercise with enhanced audio content and proper URLs
       await supabase
         .from('reading_exercises')
         .update({ 
           content: updatedContent,
           full_text_audio_url: fullTextResult?.success ? fullTextResult.audioUrl : null,
-          audio_generation_status: 'completed'
+          audio_generation_status: 'completed',
+          metadata: {
+            audio_generation_completed: new Date().toISOString(),
+            enhanced_audio_enabled: true,
+            success_rate: Array.from(results.values()).filter(r => r.success).length / results.size
+          }
         })
         .eq('id', exerciseId);
 
@@ -497,16 +485,21 @@ export class ReadingExerciseService {
     } catch (error) {
       console.error(`[ENHANCED BACKGROUND AUDIO] Failed for exercise ${exerciseId}:`, error);
       
-      // Update status to failed
+      // Update status to failed with error details
       await supabase
         .from('reading_exercises')
-        .update({ audio_generation_status: 'failed' })
+        .update({ 
+          audio_generation_status: 'failed',
+          metadata: {
+            audio_generation_failed: new Date().toISOString(),
+            error: error.message
+          }
+        })
         .eq('id', exerciseId);
     }
   }
 
   async generateAudio(text: string, language: string): Promise<string> {
-    // Use enhanced audio service for compatibility
     const result = await enhancedAudioService.generateSingleAudio(text, language, {
       quality: 'standard',
       background: true

@@ -1,536 +1,329 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
+import React, { useState, useRef, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
-  Volume2, 
-  VolumeX, 
-  ChevronLeft, 
-  ChevronRight, 
   Play, 
-  Pause,
-  BookOpen,
-  Brain,
-  RotateCcw,
-  Mic,
-  SkipForward
+  Pause, 
+  RotateCcw, 
+  Volume2, 
+  VolumeX,
+  AlertTriangle,
+  Loader2,
+  CheckCircle 
 } from 'lucide-react';
-import { ReadingExercise, ReadingSentence } from '@/types/reading';
-import { Language } from '@/types';
-import { readingExerciseService } from '@/services/readingExerciseService';
-import { EnhancedInteractiveText } from './EnhancedInteractiveText';
-import { AllTextView } from './AllTextView';
-import { ViewToggle, ReadingView } from './ViewToggle';
-import { ReadingFocusedModal } from './ReadingFocusedModal';
-import { useExerciseContext } from '@/contexts/ExerciseContext';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { getReadingFeatureFlags } from '@/utils/featureFlags';
+import { ReadingExercise } from '@/types/reading';
 import { toast } from 'sonner';
 
 interface ReadingPracticeModalProps {
-  exercise: ReadingExercise | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  exercise: ReadingExercise | null;
+  onUpdateProgress?: (sentenceIndex: number) => void;
 }
 
 export const ReadingPracticeModal: React.FC<ReadingPracticeModalProps> = ({
-  exercise,
   isOpen,
-  onOpenChange
+  onOpenChange,
+  exercise,
+  onUpdateProgress
 }) => {
-  const { addExercise } = useExerciseContext();
-  const isMobile = useIsMobile();
-  const featureFlags = getReadingFeatureFlags();
-  
-  // Check if we should use the new focused modal
-  const shouldUseFocusedModal = featureFlags.enableEnhancedModal;
-
-  const [currentView, setCurrentView] = useState<ReadingView>('all'); // Changed default to 'all'
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
-  const [showAnalysis, setShowAnalysis] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(true);
-  const [isWordByWordMode, setIsWordByWordMode] = useState(false);
-  const [currentWordIndex, setCurrentWordIndex] = useState(0);
-  const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const [audioLoading, setAudioLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const currentSentence = exercise?.content.sentences[currentSentenceIndex];
-  const progress = exercise ? ((currentSentenceIndex + 1) / exercise.content.sentences.length) * 100 : 0;
+  const sentences = exercise?.content?.sentences || [];
+  const currentSentence = sentences[currentSentenceIndex];
 
   useEffect(() => {
-    if (exercise) {
-      loadProgress();
+    if (isOpen) {
+      setCurrentSentenceIndex(0);
+      setIsPlaying(false);
+      setAudioError(null);
     }
-  }, [exercise]);
+  }, [isOpen, exercise]);
 
-  const loadProgress = async () => {
-    if (!exercise) return;
-    
+  const handlePlayAudio = async (audioUrl?: string) => {
+    if (!audioUrl) {
+      setAudioError('Audio not available for this sentence');
+      toast.error('Audio not available for this sentence');
+      return;
+    }
+
     try {
-      const progress = await readingExerciseService.getProgress(exercise.id);
-      if (progress && progress.last_sentence_index > 0) {
-        setCurrentSentenceIndex(Math.min(progress.last_sentence_index, exercise.content.sentences.length - 1));
+      setAudioLoading(true);
+      setAudioError(null);
+
+      // Stop current audio if playing
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
       }
-    } catch (error) {
-      console.error('Error loading progress:', error);
-    }
-  };
 
-  const saveProgress = async () => {
-    if (!exercise) return;
-    
-    try {
-      await readingExerciseService.updateProgress(exercise.id, currentSentenceIndex + 1);
-    } catch (error) {
-      console.error('Error saving progress:', error);
-    }
-  };
+      // Create new audio element
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
 
-  const nextSentence = () => {
-    if (!exercise || currentSentenceIndex >= exercise.content.sentences.length - 1) return;
-    
-    setCurrentSentenceIndex(prev => prev + 1);
-    setShowAnalysis(false);
-    setCurrentWordIndex(0);
-    setHighlightedWordIndex(-1);
-    saveProgress();
-  };
+      // Set up event listeners
+      audio.addEventListener('loadstart', () => {
+        console.log('[AUDIO] Loading started for:', audioUrl);
+      });
 
-  const previousSentence = () => {
-    if (currentSentenceIndex <= 0) return;
-    
-    setCurrentSentenceIndex(prev => prev - 1);
-    setShowAnalysis(false);
-    setCurrentWordIndex(0);
-    setHighlightedWordIndex(-1);
-  };
+      audio.addEventListener('canplay', () => {
+        console.log('[AUDIO] Can play:', audioUrl);
+        setAudioLoading(false);
+        setIsPlaying(true);
+      });
 
-  const restartExercise = () => {
-    setCurrentSentenceIndex(0);
-    setShowAnalysis(false);
-    setCurrentWordIndex(0);
-    setHighlightedWordIndex(-1);
-    setCurrentView('sentence');
-  };
-
-  const playAudio = async () => {
-    if (!currentSentence || !audioEnabled) return;
-    
-    try {
-      setIsPlaying(true);
-      
-      if (currentSentence.audio_url) {
-        if (audioRef.current) {
-          audioRef.current.src = currentSentence.audio_url;
-          await audioRef.current.play();
-        }
-      } else {
-        const audioUrl = await readingExerciseService.generateAudio(
-          currentSentence.text,
-          exercise!.language
-        );
-        
-        if (audioRef.current) {
-          audioRef.current.src = audioUrl;
-          await audioRef.current.play();
-        }
-      }
-    } catch (error) {
-      console.error('Error playing audio:', error);
-      toast.error('Audio playback failed');
-    }
-  };
-
-  const playWordByWord = async () => {
-    if (!currentSentence || !audioEnabled) return;
-    
-    const words = currentSentence.text.split(/\s+/);
-    setIsWordByWordMode(true);
-    setCurrentWordIndex(0);
-    
-    try {
-      for (let i = 0; i < words.length; i++) {
-        setCurrentWordIndex(i);
-        setHighlightedWordIndex(i);
-        
-        const word = words[i].replace(/[.,!?;:"'()]/g, '');
-        const audioUrl = await readingExerciseService.generateAudio(word, exercise!.language);
-        
-        const audio = new Audio(audioUrl);
-        await new Promise((resolve, reject) => {
-          audio.onended = resolve;
-          audio.onerror = reject;
-          audio.play();
-        });
-        
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-    } catch (error) {
-      console.error('Error in word-by-word playback:', error);
-      toast.error('Word-by-word playback failed');
-    } finally {
-      setIsWordByWordMode(false);
-      setCurrentWordIndex(0);
-      setHighlightedWordIndex(-1);
-    }
-  };
-
-  const createDictationExercise = async () => {
-    if (!exercise || !currentSentence) return;
-    
-    try {
-      const dictationExercise = {
-        title: `Dictation: ${exercise.title}`,
-        text: currentSentence.text,
-        language: exercise.language as Language,
-        tags: ['dictation', 'from-reading'],
-        directoryId: null
-      };
-      
-      await addExercise(dictationExercise);
-      toast.success('Dictation exercise created successfully!');
-    } catch (error) {
-      console.error('Error creating dictation exercise:', error);
-      toast.error('Failed to create dictation exercise');
-    }
-  };
-
-  const createDictationFromSelection = async (selectedText: string) => {
-    if (!exercise) return;
-    
-    try {
-      const dictationExercise = {
-        title: `Dictation: ${selectedText.substring(0, 30)}...`,
-        text: selectedText,
-        language: exercise.language as Language,
-        tags: ['dictation', 'from-reading', 'selection'],
-        directoryId: null
-      };
-      
-      await addExercise(dictationExercise);
-      toast.success('Dictation exercise created from selection!');
-    } catch (error) {
-      console.error('Error creating dictation exercise:', error);
-      toast.error('Failed to create dictation exercise');
-    }
-  };
-
-  const createBidirectionalFromSelection = async (selectedText: string) => {
-    if (!exercise) return;
-    
-    try {
-      const bidirectionalExercise = {
-        title: `Bidirectional: ${selectedText.substring(0, 30)}...`,
-        text: selectedText,
-        language: exercise.language as Language,
-        tags: ['bidirectional', 'from-reading', 'selection'],
-        directoryId: null
-      };
-      
-      await addExercise(bidirectionalExercise);
-      toast.success('Bidirectional exercise created from selection!');
-    } catch (error) {
-      console.error('Error creating bidirectional exercise:', error);
-      toast.error('Failed to create bidirectional exercise');
-    }
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-800 border-green-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'hard': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const renderInteractiveText = () => {
-    if (!currentSentence) return null;
-
-    const words = currentSentence.text.split(/\s+/);
-    
-    return (
-      <div className={`leading-relaxed ${isMobile ? 'text-base' : 'text-lg'}`}>
-        {words.map((word, index) => {
-          const isCurrentWord = isWordByWordMode && index === currentWordIndex;
-          const isHighlighted = highlightedWordIndex === index;
-          
-          return (
-            <span
-              key={index}
-              className={`transition-all duration-300 ${
-                isCurrentWord || isHighlighted 
-                  ? 'bg-yellow-200 px-1 rounded shadow-sm' 
-                  : ''
-              }`}
-            >
-              {word}{index < words.length - 1 ? ' ' : ''}
-            </span>
-          );
-        })}
-      </div>
-    );
-  };
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      const handleEnded = () => {
+      audio.addEventListener('ended', () => {
+        console.log('[AUDIO] Playback ended');
         setIsPlaying(false);
-        setHighlightedWordIndex(-1);
-      };
-      
-      audio.addEventListener('ended', handleEnded);
-      return () => audio.removeEventListener('ended', handleEnded);
+      });
+
+      audio.addEventListener('error', (e) => {
+        console.error('[AUDIO] Playback error:', e);
+        const error = audio.error;
+        let errorMessage = 'Audio playback failed';
+        
+        if (error) {
+          switch (error.code) {
+            case MediaError.MEDIA_ERR_ABORTED:
+              errorMessage = 'Audio playback was aborted';
+              break;
+            case MediaError.MEDIA_ERR_NETWORK:
+              errorMessage = 'Network error while loading audio';
+              break;
+            case MediaError.MEDIA_ERR_DECODE:
+              errorMessage = 'Audio decoding error';
+              break;
+            case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+              errorMessage = 'Audio format not supported';
+              break;
+            default:
+              errorMessage = 'Unknown audio error';
+          }
+        }
+        
+        setAudioError(errorMessage);
+        setAudioLoading(false);
+        setIsPlaying(false);
+        toast.error(errorMessage);
+      });
+
+      // Load and play
+      await audio.load();
+      await audio.play();
+
+    } catch (error) {
+      console.error('[AUDIO] Error playing audio:', error);
+      setAudioError('Failed to play audio');
+      setAudioLoading(false);
+      setIsPlaying(false);
+      toast.error('Failed to play audio');
     }
-  }, []);
+  };
 
-  // Use the new focused modal if feature flag is enabled
-  if (shouldUseFocusedModal) {
-    return (
-      <ReadingFocusedModal
-        exercise={exercise}
-        isOpen={isOpen}
-        onClose={() => onOpenChange(false)}
-        onCreateDictation={createDictationFromSelection}
-        onCreateBidirectional={createBidirectionalFromSelection}
-        enableTextSelection={featureFlags.enableTextSelection}
-        enableVocabularyIntegration={featureFlags.enableVocabularyIntegration}
-        enableEnhancedHighlighting={featureFlags.enableEnhancedHighlighting}
-        enableFullTextAudio={featureFlags.enableAdvancedFeatures}
-        enableWordSynchronization={featureFlags.enableWordSynchronization}
-      />
-    );
-  }
+  const handlePauseAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
 
-  // Fallback to original modal for backward compatibility
+  const handleNextSentence = () => {
+    if (currentSentenceIndex < sentences.length - 1) {
+      const newIndex = currentSentenceIndex + 1;
+      setCurrentSentenceIndex(newIndex);
+      setIsPlaying(false);
+      setAudioError(null);
+      
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      
+      // Update progress
+      if (onUpdateProgress) {
+        onUpdateProgress(newIndex);
+      }
+    }
+  };
+
+  const handlePreviousSentence = () => {
+    if (currentSentenceIndex > 0) {
+      const newIndex = currentSentenceIndex - 1;
+      setCurrentSentenceIndex(newIndex);
+      setIsPlaying(false);
+      setAudioError(null);
+      
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    }
+  };
+
+  const handlePlayFullText = async () => {
+    const fullTextAudioUrl = exercise?.full_text_audio_url;
+    if (fullTextAudioUrl) {
+      await handlePlayAudio(fullTextAudioUrl);
+    } else {
+      toast.error('Full text audio not available');
+    }
+  };
+
+  const progress = sentences.length > 0 ? ((currentSentenceIndex + 1) / sentences.length) * 100 : 0;
+
   if (!exercise) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[95vh] p-4' : 'max-w-5xl max-h-[90vh]'} overflow-auto`}>
-        <DialogHeader className={isMobile ? 'pb-4' : ''}>
-          <div className="flex items-center justify-between">
-            <DialogTitle className={`flex items-center gap-2 ${isMobile ? 'text-lg' : ''}`}>
-              <BookOpen className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
-              <span className={isMobile ? 'line-clamp-2' : ''}>{exercise.title}</span>
-            </DialogTitle>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className={`capitalize ${isMobile ? 'text-xs' : ''}`}>
-                {exercise.difficulty_level}
-              </Badge>
-              <Button
-                variant="ghost"
-                size={isMobile ? 'sm' : 'sm'}
-                onClick={() => setAudioEnabled(!audioEnabled)}
-                className={isMobile ? 'p-2' : ''}
-              >
-                {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-              </Button>
-            </div>
-          </div>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Volume2 className="h-5 w-5" />
+            {exercise.title}
+          </DialogTitle>
+          <DialogDescription>
+            Practice reading with audio playback
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          <ViewToggle currentView={currentView} onViewChange={setCurrentView} />
-
-          {currentView === 'sentence' ? (
-            <>
-              <div className="space-y-2">
-                <div className={`flex justify-between text-muted-foreground ${isMobile ? 'text-sm' : 'text-sm'}`}>
-                  <span>Sentence {currentSentenceIndex + 1} of {exercise.content.sentences.length}</span>
-                  <span>{Math.round(progress)}% complete</span>
-                </div>
-                <Progress value={progress} className="h-2" />
-              </div>
-
-              <Card>
-                <CardContent className={`space-y-4 ${isMobile ? 'p-4' : 'p-6'}`}>
-                  <div className="space-y-4">
-                    <EnhancedInteractiveText
-                      text={currentSentence?.text || ''}
-                      words={currentSentence?.analysis?.words}
-                      language={exercise.language}
-                      onWordClick={(word) => console.log('Word clicked:', word)}
-                      enableTooltips={true}
-                      enableBidirectionalCreation={true}
-                    />
-                    
-                    {isWordByWordMode && (
-                      <div className={`bg-blue-50 p-2 rounded ${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground`}>
-                        Word-by-word playback active... ({currentWordIndex + 1} of {currentSentence?.text.split(/\s+/).length})
-                      </div>
-                    )}
-                  </div>
-
-                  <div className={`pt-2 border-t ${isMobile ? 'space-y-3' : ''}`}>
-                    <div className={`flex items-center gap-2 ${isMobile ? 'flex-wrap' : ''}`}>
-                      <Button
-                        variant="outline"
-                        size={isMobile ? 'sm' : 'sm'}
-                        onClick={playAudio}
-                        disabled={isPlaying || !audioEnabled}
-                        className={isMobile ? 'flex-1 min-w-0' : ''}
-                      >
-                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                        <span className={`ml-2 ${isMobile ? 'text-xs' : ''}`}>
-                          {isMobile ? 'Play' : 'Play Sentence'}
-                        </span>
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size={isMobile ? 'sm' : 'sm'}
-                        onClick={playWordByWord}
-                        disabled={isWordByWordMode || !audioEnabled}
-                        className={isMobile ? 'flex-1 min-w-0' : ''}
-                      >
-                        <SkipForward className="h-4 w-4" />
-                        <span className={`ml-2 ${isMobile ? 'text-xs' : ''}`}>
-                          {isMobile ? 'Words' : 'Word by Word'}
-                        </span>
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        size={isMobile ? 'sm' : 'sm'}
-                        onClick={() => setShowAnalysis(!showAnalysis)}
-                        className={isMobile ? 'flex-1 min-w-0' : ''}
-                      >
-                        <Brain className="h-4 w-4 mr-2" />
-                        <span className={isMobile ? 'text-xs' : ''}>
-                          {showAnalysis ? 'Hide' : 'Show'} Analysis
-                        </span>
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        size={isMobile ? 'sm' : 'sm'}
-                        onClick={createDictationExercise}
-                        className={isMobile ? 'w-full mt-2' : ''}
-                      >
-                        <Mic className="h-4 w-4 mr-2" />
-                        <span className={isMobile ? 'text-xs' : ''}>
-                          {isMobile ? 'Create as Dictation' : 'Create as Dictation'}
-                        </span>
-                      </Button>
-                    </div>
-                  </div>
-
-                  {showAnalysis && currentSentence?.analysis && (
-                    <div className={`space-y-4 border-t pt-4 ${isMobile ? 'space-y-3' : ''}`}>
-                      {currentSentence.analysis.translation && (
-                        <div>
-                          <h4 className={`font-semibold mb-2 ${isMobile ? 'text-sm' : 'text-sm'}`}>Translation:</h4>
-                          <p className={`text-muted-foreground italic ${isMobile ? 'text-sm' : ''}`}>
-                            {currentSentence.analysis.translation}
-                          </p>
-                        </div>
-                      )}
-
-                      {currentSentence.analysis.words && currentSentence.analysis.words.length > 0 && (
-                        <div>
-                          <h4 className={`font-semibold mb-3 ${isMobile ? 'text-sm' : 'text-sm'}`}>Word Analysis:</h4>
-                          <div className="grid gap-2">
-                            {currentSentence.analysis.words.map((word, index) => (
-                              <div key={index} className={`flex items-start gap-3 bg-muted/50 rounded-lg ${isMobile ? 'p-2' : 'p-3'}`}>
-                                <Badge
-                                  variant="outline"
-                                  className={`${getDifficultyColor(word.difficulty || 'easy')} text-xs`}
-                                >
-                                  {word.word}
-                                </Badge>
-                                <div className="flex-1 space-y-1">
-                                  <p className={`font-medium ${isMobile ? 'text-sm' : 'text-sm'}`}>{word.definition}</p>
-                                  {word.partOfSpeech && (
-                                    <p className={`text-muted-foreground ${isMobile ? 'text-xs' : 'text-xs'}`}>
-                                      {word.partOfSpeech}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {currentSentence.analysis.grammar && currentSentence.analysis.grammar.length > 0 && (
-                        <div>
-                          <h4 className={`font-semibold mb-2 ${isMobile ? 'text-sm' : 'text-sm'}`}>Grammar Points:</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {currentSentence.analysis.grammar.map((point, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
-                                {point}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+          {/* Audio Generation Status */}
+          {exercise.audio_generation_status !== 'completed' && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  {exercise.audio_generation_status === 'generating' ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">Audio is being generated in the background...</span>
+                    </>
+                  ) : exercise.audio_generation_status === 'failed' ? (
+                    <>
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      <span className="text-sm text-red-600">Audio generation failed</span>
+                    </>
+                  ) : (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">Audio generation pending...</span>
+                    </>
                   )}
-                </CardContent>
-              </Card>
-
-              <div className={`flex items-center ${isMobile ? 'flex-col gap-3' : 'justify-between'}`}>
-                <Button
-                  variant="outline"
-                  onClick={restartExercise}
-                  className={`flex items-center gap-2 ${isMobile ? 'w-full py-3' : ''}`}
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Restart
-                </Button>
-
-                <div className={`flex items-center gap-2 ${isMobile ? 'w-full' : ''}`}>
-                  <Button
-                    variant="outline"
-                    onClick={previousSentence}
-                    disabled={currentSentenceIndex === 0}
-                    className={isMobile ? 'flex-1 py-3' : ''}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    {!isMobile && 'Previous'}
-                  </Button>
-                  
-                  <Button
-                    onClick={nextSentence}
-                    disabled={currentSentenceIndex >= exercise.content.sentences.length - 1}
-                    className={isMobile ? 'flex-1 py-3' : ''}
-                  >
-                    {!isMobile && 'Next'}
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
                 </div>
-              </div>
-
-              {currentSentenceIndex >= exercise.content.sentences.length - 1 && (
-                <Card className="border-green-200 bg-green-50">
-                  <CardContent className={`text-center ${isMobile ? 'p-4' : 'p-4'}`}>
-                    <h3 className={`font-semibold text-green-800 mb-2 ${isMobile ? 'text-base' : ''}`}>
-                      🎉 Exercise Complete!
-                    </h3>
-                    <p className={`text-green-700 ${isMobile ? 'text-sm' : 'text-sm'}`}>
-                      Great job! You've completed this reading exercise.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </>
-          ) : (
-            <AllTextView
-              exercise={exercise}
-              audioEnabled={audioEnabled}
-              onCreateDictation={createDictationExercise}
-              onCreateDictationFromSelection={createDictationFromSelection}
-              onCreateBidirectionalFromSelection={createBidirectionalFromSelection}
-            />
+              </CardContent>
+            </Card>
           )}
-        </div>
 
-        <audio ref={audioRef} onEnded={() => setIsPlaying(false)} />
+          {/* Progress */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Progress</span>
+              <span className="text-sm text-muted-foreground">
+                {currentSentenceIndex + 1} of {sentences.length}
+              </span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
+
+          {/* Current Sentence */}
+          {currentSentence && (
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="outline">
+                      Sentence {currentSentenceIndex + 1}
+                    </Badge>
+                    
+                    <div className="flex items-center gap-2">
+                      {/* Audio Controls */}
+                      {currentSentence.audio_url ? (
+                        <div className="flex items-center gap-2">
+                          {audioError && (
+                            <div className="flex items-center gap-1 text-red-600">
+                              <AlertTriangle className="h-4 w-4" />
+                              <span className="text-xs">{audioError}</span>
+                            </div>
+                          )}
+                          
+                          {audioLoading ? (
+                            <Button size="sm" disabled>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            </Button>
+                          ) : isPlaying ? (
+                            <Button size="sm" onClick={handlePauseAudio} variant="outline">
+                              <Pause className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button 
+                              size="sm" 
+                              onClick={() => handlePlayAudio(currentSentence.audio_url)}
+                              variant="outline"
+                            >
+                              <Play className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <VolumeX className="h-4 w-4" />
+                          <span className="text-xs">Audio not available</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="text-lg leading-relaxed">
+                    {currentSentence.text}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Navigation Controls */}
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              onClick={handlePreviousSentence}
+              disabled={currentSentenceIndex === 0}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Previous
+            </Button>
+
+            {/* Full Text Audio */}
+            {exercise.full_text_audio_url && (
+              <Button
+                variant="outline"
+                onClick={handlePlayFullText}
+                disabled={audioLoading}
+              >
+                {audioLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Volume2 className="h-4 w-4 mr-2" />
+                )}
+                Play Full Text
+              </Button>
+            )}
+
+            <Button
+              onClick={handleNextSentence}
+              disabled={currentSentenceIndex === sentences.length - 1}
+            >
+              Next
+              <CheckCircle className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

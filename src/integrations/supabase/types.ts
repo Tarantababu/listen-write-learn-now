@@ -889,6 +889,7 @@ export type Database = {
           grammar_focus: string | null
           id: string
           language: string
+          metadata: Json | null
           target_length: number
           title: string
           topic: string
@@ -906,6 +907,7 @@ export type Database = {
           grammar_focus?: string | null
           id?: string
           language: string
+          metadata?: Json | null
           target_length?: number
           title: string
           topic: string
@@ -923,6 +925,7 @@ export type Database = {
           grammar_focus?: string | null
           id?: string
           language?: string
+          metadata?: Json | null
           target_length?: number
           title?: string
           topic?: string
