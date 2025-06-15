@@ -12,6 +12,7 @@ import { Exercise } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import UpgradePrompt from '@/components/UpgradePrompt';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ExerciseFormModalProps {
   isOpen: boolean;
@@ -26,12 +27,13 @@ const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
   initialValues,
   mode
 }) => {
+  const isMobile = useIsMobile();
   // For now, assume users can create and edit (we can add subscription checks later)
   const canPerformAction = true;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className={isMobile ? "w-screen h-screen max-w-full max-h-full m-0 rounded-none overflow-y-auto" : "max-w-md"}>
         <DialogHeader>
           <DialogTitle>
             {mode === 'create' ? 'Create New Exercise' : 'Edit Exercise'}

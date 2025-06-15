@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import { AlertTriangle, Info, TrendingUp, Brain, Zap } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { clientAnalyzeCustomText } from '@/utils/clientAnalyzeCustomText';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ReadingExerciseModalProps {
   isOpen: boolean;
@@ -63,6 +65,8 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
     message: 'Initializing...'
   });
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const formId = "reading-exercise-form";
 
   // Define isLanguageSupported for use in the form/UI logic
   const isLanguageSupported = SUPPORTED_LANGUAGES
@@ -295,7 +299,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   if (showProgress) {
     return (
       <Dialog open={isOpen} onOpenChange={() => {}}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className={isMobile ? "w-full h-full max-w-full max-h-full m-0 rounded-none flex flex-col" : "max-w-2xl max-h-[90vh] overflow-y-auto"}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Brain className="h-5 w-5" />
@@ -328,125 +332,128 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className={isMobile ? "w-screen h-screen max-w-full max-h-full m-0 rounded-none flex flex-col" : "max-w-2xl max-h-[90vh]"}>
+        <DialogHeader className={isMobile ? "p-4 border-b flex-shrink-0" : ""}>
           <DialogTitle>Create Enhanced Reading Exercise</DialogTitle>
         </DialogHeader>
-        {!isLanguageSupported && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertTriangle className="h-5 w-5" />
-            <AlertDescription>
-              <strong>Sorry!</strong> The selected language <span className="font-semibold">{language}</span> is not currently supported for creating new reading exercises.
-            </AlertDescription>
-          </Alert>
-        )}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="title">Exercise Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter exercise title..."
-              required
-              disabled={!isLanguageSupported}
-            />
-          </div>
+        <div className={isMobile ? "flex-1 overflow-y-auto" : "overflow-y-auto"}>
+            <div className={isMobile ? 'p-4' : 'p-6'}>
+                {!isLanguageSupported && (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertTriangle className="h-5 w-5" />
+                    <AlertDescription>
+                      <strong>Sorry!</strong> The selected language <span className="font-semibold">{language}</span> is not currently supported for creating new reading exercises.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <form id={formId} onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Exercise Title</Label>
+                    <Input
+                      id="title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Enter exercise title..."
+                      required
+                      disabled={!isLanguageSupported}
+                    />
+                  </div>
 
-          <ContentSourceSelector
-            selectedSource={contentSource}
-            onSourceSelect={handleSourceSelect}
-          />
+                  <ContentSourceSelector
+                    selectedSource={contentSource}
+                    onSourceSelect={handleSourceSelect}
+                  />
 
-          {contentSource === 'ai' ? (
-            <>
-              <TopicMandalaSelector
-                selectedTopic={topic}
-                onTopicSelect={setTopic}
-                language={language}
-              />
+                  {contentSource === 'ai' ? (
+                    <>
+                      <TopicMandalaSelector
+                        selectedTopic={topic}
+                        onTopicSelect={setTopic}
+                        language={language}
+                      />
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="difficulty">Difficulty Level</Label>
-                  <Select value={difficultyLevel} onValueChange={(value: any) => setDifficultyLevel(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="beginner">Beginner</SelectItem>
-                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                      <SelectItem value="advanced">Advanced</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="difficulty">Difficulty Level</Label>
+                          <Select value={difficultyLevel} onValueChange={(value: any) => setDifficultyLevel(value)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="beginner">Beginner</SelectItem>
+                              <SelectItem value="intermediate">Intermediate</SelectItem>
+                              <SelectItem value="advanced">Advanced</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="length">Target Length</Label>
-                  <Select value={targetLength.toString()} onValueChange={(value) => setTargetLength(Number(value))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {lengthOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value.toString()}>
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                              <span>{option.label}</span>
-                              <span className="text-xs bg-blue-100 text-blue-700 px-1 rounded">
-                                {option.strategy}
-                              </span>
-                            </div>
-                            {option.recommended && (
-                              <span className="text-xs text-muted-foreground">{option.recommended}</span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="length">Target Length</Label>
+                          <Select value={targetLength.toString()} onValueChange={(value) => setTargetLength(Number(value))}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {lengthOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value.toString()}>
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                      <span>{option.label}</span>
+                                      <span className="text-xs bg-blue-100 text-blue-700 px-1 rounded">
+                                        {option.strategy}
+                                      </span>
+                                    </div>
+                                    {option.recommended && (
+                                      <span className="text-xs text-muted-foreground">{option.recommended}</span>
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
 
-              {/* Enhanced Strategy Information */}
-              <Alert>
-                <TrendingUp className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Generation Strategy:</strong> {getGenerationStrategy()} - This strategy is optimized for {targetLength} words to ensure quality and coherence.
-                  {isLongContent && " Advanced adaptive chunking will be used for optimal results."}
-                </AlertDescription>
-              </Alert>
+                      {/* Enhanced Strategy Information */}
+                      <Alert>
+                        <TrendingUp className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>Generation Strategy:</strong> {getGenerationStrategy()} - This strategy is optimized for {targetLength} words to ensure quality and coherence.
+                          {isLongContent && " Advanced adaptive chunking will be used for optimal results."}
+                        </AlertDescription>
+                      </Alert>
 
-              <GrammarFocusSelector
-                selectedGrammar={grammarFocus}
-                onGrammarToggle={handleGrammarToggle}
-                maxSelections={3}
-              />
-            </>
-          ) : (
-            <CustomTextInput
-              value={customText}
-              onChange={setCustomText}
-              maxLength={4000}
-            />
-          )}
+                      <GrammarFocusSelector
+                        selectedGrammar={grammarFocus}
+                        onGrammarToggle={handleGrammarToggle}
+                        maxSelections={3}
+                      />
+                    </>
+                  ) : (
+                    <CustomTextInput
+                      value={customText}
+                      onChange={setCustomText}
+                      maxLength={4000}
+                    />
+                  )}
 
-          <Alert>
-            <Zap className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Enhanced Generation:</strong> Our optimized system uses intelligent strategies, quality metrics, and smart recovery to ensure successful creation. Audio generation happens automatically in the background.
-            </AlertDescription>
-          </Alert>
-
-          <div className="flex justify-end gap-3">
+                  <Alert>
+                    <Zap className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Enhanced Generation:</strong> Our optimized system uses intelligent strategies, quality metrics, and smart recovery to ensure successful creation. Audio generation happens automatically in the background.
+                    </AlertDescription>
+                  </Alert>
+                </form>
+            </div>
+        </div>
+        <div className={`flex justify-end gap-3 flex-shrink-0 ${isMobile ? 'p-4 border-t' : 'px-6 pb-6'}`}>
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isCreating || !isLanguageSupported}>
+            <Button type="submit" form={formId} disabled={isCreating || !isLanguageSupported}>
               {isCreating ? 'Creating...' : 'Create Enhanced Exercise'}
             </Button>
-          </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

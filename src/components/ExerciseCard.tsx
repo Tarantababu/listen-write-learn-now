@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { format } from 'date-fns';
 import { getLanguageFlag } from '@/utils/languageUtils';
+
 interface ExerciseCardProps {
   exercise: Exercise;
   onPractice: () => void;
@@ -17,6 +18,7 @@ interface ExerciseCardProps {
   canEdit?: boolean;
   canMove?: boolean; // New prop to control move functionality visibility
 }
+
 const ExerciseCard: React.FC<ExerciseCardProps> = ({
   exercise,
   onPractice,
@@ -80,11 +82,15 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
           Practice
         </Button>
         <div className="flex gap-1">
-          {onMove && canMove}
-          {onEdit && canEdit && <Button variant="outline" size="icon" onClick={onEdit} className="h-8 w-8">
+          {onMove && canMove && (
+            <Button variant="outline" size="icon" onClick={onMove} className="h-9 w-9">
+              <FolderInput className="h-4 w-4" />
+            </Button>
+          )}
+          {onEdit && canEdit && <Button variant="outline" size="icon" onClick={onEdit} className="h-9 w-9">
               <Edit className="h-4 w-4" />
             </Button>}
-          {onDelete && <Button variant="outline" size="icon" onClick={onDelete} className="h-8 w-8 text-destructive hover:text-destructive">
+          {onDelete && <Button variant="outline" size="icon" onClick={onDelete} className="h-9 w-9 text-destructive hover:text-destructive">
               <Trash2 className="h-4 w-4" />
             </Button>}
         </div>

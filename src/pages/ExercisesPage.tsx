@@ -171,7 +171,7 @@ const ExercisesPage: React.FC = () => {
       </div>
 
       <Tabs defaultValue="dictation" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 h-auto md:h-10">
           <TabsTrigger value="dictation" className="flex items-center gap-2">
             <Mic className="h-4 w-4" />
             Dictation Method
