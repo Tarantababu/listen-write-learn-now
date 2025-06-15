@@ -46,16 +46,18 @@ interface BidirectionalTranslation {
 const MAX_RETRIES = 3
 const RETRY_DELAY = 1000 // 1 second
 
-// Enhanced token limits based on text length
+// Enhanced token limits based on text length with more conservative word limits
 const getTokenLimits = (textLength: number) => {
-  if (textLength < 500) {
-    return { maxTokens: 1200, wordLimit: 25 }
+  if (textLength < 200) {
+    return { maxTokens: 1000, wordLimit: 15 }
+  } else if (textLength < 500) {
+    return { maxTokens: 1400, wordLimit: 12 }
   } else if (textLength < 1000) {
-    return { maxTokens: 1800, wordLimit: 20 }
-  } else if (textLength < 2000) {
-    return { maxTokens: 2500, wordLimit: 15 }
+    return { maxTokens: 1800, wordLimit: 10 }
+  } else if (textLength < 1500) {
+    return { maxTokens: 2200, wordLimit: 8 }
   } else {
-    return { maxTokens: 3000, wordLimit: 12 }
+    return { maxTokens: 2800, wordLimit: 6 }
   }
 }
 
@@ -136,7 +138,7 @@ async function generateBidirectionalTranslationWithRetry(
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      console.log(`[BIDIRECTIONAL TRANSLATION] Attempt ${attempt}/${MAX_RETRIES}`)
+      console.log(`[BIDIRECTIONAL TRANSLATION] Attempt ${attempt}/${MAX_RETRIES} for text length: ${text.length}`)
       
       const result = await generateBidirectionalTranslation(
         text,
@@ -173,34 +175,34 @@ async function generateBidirectionalTranslation(
   const textLength = text.length
   const { maxTokens, wordLimit } = getTokenLimits(textLength)
   
-  console.log(`[BIDIRECTIONAL TRANSLATION] Text length: ${textLength}, Max tokens: ${maxTokens}, Word limit: ${wordLimit}`)
+  console.log(`[BIDIRECTIONAL TRANSLATION] Text length: ${textLength}, Max tokens: ${maxTokens}, Word limit: ${wordLimit}, Fallback mode: ${useFallbackMode}`)
 
-  // Enhanced prompt with better structure and clearer instructions
+  // Optimized prompt focusing on content words and clear JSON structure
   const prompt = `
-You are a professional translator. Translate this ${sourceLanguage} text to ${targetLanguage}.
+Translate this ${sourceLanguage} text to ${targetLanguage}.
 
-TEXT TO TRANSLATE:
-"${text}"
+TEXT: "${text}"
 
-Provide your response as a JSON object with these exact fields. ENSURE the JSON is complete and properly closed:
+Provide ONLY a valid JSON object with these exact fields:
 
 {
-  "normalTranslation": "Natural, fluent translation that sounds native to ${targetLanguage} speakers",
-  "literalTranslation": "Word-order preserving translation that shows the original structure",
+  "normalTranslation": "Natural fluent translation in ${targetLanguage}",
+  "literalTranslation": "Word-order preserving translation showing original structure",
   "wordTranslations": [
-    {"original": "word", "translation": "meaning"}
+    {"original": "word1", "translation": "meaning1"},
+    {"original": "word2", "translation": "meaning2"}
   ]
 }
 
-CRITICAL INSTRUCTIONS:
-- normalTranslation: Make it sound completely natural in ${targetLanguage}
-- literalTranslation: Keep the original word order to show sentence structure
-- wordTranslations: Include up to ${wordLimit} significant words (nouns, verbs, adjectives) - skip common articles/prepositions
-- Return ONLY valid JSON - no explanations, no markdown formatting
-- Ensure ALL JSON brackets and braces are properly closed
-- If the text is very long, prioritize accuracy over completeness
+CRITICAL REQUIREMENTS:
+- normalTranslation: Natural, native-sounding ${targetLanguage}
+- literalTranslation: Keep original word order to show sentence structure
+- wordTranslations: Include ONLY ${wordLimit} most important content words (nouns, verbs, adjectives). Skip articles, prepositions, conjunctions
+- Return ONLY valid JSON - no explanations, no markdown, no extra text
+- Ensure JSON is complete and properly closed with all brackets
+- If text is long, prioritize accuracy over completeness
 
-Begin your JSON response now:`
+JSON response:`
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -214,7 +216,7 @@ Begin your JSON response now:`
         messages: [
           { 
             role: 'system', 
-            content: `You are an expert translator that responds only with valid JSON. ${useFallbackMode ? 'Keep responses concise due to length constraints.' : 'Focus on accuracy and completeness.'}` 
+            content: `You are a professional translator. Respond ONLY with valid JSON. ${useFallbackMode ? 'Keep responses concise due to length constraints.' : 'Focus on accuracy.'}` 
           },
           { role: 'user', content: prompt }
         ],
@@ -233,20 +235,28 @@ Begin your JSON response now:`
     const content = data.choices[0].message.content.trim()
     
     console.log(`[BIDIRECTIONAL TRANSLATION] Raw response length: ${content.length}`)
+    console.log(`[BIDIRECTIONAL TRANSLATION] Response preview: ${content.substring(0, 200)}...`)
     
     // Enhanced JSON parsing with multiple cleanup strategies
     const cleanedContent = enhancedJsonCleanup(content)
+    console.log(`[BIDIRECTIONAL TRANSLATION] Cleaned content length: ${cleanedContent.length}`)
     
     try {
       const parsed = JSON.parse(cleanedContent)
       
       // Validate required fields
-      if (!parsed.normalTranslation || !parsed.literalTranslation || !Array.isArray(parsed.wordTranslations)) {
-        throw new Error('Missing required fields in response')
+      if (!parsed.normalTranslation || !parsed.literalTranslation) {
+        throw new Error('Missing required translation fields in response')
       }
       
-      // Ensure word translations don't exceed limit
+      // Ensure wordTranslations is an array and limit it
+      if (!Array.isArray(parsed.wordTranslations)) {
+        parsed.wordTranslations = []
+      }
+      
       const limitedWordTranslations = parsed.wordTranslations.slice(0, wordLimit)
+      
+      console.log(`[BIDIRECTIONAL TRANSLATION] Parsed successfully with ${limitedWordTranslations.length} word translations`)
       
       return {
         normalTranslation: parsed.normalTranslation,
@@ -255,7 +265,7 @@ Begin your JSON response now:`
       }
     } catch (parseError) {
       console.error('JSON parse error:', parseError)
-      console.log('Cleaned content:', cleanedContent.substring(0, 500) + '...')
+      console.log('Problematic content:', cleanedContent.substring(0, 500) + '...')
       
       // Try to extract partial data if possible
       const partialData = extractPartialTranslation(content, sourceLanguage, targetLanguage)
@@ -273,6 +283,8 @@ Begin your JSON response now:`
 }
 
 function enhancedJsonCleanup(content: string): string {
+  console.log(`[JSON CLEANUP] Starting cleanup for content length: ${content.length}`)
+  
   // Remove any markdown formatting
   let cleaned = content.replace(/```json\s*/g, '').replace(/```\s*$/g, '')
   
@@ -323,8 +335,10 @@ function enhancedJsonCleanup(content: string): string {
   
   if (lastValidIndex > -1) {
     cleaned = cleaned.substring(0, lastValidIndex + 1)
+    console.log(`[JSON CLEANUP] Found complete JSON object, length: ${cleaned.length}`)
   } else {
-    // If we can't find a complete JSON, try to fix common issues
+    // If we can't find a complete JSON, try to repair it
+    console.log(`[JSON CLEANUP] No complete JSON found, attempting repair`)
     cleaned = attemptJsonRepair(cleaned)
   }
   
@@ -332,25 +346,60 @@ function enhancedJsonCleanup(content: string): string {
 }
 
 function attemptJsonRepair(content: string): string {
-  // Remove any trailing incomplete content
-  const lastCompleteField = content.lastIndexOf('"}')
-  if (lastCompleteField > -1) {
-    let truncated = content.substring(0, lastCompleteField + 2)
-    
-    // Try to close the array if it's open
-    if (truncated.includes('"wordTranslations": [') && !truncated.includes(']}')) {
-      truncated += ']}' 
+  console.log(`[JSON REPAIR] Attempting to repair incomplete JSON`)
+  
+  // Find the last complete field
+  const lastCompleteFieldPatterns = [
+    /("literalTranslation":\s*"[^"]*(?:\\.[^"]*)*")/,
+    /("normalTranslation":\s*"[^"]*(?:\\.[^"]*)*")/
+  ]
+  
+  let truncated = content
+  let foundPattern = false
+  
+  for (const pattern of lastCompleteFieldPatterns) {
+    const match = content.match(pattern)
+    if (match) {
+      const endIndex = content.indexOf(match[0]) + match[0].length
+      truncated = content.substring(0, endIndex)
+      foundPattern = true
+      console.log(`[JSON REPAIR] Found complete field, truncating at position: ${endIndex}`)
+      break
     }
-    
-    // Close the main object
-    if (!truncated.endsWith('}')) {
-      truncated += '}'
-    }
-    
-    return truncated
   }
   
-  return content
+  if (!foundPattern) {
+    // Last resort: try to find any complete string value
+    const lastQuoteIndex = content.lastIndexOf('"}')
+    if (lastQuoteIndex > -1) {
+      truncated = content.substring(0, lastQuoteIndex + 2)
+      console.log(`[JSON REPAIR] Using last quote as truncation point`)
+    }
+  }
+  
+  // Ensure we have wordTranslations array (even if empty)
+  if (!truncated.includes('"wordTranslations"')) {
+    // Add empty wordTranslations array
+    if (truncated.endsWith('"')) {
+      truncated += ', "wordTranslations": []'
+    } else if (truncated.endsWith('}')) {
+      // Insert before closing brace
+      truncated = truncated.slice(0, -1) + ', "wordTranslations": []}'
+    } else {
+      truncated += ', "wordTranslations": []'
+    }
+  } else if (truncated.includes('"wordTranslations": [') && !truncated.includes(']}')) {
+    // Close incomplete array
+    truncated += ']'
+  }
+  
+  // Close the main object if needed
+  if (!truncated.endsWith('}')) {
+    truncated += '}'
+  }
+  
+  console.log(`[JSON REPAIR] Repaired JSON length: ${truncated.length}`)
+  return truncated
 }
 
 function extractPartialTranslation(
@@ -358,16 +407,18 @@ function extractPartialTranslation(
   sourceLanguage: string,
   targetLanguage: string
 ): BidirectionalTranslation | null {
+  console.log(`[PARTIAL EXTRACTION] Attempting to extract partial translation data`)
+  
   try {
-    // Try to extract at least the normal translation using regex
+    // Try to extract translations using more flexible regex patterns
     const normalMatch = content.match(/"normalTranslation":\s*"([^"]*(?:\\.[^"]*)*)"/s)
     const literalMatch = content.match(/"literalTranslation":\s*"([^"]*(?:\\.[^"]*)*)"/s)
     
-    if (normalMatch && literalMatch) {
-      console.log('Extracted partial translation data')
+    if (normalMatch || literalMatch) {
+      console.log('Extracted partial translation data successfully')
       return {
-        normalTranslation: normalMatch[1].replace(/\\"/g, '"'),
-        literalTranslation: literalMatch[1].replace(/\\"/g, '"'),
+        normalTranslation: normalMatch ? normalMatch[1].replace(/\\"/g, '"') : `Translation service encountered issues with this ${sourceLanguage} text.`,
+        literalTranslation: literalMatch ? literalMatch[1].replace(/\\"/g, '"') : `Literal translation unavailable for this ${sourceLanguage} text.`,
         wordTranslations: [] // Empty array as fallback
       }
     }
@@ -386,7 +437,7 @@ function createFallbackTranslation(
   console.log(`[FALLBACK TRANSLATION] Creating fallback for ${sourceLanguage} to ${targetLanguage}`)
   
   return {
-    normalTranslation: `Translation service temporarily unavailable for this ${sourceLanguage} text. The content discusses various topics and may require manual translation for best results.`,
+    normalTranslation: `Translation service temporarily unavailable for this ${sourceLanguage} text. The content appears to discuss various topics and may require manual translation for best results.`,
     literalTranslation: `Word-by-word translation unavailable for this ${sourceLanguage} text segment.`,
     wordTranslations: []
   }
