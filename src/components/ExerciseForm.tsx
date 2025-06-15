@@ -18,8 +18,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import PopoverHint from './PopoverHint';
-import { useAudioProgress } from '@/hooks/useAudioProgress';
-import { AudioProgressIndicator } from '@/components/AudioProgressIndicator';
 
 interface ExerciseFormProps {
   onSuccess?: () => void;
@@ -44,17 +42,8 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   const [tags, setTags] = useState<string[]>(initialValues?.tags || []);
   const [tagInput, setTagInput] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
-  const {
-    isGenerating: isGeneratingAudio,
-    progress,
-    estimatedTimeRemaining,
-    stage,
-    startProgress,
-    completeProgress,
-    resetProgress
-  } = useAudioProgress();
 
   // Update directory when currentDirectoryId changes (for new exercises)
   useEffect(() => {
@@ -93,7 +82,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
 
   const generateAudio = async (text: string, language: Language): Promise<string | null> => {
     try {
-      startProgress();
+      setIsGeneratingAudio(true);
       toast.info(`Generating audio file...`);
 
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
@@ -115,7 +104,6 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       // Handle the correct response format: { audio_url: "..." }
       if (data.audio_url) {
         console.log('Audio generated successfully, URL:', data.audio_url);
-        completeProgress();
         toast.success(`Audio file generated successfully`);
         return data.audio_url;
       }
@@ -130,9 +118,10 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       throw new Error('No audio URL received in response');
     } catch (error) {
       console.error('Error generating audio:', error);
-      resetProgress();
       toast.error(`Failed to generate audio: ${error.message}`);
       return null;
+    } finally {
+      setIsGeneratingAudio(false);
     }
   };
 
@@ -316,18 +305,6 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           </div>
         )}
       </div>
-      
-      {/* Audio Generation Progress */}
-      {isGeneratingAudio && (
-        <div className="p-4 bg-muted/30 rounded-lg">
-          <AudioProgressIndicator
-            isGenerating={isGeneratingAudio}
-            progress={progress}
-            estimatedTimeRemaining={estimatedTimeRemaining}
-            stage={stage}
-          />
-        </div>
-      )}
       
       <div className="flex justify-end">
         <Button type="submit" disabled={isSaving || isGeneratingAudio}>

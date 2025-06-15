@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
@@ -17,8 +18,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import PopoverHint from '@/components/PopoverHint';
-import { useAudioProgress } from '@/hooks/useAudioProgress';
-import { AudioProgressIndicator } from '@/components/AudioProgressIndicator';
 
 const languages: Language[] = [
   'english',
@@ -68,16 +67,7 @@ const DefaultExerciseForm: React.FC = () => {
   const [tagInput, setTagInput] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-
-  const {
-    isGenerating: isGeneratingAudio,
-    progress,
-    estimatedTimeRemaining,
-    stage,
-    startProgress,
-    completeProgress,
-    resetProgress
-  } = useAudioProgress();
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -109,7 +99,7 @@ const DefaultExerciseForm: React.FC = () => {
 
   const generateAudio = async (text: string, language: Language): Promise<string | null> => {
     try {
-      startProgress();
+      setIsGeneratingAudio(true);
       toast.info(`Generating audio file...`);
 
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
@@ -128,7 +118,6 @@ const DefaultExerciseForm: React.FC = () => {
       // Handle the correct response format: { audio_url: "..." }
       if (data.audio_url) {
         console.log('Audio generated successfully, URL:', data.audio_url);
-        completeProgress();
         toast.success(`Audio file generated successfully`);
         return data.audio_url;
       }
@@ -167,9 +156,10 @@ const DefaultExerciseForm: React.FC = () => {
       throw new Error('No audio content received');
     } catch (error) {
       console.error('Error generating audio:', error);
-      resetProgress();
       toast.error(`Failed to generate audio for the exercise`);
       return null;
+    } finally {
+      setIsGeneratingAudio(false);
     }
   };
 
@@ -321,18 +311,6 @@ const DefaultExerciseForm: React.FC = () => {
           }
         </Button>
       </div>
-      
-      {/* Audio Generation Progress */}
-      {isGeneratingAudio && (
-        <div className="p-4 bg-muted/30 rounded-lg">
-          <AudioProgressIndicator
-            isGenerating={isGeneratingAudio}
-            progress={progress}
-            estimatedTimeRemaining={estimatedTimeRemaining}
-            stage={stage}
-          />
-        </div>
-      )}
     </form>
   );
 };
