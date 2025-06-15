@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise, ReadingExerciseProgress, CreateReadingExerciseRequest } from '@/types/reading';
 import { enhancedAudioService } from '@/services/enhancedAudioService';
@@ -54,17 +53,17 @@ export class ReadingExerciseService {
           console.log(`[READING SERVICE] Audio generated successfully: ${audioUrl}`);
         } else {
           console.error(`[READING SERVICE] Audio generation failed: ${result.error}`);
-          throw new Error(`Audio generation failed: ${result.error || 'Unknown error'}`);
+          // Don't throw error here - we can still create the exercise without audio
+          console.warn('[READING SERVICE] Proceeding without audio - will be marked as failed');
         }
       } catch (audioError) {
         console.error(`[READING SERVICE] Audio generation error:`, audioError);
-        throw new Error(`Failed to generate audio: ${audioError.message}`);
+        // Don't throw error here - we can still create the exercise without audio
+        console.warn('[READING SERVICE] Proceeding without audio due to error');
       }
-    } else {
-      throw new Error('No text content available for audio generation');
     }
     
-    // Create exercise with generated audio
+    // Create exercise with or without audio
     const { data, error } = await supabase
       .from('reading_exercises')
       .insert({
@@ -76,13 +75,14 @@ export class ReadingExerciseService {
         grammar_focus: request.grammar_focus,
         topic: request.topic,
         content: content,
-        audio_generation_status: 'completed',
+        audio_generation_status: audioUrl ? 'completed' : 'failed',
         audio_url: audioUrl,
         full_text_audio_url: audioUrl,
         metadata: {
           generation_method: wasPartialGeneration ? 'enhanced_fallback' : 'full_generation',
           created_at: new Date().toISOString(),
-          audio_generated_at: new Date().toISOString()
+          audio_generated_at: audioUrl ? new Date().toISOString() : null,
+          audio_generation_attempted: true
         }
       })
       .select()
@@ -93,15 +93,39 @@ export class ReadingExerciseService {
       throw error;
     }
 
-    console.log(`[READING SERVICE] Exercise created successfully with audio: ${data.id}`);
+    console.log(`[READING SERVICE] Exercise created successfully ${audioUrl ? 'with' : 'without'} audio: ${data.id}`);
 
     return {
       ...data,
       difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
-      audio_generation_status: 'completed' as 'pending' | 'generating' | 'completed' | 'failed',
+      audio_generation_status: (audioUrl ? 'completed' : 'failed') as 'pending' | 'generating' | 'completed' | 'failed',
       content: data.content as unknown as ReadingExercise['content'],
       metadata: this.parseMetadataFromDatabase(data.metadata)
     };
+  }
+
+  async regenerateExerciseAudio(exerciseId: string): Promise<boolean> {
+    console.log(`[READING SERVICE] Regenerating audio for exercise: ${exerciseId}`);
+    
+    try {
+      const success = await enhancedAudioService.validateAndFixExerciseAudio(exerciseId);
+      
+      if (success) {
+        console.log(`[READING SERVICE] Successfully regenerated audio for exercise: ${exerciseId}`);
+      } else {
+        console.error(`[READING SERVICE] Failed to regenerate audio for exercise: ${exerciseId}`);
+      }
+      
+      return success;
+    } catch (error) {
+      console.error(`[READING SERVICE] Error regenerating audio:`, error);
+      return false;
+    }
+  }
+
+  async batchFixAudioIssues(): Promise<void> {
+    console.log('[READING SERVICE] Starting batch audio fix');
+    await enhancedAudioService.batchValidateExercises(10);
   }
 
   private parseMetadataFromDatabase(metadata: any): ReadingExercise['metadata'] {

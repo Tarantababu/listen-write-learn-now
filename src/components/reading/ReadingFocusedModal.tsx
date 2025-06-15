@@ -1,3 +1,4 @@
+
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog"
@@ -5,11 +6,15 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
   BookOpen,
   Mic,
   Plus,
-  Languages
+  Languages,
+  RefreshCw,
+  AlertTriangle,
+  Volume2
 } from 'lucide-react'
 import { ReadingExercise } from '@/types/reading'
 import { Language } from '@/types'
@@ -70,16 +75,20 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   const { viewMode, cycleViewMode, isFullScreen } = useFullScreenReading()
   const isMobile = useIsMobile()
 
-  // Use simplified audio hook
+  // Enhanced audio hook with auto-retry disabled (we'll handle it manually)
   const {
     audioUrl,
     isInitialized: audioInitialized,
+    hasAudioIssue,
+    isRetrying,
     setIsPlaying: updatePlayingState,
     setCurrentPosition: updateCurrentPosition,
-    setDuration: updateDuration
+    setDuration: updateDuration,
+    retryAudioGeneration
   } = useReadingAudio({
     exercise,
-    enabled: enableFullTextAudio && isOpen
+    enabled: enableFullTextAudio && isOpen,
+    autoRetry: false
   });
 
   const togglePlayPause = async (audioRef: React.RefObject<HTMLAudioElement>) => {
@@ -172,6 +181,16 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     setShowTranslationAnalysis(true);
   };
 
+  const handleRetryAudio = async () => {
+    try {
+      await retryAudioGeneration();
+      toast.success('Audio regeneration started');
+    } catch (error) {
+      console.error('Audio retry failed:', error);
+      toast.error('Failed to regenerate audio');
+    }
+  };
+
   if (!exercise) return null
 
   const fullText = exercise.content.sentences.map(s => s.text).join(' ')
@@ -197,12 +216,44 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     }
   };
 
-  // Audio availability check
+  // Enhanced audio availability check
   const hasAudio = audioInitialized && audioUrl && exercise.audio_generation_status === 'completed';
+  const showAudioIssueWarning = audioInitialized && hasAudioIssue && exercise.audio_generation_status === 'completed';
 
   // Render the reading content with optimized full-screen layout
   const renderReadingContent = () => (
     <>
+      {/* Audio Issue Warning */}
+      {showAudioIssueWarning && !showTranslationAnalysis && (
+        <Alert className="mb-4 border-orange-200 bg-orange-50">
+          <AlertTriangle className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-800">
+            <div className="flex items-center justify-between">
+              <span>Audio is not available for this exercise</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRetryAudio}
+                disabled={isRetrying}
+                className="ml-2 border-orange-300 text-orange-700 hover:bg-orange-100"
+              >
+                {isRetrying ? (
+                  <>
+                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                    Regenerating...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Regenerate Audio
+                  </>
+                )}
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Advanced Audio Controls - only show if audio is available */}
       {enableFullTextAudio && !showTranslationAnalysis && hasAudio && (
         <div className={cn(
@@ -425,6 +476,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     </Badge>
                     {hasAudio && enableWordSynchronization && (
                       <Badge variant="outline" className="text-xs">
+                        <Volume2 className="h-3 w-3 mr-1" />
                         Audio Sync
                       </Badge>
                     )}
@@ -433,16 +485,20 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                         Enhanced Selection
                       </Badge>
                     )}
-                    {/* Audio status indicator */}
+                    {/* Enhanced audio status indicator */}
                     {exercise.audio_generation_status && (
                       <Badge 
                         variant={
-                          exercise.audio_generation_status === 'completed' ? 'default' : 
+                          exercise.audio_generation_status === 'completed' && hasAudio ? 'default' : 
+                          exercise.audio_generation_status === 'completed' && hasAudioIssue ? 'destructive' :
                           exercise.audio_generation_status === 'failed' ? 'destructive' : 'outline'
                         }
                         className="text-xs"
                       >
-                        Audio: {exercise.audio_generation_status}
+                        Audio: {
+                          exercise.audio_generation_status === 'completed' && hasAudioIssue ? 'Issue' :
+                          exercise.audio_generation_status
+                        }
                       </Badge>
                     )}
                   </div>

@@ -1,361 +1,215 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
-export interface AudioGenerationProgress {
-  isGenerating: boolean;
-  progress: number;
-  stage: 'initializing' | 'processing' | 'uploading' | 'finalizing' | 'complete';
-  estimatedTimeRemaining: number;
-  currentItem?: string;
-  totalItems?: number;
-  completedItems?: number;
+interface AudioGenerationOptions {
+  quality?: 'standard' | 'high';
+  priority?: 'normal' | 'high';
 }
 
-export interface AudioGenerationResult {
+interface AudioGenerationResult {
   success: boolean;
   audioUrl?: string;
   error?: string;
   metadata?: {
-    duration?: number;
-    size?: number;
-    quality?: string;
+    filename: string;
+    size: number;
+    duration: number;
+    voice: string;
+    quality: string;
+    language: string;
   };
 }
 
 export class EnhancedAudioService {
-  private progressCallback?: (progress: AudioGenerationProgress) => void;
-  private abortController?: AbortController;
-
-  setProgressCallback(callback: (progress: AudioGenerationProgress) => void) {
-    this.progressCallback = callback;
-  }
-
-  private updateProgress(update: Partial<AudioGenerationProgress>) {
-    if (this.progressCallback) {
-      this.progressCallback({
-        isGenerating: true,
-        progress: 0,
-        stage: 'initializing',
-        estimatedTimeRemaining: 0,
-        ...update
-      });
-    }
-  }
-
+  
   async generateSingleAudio(
     text: string, 
-    language: string,
-    options: {
-      priority?: 'high' | 'normal' | 'low';
-      quality?: 'standard' | 'high';
-      background?: boolean;
-    } = {}
+    language: string, 
+    options: AudioGenerationOptions = {}
   ): Promise<AudioGenerationResult> {
-    const { priority = 'normal', quality = 'standard', background = false } = options;
+    
+    console.log(`[ENHANCED AUDIO] Starting generation for ${text.length} characters in ${language}`);
     
     try {
-      this.abortController = new AbortController();
-      
-      if (!background) {
-        this.updateProgress({
-          stage: 'initializing',
-          progress: 0,
-          estimatedTimeRemaining: this.estimateGenerationTime(text.length),
-          currentItem: 'Preparing audio generation...'
-        });
-      }
-
-      // Enhanced text processing for better audio quality
-      const processedText = this.preprocessTextForAudio(text);
-      
-      if (!background) {
-        this.updateProgress({
-          stage: 'processing',
-          progress: 25,
-          currentItem: 'Generating audio...'
-        });
-      }
-
-      console.log(`[ENHANCED AUDIO] Generating audio for ${processedText.length} characters in ${language}`);
-
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
-          text: processedText,
-          language,
-          quality,
-          priority
-        },
-        headers: {
-          'x-generation-mode': background ? 'background' : 'foreground'
+          text: text.trim(),
+          language: language,
+          quality: options.quality || 'standard',
+          priority: options.priority || 'normal'
         }
       });
 
       if (error) {
-        console.error('[ENHANCED AUDIO] Generation error:', error);
-        throw new Error(error.message || 'Failed to generate audio');
+        console.error('[ENHANCED AUDIO] Supabase function error:', error);
+        throw new Error(`Audio generation failed: ${error.message}`);
       }
 
-      if (!data || !data.success) {
-        console.error('[ENHANCED AUDIO] Invalid response from TTS service:', data);
-        throw new Error(data?.error || 'Invalid response from audio service');
+      if (!data) {
+        console.error('[ENHANCED AUDIO] No data returned from function');
+        throw new Error('No data returned from audio generation service');
       }
 
-      // Validate that we have a proper audio URL
-      const audioUrl = data.audio_url || data.audioUrl;
-      if (!audioUrl) {
-        console.error('[ENHANCED AUDIO] No audio URL in response:', data);
-        throw new Error('No audio URL returned from service');
+      console.log('[ENHANCED AUDIO] Function response:', data);
+
+      if (data.success && data.audioUrl) {
+        console.log(`[ENHANCED AUDIO] Successfully generated audio: ${data.audioUrl}`);
+        
+        return {
+          success: true,
+          audioUrl: data.audioUrl,
+          metadata: {
+            filename: data.filename || 'unknown',
+            size: data.size || 0,
+            duration: data.duration || 0,
+            voice: data.voice || 'alloy',
+            quality: data.quality || 'standard',
+            language: data.language || language
+          }
+        };
+      } else {
+        console.error('[ENHANCED AUDIO] Function returned unsuccessful result:', data);
+        throw new Error(data.error || 'Audio generation failed');
       }
-
-      // Validate the URL format
-      if (!this.isValidUrl(audioUrl)) {
-        console.error('[ENHANCED AUDIO] Invalid audio URL format:', audioUrl);
-        throw new Error('Invalid audio URL format returned');
-      }
-
-      if (!background) {
-        this.updateProgress({
-          stage: 'finalizing',
-          progress: 90,
-          currentItem: 'Validating audio...'
-        });
-      }
-
-      // Quick validation of the audio URL accessibility
-      const isAccessible = await this.validateAudioUrl(audioUrl);
-      if (!isAccessible) {
-        console.warn('[ENHANCED AUDIO] Generated audio URL may not be accessible:', audioUrl);
-        // Don't fail here, just log the warning
-      }
-
-      const result: AudioGenerationResult = {
-        success: true,
-        audioUrl: audioUrl,
-        metadata: {
-          duration: data.duration,
-          size: data.size,
-          quality: quality
-        }
-      };
-
-      if (!background) {
-        this.updateProgress({
-          stage: 'complete',
-          progress: 100,
-          currentItem: 'Audio generation complete!'
-        });
-      }
-
-      console.log(`[ENHANCED AUDIO] Successfully generated audio: ${audioUrl}`);
-      return result;
 
     } catch (error) {
-      console.error('[ENHANCED AUDIO] Generation failed:', error);
+      console.error('[ENHANCED AUDIO] Generation error:', error);
+      
       return {
         success: false,
-        error: error.message || 'Audio generation failed'
+        error: error instanceof Error ? error.message : 'Unknown audio generation error'
       };
     }
   }
 
-  async generateBatchAudio(
-    items: Array<{ text: string; language: string; id: string }>,
-    options: {
-      maxConcurrent?: number;
-      quality?: 'standard' | 'high';
-      retryFailures?: boolean;
-    } = {}
-  ): Promise<Map<string, AudioGenerationResult>> {
-    const { maxConcurrent = 3, quality = 'standard', retryFailures = true } = options;
-    const results = new Map<string, AudioGenerationResult>();
+  async validateAndFixExerciseAudio(exerciseId: string): Promise<boolean> {
+    console.log(`[ENHANCED AUDIO] Validating audio for exercise: ${exerciseId}`);
     
-    console.log(`[ENHANCED BATCH] Starting batch generation for ${items.length} items`);
-    
-    this.updateProgress({
-      stage: 'initializing',
-      progress: 0,
-      totalItems: items.length,
-      completedItems: 0,
-      currentItem: 'Starting batch audio generation...'
-    });
+    try {
+      // Get exercise details
+      const { data: exercise, error: exerciseError } = await supabase
+        .from('reading_exercises')
+        .select('*')
+        .eq('id', exerciseId)
+        .single();
 
-    // Process items in batches to avoid overwhelming the service
-    const batches = this.createBatches(items, maxConcurrent);
-    let completedCount = 0;
-
-    for (const batch of batches) {
-      const batchPromises = batch.map(async (item) => {
-        try {
-          const result = await this.generateSingleAudio(item.text, item.language, {
-            quality,
-            background: true
-          });
-          
-          results.set(item.id, result);
-          completedCount++;
-          
-          this.updateProgress({
-            stage: 'processing',
-            progress: (completedCount / items.length) * 100,
-            completedItems: completedCount,
-            currentItem: `Generated audio for item ${completedCount}/${items.length}`
-          });
-
-          return { id: item.id, result };
-        } catch (error) {
-          const errorResult: AudioGenerationResult = {
-            success: false,
-            error: error.message
-          };
-          results.set(item.id, errorResult);
-          completedCount++;
-          console.error(`[ENHANCED BATCH] Failed to generate audio for item ${item.id}:`, error);
-          return { id: item.id, result: errorResult };
-        }
-      });
-
-      await Promise.allSettled(batchPromises);
-      
-      // Small delay between batches to prevent rate limiting
-      if (batches.indexOf(batch) < batches.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      if (exerciseError || !exercise) {
+        console.error('[ENHANCED AUDIO] Failed to fetch exercise:', exerciseError);
+        return false;
       }
-    }
 
-    // Retry failed items if requested
-    if (retryFailures) {
-      const failedItems = Array.from(results.entries())
-        .filter(([_, result]) => !result.success)
-        .map(([id]) => items.find(item => item.id === id))
-        .filter(Boolean);
+      console.log(`[ENHANCED AUDIO] Exercise status: ${exercise.audio_generation_status}`);
+      console.log(`[ENHANCED AUDIO] Has audio_url: ${!!exercise.audio_url}`);
+      console.log(`[ENHANCED AUDIO] Has full_text_audio_url: ${!!exercise.full_text_audio_url}`);
 
-      if (failedItems.length > 0) {
-        console.log(`[ENHANCED BATCH] Retrying ${failedItems.length} failed items`);
+      // If marked as completed but no audio URL, regenerate
+      if (exercise.audio_generation_status === 'completed' && !exercise.audio_url && !exercise.full_text_audio_url) {
+        console.log('[ENHANCED AUDIO] Found completed exercise without audio URLs, regenerating...');
         
-        this.updateProgress({
-          stage: 'processing',
-          progress: 95,
-          currentItem: `Retrying ${failedItems.length} failed items...`
+        // Extract full text
+        const fullText = exercise.content?.sentences?.map((s: any) => s.text).join(' ') || '';
+        
+        if (!fullText.trim()) {
+          console.error('[ENHANCED AUDIO] No text content found for regeneration');
+          return false;
+        }
+
+        // Generate audio
+        const result = await this.generateSingleAudio(fullText, exercise.language, {
+          quality: 'standard',
+          priority: 'high'
         });
 
-        for (const item of failedItems) {
-          try {
-            const retryResult = await this.generateSingleAudio(item.text, item.language, {
-              quality,
-              background: true
-            });
-            results.set(item.id, retryResult);
-            console.log(`[ENHANCED BATCH] Successfully retried item ${item.id}`);
-          } catch (error) {
-            console.warn(`[ENHANCED BATCH] Retry failed for item ${item.id}:`, error);
+        if (result.success && result.audioUrl) {
+          // Update exercise with audio URL
+          const { error: updateError } = await supabase
+            .from('reading_exercises')
+            .update({
+              audio_url: result.audioUrl,
+              full_text_audio_url: result.audioUrl,
+              audio_generation_status: 'completed',
+              metadata: {
+                ...exercise.metadata,
+                audio_regenerated_at: new Date().toISOString(),
+                audio_metadata: result.metadata
+              }
+            })
+            .eq('id', exerciseId);
+
+          if (updateError) {
+            console.error('[ENHANCED AUDIO] Failed to update exercise with audio URL:', updateError);
+            return false;
           }
+
+          console.log(`[ENHANCED AUDIO] Successfully regenerated and stored audio for exercise: ${exerciseId}`);
+          return true;
+        } else {
+          console.error('[ENHANCED AUDIO] Failed to regenerate audio:', result.error);
+          return false;
         }
       }
-    }
 
-    this.updateProgress({
-      stage: 'complete',
-      progress: 100,
-      completedItems: items.length,
-      currentItem: 'Batch audio generation complete!'
-    });
+      // If has audio URLs, validate they're accessible
+      const audioUrl = exercise.full_text_audio_url || exercise.audio_url;
+      if (audioUrl) {
+        try {
+          const response = await fetch(audioUrl, { method: 'HEAD' });
+          if (response.ok) {
+            console.log('[ENHANCED AUDIO] Audio URL is valid and accessible');
+            return true;
+          } else {
+            console.warn('[ENHANCED AUDIO] Audio URL is not accessible, status:', response.status);
+            return false;
+          }
+        } catch (error) {
+          console.error('[ENHANCED AUDIO] Failed to validate audio URL:', error);
+          return false;
+        }
+      }
 
-    const successCount = Array.from(results.values()).filter(r => r.success).length;
-    console.log(`[ENHANCED BATCH] Completed with ${successCount}/${items.length} successful generations`);
-
-    return results;
-  }
-
-  private preprocessTextForAudio(text: string): string {
-    // Enhanced text preprocessing for better audio quality
-    return text
-      .trim()
-      .replace(/\s+/g, ' ') // Normalize whitespace
-      .replace(/([.!?])\s*([A-Z])/g, '$1 $2') // Ensure proper sentence spacing
-      .replace(/([,;:])\s*/g, '$1 ') // Normalize punctuation spacing
-      .replace(/\b(Dr|Mr|Ms|Mrs|Prof)\./g, '$1') // Handle common abbreviations
-      .replace(/\b(\d+)\.(\d+)\b/g, '$1 point $2'); // Handle decimal numbers
-  }
-
-  private estimateGenerationTime(textLength: number): number {
-    // Estimate based on text length (rough calculation)
-    const baseTime = 5; // 5 seconds base
-    const timePerChar = 0.05; // 50ms per character
-    return Math.max(baseTime, textLength * timePerChar);
-  }
-
-  private createBatches<T>(items: T[], batchSize: number): T[][] {
-    const batches: T[][] = [];
-    for (let i = 0; i < items.length; i += batchSize) {
-      batches.push(items.slice(i, i + batchSize));
-    }
-    return batches;
-  }
-
-  private isValidUrl(url: string): boolean {
-    try {
-      const parsedUrl = new URL(url);
-      return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
-    } catch {
-      return false;
-    }
-  }
-
-  abort() {
-    if (this.abortController) {
-      this.abortController.abort();
-    }
-  }
-
-  async validateAudioUrl(url: string): Promise<boolean> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-      
-      const response = await fetch(url, { 
-        method: 'HEAD',
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      return response.ok;
+      return true;
     } catch (error) {
-      console.warn(`[ENHANCED AUDIO] URL validation failed for ${url}:`, error);
+      console.error('[ENHANCED AUDIO] Validation error:', error);
       return false;
     }
   }
 
-  async getAudioMetadata(url: string): Promise<{ duration?: number; size?: number } | null> {
+  async batchValidateExercises(limit: number = 10): Promise<void> {
+    console.log(`[ENHANCED AUDIO] Starting batch validation of up to ${limit} exercises`);
+    
     try {
-      const audio = new Audio(url);
-      return new Promise((resolve) => {
-        const timeout = setTimeout(() => {
-          audio.removeEventListener('loadedmetadata', onLoad);
-          audio.removeEventListener('error', onError);
-          resolve(null);
-        }, 10000); // 10 second timeout
+      // Get exercises that are marked as completed but missing audio URLs
+      const { data: exercises, error } = await supabase
+        .from('reading_exercises')
+        .select('id, title, language, audio_generation_status, audio_url, full_text_audio_url')
+        .eq('audio_generation_status', 'completed')
+        .is('audio_url', null)
+        .is('full_text_audio_url', null)
+        .limit(limit);
+
+      if (error) {
+        console.error('[ENHANCED AUDIO] Failed to fetch exercises for validation:', error);
+        return;
+      }
+
+      if (!exercises || exercises.length === 0) {
+        console.log('[ENHANCED AUDIO] No exercises found that need audio regeneration');
+        return;
+      }
+
+      console.log(`[ENHANCED AUDIO] Found ${exercises.length} exercises that need audio regeneration`);
+
+      for (const exercise of exercises) {
+        console.log(`[ENHANCED AUDIO] Processing exercise: ${exercise.title} (${exercise.id})`);
+        await this.validateAndFixExerciseAudio(exercise.id);
         
-        const onLoad = () => {
-          clearTimeout(timeout);
-          audio.removeEventListener('error', onError);
-          resolve({
-            duration: audio.duration,
-            size: undefined // Size would need to be tracked during generation
-          });
-        };
-        
-        const onError = () => {
-          clearTimeout(timeout);
-          audio.removeEventListener('loadedmetadata', onLoad);
-          resolve(null);
-        };
-        
-        audio.addEventListener('loadedmetadata', onLoad);
-        audio.addEventListener('error', onError);
-      });
-    } catch {
-      return null;
+        // Add a small delay to avoid overwhelming the system
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      console.log('[ENHANCED AUDIO] Batch validation completed');
+    } catch (error) {
+      console.error('[ENHANCED AUDIO] Batch validation error:', error);
     }
   }
 }

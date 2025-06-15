@@ -16,7 +16,10 @@ serve(async (req) => {
   try {
     const { text, language, quality = 'standard', priority = 'normal' } = await req.json();
 
+    console.log(`[TTS] Request received: ${JSON.stringify({ text: text?.length, language, quality, priority })}`);
+
     if (!text || text.trim().length === 0) {
+      console.error('[TTS] No text provided');
       throw new Error('Text is required for audio generation');
     }
 
@@ -25,6 +28,7 @@ serve(async (req) => {
     // Get OpenAI API key
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiApiKey) {
+      console.error('[TTS] OpenAI API key not configured');
       throw new Error('OpenAI API key not configured');
     }
 
@@ -123,6 +127,7 @@ serve(async (req) => {
 
     // Ensure we have a valid URL
     if (!urlData?.publicUrl) {
+      console.error('[TTS] Failed to generate public URL');
       throw new Error('Failed to generate public URL for audio file');
     }
 
@@ -144,20 +149,24 @@ serve(async (req) => {
     }
 
     // Return response with audio URL and metadata
+    const successResponse = {
+      success: true,
+      audio_url: audioUrl,
+      audioUrl: audioUrl, // For compatibility
+      filename: filename,
+      duration: Math.ceil(text.length / 10), // Rough estimate
+      size: audioData.length,
+      voice: voice,
+      quality: quality,
+      language: language,
+      storage_path: filename,
+      public_url: audioUrl
+    };
+
+    console.log(`[TTS] Success response:`, { ...successResponse, audio_url: 'URL_SET' });
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        audio_url: audioUrl,
-        audioUrl: audioUrl, // For compatibility
-        filename: filename,
-        duration: Math.ceil(text.length / 10), // Rough estimate
-        size: audioData.length,
-        voice: voice,
-        quality: quality,
-        language: language,
-        storage_path: filename,
-        public_url: audioUrl
-      }),
+      JSON.stringify(successResponse),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
@@ -165,12 +174,16 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[TTS] Error:', error);
+    const errorResponse = { 
+      success: false,
+      error: error.message || 'Audio generation failed',
+      details: error.toString()
+    };
+    
+    console.log(`[TTS] Error response:`, errorResponse);
+    
     return new Response(
-      JSON.stringify({ 
-        success: false,
-        error: error.message || 'Audio generation failed',
-        details: error.toString()
-      }),
+      JSON.stringify(errorResponse),
       {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
