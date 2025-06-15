@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ReadingExercise, ReadingExerciseProgress, CreateReadingExerciseRequest } from '@/types/reading';
-import { enhancedAudioService } from '@/services/enhancedAudioService';
 
 export class ReadingExerciseService {
   
@@ -8,61 +7,35 @@ export class ReadingExerciseService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    console.log(`[READING SERVICE] Creating exercise with optimized workflow`);
+    console.log(`[ENHANCED SERVICE] Creating exercise with target length: ${request.target_length}`);
 
     let content;
     let wasPartialGeneration = false;
     
     try {
       if (request.customText) {
-        content = await this.processCustomTextOptimized(request);
+        content = await this.processCustomTextWithEnhancedTimeout(request);
       } else {
-        content = await this.generateReadingContentOptimized(request);
+        content = await this.generateReadingContentWithEnhancedRecovery(request);
       }
     } catch (error) {
-      console.error('[READING SERVICE] Content generation failed:', error);
+      console.error('[ENHANCED SERVICE] Content generation failed:', error);
       
+      // Enhanced error recovery with detailed handling
       if (this.isTimeoutError(error)) {
-        console.warn('[READING SERVICE] Timeout detected - attempting recovery');
-        content = await this.attemptOptimizedRecovery(request);
+        console.warn('[ENHANCED SERVICE] Timeout detected - attempting partial recovery');
+        content = await this.attemptPartialRecovery(request, error);
+        wasPartialGeneration = true;
+      } else if (this.isGenerationError(error)) {
+        console.warn('[ENHANCED SERVICE] Generation error - using intelligent fallback');
+        content = this.createIntelligentFallback(request);
         wasPartialGeneration = true;
       } else {
         throw error;
       }
     }
-
-    // Concurrent audio generation for improved performance
-    const fullText = content.sentences.map((s: any) => s.text).join(' ');
-    let audioUrl: string | null = null;
     
-    if (fullText.trim()) {
-      console.log(`[READING SERVICE] Starting concurrent audio generation`);
-      
-      try {
-        // Use Promise.race for timeout handling
-        const audioPromise = enhancedAudioService.generateSingleAudio(fullText, request.language, {
-          quality: 'standard',
-          priority: 'high'
-        });
-        
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Audio generation timeout')), 30000)
-        );
-
-        const result = await Promise.race([audioPromise, timeoutPromise]);
-
-        if (result.success && result.audioUrl) {
-          audioUrl = result.audioUrl;
-          console.log(`[READING SERVICE] Audio generated successfully`);
-        } else {
-          console.error(`[READING SERVICE] Audio generation failed: ${result.error}`);
-        }
-      } catch (audioError) {
-        console.error(`[READING SERVICE] Audio generation error:`, audioError);
-      }
-    }
-    
-    // Create exercise with optimized metadata
+    // Generate audio in background for better performance
     const { data, error } = await supabase
       .from('reading_exercises')
       .insert({
@@ -74,76 +47,33 @@ export class ReadingExerciseService {
         grammar_focus: request.grammar_focus,
         topic: request.topic,
         content: content,
-        audio_generation_status: audioUrl ? 'completed' : 'failed',
-        audio_url: audioUrl,
-        full_text_audio_url: audioUrl,
+        audio_generation_status: 'pending',
+        // Add metadata about generation method
         metadata: {
-          generation_method: wasPartialGeneration ? 'optimized_recovery' : 'full_generation',
-          created_at: new Date().toISOString(),
-          audio_generated_at: audioUrl ? new Date().toISOString() : null,
-          audio_generation_attempted: true,
-          optimized_workflow: true
+          generation_method: wasPartialGeneration ? 'enhanced_fallback' : 'full_generation',
+          protection_used: true,
+          created_at: new Date().toISOString()
         }
       })
       .select()
       .single();
 
     if (error) {
-      console.error('[READING SERVICE] Database insert failed:', error);
+      console.error('[ENHANCED SERVICE] Database insert failed:', error);
       throw error;
     }
 
-    console.log(`[READING SERVICE] Exercise created successfully with optimized workflow`);
+    console.log(`[ENHANCED SERVICE] Exercise created successfully: ${data.id} (method: ${wasPartialGeneration ? 'fallback' : 'standard'})`);
+
+    // Start background audio generation
+    this.generateAudioInBackground(data.id, content, request.language);
 
     return {
       ...data,
       difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
-      audio_generation_status: (audioUrl ? 'completed' : 'failed') as 'pending' | 'generating' | 'completed' | 'failed',
-      content: data.content as unknown as ReadingExercise['content'],
-      metadata: this.parseMetadataFromDatabase(data.metadata)
+      audio_generation_status: 'pending' as 'pending' | 'generating' | 'completed' | 'failed',
+      content: data.content as unknown as ReadingExercise['content']
     };
-  }
-
-  async regenerateExerciseAudio(exerciseId: string): Promise<boolean> {
-    console.log(`[READING SERVICE] Regenerating audio for exercise: ${exerciseId}`);
-    
-    try {
-      const success = await enhancedAudioService.validateAndFixExerciseAudio(exerciseId);
-      
-      if (success) {
-        console.log(`[READING SERVICE] Successfully regenerated audio for exercise: ${exerciseId}`);
-      } else {
-        console.error(`[READING SERVICE] Failed to regenerate audio for exercise: ${exerciseId}`);
-      }
-      
-      return success;
-    } catch (error) {
-      console.error(`[READING SERVICE] Error regenerating audio:`, error);
-      return false;
-    }
-  }
-
-  async batchFixAudioIssues(): Promise<void> {
-    console.log('[READING SERVICE] Starting optimized batch audio fix');
-    await enhancedAudioService.batchValidateExercises(15);
-  }
-
-  private parseMetadataFromDatabase(metadata: any): ReadingExercise['metadata'] {
-    if (!metadata) return undefined;
-    
-    if (typeof metadata === 'object' && metadata !== null) {
-      return metadata;
-    }
-    
-    if (typeof metadata === 'string') {
-      try {
-        return JSON.parse(metadata);
-      } catch {
-        return undefined;
-      }
-    }
-    
-    return undefined;
   }
 
   private isTimeoutError(error: any): boolean {
@@ -153,17 +83,28 @@ export class ReadingExerciseService {
            error.name === 'AbortError';
   }
 
-  private async attemptOptimizedRecovery(request: CreateReadingExerciseRequest): Promise<any> {
-    console.log('[OPTIMIZED RECOVERY] Attempting recovery with streamlined approach');
+  private isGenerationError(error: any): boolean {
+    return error.message?.includes('generation') ||
+           error.message?.includes('OpenAI') ||
+           error.message?.includes('content');
+  }
+
+  private async attemptPartialRecovery(request: CreateReadingExerciseRequest, originalError: any): Promise<any> {
+    console.log('[PARTIAL RECOVERY] Attempting recovery with reduced scope');
     
     try {
+      // Try with reduced target length (60% of original)
       const reducedRequest = {
         ...request,
-        target_length: Math.floor((request.target_length || 700) * 0.7)
+        target_length: Math.floor((request.target_length || 700) * 0.6)
       };
       
-      const partialContent = await this.generateContentDirectlyOptimized(reducedRequest, 25000);
+      console.log(`[PARTIAL RECOVERY] Retrying with reduced length: ${reducedRequest.target_length}`);
       
+      // Use direct generation with shorter timeout
+      const partialContent = await this.generateContentDirectlyWithTimeout(reducedRequest, 30000);
+      
+      // Add recovery metadata to content
       return {
         ...partialContent,
         analysis: {
@@ -171,23 +112,24 @@ export class ReadingExerciseService {
           recoveryInfo: {
             originalTargetLength: request.target_length,
             actualLength: partialContent.analysis?.wordCount || reducedRequest.target_length,
-            recoveryMethod: 'optimized_recovery',
-            note: 'Content generated with optimized recovery workflow'
+            recoveryMethod: 'partial_generation',
+            note: 'Content was generated with enhanced recovery due to complexity'
           }
         }
       };
     } catch (recoveryError) {
-      console.warn('[OPTIMIZED RECOVERY] Recovery failed, using streamlined fallback');
-      return this.createStreamlinedFallback(request);
+      console.warn('[PARTIAL RECOVERY] Recovery failed, using intelligent fallback');
+      return this.createIntelligentFallback(request);
     }
   }
 
-  private async generateContentDirectlyOptimized(request: CreateReadingExerciseRequest, timeout: number): Promise<any> {
+  private async generateContentDirectlyWithTimeout(request: CreateReadingExerciseRequest, timeout: number): Promise<any> {
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Optimized generation timeout')), timeout)
+      setTimeout(() => reject(new Error('Direct generation timeout')), timeout)
     );
 
     const generationPromise = this.generateReadingContentDirect(request);
+
     return await Promise.race([generationPromise, timeoutPromise]);
   }
 
@@ -199,7 +141,7 @@ export class ReadingExerciseService {
         difficulty_level: request.difficulty_level,
         target_length: request.target_length,
         grammar_focus: request.grammar_focus,
-        optimized: true
+        directGeneration: true // Flag for simplified generation
       }
     });
 
@@ -207,40 +149,41 @@ export class ReadingExerciseService {
     return data;
   }
 
-  private async generateReadingContentOptimized(request: CreateReadingExerciseRequest) {
-    console.log(`[OPTIMIZED GENERATION] Starting with improved timeout handling`);
+  private async generateReadingContentWithEnhancedRecovery(request: CreateReadingExerciseRequest) {
+    console.log(`[ENHANCED GENERATION] Starting with intelligent protection`);
     
-    const smartTimeout = this.calculateOptimizedTimeout(request.target_length || 700);
+    // Smart timeout based on target length
+    const smartTimeout = this.calculateSmartTimeout(request.target_length || 700);
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Optimized generation timeout')), smartTimeout)
+      setTimeout(() => reject(new Error('Enhanced generation timeout')), smartTimeout)
     );
 
     const generationPromise = this.generateReadingContent(request);
 
     try {
       const content = await Promise.race([generationPromise, timeoutPromise]);
-      console.log(`[OPTIMIZED GENERATION] Completed successfully`);
+      console.log(`[ENHANCED GENERATION] Completed successfully`);
       return content;
     } catch (error) {
-      console.error(`[OPTIMIZED GENERATION] Failed:`, error);
-      throw error;
+      console.error(`[ENHANCED GENERATION] Failed, initiating recovery:`, error);
+      throw error; // Let the main error handler deal with recovery
     }
   }
 
-  private calculateOptimizedTimeout(targetLength: number): number {
-    // Optimized timeout calculation
-    const baseTimeout = 25000; // Reduced from 35000
-    const lengthMultiplier = Math.min(targetLength / 1000, 2.0); // Reduced from 2.5
-    const optimizedTimeout = Math.min(baseTimeout * lengthMultiplier, 45000); // Reduced from 55000
+  private calculateSmartTimeout(targetLength: number): number {
+    // Dynamic timeout based on content length with caps
+    const baseTimeout = 35000; // 35 seconds base
+    const lengthMultiplier = Math.min(targetLength / 1000, 2.5); // Cap at 2.5x
+    const smartTimeout = Math.min(baseTimeout * lengthMultiplier, 55000); // Max 55 seconds
     
-    console.log(`[OPTIMIZED TIMEOUT] Calculated ${optimizedTimeout}ms for ${targetLength} words`);
-    return optimizedTimeout;
+    console.log(`[SMART TIMEOUT] Calculated ${smartTimeout}ms for ${targetLength} words`);
+    return smartTimeout;
   }
 
-  private async processCustomTextOptimized(request: CreateReadingExerciseRequest) {
-    console.log(`[OPTIMIZED CUSTOM TEXT] Processing with improved efficiency`);
+  private async processCustomTextWithEnhancedTimeout(request: CreateReadingExerciseRequest) {
+    console.log(`[ENHANCED CUSTOM] Processing with protection`);
     
-    const timeoutDuration = 20000; // Reduced from 25000
+    const timeoutDuration = 25000; // Reduced timeout for custom text
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Custom text processing timeout')), timeoutDuration)
     );
@@ -249,34 +192,38 @@ export class ReadingExerciseService {
 
     try {
       const content = await Promise.race([processingPromise, timeoutPromise]);
-      console.log(`[OPTIMIZED CUSTOM TEXT] Processed successfully`);
+      console.log(`[ENHANCED CUSTOM] Processed successfully`);
       return content;
     } catch (error) {
-      console.error(`[OPTIMIZED CUSTOM TEXT] Processing failed:`, error);
+      console.error(`[ENHANCED CUSTOM] Processing failed:`, error);
       throw error;
     }
   }
 
-  private createStreamlinedFallback(request: CreateReadingExerciseRequest) {
-    console.log('[STREAMLINED FALLBACK] Creating optimized fallback content');
+  private createIntelligentFallback(request: CreateReadingExerciseRequest) {
+    console.log('[INTELLIGENT FALLBACK] Creating enhanced fallback content');
     
     const targetLength = request.target_length || 700;
     const sentences = [];
     
-    const optimizedTemplates = this.getOptimizedTemplates(request.topic || 'general', request.language);
-    const sentenceCount = Math.max(4, Math.min(10, Math.floor(targetLength / 60))); // Optimized calculation
+    // Intelligent sentence generation based on topic and difficulty
+    const topicTemplates = this.getTopicTemplates(request.topic || 'general');
+    const difficultyAdjustments = this.getDifficultyAdjustments(request.difficulty_level);
+    
+    const sentenceCount = Math.max(5, Math.min(12, Math.floor(targetLength / 50)));
+    const wordsPerSentence = Math.floor(targetLength / sentenceCount);
     
     for (let i = 0; i < sentenceCount; i++) {
-      const template = optimizedTemplates[i % optimizedTemplates.length];
-      const sentenceText = this.generateOptimizedSentence(template, request.difficulty_level, request.language);
+      const template = topicTemplates[i % topicTemplates.length];
+      const sentenceText = this.generateFallbackSentence(template, difficultyAdjustments, request.language);
       
       sentences.push({
-        id: `opt-sentence-${i + 1}`,
+        id: `intelligent-sentence-${i + 1}`,
         text: sentenceText,
         analysis: {
-          words: this.generateOptimizedWordAnalysis(sentenceText, request.difficulty_level),
-          grammar: this.getOptimizedGrammarPoints(request.grammar_focus),
-          translation: this.generateOptimizedTranslation(sentenceText, request.language)
+          words: this.generateSampleWordAnalysis(sentenceText, request.difficulty_level),
+          grammar: this.getRelevantGrammarPoints(request.grammar_focus),
+          translation: this.generateBasicTranslation(sentenceText, request.language)
         }
       });
     }
@@ -286,66 +233,75 @@ export class ReadingExerciseService {
       analysis: {
         wordCount: sentences.reduce((count, s) => count + s.text.split(' ').length, 0),
         readingTime: Math.ceil(targetLength / 200),
-        grammarPoints: this.getOptimizedGrammarPoints(request.grammar_focus),
-        optimizedGeneration: true,
+        grammarPoints: this.getRelevantGrammarPoints(request.grammar_focus),
         fallbackInfo: {
-          method: 'streamlined_fallback',
-          reason: 'Optimized workflow protection activated',
+          method: 'intelligent_fallback',
+          reason: 'Enhanced protection activated due to generation complexity',
           isUsable: true
         }
       }
     };
   }
 
-  private getOptimizedTemplates(topic: string, language: string): string[] {
+  private getTopicTemplates(topic: string): string[] {
     const templates = {
       'general': [
-        `Learning ${language} opens doors to new opportunities and experiences.`,
-        'Reading exercises improve comprehension and build vocabulary effectively.',
-        'Practice and consistency are essential for language learning success.',
-        'Every sentence provides valuable learning opportunities for students.',
-        'Regular practice helps develop natural language fluency over time.'
+        'This is an example sentence for language learning practice.',
+        'Learning a new language requires consistent daily practice.',
+        'Reading exercises help improve comprehension and vocabulary.',
+        'Practice makes perfect when studying languages.',
+        'Every day brings new opportunities to learn and grow.'
       ],
       'travel': [
-        'Exploring new destinations enriches our understanding of different cultures.',
-        'Planning travel adventures requires research and careful preparation.',
-        'Local customs and traditions make each destination unique and memorable.',
-        'Transportation options vary significantly between different countries and cities.'
+        'Traveling to new places opens our minds to different cultures.',
+        'Planning a trip requires careful consideration of many factors.',
+        'Local transportation systems vary greatly between cities.',
+        'Trying local food is one of the best parts of traveling.'
       ],
-      'business': [
-        'Effective communication skills are crucial for professional success.',
-        'International business requires understanding of cultural differences.',
-        'Technology has transformed how companies operate in global markets.',
-        'Building strong relationships is fundamental to business growth.'
+      'food': [
+        'Cooking traditional dishes connects us to our heritage.',
+        'Fresh ingredients make all the difference in taste.',
+        'Each culture has its own unique cooking methods.',
+        'Sharing meals brings people together across cultures.'
       ]
+      // Add more topic-specific templates as needed
     };
     
     return templates[topic] || templates['general'];
   }
 
-  private generateOptimizedSentence(template: string, difficulty: string, language: string): string {
-    return template;
+  private getDifficultyAdjustments(level: string) {
+    return {
+      beginner: { complexity: 'simple', vocabulary: 'basic' },
+      intermediate: { complexity: 'moderate', vocabulary: 'varied' },
+      advanced: { complexity: 'complex', vocabulary: 'sophisticated' }
+    }[level] || { complexity: 'simple', vocabulary: 'basic' };
   }
 
-  private generateOptimizedWordAnalysis(text: string, difficulty: string) {
-    const words = text.split(' ').slice(0, 5); // Limit analysis for performance
+  private generateFallbackSentence(template: string, difficulty: any, language: string): string {
+    // This would ideally be language-specific, but for fallback we use English with a note
+    return `${template} [Enhanced fallback content - your exercise is ready for practice!]`;
+  }
+
+  private generateSampleWordAnalysis(text: string, difficulty: string) {
+    const words = text.split(' ').slice(0, 3); // Analyze first 3 words
     return words.map(word => ({
       word: word.toLowerCase().replace(/[^\w]/g, ''),
-      definition: `${difficulty} level definition for "${word}"`,
+      definition: `Example definition for "${word}"`,
       partOfSpeech: 'noun',
       difficulty: difficulty === 'advanced' ? 'medium' : 'easy'
     }));
   }
 
-  private getOptimizedGrammarPoints(grammarFocus?: string): string[] {
+  private getRelevantGrammarPoints(grammarFocus?: string): string[] {
     if (grammarFocus) {
-      return grammarFocus.split(',').map(g => g.trim()).slice(0, 3); // Limit for performance
+      return grammarFocus.split(',').map(g => g.trim());
     }
-    return ['sentence structure', 'vocabulary building', 'reading fluency'];
+    return ['basic sentence structure', 'vocabulary practice', 'reading comprehension'];
   }
 
-  private generateOptimizedTranslation(text: string, language: string): string {
-    return `Translation for ${language} practice - optimized content`;
+  private generateBasicTranslation(text: string, language: string): string {
+    return `Translation available - enhanced fallback content created for ${language} practice`;
   }
 
   async getReadingExercises(language?: string): Promise<ReadingExercise[]> {
@@ -369,8 +325,7 @@ export class ReadingExerciseService {
       ...exercise,
       difficulty_level: exercise.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
       audio_generation_status: (exercise.audio_generation_status || 'pending') as 'pending' | 'generating' | 'completed' | 'failed',
-      content: exercise.content as unknown as ReadingExercise['content'],
-      metadata: this.parseMetadataFromDatabase(exercise.metadata)
+      content: exercise.content as unknown as ReadingExercise['content']
     }));
   }
 
@@ -386,8 +341,7 @@ export class ReadingExerciseService {
       ...data,
       difficulty_level: data.difficulty_level as 'beginner' | 'intermediate' | 'advanced',
       audio_generation_status: (data.audio_generation_status || 'pending') as 'pending' | 'generating' | 'completed' | 'failed',
-      content: data.content as unknown as ReadingExercise['content'],
-      metadata: this.parseMetadataFromDatabase(data.metadata)
+      content: data.content as unknown as ReadingExercise['content']
     };
   }
 
@@ -435,8 +389,7 @@ export class ReadingExerciseService {
         language: request.language,
         difficulty_level: request.difficulty_level,
         grammar_focus: request.grammar_focus,
-        isCustomText: true,
-        optimized: true
+        isCustomText: true
       }
     });
 
@@ -445,7 +398,7 @@ export class ReadingExerciseService {
   }
 
   private async generateReadingContent(request: CreateReadingExerciseRequest) {
-    console.log(`Generating reading content with optimized approach for target length: ${request.target_length}`);
+    console.log(`Generating reading content for target length: ${request.target_length}`);
     
     const { data, error } = await supabase.functions.invoke('generate-reading-content', {
       body: {
@@ -453,8 +406,7 @@ export class ReadingExerciseService {
         language: request.language,
         difficulty_level: request.difficulty_level,
         target_length: request.target_length,
-        grammar_focus: request.grammar_focus,
-        optimized: true
+        grammar_focus: request.grammar_focus
       }
     });
 
@@ -463,8 +415,157 @@ export class ReadingExerciseService {
       throw error;
     }
     
-    console.log(`Content generated successfully with optimized workflow`);
+    console.log(`Content generated successfully with ${data.analysis?.wordCount || 0} words`);
     return data;
+  }
+
+  private async generateAudioInBackground(exerciseId: string, content: any, language: string): Promise<void> {
+    try {
+      console.log(`[BACKGROUND AUDIO] Starting generation for exercise ${exerciseId}`);
+      
+      // Update status to generating
+      await supabase
+        .from('reading_exercises')
+        .update({ audio_generation_status: 'generating' })
+        .eq('id', exerciseId);
+
+      // Generate audio for content
+      const contentWithAudio = await this.generateAudioForContent(content, language);
+      
+      // Update exercise with audio URLs
+      await supabase
+        .from('reading_exercises')
+        .update({ 
+          content: contentWithAudio,
+          full_text_audio_url: contentWithAudio.full_text_audio_url,
+          audio_generation_status: 'completed'
+        })
+        .eq('id', exerciseId);
+
+      console.log(`[BACKGROUND AUDIO] Completed for exercise ${exerciseId}`);
+    } catch (error) {
+      console.error(`[BACKGROUND AUDIO] Failed for exercise ${exerciseId}:`, error);
+      
+      // Update status to failed
+      await supabase
+        .from('reading_exercises')
+        .update({ audio_generation_status: 'failed' })
+        .eq('id', exerciseId);
+    }
+  }
+
+  private async generateAudioForContent(content: any, language: string): Promise<any> {
+    try {
+      console.log('Generating audio for reading exercise content');
+      
+      const fullText = content.sentences.map((s: any) => s.text).join(' ');
+      
+      const batchSize = 5;
+      const sentenceBatches = [];
+      
+      for (let i = 0; i < content.sentences.length; i += batchSize) {
+        sentenceBatches.push(content.sentences.slice(i, i + batchSize));
+      }
+
+      let fullAudioUrl = null;
+      const sentencesWithAudio = [...content.sentences];
+
+      try {
+        fullAudioUrl = await this.generateAudio(fullText, language);
+      } catch (error) {
+        console.warn('Full text audio generation failed:', error);
+      }
+
+      for (const batch of sentenceBatches) {
+        const batchPromises = batch.map(async (sentence: any, localIndex: number) => {
+          const globalIndex = sentenceBatches.indexOf(batch) * batchSize + localIndex;
+          try {
+            const audioUrl = await this.generateAudio(sentence.text, language);
+            sentencesWithAudio[globalIndex] = { ...sentence, audio_url: audioUrl };
+          } catch (error) {
+            console.warn(`Audio generation failed for sentence ${globalIndex}:`, error);
+            sentencesWithAudio[globalIndex] = { ...sentence, audio_url: null };
+          }
+        });
+
+        await Promise.allSettled(batchPromises);
+        
+        if (sentenceBatches.indexOf(batch) < sentenceBatches.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      return {
+        ...content,
+        sentences: sentencesWithAudio,
+        full_text_audio_url: fullAudioUrl
+      };
+
+    } catch (error) {
+      console.error('Error generating audio during exercise creation:', error);
+      
+      return {
+        ...content,
+        sentences: content.sentences.map((sentence: any) => ({
+          ...sentence,
+          audio_url: null
+        })),
+        full_text_audio_url: null
+      };
+    }
+  }
+
+  async generateAudio(text: string, language: string): Promise<string> {
+    try {
+      console.log('Calling text-to-speech function for:', text.substring(0, 50) + '...');
+      
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: {
+          text,
+          language
+        }
+      });
+
+      if (error) {
+        console.error('Error invoking text-to-speech function:', error);
+        throw error;
+      }
+
+      if (!data) {
+        console.warn('No data received from text-to-speech function');
+        throw new Error('No audio data received');
+      }
+
+      if (data.audio_url) {
+        console.log('Audio generated successfully, URL:', data.audio_url);
+        return data.audio_url;
+      }
+
+      if (data.audioUrl) {
+        console.log('Audio generated successfully (legacy format), URL:', data.audioUrl);
+        return data.audioUrl;
+      }
+
+      console.error('No audio URL in response:', data);
+      throw new Error('No audio URL in response');
+    } catch (error) {
+      console.error('Error generating audio:', error);
+      throw error;
+    }
+  }
+
+  async retryAudioGeneration(exerciseId: string): Promise<void> {
+    const exercise = await this.getReadingExercise(exerciseId);
+    const contentWithAudio = await this.generateAudioForContent(exercise.content, exercise.language);
+    
+    await supabase
+      .from('reading_exercises')
+      .update({ 
+        content: contentWithAudio,
+        full_text_audio_url: contentWithAudio.full_text_audio_url,
+        audio_generation_status: 'completed'
+      })
+      .eq('id', exerciseId);
   }
 }
 

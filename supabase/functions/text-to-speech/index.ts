@@ -1,202 +1,168 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { corsHeaders } from '../_shared/cors.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
+const supabaseUrl = Deno.env.get('SUPABASE_URL')
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+// Helper function to create a safe filename from text
+function createSafeFilename(text: string): string {
+  // Create a hash of the text using Web Crypto API for Unicode-safe filename generation
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text.substring(0, 50)); // Use first 50 chars for hash
+  
+  // Use a simple hash function for filename generation
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    const char = data[i];
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  
+  // Convert to positive number and use base 36 for alphanumeric
+  const hashString = Math.abs(hash).toString(36);
+  const timestamp = Date.now();
+  
+  return `audio_${timestamp}_${hashString}`;
+}
+
+// Helper function to convert ArrayBuffer to base64 (Unicode-safe)
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  
+  // Process in chunks to avoid stack overflow with large files
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.slice(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  
+  return btoa(binary);
+}
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const { text, language, quality = 'standard', priority = 'normal' } = await req.json();
+    const { text, language } = await req.json()
 
-    console.log(`[TTS] Request received: ${JSON.stringify({ text: text?.length, language, quality, priority })}`);
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key not configured')
+    }
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase configuration not found')
+    }
 
     if (!text || text.trim().length === 0) {
-      console.error('[TTS] No text provided');
-      throw new Error('Text is required for audio generation');
+      throw new Error('Text content is required')
     }
 
-    console.log(`[TTS] Generating audio for text (${text.length} chars) in ${language}`);
-
-    // Get OpenAI API key
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      console.error('[TTS] OpenAI API key not configured');
-      throw new Error('OpenAI API key not configured');
-    }
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Determine voice based on language with improved mapping
+    // Map language codes to OpenAI TTS voices
     const voiceMap: Record<string, string> = {
       'english': 'alloy',
-      'spanish': 'nova', 
+      'spanish': 'nova',
       'french': 'shimmer',
       'german': 'echo',
       'italian': 'fable',
       'portuguese': 'onyx',
+      'russian': 'echo',
       'chinese': 'alloy',
       'japanese': 'nova',
-      'korean': 'shimmer'
-    };
-    
-    const voice = voiceMap[language.toLowerCase()] || 'alloy';
-    const model = quality === 'high' ? 'tts-1-hd' : 'tts-1';
+      'korean': 'shimmer',
+      'arabic': 'echo',
+      'turkish': 'nova',
+      'polish': 'shimmer',
+      'dutch': 'alloy',
+      'swedish': 'nova',
+      'norwegian': 'echo'
+    }
 
-    console.log(`[TTS] Using voice: ${voice}, model: ${model}`);
+    const voice = voiceMap[language.toLowerCase()] || 'alloy'
 
-    // Generate speech using OpenAI with improved error handling
+    console.log('Generating audio for text:', text.substring(0, 50) + '...')
+    console.log('Using voice:', voice, 'for language:', language)
+
     const response = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: model,
-        input: text.substring(0, 4096), // OpenAI limit
+        model: 'tts-1',
+        input: text,
         voice: voice,
-        response_format: 'mp3',
-        speed: 1.0
+        response_format: 'mp3'
       }),
-    });
+    })
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[TTS] OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
+      const error = await response.text()
+      throw new Error(`OpenAI TTS API error: ${error}`)
     }
 
-    // Get audio data
-    const audioBuffer = await response.arrayBuffer();
-    const audioData = new Uint8Array(audioBuffer);
+    // Get audio data as array buffer
+    const audioData = await response.arrayBuffer()
+    console.log('Audio data received, size:', audioData.byteLength)
 
-    console.log(`[TTS] Generated audio: ${audioData.length} bytes`);
-
-    // Create optimized filename with better organization
-    const timestamp = Date.now();
-    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-    const hashArray = Array.from(new Uint8Array(hash.slice(0, 8)));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    const filename = `tts/${language}/${timestamp}_${hashHex}.mp3`;
+    // Create Supabase client with service role key for storage operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
-    console.log(`[TTS] Uploading to storage: ${filename}`);
-
-    // Ensure the audio bucket exists with optimized configuration
-    const { data: buckets } = await supabase.storage.listBuckets();
-    const audioBucket = buckets?.find(bucket => bucket.name === 'audio');
+    // Generate unique filename using Unicode-safe method
+    const fileName = createSafeFilename(text) + '.mp3'
     
-    if (!audioBucket) {
-      console.log('[TTS] Creating audio bucket');
-      const { error: bucketError } = await supabase.storage.createBucket('audio', {
-        public: true,
-        allowedMimeTypes: ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm'],
-        fileSizeLimit: 52428800 // 50MB
-      });
-      
-      if (bucketError) {
-        console.error('[TTS] Failed to create audio bucket:', bucketError);
-        throw new Error(`Failed to create audio bucket: ${bucketError.message}`);
-      }
-    }
-
-    // Upload to Supabase Storage with retry logic
-    let uploadAttempt = 0;
-    const maxRetries = 3;
-    let uploadData, uploadError;
-
-    while (uploadAttempt < maxRetries) {
-      const result = await supabase.storage
-        .from('audio')
-        .upload(filename, audioData, {
-          contentType: 'audio/mpeg',
-          upsert: false
-        });
-
-      uploadData = result.data;
-      uploadError = result.error;
-
-      if (!uploadError) break;
-      
-      uploadAttempt++;
-      if (uploadAttempt < maxRetries) {
-        console.warn(`[TTS] Upload attempt ${uploadAttempt} failed, retrying...`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * uploadAttempt));
-      }
-    }
+    console.log('Uploading audio file:', fileName)
+    
+    // Upload to Supabase storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('audio')
+      .upload(fileName, audioData, {
+        contentType: 'audio/mp3',
+        duplex: 'half'
+      })
 
     if (uploadError) {
-      console.error('[TTS] Storage upload error after retries:', uploadError);
-      throw new Error(`Failed to upload audio: ${uploadError.message}`);
+      console.error('Storage upload error:', uploadError)
+      // Fallback to base64 data URL if storage fails - now Unicode-safe
+      try {
+        const base64Audio = arrayBufferToBase64(audioData)
+        const audioUrl = `data:audio/mp3;base64,${base64Audio}`
+        console.log('Falling back to data URL due to storage error')
+        
+        return new Response(JSON.stringify({ audio_url: audioUrl }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      } catch (base64Error) {
+        console.error('Base64 encoding also failed:', base64Error)
+        throw new Error('Failed to generate audio: both storage and base64 fallback failed')
+      }
     }
 
-    // Get public URL using the correct method
-    const { data: urlData } = supabase.storage
+    // Get the public URL for the uploaded file
+    const { data: { publicUrl } } = supabase.storage
       .from('audio')
-      .getPublicUrl(filename);
+      .getPublicUrl(fileName)
 
-    // Ensure we have a valid URL
-    if (!urlData?.publicUrl) {
-      console.error('[TTS] Failed to generate public URL');
-      throw new Error('Failed to generate public URL for audio file');
-    }
+    console.log('Audio uploaded successfully, public URL:', publicUrl)
 
-    const audioUrl = urlData.publicUrl;
-    console.log(`[TTS] Audio uploaded successfully: ${audioUrl}`);
-
-    // Optimized response structure
-    const successResponse = {
-      success: true,
-      audioUrl: audioUrl,
-      filename: filename,
-      duration: Math.ceil(text.length / 12), // Improved estimate: ~12 chars per second
-      size: audioData.length,
-      voice: voice,
-      quality: quality,
-      language: language,
-      metadata: {
-        model: model,
-        generated_at: new Date().toISOString(),
-        text_length: text.length
-      }
-    };
-
-    console.log(`[TTS] Success response generated`);
-
-    return new Response(
-      JSON.stringify(successResponse),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    return new Response(JSON.stringify({ audio_url: publicUrl }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
 
   } catch (error) {
-    console.error('[TTS] Error:', error);
-    const errorResponse = { 
-      success: false,
-      error: error.message || 'Audio generation failed',
-      details: error.toString(),
-      timestamp: new Date().toISOString()
-    };
-    
-    console.log(`[TTS] Error response:`, errorResponse);
-    
+    console.error('Error in text-to-speech function:', error)
     return new Response(
-      JSON.stringify(errorResponse),
-      {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    );
+    )
   }
-});
+})
