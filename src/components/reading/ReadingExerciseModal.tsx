@@ -36,6 +36,12 @@ interface EnhancedGenerationProgress {
   };
 }
 
+// List of supported languages for exercises (expand as needed)
+const SUPPORTED_LANGUAGES = [
+  'English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese',
+  'Dutch', 'Turkish', 'Swedish', 'Norwegian'
+];
+
 export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   isOpen,
   onClose,
@@ -145,6 +151,15 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!isLanguageSupported) {
+      toast({
+        title: "Language Not Supported",
+        description: `The selected language (${language}) is not supported for reading exercise creation.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (
       !title.trim() ||
       (contentSource === 'ai' && !topic.trim()) ||
@@ -153,6 +168,15 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!language || !language.trim()) {
+      toast({
+        title: "Language Required",
+        description: "Please select a language before creating an exercise.",
         variant: "destructive"
       });
       return;
@@ -303,7 +327,14 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
         <DialogHeader>
           <DialogTitle>Create Enhanced Reading Exercise</DialogTitle>
         </DialogHeader>
-        
+        {!isLanguageSupported && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-5 w-5" />
+            <AlertDescription>
+              <strong>Sorry!</strong> The selected language <span className="font-semibold">{language}</span> is not currently supported for creating new reading exercises.
+            </AlertDescription>
+          </Alert>
+        )}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="title">Exercise Title</Label>
@@ -313,6 +344,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter exercise title..."
               required
+              disabled={!isLanguageSupported}
             />
           </div>
 
@@ -391,6 +423,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
               value={customText}
               onChange={setCustomText}
               maxLength={4000}
+              disabled={!isLanguageSupported}
             />
           )}
 
@@ -405,7 +438,7 @@ export const ReadingExerciseModal: React.FC<ReadingExerciseModalProps> = ({
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isCreating}>
+            <Button type="submit" disabled={isCreating || !isLanguageSupported}>
               {isCreating ? 'Creating...' : 'Create Enhanced Exercise'}
             </Button>
           </div>

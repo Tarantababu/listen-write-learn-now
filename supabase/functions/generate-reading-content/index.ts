@@ -1,6 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from '../_shared/cors.ts'
 
+// List of supported languages (keep in sync with client)
+const SUPPORTED_LANGUAGES = [
+  'english', 'spanish', 'french', 'german', 'italian',
+  'portuguese', 'dutch', 'turkish', 'swedish', 'norwegian'
+];
+
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
 const FUNCTION_TIMEOUT = 50000; // Increased timeout for better reliability
 const OPENAI_TIMEOUT = 35000; // Enhanced OpenAI timeout
@@ -19,19 +25,36 @@ serve(async (req) => {
   }, FUNCTION_TIMEOUT);
 
   try {
-    const { 
-      topic, 
-      language, 
-      difficulty_level, 
-      target_length, 
+    const reqBody = await req.json();
+
+    const {
+      topic,
+      language,
+      difficulty_level,
+      target_length,
       grammar_focus,
       customText,
       isCustomText = false,
       directGeneration = false
-    } = await req.json()
+    } = reqBody;
 
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured')
+    // Enhanced language enforcement - must be set, valid, and supported
+    if (
+      !language ||
+      typeof language !== 'string' ||
+      !SUPPORTED_LANGUAGES.includes(language.trim().toLowerCase())
+    ) {
+      clearTimeout(functionTimeout);
+      const logMsg = `[LANGUAGE ENFORCEMENT ERROR] Invalid or missing language: ${language}`;
+      console.error(logMsg, { received: language, requestId: Date.now() });
+      return new Response(
+        JSON.stringify({
+          error: 'Reading exercises can only be created in a supported language. Provided: ' + (language || 'not set'),
+          supportedLanguages: SUPPORTED_LANGUAGES,
+          status: 422
+        }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log(`[ENHANCED GENERATION] Target: ${target_length} words, Strategy: ${directGeneration ? 'direct' : 'intelligent'}`);
@@ -39,25 +62,24 @@ serve(async (req) => {
     let content;
 
     if (isCustomText && customText) {
-      content = await processCustomTextPreserved(customText, language, difficulty_level, grammar_focus, timeoutController.signal);
+      content = await processCustomTextPreserved(customText, language.trim(), difficulty_level, grammar_focus, timeoutController.signal);
     } else {
-      // Enhanced strategy selection with smarter thresholds
       const strategy = determineOptimalStrategy(target_length, difficulty_level);
-      
+
       if (strategy === 'direct') {
         content = await generateContentDirect(
-          topic, language, difficulty_level, target_length, grammar_focus, 
+          topic, language.trim(), difficulty_level, target_length, grammar_focus,
           timeoutController.signal
         );
       } else if (strategy === 'smart_chunking') {
         content = await generateContentWithSmartChunking(
-          topic, language, difficulty_level, target_length, grammar_focus, 
+          topic, language.trim(), difficulty_level, target_length, grammar_focus,
           timeoutController.signal
         );
       } else {
-        // Advanced adaptive chunking for very large content
+        // Adaptive chunking for very large content
         content = await generateContentWithAdaptiveChunking(
-          topic, language, difficulty_level, target_length, grammar_focus, 
+          topic, language.trim(), difficulty_level, target_length, grammar_focus,
           timeoutController.signal
         );
       }
@@ -66,7 +88,7 @@ serve(async (req) => {
     clearTimeout(functionTimeout);
     
     const duration = Date.now() - startTime;
-    console.log(`[ENHANCED SUCCESS] Completed in ${duration}ms, Generated ${content.analysis?.wordCount || 0} words with strategy: ${content.analysis?.generationStrategy || 'unknown'}`);
+    console.log(`[ENHANCED SUCCESS] Completed in ${duration}ms, Language: ${language}, Strategy: ${content.analysis?.generationStrategy || 'unknown'}`);
 
     return new Response(JSON.stringify(content), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -78,10 +100,10 @@ serve(async (req) => {
     
     console.error(`[ENHANCED ERROR] After ${duration}ms:`, error);
     
-    // Enhanced error handling with smart recovery
-    if (error.name === 'AbortError' || error.message.includes('timeout')) {
+    // Enhanced error handling with language check
+    if (error.name === 'AbortError' || (typeof error.message === 'string' && error.message.includes('timeout'))) {
       console.warn('[SMART RECOVERY] Using intelligent fallback due to timeout');
-      const fallbackContent = generateIntelligentFallback(target_length || 700, language, topic, difficulty_level);
+      const fallbackContent = generateIntelligentFallback(target_length || 700, language ? language.trim() : 'english', topic, difficulty_level);
       
       return new Response(JSON.stringify(fallbackContent), {
         status: 200,
@@ -89,10 +111,11 @@ serve(async (req) => {
       });
     }
     
-    // Enhanced error response with recovery suggestions
+    // Enhanced error response with language info
     const errorResponse = {
       error: error.message,
-      recoveryData: generateRecoveryData(target_length || 700, language, topic, difficulty_level),
+      language: language,
+      recoveryData: generateRecoveryData(target_length || 700, language ? language.trim() : 'english', topic, difficulty_level),
       fallbackAvailable: true
     };
     
