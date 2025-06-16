@@ -45,19 +45,18 @@ interface BidirectionalTranslation {
 
 const MAX_RETRIES = 3
 const RETRY_DELAY = 1000 // 1 second
+const OPENAI_TIMEOUT = 30000 // 30 seconds timeout
+const CHUNK_SIZE_THRESHOLD = 400 // Characters threshold for chunking
+const MAX_CHUNK_SIZE = 300 // Maximum characters per chunk for translation
 
-// Updated token limits for complete word breakdowns
-const getTokenLimitsForCompleteBreakdown = (textLength: number) => {
-  if (textLength < 100) {
-    return { maxTokens: 2000, chunkSize: 50 }
-  } else if (textLength < 300) {
-    return { maxTokens: 3000, chunkSize: 100 }
-  } else if (textLength < 600) {
-    return { maxTokens: 3500, chunkSize: 150 }
-  } else if (textLength < 1000) {
-    return { maxTokens: 4000, chunkSize: 200 }
+// Enhanced token limits for translation with better chunking
+const getTranslationTokenLimits = (textLength: number) => {
+  if (textLength < 200) {
+    return { maxTokens: 1500, shouldChunk: false }
+  } else if (textLength < 400) {
+    return { maxTokens: 2000, shouldChunk: false }
   } else {
-    return { maxTokens: 4000, chunkSize: 250 }
+    return { maxTokens: 1200, shouldChunk: true } // Use chunking for longer texts
   }
 }
 
@@ -88,7 +87,7 @@ serve(async (req) => {
       throw new Error('OpenAI API key is not configured')
     }
 
-    // Handle bidirectional translation request
+    // Handle bidirectional translation request with enhanced error handling
     if (type === 'bidirectional_translation') {
       const translation = await generateBidirectionalTranslationWithRetry(text, language, supportLanguage || 'english', openAIApiKey)
       return new Response(
@@ -155,7 +154,7 @@ async function generateBidirectionalTranslationWithRetry(
       console.error(`[BIDIRECTIONAL TRANSLATION] Attempt ${attempt} failed:`, error)
       
       if (attempt < MAX_RETRIES) {
-        console.log(`[BIDIRECTIONAL TRANSLATION] Retrying in ${RETRY_DELAY}ms...`)
+        console.log(`[BIDIRECTIONAL TRANSLATION] Retrying in ${RETRY_DELAY * attempt}ms...`)
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt))
       }
     }
@@ -173,57 +172,39 @@ async function generateBidirectionalTranslation(
   useFallbackMode: boolean = false
 ): Promise<BidirectionalTranslation> {
   const textLength = text.length
-  const { maxTokens, chunkSize } = getTokenLimitsForCompleteBreakdown(textLength)
+  const { maxTokens, shouldChunk } = getTranslationTokenLimits(textLength)
   
-  console.log(`[BIDIRECTIONAL TRANSLATION] Text length: ${textLength}, Max tokens: ${maxTokens}, Chunk size: ${chunkSize}, Fallback mode: ${useFallbackMode}`)
+  console.log(`[BIDIRECTIONAL TRANSLATION] Text length: ${textLength}, Max tokens: ${maxTokens}, Should chunk: ${shouldChunk}, Fallback mode: ${useFallbackMode}`)
 
-  // For longer texts, use chunking approach
-  if (textLength > chunkSize) {
-    return await generateChunkedTranslation(text, sourceLanguage, targetLanguage, apiKey, chunkSize, maxTokens)
+  // Use chunking for longer texts to prevent timeouts
+  if (shouldChunk || textLength > CHUNK_SIZE_THRESHOLD) {
+    return await generateChunkedTranslation(text, sourceLanguage, targetLanguage, apiKey)
   }
 
-  // For shorter texts, process normally with complete word breakdown
-  const prompt = `
-Translate this ${sourceLanguage} text to ${targetLanguage} with COMPLETE word-by-word breakdown.
-
-TEXT: "${text}"
-
-Provide ONLY a valid JSON object with these exact fields:
-
-{
-  "normalTranslation": "Natural fluent translation in ${targetLanguage}",
-  "literalTranslation": "Word-order preserving translation showing original structure",
-  "wordTranslations": [
-    {"original": "word1", "translation": "meaning1"},
-    {"original": "word2", "translation": "meaning2"}
-    // INCLUDE EVERY SINGLE WORD/TOKEN from the original text
-  ]
-}
-
-CRITICAL REQUIREMENTS:
-- normalTranslation: Natural, native-sounding ${targetLanguage}
-- literalTranslation: Keep original word order to show sentence structure
-- wordTranslations: Include EVERY word, punctuation mark, and meaningful token from the original text
-- For articles, prepositions, conjunctions: still include them with their ${targetLanguage} equivalents
-- For compound words: break them down or keep as single units based on what's most helpful
-- Return ONLY valid JSON - no explanations, no markdown, no extra text
-- Ensure JSON is complete and properly closed with all brackets
-
-JSON response:`
+  // For shorter texts, process normally with enhanced error handling
+  const prompt = useFallbackMode ? 
+    buildFallbackTranslationPrompt(text, sourceLanguage, targetLanguage) :
+    buildStandardTranslationPrompt(text, sourceLanguage, targetLanguage)
 
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), OPENAI_TIMEOUT)
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
           { 
             role: 'system', 
-            content: `You are a professional translator who provides complete word-by-word breakdowns. You must translate EVERY word in the text. ${useFallbackMode ? 'Keep responses concise due to processing constraints.' : 'Focus on completeness and accuracy.'}` 
+            content: useFallbackMode ? 
+              'You are a translator focused on providing essential translations quickly and accurately. Keep responses concise.' :
+              'You are a professional translator who provides complete word-by-word breakdowns. Focus on accuracy and completeness.'
           },
           { role: 'user', content: prompt }
         ],
@@ -231,9 +212,11 @@ JSON response:`
         max_tokens: maxTokens
       })
     })
+
+    clearTimeout(timeoutId)
     
     if (!response.ok) {
-      const errorData = await response.json()
+      const errorData = await response.json().catch(() => ({}))
       console.error('OpenAI API error:', errorData)
       throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText}`)
     }
@@ -242,11 +225,9 @@ JSON response:`
     const content = data.choices[0].message.content.trim()
     
     console.log(`[BIDIRECTIONAL TRANSLATION] Raw response length: ${content.length}`)
-    console.log(`[BIDIRECTIONAL TRANSLATION] Response preview: ${content.substring(0, 200)}...`)
     
-    // Enhanced JSON parsing with multiple cleanup strategies
+    // Enhanced JSON parsing with better error handling
     const cleanedContent = enhancedJsonCleanup(content)
-    console.log(`[BIDIRECTIONAL TRANSLATION] Cleaned content length: ${cleanedContent.length}`)
     
     try {
       const parsed = JSON.parse(cleanedContent)
@@ -270,7 +251,6 @@ JSON response:`
       }
     } catch (parseError) {
       console.error('JSON parse error:', parseError)
-      console.log('Problematic content:', cleanedContent.substring(0, 500) + '...')
       
       // Try to extract partial data if possible
       const partialData = extractPartialTranslation(content, sourceLanguage, targetLanguage)
@@ -282,46 +262,75 @@ JSON response:`
       throw new Error(`Failed to parse JSON response: ${parseError.message}`)
     }
   } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('Translation request timed out - please try with shorter text or try again')
+    }
     console.error('Error in generateBidirectionalTranslation:', error)
     throw error
   }
+}
+
+function buildStandardTranslationPrompt(text: string, sourceLanguage: string, targetLanguage: string): string {
+  return `
+Translate this ${sourceLanguage} text to ${targetLanguage} with word-by-word breakdown.
+
+TEXT: "${text}"
+
+Provide ONLY a valid JSON object with these exact fields:
+
+{
+  "normalTranslation": "Natural fluent translation in ${targetLanguage}",
+  "literalTranslation": "Word-order preserving translation showing original structure",
+  "wordTranslations": [
+    {"original": "word1", "translation": "meaning1"},
+    {"original": "word2", "translation": "meaning2"}
+  ]
+}
+
+REQUIREMENTS:
+- normalTranslation: Natural, native-sounding ${targetLanguage}
+- literalTranslation: Keep original word order to show sentence structure
+- wordTranslations: Include important words with their ${targetLanguage} equivalents
+- Return ONLY valid JSON - no explanations, no markdown, no extra text
+
+JSON response:`
+}
+
+function buildFallbackTranslationPrompt(text: string, sourceLanguage: string, targetLanguage: string): string {
+  return `
+Translate this ${sourceLanguage} text to ${targetLanguage}. Keep it simple and fast.
+
+TEXT: "${text}"
+
+Return only this JSON format:
+
+{
+  "normalTranslation": "Natural translation in ${targetLanguage}",
+  "literalTranslation": "Direct translation preserving word order",
+  "wordTranslations": []
+}
+
+Focus on accuracy. Return only valid JSON.`
 }
 
 async function generateChunkedTranslation(
   text: string,
   sourceLanguage: string,
   targetLanguage: string,
-  apiKey: string,
-  chunkSize: number,
-  maxTokens: number
+  apiKey: string
 ): Promise<BidirectionalTranslation> {
-  console.log(`[CHUNKED TRANSLATION] Processing text in chunks of ${chunkSize} characters`)
+  console.log(`[CHUNKED TRANSLATION] Processing text in chunks, length: ${text.length}`)
   
-  // Split text into word-boundary chunks
-  const words = text.split(/\s+/)
-  const chunks: string[] = []
-  let currentChunk = ''
-  
-  for (const word of words) {
-    if ((currentChunk + ' ' + word).length > chunkSize && currentChunk.length > 0) {
-      chunks.push(currentChunk.trim())
-      currentChunk = word
-    } else {
-      currentChunk += (currentChunk ? ' ' : '') + word
-    }
-  }
-  
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim())
-  }
-  
+  // Split text into smaller chunks based on sentences or word boundaries
+  const chunks = splitTextIntoChunks(text, MAX_CHUNK_SIZE)
   console.log(`[CHUNKED TRANSLATION] Split into ${chunks.length} chunks`)
   
-  // Process each chunk
+  // Process each chunk with delay to avoid rate limiting
   const chunkResults: BidirectionalTranslation[] = []
   
   for (let i = 0; i < chunks.length; i++) {
-    console.log(`[CHUNKED TRANSLATION] Processing chunk ${i + 1}/${chunks.length}`)
+    console.log(`[CHUNKED TRANSLATION] Processing chunk ${i + 1}/${chunks.length}, length: ${chunks[i].length}`)
+    
     try {
       const chunkResult = await generateBidirectionalTranslation(
         chunks[i],
@@ -331,16 +340,18 @@ async function generateChunkedTranslation(
         true // Use fallback mode for chunks
       )
       chunkResults.push(chunkResult)
+      
+      // Add delay between chunks to avoid rate limiting
+      if (i < chunks.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
     } catch (error) {
       console.error(`[CHUNKED TRANSLATION] Chunk ${i + 1} failed:`, error)
-      // Create a fallback for this chunk
+      // Create a minimal fallback for this chunk
       chunkResults.push({
-        normalTranslation: `[Chunk ${i + 1}: Translation failed]`,
-        literalTranslation: `[Chunk ${i + 1}: Literal translation failed]`,
-        wordTranslations: chunks[i].split(/\s+/).map(word => ({
-          original: word,
-          translation: `[translation unavailable]`
-        }))
+        normalTranslation: `[Chunk ${i + 1}: Translation unavailable]`,
+        literalTranslation: `[Chunk ${i + 1}: Literal translation unavailable]`,
+        wordTranslations: []
       })
     }
   }
@@ -355,6 +366,53 @@ async function generateChunkedTranslation(
   console.log(`[CHUNKED TRANSLATION] Combined result: ${combinedTranslation.wordTranslations.length} total word translations`)
   
   return combinedTranslation
+}
+
+function splitTextIntoChunks(text: string, maxChunkSize: number): string[] {
+  const chunks: string[] = []
+  
+  // First try to split by sentences
+  const sentences = text.split(/(?<=[.!?])\s+/)
+  let currentChunk = ''
+  
+  for (const sentence of sentences) {
+    if ((currentChunk + ' ' + sentence).length <= maxChunkSize) {
+      currentChunk += (currentChunk ? ' ' : '') + sentence
+    } else {
+      if (currentChunk) {
+        chunks.push(currentChunk.trim())
+      }
+      
+      // If single sentence is too long, split by words
+      if (sentence.length > maxChunkSize) {
+        const words = sentence.split(/\s+/)
+        let wordChunk = ''
+        
+        for (const word of words) {
+          if ((wordChunk + ' ' + word).length <= maxChunkSize) {
+            wordChunk += (wordChunk ? ' ' : '') + word
+          } else {
+            if (wordChunk) {
+              chunks.push(wordChunk.trim())
+            }
+            wordChunk = word
+          }
+        }
+        if (wordChunk) {
+          chunks.push(wordChunk.trim())
+        }
+        currentChunk = ''
+      } else {
+        currentChunk = sentence
+      }
+    }
+  }
+  
+  if (currentChunk) {
+    chunks.push(currentChunk.trim())
+  }
+  
+  return chunks.filter(chunk => chunk.length > 0)
 }
 
 function enhancedJsonCleanup(content: string): string {
@@ -530,17 +588,10 @@ function createFallbackTranslation(
 ): BidirectionalTranslation {
   console.log(`[FALLBACK TRANSLATION] Creating fallback for ${sourceLanguage} to ${targetLanguage}`)
   
-  // Create basic word-by-word fallback
-  const words = text.split(/\s+/).filter(word => word.trim().length > 0)
-  const fallbackWordTranslations: WordTranslation[] = words.map(word => ({
-    original: word,
-    translation: `[${word.toLowerCase()} - translation unavailable]`
-  }))
-  
   return {
-    normalTranslation: `Translation service temporarily unavailable for this ${sourceLanguage} text. The content appears to discuss various topics and may require manual translation for best results.`,
-    literalTranslation: `Word-by-word translation unavailable for this ${sourceLanguage} text segment.`,
-    wordTranslations: fallbackWordTranslations
+    normalTranslation: `Translation service is temporarily unavailable for this ${sourceLanguage} text. Please try again in a moment, or consider breaking the text into smaller segments.`,
+    literalTranslation: `Word-by-word translation unavailable due to service limitations.`,
+    wordTranslations: []
   }
 }
 
