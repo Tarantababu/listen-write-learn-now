@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -29,20 +28,23 @@ const TutorialPage: React.FC = () => {
               </h2>
               <div className="pl-8">
                 <p className="text-muted-foreground">
-                  Start by selecting a text that matches your current level:
+                  Start by selecting or generating a text suitable for your current level:
                 </p>
                 <ul className="list-disc list-outside pl-5 mt-2 space-y-1 text-muted-foreground">
                   <li><strong>Use our ready-made curriculum</strong> based on CEFR levels (A1, A2, B1, etc.).</li>
-                  <li><strong>Or create your own content.</strong> A simple paragraph or a few sentences is enough. 
-                    I often generate one using ChatGPT.</li>
+                  <li><strong>Or create your own content.</strong> You can:</li>
                 </ul>
+                <ul className="list-disc list-outside pl-10 mt-1 space-y-1 text-muted-foreground">
+                  <li>Paste in your own material</li>
+                  <li>Or generate content directly using AI within the app</li>
+                </ul>
+                <p className="text-muted-foreground mt-2">
+                  This text becomes the foundation for your study session.
+                </p>
                 <div className="mt-3 p-3 bg-muted rounded-md">
                   <p className="font-medium">Example (Level A1 – Topic: Introductions):</p>
                   <blockquote className="mt-2 border-l-2 pl-3 italic">
-                    Hola, me llamo Ana.<br />
-                    Soy de México y tengo treinta años.<br />
-                    Vivo en Madrid con mi familia.<br />
-                    Me gusta leer libros y escuchar música.
+                    Hola, me llamo Ana. Soy de México y tengo treinta años. Vivo en Madrid con mi familia. Me gusta leer libros y escuchar música.
                   </blockquote>
                 </div>
                 <div className="mt-3">
@@ -62,16 +64,38 @@ const TutorialPage: React.FC = () => {
             <div className="space-y-3">
               <h2 className="text-lg font-semibold flex items-center">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">2</span>
-                Do a Dictation Exercise
+                Listen and Read
               </h2>
               <div className="pl-8">
+                <p className="text-muted-foreground mb-2">
+                  Once you've selected or generated a text, go to the <strong>Exercises &gt; Reading</strong> tab.
+                </p>
                 <ul className="list-disc list-outside pl-5 space-y-1 text-muted-foreground">
-                  <li>Listen to the audio.</li>
-                  <li>Type what you hear, as accurately as possible.</li>
-                  <li>Repeat the exercise until you get <strong>at least 95% accuracy three times.</strong></li>
+                  <li>Listen to the audio version of the text several times.</li>
+                  <li>Focus on understanding both the meaning and pronunciation.</li>
+                  <li>You can replay the audio as often as needed—repetition builds recognition and fluency.</li>
                 </ul>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  The app tracks your attempts automatically—this method is based on 100+ hours of real learner experience.
+              </div>
+            </div>
+            
+            <Separator />
+            
+            {/* Step 3 */}
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold flex items-center">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">3</span>
+                Create Dictation and Bidirectional Exercises
+              </h2>
+              <div className="pl-8">
+                <p className="text-muted-foreground mb-2">
+                  From the Reading screen, you can now <strong>select part or all of the text</strong> to generate:
+                </p>
+                <ul className="list-disc list-outside pl-5 space-y-1 text-muted-foreground">
+                  <li><strong>Dictation exercises:</strong> Listen and type what you hear</li>
+                  <li><strong>Bidirectional translation exercises:</strong> Practice translating between your native and target languages</li>
+                </ul>
+                <p className="mt-2 text-muted-foreground">
+                  These interactive tools allow you to go deeper into the text and reinforce understanding through active recall.
                 </p>
                 <div className="mt-3">
                   <Button asChild variant="outline" size="sm">
@@ -86,31 +110,20 @@ const TutorialPage: React.FC = () => {
             
             <Separator />
             
-            {/* Step 3 */}
-            <div className="space-y-3">
-              <h2 className="text-lg font-semibold flex items-center">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">3</span>
-                Review Your Mistakes
-              </h2>
-              <div className="pl-8">
-                <p className="text-muted-foreground">
-                  After each try, you'll see a detailed comparison between your answer and the original. Learn from your errors and improve with each attempt.
-                </p>
-              </div>
-            </div>
-            
-            <Separator />
-            
             {/* Step 4 */}
             <div className="space-y-3">
               <h2 className="text-lg font-semibold flex items-center">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">4</span>
-                Save New Words and Phrases
+                Save Vocabulary from the Text
               </h2>
               <div className="pl-8">
+                <p className="text-muted-foreground mb-2">
+                  While studying, click on unfamiliar words to save them into your personal <strong>Vocabulary</strong>.
+                </p>
                 <ul className="list-disc list-outside pl-5 space-y-1 text-muted-foreground">
-                  <li>Click on unfamiliar words to add them to your <strong>Vocabulary</strong>.</li>
-                  <li>Easily create flashcards for future review.</li>
+                  <li>Add definitions and notes</li>
+                  <li>Automatically create flashcards for spaced repetition</li>
+                  <li>Build your word base directly from the content you're working with</li>
                 </ul>
                 <div className="mt-3">
                   <Button asChild variant="outline" size="sm">
@@ -129,13 +142,17 @@ const TutorialPage: React.FC = () => {
             <div className="space-y-3">
               <h2 className="text-lg font-semibold flex items-center">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">5</span>
-                Listen to Your Flashcards Anytime
+                Practice Dictation for Mastery
               </h2>
               <div className="pl-8">
-                <p className="text-muted-foreground">
-                  All saved flashcards are automatically added to a <strong>personal audio playlist</strong>.
-                  Perfect for learning while walking, commuting, or relaxing—ideal for <strong>passive listening</strong>.
+                <p className="text-muted-foreground mb-2">
+                  Dictation remains a cornerstone exercise. Here's how to use it effectively:
                 </p>
+                <ul className="list-disc list-outside pl-5 space-y-1 text-muted-foreground">
+                  <li>Complete the dictation exercise until you reach <strong>at least 95% accuracy three times</strong>.</li>
+                  <li>The app automatically tracks your attempts.</li>
+                  <li>This method is based on real learner feedback and over 100+ hours of test-driven improvement.</li>
+                </ul>
               </div>
             </div>
             
@@ -145,15 +162,35 @@ const TutorialPage: React.FC = () => {
             <div className="space-y-3">
               <h2 className="text-lg font-semibold flex items-center">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">6</span>
+                Listen to Your Flashcards Anytime
+              </h2>
+              <div className="pl-8">
+                <p className="text-muted-foreground">
+                  All saved vocabulary flashcards are added to a personal audio playlist.
+                </p>
+                <ul className="list-disc list-outside pl-5 mt-2 space-y-1 text-muted-foreground">
+                  <li>Review passively while commuting, walking, or relaxing</li>
+                  <li>Consistent listening reinforces memory and pronunciation</li>
+                </ul>
+              </div>
+            </div>
+            
+            <Separator />
+            
+            {/* Step 7 */}
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold flex items-center">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary mr-2">7</span>
                 Track Your Progress
               </h2>
               <div className="pl-8">
                 <p className="text-muted-foreground">
-                  Monitor your growth toward <strong>B1</strong>, <strong>B2</strong>, or <strong>C1</strong>:
+                  Monitor your development over time:
                 </p>
                 <ul className="list-disc list-outside pl-5 mt-2 space-y-1 text-muted-foreground">
-                  <li>See your known word range.</li>
-                  <li>Click the <strong>(?) icon</strong> for insights on what vocabulary level you're currently reaching.</li>
+                  <li>See how many words you know</li>
+                  <li>Check your estimated CEFR vocabulary range</li>
+                  <li>Use the <strong>(?) icon</strong> for insights on your current level</li>
                 </ul>
                 <div className="mt-3">
                   <Button asChild variant="outline" size="sm">
@@ -169,8 +206,9 @@ const TutorialPage: React.FC = () => {
             <Separator />
             
             <div className="text-center p-3 bg-primary/5 rounded-lg">
-              <p className="font-medium">This method works because it's <strong>simple, consistent, and proven</strong>.</p>
-              <p>Start now and build your fluency step by step.</p>
+              <p className="font-medium">This method works because it's <strong>simple</strong>, <strong>consistent</strong>, and <strong>proven</strong>.</p>
+              <p>Whether you use AI-generated content or your own material, lwlnow gives you flexible tools to learn actively and deeply.</p>
+              <p className="mt-2 font-medium">Start now and build your fluency step by step.</p>
               <div className="mt-4">
                 <Button asChild>
                   <Link to="/dashboard">
