@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Languages, ArrowRight, AlertTriangle, Clock, Zap, Settings } from 'lucide-react';
+import { Loader2, Languages, ArrowRight, AlertTriangle, Clock, Zap, Settings, Info } from 'lucide-react';
 import { LanguageSelectWithFlag } from '@/components/bidirectional/LanguageSelectWithFlag';
 import { simpleTranslationService } from '@/services/simpleTranslationService';
 import { toast } from 'sonner';
@@ -43,6 +43,7 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
   const [retryCount, setRetryCount] = useState(0);
   const [chunkSize, setChunkSize] = useState('auto');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showPerformanceDetails, setShowPerformanceDetails] = useState(false);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const languageOptions = [
@@ -59,10 +60,10 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
   ];
 
   const chunkSizeOptions = [
-    { value: 'auto', label: 'Auto (Recommended)', description: 'Automatically optimized' },
-    { value: 'small', label: 'Small (~2k chars)', description: 'Fastest processing' },
-    { value: 'medium', label: 'Medium (~3k chars)', description: 'Balanced performance' },
-    { value: 'large', label: 'Large (~4k chars)', description: 'Maximum quality' }
+    { value: 'auto', label: 'Auto (Recommended)', description: 'Automatically optimized', speed: 'Balanced', quality: 'High' },
+    { value: 'small', label: 'Small (~2k chars)', description: 'Fastest processing', speed: 'Fastest', quality: 'Good' },
+    { value: 'medium', label: 'Medium (~3k chars)', description: 'Balanced performance', speed: 'Fast', quality: 'High' },
+    { value: 'large', label: 'Large (~4k chars)', description: 'Maximum quality', speed: 'Slower', quality: 'Highest' }
   ];
 
   useEffect(() => {
@@ -184,7 +185,7 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
       // Enhanced error handling for different scenarios
       if (errorMessage.includes('timeout') || errorMessage.includes('504')) {
         userFriendlyMessage = isVeryLongText 
-          ? 'Translation timed out due to text complexity. Try breaking the text into smaller sections.'
+          ? 'Translation timed out due to text complexity. Try breaking the text into smaller sections or use smaller chunk size.'
           : 'Translation request timed out. This may be due to high server load.';
       } else if (errorMessage.includes('503') || errorMessage.includes('Service Unavailable')) {
         userFriendlyMessage = 'Translation service is temporarily unavailable. Please try again in a moment.';
@@ -255,12 +256,24 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
   const showRetryButton = error && retryCount < 3;
   const selectedChunkInfo = chunkSizeOptions.find(opt => opt.value === chunkSize);
   
-  // Estimate time based on chunk size and text length
-  const getEstimatedTime = () => {
+  // Enhanced performance estimation
+  const getPerformanceEstimate = () => {
     const baseTime = text.length > 800 ? 60 : text.length > 400 ? 30 : 15;
     const multiplier = chunkSize === 'small' ? 0.6 : chunkSize === 'large' ? 1.3 : 1;
-    return Math.round(baseTime * multiplier);
+    const estimatedTime = Math.round(baseTime * multiplier);
+    const estimatedChunks = chunkSize === 'small' ? Math.ceil(text.length / 2000) : 
+                           chunkSize === 'large' ? Math.ceil(text.length / 4000) : 
+                           Math.ceil(text.length / 3000);
+    
+    return {
+      time: estimatedTime,
+      chunks: text.length > 200 ? estimatedChunks : 1,
+      speed: selectedChunkInfo?.speed || 'Balanced',
+      quality: selectedChunkInfo?.quality || 'High'
+    };
   };
+
+  const performanceEstimate = getPerformanceEstimate();
 
   return (
     <div className="space-y-4">
@@ -274,7 +287,7 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
           {text.length > 400 && (
             <Badge variant="outline" className="text-blue-600">
               <Clock className="h-3 w-3 mr-1" />
-              ~{getEstimatedTime()}s
+              ~{performanceEstimate.time}s
             </Badge>
           )}
         </div>
@@ -295,44 +308,106 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
 
       <Separator />
 
-      {/* Advanced Settings */}
+      {/* Enhanced Advanced Settings */}
       {showAdvanced && (
-        <Card className="p-3 bg-gray-50">
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium text-gray-700">Performance Settings</h4>
-            <div className="space-y-2">
+        <Card className="p-4 bg-gray-50 border-2 border-blue-100">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium text-gray-700">Performance Settings</h4>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPerformanceDetails(!showPerformanceDetails)}
+                className="text-xs text-blue-600"
+              >
+                <Info className="h-3 w-3 mr-1" />
+                Details
+              </Button>
+            </div>
+            
+            <div className="space-y-3">
               <label className="text-xs text-gray-600">Chunk Size (affects speed vs quality)</label>
               <Select value={chunkSize} onValueChange={setChunkSize}>
-                <SelectTrigger className="h-8">
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Select chunk size" />
                 </SelectTrigger>
                 <SelectContent>
                   {chunkSizeOptions.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       <div className="flex flex-col">
-                        <span className="text-sm">{option.label}</span>
-                        <span className="text-xs text-gray-500">{option.description}</span>
+                        <span className="text-sm font-medium">{option.label}</span>
+                        <div className="flex gap-2 text-xs text-gray-500">
+                          <span>Speed: {option.speed}</span>
+                          <span>•</span>
+                          <span>Quality: {option.quality}</span>
+                        </div>
                       </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {selectedChunkInfo && (
-                <p className="text-xs text-gray-500">{selectedChunkInfo.description}</p>
+              
+              {/* Enhanced Performance Preview */}
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-gray-600">Estimated Time:</span>
+                    <div className="font-medium text-blue-700">{performanceEstimate.time} seconds</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Processing Mode:</span>
+                    <div className="font-medium text-blue-700">{selectedChunkInfo?.label.split(' ')[0] || 'Auto'}</div>
+                  </div>
+                  {performanceEstimate.chunks > 1 && (
+                    <>
+                      <div>
+                        <span className="text-gray-600">Text Segments:</span>
+                        <div className="font-medium text-blue-700">{performanceEstimate.chunks} chunks</div>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Quality Level:</span>
+                        <div className="font-medium text-blue-700">{performanceEstimate.quality}</div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Detailed Performance Information */}
+              {showPerformanceDetails && (
+                <Alert className="border-blue-200 bg-blue-50">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <AlertDescription>
+                    <div className="text-blue-800 text-xs space-y-2">
+                      <p><strong>How chunking works:</strong></p>
+                      <ul className="list-disc list-inside space-y-1 ml-2">
+                        <li><strong>Small chunks:</strong> Fastest processing, good for urgent translations</li>
+                        <li><strong>Medium chunks:</strong> Balanced approach, recommended for most texts</li>
+                        <li><strong>Large chunks:</strong> Best quality, ideal for important documents</li>
+                        <li><strong>Auto mode:</strong> Intelligently selects optimal size based on text length</li>
+                      </ul>
+                    </div>
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
           </div>
         </Card>
       )}
 
-      {/* Text complexity info for long texts */}
+      {/* Enhanced complexity info for long texts */}
       {text.length > 600 && (
         <Alert className="border-blue-200 bg-blue-50">
           <Zap className="h-4 w-4 text-blue-600" />
           <AlertDescription>
             <p className="text-blue-800 text-sm">
               <strong>Processing long text:</strong> Using {selectedChunkInfo?.label} chunks for optimal performance. 
-              Estimated time: ~{getEstimatedTime()} seconds.
+              Estimated {performanceEstimate.chunks} segments, ~{performanceEstimate.time} seconds total.
+              {performanceEstimate.chunks > 3 && (
+                <span className="block mt-1 text-xs">
+                  💡 Tip: Consider using smaller chunks if you need faster results.
+                </span>
+              )}
             </p>
           </AlertDescription>
         </Alert>
@@ -373,25 +448,43 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
         </Button>
         
         {isLoading && (
-          <div className="space-y-2 pt-2">
+          <div className="space-y-3 pt-2">
             <Progress 
               value={progress} 
               className="w-full"
               indicatorClassName={progress === 100 ? 'bg-green-500' : ''}
             />
-            <p className="text-sm text-muted-foreground text-center">{progressStep}</p>
+            <div className="flex justify-between items-center text-sm">
+              <p className="text-muted-foreground">{progressStep}</p>
+              <div className="text-xs text-gray-500">
+                {selectedChunkInfo?.speed} mode • {performanceEstimate.chunks > 1 ? `${performanceEstimate.chunks} segments` : '1 segment'}
+              </div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Error Display */}
+      {/* Enhanced Error Display */}
       {error && (
         <Alert className="border-red-200 bg-red-50">
           <AlertTriangle className="h-4 w-4 text-red-600" />
           <AlertDescription>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-red-800 font-medium">Translation Error</p>
               <p className="text-red-700 text-sm">{error}</p>
+              
+              {/* Smart suggestions based on error type and text characteristics */}
+              {error.includes('timeout') && text.length > 1000 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <p className="text-yellow-800 text-sm font-medium">💡 Optimization Suggestions:</p>
+                  <ul className="text-yellow-700 text-xs mt-1 space-y-1">
+                    <li>• Try "Small" chunk size for faster processing</li>
+                    <li>• Break text into smaller sections (under 500 characters)</li>
+                    <li>• Remove unnecessary formatting or special characters</li>
+                  </ul>
+                </div>
+              )}
+              
               {showRetryButton && (
                 <div className="flex gap-2">
                   <Button 
@@ -402,20 +495,33 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
                   >
                     Try Again ({retryCount}/3)
                   </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={() => setChunkSize('small')}
-                    className="mt-2"
-                  >
-                    Try Smaller Chunks
-                  </Button>
+                  {chunkSize !== 'small' && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => {
+                        setChunkSize('small');
+                        setError(null);
+                      }}
+                      className="mt-2"
+                    >
+                      <Zap className="h-3 w-3 mr-1" />
+                      Use Small Chunks
+                    </Button>
+                  )}
                 </div>
               )}
               {retryCount >= 3 && (
-                <p className="text-red-600 text-xs mt-1">
-                  Maximum retry attempts reached. Try using smaller chunk size or shorter text.
-                </p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <p className="text-gray-700 text-xs">
+                    <strong>Maximum attempts reached.</strong> Try one of these solutions:
+                  </p>
+                  <ul className="text-gray-600 text-xs mt-1 space-y-1">
+                    <li>• Use smaller chunk size or shorter text sections</li>
+                    <li>• Wait a few minutes and try again</li>
+                    <li>• Check your internet connection</li>
+                  </ul>
+                </div>
               )}
             </div>
           </AlertDescription>
@@ -458,13 +564,17 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
             )}
           </Card>
 
-          {/* Processing info for optimized translations */}
+          {/* Enhanced Processing Success Info */}
           {text.length > 600 && (
             <Alert className="border-green-200 bg-green-50">
               <AlertDescription>
-                <p className="text-green-800 text-sm">
-                  ✓ Processed successfully using {selectedChunkInfo?.label} chunks for optimal translation quality and performance.
-                </p>
+                <div className="text-green-800 text-sm space-y-1">
+                  <p className="font-medium">✓ Translation completed successfully!</p>
+                  <div className="text-xs text-green-700">
+                    Processed using {selectedChunkInfo?.label} ({performanceEstimate.chunks} segments) 
+                    in ~{performanceEstimate.time} seconds with {performanceEstimate.quality.toLowerCase()} quality optimization.
+                  </div>
+                </div>
               </AlertDescription>
             </Alert>
           )}
