@@ -5,11 +5,12 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Languages, ArrowRight, AlertTriangle, Clock, Zap } from 'lucide-react';
+import { Loader2, Languages, ArrowRight, AlertTriangle, Clock, Zap, Settings } from 'lucide-react';
 import { LanguageSelectWithFlag } from '@/components/bidirectional/LanguageSelectWithFlag';
 import { simpleTranslationService } from '@/services/simpleTranslationService';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface SimpleTranslationAnalysisProps {
   text: string;
@@ -40,6 +41,8 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
   const [progress, setProgress] = useState(0);
   const [progressStep, setProgressStep] = useState('');
   const [retryCount, setRetryCount] = useState(0);
+  const [chunkSize, setChunkSize] = useState('auto');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const languageOptions = [
@@ -53,6 +56,13 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
     { value: 'turkish', label: 'Turkish' },
     { value: 'swedish', label: 'Swedish' },
     { value: 'norwegian', label: 'Norwegian' }
+  ];
+
+  const chunkSizeOptions = [
+    { value: 'auto', label: 'Auto (Recommended)', description: 'Automatically optimized' },
+    { value: 'small', label: 'Small (~2k chars)', description: 'Fastest processing' },
+    { value: 'medium', label: 'Medium (~3k chars)', description: 'Balanced performance' },
+    { value: 'large', label: 'Large (~4k chars)', description: 'Maximum quality' }
   ];
 
   useEffect(() => {
@@ -78,25 +88,26 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
       clearInterval(progressIntervalRef.current);
     }
     
-    // Enhanced progress steps based on text complexity
+    // Enhanced progress steps based on text complexity and chunk size
     const textLength = text.length;
     const isLongText = textLength > 400;
     const isVeryLongText = textLength > 800;
+    const isSmallChunk = chunkSize === 'small';
     
     const steps = isVeryLongText ? [
-      { percent: 0, message: 'Analyzing text structure and preparing chunks...' },
+      { percent: 0, message: `Analyzing text structure (${chunkSize} chunks)...` },
       { percent: 15, message: 'Processing first text segment...' },
       { percent: 35, message: 'Translating additional segments...' },
       { percent: 55, message: 'Generating word-by-word breakdown...' },
       { percent: 75, message: 'Combining translation segments...' },
       { percent: 90, message: 'Finalizing comprehensive analysis...' },
     ] : isLongText ? [
-      { percent: 0, message: 'Analyzing text structure...' },
+      { percent: 0, message: `Analyzing text structure (${chunkSize})...` },
       { percent: 25, message: 'Generating natural translation...' },
       { percent: 50, message: 'Creating literal breakdown...' },
       { percent: 75, message: 'Finalizing word analysis...' },
     ] : [
-      { percent: 0, message: 'Analyzing text structure...' },
+      { percent: 0, message: `Analyzing text structure (${chunkSize})...` },
       { percent: 30, message: 'Generating translation...' },
       { percent: 70, message: 'Creating word breakdown...' },
     ];
@@ -104,10 +115,14 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
     let currentStepIndex = 0;
     setProgressStep(steps[0].message);
 
+    // Adjusted timing based on chunk size
+    const intervalTime = isSmallChunk ? 120 : isVeryLongText ? 200 : 150;
+    const progressIncrement = isSmallChunk ? 2 : isVeryLongText ? 0.5 : 1;
+
     // Start progress animation
     progressIntervalRef.current = setInterval(() => {
       setProgress(prev => {
-        const nextProgress = prev + (isVeryLongText ? 0.5 : isLongText ? 0.8 : 1.2);
+        const nextProgress = prev + progressIncrement;
         if (currentStepIndex + 1 < steps.length && nextProgress >= steps[currentStepIndex + 1].percent) {
           currentStepIndex++;
           setProgressStep(steps[currentStepIndex].message);
@@ -118,13 +133,14 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
         }
         return nextProgress;
       });
-    }, isVeryLongText ? 200 : isLongText ? 180 : 150);
+    }, intervalTime);
 
     try {
       console.log('Starting translation:', {
         textLength: text.length,
         sourceLanguage,
         targetLanguage,
+        chunkSize,
         attempt: retryCount + 1
       });
 
@@ -139,22 +155,23 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
       setProgressStep('Translation completed successfully!');
       console.log('Translation completed successfully');
       setTranslation(result);
-      setRetryCount(0); // Reset retry count on success
+      setRetryCount(0);
       
-      // Enhanced success message based on text complexity
+      // Enhanced success message based on chunk configuration
+      const chunkInfo = chunkSizeOptions.find(opt => opt.value === chunkSize);
       if (isVeryLongText) {
         toast.success('Complex text translated successfully', {
-          description: 'Long text was processed in segments for optimal results.'
+          description: `Processed with ${chunkInfo?.label} chunks for optimal results.`
         });
       } else if (isLongText) {
         toast.success('Translation completed successfully', {
-          description: 'Text processed with enhanced analysis.'
+          description: `Optimized with ${chunkInfo?.label} processing.`
         });
       } else {
         toast.success('Translation completed successfully');
       }
       
-      setTimeout(() => setIsLoading(false), 1000);
+      setTimeout(() => setIsLoading(false), 800);
 
     } catch (error) {
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
@@ -184,7 +201,7 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
       
       if (canRetry && retryCount < 2) {
         toast.error('Translation failed - retry available', {
-          description: `Attempt ${retryCount + 1}/3 failed. You can try again.`
+          description: `Attempt ${retryCount + 1}/3 failed. Try a smaller chunk size for better performance.`
         });
       } else {
         toast.error('Translation failed', {
@@ -215,7 +232,7 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
     if (charCount > 800 || wordCount > 150) return { 
       level: 'Very Complex', 
       color: 'text-red-600',
-      description: 'Long text - may take longer to process'
+      description: 'Long text - optimized chunking recommended'
     };
     if (charCount > 400 || wordCount > 75) return { 
       level: 'Complex', 
@@ -236,7 +253,14 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
 
   const complexity = getTextComplexity(text);
   const showRetryButton = error && retryCount < 3;
-  const estimatedTime = text.length > 800 ? '30-60 seconds' : text.length > 400 ? '15-30 seconds' : '5-15 seconds';
+  const selectedChunkInfo = chunkSizeOptions.find(opt => opt.value === chunkSize);
+  
+  // Estimate time based on chunk size and text length
+  const getEstimatedTime = () => {
+    const baseTime = text.length > 800 ? 60 : text.length > 400 ? 30 : 15;
+    const multiplier = chunkSize === 'small' ? 0.6 : chunkSize === 'large' ? 1.3 : 1;
+    return Math.round(baseTime * multiplier);
+  };
 
   return (
     <div className="space-y-4">
@@ -250,16 +274,56 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
           {text.length > 400 && (
             <Badge variant="outline" className="text-blue-600">
               <Clock className="h-3 w-3 mr-1" />
-              ~{estimatedTime}
+              ~{getEstimatedTime()}s
             </Badge>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          ×
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="text-gray-500"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            ×
+          </Button>
+        </div>
       </div>
 
       <Separator />
+
+      {/* Advanced Settings */}
+      {showAdvanced && (
+        <Card className="p-3 bg-gray-50">
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-gray-700">Performance Settings</h4>
+            <div className="space-y-2">
+              <label className="text-xs text-gray-600">Chunk Size (affects speed vs quality)</label>
+              <Select value={chunkSize} onValueChange={setChunkSize}>
+                <SelectTrigger className="h-8">
+                  <SelectValue placeholder="Select chunk size" />
+                </SelectTrigger>
+                <SelectContent>
+                  {chunkSizeOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex flex-col">
+                        <span className="text-sm">{option.label}</span>
+                        <span className="text-xs text-gray-500">{option.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedChunkInfo && (
+                <p className="text-xs text-gray-500">{selectedChunkInfo.description}</p>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Text complexity info for long texts */}
       {text.length > 600 && (
@@ -267,8 +331,8 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
           <Zap className="h-4 w-4 text-blue-600" />
           <AlertDescription>
             <p className="text-blue-800 text-sm">
-              <strong>Processing long text:</strong> This text will be processed in segments for optimal results. 
-              Estimated time: {estimatedTime}.
+              <strong>Processing long text:</strong> Using {selectedChunkInfo?.label} chunks for optimal performance. 
+              Estimated time: ~{getEstimatedTime()} seconds.
             </p>
           </AlertDescription>
         </Alert>
@@ -298,7 +362,7 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
           {isLoading ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Translating... ({Math.round(progress)}%)
+              Translating ({selectedChunkInfo?.label})... ({Math.round(progress)}%)
             </>
           ) : (
             <>
@@ -329,18 +393,28 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
               <p className="text-red-800 font-medium">Translation Error</p>
               <p className="text-red-700 text-sm">{error}</p>
               {showRetryButton && (
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={handleRetry}
-                  className="mt-2"
-                >
-                  Try Again ({retryCount}/3)
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={handleRetry}
+                    className="mt-2"
+                  >
+                    Try Again ({retryCount}/3)
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setChunkSize('small')}
+                    className="mt-2"
+                  >
+                    Try Smaller Chunks
+                  </Button>
+                </div>
               )}
               {retryCount >= 3 && (
                 <p className="text-red-600 text-xs mt-1">
-                  Maximum retry attempts reached. Please try with shorter text or check your connection.
+                  Maximum retry attempts reached. Try using smaller chunk size or shorter text.
                 </p>
               )}
             </div>
@@ -384,12 +458,12 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
             )}
           </Card>
 
-          {/* Processing info for long texts */}
+          {/* Processing info for optimized translations */}
           {text.length > 600 && (
             <Alert className="border-green-200 bg-green-50">
               <AlertDescription>
                 <p className="text-green-800 text-sm">
-                  ✓ Long text processed successfully using enhanced segmentation for optimal translation quality.
+                  ✓ Processed successfully using {selectedChunkInfo?.label} chunks for optimal translation quality and performance.
                 </p>
               </AlertDescription>
             </Alert>

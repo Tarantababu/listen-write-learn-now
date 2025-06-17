@@ -7,9 +7,13 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
 const supabaseUrl = Deno.env.get('SUPABASE_URL')
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-// OpenAI TTS token limits (conservative estimates)
-const MAX_CHARACTERS_PER_REQUEST = 3800 // Conservative limit to stay under 4096 chars
-const MIN_CHUNK_SIZE = 200 // Minimum chunk size to avoid too many API calls
+// Configurable chunk sizes based on use case
+const CHUNK_CONFIGS = {
+  small: { maxChars: 2000, minChars: 100 },    // For quick generation
+  medium: { maxChars: 3000, minChars: 150 },   // Balanced approach
+  large: { maxChars: 3800, minChars: 200 },    // Maximum quality (original)
+  auto: { maxChars: 'auto', minChars: 'auto' } // Intelligent sizing
+}
 
 // Helper function to create a safe filename from text
 function createSafeFilename(text: string): string {
@@ -43,56 +47,70 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-// Intelligent text chunking function
-function chunkTextIntelligently(text: string): string[] {
-  if (text.length <= MAX_CHARACTERS_PER_REQUEST) {
+// Intelligent chunk size determination
+function getOptimalChunkConfig(textLength: number, chunkSize?: string) {
+  if (chunkSize && chunkSize !== 'auto' && CHUNK_CONFIGS[chunkSize]) {
+    return CHUNK_CONFIGS[chunkSize];
+  }
+  
+  // Auto-determine based on text length
+  if (textLength <= 1000) return CHUNK_CONFIGS.small;
+  if (textLength <= 5000) return CHUNK_CONFIGS.medium;
+  return CHUNK_CONFIGS.large;
+}
+
+// Optimized text chunking function
+function chunkTextIntelligently(text: string, config: any): string[] {
+  const maxChars = config.maxChars;
+  const minChars = config.minChars;
+  
+  if (text.length <= maxChars) {
     return [text];
   }
 
   const chunks: string[] = [];
   let currentChunk = '';
   
-  // Split by sentences first
-  const sentences = text.split(/(?<=[.!?])\s+/);
+  // For very long texts, use paragraph-based chunking first
+  const paragraphs = text.split(/\n\s*\n/);
   
-  for (const sentence of sentences) {
-    // If adding this sentence would exceed the limit
-    if ((currentChunk + ' ' + sentence).length > MAX_CHARACTERS_PER_REQUEST) {
-      if (currentChunk.length > 0) {
+  for (const paragraph of paragraphs) {
+    if ((currentChunk + '\n\n' + paragraph).length <= maxChars) {
+      currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
+    } else {
+      if (currentChunk.length >= minChars) {
         chunks.push(currentChunk.trim());
-        currentChunk = sentence;
+        currentChunk = paragraph;
       } else {
-        // Single sentence is too long, split by clauses
-        const clauses = sentence.split(/(?<=[,;:])\s+/);
-        for (const clause of clauses) {
-          if ((currentChunk + ' ' + clause).length > MAX_CHARACTERS_PER_REQUEST) {
-            if (currentChunk.length > 0) {
+        // Current chunk too small, need to split paragraph
+        const sentences = paragraph.split(/(?<=[.!?])\s+/);
+        
+        for (const sentence of sentences) {
+          if ((currentChunk + ' ' + sentence).length <= maxChars) {
+            currentChunk += (currentChunk ? ' ' : '') + sentence;
+          } else {
+            if (currentChunk.length >= minChars) {
               chunks.push(currentChunk.trim());
-              currentChunk = clause;
+              currentChunk = sentence;
             } else {
-              // Single clause is too long, split by words
-              const words = clause.split(/\s+/);
+              // Handle very long sentences
+              const words = sentence.split(/\s+/);
               for (const word of words) {
-                if ((currentChunk + ' ' + word).length > MAX_CHARACTERS_PER_REQUEST) {
+                if ((currentChunk + ' ' + word).length <= maxChars) {
+                  currentChunk += (currentChunk ? ' ' : '') + word;
+                } else {
                   if (currentChunk.length > 0) {
                     chunks.push(currentChunk.trim());
                     currentChunk = word;
                   } else {
-                    // Single word is too long, force split
                     chunks.push(word);
                   }
-                } else {
-                  currentChunk += (currentChunk ? ' ' : '') + word;
                 }
               }
             }
-          } else {
-            currentChunk += (currentChunk ? ' ' : '') + clause;
           }
         }
       }
-    } else {
-      currentChunk += (currentChunk ? ' ' : '') + sentence;
     }
   }
   
@@ -103,42 +121,50 @@ function chunkTextIntelligently(text: string): string[] {
   return chunks.filter(chunk => chunk.length > 0);
 }
 
-// Generate audio for a single chunk
-async function generateAudioChunk(text: string, voice: string, chunkIndex: number): Promise<ArrayBuffer> {
-  console.log(`Generating audio for chunk ${chunkIndex + 1}, length: ${text.length} characters`);
+// Generate audio for a single chunk with retry logic
+async function generateAudioChunk(text: string, voice: string, chunkIndex: number, retryCount = 0): Promise<ArrayBuffer> {
+  const maxRetries = 2;
   
-  const response = await fetch('https://api.openai.com/v1/audio/speech', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'tts-1',
-      input: text,
-      voice: voice,
-      response_format: 'mp3'
-    }),
-  });
+  try {
+    console.log(`Generating audio for chunk ${chunkIndex + 1}, length: ${text.length} characters (attempt ${retryCount + 1})`);
+    
+    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'tts-1',
+        input: text,
+        voice: voice,
+        response_format: 'mp3'
+      }),
+    });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenAI TTS API error for chunk ${chunkIndex + 1}: ${error}`);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenAI TTS API error: ${error}`);
+    }
+
+    return await response.arrayBuffer();
+  } catch (error) {
+    if (retryCount < maxRetries) {
+      console.log(`Retrying chunk ${chunkIndex + 1} (attempt ${retryCount + 2})`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+      return generateAudioChunk(text, voice, chunkIndex, retryCount + 1);
+    }
+    throw error;
   }
-
-  return await response.arrayBuffer();
 }
 
-// Concatenate multiple audio buffers (simple approach for MP3)
+// Optimized audio concatenation
 function concatenateAudioBuffers(audioBuffers: ArrayBuffer[]): ArrayBuffer {
   if (audioBuffers.length === 1) {
     return audioBuffers[0];
   }
 
-  // Calculate total size
   const totalSize = audioBuffers.reduce((sum, buffer) => sum + buffer.byteLength, 0);
-  
-  // Create new buffer and copy all audio data
   const concatenated = new ArrayBuffer(totalSize);
   const view = new Uint8Array(concatenated);
   
@@ -158,7 +184,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, language } = await req.json()
+    const { text, language, chunkSize = 'auto' } = await req.json()
 
     if (!openAIApiKey) {
       throw new Error('OpenAI API key not configured')
@@ -193,25 +219,24 @@ serve(async (req) => {
     }
 
     const voice = voiceMap[language.toLowerCase()] || 'alloy'
+    const chunkConfig = getOptimalChunkConfig(text.length, chunkSize)
 
     console.log('Processing text-to-speech request:', {
       textLength: text.length,
       language,
       voice,
-      willChunk: text.length > MAX_CHARACTERS_PER_REQUEST
+      chunkSize,
+      selectedConfig: chunkConfig,
+      willChunk: text.length > chunkConfig.maxChars
     });
 
     // Check if text needs chunking
-    if (text.length <= MAX_CHARACTERS_PER_REQUEST) {
+    if (text.length <= chunkConfig.maxChars) {
       console.log('Text is within limits, processing as single request');
       
-      // Generate audio for single chunk
       const audioData = await generateAudioChunk(text, voice, 0);
       
-      // Create Supabase client
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
-      // Generate filename and upload
       const fileName = createSafeFilename(text) + '.mp3';
       console.log('Uploading single audio file:', fileName);
       
@@ -244,38 +269,45 @@ serve(async (req) => {
       });
     }
 
-    // Text is too long, need to chunk it
+    // Text needs chunking
     console.log('Text exceeds limits, chunking required');
-    const textChunks = chunkTextIntelligently(text);
-    console.log(`Split text into ${textChunks.length} chunks`);
+    const textChunks = chunkTextIntelligently(text, chunkConfig);
+    console.log(`Split text into ${textChunks.length} chunks using ${chunkSize} config`);
 
-    // Generate audio for each chunk with rate limiting
+    // Generate audio for chunks with optimized batch processing
     const audioBuffers: ArrayBuffer[] = [];
+    const batchSize = 3; // Process up to 3 chunks concurrently
     
-    for (let i = 0; i < textChunks.length; i++) {
+    for (let i = 0; i < textChunks.length; i += batchSize) {
+      const batch = textChunks.slice(i, i + batchSize);
+      const batchPromises = batch.map((chunk, batchIndex) => 
+        generateAudioChunk(chunk, voice, i + batchIndex)
+      );
+      
       try {
-        const audioData = await generateAudioChunk(textChunks[i], voice, i);
-        audioBuffers.push(audioData);
+        const batchResults = await Promise.all(batchPromises);
+        audioBuffers.push(...batchResults);
         
-        // Add small delay between requests to avoid rate limiting
-        if (i < textChunks.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 200));
+        console.log(`Completed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(textChunks.length / batchSize)}`);
+        
+        // Small delay between batches to avoid rate limiting
+        if (i + batchSize < textChunks.length) {
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
       } catch (error) {
-        console.error(`Failed to generate audio for chunk ${i + 1}:`, error);
-        throw new Error(`Failed to generate audio for text segment ${i + 1}: ${error.message}`);
+        console.error(`Failed to generate audio for batch starting at chunk ${i + 1}:`, error);
+        throw new Error(`Failed to generate audio for text segment starting at ${i + 1}: ${error.message}`);
       }
     }
 
     console.log(`Successfully generated ${audioBuffers.length} audio chunks`);
 
-    // Concatenate all audio buffers
+    // Concatenate and upload
     const concatenatedAudio = concatenateAudioBuffers(audioBuffers);
     console.log(`Concatenated audio size: ${concatenatedAudio.byteLength} bytes`);
 
-    // Create Supabase client and upload concatenated audio
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const fileName = createSafeFilename(text) + '_chunked.mp3';
+    const fileName = createSafeFilename(text) + `_${chunkSize}_chunked.mp3`;
     
     console.log('Uploading concatenated audio file:', fileName);
     
@@ -294,7 +326,8 @@ serve(async (req) => {
       
       return new Response(JSON.stringify({ 
         audio_url: audioUrl,
-        chunks_processed: textChunks.length 
+        chunks_processed: textChunks.length,
+        chunk_config: chunkSize
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -304,11 +337,12 @@ serve(async (req) => {
       .from('audio')
       .getPublicUrl(fileName);
 
-    console.log(`Chunked audio uploaded successfully: ${publicUrl} (${textChunks.length} chunks processed)`);
+    console.log(`Chunked audio uploaded successfully: ${publicUrl} (${textChunks.length} chunks, ${chunkSize} config)`);
 
     return new Response(JSON.stringify({ 
       audio_url: publicUrl,
-      chunks_processed: textChunks.length 
+      chunks_processed: textChunks.length,
+      chunk_config: chunkSize
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -318,7 +352,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: error.message,
-        details: 'Text-to-speech generation failed. If text is very long, try breaking it into smaller segments.'
+        details: 'Text-to-speech generation failed. Try using a smaller chunk size for better performance.'
       }),
       { 
         status: 500, 
