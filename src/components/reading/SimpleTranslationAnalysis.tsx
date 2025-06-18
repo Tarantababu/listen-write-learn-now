@@ -4,12 +4,14 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Languages, ArrowRight, AlertTriangle, Clock, Zap, Settings, Info, FileText } from 'lucide-react';
+import { Loader2, Languages, ArrowRight, AlertTriangle, Clock, Zap, Settings, Info, FileText, Download } from 'lucide-react';
 import { LanguageSelectWithFlag } from '@/components/bidirectional/LanguageSelectWithFlag';
 import { simpleTranslationService } from '@/services/simpleTranslationService';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
+import jsPDF from 'jspdf';
 
 interface SimpleTranslationAnalysisProps {
   text: string;
@@ -43,6 +45,8 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
   const [chunkSize, setChunkSize] = useState('auto');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showPerformanceDetails, setShowPerformanceDetails] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const languageOptions = [
@@ -249,6 +253,143 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
       color: 'text-green-600',
       description: 'Short text - quick processing'
     };
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!translation) return;
+
+    try {
+      const pdf = new jsPDF();
+      const pageWidth = pdf.internal.pageSize.width;
+      const margin = 20;
+      const lineHeight = 7;
+      let yPosition = margin;
+
+      // Title
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Translation Analysis', margin, yPosition);
+      yPosition += lineHeight * 2;
+
+      // Source and Target Languages
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Source Language: ${getLanguageLabel(sourceLanguage)}`, margin, yPosition);
+      yPosition += lineHeight;
+      pdf.text(`Target Language: ${getLanguageLabel(targetLanguage)}`, margin, yPosition);
+      yPosition += lineHeight * 2;
+
+      // Original Text
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Original Text:', margin, yPosition);
+      yPosition += lineHeight;
+      pdf.setFont('helvetica', 'normal');
+      const originalTextLines = pdf.splitTextToSize(text, pageWidth - 2 * margin);
+      pdf.text(originalTextLines, margin, yPosition);
+      yPosition += originalTextLines.length * lineHeight + lineHeight;
+
+      // Natural Translation
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Natural Translation:', margin, yPosition);
+      yPosition += lineHeight;
+      pdf.setFont('helvetica', 'normal');
+      const naturalLines = pdf.splitTextToSize(translation.normalTranslation, pageWidth - 2 * margin);
+      pdf.text(naturalLines, margin, yPosition);
+      yPosition += naturalLines.length * lineHeight + lineHeight;
+
+      // Literal Translation
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Literal Translation:', margin, yPosition);
+      yPosition += lineHeight;
+      pdf.setFont('helvetica', 'normal');
+      const literalLines = pdf.splitTextToSize(translation.literalTranslation, pageWidth - 2 * margin);
+      pdf.text(literalLines, margin, yPosition);
+      yPosition += literalLines.length * lineHeight + lineHeight;
+
+      // Word-by-word breakdown
+      if (translation.wordTranslations && translation.wordTranslations.length > 0) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Word-by-word Breakdown:', margin, yPosition);
+        yPosition += lineHeight * 1.5;
+        
+        pdf.setFont('helvetica', 'normal');
+        translation.wordTranslations.forEach((wordPair) => {
+          const wordText = `${wordPair.original} → ${wordPair.translation}`;
+          pdf.text(wordText, margin, yPosition);
+          yPosition += lineHeight;
+          
+          // Check if we need a new page
+          if (yPosition > pdf.internal.pageSize.height - margin) {
+            pdf.addPage();
+            yPosition = margin;
+          }
+        });
+      }
+
+      // Download the PDF
+      const fileName = `translation-analysis-${sourceLanguage}-to-${targetLanguage}.pdf`;
+      pdf.save(fileName);
+      
+      toast.success('PDF downloaded successfully');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF. Please try again.');
+    }
+  };
+
+  const handleDownloadAudio = async () => {
+    if (!translation) return;
+
+    setIsGeneratingAudio(true);
+    setAudioProgress(0);
+
+    try {
+      // Simulate progress for audio generation
+      const progressInterval = setInterval(() => {
+        setAudioProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: {
+          text: translation.normalTranslation,
+          language: targetLanguage,
+          chunkSize: 'medium'
+        }
+      });
+
+      clearInterval(progressInterval);
+      setAudioProgress(100);
+
+      if (error) {
+        throw new Error(error.message || 'Failed to generate audio');
+      }
+
+      if (data?.audio_url) {
+        // Create download link
+        const link = document.createElement('a');
+        link.href = data.audio_url;
+        link.download = `translation-audio-${sourceLanguage}-to-${targetLanguage}.mp3`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast.success('Audio downloaded successfully');
+      } else {
+        throw new Error('No audio URL received');
+      }
+    } catch (error) {
+      console.error('Error generating audio:', error);
+      toast.error('Failed to generate audio. Please try again.');
+    } finally {
+      setIsGeneratingAudio(false);
+      setAudioProgress(0);
+    }
   };
 
   const complexity = getTextComplexity(text);
@@ -531,6 +672,48 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
       {translation && (
         <div className="space-y-4">
           <Separator />
+          
+          {/* Download Actions */}
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPDF}
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadAudio}
+              disabled={isGeneratingAudio}
+              className="flex items-center gap-2"
+            >
+              {isGeneratingAudio ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating Audio... ({audioProgress}%)
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Download MP3
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Audio Generation Progress */}
+          {isGeneratingAudio && (
+            <div className="space-y-2">
+              <Progress value={audioProgress} className="w-full" />
+              <p className="text-sm text-gray-600 text-center">
+                Generating audio from translation...
+              </p>
+            </div>
+          )}
           
           {/* Two Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
