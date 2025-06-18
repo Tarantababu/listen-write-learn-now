@@ -23,7 +23,6 @@ import { SynchronizedTextWithSelection } from './SynchronizedTextWithSelection';
 import { ViewToggle } from './ViewToggle';
 import { SelectionActions } from './SelectionActions';
 import { MobileReadingNavigation } from './MobileReadingNavigation';
-import { AdvancedAudioControls } from './AdvancedAudioControls';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { enhancedTtsService } from '@/services/enhancedTtsService';
 
@@ -64,7 +63,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isTextSelected, setIsTextSelected] = useState(false);
   const [selectedText, setSelectedText] = useState('');
-  const [viewMode, setViewMode] = useState<'text' | 'analysis'>('text');
+  const [viewMode, setViewMode] = useState<'sentence' | 'all'>('all');
   const [isMobileView, setIsMobileView] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [volume, setVolume] = useState(1);
@@ -257,12 +256,6 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                       <Download className="h-4 w-4" />
                     </Button>
                   )}
-                  <AdvancedAudioControls
-                    playbackRate={playbackRate}
-                    setPlaybackRate={setPlaybackRate}
-                    volume={volume}
-                    setVolume={setVolume}
-                  />
                 </div>
               </CardContent>
             </Card>
@@ -270,25 +263,23 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
 
           {/* Content Display */}
           <ViewToggle currentView={viewMode} onViewChange={setViewMode} />
-          {viewMode === 'text' ? (
+          {viewMode === 'all' ? (
             <Card>
               <CardContent className="relative">
                 {fullText ? (
                   <SynchronizedTextWithSelection
                     text={fullText}
-                    audio_url={generatedAudioUrl || ''}
-                    audioRef={audioRef}
-                    isAudioPlaying={isAudioPlaying}
-                    playbackRate={playbackRate}
-                    volume={volume}
-                    onTextSelection={handleTextSelection}
+                    highlightedWordIndex={0}
+                    onCreateDictation={onCreateDictation}
+                    onCreateBidirectional={onCreateBidirectional}
+                    exerciseId={exercise?.id}
+                    exerciseLanguage={exercise?.language}
                     enableTextSelection={enableTextSelection}
-                    enableVocabularyIntegration={enableVocabularyIntegration}
-                    enableEnhancedHighlighting={enableEnhancedHighlighting}
-                    enableWordSynchronization={enableWordSynchronization}
+                    enableVocabulary={enableVocabularyIntegration}
+                    enhancedHighlighting={enableEnhancedHighlighting}
+                    vocabularyIntegration={enableVocabularyIntegration}
                     enableContextMenu={enableContextMenu}
-                    enableSelectionFeedback={enableSelectionFeedback}
-                    enableSmartTextProcessing={enableSmartTextProcessing}
+                    onTextSelection={handleTextSelection}
                   />
                 ) : (
                   <div className="text-center py-8">No text available for this exercise.</div>
@@ -324,7 +315,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
               selectedText={selectedText}
               onCreateDictation={() => onCreateDictation(selectedText)}
               onCreateBidirectional={() => onCreateBidirectional(selectedText)}
-              clearSelection={clearSelection}
+              onClear={clearSelection}
             />
           )}
         </div>
