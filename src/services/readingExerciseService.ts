@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { enhancedTtsService } from './enhancedTtsService';
-import { ReadingExercise, CreateReadingExerciseRequest, ReadingExerciseProgress } from '@/types/reading';
+import { ReadingExercise, ReadingExerciseProgress, CreateReadingExerciseRequest } from '@/types/reading';
 
 export class ReadingExerciseService {
   
@@ -516,23 +515,39 @@ export class ReadingExerciseService {
     }
   }
 
-  /**
-   * Generate audio for reading exercise text using the enhanced TTS service
-   */
   async generateAudio(text: string, language: string): Promise<string> {
     try {
-      console.log('Calling enhanced TTS service for:', text.substring(0, 50) + '...');
+      console.log('Calling text-to-speech function for:', text.substring(0, 50) + '...');
       
-      // Use the enhanced TTS service instead of calling the function directly
-      const result = await enhancedTtsService.generateAudio({
-        text,
-        language,
-        chunkSize: 'auto' // Use auto chunk size for optimal performance
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: {
+          text,
+          language
+        }
       });
-      
-      console.log('Enhanced TTS service completed successfully');
-      return result.audioUrl;
-      
+
+      if (error) {
+        console.error('Error invoking text-to-speech function:', error);
+        throw error;
+      }
+
+      if (!data) {
+        console.warn('No data received from text-to-speech function');
+        throw new Error('No audio data received');
+      }
+
+      if (data.audio_url) {
+        console.log('Audio generated successfully, URL:', data.audio_url);
+        return data.audio_url;
+      }
+
+      if (data.audioUrl) {
+        console.log('Audio generated successfully (legacy format), URL:', data.audioUrl);
+        return data.audioUrl;
+      }
+
+      console.error('No audio URL in response:', data);
+      throw new Error('No audio URL in response');
     } catch (error) {
       console.error('Error generating audio:', error);
       throw error;
