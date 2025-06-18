@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Languages, ArrowRight, AlertTriangle, Clock, Zap, Settings, Info } from 'lucide-react';
 import { LanguageSelectWithFlag } from '@/components/bidirectional/LanguageSelectWithFlag';
 import { simpleTranslationService } from '@/services/simpleTranslationService';
+import { EnhancedAudioButton } from '@/components/audio/EnhancedAudioButton';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -535,13 +536,37 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
           
           {/* Natural Translation */}
           <Card className="p-4">
-            <h4 className="font-medium text-sm text-gray-700 mb-2">Natural Translation:</h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-medium text-sm text-gray-700">Natural Translation:</h4>
+              <EnhancedAudioButton
+                text={translation.normalTranslation}
+                language={targetLanguage}
+                chunkSize={chunkSize as any}
+                size="sm"
+                variant="ghost"
+                showEstimate={false}
+              >
+                <span className="sr-only">Generate audio for natural translation</span>
+              </EnhancedAudioButton>
+            </div>
             <p className="text-gray-900 leading-relaxed">{translation.normalTranslation}</p>
           </Card>
 
           {/* Literal Translation */}
           <Card className="p-4 bg-blue-50 border-blue-200">
-            <h4 className="font-medium text-sm text-blue-800 mb-2">Literal Translation:</h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-medium text-sm text-blue-800">Literal Translation:</h4>
+              <EnhancedAudioButton
+                text={translation.literalTranslation}
+                language={targetLanguage}
+                chunkSize={chunkSize as any}
+                size="sm"
+                variant="ghost"
+                showEstimate={false}
+              >
+                <span className="sr-only">Generate audio for literal translation</span>
+              </EnhancedAudioButton>
+            </div>
             <p className="text-blue-900 leading-relaxed">{translation.literalTranslation}</p>
           </Card>
 
