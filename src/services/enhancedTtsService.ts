@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface TtsProgress {
@@ -61,16 +60,25 @@ class EnhancedTtsService {
         this.startProgressPolling(sessionId, onProgress);
       }
 
-      // Make the main TTS request
+      // Check for cancellation before making request
+      if (controller.signal.aborted) {
+        throw new Error('Audio generation was cancelled');
+      }
+
+      // Make the main TTS request (removed signal parameter)
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text,
           language,
           chunkSize,
           sessionId
-        },
-        signal: controller.signal
+        }
       });
+
+      // Check for cancellation after request
+      if (controller.signal.aborted) {
+        throw new Error('Audio generation was cancelled');
+      }
 
       if (error) {
         throw new Error(error.message || 'Failed to generate audio');
@@ -95,7 +103,7 @@ class EnhancedTtsService {
       this.stopProgressPolling(sessionId);
       this.activeGenerations.delete(sessionId);
       
-      if (error.name === 'AbortError') {
+      if (error.name === 'AbortError' || controller.signal.aborted) {
         throw new Error('Audio generation was cancelled');
       }
       
@@ -116,8 +124,7 @@ class EnhancedTtsService {
       // Also notify the server to cancel
       try {
         await supabase.functions.invoke('text-to-speech/cancel', {
-          body: {},
-          method: 'POST'
+          body: { sessionId }
         });
       } catch (error) {
         console.warn('Failed to notify server of cancellation:', error);
@@ -135,8 +142,7 @@ class EnhancedTtsService {
   async getProgress(sessionId: string): Promise<TtsProgress | null> {
     try {
       const { data, error } = await supabase.functions.invoke('text-to-speech/progress', {
-        body: {},
-        method: 'GET'
+        body: { sessionId }
       });
 
       if (error || !data) {
@@ -191,6 +197,13 @@ class EnhancedTtsService {
 
     const interval = setInterval(async () => {
       try {
+        // Check if generation was cancelled
+        const controller = this.activeGenerations.get(sessionId);
+        if (!controller || controller.signal.aborted) {
+          this.stopProgressPolling(sessionId);
+          return;
+        }
+
         const progress = await this.getProgress(sessionId);
         if (progress) {
           onProgress(progress);
