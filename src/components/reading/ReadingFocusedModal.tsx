@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -65,8 +66,8 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   const [selectedText, setSelectedText] = useState('');
   const [viewMode, setViewMode] = useState<'text' | 'analysis'>('text');
   const [isMobileView, setIsMobileView] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1); // Default playback rate
-  const [volume, setVolume] = useState(1); // Default volume
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [volume, setVolume] = useState(1);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isMobile = useIsMobile();
@@ -77,11 +78,14 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
 
   // Load audio on exercise change
   useEffect(() => {
-    if (exercise?.audioUrl) {
-      setGeneratedAudioUrl(exercise.audioUrl);
+    if (exercise?.full_text_audio_url) {
+      setGeneratedAudioUrl(exercise.full_text_audio_url);
+      setAudioGenerationError(null);
+    } else if (exercise?.audio_url) {
+      setGeneratedAudioUrl(exercise.audio_url);
       setAudioGenerationError(null);
     }
-  }, [exercise?.audioUrl]);
+  }, [exercise?.full_text_audio_url, exercise?.audio_url]);
 
   const toggleAudio = () => {
     if (!audioRef.current) return;
@@ -131,7 +135,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   };
 
   const generateFullTextAudio = async () => {
-    if (!exercise?.text || isGeneratingAudio) return;
+    if (!exercise?.content?.sentences || isGeneratingAudio) return;
     
     setIsGeneratingAudio(true);
     setAudioGenerationError(null);
@@ -139,14 +143,16 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     try {
       console.log('Generating full-text audio using enhanced TTS service');
       
+      // Get full text from sentences
+      const fullText = exercise.content.sentences.map(sentence => sentence.text).join(' ');
+      
       // Use the enhanced TTS service with progress tracking
       const result = await enhancedTtsService.generateAudio({
-        text: exercise.text,
+        text: fullText,
         language: exercise.language,
         chunkSize: 'auto',
         onProgress: (progress) => {
           console.log(`Audio generation progress: ${progress.progress}% - ${progress.message}`);
-          // You could add a progress state here if needed
         }
       });
       
@@ -161,8 +167,11 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
     }
   };
 
+  // Get full text for display
+  const fullText = exercise?.content?.sentences?.map(sentence => sentence.text).join(' ') || '';
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose} className="relative">
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="pb-4">
           <div className="flex items-center justify-between">
@@ -249,7 +258,6 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     </Button>
                   )}
                   <AdvancedAudioControls
-                    audioRef={audioRef}
                     playbackRate={playbackRate}
                     setPlaybackRate={setPlaybackRate}
                     volume={volume}
@@ -261,14 +269,14 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
           )}
 
           {/* Content Display */}
-          <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
+          <ViewToggle currentView={viewMode} onViewChange={setViewMode} />
           {viewMode === 'text' ? (
             <Card>
               <CardContent className="relative">
-                {exercise?.text ? (
+                {fullText ? (
                   <SynchronizedTextWithSelection
-                    text={exercise.text}
-                    audioUrl={generatedAudioUrl || ''}
+                    text={fullText}
+                    audio_url={generatedAudioUrl || ''}
                     audioRef={audioRef}
                     isAudioPlaying={isAudioPlaying}
                     playbackRate={playbackRate}
@@ -299,12 +307,14 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
           {/* Mobile Navigation - Always Visible */}
           {isMobileView && (
             <MobileReadingNavigation
-              onClose={onClose}
-              isTextSelected={isTextSelected}
-              onCreateDictation={() => selectedText && onCreateDictation(selectedText)}
-              onCreateBidirectional={() => selectedText && onCreateBidirectional(selectedText)}
-              clearSelection={clearSelection}
-              enableTextSelection={enableTextSelection}
+              currentStep={1}
+              totalSteps={1}
+              onPrevious={() => {}}
+              onNext={() => {}}
+              onComplete={onClose}
+              canGoNext={true}
+              canGoPrevious={false}
+              isLastStep={true}
             />
           )}
 
@@ -312,8 +322,8 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
           {!isMobileView && isTextSelected && (
             <SelectionActions
               selectedText={selectedText}
-              onCreateDictation={onCreateDictation}
-              onCreateBidirectional={onCreateBidirectional}
+              onCreateDictation={() => onCreateDictation(selectedText)}
+              onCreateBidirectional={() => onCreateBidirectional(selectedText)}
               clearSelection={clearSelection}
             />
           )}

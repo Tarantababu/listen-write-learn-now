@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { enhancedTtsService } from './enhancedTtsService';
-import { ReadingExercise } from '@/types/reading';
+import { ReadingExercise, CreateReadingExerciseRequest, ReadingExerciseProgress } from '@/types/reading';
 
 export class ReadingExerciseService {
   
