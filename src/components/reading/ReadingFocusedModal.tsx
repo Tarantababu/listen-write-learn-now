@@ -289,7 +289,6 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     enhancedHighlighting={enableEnhancedHighlighting}
                     vocabularyIntegration={enableVocabularyIntegration}
                     enableContextMenu={enableContextMenu}
-                    onTextSelection={handleTextSelection}
                   />
                 ) : (
                   <div className="text-center py-8">No text available for this exercise.</div>
