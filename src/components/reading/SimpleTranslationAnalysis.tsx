@@ -1,11 +1,10 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Languages, ArrowRight, AlertTriangle, Clock, Zap, Settings, Info } from 'lucide-react';
+import { Loader2, Languages, ArrowRight, AlertTriangle, Clock, Zap, Settings, Info, FileText } from 'lucide-react';
 import { LanguageSelectWithFlag } from '@/components/bidirectional/LanguageSelectWithFlag';
 import { simpleTranslationService } from '@/services/simpleTranslationService';
 import { toast } from 'sonner';
@@ -528,24 +527,41 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
         </Alert>
       )}
 
-      {/* Translation Results */}
+      {/* Translation Results - Two Column Layout */}
       {translation && (
         <div className="space-y-4">
           <Separator />
           
-          {/* Natural Translation */}
-          <Card className="p-4">
-            <h4 className="font-medium text-sm text-gray-700 mb-2">Natural Translation:</h4>
-            <p className="text-gray-900 leading-relaxed">{translation.normalTranslation}</p>
-          </Card>
+          {/* Two Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Original Text Column */}
+            <Card className="p-4 bg-gray-50 border-gray-200">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="h-4 w-4 text-gray-600" />
+                <h4 className="font-medium text-sm text-gray-700">Original Text ({getLanguageLabel(sourceLanguage)}):</h4>
+              </div>
+              <div className="text-gray-900 leading-relaxed text-sm max-h-96 overflow-y-auto">
+                {text}
+              </div>
+            </Card>
 
-          {/* Literal Translation */}
-          <Card className="p-4 bg-blue-50 border-blue-200">
-            <h4 className="font-medium text-sm text-blue-800 mb-2">Literal Translation:</h4>
-            <p className="text-blue-900 leading-relaxed">{translation.literalTranslation}</p>
-          </Card>
+            {/* Translation Results Column */}
+            <div className="space-y-4">
+              {/* Natural Translation */}
+              <Card className="p-4">
+                <h4 className="font-medium text-sm text-gray-700 mb-2">Natural Translation:</h4>
+                <p className="text-gray-900 leading-relaxed">{translation.normalTranslation}</p>
+              </Card>
 
-          {/* Word-by-word Analysis */}
+              {/* Literal Translation */}
+              <Card className="p-4 bg-blue-50 border-blue-200">
+                <h4 className="font-medium text-sm text-blue-800 mb-2">Literal Translation:</h4>
+                <p className="text-blue-900 leading-relaxed">{translation.literalTranslation}</p>
+              </Card>
+            </div>
+          </div>
+
+          {/* Word-by-word Analysis - Full Width */}
           <Card className="p-4">
             <h4 className="font-medium text-sm text-gray-700 mb-3">Word-by-word breakdown:</h4>
             {translation.wordTranslations && translation.wordTranslations.length > 0 ? (
