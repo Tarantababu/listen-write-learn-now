@@ -19,6 +19,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { ReadingExercise } from '@/types/reading';
+import { Language } from '@/types';
 import { SynchronizedTextWithSelection } from './SynchronizedTextWithSelection';
 import { ViewToggle } from './ViewToggle';
 import { SelectionActions } from './SelectionActions';
@@ -67,6 +68,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   const [isMobileView, setIsMobileView] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [volume, setVolume] = useState(1);
+  const [selectionPosition, setSelectionPosition] = useState({ x: 0, y: 0 });
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isMobile = useIsMobile();
@@ -115,6 +117,11 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
   const handleTextSelection = useCallback((text: string) => {
     setIsTextSelected(!!text);
     setSelectedText(text);
+    
+    // Set position for selection popup (you can enhance this with actual selection coordinates)
+    if (text) {
+      setSelectionPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    }
   }, []);
 
   const clearSelection = () => {
@@ -168,6 +175,9 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
 
   // Get full text for display
   const fullText = exercise?.content?.sentences?.map(sentence => sentence.text).join(' ') || '';
+
+  // Convert exercise language to Language type
+  const exerciseLanguage = exercise?.language as Language;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -273,7 +283,7 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
                     onCreateDictation={onCreateDictation}
                     onCreateBidirectional={onCreateBidirectional}
                     exerciseId={exercise?.id}
-                    exerciseLanguage={exercise?.language}
+                    exerciseLanguage={exerciseLanguage}
                     enableTextSelection={enableTextSelection}
                     enableVocabulary={enableVocabularyIntegration}
                     enhancedHighlighting={enableEnhancedHighlighting}
@@ -312,10 +322,11 @@ export const ReadingFocusedModal: React.FC<ReadingFocusedModalProps> = ({
           {/* Desktop Selection Actions - Only Visible when Text is Selected */}
           {!isMobileView && isTextSelected && (
             <SelectionActions
+              position={selectionPosition}
               selectedText={selectedText}
               onCreateDictation={() => onCreateDictation(selectedText)}
               onCreateBidirectional={() => onCreateBidirectional(selectedText)}
-              onClear={clearSelection}
+              onClose={clearSelection}
             />
           )}
         </div>
