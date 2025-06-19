@@ -338,7 +338,7 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
   };
 
   const handleDownloadAudio = async () => {
-    if (!translation) return;
+    if (!text) return;
 
     setIsGeneratingAudio(true);
     setAudioProgress(0);
@@ -357,8 +357,8 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
 
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
-          text: translation.normalTranslation,
-          language: targetLanguage,
+          text: text, // Use original text instead of translation
+          language: sourceLanguage, // Use source language instead of target language
           chunkSize: 'medium'
         }
       });
@@ -374,7 +374,7 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
         // Create download link
         const link = document.createElement('a');
         link.href = data.audio_url;
-        link.download = `translation-audio-${sourceLanguage}-to-${targetLanguage}.mp3`;
+        link.download = `original-text-audio-${sourceLanguage}.mp3`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -710,7 +710,7 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
             <div className="space-y-2">
               <Progress value={audioProgress} className="w-full" />
               <p className="text-sm text-gray-600 text-center">
-                Generating audio from translation...
+                Generating audio from original text...
               </p>
             </div>
           )}
