@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -225,7 +224,7 @@ const VocabularyHighlighter: React.FC<VocabularyHighlighterProps> = ({ exercise 
 
   return (
     <div className="mt-12 border-t pt-8 max-w-4xl mx-auto">
-      <Accordion type="single" collapsible className="w-full">
+      <Accordion type="single" collapsible className="w-full" defaultValue="vocabulary-builder">
         <AccordionItem value="vocabulary-builder">
           <AccordionTrigger className="text-left hover:no-underline">
             <div className="flex items-center gap-3">
