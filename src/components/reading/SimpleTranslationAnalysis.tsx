@@ -264,88 +264,114 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
       const pageHeight = pdf.internal.pageSize.height;
       const margin = 20;
       const lineHeight = 7;
-      let yPosition = margin;
+      let currentY = margin;
 
-      // Helper function to check if we need a new page
-      const checkPageBreak = (additionalHeight: number = lineHeight) => {
-        if (yPosition + additionalHeight > pageHeight - margin) {
-          pdf.addPage();
-          yPosition = margin;
-          return true;
+      // Helper function to add text with proper page breaks
+      const addTextSection = (lines: string[], startY: number): number => {
+        let y = startY;
+        
+        for (const line of lines) {
+          // Check if we need a new page
+          if (y + lineHeight > pageHeight - margin) {
+            pdf.addPage();
+            y = margin;
+          }
+          
+          pdf.text(line, margin, y);
+          y += lineHeight;
         }
-        return false;
-      };
-
-      // Helper function to add text with automatic page breaks
-      const addTextWithPageBreaks = (textLines: string[], startY: number) => {
-        let currentY = startY;
-        textLines.forEach((line) => {
-          checkPageBreak();
-          pdf.text(line, margin, currentY);
-          currentY += lineHeight;
-        });
-        return currentY;
+        
+        return y;
       };
 
       // Title
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Translation Analysis', margin, yPosition);
-      yPosition += lineHeight * 2;
+      pdf.text('Translation Analysis', margin, currentY);
+      currentY += lineHeight * 2;
 
       // Source and Target Languages
-      checkPageBreak(lineHeight * 3);
+      if (currentY + lineHeight * 3 > pageHeight - margin) {
+        pdf.addPage();
+        currentY = margin;
+      }
+      
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Source Language: ${getLanguageLabel(sourceLanguage)}`, margin, yPosition);
-      yPosition += lineHeight;
-      pdf.text(`Target Language: ${getLanguageLabel(targetLanguage)}`, margin, yPosition);
-      yPosition += lineHeight * 2;
+      pdf.text(`Source Language: ${getLanguageLabel(sourceLanguage)}`, margin, currentY);
+      currentY += lineHeight;
+      pdf.text(`Target Language: ${getLanguageLabel(targetLanguage)}`, margin, currentY);
+      currentY += lineHeight * 2;
 
-      // Original Text
-      checkPageBreak(lineHeight * 2);
+      // Original Text Section
+      if (currentY + lineHeight * 2 > pageHeight - margin) {
+        pdf.addPage();
+        currentY = margin;
+      }
+      
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Original Text:', margin, yPosition);
-      yPosition += lineHeight;
+      pdf.text('Original Text:', margin, currentY);
+      currentY += lineHeight;
+      
       pdf.setFont('helvetica', 'normal');
       const originalTextLines = pdf.splitTextToSize(text, pageWidth - 2 * margin);
-      yPosition = addTextWithPageBreaks(originalTextLines, yPosition);
-      yPosition += lineHeight;
+      currentY = addTextSection(originalTextLines, currentY);
+      currentY += lineHeight;
 
-      // Natural Translation
-      checkPageBreak(lineHeight * 2);
+      // Natural Translation Section
+      if (currentY + lineHeight * 2 > pageHeight - margin) {
+        pdf.addPage();
+        currentY = margin;
+      }
+      
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Natural Translation:', margin, yPosition);
-      yPosition += lineHeight;
+      pdf.text('Natural Translation:', margin, currentY);
+      currentY += lineHeight;
+      
       pdf.setFont('helvetica', 'normal');
       const naturalLines = pdf.splitTextToSize(translation.normalTranslation, pageWidth - 2 * margin);
-      yPosition = addTextWithPageBreaks(naturalLines, yPosition);
-      yPosition += lineHeight;
+      currentY = addTextSection(naturalLines, currentY);
+      currentY += lineHeight;
 
-      // Literal Translation
-      checkPageBreak(lineHeight * 2);
+      // Literal Translation Section
+      if (currentY + lineHeight * 2 > pageHeight - margin) {
+        pdf.addPage();
+        currentY = margin;
+      }
+      
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Literal Translation:', margin, yPosition);
-      yPosition += lineHeight;
+      pdf.text('Literal Translation:', margin, currentY);
+      currentY += lineHeight;
+      
       pdf.setFont('helvetica', 'normal');
       const literalLines = pdf.splitTextToSize(translation.literalTranslation, pageWidth - 2 * margin);
-      yPosition = addTextWithPageBreaks(literalLines, yPosition);
-      yPosition += lineHeight;
+      currentY = addTextSection(literalLines, currentY);
+      currentY += lineHeight;
 
-      // Word-by-word breakdown
+      // Word-by-word breakdown Section
       if (translation.wordTranslations && translation.wordTranslations.length > 0) {
-        checkPageBreak(lineHeight * 2);
+        if (currentY + lineHeight * 2 > pageHeight - margin) {
+          pdf.addPage();
+          currentY = margin;
+        }
+        
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Word-by-word Breakdown:', margin, yPosition);
-        yPosition += lineHeight * 1.5;
+        pdf.text('Word-by-word Breakdown:', margin, currentY);
+        currentY += lineHeight * 1.5;
         
         pdf.setFont('helvetica', 'normal');
-        translation.wordTranslations.forEach((wordPair) => {
-          checkPageBreak();
+        
+        // Process each word pair with page breaks
+        for (const wordPair of translation.wordTranslations) {
+          if (currentY + lineHeight > pageHeight - margin) {
+            pdf.addPage();
+            currentY = margin;
+          }
+          
           const wordText = `${wordPair.original} → ${wordPair.translation}`;
-          pdf.text(wordText, margin, yPosition);
-          yPosition += lineHeight;
-        });
+          pdf.text(wordText, margin, currentY);
+          currentY += lineHeight;
+        }
       }
 
       // Download the PDF
