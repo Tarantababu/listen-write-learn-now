@@ -261,9 +261,31 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
     try {
       const pdf = new jsPDF();
       const pageWidth = pdf.internal.pageSize.width;
+      const pageHeight = pdf.internal.pageSize.height;
       const margin = 20;
       const lineHeight = 7;
       let yPosition = margin;
+
+      // Helper function to check if we need a new page
+      const checkPageBreak = (additionalHeight: number = lineHeight) => {
+        if (yPosition + additionalHeight > pageHeight - margin) {
+          pdf.addPage();
+          yPosition = margin;
+          return true;
+        }
+        return false;
+      };
+
+      // Helper function to add text with automatic page breaks
+      const addTextWithPageBreaks = (textLines: string[], startY: number) => {
+        let currentY = startY;
+        textLines.forEach((line) => {
+          checkPageBreak();
+          pdf.text(line, margin, currentY);
+          currentY += lineHeight;
+        });
+        return currentY;
+      };
 
       // Title
       pdf.setFontSize(16);
@@ -272,6 +294,7 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
       yPosition += lineHeight * 2;
 
       // Source and Target Languages
+      checkPageBreak(lineHeight * 3);
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'normal');
       pdf.text(`Source Language: ${getLanguageLabel(sourceLanguage)}`, margin, yPosition);
@@ -280,49 +303,48 @@ export const SimpleTranslationAnalysis: React.FC<SimpleTranslationAnalysisProps>
       yPosition += lineHeight * 2;
 
       // Original Text
+      checkPageBreak(lineHeight * 2);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Original Text:', margin, yPosition);
       yPosition += lineHeight;
       pdf.setFont('helvetica', 'normal');
       const originalTextLines = pdf.splitTextToSize(text, pageWidth - 2 * margin);
-      pdf.text(originalTextLines, margin, yPosition);
-      yPosition += originalTextLines.length * lineHeight + lineHeight;
+      yPosition = addTextWithPageBreaks(originalTextLines, yPosition);
+      yPosition += lineHeight;
 
       // Natural Translation
+      checkPageBreak(lineHeight * 2);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Natural Translation:', margin, yPosition);
       yPosition += lineHeight;
       pdf.setFont('helvetica', 'normal');
       const naturalLines = pdf.splitTextToSize(translation.normalTranslation, pageWidth - 2 * margin);
-      pdf.text(naturalLines, margin, yPosition);
-      yPosition += naturalLines.length * lineHeight + lineHeight;
+      yPosition = addTextWithPageBreaks(naturalLines, yPosition);
+      yPosition += lineHeight;
 
       // Literal Translation
+      checkPageBreak(lineHeight * 2);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Literal Translation:', margin, yPosition);
       yPosition += lineHeight;
       pdf.setFont('helvetica', 'normal');
       const literalLines = pdf.splitTextToSize(translation.literalTranslation, pageWidth - 2 * margin);
-      pdf.text(literalLines, margin, yPosition);
-      yPosition += literalLines.length * lineHeight + lineHeight;
+      yPosition = addTextWithPageBreaks(literalLines, yPosition);
+      yPosition += lineHeight;
 
       // Word-by-word breakdown
       if (translation.wordTranslations && translation.wordTranslations.length > 0) {
+        checkPageBreak(lineHeight * 2);
         pdf.setFont('helvetica', 'bold');
         pdf.text('Word-by-word Breakdown:', margin, yPosition);
         yPosition += lineHeight * 1.5;
         
         pdf.setFont('helvetica', 'normal');
         translation.wordTranslations.forEach((wordPair) => {
+          checkPageBreak();
           const wordText = `${wordPair.original} → ${wordPair.translation}`;
           pdf.text(wordText, margin, yPosition);
           yPosition += lineHeight;
-          
-          // Check if we need a new page
-          if (yPosition > pdf.internal.pageSize.height - margin) {
-            pdf.addPage();
-            yPosition = margin;
-          }
         });
       }
 
