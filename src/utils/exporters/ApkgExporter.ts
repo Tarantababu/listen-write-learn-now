@@ -60,21 +60,21 @@ export class ApkgExporter extends BaseVocabularyExporter {
     // Create all required Anki tables
     this.createTables(db);
     
-    // Generate base timestamps (in milliseconds for Anki)
-    const baseTimeMs = Date.now();
-    const baseTimeSec = Math.floor(baseTimeMs / 1000);
+    // Use current timestamp in seconds (Anki standard)
+    const currentTime = Math.floor(Date.now() / 1000);
     
-    // Use proper Anki ID ranges
-    const deckId = 1649441468; // Use a reasonable fixed deck ID
-    const modelId = 1649441469; // Use a different ID for the model
+    // Use safe ID ranges - avoid conflicts with existing Anki data
+    const deckId = 1;
+    const modelId = Math.floor(Date.now() / 1000); // Use timestamp as model ID
     
-    console.log('Base timestamp (ms):', baseTimeMs, 'Base timestamp (sec):', baseTimeSec);
+    console.log('Current time (seconds):', currentTime);
+    console.log('Model ID:', modelId);
     
     // Insert collection configuration
-    this.insertCollectionData(db, baseTimeMs, baseTimeSec, modelId, deckId, options.deckName);
+    this.insertCollectionData(db, currentTime, modelId, deckId, options.deckName);
     
     // Insert notes and cards
-    this.insertNotesAndCards(db, vocabulary, options, baseTimeMs, baseTimeSec, modelId, deckId);
+    this.insertNotesAndCards(db, vocabulary, options, currentTime, modelId, deckId);
     
     const data = db.export();
     db.close();
@@ -144,7 +144,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
       )
     `);
 
-    // Review log table
+    // Review log table (can be empty for new decks)
     db.run(`
       CREATE TABLE revlog (
         id INTEGER PRIMARY KEY,
@@ -159,7 +159,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
       )
     `);
 
-    // Graves table (for deletions)
+    // Graves table (can be empty for new decks)
     db.run(`
       CREATE TABLE graves (
         usn INTEGER NOT NULL,
@@ -169,8 +169,8 @@ export class ApkgExporter extends BaseVocabularyExporter {
     `);
   }
 
-  private insertCollectionData(db: any, baseTimeMs: number, baseTimeSec: number, modelId: number, deckId: number, deckName: string): void {
-    // Deck configuration
+  private insertCollectionData(db: any, currentTime: number, modelId: number, deckId: number, deckName: string): void {
+    // Deck configuration - use minimal required fields
     const decks = {
       [deckId]: {
         id: deckId,
@@ -179,24 +179,24 @@ export class ApkgExporter extends BaseVocabularyExporter {
         usn: 0,
         collapsed: false,
         newToday: [0, 0],
-        revToday: [0, 0],
+        revToday: [0, 0], 
         lrnToday: [0, 0],
         timeToday: [0, 0],
         conf: 1,
         desc: "",
         dyn: 0,
         extendNew: 10,
-        mod: baseTimeMs
+        mod: currentTime
       }
     };
 
-    // Note type (model) configuration
+    // Note type (model) configuration - minimal Basic model
     const models = {
       [modelId]: {
         id: modelId,
         name: "Basic",
         type: 0,
-        mod: baseTimeMs,
+        mod: currentTime,
         usn: 0,
         sortf: 0,
         did: deckId,
@@ -221,7 +221,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
             size: 20
           },
           {
-            name: "Back",
+            name: "Back", 
             ord: 1,
             sticky: false,
             rtl: false,
@@ -271,7 +271,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         timer: 0,
         maxTaken: 60,
         usn: 0,
-        mod: baseTimeMs,
+        mod: currentTime,
         autoplay: true
       }
     };
@@ -293,15 +293,15 @@ export class ApkgExporter extends BaseVocabularyExporter {
       collapseTime: 1200
     };
 
-    // Insert collection data with proper timestamp values
+    // Insert collection data - all timestamps in seconds for consistency
     db.run(
       `INSERT INTO col (id, crt, mod, scm, ver, dty, usn, ls, conf, models, decks, dconf, tags) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         1,                              // id
-        baseTimeSec,                    // crt (creation time in seconds)
-        baseTimeMs,                     // mod (modification time in milliseconds)
-        baseTimeMs,                     // scm (schema modification time in milliseconds)
+        currentTime,                    // crt (creation time)
+        currentTime,                    // mod (modification time) 
+        currentTime,                    // scm (schema modification time)
         11,                            // ver (version)
         0,                             // dty (dirty)
         0,                             // usn (update sequence number)
@@ -315,15 +315,15 @@ export class ApkgExporter extends BaseVocabularyExporter {
     );
   }
 
-  private insertNotesAndCards(db: any, vocabulary: VocabularyItem[], options: ExportOptions, baseTimeMs: number, baseTimeSec: number, modelId: number, deckId: number): void {
+  private insertNotesAndCards(db: any, vocabulary: VocabularyItem[], options: ExportOptions, currentTime: number, modelId: number, deckId: number): void {
     console.log('Inserting', vocabulary.length, 'notes and cards...');
     
     vocabulary.forEach((item, index) => {
-      // Generate proper Anki IDs using millisecond timestamp + offset
-      const noteId = baseTimeMs + index + 1;
-      const cardId = baseTimeMs + index + 100000; // Ensure card IDs don't overlap with note IDs
+      // Generate safe sequential IDs starting from a reasonable base
+      const noteId = currentTime * 1000 + index + 1; // Multiply by 1000 to avoid conflicts
+      const cardId = currentTime * 1000 + index + 100000; // Ensure cards don't conflict with notes
       
-      // Prepare fields
+      // Prepare fields - sanitize and escape properly
       const front = this.sanitizeText(item.word);
       let back = this.sanitizeText(item.definition);
       
@@ -348,18 +348,18 @@ export class ApkgExporter extends BaseVocabularyExporter {
           noteId,                        // id
           guid,                          // guid
           modelId,                       // mid (model id)
-          baseTimeMs,                    // mod (modification time in ms)
+          currentTime,                   // mod (modification time)
           -1,                           // usn (update sequence number)
           item.language || '',          // tags
-          fields,                       // flds (fields)
-          front,                        // sfld (sort field)
+          fields,                       // flds (fields separated by \x1f)
+          front,                        // sfld (sort field)  
           csum,                         // csum (checksum)
           0,                            // flags
           ""                            // data
         ]
       );
 
-      // Insert card
+      // Insert card with proper defaults for new cards
       db.run(
         `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -367,18 +367,18 @@ export class ApkgExporter extends BaseVocabularyExporter {
           cardId,                       // id
           noteId,                       // nid (note id)
           deckId,                       // did (deck id)
-          0,                            // ord (ordinal)
-          baseTimeMs,                   // mod (modification time in ms)
+          0,                            // ord (ordinal/template index)
+          currentTime,                  // mod (modification time)
           -1,                           // usn (update sequence number)
-          0,                            // type (0 = new)
-          0,                            // queue (0 = new)
-          index + 1,                    // due (due date)
+          0,                            // type (0 = new, 1 = learning, 2 = review)
+          0,                            // queue (0 = new, 1 = learning, 2 = review)
+          index + 1,                    // due (due date for new cards, just use index)
           0,                            // ivl (interval)
-          2500,                         // factor (ease factor, 2500 = 250%)
+          2500,                         // factor (ease factor 2500 = 250%)
           0,                            // reps (repetitions)
           0,                            // lapses
-          0,                            // left
-          0,                            // odue (original due)
+          0,                            // left (steps left)
+          0,                            // odue (original due) 
           0,                            // odid (original deck id)
           0,                            // flags
           ""                            // data
@@ -388,21 +388,21 @@ export class ApkgExporter extends BaseVocabularyExporter {
   }
 
   private generateGuid(): string {
-    // Generate a proper 10-character base91 GUID as used by Anki
-    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-./:;<=>?@[]^_`{|}~';
-    return Array.from({ length: 10 }, () => 
+    // Generate a simple 8-character alphanumeric GUID
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    return Array.from({ length: 8 }, () => 
       chars[Math.floor(Math.random() * chars.length)]
     ).join('');
   }
 
   private calculateChecksum(text: string): number {
-    // Calculate CRC-like checksum that stays within safe range
+    // Simple checksum that ensures positive 32-bit integer
     let hash = 0;
     for (let i = 0; i < text.length; i++) {
       const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash + char) & 0x7fffffff; // Keep within 32-bit signed integer range
+      hash = ((hash << 5) - hash + char) & 0x7fffffff;
     }
-    return Math.abs(hash); // Ensure positive
+    return Math.abs(hash);
   }
 
   private async processMediaFiles(vocabulary: VocabularyItem[]): Promise<Array<{ data: string | null, url?: string }>> {
