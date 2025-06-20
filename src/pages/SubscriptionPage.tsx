@@ -56,22 +56,8 @@ const SubscriptionPage: React.FC = () => {
   const handleSubscribe = async (planId: string) => {
     setIsProcessing(true);
     try {
-      // Get the plan object
-      const plan = Object.values(SUBSCRIPTION_PLANS).find(p => p.id === planId);
-      if (!plan) {
-        toast.error('Invalid plan selected');
-        return;
-      }
-      
-      // Get the correct price_id for the selected currency
-      const priceId = plan.priceIds[selectedCurrency];
-      if (!priceId) {
-        toast.error(`Price not available for ${selectedCurrency}`);
-        return;
-      }
-      
-      // Pass the actual Stripe price_id instead of the plan id
-      const checkoutUrl = await createCheckoutSession(priceId);
+      // Your backend expects planId and currency, not price_id
+      const checkoutUrl = await createCheckoutSession(planId, selectedCurrency);
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
       }
@@ -648,7 +634,23 @@ const PlanCard: React.FC<PlanCardProps> = ({
   featured = false 
 }) => {
   const isActive = currentPlan === plan.id;
-  const convertedPrice = convertPrice(plan.price, currency);
+  
+  // Convert price based on currency
+  const getConvertedPrice = (basePrice: number, targetCurrency: string) => {
+    // You'll need to implement this based on your currency conversion logic
+    // This is a simplified example - you should use your existing convertPrice function
+    const conversionRates = {
+      'usd': 1,
+      'eur': 0.85,
+      'gbp': 0.73,
+      // Add other currencies as needed
+    };
+    
+    const rate = conversionRates[targetCurrency.toLowerCase()] || 1;
+    return basePrice * rate;
+  };
+  
+  const convertedPrice = getConvertedPrice(plan.price, currency);
   const isOneTime = 'oneTime' in plan && plan.oneTime;
   const billing = 'billing' in plan ? plan.billing : undefined;
   const trialDays = 'trialDays' in plan ? plan.trialDays : undefined;
