@@ -238,7 +238,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         ],
         css: ".card {\n font-family: arial;\n font-size: 20px;\n text-align: center;\n color: black;\n background-color: white;\n}\n",
         latexPre:
-          "\\documentclass[12pt]{article}\n\\special{papersize=3in,5in}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amssymb,amsmath}\n\\pagestyle{empty}\n\\setlength{\\parindent}{0in}\n\\begin{document}\n",
+          "\\documentclass[12pt]{article}\n\\special{papersize=3in,5in}\n\\usepackage[utf8]{inputenc}\n\\usepackage[amssymb,amsmath}\n\\pagestyle{empty}\n\\setlength{\\parindent}{0in}\n\\begin{document}\n",
         latexPost: "\\end{document}",
         req: [[0, "any", [0]]],
       },
@@ -301,10 +301,10 @@ export class ApkgExporter extends BaseVocabularyExporter {
       collapseTime: 1200,
     }
 
-    // Insert collection data with proper timestamp values
+    // Insert collection data with consistent timestamp values (all in seconds)
     db.run(
       `INSERT INTO col (id, crt, mod, scm, ver, dty, usn, ls, conf, models, decks, dconf, tags) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         1, // id
         baseTimeSec, // crt (creation time in seconds)
@@ -335,10 +335,9 @@ export class ApkgExporter extends BaseVocabularyExporter {
     console.log("Inserting", vocabulary.length, "notes and cards...")
 
     vocabulary.forEach((item, index) => {
-      // Generate safe IDs using a smaller base to avoid integer overflow
-      const noteIdBase = 1000000 // Start from a reasonable base
-      const noteId = noteIdBase + index + 1
-      const cardId = noteIdBase + index + 100000
+      // Generate much smaller, safer IDs
+      const noteId = 1000 + index
+      const cardId = 10000 + index
 
       // Prepare fields
       const front = this.sanitizeText(item.word)
@@ -357,10 +356,10 @@ export class ApkgExporter extends BaseVocabularyExporter {
       const guid = this.generateGuid()
       const csum = this.calculateChecksum(front)
 
-      // Insert note
+      // Insert note with safer timestamp values
       db.run(
         `INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           noteId, // id
           guid, // guid
@@ -376,10 +375,10 @@ export class ApkgExporter extends BaseVocabularyExporter {
         ],
       )
 
-      // Insert card
+      // Insert card with much safer values
       db.run(
         `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           cardId, // id
           noteId, // nid (note id)
@@ -389,7 +388,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
           -1, // usn (update sequence number)
           0, // type (0 = new)
           0, // queue (0 = new)
-          index + 1, // due (due date)
+          1, // due (due date - use 1 instead of index + 1)
           0, // ivl (interval)
           2500, // factor (ease factor, 2500 = 250%)
           0, // reps (repetitions)
@@ -411,13 +410,12 @@ export class ApkgExporter extends BaseVocabularyExporter {
   }
 
   private calculateChecksum(text: string): number {
-    // Calculate CRC-like checksum that stays within safe range
+    // Use a simple, safe checksum that won't overflow
     let hash = 0
     for (let i = 0; i < text.length; i++) {
-      const char = text.charCodeAt(i)
-      hash = ((hash << 5) - hash + char) & 0x7fffffff // Keep within 32-bit signed integer range
+      hash = (hash + text.charCodeAt(i)) % 2147483647 // Keep within safe 32-bit range
     }
-    return Math.abs(hash) // Ensure positive
+    return hash
   }
 
   private async processMediaFiles(vocabulary: VocabularyItem[]): Promise<Array<{ data: string | null; url?: string }>> {
