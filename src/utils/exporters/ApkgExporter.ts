@@ -14,16 +14,16 @@ export class ApkgExporter extends BaseVocabularyExporter {
 
       const zip = new JSZip()
 
-      // For debugging: only process the FIRST audio file to test the format
+      // Process all media files using the working format
       let mediaInfo: { mediaMapping: Record<string, string>; audioMap: Map<number, string> } = {
         mediaMapping: {},
         audioMap: new Map(),
       }
 
       if (options.includeAudio) {
-        console.log("Processing ONLY the first audio file for testing...")
-        mediaInfo = await this.processFirstAudioOnly(zip, vocabulary)
-        console.log("Media processing result:", mediaInfo)
+        console.log("Processing all audio files...")
+        mediaInfo = await this.processAllAudioFiles(zip, vocabulary)
+        console.log("Media processing complete:", Object.keys(mediaInfo.mediaMapping).length, "files")
       }
 
       // Create the database
@@ -33,14 +33,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
       // Create media mapping file
       zip.file("media", JSON.stringify(mediaInfo.mediaMapping))
 
-      // Debug: Log everything in the ZIP
-      console.log("=== ZIP CONTENTS ===")
-      zip.forEach((relativePath, file) => {
-        console.log(`ZIP file: ${relativePath}`)
-      })
-      console.log("=== MEDIA MAPPING ===")
-      console.log(JSON.stringify(mediaInfo.mediaMapping, null, 2))
-      console.log("=== AUDIO MAP ===")
+      console.log("Final media mapping:", mediaInfo.mediaMapping)
       console.log("Audio map entries:", Array.from(mediaInfo.audioMap.entries()))
 
       const blob = await zip.generateAsync({ type: "blob" })
@@ -54,80 +47,82 @@ export class ApkgExporter extends BaseVocabularyExporter {
     }
   }
 
-  private async processFirstAudioOnly(
+  private async processAllAudioFiles(
     zip: JSZip,
     vocabulary: VocabularyItem[],
   ): Promise<{ mediaMapping: Record<string, string>; audioMap: Map<number, string> }> {
     const mediaMapping: Record<string, string> = {}
     const audioMap = new Map<number, string>()
+    let mediaIndex = 0
 
-    // Find the first item with audio
-    let firstAudioIndex = -1
-    let firstAudioUrl = ""
+    console.log("Processing audio files for", vocabulary.length, "vocabulary items")
 
-    for (let i = 0; i < vocabulary.length; i++) {
-      if (vocabulary[i].audioUrl) {
-        firstAudioIndex = i
-        firstAudioUrl = vocabulary[i].audioUrl!
-        break
+    for (let vocabIndex = 0; vocabIndex < vocabulary.length; vocabIndex++) {
+      const item = vocabulary[vocabIndex]
+
+      if (!item.audioUrl) {
+        console.log(`Vocab[${vocabIndex}]: No audio URL, skipping`)
+        continue
+      }
+
+      try {
+        console.log(`Vocab[${vocabIndex}]: Fetching audio from ${item.audioUrl}`)
+
+        // Fetch audio with timeout
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 15000)
+
+        const response = await fetch(item.audioUrl, {
+          signal: controller.signal,
+          headers: {
+            Accept: "audio/*,*/*",
+            "User-Agent": "Mozilla/5.0 (compatible; AnkiExporter/1.0)",
+          },
+          mode: "cors",
+        })
+
+        clearTimeout(timeoutId)
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+
+        const blob = await response.blob()
+        if (blob.size === 0) {
+          throw new Error("Empty audio file")
+        }
+
+        // Convert to base64
+        const base64 = await this.blobToBase64(blob)
+        const base64Data = base64.split(",")[1]
+
+        if (!base64Data) {
+          throw new Error("Failed to convert to base64")
+        }
+
+        // Use the working format: just the media index as filename (no extension)
+        const filename = mediaIndex.toString()
+
+        // Add to ZIP
+        zip.file(filename, base64Data, { base64: true })
+
+        // Update mappings using the working format
+        mediaMapping[mediaIndex.toString()] = filename
+        audioMap.set(vocabIndex, filename)
+
+        console.log(`✓ Vocab[${vocabIndex}] -> Media[${mediaIndex}] -> File[${filename}] (${blob.size} bytes)`)
+        mediaIndex++
+      } catch (error) {
+        console.warn(`✗ Vocab[${vocabIndex}]: Failed to process audio:`, error)
+        // Skip this item - don't add to any mappings
       }
     }
 
-    if (firstAudioIndex === -1) {
-      console.log("No audio URLs found in vocabulary")
-      return { mediaMapping, audioMap }
-    }
+    console.log(`Media processing summary: ${mediaIndex} files successfully processed`)
+    console.log("Final media mapping:", mediaMapping)
+    console.log("Audio map size:", audioMap.size)
 
-    console.log(`Found first audio at index ${firstAudioIndex}: ${firstAudioUrl}`)
-
-    try {
-      // Fetch the audio
-      console.log("Fetching audio...")
-      const response = await fetch(firstAudioUrl, {
-        headers: {
-          Accept: "audio/*,*/*",
-        },
-        mode: "cors",
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
-      }
-
-      const blob = await response.blob()
-      console.log(`Audio blob size: ${blob.size} bytes`)
-
-      if (blob.size === 0) {
-        throw new Error("Empty audio file")
-      }
-
-      // Convert to base64
-      const base64 = await this.blobToBase64(blob)
-      const base64Data = base64.split(",")[1]
-
-      if (!base64Data) {
-        throw new Error("Failed to convert to base64")
-      }
-
-      // Use the simplest possible naming: just "0"
-      const filename = "0"
-
-      // Add to ZIP
-      zip.file(filename, base64Data, { base64: true })
-      console.log(`Added file to ZIP: ${filename}`)
-
-      // Create media mapping - try the simplest format
-      mediaMapping["0"] = filename
-      audioMap.set(firstAudioIndex, filename)
-
-      console.log(`Media mapping: {"0": "${filename}"}`)
-      console.log(`Audio map: ${firstAudioIndex} -> ${filename}`)
-
-      return { mediaMapping, audioMap }
-    } catch (error) {
-      console.error("Failed to process first audio file:", error)
-      return { mediaMapping, audioMap }
-    }
+    return { mediaMapping, audioMap }
   }
 
   private async createAnkiDatabase(
@@ -418,7 +413,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
     audioMap: Map<number, string>,
   ): void {
     console.log("Inserting", vocabulary.length, "notes and cards...")
-    console.log("Audio map contains", audioMap.size, "entries:", Array.from(audioMap.entries()))
+    console.log("Audio map contains", audioMap.size, "entries")
 
     vocabulary.forEach((item, index) => {
       // Use very simple, safe IDs
@@ -433,13 +428,13 @@ export class ApkgExporter extends BaseVocabularyExporter {
         back += `<br><br><i>${this.sanitizeText(item.exampleSentence)}</i>`
       }
 
-      // Add audio reference ONLY if we have it in audioMap
+      // Add audio reference using the working format
       if (options.includeAudio && audioMap.has(index)) {
         const audioFilename = audioMap.get(index)!
         back += `<br>[sound:${audioFilename}]`
         console.log(`✓ Card[${index}]: Added audio reference [sound:${audioFilename}]`)
       } else if (item.audioUrl && options.includeAudio) {
-        back += `<br><small>(Audio not processed)</small>`
+        back += `<br><small>(Audio processing failed)</small>`
         console.log(`- Card[${index}]: Has audio URL but not in audioMap`)
       }
 
