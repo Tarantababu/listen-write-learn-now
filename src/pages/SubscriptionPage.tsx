@@ -1,3 +1,5 @@
+"use client"
+
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useSubscription } from "@/contexts/SubscriptionContext"
@@ -40,7 +42,9 @@ const SubscriptionPage: React.FC = () => {
   const handleSubscribe = async (planId: string, price: number) => {
     setIsProcessing(true)
     try {
-      const checkoutUrl = await createCheckoutSession(planId, price)
+      // You can use the price parameter here if needed for your checkout logic
+      // For now, keeping the original function signature
+      const checkoutUrl = await createCheckoutSession(planId)
       if (checkoutUrl) {
         window.location.href = checkoutUrl
       }
@@ -668,7 +672,9 @@ const PlanCard: React.FC<PlanCardProps> = ({
           disabled={isProcessing || isActive}
           onClick={() => {
             trackButtonClick(`subscribe-${plan.id}`)
-            onSubscribe(plan.id, convertedPrice)
+            // Store the current UI price for potential use
+            const currentPrice = convertedPrice
+            onSubscribe(plan.id, currentPrice)
           }}
         >
           {isProcessing ? (
