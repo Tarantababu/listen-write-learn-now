@@ -14,27 +14,33 @@ export class ApkgExporter extends BaseVocabularyExporter {
 
       const zip = new JSZip()
 
-      // Create the collection.anki2 SQLite database file
+      // Create the collection.anki2 SQLite database file first (without depending on media)
       const dbArrayBuffer = await this.createAnkiDatabase(vocabulary, options)
       zip.file("collection.anki2", dbArrayBuffer)
 
-      // Create media files if audio is included
+      // Create media files if audio is included - handle this separately and safely
       const media: Record<string, string> = {}
       if (options.includeAudio) {
         console.log("Processing audio files...")
-        const mediaFiles = await this.processMediaFiles(vocabulary)
+        try {
+          const mediaFiles = await this.processMediaFiles(vocabulary)
 
-        for (let i = 0; i < mediaFiles.length; i++) {
-          const file = mediaFiles[i]
-          if (file.data) {
-            const filename = `${i}.mp3`
-            zip.file(filename, file.data, { base64: true })
-            media[filename] = filename
+          for (let i = 0; i < mediaFiles.length; i++) {
+            const file = mediaFiles[i]
+            if (file.data) {
+              const filename = `${i}.mp3`
+              zip.file(filename, file.data, { base64: true })
+              media[i.toString()] = filename // Proper Anki media mapping format
+            }
           }
+          console.log("Successfully processed", Object.keys(media).length, "audio files")
+        } catch (audioError) {
+          console.warn("Audio processing failed, continuing without audio:", audioError)
+          // Continue without audio rather than failing the entire export
         }
       }
 
-      // Create media mapping file
+      // Create media mapping file (even if empty)
       zip.file("media", JSON.stringify(media))
 
       const blob = await zip.generateAsync({ type: "blob" })
@@ -57,30 +63,32 @@ export class ApkgExporter extends BaseVocabularyExporter {
 
     const db = new SQL.Database()
 
-    // Create all required Anki tables
-    this.createTables(db)
+    try {
+      // Create all required Anki tables
+      this.createTables(db)
 
-    // Generate base timestamps (use seconds for most fields, milliseconds only where needed)
-    const baseTimeSec = Math.floor(Date.now() / 1000)
-    const baseTimeMs = baseTimeSec * 1000
+      // Use completely safe, fixed values
+      const safeTimestamp = 1700000000 // Fixed timestamp from 2023
+      const deckId = 1000001 // Smaller, safer deck ID
+      const modelId = 1000002 // Smaller, safer model ID
 
-    // Use safe ID ranges that won't overflow SQLite integers
-    const deckId = 1649441468
-    const modelId = 1649441469
+      console.log("Using safe timestamp:", safeTimestamp)
 
-    console.log("Base timestamp (ms):", baseTimeMs, "Base timestamp (sec):", baseTimeSec)
+      // Insert collection configuration
+      this.insertCollectionData(db, safeTimestamp, modelId, deckId, options.deckName)
 
-    // Insert collection configuration
-    this.insertCollectionData(db, baseTimeMs, baseTimeSec, modelId, deckId, options.deckName)
+      // Insert notes and cards
+      this.insertNotesAndCards(db, vocabulary, options, safeTimestamp, modelId, deckId)
 
-    // Insert notes and cards
-    this.insertNotesAndCards(db, vocabulary, options, baseTimeMs, baseTimeSec, modelId, deckId)
+      const data = db.export()
+      db.close()
 
-    const data = db.export()
-    db.close()
-
-    console.log("Database created successfully, size:", data.length, "bytes")
-    return data
+      console.log("Database created successfully, size:", data.length, "bytes")
+      return data
+    } catch (error) {
+      db.close()
+      throw error
+    }
   }
 
   private createTables(db: any): void {
@@ -171,17 +179,12 @@ export class ApkgExporter extends BaseVocabularyExporter {
 
   private insertCollectionData(
     db: any,
-    baseTimeMs: number,
-    baseTimeSec: number,
+    safeTimestamp: number,
     modelId: number,
     deckId: number,
     deckName: string,
   ): void {
-    // Use a safe, fixed timestamp instead of current time
-    const safeTimestamp = 1700000000 // Fixed timestamp from 2023
-    const safeTimestampMs = safeTimestamp * 1000
-
-    // Rest of the method stays the same, but replace baseTimeMs and baseTimeSec with safe values
+    // Deck configuration
     const decks = {
       [deckId]: {
         id: deckId,
@@ -197,7 +200,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         desc: "",
         dyn: 0,
         extendNew: 10,
-        mod: safeTimestampMs,
+        mod: safeTimestamp,
       },
     }
 
@@ -207,7 +210,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         id: modelId,
         name: "Basic",
         type: 0,
-        mod: safeTimestampMs,
+        mod: safeTimestamp,
         usn: 0,
         sortf: 0,
         did: deckId,
@@ -242,7 +245,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         ],
         css: ".card {\n font-family: arial;\n font-size: 20px;\n text-align: center;\n color: black;\n background-color: white;\n}\n",
         latexPre:
-          "\\documentclass[12pt]{article}\n\\special{papersize=3in,5in}\n\\usepackage[utf8]{inputenc}\n\\usepackage[amssymb,amsmath}\n\\pagestyle{empty}\n\\setlength{\\parindent}{0in}\n\\begin{document}\n",
+          "\\documentclass[12pt]{article}\n\\special{papersize=3in,5in}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amssymb,amsmath}\n\\pagestyle{empty}\n\\setlength{\\parindent}{0in}\n\\begin{document}\n",
         latexPost: "\\end{document}",
         req: [[0, "any", [0]]],
       },
@@ -283,7 +286,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         timer: 0,
         maxTaken: 60,
         usn: 0,
-        mod: safeTimestampMs,
+        mod: safeTimestamp,
         autoplay: true,
       },
     }
@@ -305,10 +308,10 @@ export class ApkgExporter extends BaseVocabularyExporter {
       collapseTime: 1200,
     }
 
-    // Insert collection data with safe timestamp values
+    // Insert collection data
     db.run(
       `INSERT INTO col (id, crt, mod, scm, ver, dty, usn, ls, conf, models, decks, dconf, tags) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         1, // id
         safeTimestamp, // crt (creation time in seconds)
@@ -331,25 +334,18 @@ export class ApkgExporter extends BaseVocabularyExporter {
     db: any,
     vocabulary: VocabularyItem[],
     options: ExportOptions,
-    baseTimeMs: number,
-    baseTimeSec: number,
+    safeTimestamp: number,
     modelId: number,
     deckId: number,
   ): void {
     console.log("Inserting", vocabulary.length, "notes and cards...")
 
     vocabulary.forEach((item, index) => {
-      // Use absolutely safe, small IDs
+      // Use very simple, safe IDs
       const noteId = 1000 + index
-      const cardId = 10000 + index
+      const cardId = 2000 + index
 
-      // Validate that our IDs are safe numbers
-      if (!Number.isInteger(noteId) || !Number.isInteger(cardId) || noteId < 0 || cardId < 0) {
-        console.error("Invalid ID generated:", { noteId, cardId, index })
-        return
-      }
-
-      // Prepare fields with sanitization
+      // Prepare fields with proper sanitization
       const front = this.sanitizeText(item.word || "")
       let back = this.sanitizeText(item.definition || "")
 
@@ -357,117 +353,145 @@ export class ApkgExporter extends BaseVocabularyExporter {
         back += `<br><br><i>${this.sanitizeText(item.exampleSentence)}</i>`
       }
 
-      // Add audio if available
+      // Add audio reference if available (just the reference, not the actual processing)
       if (item.audioUrl && options.includeAudio) {
         back += `<br>[sound:${index}.mp3]`
       }
 
       const fields = `${front}\x1f${back}`
       const guid = this.generateGuid()
-      const csum = this.calculateChecksum(front)
+      const csum = this.calculateSimpleChecksum(front)
 
-      // Validate checksum
-      if (!Number.isInteger(csum) || csum < 0) {
-        console.error("Invalid checksum:", csum)
-        return
-      }
+      // Insert note
+      db.run(
+        `INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          noteId, // id
+          guid, // guid
+          modelId, // mid (model id)
+          safeTimestamp, // mod
+          -1, // usn (update sequence number)
+          item.language || "", // tags
+          fields, // flds (fields)
+          front, // sfld (sort field)
+          csum, // csum (checksum)
+          0, // flags
+          "", // data
+        ],
+      )
 
-      // Use a safe timestamp (just use a fixed recent timestamp)
-      const safeTimestamp = 1700000000 // Fixed timestamp from 2023
-
-      try {
-        // Insert note with completely safe values
-        db.run(
-          `INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            noteId, // id
-            guid, // guid
-            modelId, // mid (model id)
-            safeTimestamp, // mod (use safe fixed timestamp)
-            -1, // usn (update sequence number)
-            item.language || "", // tags
-            fields, // flds (fields)
-            front, // sfld (sort field)
-            csum, // csum (checksum)
-            0, // flags
-            "", // data
-          ],
-        )
-
-        // Insert card with completely safe values
-        db.run(
-          `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            cardId, // id
-            noteId, // nid (note id)
-            deckId, // did (deck id)
-            0, // ord (ordinal)
-            safeTimestamp, // mod (use safe fixed timestamp)
-            -1, // usn (update sequence number)
-            0, // type (0 = new)
-            0, // queue (0 = new)
-            1, // due (due date)
-            0, // ivl (interval)
-            2500, // factor (ease factor, 2500 = 250%)
-            0, // reps (repetitions)
-            0, // lapses
-            0, // left
-            0, // odue (original due)
-            0, // odid (original deck id)
-            0, // flags
-            "", // data
-          ],
-        )
-      } catch (error) {
-        console.error("Error inserting note/card:", error, { noteId, cardId, index })
-        throw error
-      }
+      // Insert card
+      db.run(
+        `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          cardId, // id
+          noteId, // nid (note id)
+          deckId, // did (deck id)
+          0, // ord (ordinal)
+          safeTimestamp, // mod
+          -1, // usn (update sequence number)
+          0, // type (0 = new)
+          0, // queue (0 = new)
+          1, // due (due date)
+          0, // ivl (interval)
+          2500, // factor (ease factor, 2500 = 250%)
+          0, // reps (repetitions)
+          0, // lapses
+          0, // left
+          0, // odue (original due)
+          0, // odid (original deck id)
+          0, // flags
+          "", // data
+        ],
+      )
     })
   }
 
   private generateGuid(): string {
-    // Generate a proper 10-character base91 GUID as used by Anki
-    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-./:;<=>?@[]^_`{|}~"
+    // Generate a simple 10-character GUID
+    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")
   }
 
-  private calculateChecksum(text: string): number {
-    // Use a very simple checksum that absolutely cannot overflow
+  private calculateSimpleChecksum(text: string): number {
+    // Very simple checksum that cannot overflow
     let sum = 0
-    for (let i = 0; i < Math.min(text.length, 100); i++) {
-      // Limit to first 100 chars
+    for (let i = 0; i < Math.min(text.length, 50); i++) {
       sum += text.charCodeAt(i)
     }
-    return sum % 1000000 // Keep it under 1 million
+    return sum % 100000 // Keep it small
   }
 
   private async processMediaFiles(vocabulary: VocabularyItem[]): Promise<Array<{ data: string | null; url?: string }>> {
     const mediaFiles: Array<{ data: string | null; url?: string }> = []
 
+    console.log("Processing", vocabulary.filter((item) => item.audioUrl).length, "audio files...")
+
     for (const item of vocabulary) {
       if (item.audioUrl) {
         try {
-          const response = await fetch(item.audioUrl)
+          console.log("Fetching audio from:", item.audioUrl)
+
+          // Add timeout and proper headers for audio fetching
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+
+          const response = await fetch(item.audioUrl, {
+            signal: controller.signal,
+            headers: {
+              Accept: "audio/*,*/*",
+            },
+            mode: "cors",
+          })
+
+          clearTimeout(timeoutId)
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+
           const blob = await response.blob()
+
+          // Validate that we got audio data
+          if (blob.size === 0) {
+            throw new Error("Empty audio file")
+          }
+
           const base64 = await this.blobToBase64(blob)
-          mediaFiles.push({ data: base64.split(",")[1], url: item.audioUrl })
+          const base64Data = base64.split(",")[1]
+
+          if (!base64Data) {
+            throw new Error("Failed to convert audio to base64")
+          }
+
+          mediaFiles.push({ data: base64Data, url: item.audioUrl })
+          console.log("Successfully processed audio file, size:", blob.size, "bytes")
         } catch (error) {
-          console.error("Failed to fetch audio:", error)
+          console.warn("Failed to fetch audio from", item.audioUrl, ":", error)
           mediaFiles.push({ data: null, url: item.audioUrl })
         }
+      } else {
+        mediaFiles.push({ data: null })
       }
     }
 
+    console.log("Media processing complete. Successfully processed:", mediaFiles.filter((f) => f.data).length, "files")
     return mediaFiles
   }
 
   private blobToBase64(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result as string)
-      reader.onerror = reject
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result)
+        } else {
+          reject(new Error("Failed to convert blob to base64"))
+        }
+      }
+      reader.onerror = () => reject(new Error("FileReader error"))
       reader.readAsDataURL(blob)
     })
   }
