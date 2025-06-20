@@ -53,7 +53,7 @@ const SubscriptionPage: React.FC = () => {
   const handleSubscribe = async (planId: string) => {
     setIsProcessing(true);
     try {
-      // Pass planId with currency included (e.g., "monthly-usd", "quarterly-eur")
+      // Pass planId with lowercase currency (e.g., "monthly-usd", "quarterly-eur")
       const checkoutUrl = await createCheckoutSession(planId);
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
@@ -193,7 +193,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.MONTHLY}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe(`monthly-${selectedCurrency}`)}
+              onSubscribe={() => handleSubscribe(`monthly-${selectedCurrency.toLowerCase()}`)}
               isProcessing={isProcessing}
             />
             
@@ -202,7 +202,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.QUARTERLY}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe(`quarterly-${selectedCurrency}`)}
+              onSubscribe={() => handleSubscribe(`quarterly-${selectedCurrency.toLowerCase()}`)}
               isProcessing={isProcessing}
               featured={true}
             />
@@ -212,7 +212,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.ANNUAL}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe(`annual-${selectedCurrency}`)}
+              onSubscribe={() => handleSubscribe(`annual-${selectedCurrency.toLowerCase()}`)}
               isProcessing={isProcessing}
             />
             
@@ -221,7 +221,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.LIFETIME}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe(`lifetime-${selectedCurrency}`)}
+              onSubscribe={() => handleSubscribe(`lifetime-${selectedCurrency.toLowerCase()}`)}
               isProcessing={isProcessing}
             />
           </div>
