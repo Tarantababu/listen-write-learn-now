@@ -51,11 +51,8 @@ const SubscriptionPage: React.FC = () => {
       // Convert price to selected currency
       const convertedPrice = convertPrice(plan.price, selectedCurrency)
 
-      // Create checkout session with price information
-      const checkoutUrl = await createCheckoutSession(planId, {
-        currency: selectedCurrency,
-        price: convertedPrice,
-      })
+      // Create checkout session with price information - FIXED: pass price directly
+      const checkoutUrl = await createCheckoutSession(planId, selectedCurrency, convertedPrice)
 
       if (checkoutUrl) {
         window.location.href = checkoutUrl
