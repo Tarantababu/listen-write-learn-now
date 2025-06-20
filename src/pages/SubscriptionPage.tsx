@@ -1,5 +1,3 @@
-"use client"
-
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useSubscription } from "@/contexts/SubscriptionContext"
@@ -42,9 +40,8 @@ const SubscriptionPage: React.FC = () => {
   const handleSubscribe = async (planId: string, price: number) => {
     setIsProcessing(true)
     try {
-      // You can use the price parameter here if needed for your checkout logic
-      // For now, keeping the original function signature
-      const checkoutUrl = await createCheckoutSession(planId)
+      // Pass the dynamic price to createCheckoutSession
+      const checkoutUrl = await createCheckoutSession(planId, price)
       if (checkoutUrl) {
         window.location.href = checkoutUrl
       }
