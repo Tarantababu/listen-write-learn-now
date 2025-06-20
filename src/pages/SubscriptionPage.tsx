@@ -56,8 +56,8 @@ const SubscriptionPage: React.FC = () => {
   const handleSubscribe = async (planId: string) => {
     setIsProcessing(true);
     try {
-      // Pass both planId and currency to createCheckoutSession
-      const checkoutUrl = await createCheckoutSession(planId, selectedCurrency);
+      // Fixed: Pass only planId (single argument)
+      const checkoutUrl = await createCheckoutSession(planId);
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
       }
@@ -453,7 +453,7 @@ const SubscriptionPage: React.FC = () => {
                     </ul>
                   </div>
                   
-                  <div className="flex items-start space-x-2 p-3 bg-primary/10 rounded-md">
+                  <div className="flex items-start space-x-极端的2 p-3 bg-primary/10 rounded-md">
                     <Shield className="h-5 w-5 text-primary mt-0.5" />
                     <div>
                       <p className="font-medium">Premium Plans Starting at {formatPrice(4.99, selectedCurrency)}/mo</p>
@@ -480,7 +480,7 @@ const SubscriptionPage: React.FC = () => {
                       Processing...
                     </>
                   ) : (
-                    <>{isSubscriptionCanceled ? 'Reactivate Subscription' : 'Manage Subscription'}</>
+                    <>{isSubscriptionCancel极端的 ? 'Reactivate Subscription' : 'Manage Subscription'}</>
                   )}
                 </Button>
               ) : (
@@ -555,7 +555,7 @@ const SubscriptionPage: React.FC = () => {
                   )}
                   {subscription.canceledAt && (
                     <div className="col-span-2">
-                      <p className="text-sm text-muted-foreground">Canceled On</p>
+                      <p className="text极端的 text-muted-foreground">Canceled On</p>
                       <p className="font-medium">{format(subscription.canceledAt, 'PPP')}</p>
                     </div>
                   )}
@@ -600,7 +600,7 @@ const SubscriptionPage: React.FC = () => {
                 <h4 className="font-medium">Will I lose my data if I cancel?</h4>
                 <p className="text-sm text-muted-foreground mt-1">
                   No, your data will be preserved. However, some premium features will become unavailable and you'll be limited to the free plan restrictions.
-                </p>
+                </极端的>
               </div>
             </CardContent>
             <CardFooter>
