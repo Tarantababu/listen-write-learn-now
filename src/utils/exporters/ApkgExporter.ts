@@ -1,4 +1,3 @@
-
 import JSZip from 'jszip';
 import initSqlJs from 'sql.js';
 import { VocabularyItem } from '@/types';
@@ -56,18 +55,18 @@ export class ApkgExporter extends BaseVocabularyExporter {
     db.run(`
       CREATE TABLE col (
         id INTEGER PRIMARY KEY,
-        crt INTEGER NOT NULL DEFAULT 0,
-        mod INTEGER NOT NULL DEFAULT 0,
-        scm INTEGER NOT NULL DEFAULT 0,
-        ver INTEGER NOT NULL DEFAULT 0,
-        dty INTEGER NOT NULL DEFAULT 0,
-        usn INTEGER NOT NULL DEFAULT 0,
-        ls INTEGER NOT NULL DEFAULT 0,
-        conf TEXT NOT NULL DEFAULT '',
-        models TEXT NOT NULL DEFAULT '',
-        decks TEXT NOT NULL DEFAULT '',
-        dconf TEXT NOT NULL DEFAULT '',
-        tags TEXT NOT NULL DEFAULT ''
+        crt INTEGER NOT NULL,
+        mod INTEGER NOT NULL,
+        scm INTEGER NOT NULL,
+        ver INTEGER NOT NULL,
+        dty INTEGER NOT NULL,
+        usn INTEGER NOT NULL,
+        ls INTEGER NOT NULL,
+        conf TEXT NOT NULL,
+        models TEXT NOT NULL,
+        decks TEXT NOT NULL,
+        dconf TEXT NOT NULL,
+        tags TEXT NOT NULL
       )
     `);
 
@@ -77,13 +76,13 @@ export class ApkgExporter extends BaseVocabularyExporter {
         guid TEXT NOT NULL,
         mid INTEGER NOT NULL,
         mod INTEGER NOT NULL,
-        usn INTEGER NOT NULL DEFAULT -1,
-        tags TEXT NOT NULL DEFAULT '',
-        flds TEXT NOT NULL DEFAULT '',
-        sfld TEXT NOT NULL DEFAULT '',
-        csum INTEGER NOT NULL DEFAULT 0,
-        flags INTEGER NOT NULL DEFAULT 0,
-        data TEXT NOT NULL DEFAULT ''
+        usn INTEGER NOT NULL,
+        tags TEXT NOT NULL,
+        flds TEXT NOT NULL,
+        sfld TEXT NOT NULL,
+        csum INTEGER NOT NULL,
+        flags INTEGER NOT NULL,
+        data TEXT NOT NULL
       )
     `);
 
@@ -94,71 +93,169 @@ export class ApkgExporter extends BaseVocabularyExporter {
         did INTEGER NOT NULL,
         ord INTEGER NOT NULL,
         mod INTEGER NOT NULL,
-        usn INTEGER NOT NULL DEFAULT -1,
-        type INTEGER NOT NULL DEFAULT 0,
-        queue INTEGER NOT NULL DEFAULT 0,
-        due INTEGER NOT NULL DEFAULT 0,
-        ivl INTEGER NOT NULL DEFAULT 0,
-        factor INTEGER NOT NULL DEFAULT 0,
-        reps INTEGER NOT NULL DEFAULT 0,
-        lapses INTEGER NOT NULL DEFAULT 0,
-        left INTEGER NOT NULL DEFAULT 0,
-        odue INTEGER NOT NULL DEFAULT 0,
-        odid INTEGER NOT NULL DEFAULT 0,
-        flags INTEGER NOT NULL DEFAULT 0,
-        data TEXT NOT NULL DEFAULT ''
+        usn INTEGER NOT NULL,
+        type INTEGER NOT NULL,
+        queue INTEGER NOT NULL,
+        due INTEGER NOT NULL,
+        ivl INTEGER NOT NULL,
+        factor INTEGER NOT NULL,
+        reps INTEGER NOT NULL,
+        lapses INTEGER NOT NULL,
+        left INTEGER NOT NULL,
+        odue INTEGER NOT NULL,
+        odid INTEGER NOT NULL,
+        flags INTEGER NOT NULL,
+        data TEXT NOT NULL
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE revlog (
+        id INTEGER PRIMARY KEY,
+        cid INTEGER NOT NULL,
+        usn INTEGER NOT NULL,
+        ease INTEGER NOT NULL,
+        ivl INTEGER NOT NULL,
+        lastIvl INTEGER NOT NULL,
+        factor INTEGER NOT NULL,
+        time INTEGER NOT NULL,
+        type INTEGER NOT NULL
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE graves (
+        usn INTEGER NOT NULL,
+        type INTEGER NOT NULL,
+        oid INTEGER NOT NULL
       )
     `);
 
     const now = Date.now();
-    const deckId = now;
-    const modelId = now + 1;
+    const nowSeconds = Math.floor(now / 1000);
+    const deckId = 1;
+    const modelId = Math.floor(now / 1000);
 
-    // Create deck configuration
+    // Create proper Anki deck configuration
     const decks = {
-      [deckId]: {
-        id: deckId,
-        name: options.deckName,
-        extendRev: 50,
-        usn: 0,
-        collapsed: false,
-        newToday: [0, 0],
-        revToday: [0, 0],
-        lrnToday: [0, 0],
-        timeToday: [0, 0],
-        conf: 1,
-        desc: ""
+      "1": {
+        "id": 1,
+        "name": options.deckName,
+        "extendRev": 50,
+        "usn": 0,
+        "collapsed": false,
+        "newToday": [0, 0],
+        "revToday": [0, 0],
+        "lrnToday": [0, 0],
+        "timeToday": [0, 0],
+        "conf": 1,
+        "desc": "",
+        "dyn": 0,
+        "extendNew": 10
       }
     };
 
-    // Create note type (model)
+    // Create proper Anki note type (model) configuration
     const models = {
       [modelId]: {
-        id: modelId,
-        name: "Basic",
-        type: 0,
-        mod: now,
-        usn: 0,
-        sortf: 0,
-        did: deckId,
-        tmpls: [{
-          name: "Card 1",
-          ord: 0,
-          qfmt: "{{Front}}",
-          afmt: "{{FrontSide}}<hr id=answer>{{Back}}",
-          did: null,
-          bqfmt: "",
-          bafmt: ""
-        }],
-        flds: [
-          { name: "Front", ord: 0, sticky: false, rtl: false, font: "Arial", size: 20 },
-          { name: "Back", ord: 1, sticky: false, rtl: false, font: "Arial", size: 20 }
+        "id": modelId,
+        "name": "Basic",
+        "type": 0,
+        "mod": nowSeconds,
+        "usn": 0,
+        "sortf": 0,
+        "did": 1,
+        "tmpls": [
+          {
+            "name": "Card 1",
+            "ord": 0,
+            "qfmt": "{{Front}}",
+            "afmt": "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}",
+            "did": null,
+            "bqfmt": "",
+            "bafmt": ""
+          }
         ],
-        css: ".card {\n font-family: arial;\n font-size: 20px;\n text-align: center;\n color: black;\n background-color: white;\n}\n",
-        latexPre: "\\documentclass[12pt]{article}\n\\special{papersize=3in,5in}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amssymb,amsmath}\n\\pagestyle{empty}\n\\setlength{\\parindent}{0in}\n\\begin{document}\n",
-        latexPost: "\\end{document}",
-        req: [[0, "any", [0]]]
+        "flds": [
+          {
+            "name": "Front",
+            "ord": 0,
+            "sticky": false,
+            "rtl": false,
+            "font": "Arial",
+            "size": 20
+          },
+          {
+            "name": "Back",
+            "ord": 1,
+            "sticky": false,
+            "rtl": false,
+            "font": "Arial",
+            "size": 20
+          }
+        ],
+        "css": ".card {\n font-family: arial;\n font-size: 20px;\n text-align: center;\n color: black;\n background-color: white;\n}\n",
+        "latexPre": "\\documentclass[12pt]{article}\n\\special{papersize=3in,5in}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amssymb,amsmath}\n\\pagestyle{empty}\n\\setlength{\\parindent}{0in}\n\\begin{document}\n",
+        "latexPost": "\\end{document}",
+        "req": [[0, "any", [0]]]
       }
+    };
+
+    // Create deck configuration
+    const dconf = {
+      "1": {
+        "id": 1,
+        "name": "Default",
+        "replayq": true,
+        "lapse": {
+          "delays": [10],
+          "mult": 0,
+          "minInt": 1,
+          "leechFails": 8,
+          "leechAction": 0
+        },
+        "rev": {
+          "perDay": 200,
+          "ease4": 1.3,
+          "fuzz": 0.05,
+          "minSpace": 1,
+          "ivlFct": 1,
+          "maxIvl": 36500,
+          "bury": true,
+          "hardFactor": 1.2
+        },
+        "new": {
+          "perDay": 20,
+          "delays": [1, 10],
+          "separate": true,
+          "ints": [1, 4, 7],
+          "initialFactor": 2500,
+          "bury": true,
+          "order": 1
+        },
+        "timer": 0,
+        "maxTaken": 60,
+        "usn": 0,
+        "mod": nowSeconds,
+        "autoplay": true
+      }
+    };
+
+    // Create collection configuration
+    const conf = {
+      "nextPos": 1,
+      "estTimes": true,
+      "activeDecks": [1],
+      "sortType": "noteFld",
+      "timeLim": 0,
+      "sortBackwards": false,
+      "addToCur": true,
+      "curDeck": 1,
+      "newBury": true,
+      "newSpread": 0,
+      "dueCounts": true,
+      "curModel": modelId,
+      "collapseTime": 1200
     };
 
     // Insert collection data
@@ -167,17 +264,17 @@ export class ApkgExporter extends BaseVocabularyExporter {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         1,
-        Math.floor(now / 1000),
+        nowSeconds,
         now,
         now,
         11,
         0,
         0,
         0,
-        JSON.stringify({}),
+        JSON.stringify(conf),
         JSON.stringify(models),
         JSON.stringify(decks),
-        JSON.stringify({}),
+        JSON.stringify(dconf),
         JSON.stringify({})
       ]
     );
@@ -234,7 +331,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
           -1,
           0,
           0,
-          1,
+          index + 1,
           0,
           0,
           0,
