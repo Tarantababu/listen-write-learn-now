@@ -177,7 +177,11 @@ export class ApkgExporter extends BaseVocabularyExporter {
     deckId: number,
     deckName: string,
   ): void {
-    // Deck configuration
+    // Use a safe, fixed timestamp instead of current time
+    const safeTimestamp = 1700000000 // Fixed timestamp from 2023
+    const safeTimestampMs = safeTimestamp * 1000
+
+    // Rest of the method stays the same, but replace baseTimeMs and baseTimeSec with safe values
     const decks = {
       [deckId]: {
         id: deckId,
@@ -193,7 +197,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         desc: "",
         dyn: 0,
         extendNew: 10,
-        mod: baseTimeMs,
+        mod: safeTimestampMs,
       },
     }
 
@@ -203,7 +207,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         id: modelId,
         name: "Basic",
         type: 0,
-        mod: baseTimeMs,
+        mod: safeTimestampMs,
         usn: 0,
         sortf: 0,
         did: deckId,
@@ -279,7 +283,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         timer: 0,
         maxTaken: 60,
         usn: 0,
-        mod: baseTimeMs,
+        mod: safeTimestampMs,
         autoplay: true,
       },
     }
@@ -301,15 +305,15 @@ export class ApkgExporter extends BaseVocabularyExporter {
       collapseTime: 1200,
     }
 
-    // Insert collection data with consistent timestamp values (all in seconds)
+    // Insert collection data with safe timestamp values
     db.run(
       `INSERT INTO col (id, crt, mod, scm, ver, dty, usn, ls, conf, models, decks, dconf, tags) 
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         1, // id
-        baseTimeSec, // crt (creation time in seconds)
-        baseTimeSec, // mod (modification time in seconds)
-        baseTimeSec, // scm (schema modification time in seconds)
+        safeTimestamp, // crt (creation time in seconds)
+        safeTimestamp, // mod (modification time in seconds)
+        safeTimestamp, // scm (schema modification time in seconds)
         11, // ver (version)
         0, // dty (dirty)
         0, // usn (update sequence number)
@@ -335,13 +339,19 @@ export class ApkgExporter extends BaseVocabularyExporter {
     console.log("Inserting", vocabulary.length, "notes and cards...")
 
     vocabulary.forEach((item, index) => {
-      // Generate much smaller, safer IDs
+      // Use absolutely safe, small IDs
       const noteId = 1000 + index
       const cardId = 10000 + index
 
-      // Prepare fields
-      const front = this.sanitizeText(item.word)
-      let back = this.sanitizeText(item.definition)
+      // Validate that our IDs are safe numbers
+      if (!Number.isInteger(noteId) || !Number.isInteger(cardId) || noteId < 0 || cardId < 0) {
+        console.error("Invalid ID generated:", { noteId, cardId, index })
+        return
+      }
+
+      // Prepare fields with sanitization
+      const front = this.sanitizeText(item.word || "")
+      let back = this.sanitizeText(item.definition || "")
 
       if (item.exampleSentence) {
         back += `<br><br><i>${this.sanitizeText(item.exampleSentence)}</i>`
@@ -356,50 +366,64 @@ export class ApkgExporter extends BaseVocabularyExporter {
       const guid = this.generateGuid()
       const csum = this.calculateChecksum(front)
 
-      // Insert note with safer timestamp values
-      db.run(
-        `INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          noteId, // id
-          guid, // guid
-          modelId, // mid (model id)
-          baseTimeSec, // mod (modification time in seconds)
-          -1, // usn (update sequence number)
-          item.language || "", // tags
-          fields, // flds (fields)
-          front, // sfld (sort field)
-          csum, // csum (checksum)
-          0, // flags
-          "", // data
-        ],
-      )
+      // Validate checksum
+      if (!Number.isInteger(csum) || csum < 0) {
+        console.error("Invalid checksum:", csum)
+        return
+      }
 
-      // Insert card with much safer values
-      db.run(
-        `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          cardId, // id
-          noteId, // nid (note id)
-          deckId, // did (deck id)
-          0, // ord (ordinal)
-          baseTimeSec, // mod (modification time in seconds)
-          -1, // usn (update sequence number)
-          0, // type (0 = new)
-          0, // queue (0 = new)
-          1, // due (due date - use 1 instead of index + 1)
-          0, // ivl (interval)
-          2500, // factor (ease factor, 2500 = 250%)
-          0, // reps (repetitions)
-          0, // lapses
-          0, // left
-          0, // odue (original due)
-          0, // odid (original deck id)
-          0, // flags
-          "", // data
-        ],
-      )
+      // Use a safe timestamp (just use a fixed recent timestamp)
+      const safeTimestamp = 1700000000 // Fixed timestamp from 2023
+
+      try {
+        // Insert note with completely safe values
+        db.run(
+          `INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            noteId, // id
+            guid, // guid
+            modelId, // mid (model id)
+            safeTimestamp, // mod (use safe fixed timestamp)
+            -1, // usn (update sequence number)
+            item.language || "", // tags
+            fields, // flds (fields)
+            front, // sfld (sort field)
+            csum, // csum (checksum)
+            0, // flags
+            "", // data
+          ],
+        )
+
+        // Insert card with completely safe values
+        db.run(
+          `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            cardId, // id
+            noteId, // nid (note id)
+            deckId, // did (deck id)
+            0, // ord (ordinal)
+            safeTimestamp, // mod (use safe fixed timestamp)
+            -1, // usn (update sequence number)
+            0, // type (0 = new)
+            0, // queue (0 = new)
+            1, // due (due date)
+            0, // ivl (interval)
+            2500, // factor (ease factor, 2500 = 250%)
+            0, // reps (repetitions)
+            0, // lapses
+            0, // left
+            0, // odue (original due)
+            0, // odid (original deck id)
+            0, // flags
+            "", // data
+          ],
+        )
+      } catch (error) {
+        console.error("Error inserting note/card:", error, { noteId, cardId, index })
+        throw error
+      }
     })
   }
 
@@ -410,12 +434,13 @@ export class ApkgExporter extends BaseVocabularyExporter {
   }
 
   private calculateChecksum(text: string): number {
-    // Use a simple, safe checksum that won't overflow
-    let hash = 0
-    for (let i = 0; i < text.length; i++) {
-      hash = (hash + text.charCodeAt(i)) % 2147483647 // Keep within safe 32-bit range
+    // Use a very simple checksum that absolutely cannot overflow
+    let sum = 0
+    for (let i = 0; i < Math.min(text.length, 100); i++) {
+      // Limit to first 100 chars
+      sum += text.charCodeAt(i)
     }
-    return hash
+    return sum % 1000000 // Keep it under 1 million
   }
 
   private async processMediaFiles(vocabulary: VocabularyItem[]): Promise<Array<{ data: string | null; url?: string }>> {
