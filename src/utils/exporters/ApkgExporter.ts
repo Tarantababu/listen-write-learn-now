@@ -14,24 +14,14 @@ export class ApkgExporter extends BaseVocabularyExporter {
 
       const zip = new JSZip()
 
-      // Process media files first and get exact mapping
-      const mediaResult = await this.processMediaFiles(vocabulary, options.includeAudio || false)
-
-      // Add media files to ZIP
-      for (const [filename, data] of mediaResult.files) {
-        zip.file(filename, data, { base64: true })
-        console.log("Added media file to ZIP:", filename)
-      }
-
-      // Create the collection.anki2 SQLite database file with exact audio references
-      const dbArrayBuffer = await this.createAnkiDatabase(vocabulary, options, mediaResult.audioMap)
+      // First, create the database WITHOUT any media references
+      const dbArrayBuffer = await this.createAnkiDatabase(vocabulary, options)
       zip.file("collection.anki2", dbArrayBuffer)
 
-      // Create media mapping file - this must match exactly what's in the ZIP
-      zip.file("media", JSON.stringify(mediaResult.mediaMapping))
+      // Create an empty media mapping file (no media files for now)
+      zip.file("media", JSON.stringify({}))
 
-      console.log("Final media mapping:", mediaResult.mediaMapping)
-      console.log("Files in ZIP:", Array.from(mediaResult.files.keys()))
+      console.log("Created basic APKG structure without media")
 
       const blob = await zip.generateAsync({ type: "blob" })
       const filename = this.generateFilename(options.deckName, this.format.fileExtension)
@@ -44,91 +34,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
     }
   }
 
-  private async processMediaFiles(
-    vocabulary: VocabularyItem[],
-    includeAudio: boolean,
-  ): Promise<{
-    files: Map<string, string> // filename -> base64 data
-    mediaMapping: Record<string, string> // index -> filename
-    audioMap: Map<number, string> // vocabulary index -> filename
-  }> {
-    const files = new Map<string, string>()
-    const mediaMapping: Record<string, string> = {}
-    const audioMap = new Map<number, string>()
-
-    if (!includeAudio) {
-      return { files, mediaMapping, audioMap }
-    }
-
-    let mediaIndex = 0
-
-    for (let vocabIndex = 0; vocabIndex < vocabulary.length; vocabIndex++) {
-      const item = vocabulary[vocabIndex]
-
-      if (!item.audioUrl) {
-        continue // Skip items without audio
-      }
-
-      try {
-        console.log(`Processing audio ${vocabIndex + 1}/${vocabulary.length}: ${item.audioUrl}`)
-
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
-
-        const response = await fetch(item.audioUrl, {
-          signal: controller.signal,
-          headers: {
-            Accept: "audio/*,*/*",
-            "User-Agent": "Mozilla/5.0 (compatible; AnkiExporter/1.0)",
-          },
-          mode: "cors",
-        })
-
-        clearTimeout(timeoutId)
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-
-        const blob = await response.blob()
-
-        if (blob.size === 0) {
-          throw new Error("Empty audio file")
-        }
-
-        // Convert to base64
-        const base64 = await this.blobToBase64(blob)
-        const base64Data = base64.split(",")[1]
-
-        if (!base64Data) {
-          throw new Error("Failed to convert audio to base64")
-        }
-
-        // Create filename using mediaIndex (not vocabIndex)
-        const filename = `${mediaIndex}.mp3`
-
-        // Store everything consistently
-        files.set(filename, base64Data)
-        mediaMapping[mediaIndex.toString()] = filename
-        audioMap.set(vocabIndex, filename)
-
-        console.log(`✓ Processed audio for vocab[${vocabIndex}] -> ${filename} (${blob.size} bytes)`)
-        mediaIndex++
-      } catch (error) {
-        console.warn(`✗ Failed to process audio for vocab[${vocabIndex}]:`, error)
-        // Don't add anything to maps if failed - this ensures consistency
-      }
-    }
-
-    console.log(`Media processing complete: ${files.size} files, ${Object.keys(mediaMapping).length} mappings`)
-    return { files, mediaMapping, audioMap }
-  }
-
-  private async createAnkiDatabase(
-    vocabulary: VocabularyItem[],
-    options: ExportOptions,
-    audioMap: Map<number, string>,
-  ): Promise<Uint8Array> {
+  private async createAnkiDatabase(vocabulary: VocabularyItem[], options: ExportOptions): Promise<Uint8Array> {
     console.log("Creating Anki database...")
 
     const SQL = await initSqlJs({
@@ -151,8 +57,8 @@ export class ApkgExporter extends BaseVocabularyExporter {
       // Insert collection configuration
       this.insertCollectionData(db, safeTimestamp, modelId, deckId, options.deckName)
 
-      // Insert notes and cards with exact audio references
-      this.insertNotesAndCards(db, vocabulary, options, safeTimestamp, modelId, deckId, audioMap)
+      // Insert notes and cards WITHOUT any media references
+      this.insertNotesAndCards(db, vocabulary, safeTimestamp, modelId, deckId)
 
       const data = db.export()
       db.close()
@@ -407,21 +313,18 @@ export class ApkgExporter extends BaseVocabularyExporter {
   private insertNotesAndCards(
     db: any,
     vocabulary: VocabularyItem[],
-    options: ExportOptions,
     safeTimestamp: number,
     modelId: number,
     deckId: number,
-    audioMap: Map<number, string>,
   ): void {
-    console.log("Inserting", vocabulary.length, "notes and cards...")
-    console.log("Audio map has", audioMap.size, "entries")
+    console.log("Inserting", vocabulary.length, "notes and cards (without media)...")
 
     vocabulary.forEach((item, index) => {
       // Use very simple, safe IDs
       const noteId = 1000 + index
       const cardId = 2000 + index
 
-      // Prepare fields with proper sanitization
+      // Prepare fields with proper sanitization - NO MEDIA REFERENCES
       const front = this.sanitizeText(item.word || "")
       let back = this.sanitizeText(item.definition || "")
 
@@ -429,13 +332,9 @@ export class ApkgExporter extends BaseVocabularyExporter {
         back += `<br><br><i>${this.sanitizeText(item.exampleSentence)}</i>`
       }
 
-      // Add audio reference ONLY if we have the exact file
-      if (audioMap.has(index)) {
-        const audioFilename = audioMap.get(index)!
-        back += `<br>[sound:${audioFilename}]`
-        console.log(`✓ Added audio reference for vocab[${index}]: [sound:${audioFilename}]`)
-      } else if (item.audioUrl && options.includeAudio) {
-        console.log(`✗ No audio file for vocab[${index}] (had URL: ${item.audioUrl})`)
+      // Add a note about audio if URL exists, but don't reference any media files
+      if (item.audioUrl) {
+        back += `<br><small>(Audio available)</small>`
       }
 
       const fields = `${front}\x1f${back}`
@@ -487,6 +386,8 @@ export class ApkgExporter extends BaseVocabularyExporter {
         ],
       )
     })
+
+    console.log("Successfully inserted all notes and cards without media references")
   }
 
   private generateGuid(): string {
@@ -502,20 +403,5 @@ export class ApkgExporter extends BaseVocabularyExporter {
       sum += text.charCodeAt(i)
     }
     return sum % 100000 // Keep it small
-  }
-
-  private blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        if (typeof reader.result === "string") {
-          resolve(reader.result)
-        } else {
-          reject(new Error("Failed to convert blob to base64"))
-        }
-      }
-      reader.onerror = () => reject(new Error("FileReader error"))
-      reader.readAsDataURL(blob)
-    })
   }
 }
