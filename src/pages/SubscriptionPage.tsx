@@ -53,9 +53,8 @@ const SubscriptionPage: React.FC = () => {
   const handleSubscribe = async (planId: string) => {
     setIsProcessing(true);
     try {
-      // Make sure planId matches the PLANS object keys in your Edge Function
-      // The planId should be: 'monthly', 'quarterly', 'annual', or 'lifetime'
-      const checkoutUrl = await createCheckoutSession(planId, selectedCurrency);
+      // Pass planId with currency included (e.g., "monthly-usd", "quarterly-eur")
+      const checkoutUrl = await createCheckoutSession(planId);
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
       }
@@ -194,7 +193,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.MONTHLY}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe('monthly')}
+              onSubscribe={() => handleSubscribe(`monthly-${selectedCurrency}`)}
               isProcessing={isProcessing}
             />
             
@@ -203,7 +202,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.QUARTERLY}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe('quarterly')}
+              onSubscribe={() => handleSubscribe(`quarterly-${selectedCurrency}`)}
               isProcessing={isProcessing}
               featured={true}
             />
@@ -213,7 +212,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.ANNUAL}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe('annual')}
+              onSubscribe={() => handleSubscribe(`annual-${selectedCurrency}`)}
               isProcessing={isProcessing}
             />
             
@@ -222,7 +221,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.LIFETIME}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe('lifetime')}
+              onSubscribe={() => handleSubscribe(`lifetime-${selectedCurrency}`)}
               isProcessing={isProcessing}
             />
           </div>
