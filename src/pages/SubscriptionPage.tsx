@@ -3,10 +3,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Loader2, Check, X, CreditCard, Shield, CalendarClock, 
-  Award, AlertTriangle, Ban, Globe2, Sparkles, Crown
-} from 'lucide-react';
+import { Loader2, Check, X, CreditCard, Shield, CalendarClock, Award, AlertTriangle, Ban, Globe2, Sparkles, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
 import { trackButtonClick } from '@/utils/visitorTracking';
@@ -56,7 +53,8 @@ const SubscriptionPage: React.FC = () => {
   const handleSubscribe = async (planId: string) => {
     setIsProcessing(true);
     try {
-      // Pass both planId and currency to createCheckoutSession
+      // Make sure planId matches the PLANS object keys in your Edge Function
+      // The planId should be: 'monthly', 'quarterly', 'annual', or 'lifetime'
       const checkoutUrl = await createCheckoutSession(planId, selectedCurrency);
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
@@ -196,7 +194,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.MONTHLY}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.MONTHLY.id)}
+              onSubscribe={() => handleSubscribe('monthly')}
               isProcessing={isProcessing}
             />
             
@@ -205,7 +203,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.QUARTERLY}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.QUARTERLY.id)}
+              onSubscribe={() => handleSubscribe('quarterly')}
               isProcessing={isProcessing}
               featured={true}
             />
@@ -215,7 +213,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.ANNUAL}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.ANNUAL.id)}
+              onSubscribe={() => handleSubscribe('annual')}
               isProcessing={isProcessing}
             />
             
@@ -224,7 +222,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.LIFETIME}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.LIFETIME.id)}
+              onSubscribe={() => handleSubscribe('lifetime')}
               isProcessing={isProcessing}
             />
           </div>
@@ -289,13 +287,10 @@ const SubscriptionPage: React.FC = () => {
                         'Lifetime Access'
                       ) : (
                         <>
-                          {formatPrice(
-                            subscription.planType === 'monthly' ? 4.99 :
-                            subscription.planType === 'quarterly' ? 12.99 :
-                            subscription.planType === 'annual' ? 44.99 : 
-                            4.99, 
-                            selectedCurrency
-                          )}
+                          {(() => {
+                            const currentPlan = Object.values(SUBSCRIPTION_PLANS).find(p => p.id === subscription.planType);
+                            return currentPlan ? formatPrice(convertPrice(currentPlan.price, selectedCurrency), selectedCurrency) : formatPrice(4.99, selectedCurrency);
+                          })()}
                           {' '}
                           / 
                           {subscription.planType === 'monthly' ? ' month' :
@@ -456,7 +451,9 @@ const SubscriptionPage: React.FC = () => {
                   <div className="flex items-start space-x-2 p-3 bg-primary/10 rounded-md">
                     <Shield className="h-5 w-5 text-primary mt-0.5" />
                     <div>
-                      <p className="font-medium">Premium Plans Starting at {formatPrice(4.99, selectedCurrency)}/mo</p>
+                      <p className="font-medium">
+                        Premium Plans Starting at {formatPrice(convertPrice(SUBSCRIPTION_PLANS.MONTHLY.price, selectedCurrency), selectedCurrency)}/mo
+                      </p>
                       <p className="text-sm">
                         Unlock all features with a 7-day free trial
                       </p>
