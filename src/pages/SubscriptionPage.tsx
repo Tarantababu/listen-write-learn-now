@@ -56,10 +56,28 @@ const SubscriptionPage: React.FC = () => {
   const handleSubscribe = async (planId: string) => {
     setIsProcessing(true);
     try {
-      const checkoutUrl = await createCheckoutSession(planId);
+      // Get the plan object
+      const plan = Object.values(SUBSCRIPTION_PLANS).find(p => p.id === planId);
+      if (!plan) {
+        toast.error('Invalid plan selected');
+        return;
+      }
+      
+      // Get the correct price_id for the selected currency
+      const priceId = plan.priceIds[selectedCurrency];
+      if (!priceId) {
+        toast.error(`Price not available for ${selectedCurrency}`);
+        return;
+      }
+      
+      // Pass the actual Stripe price_id instead of the plan id
+      const checkoutUrl = await createCheckoutSession(priceId);
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
       }
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      toast.error('Failed to start checkout process');
     } finally {
       setIsProcessing(false);
     }
@@ -708,7 +726,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
             : ''}`}
           disabled={isProcessing || isActive}
           onClick={() => {
-            trackButtonClick(`subscribe-${plan.id}`);
+            trackButtonClick(`subscribe-${plan.id}-${currency}`);
             onSubscribe();
           }}
         >
