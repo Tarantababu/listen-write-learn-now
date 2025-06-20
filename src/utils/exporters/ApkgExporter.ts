@@ -1,3 +1,4 @@
+
 import JSZip from 'jszip';
 import initSqlJs from 'sql.js';
 import { VocabularyItem } from '@/types';
@@ -60,21 +61,18 @@ export class ApkgExporter extends BaseVocabularyExporter {
     // Create all required Anki tables
     this.createTables(db);
     
-    // Generate base timestamps (in milliseconds for Anki)
-    const baseTimeMs = Date.now();
-    const baseTimeSec = Math.floor(baseTimeMs / 1000);
+    // Generate base timestamps (in seconds, not milliseconds)
+    const baseTime = Math.floor(Date.now() / 1000);
+    const deckId = 1;
+    const modelId = 1649441468; // Use a reasonable fixed model ID
     
-    // Use proper Anki ID ranges
-    const deckId = 1649441468; // Use a reasonable fixed deck ID
-    const modelId = 1649441469; // Use a different ID for the model
-    
-    console.log('Base timestamp (ms):', baseTimeMs, 'Base timestamp (sec):', baseTimeSec);
+    console.log('Base timestamp:', baseTime);
     
     // Insert collection configuration
-    this.insertCollectionData(db, baseTimeMs, baseTimeSec, modelId, deckId, options.deckName);
+    this.insertCollectionData(db, baseTime, modelId, deckId, options.deckName);
     
     // Insert notes and cards
-    this.insertNotesAndCards(db, vocabulary, options, baseTimeMs, baseTimeSec, modelId, deckId);
+    this.insertNotesAndCards(db, vocabulary, options, baseTime, modelId, deckId);
     
     const data = db.export();
     db.close();
@@ -169,7 +167,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
     `);
   }
 
-  private insertCollectionData(db: any, baseTimeMs: number, baseTimeSec: number, modelId: number, deckId: number, deckName: string): void {
+  private insertCollectionData(db: any, baseTime: number, modelId: number, deckId: number, deckName: string): void {
     // Deck configuration
     const decks = {
       [deckId]: {
@@ -186,7 +184,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         desc: "",
         dyn: 0,
         extendNew: 10,
-        mod: baseTimeMs
+        mod: baseTime
       }
     };
 
@@ -196,7 +194,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         id: modelId,
         name: "Basic",
         type: 0,
-        mod: baseTimeMs,
+        mod: baseTime,
         usn: 0,
         sortf: 0,
         did: deckId,
@@ -271,7 +269,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         timer: 0,
         maxTaken: 60,
         usn: 0,
-        mod: baseTimeMs,
+        mod: baseTime,
         autoplay: true
       }
     };
@@ -293,15 +291,15 @@ export class ApkgExporter extends BaseVocabularyExporter {
       collapseTime: 1200
     };
 
-    // Insert collection data with proper timestamp values
+    // Insert collection data with proper integer values
     db.run(
       `INSERT INTO col (id, crt, mod, scm, ver, dty, usn, ls, conf, models, decks, dconf, tags) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         1,                              // id
-        baseTimeSec,                    // crt (creation time in seconds)
-        baseTimeMs,                     // mod (modification time in milliseconds)
-        baseTimeMs,                     // scm (schema modification time in milliseconds)
+        baseTime,                       // crt (creation time)
+        baseTime * 1000,               // mod (modification time in milliseconds)
+        baseTime * 1000,               // scm (schema modification time)
         11,                            // ver (version)
         0,                             // dty (dirty)
         0,                             // usn (update sequence number)
@@ -315,13 +313,13 @@ export class ApkgExporter extends BaseVocabularyExporter {
     );
   }
 
-  private insertNotesAndCards(db: any, vocabulary: VocabularyItem[], options: ExportOptions, baseTimeMs: number, baseTimeSec: number, modelId: number, deckId: number): void {
+  private insertNotesAndCards(db: any, vocabulary: VocabularyItem[], options: ExportOptions, baseTime: number, modelId: number, deckId: number): void {
     console.log('Inserting', vocabulary.length, 'notes and cards...');
     
     vocabulary.forEach((item, index) => {
-      // Generate proper Anki IDs using millisecond timestamp + offset
-      const noteId = baseTimeMs + index + 1;
-      const cardId = baseTimeMs + index + 100000; // Ensure card IDs don't overlap with note IDs
+      // Generate safe IDs within proper integer ranges
+      const noteId = baseTime + index + 1;
+      const cardId = baseTime + index + 10000;
       
       // Prepare fields
       const front = this.sanitizeText(item.word);
@@ -340,7 +338,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
       const guid = this.generateGuid();
       const csum = this.calculateChecksum(front);
       
-      // Insert note
+      // Insert note with safe integer values
       db.run(
         `INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -348,7 +346,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
           noteId,                        // id
           guid,                          // guid
           modelId,                       // mid (model id)
-          baseTimeMs,                    // mod (modification time in ms)
+          baseTime,                      // mod (modification time)
           -1,                           // usn (update sequence number)
           item.language || '',          // tags
           fields,                       // flds (fields)
@@ -359,7 +357,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         ]
       );
 
-      // Insert card
+      // Insert card with safe integer values
       db.run(
         `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -368,13 +366,13 @@ export class ApkgExporter extends BaseVocabularyExporter {
           noteId,                       // nid (note id)
           deckId,                       // did (deck id)
           0,                            // ord (ordinal)
-          baseTimeMs,                   // mod (modification time in ms)
+          baseTime,                     // mod (modification time)
           -1,                           // usn (update sequence number)
           0,                            // type (0 = new)
           0,                            // queue (0 = new)
           index + 1,                    // due (due date)
           0,                            // ivl (interval)
-          2500,                         // factor (ease factor, 2500 = 250%)
+          0,                            // factor
           0,                            // reps (repetitions)
           0,                            // lapses
           0,                            // left
@@ -388,21 +386,20 @@ export class ApkgExporter extends BaseVocabularyExporter {
   }
 
   private generateGuid(): string {
-    // Generate a proper 10-character base91 GUID as used by Anki
-    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-./:;<=>?@[]^_`{|}~';
-    return Array.from({ length: 10 }, () => 
-      chars[Math.floor(Math.random() * chars.length)]
+    // Generate a simple 8-character hex string
+    return Array.from({ length: 8 }, () => 
+      Math.floor(Math.random() * 16).toString(16)
     ).join('');
   }
 
   private calculateChecksum(text: string): number {
-    // Calculate CRC-like checksum that stays within safe range
+    // Simple checksum calculation that stays within safe integer range
     let hash = 0;
     for (let i = 0; i < text.length; i++) {
       const char = text.charCodeAt(i);
       hash = ((hash << 5) - hash + char) & 0x7fffffff; // Keep within 32-bit signed integer range
     }
-    return Math.abs(hash); // Ensure positive
+    return hash;
   }
 
   private async processMediaFiles(vocabulary: VocabularyItem[]): Promise<Array<{ data: string | null, url?: string }>> {
