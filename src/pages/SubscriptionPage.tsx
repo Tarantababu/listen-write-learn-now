@@ -3,7 +3,10 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Check, X, CreditCard, Shield, CalendarClock, Award, AlertTriangle, Ban, Globe2, Sparkles, Crown } from 'lucide-react';
+import { 
+  Loader2, Check, X, CreditCard, Shield, CalendarClock, 
+  Award, AlertTriangle, Ban, Globe2, Sparkles, Crown
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
 import { trackButtonClick } from '@/utils/visitorTracking';
@@ -53,8 +56,22 @@ const SubscriptionPage: React.FC = () => {
   const handleSubscribe = async (planId: string) => {
     setIsProcessing(true);
     try {
-      // Pass planId with lowercase currency (e.g., "monthly-usd", "quarterly-eur")
-      const checkoutUrl = await createCheckoutSession(planId);
+      // Get the plan object
+      const plan = Object.values(SUBSCRIPTION_PLANS).find(p => p.id === planId);
+      if (!plan) {
+        toast.error('Invalid plan selected');
+        return;
+      }
+      
+      // Get the correct price_id for the selected currency
+      const priceId = plan.priceIds[selectedCurrency];
+      if (!priceId) {
+        toast.error(`Price not available for ${selectedCurrency}`);
+        return;
+      }
+      
+      // Pass the actual Stripe price_id instead of the plan id
+      const checkoutUrl = await createCheckoutSession(priceId);
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
       }
@@ -193,7 +210,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.MONTHLY}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe(`monthly-${selectedCurrency.toLowerCase()}`)}
+              onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.MONTHLY.id)}
               isProcessing={isProcessing}
             />
             
@@ -202,7 +219,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.QUARTERLY}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe(`quarterly-${selectedCurrency.toLowerCase()}`)}
+              onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.QUARTERLY.id)}
               isProcessing={isProcessing}
               featured={true}
             />
@@ -212,7 +229,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.ANNUAL}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe(`annual-${selectedCurrency.toLowerCase()}`)}
+              onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.ANNUAL.id)}
               isProcessing={isProcessing}
             />
             
@@ -221,7 +238,7 @@ const SubscriptionPage: React.FC = () => {
               plan={SUBSCRIPTION_PLANS.LIFETIME}
               currency={selectedCurrency}
               currentPlan={subscription.planType}
-              onSubscribe={() => handleSubscribe(`lifetime-${selectedCurrency.toLowerCase()}`)}
+              onSubscribe={() => handleSubscribe(SUBSCRIPTION_PLANS.LIFETIME.id)}
               isProcessing={isProcessing}
             />
           </div>
@@ -286,10 +303,13 @@ const SubscriptionPage: React.FC = () => {
                         'Lifetime Access'
                       ) : (
                         <>
-                          {(() => {
-                            const currentPlan = Object.values(SUBSCRIPTION_PLANS).find(p => p.id === subscription.planType);
-                            return currentPlan ? formatPrice(convertPrice(currentPlan.price, selectedCurrency), selectedCurrency) : formatPrice(4.99, selectedCurrency);
-                          })()}
+                          {formatPrice(
+                            subscription.planType === 'monthly' ? 4.99 :
+                            subscription.planType === 'quarterly' ? 12.99 :
+                            subscription.planType === 'annual' ? 44.99 : 
+                            4.99, 
+                            selectedCurrency
+                          )}
                           {' '}
                           / 
                           {subscription.planType === 'monthly' ? ' month' :
@@ -450,9 +470,7 @@ const SubscriptionPage: React.FC = () => {
                   <div className="flex items-start space-x-2 p-3 bg-primary/10 rounded-md">
                     <Shield className="h-5 w-5 text-primary mt-0.5" />
                     <div>
-                      <p className="font-medium">
-                        Premium Plans Starting at {formatPrice(convertPrice(SUBSCRIPTION_PLANS.MONTHLY.price, selectedCurrency), selectedCurrency)}/mo
-                      </p>
+                      <p className="font-medium">Premium Plans Starting at {formatPrice(4.99, selectedCurrency)}/mo</p>
                       <p className="text-sm">
                         Unlock all features with a 7-day free trial
                       </p>
