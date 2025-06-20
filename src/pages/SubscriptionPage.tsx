@@ -43,7 +43,7 @@ const SubscriptionPage: React.FC = () => {
     setIsProcessing(true)
     try {
       // Pass the dynamic price to createCheckoutSession
-      const checkoutUrl = await createCheckoutSession(planId, price)
+      const checkoutUrl = await createCheckoutSession(price)
       if (checkoutUrl) {
         window.location.href = checkoutUrl
       }
