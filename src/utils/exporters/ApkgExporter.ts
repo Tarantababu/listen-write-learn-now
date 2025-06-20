@@ -57,120 +57,105 @@ export class ApkgExporter extends BaseVocabularyExporter {
     
     const db = new SQL.Database();
     
-    // Create all required Anki tables
-    this.createTables(db);
-    
-    // Use current timestamp in seconds (Anki standard)
-    const currentTime = Math.floor(Date.now() / 1000);
-    
-    // Use safe ID ranges - avoid conflicts with existing Anki data
+    // Use simple, safe values
+    const timestamp = 1640995200; // Fixed timestamp: 2022-01-01 00:00:00 UTC
     const deckId = 1;
-    const modelId = Math.floor(Date.now() / 1000); // Use timestamp as model ID
+    const modelId = 1640995200;
     
-    console.log('Current time (seconds):', currentTime);
-    console.log('Model ID:', modelId);
+    // Create tables
+    this.createAnkiTables(db);
     
-    // Insert collection configuration
-    this.insertCollectionData(db, currentTime, modelId, deckId, options.deckName);
+    // Insert collection
+    this.insertCollection(db, timestamp, deckId, modelId, options.deckName);
     
-    // Insert notes and cards
-    this.insertNotesAndCards(db, vocabulary, options, currentTime, modelId, deckId);
+    // Insert vocabulary as notes and cards
+    this.insertVocabulary(db, vocabulary, options, timestamp, deckId, modelId);
     
     const data = db.export();
     db.close();
     
-    console.log('Database created successfully, size:', data.length, 'bytes');
+    console.log('Database created, size:', data.length, 'bytes');
     return data;
   }
 
-  private createTables(db: any): void {
-    // Collection table
-    db.run(`
-      CREATE TABLE col (
-        id INTEGER PRIMARY KEY,
-        crt INTEGER NOT NULL,
-        mod INTEGER NOT NULL,
-        scm INTEGER NOT NULL,
-        ver INTEGER NOT NULL,
-        dty INTEGER NOT NULL,
-        usn INTEGER NOT NULL,
-        ls INTEGER NOT NULL,
-        conf TEXT NOT NULL,
-        models TEXT NOT NULL,
-        decks TEXT NOT NULL,
-        dconf TEXT NOT NULL,
-        tags TEXT NOT NULL
-      )
-    `);
+  private createAnkiTables(db: any): void {
+    // Collection table - core Anki metadata
+    db.run(`CREATE TABLE col (
+      id integer primary key,
+      crt integer not null,
+      mod integer not null,
+      scm integer not null,
+      ver integer not null,
+      dty integer not null,
+      usn integer not null,
+      ls integer not null,
+      conf text not null,
+      models text not null,
+      decks text not null,
+      dconf text not null,
+      tags text not null
+    )`);
 
-    // Notes table
-    db.run(`
-      CREATE TABLE notes (
-        id INTEGER PRIMARY KEY,
-        guid TEXT NOT NULL,
-        mid INTEGER NOT NULL,
-        mod INTEGER NOT NULL,
-        usn INTEGER NOT NULL,
-        tags TEXT NOT NULL,
-        flds TEXT NOT NULL,
-        sfld TEXT NOT NULL,
-        csum INTEGER NOT NULL,
-        flags INTEGER NOT NULL,
-        data TEXT NOT NULL
-      )
-    `);
+    // Notes table - contains the actual content
+    db.run(`CREATE TABLE notes (
+      id integer primary key,
+      guid text not null,
+      mid integer not null,
+      mod integer not null,
+      usn integer not null,
+      tags text not null,
+      flds text not null,
+      sfld text not null,
+      csum integer not null,
+      flags integer not null,
+      data text not null
+    )`);
 
-    // Cards table
-    db.run(`
-      CREATE TABLE cards (
-        id INTEGER PRIMARY KEY,
-        nid INTEGER NOT NULL,
-        did INTEGER NOT NULL,
-        ord INTEGER NOT NULL,
-        mod INTEGER NOT NULL,
-        usn INTEGER NOT NULL,
-        type INTEGER NOT NULL,
-        queue INTEGER NOT NULL,
-        due INTEGER NOT NULL,
-        ivl INTEGER NOT NULL,
-        factor INTEGER NOT NULL,
-        reps INTEGER NOT NULL,
-        lapses INTEGER NOT NULL,
-        left INTEGER NOT NULL,
-        odue INTEGER NOT NULL,
-        odid INTEGER NOT NULL,
-        flags INTEGER NOT NULL,
-        data TEXT NOT NULL
-      )
-    `);
+    // Cards table - individual cards generated from notes
+    db.run(`CREATE TABLE cards (
+      id integer primary key,
+      nid integer not null,
+      did integer not null,
+      ord integer not null,
+      mod integer not null,
+      usn integer not null,
+      type integer not null,
+      queue integer not null,
+      due integer not null,
+      ivl integer not null,
+      factor integer not null,
+      reps integer not null,
+      lapses integer not null,
+      left integer not null,
+      odue integer not null,
+      odid integer not null,
+      flags integer not null,
+      data text not null
+    )`);
 
-    // Review log table (can be empty for new decks)
-    db.run(`
-      CREATE TABLE revlog (
-        id INTEGER PRIMARY KEY,
-        cid INTEGER NOT NULL,
-        usn INTEGER NOT NULL,
-        ease INTEGER NOT NULL,
-        ivl INTEGER NOT NULL,
-        lastIvl INTEGER NOT NULL,
-        factor INTEGER NOT NULL,
-        time INTEGER NOT NULL,
-        type INTEGER NOT NULL
-      )
-    `);
+    // Review log - can be empty for new decks
+    db.run(`CREATE TABLE revlog (
+      id integer primary key,
+      cid integer not null,
+      usn integer not null,
+      ease integer not null,
+      ivl integer not null,
+      lastIvl integer not null,
+      factor integer not null,
+      time integer not null,
+      type integer not null
+    )`);
 
-    // Graves table (can be empty for new decks)
-    db.run(`
-      CREATE TABLE graves (
-        usn INTEGER NOT NULL,
-        type INTEGER NOT NULL,
-        oid INTEGER NOT NULL
-      )
-    `);
+    // Graves - tracks deletions, can be empty
+    db.run(`CREATE TABLE graves (
+      usn integer not null,
+      type integer not null,
+      oid integer not null
+    )`);
   }
 
-  private insertCollectionData(db: any, currentTime: number, modelId: number, deckId: number, deckName: string): void {
-    // Deck configuration - use minimal required fields
+  private insertCollection(db: any, timestamp: number, deckId: number, modelId: number, deckName: string): void {
+    // Minimal deck configuration
     const decks = {
       [deckId]: {
         id: deckId,
@@ -179,38 +164,36 @@ export class ApkgExporter extends BaseVocabularyExporter {
         usn: 0,
         collapsed: false,
         newToday: [0, 0],
-        revToday: [0, 0], 
+        revToday: [0, 0],
         lrnToday: [0, 0],
         timeToday: [0, 0],
         conf: 1,
         desc: "",
         dyn: 0,
         extendNew: 10,
-        mod: currentTime
+        mod: timestamp
       }
     };
 
-    // Note type (model) configuration - minimal Basic model
+    // Basic note type with Front/Back fields
     const models = {
       [modelId]: {
         id: modelId,
         name: "Basic",
         type: 0,
-        mod: currentTime,
+        mod: timestamp,
         usn: 0,
         sortf: 0,
         did: deckId,
-        tmpls: [
-          {
-            name: "Card 1",
-            ord: 0,
-            qfmt: "{{Front}}",
-            afmt: "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}",
-            did: null,
-            bqfmt: "",
-            bafmt: ""
-          }
-        ],
+        tmpls: [{
+          name: "Card 1",
+          ord: 0,
+          qfmt: "{{Front}}",
+          afmt: "{{FrontSide}}<hr id=answer>{{Back}}",
+          did: null,
+          bqfmt: "",
+          bafmt: ""
+        }],
         flds: [
           {
             name: "Front",
@@ -229,14 +212,14 @@ export class ApkgExporter extends BaseVocabularyExporter {
             size: 20
           }
         ],
-        css: ".card {\n font-family: arial;\n font-size: 20px;\n text-align: center;\n color: black;\n background-color: white;\n}\n",
-        latexPre: "\\documentclass[12pt]{article}\n\\special{papersize=3in,5in}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amssymb,amsmath}\n\\pagestyle{empty}\n\\setlength{\\parindent}{0in}\n\\begin{document}\n",
-        latexPost: "\\end{document}",
+        css: ".card { font-family: arial; font-size: 20px; text-align: center; color: black; background-color: white; }",
+        latexPre: "",
+        latexPost: "",
         req: [[0, "any", [0]]]
       }
     };
 
-    // Deck configuration
+    // Default deck configuration
     const dconf = {
       1: {
         id: 1,
@@ -271,7 +254,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         timer: 0,
         maxTaken: 60,
         usn: 0,
-        mod: currentTime,
+        mod: timestamp,
         autoplay: true
       }
     };
@@ -293,114 +276,100 @@ export class ApkgExporter extends BaseVocabularyExporter {
       collapseTime: 1200
     };
 
-    // Insert collection data - all timestamps in seconds for consistency
-    db.run(
-      `INSERT INTO col (id, crt, mod, scm, ver, dty, usn, ls, conf, models, decks, dconf, tags) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        1,                              // id
-        currentTime,                    // crt (creation time)
-        currentTime,                    // mod (modification time) 
-        currentTime,                    // scm (schema modification time)
-        11,                            // ver (version)
-        0,                             // dty (dirty)
-        0,                             // usn (update sequence number)
-        0,                             // ls (last sync)
-        JSON.stringify(conf),          // conf
-        JSON.stringify(models),        // models
-        JSON.stringify(decks),         // decks
-        JSON.stringify(dconf),         // dconf
-        JSON.stringify({})             // tags
-      ]
-    );
+    // Insert collection row
+    db.run(`INSERT INTO col VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+      1,                          // id
+      timestamp,                  // crt
+      timestamp,                  // mod  
+      timestamp,                  // scm
+      11,                         // ver
+      0,                          // dty
+      0,                          // usn
+      0,                          // ls
+      JSON.stringify(conf),       // conf
+      JSON.stringify(models),     // models
+      JSON.stringify(decks),      // decks
+      JSON.stringify(dconf),      // dconf
+      "{}"                        // tags
+    ]);
   }
 
-  private insertNotesAndCards(db: any, vocabulary: VocabularyItem[], options: ExportOptions, currentTime: number, modelId: number, deckId: number): void {
-    console.log('Inserting', vocabulary.length, 'notes and cards...');
-    
+  private insertVocabulary(db: any, vocabulary: VocabularyItem[], options: ExportOptions, timestamp: number, deckId: number, modelId: number): void {
     vocabulary.forEach((item, index) => {
-      // Generate safe sequential IDs starting from a reasonable base
-      const noteId = currentTime * 1000 + index + 1; // Multiply by 1000 to avoid conflicts
-      const cardId = currentTime * 1000 + index + 100000; // Ensure cards don't conflict with notes
+      // Use simple incremental IDs
+      const noteId = index + 1;
+      const cardId = index + 1000;
       
-      // Prepare fields - sanitize and escape properly
-      const front = this.sanitizeText(item.word);
-      let back = this.sanitizeText(item.definition);
+      // Prepare content
+      const front = this.escapeHtml(item.word || '');
+      let back = this.escapeHtml(item.definition || '');
       
       if (item.exampleSentence) {
-        back += `<br><br><i>${this.sanitizeText(item.exampleSentence)}</i>`;
+        back += '<br><br><i>' + this.escapeHtml(item.exampleSentence) + '</i>';
       }
       
-      // Add audio if available
       if (item.audioUrl && options.includeAudio) {
         back += `<br>[sound:${index}.mp3]`;
       }
       
-      const fields = `${front}\x1f${back}`;
-      const guid = this.generateGuid();
-      const csum = this.calculateChecksum(front);
+      // Combine fields with Anki field separator
+      const fields = front + '\x1f' + back;
+      const guid = this.generateSimpleGuid();
+      const checksum = this.simpleChecksum(front);
       
       // Insert note
-      db.run(
-        `INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          noteId,                        // id
-          guid,                          // guid
-          modelId,                       // mid (model id)
-          currentTime,                   // mod (modification time)
-          -1,                           // usn (update sequence number)
-          item.language || '',          // tags
-          fields,                       // flds (fields separated by \x1f)
-          front,                        // sfld (sort field)  
-          csum,                         // csum (checksum)
-          0,                            // flags
-          ""                            // data
-        ]
-      );
+      db.run(`INSERT INTO notes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+        noteId,                     // id
+        guid,                       // guid
+        modelId,                    // mid
+        timestamp,                  // mod
+        0,                          // usn
+        item.language || '',        // tags
+        fields,                     // flds
+        front,                      // sfld
+        checksum,                   // csum
+        0,                          // flags
+        ''                          // data
+      ]);
 
-      // Insert card with proper defaults for new cards
-      db.run(
-        `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          cardId,                       // id
-          noteId,                       // nid (note id)
-          deckId,                       // did (deck id)
-          0,                            // ord (ordinal/template index)
-          currentTime,                  // mod (modification time)
-          -1,                           // usn (update sequence number)
-          0,                            // type (0 = new, 1 = learning, 2 = review)
-          0,                            // queue (0 = new, 1 = learning, 2 = review)
-          index + 1,                    // due (due date for new cards, just use index)
-          0,                            // ivl (interval)
-          2500,                         // factor (ease factor 2500 = 250%)
-          0,                            // reps (repetitions)
-          0,                            // lapses
-          0,                            // left (steps left)
-          0,                            // odue (original due) 
-          0,                            // odid (original deck id)
-          0,                            // flags
-          ""                            // data
-        ]
-      );
+      // Insert card
+      db.run(`INSERT INTO cards VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+        cardId,                     // id
+        noteId,                     // nid
+        deckId,                     // did
+        0,                          // ord
+        timestamp,                  // mod
+        0,                          // usn
+        0,                          // type
+        0,                          // queue
+        noteId,                     // due
+        0,                          // ivl
+        2500,                       // factor
+        0,                          // reps
+        0,                          // lapses
+        0,                          // left
+        0,                          // odue
+        0,                          // odid
+        0,                          // flags
+        ''                          // data
+      ]);
     });
   }
 
-  private generateGuid(): string {
-    // Generate a simple 8-character alphanumeric GUID
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    return Array.from({ length: 8 }, () => 
-      chars[Math.floor(Math.random() * chars.length)]
-    ).join('');
+  private escapeHtml(text: string): string {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
-  private calculateChecksum(text: string): number {
-    // Simple checksum that ensures positive 32-bit integer
+  private generateSimpleGuid(): string {
+    return Math.random().toString(36).substring(2, 10);
+  }
+
+  private simpleChecksum(text: string): number {
     let hash = 0;
     for (let i = 0; i < text.length; i++) {
-      const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash + char) & 0x7fffffff;
+      hash = (hash * 31 + text.charCodeAt(i)) % 2147483647;
     }
     return Math.abs(hash);
   }
