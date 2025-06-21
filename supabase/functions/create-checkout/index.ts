@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -14,12 +13,56 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
+// Exchange rates for currency conversion (matching frontend)
+const EXCHANGE_RATES = {
+  USD: 1.0,
+  EUR: 0.92,
+  GBP: 0.79,
+  CAD: 1.37,
+  AUD: 1.53,
+  JPY: 149.5,
+  TRY: 32.21,
+  INR: 83.5,
+  BRL: 5.13,
+  MXN: 16.77
+};
+
+// Base USD prices (matching frontend SUBSCRIPTION_PLANS)
+const BASE_PRICES = {
+  monthly: 4.99,
+  quarterly: 12.99,
+  annual: 44.99,
+  lifetime: 119.99
+};
+
+// Convert price from USD to another currency
+const convertPrice = (usdPrice: number, toCurrency: string): number => {
+  const rate = EXCHANGE_RATES[toCurrency as keyof typeof EXCHANGE_RATES] || 1;
+  
+  // For JPY, we don't use decimals
+  if (toCurrency === 'JPY') {
+    return Math.round(usdPrice * rate);
+  }
+  
+  // Round to 2 decimal places for other currencies
+  return Math.round(usdPrice * rate * 100) / 100;
+};
+
+// Convert price to cents for Stripe
+const toCents = (price: number, currency: string): number => {
+  // JPY doesn't use cents/decimals
+  if (currency === 'JPY') {
+    return Math.round(price);
+  }
+  // Other currencies use cents
+  return Math.round(price * 100);
+};
+
 // Subscription plan definitions
 const PLANS = {
   monthly: {
     name: "Monthly Premium",
     description: "Full access, cancel anytime",
-    unit_amount: 499, // $4.99
     interval: "month" as const,
     interval_count: 1,
     trial_period_days: 7,
@@ -27,7 +70,6 @@ const PLANS = {
   quarterly: {
     name: "Quarterly Premium",
     description: "Save 13% vs monthly",
-    unit_amount: 1299, // $12.99
     interval: "month" as const,
     interval_count: 3,
     trial_period_days: 7,
@@ -35,7 +77,6 @@ const PLANS = {
   annual: {
     name: "Annual Premium",
     description: "Save 25%, billed annually",
-    unit_amount: 4499, // $44.99
     interval: "year" as const,
     interval_count: 1,
     trial_period_days: 7,
@@ -43,7 +84,6 @@ const PLANS = {
   lifetime: {
     name: "Lifetime Access",
     description: "Pay once, get lifetime access to all current & future features",
-    unit_amount: 11999, // $119.99
     isOneTime: true,
   }
 };
@@ -59,9 +99,26 @@ serve(async (req) => {
     // Parse request body
     const requestData = await req.json().catch(() => ({}));
     const planId = requestData.planId || 'monthly';
-    const currency = requestData.currency || 'usd';
+    const currency = (requestData.currency || 'USD').toUpperCase();
     
     logStep("Request data", { planId, currency });
+
+    // Get base USD price for the plan
+    const basePrice = BASE_PRICES[planId as keyof typeof BASE_PRICES];
+    if (!basePrice) {
+      throw new Error(`Invalid plan ID: ${planId}`);
+    }
+
+    // Convert price to selected currency
+    const convertedPrice = convertPrice(basePrice, currency);
+    const unitAmount = toCents(convertedPrice, currency);
+    
+    logStep("Price calculation", { 
+      basePrice, 
+      convertedPrice, 
+      unitAmount,
+      currency 
+    });
 
     // Get Stripe key
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -121,7 +178,7 @@ serve(async (req) => {
                 name: plan.name,
                 description: plan.description,
               },
-              unit_amount: plan.unit_amount,
+              unit_amount: unitAmount,
             },
             quantity: 1,
           },
@@ -134,7 +191,9 @@ serve(async (req) => {
       logStep("One-time payment checkout session created", { 
         sessionId: session.id,
         planId,
-        mode: "payment" 
+        mode: "payment",
+        unitAmount,
+        currency 
       });
     } else {
       // Create subscription session for recurring plans
@@ -149,7 +208,7 @@ serve(async (req) => {
                 name: plan.name,
                 description: plan.description,
               },
-              unit_amount: plan.unit_amount,
+              unit_amount: unitAmount,
               recurring: {
                 interval: plan.interval,
                 interval_count: plan.interval_count,
@@ -170,7 +229,9 @@ serve(async (req) => {
         sessionId: session.id, 
         planId,
         trialDays: plan.trial_period_days,
-        mode: "subscription"
+        mode: "subscription",
+        unitAmount,
+        currency
       });
     }
 
