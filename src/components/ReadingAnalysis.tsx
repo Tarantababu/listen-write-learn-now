@@ -13,6 +13,7 @@ import { MobileReadingNavigation } from '@/components/reading/MobileReadingNavig
 import { MobileReadingTabs } from '@/components/reading/MobileReadingTabs';
 import { MobileWordCard } from '@/components/reading/MobileWordCard';
 import { AudioPlayButton } from '@/components/reading/AudioPlayButton';
+import { PhoneticTranscription } from '@/components/reading/PhoneticTranscription';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 
 interface ReadingAnalysisProps {
@@ -386,7 +387,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                   {currentSentence.text}
                 </p>
                 {/* Audio Play Button */}
-                <div className="flex justify-center">
+                <div className="flex justify-center mb-3">
                   <AudioPlayButton
                     isPlaying={isPlaying}
                     isLoading={isAudioLoading}
@@ -396,6 +397,12 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
                     variant="outline"
                   />
                 </div>
+                {/* Phonetic Transcription */}
+                <PhoneticTranscription
+                  text={currentSentence.text}
+                  language={exercise.language}
+                  className="mt-3"
+                />
               </div>
 
               {/* Scrollable Analysis Content */}
@@ -560,6 +567,14 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
               />
             </div>
             <p className={`${isMobile ? 'text-lg' : 'text-xl'} mt-2 font-medium leading-relaxed`}>{currentSentence.text}</p>
+            
+            {/* Phonetic Transcription for Desktop */}
+            <div className="mt-4">
+              <PhoneticTranscription
+                text={currentSentence.text}
+                language={exercise.language}
+              />
+            </div>
           </div>
           
           <ScrollArea className={`${isMobile ? 'h-[300px]' : 'h-[350px]'} rounded-md border ${isMobile ? 'p-3' : 'p-4'} dark:border-muted/30`}>
