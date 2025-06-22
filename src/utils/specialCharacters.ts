@@ -1,4 +1,3 @@
-
 export interface SpecialCharacterShortcut {
   shortcut: string;
   character: string;
@@ -254,8 +253,8 @@ export const languageShortcuts: LanguageShortcuts = {
     // Chinese quotation marks (using distinctive shortcuts)
     { shortcut: 'q+', character: '"', description: 'q+ → "' },
     { shortcut: 'Q+', character: '"', description: 'Q+ → "' },
-    { shortcut: "q'", character: ''', description: "q' → '" },
-    { shortcut: "Q'", character: ''', description: "Q' → '" },
+    { shortcut: "q'", character: "'", description: "q' → '" },
+    { shortcut: "Q'", character: "'", description: "Q' → '" },
     // Chinese punctuation
     { shortcut: ',+', character: '，', description: ',+ → ，' },
     { shortcut: '.+', character: '。', description: '.+ → 。' },
