@@ -12,6 +12,8 @@ import ReadingAnalysisProgress from '@/components/ReadingAnalysisProgress';
 import { MobileReadingNavigation } from '@/components/reading/MobileReadingNavigation';
 import { MobileReadingTabs } from '@/components/reading/MobileReadingTabs';
 import { MobileWordCard } from '@/components/reading/MobileWordCard';
+import { AudioPlayButton } from '@/components/reading/AudioPlayButton';
+import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 
 interface ReadingAnalysisProps {
   exercise: Exercise;
@@ -53,6 +55,9 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
   const [activeTab, setActiveTab] = useState('sentence');
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  
+  // Audio player hook
+  const { isPlaying, isLoading: isAudioLoading, playText, stopAudio } = useAudioPlayer();
   
   useEffect(() => {
     const fetchOrGenerateAnalysis = async () => {
@@ -240,18 +245,21 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
   
   const handleNext = () => {
     if (analysis && selectedSentenceIndex < analysis.sentences.length - 1) {
+      stopAudio(); // Stop audio when navigating
       setSelectedSentenceIndex(selectedSentenceIndex + 1);
     }
   };
   
   const handlePrevious = () => {
     if (selectedSentenceIndex > 0) {
+      stopAudio(); // Stop audio when navigating
       setSelectedSentenceIndex(selectedSentenceIndex - 1);
     }
   };
   
   const handleRetry = () => {
     // Retry fetching or generating analysis
+    stopAudio(); // Stop any playing audio
     setAnalysis(null);
     setIsLoading(true);
     setError(null);
@@ -296,6 +304,13 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
       };
       
       fetchOrGenerateAnalysis();
+    }
+  };
+  
+  const handlePlaySentence = () => {
+    if (analysis) {
+      const currentSentence = analysis.sentences[selectedSentenceIndex];
+      playText(currentSentence.text, exercise.language);
     }
   };
   
@@ -360,16 +375,27 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         <div className="flex-1 overflow-hidden">
           {activeTab === 'sentence' && (
             <div className="h-full flex flex-col">
-              {/* Current Sentence Display */}
+              {/* Current Sentence Display with Audio Button */}
               <div className="flex-shrink-0 bg-muted/30 p-4 border-b border-border">
                 <div className="text-center mb-3">
                   <span className="text-sm font-medium text-muted-foreground">
                     Sentence {selectedSentenceIndex + 1} of {analysis.sentences.length}
                   </span>
                 </div>
-                <p className="text-lg font-medium leading-relaxed text-center">
+                <p className="text-lg font-medium leading-relaxed text-center mb-3">
                   {currentSentence.text}
                 </p>
+                {/* Audio Play Button */}
+                <div className="flex justify-center">
+                  <AudioPlayButton
+                    isPlaying={isPlaying}
+                    isLoading={isAudioLoading}
+                    onPlay={handlePlaySentence}
+                    onStop={stopAudio}
+                    size="sm"
+                    variant="outline"
+                  />
+                </div>
               </div>
 
               {/* Scrollable Analysis Content */}
@@ -479,7 +505,7 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
     );
   }
 
-  // Desktop view remains unchanged for backward compatibility
+  // Desktop view with audio functionality
   return (
     <div className="p-6 space-y-6">
       <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold mb-2 md:mb-4`}>{exercise.title} - Reading Analysis</h2>
@@ -520,9 +546,19 @@ const ReadingAnalysis: React.FC<ReadingAnalysisProps> = ({
         
         <TabsContent value="sentence" className={`space-y-3 md:space-y-4 mt-3 md:mt-4`}>
           <div className={`bg-muted/30 ${isMobile ? 'p-3' : 'p-4'} rounded-lg dark:bg-muted/10`}>
-            <p className={`${isMobile ? 'text-base' : 'text-lg'} font-medium`}>
-              Sentence {selectedSentenceIndex + 1} of {analysis.sentences.length}
-            </p>
+            <div className="flex items-center justify-between mb-2">
+              <p className={`${isMobile ? 'text-base' : 'text-lg'} font-medium`}>
+                Sentence {selectedSentenceIndex + 1} of {analysis.sentences.length}
+              </p>
+              <AudioPlayButton
+                isPlaying={isPlaying}
+                isLoading={isAudioLoading}
+                onPlay={handlePlaySentence}
+                onStop={stopAudio}
+                size="sm"
+                variant="outline"
+              />
+            </div>
             <p className={`${isMobile ? 'text-lg' : 'text-xl'} mt-2 font-medium leading-relaxed`}>{currentSentence.text}</p>
           </div>
           
