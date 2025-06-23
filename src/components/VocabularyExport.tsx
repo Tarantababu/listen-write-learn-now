@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, FileText, Loader2, Download, Info } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, Download, Info, Sparkles } from 'lucide-react';
 import { useVocabularyContext } from '@/contexts/VocabularyContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { VocabularyItem } from '@/types';
@@ -73,142 +73,137 @@ const VocabularyExport: React.FC<VocabularyExportProps> = ({ vocabulary }) => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Format Selection Card */}
-      <Card className="border-0 shadow-sm bg-gradient-to-br from-background via-background to-primary/5">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-3 text-lg md:text-xl">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Download className="h-5 w-5 text-primary" />
+    <div className="space-y-4">
+      {/* Quick Export Button */}
+      <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-4 border border-primary/20">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium text-sm">Quick Export</h3>
+              <p className="text-xs text-muted-foreground">Export {vocabulary.length} words as {selectedFormatInfo?.name}</p>
             </div>
-            Export Format
-          </CardTitle>
-          <CardDescription className="text-sm md:text-base">
-            Choose the format that works best with your flashcard app
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-3">
-            <Label htmlFor="format-select" className="text-sm font-medium">Export Format</Label>
-            <Select value={selectedFormat} onValueChange={setSelectedFormat}>
-              <SelectTrigger id="format-select" className="h-12 text-left">
-                <SelectValue placeholder="Select export format" />
-              </SelectTrigger>
-              <SelectContent>
-                {EXPORT_FORMATS.map(format => (
-                  <SelectItem key={format.id} value={format.id} className="py-3">
-                    <div className="flex flex-col gap-1 w-full">
-                      <div className="font-medium text-sm md:text-base">{format.name}</div>
-                      <div className="text-xs text-muted-foreground line-clamp-2">
-                        {format.description}
-                      </div>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Badge variant="outline" className="text-xs border-primary/30 text-primary">
+              {vocabulary.length} items
+            </Badge>
           </div>
+          
+          <Button 
+            onClick={handleExport} 
+            className="w-full h-10 bg-primary hover:bg-primary/90 shadow-sm"
+            disabled={!canExport || isExporting}
+            size="sm"
+          >
+            {isExporting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Download className="mr-2 h-4 w-4" />
+                Export Now
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
 
-          {/* Compatible Tools Display */}
-          {selectedFormatInfo && (
-            <div className="space-y-3 p-4 rounded-lg border bg-muted/20">
-              <Label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Info className="h-4 w-4" />
-                Compatible with:
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                {selectedFormatInfo.supportedTools.map(tool => (
-                  <Badge key={tool} variant="secondary" className="text-xs px-2 py-1 font-medium">
-                    {tool}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Audio Option */}
-          <div className="flex items-center justify-between p-4 rounded-lg border bg-background/50">
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="include-audio" className="text-sm font-medium cursor-pointer">
-                Include audio files
-              </Label>
-              <span className="text-xs text-muted-foreground">
-                When available for vocabulary items
-              </span>
-            </div>
-            <Switch
-              id="include-audio"
-              checked={includeAudio}
-              onCheckedChange={setIncludeAudio}
-            />
-          </div>
-
-          {/* Export Info */}
-          <Alert className="border-primary/20 bg-primary/5">
-            <Info className="h-4 w-4 text-primary" />
-            <AlertDescription>
-              <div className="space-y-2">
-                <p className="font-medium text-sm">Export Summary:</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary"></div>
-                    <span>{vocabulary.length} vocabulary items</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary"></div>
-                    <span>Format: {selectedFormatInfo?.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary"></div>
-                    <span>Audio: {includeAudio ? 'Included' : 'Not included'}</span>
-                  </div>
-                  {vocabulary.filter(v => v.audioUrl).length > 0 && includeAudio && (
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-primary"></div>
-                      <span>{vocabulary.filter(v => v.audioUrl).length} items have audio</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-
-      {/* Export Button */}
-      <div className="space-y-4">
-        <Button 
-          onClick={handleExport} 
-          className="w-full h-12 text-base font-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-md hover:shadow-lg transition-all duration-200"
-          disabled={!canExport || isExporting}
-          size="lg"
-        >
-          {isExporting ? (
-            <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              <span className="hidden sm:inline">Exporting {selectedFormatInfo?.name}...</span>
-              <span className="sm:hidden">Exporting...</span>
-            </>
-          ) : (
-            <>
-              <FileText className="mr-2 h-5 w-5" />
-              <span className="hidden sm:inline">Export as {selectedFormatInfo?.name}</span>
-              <span className="sm:hidden">Export</span>
-            </>
-          )}
-        </Button>
+      {/* Format Selection */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-primary" />
+          <Label className="text-sm font-medium">Export Format</Label>
+        </div>
         
-        <p className="text-xs text-muted-foreground text-center px-4">
-          Download will start automatically when export is complete
-        </p>
+        <Select value={selectedFormat} onValueChange={setSelectedFormat}>
+          <SelectTrigger className="h-11">
+            <SelectValue placeholder="Select format" />
+          </SelectTrigger>
+          <SelectContent>
+            {EXPORT_FORMATS.map(format => (
+              <SelectItem key={format.id} value={format.id} className="py-3">
+                <div className="flex flex-col gap-1 w-full">
+                  <div className="font-medium text-sm">{format.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {format.description}
+                  </div>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Compatible Tools */}
+        {selectedFormatInfo && (
+          <div className="bg-muted/30 rounded-lg p-3 border">
+            <div className="flex items-center gap-2 mb-2">
+              <Info className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">Compatible with:</span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {selectedFormatInfo.supportedTools.map(tool => (
+                <Badge key={tool} variant="secondary" className="text-xs h-5 px-2">
+                  {tool}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Audio Option */}
+      <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="include-audio" className="text-sm font-medium cursor-pointer">
+            Include audio files
+          </Label>
+          <span className="text-xs text-muted-foreground">
+            When available for vocabulary items
+          </span>
+        </div>
+        <Switch
+          id="include-audio"
+          checked={includeAudio}
+          onCheckedChange={setIncludeAudio}
+        />
+      </div>
+
+      {/* Export Summary */}
+      <div className="bg-primary/5 rounded-lg p-3 border border-primary/20">
+        <div className="flex items-start gap-2">
+          <Info className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+          <div className="space-y-2 flex-1">
+            <p className="font-medium text-sm text-primary">Export Summary</p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                <span>{vocabulary.length} words</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                <span>{selectedFormatInfo?.name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                <span>Audio: {includeAudio ? 'Included' : 'Excluded'}</span>
+              </div>
+              {vocabulary.filter(v => v.audioUrl).length > 0 && includeAudio && (
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                  <span>{vocabulary.filter(v => v.audioUrl).length} with audio</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Subscription Limits */}
       {!subscription.isSubscribed && (
-        <Alert variant="default" className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800/30">
-          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          <AlertDescription className="text-amber-800 dark:text-amber-200">
-            <div className="space-y-2">
+        <Alert variant="default" className="border-amber-200 bg-amber-50/50">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            <div className="space-y-1">
               <p className="font-medium text-sm">
                 Free users can export up to {EXPORT_LIMIT_FREE} vocabulary items.
               </p>
@@ -222,6 +217,11 @@ const VocabularyExport: React.FC<VocabularyExportProps> = ({ vocabulary }) => {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Download Notice */}
+      <p className="text-xs text-muted-foreground text-center">
+        Download will start automatically when export is complete
+      </p>
     </div>
   );
 };
