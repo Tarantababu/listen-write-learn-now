@@ -77,6 +77,11 @@ const ExercisesPage: React.FC = () => {
     setIsPracticeModalOpen(true);
   };
 
+  const handlePracticeComplete = (accuracy: number) => {
+    // Handle practice completion - you can add logic here if needed
+    console.log('Practice completed with accuracy:', accuracy);
+  };
+
   const filteredExercises = exercises.filter(exercise => 
     exercise.language === settings.selectedLanguage
   );
@@ -156,10 +161,10 @@ const ExercisesPage: React.FC = () => {
           exercise={selectedExercise}
           isOpen={isPracticeModalOpen}
           onOpenChange={setIsPracticeModalOpen}
+          onComplete={handlePracticeComplete}
         />
 
         <DeleteExerciseDialog
-          exercise={exerciseToDelete}
           isOpen={!!exerciseToDelete}
           onOpenChange={(open) => !open && setExerciseToDelete(null)}
           onConfirm={handleDeleteExercise}
