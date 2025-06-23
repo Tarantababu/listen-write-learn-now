@@ -964,6 +964,133 @@ export type Database = {
         }
         Relationships: []
       }
+      shadowing_exercises: {
+        Row: {
+          archived: boolean | null
+          created_at: string
+          custom_text: string | null
+          difficulty_level: string
+          id: string
+          language: string
+          sentences: Json
+          source_reading_exercise_id: string | null
+          source_type: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean | null
+          created_at?: string
+          custom_text?: string | null
+          difficulty_level: string
+          id?: string
+          language: string
+          sentences?: Json
+          source_reading_exercise_id?: string | null
+          source_type: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived?: boolean | null
+          created_at?: string
+          custom_text?: string | null
+          difficulty_level?: string
+          id?: string
+          language?: string
+          sentences?: Json
+          source_reading_exercise_id?: string | null
+          source_type?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      shadowing_progress: {
+        Row: {
+          completed_sentences: number
+          completion_percentage: number
+          created_at: string
+          current_sentence_index: number
+          id: string
+          last_practiced_at: string | null
+          shadowing_exercise_id: string
+          total_sentences: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_sentences?: number
+          completion_percentage?: number
+          created_at?: string
+          current_sentence_index?: number
+          id?: string
+          last_practiced_at?: string | null
+          shadowing_exercise_id: string
+          total_sentences?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_sentences?: number
+          completion_percentage?: number
+          created_at?: string
+          current_sentence_index?: number
+          id?: string
+          last_practiced_at?: string | null
+          shadowing_exercise_id?: string
+          total_sentences?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shadowing_progress_shadowing_exercise_id_fkey"
+            columns: ["shadowing_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "shadowing_exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shadowing_recordings: {
+        Row: {
+          created_at: string
+          id: string
+          recording_url: string
+          sentence_index: number
+          shadowing_exercise_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recording_url: string
+          sentence_index: number
+          shadowing_exercise_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recording_url?: string
+          sentence_index?: number
+          shadowing_exercise_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shadowing_recordings_shadowing_exercise_id_fkey"
+            columns: ["shadowing_exercise_id"]
+            isOneToOne: false
+            referencedRelation: "shadowing_exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscribers: {
         Row: {
           created_at: string
@@ -1585,6 +1712,15 @@ export type Database = {
           exercise_id_param: string
           user_id_param: string
           sentence_index_param: number
+        }
+        Returns: undefined
+      }
+      update_shadowing_progress: {
+        Args: {
+          exercise_id_param: string
+          user_id_param: string
+          sentence_index_param: number
+          total_sentences_param: number
         }
         Returns: undefined
       }
