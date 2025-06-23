@@ -2,9 +2,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, SkipForward, SkipBack, Mic, Square } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { useAudioPlayer } from '@/hooks/useAudioPlayer';
+import { Play, Pause, RotateCcw, Volume2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useShadowingExercises } from '@/hooks/useShadowingExercises';
 import { toast } from 'sonner';
 
@@ -20,218 +21,250 @@ export const ShadowingPracticeModal: React.FC<ShadowingPracticeModalProps> = ({
   onOpenChange,
 }) => {
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
-  const { isPlaying, isLoading, playText, stopAudio } = useAudioPlayer();
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [showText, setShowText] = useState(true);
+  const [practiceMode, setPracticeMode] = useState<'shadowing' | 'listening'>('shadowing');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const { updateProgress } = useShadowingExercises();
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
 
   const sentences = exercise?.sentences || [];
   const currentSentence = sentences[currentSentenceIndex];
   const progress = sentences.length > 0 ? ((currentSentenceIndex + 1) / sentences.length) * 100 : 0;
 
-  const handlePlaySentence = async () => {
-    if (!currentSentence) return;
-    
-    try {
-      if (isPlaying) {
-        stopAudio();
-      } else {
-        await playText(currentSentence.text, exercise.language);
+  useEffect(() => {
+    if (!isOpen) {
+      setCurrentSentenceIndex(0);
+      setIsPlaying(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
       }
-    } catch (error) {
-      console.error('Error playing sentence:', error);
-      toast.error('Failed to play audio');
+    }
+  }, [isOpen]);
+
+  const handlePlayPause = () => {
+    if (!currentSentence?.audio_url) {
+      // For now, we'll use text-to-speech or show a message
+      toast.info('Audio not available for this sentence');
+      return;
+    }
+
+    if (isPlaying) {
+      audioRef.current?.pause();
+      setIsPlaying(false);
+    } else {
+      if (audioRef.current) {
+        audioRef.current.playbackRate = playbackSpeed;
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
     }
   };
 
-  const handleNextSentence = async () => {
+  const handleNext = async () => {
     if (currentSentenceIndex < sentences.length - 1) {
-      const newIndex = currentSentenceIndex + 1;
-      setCurrentSentenceIndex(newIndex);
+      const nextIndex = currentSentenceIndex + 1;
+      setCurrentSentenceIndex(nextIndex);
       
       // Update progress
       try {
-        await updateProgress(exercise.id, newIndex, sentences.length);
+        await updateProgress(exercise.id, nextIndex + 1, sentences.length);
       } catch (error) {
         console.error('Error updating progress:', error);
       }
+    } else {
+      // Exercise completed
+      toast.success('Shadowing exercise completed!');
+      onOpenChange(false);
     }
   };
 
-  const handlePreviousSentence = () => {
+  const handlePrevious = () => {
     if (currentSentenceIndex > 0) {
       setCurrentSentenceIndex(currentSentenceIndex - 1);
     }
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        // Here you could upload the recording or process it further
-        console.log('Recording completed:', audioBlob);
-        
-        // Clean up the stream
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-      toast.success('Recording started');
-    } catch (error) {
-      console.error('Error starting recording:', error);
-      toast.error('Failed to start recording');
+  const handleRestart = () => {
+    setCurrentSentenceIndex(0);
+    setIsPlaying(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      toast.success('Recording stopped');
-    }
+  const toggleTextVisibility = () => {
+    setShowText(!showText);
   };
-
-  const handleRecordingToggle = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
-
-  useEffect(() => {
-    // Reset when modal opens
-    if (isOpen) {
-      setCurrentSentenceIndex(0);
-      setIsRecording(false);
-    }
-    
-    // Cleanup when modal closes
-    return () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stop();
-      }
-      stopAudio();
-    };
-  }, [isOpen, stopAudio]);
 
   if (!exercise) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{exercise.title}</DialogTitle>
+          <DialogTitle className="flex items-center justify-between">
+            <span>{exercise.title}</span>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">{exercise.difficulty_level}</Badge>
+              <Badge variant="secondary">
+                {currentSentenceIndex + 1} / {sentences.length}
+              </Badge>
+            </div>
+          </DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6">
-          {/* Progress */}
+          {/* Progress Bar */}
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Sentence {currentSentenceIndex + 1} of {sentences.length}</span>
-              <span>{Math.round(progress)}% Complete</span>
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Progress</span>
+              <span>{Math.round(progress)}%</span>
             </div>
             <Progress value={progress} className="w-full" />
           </div>
 
-          {/* Current Sentence */}
-          <div className="bg-muted/50 p-6 rounded-lg">
-            <p className="text-lg leading-relaxed text-center">
-              {currentSentence?.text || 'No sentence available'}
-            </p>
+          {/* Practice Mode Toggle */}
+          <div className="flex items-center justify-center gap-4">
+            <Button
+              variant={practiceMode === 'listening' ? 'default' : 'outline'}
+              onClick={() => setPracticeMode('listening')}
+              size="sm"
+            >
+              Listening Only
+            </Button>
+            <Button
+              variant={practiceMode === 'shadowing' ? 'default' : 'outline'}
+              onClick={() => setPracticeMode('shadowing')}
+              size="sm"
+            >
+              Shadowing
+            </Button>
           </div>
 
-          {/* Audio Controls */}
-          <div className="flex justify-center gap-4">
+          {/* Main Practice Area */}
+          <Card className="p-6">
+            <CardContent className="space-y-4">
+              {/* Current Sentence */}
+              <div className="text-center space-y-4">
+                {showText && (
+                  <div className="text-2xl font-medium leading-relaxed">
+                    {currentSentence?.text || 'No text available'}
+                  </div>
+                )}
+                
+                {practiceMode === 'shadowing' && (
+                  <div className="text-sm text-muted-foreground bg-blue-50 p-4 rounded-lg">
+                    <strong>Shadowing Mode:</strong> Listen to the audio and repeat the sentence 
+                    while it's playing. Try to match the rhythm, intonation, and pronunciation.
+                  </div>
+                )}
+                
+                {practiceMode === 'listening' && (
+                  <div className="text-sm text-muted-foreground bg-green-50 p-4 rounded-lg">
+                    <strong>Listening Mode:</strong> Focus on understanding the sentence. 
+                    Listen multiple times if needed.
+                  </div>
+                )}
+              </div>
+
+              {/* Audio Controls */}
+              <div className="flex items-center justify-center gap-4">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handlePlayPause}
+                  className="h-12 w-12"
+                >
+                  {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleRestart}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleTextVisibility}
+                >
+                  <Volume2 className="h-4 w-4 mr-2" />
+                  {showText ? 'Hide Text' : 'Show Text'}
+                </Button>
+              </div>
+
+              {/* Playback Speed */}
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-sm text-muted-foreground">Speed:</span>
+                {[0.5, 0.75, 1, 1.25, 1.5].map((speed) => (
+                  <Button
+                    key={speed}
+                    variant={playbackSpeed === speed ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPlaybackSpeed(speed)}
+                  >
+                    {speed}x
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Navigation Controls */}
+          <div className="flex items-center justify-between">
             <Button
               variant="outline"
-              size="icon"
-              onClick={handlePreviousSentence}
+              onClick={handlePrevious}
               disabled={currentSentenceIndex === 0}
             >
-              <SkipBack className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Previous
             </Button>
-            
-            <Button
-              size="icon"
-              onClick={handlePlaySentence}
-              disabled={isLoading}
-            >
-              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleNextSentence}
-              disabled={currentSentenceIndex === sentences.length - 1}
-            >
-              <SkipForward className="h-4 w-4" />
-            </Button>
-          </div>
 
-          {/* Recording Controls */}
-          <div className="flex justify-center gap-4">
+            <div className="text-center">
+              <div className="text-sm text-muted-foreground">
+                Sentence {currentSentenceIndex + 1} of {sentences.length}
+              </div>
+            </div>
+
             <Button
-              variant={isRecording ? "destructive" : "secondary"}
-              onClick={handleRecordingToggle}
-              className="flex items-center gap-2"
+              onClick={handleNext}
+              disabled={currentSentenceIndex >= sentences.length - 1}
             >
-              {isRecording ? (
-                <>
-                  <Square className="h-4 w-4" />
-                  Stop Recording
-                </>
-              ) : (
-                <>
-                  <Mic className="h-4 w-4" />
-                  Start Recording
-                </>
+              {currentSentenceIndex >= sentences.length - 1 ? 'Complete' : 'Next'}
+              {currentSentenceIndex < sentences.length - 1 && (
+                <ChevronRight className="h-4 w-4 ml-2" />
               )}
             </Button>
           </div>
 
           {/* Instructions */}
-          <div className="bg-blue-50/50 p-4 rounded-lg">
-            <h4 className="font-semibold text-blue-900 mb-2">How to Practice:</h4>
-            <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-              <li>Click play to hear the sentence</li>
-              <li>Start recording and repeat the sentence while listening</li>
-              <li>Try to match the rhythm and pronunciation</li>
-              <li>Move to the next sentence when ready</li>
-            </ol>
-          </div>
-
-          {/* Navigation */}
-          <div className="flex justify-between">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Close
-            </Button>
-            {currentSentenceIndex === sentences.length - 1 ? (
-              <Button onClick={() => onOpenChange(false)}>
-                Complete
-              </Button>
-            ) : (
-              <Button onClick={handleNextSentence}>
-                Next Sentence
-              </Button>
-            )}
+          <div className="text-xs text-muted-foreground text-center space-y-1">
+            <p>• Use the speed controls to adjust playback speed for your comfort level</p>
+            <p>• In Shadowing mode, try to speak along with the audio simultaneously</p>
+            <p>• In Listening mode, focus on comprehension and pronunciation patterns</p>
           </div>
         </div>
+
+        {/* Hidden audio element */}
+        {currentSentence?.audio_url && (
+          <audio
+            ref={audioRef}
+            src={currentSentence.audio_url}
+            onEnded={() => setIsPlaying(false)}
+            onLoadStart={() => console.log('Audio loading...')}
+            onError={(e) => {
+              console.error('Audio error:', e);
+              toast.error('Error loading audio');
+              setIsPlaying(false);
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

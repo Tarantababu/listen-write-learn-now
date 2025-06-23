@@ -10,6 +10,7 @@ import DeleteExerciseDialog from '@/components/exercises/DeleteExerciseDialog';
 import DefaultExercisesSection from '@/components/exercises/DefaultExercisesSection';
 import { ReadingExercisesSection } from '@/components/reading/ReadingExercisesSection';
 import { ShadowingExercisesSection } from '@/components/shadowing/ShadowingExercisesSection';
+import BidirectionalExercises from '@/pages/BidirectionalExercises';
 import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -103,10 +104,11 @@ const ExercisesPage: React.FC = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dictation">Dictation</TabsTrigger>
             <TabsTrigger value="reading">Reading</TabsTrigger>
             <TabsTrigger value="shadowing">Shadowing</TabsTrigger>
+            <TabsTrigger value="bidirectional">Bidirectional</TabsTrigger>
             <TabsTrigger value="default">Browse</TabsTrigger>
           </TabsList>
 
@@ -143,6 +145,10 @@ const ExercisesPage: React.FC = () => {
 
           <TabsContent value="shadowing">
             <ShadowingExercisesSection />
+          </TabsContent>
+
+          <TabsContent value="bidirectional">
+            <BidirectionalExercises />
           </TabsContent>
 
           <TabsContent value="default">
