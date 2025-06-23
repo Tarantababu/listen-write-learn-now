@@ -39,7 +39,14 @@ export const useShadowingExercises = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setExercises(data || []);
+      
+      // Transform the data to ensure sentences is always an array
+      const transformedData = (data || []).map(exercise => ({
+        ...exercise,
+        sentences: Array.isArray(exercise.sentences) ? exercise.sentences : []
+      }));
+      
+      setExercises(transformedData);
     } catch (error) {
       console.error('Error fetching shadowing exercises:', error);
       toast.error('Failed to load shadowing exercises');

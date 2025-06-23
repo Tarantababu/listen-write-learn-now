@@ -1,19 +1,19 @@
 
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ExerciseGrid } from '@/components/exercises/ExerciseGrid';
-import { FilterBar } from '@/components/exercises/FilterBar';
-import { PaginationControls } from '@/components/exercises/PaginationControls';
+import ExerciseGrid from '@/components/exercises/ExerciseGrid';
+import FilterBar from '@/components/exercises/FilterBar';
+import PaginationControls from '@/components/exercises/PaginationControls';
 import { ExerciseFormModal } from '@/components/exercises/ExerciseFormModal';
-import { PracticeModal } from '@/components/exercises/PracticeModal';
-import { DeleteExerciseDialog } from '@/components/exercises/DeleteExerciseDialog';
-import { DefaultExercisesSection } from '@/components/exercises/DefaultExercisesSection';
+import PracticeModal from '@/components/exercises/PracticeModal';
+import DeleteExerciseDialog from '@/components/exercises/DeleteExerciseDialog';
+import DefaultExercisesSection from '@/components/exercises/DefaultExercisesSection';
 import { ReadingExercisesSection } from '@/components/reading/ReadingExercisesSection';
 import { ShadowingExercisesSection } from '@/components/shadowing/ShadowingExercisesSection';
-import { useLocalExercises } from '@/hooks/useLocalExercises';
+import { useExerciseContext } from '@/contexts/ExerciseContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 const ExercisesPage: React.FC = () => {
   const { user } = useAuth();
@@ -30,25 +30,15 @@ const ExercisesPage: React.FC = () => {
 
   const {
     exercises,
-    loading,
-    totalPages,
-    createExercise,
+    addExercise,
     updateExercise,
     deleteExercise,
-    refreshExercises,
-  } = useLocalExercises(
-    currentPage,
-    filterLevel,
-    filterTags,
-    searchTerm,
-    settings.selectedLanguage
-  );
+  } = useExerciseContext();
 
   const handleCreateExercise = async (exerciseData: any) => {
     try {
-      await createExercise(exerciseData);
+      addExercise(exerciseData);
       setIsFormModalOpen(false);
-      refreshExercises();
     } catch (error) {
       console.error('Failed to create exercise:', error);
     }
@@ -56,10 +46,11 @@ const ExercisesPage: React.FC = () => {
 
   const handleUpdateExercise = async (exerciseData: any) => {
     try {
-      await updateExercise(selectedExercise.id, exerciseData);
-      setIsFormModalOpen(false);
-      setSelectedExercise(null);
-      refreshExercises();
+      if (selectedExercise) {
+        updateExercise(selectedExercise.id, exerciseData);
+        setIsFormModalOpen(false);
+        setSelectedExercise(null);
+      }
     } catch (error) {
       console.error('Failed to update exercise:', error);
     }
@@ -68,9 +59,8 @@ const ExercisesPage: React.FC = () => {
   const handleDeleteExercise = async () => {
     if (exerciseToDelete) {
       try {
-        await deleteExercise(exerciseToDelete.id);
+        deleteExercise(exerciseToDelete.id);
         setExerciseToDelete(null);
-        refreshExercises();
       } catch (error) {
         console.error('Failed to delete exercise:', error);
       }
@@ -90,6 +80,12 @@ const ExercisesPage: React.FC = () => {
   const filteredExercises = exercises.filter(exercise => 
     exercise.language === settings.selectedLanguage
   );
+
+  // Simple pagination logic
+  const exercisesPerPage = 12;
+  const totalPages = Math.ceil(filteredExercises.length / exercisesPerPage);
+  const startIndex = (currentPage - 1) * exercisesPerPage;
+  const paginatedExercises = filteredExercises.slice(startIndex, startIndex + exercisesPerPage);
 
   return (
     <ProtectedRoute>
@@ -111,21 +107,22 @@ const ExercisesPage: React.FC = () => {
 
           <TabsContent value="dictation" className="space-y-6">
             <FilterBar
-              filterLevel={filterLevel}
-              setFilterLevel={setFilterLevel}
-              filterTags={filterTags}
-              setFilterTags={setFilterTags}
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
-              onCreateExercise={() => setIsFormModalOpen(true)}
+              selectedTag={null}
+              setSelectedTag={() => {}}
+              allTags={[]}
             />
 
             <ExerciseGrid
-              exercises={filteredExercises}
-              loading={loading}
+              paginatedExercises={paginatedExercises}
+              exercisesPerPage={exercisesPerPage}
+              onPractice={handlePracticeExercise}
               onEdit={handleEditExercise}
               onDelete={setExerciseToDelete}
-              onPractice={handlePracticeExercise}
+              onMove={() => {}}
+              onCreateClick={() => setIsFormModalOpen(true)}
+              canEdit={true}
             />
 
             <PaginationControls
@@ -151,8 +148,8 @@ const ExercisesPage: React.FC = () => {
         <ExerciseFormModal
           isOpen={isFormModalOpen}
           onOpenChange={setIsFormModalOpen}
-          exercise={selectedExercise}
-          onSubmit={selectedExercise ? handleUpdateExercise : handleCreateExercise}
+          initialValues={selectedExercise}
+          mode={selectedExercise ? 'edit' : 'create'}
         />
 
         <PracticeModal
