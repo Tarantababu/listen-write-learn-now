@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -193,6 +194,28 @@
   .dark .word-selected {
     @apply bg-blue-400/30 border-blue-400/40;
     color: rgb(147, 197, 253);
+  }
+
+  /* Enhanced button hover states for better contrast */
+  .btn-outline-enhanced:hover {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  .btn-outline-enhanced:hover .text-muted-foreground {
+    @apply text-primary-foreground;
+  }
+
+  /* Specific button contrast fixes */
+  button[class*="outline"]:hover {
+    color: hsl(var(--accent-foreground)) !important;
+  }
+
+  button[class*="outline"]:hover .text-muted-foreground {
+    color: hsl(var(--accent-foreground)) !important;
+  }
+
+  button[class*="outline"]:hover [class*="text-muted-foreground"] {
+    color: hsl(var(--accent-foreground)) !important;
   }
 }
 
