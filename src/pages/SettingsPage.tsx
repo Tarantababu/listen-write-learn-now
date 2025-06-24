@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +19,8 @@ import { getLanguageFlagCode, capitalizeLanguage } from '@/utils/languageUtils';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FlagIcon } from 'react-flag-kit';
+import SharingSection from '@/components/sharing/SharingSection';
+
 const SettingsPage: React.FC = () => {
   const {
     settings,
@@ -103,8 +106,6 @@ const SettingsPage: React.FC = () => {
           </CardContent>
         </Card>
         
-        
-        
         <Card className="gradient-card animate-fade-in">
           <CardHeader className="pb-2 sm:pb-4">
             <CardTitle className="text-lg sm:text-xl">Learning Languages</CardTitle>
@@ -153,6 +154,8 @@ const SettingsPage: React.FC = () => {
             <ResetLanguageProgress />
           </CardContent>
         </Card>
+        
+        <SharingSection />
         
         <Card className="gradient-card animate-fade-in">
           <CardHeader className="pb-2 sm:pb-4">
