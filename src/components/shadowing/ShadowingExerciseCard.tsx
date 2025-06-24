@@ -12,7 +12,10 @@ interface ShadowingExercise {
   language: string;
   source_type: string;
   custom_text?: string;
-  sentences: any[];
+  sentences: Array<{
+    text: string;
+    audio_url?: string;
+  }>;
   archived: boolean;
   created_at: string;
 }

@@ -13,6 +13,7 @@ import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 interface ShadowingExercise {
   id: string;
   title: string;
+  language: string;
   sentences: Array<{
     text: string;
     audio_url?: string;
@@ -57,10 +58,10 @@ const ShadowingPracticeModal: React.FC<ShadowingPracticeModalProps> = ({
   }, [isOpen]);
 
   const handlePlayAudio = async () => {
-    if (!currentSentence) return;
+    if (!currentSentence || !exercise) return;
 
     try {
-      await playText(currentSentence.text, exercise?.language || 'en');
+      await playText(currentSentence.text, exercise.language || 'en');
     } catch (error) {
       console.log('Audio playback failed, continuing without audio');
     }

@@ -18,7 +18,10 @@ interface ShadowingExercise {
   language: string;
   source_type: string;
   custom_text?: string;
-  sentences: any[];
+  sentences: Array<{
+    text: string;
+    audio_url?: string;
+  }>;
   archived: boolean;
   created_at: string;
   user_id: string;
@@ -46,7 +49,18 @@ export const ShadowingExercisesSection: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setExercises(data || []);
+      
+      // Transform the data to match our interface
+      const transformedData = (data || []).map(exercise => ({
+        ...exercise,
+        sentences: Array.isArray(exercise.sentences) 
+          ? exercise.sentences 
+          : typeof exercise.sentences === 'string' 
+            ? JSON.parse(exercise.sentences) 
+            : []
+      }));
+      
+      setExercises(transformedData);
     } catch (error) {
       console.error('Error fetching shadowing exercises:', error);
       toast.error('Failed to load shadowing exercises');
