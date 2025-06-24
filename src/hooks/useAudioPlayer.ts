@@ -1,6 +1,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { readingExerciseService } from '@/services/readingExerciseService';
+import { audioCache } from '@/services/audioCache';
 import { toast } from 'sonner';
 
 interface UseAudioPlayerReturn {
@@ -30,8 +31,20 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
       
       setIsLoading(true);
       
-      // Generate audio using the existing service
-      const audioUrl = await readingExerciseService.generateAudio(text, language);
+      // First, try to get cached audio
+      let audioUrl = audioCache.getCachedAudio(text, language);
+      
+      if (!audioUrl) {
+        // Generate new audio if not cached
+        console.log('Generating new audio for text:', text.substring(0, 50) + '...');
+        audioUrl = await readingExerciseService.generateAudio(text, language);
+        
+        // Cache the newly generated audio
+        audioCache.cacheAudio(text, language, audioUrl);
+        console.log('Audio cached for future use');
+      } else {
+        console.log('Using cached audio for text:', text.substring(0, 50) + '...');
+      }
       
       // Create new audio element
       const audio = new Audio(audioUrl);
@@ -42,7 +55,8 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
         setIsPlaying(false);
       });
       
-      audio.addEventListener('error', () => {
+      audio.addEventListener('error', (error) => {
+        console.error('Audio playback error:', error);
         setIsPlaying(false);
         toast.error('Audio playback failed');
       });
@@ -53,7 +67,7 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
       
     } catch (error) {
       console.error('Error playing audio:', error);
-      toast.error('Failed to generate audio');
+      toast.error('Failed to play audio');
     } finally {
       setIsLoading(false);
     }
