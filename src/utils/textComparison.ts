@@ -1,4 +1,3 @@
-
 /**
  * Computes the Levenshtein distance between two strings
  * This algorithm measures the minimum number of single-character edits 
@@ -65,6 +64,8 @@ export interface TokenComparisonResult {
 export const normalizeText = (text: string): string => {
   return text
     .toLowerCase()
+    // Normalize apostrophes: convert right single quotation mark (U+2019) and other variants to straight apostrophe (U+0027)
+    .replace(/[\u2019\u2018\u201B]/g, "'")
     // Remove all punctuation and special characters
     .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '')
     // Replace multiple spaces with a single space
