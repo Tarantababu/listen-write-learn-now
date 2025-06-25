@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Archive, Move, Edit, Trash2, Play, ArrowLeftRight, Mic, BookOpen } from 'lucide-react';
+import { Plus, Archive, Move, Edit, Trash2, Play, ArrowLeftRight, Mic, BookOpen, Brain } from 'lucide-react';
 import { ExerciseFormModal } from '@/components/exercises/ExerciseFormModal';
 import PracticeModal from '@/components/exercises/PracticeModal';
 import MoveExerciseModal from '@/components/MoveExerciseModal';
@@ -21,6 +21,7 @@ import ExerciseGrid from '@/components/exercises/ExerciseGrid';
 import CreateExerciseCard from '@/components/exercises/CreateExerciseCard';
 import BidirectionalPage from './BidirectionalPage';
 import { ReadingExercisesSection } from '@/components/reading/ReadingExercisesSection';
+import { SentenceMiningSection } from '@/components/sentence-mining/SentenceMiningSection';
 import PopoverHint from '@/components/PopoverHint';
 
 // Memoized components to prevent unnecessary re-renders
@@ -28,6 +29,8 @@ const MemoizedExerciseGrid = React.memo(ExerciseGrid);
 const MemoizedBidirectionalPage = React.memo(BidirectionalPage);
 const MemoizedFilterBar = React.memo(FilterBar);
 const MemoizedPaginationControls = React.memo(PaginationControls);
+const MemoizedSentenceMiningSection = React.memo(SentenceMiningSection);
+
 const ExercisesPage: React.FC = () => {
   const {
     user
@@ -163,7 +166,7 @@ const ExercisesPage: React.FC = () => {
       
 
       <Tabs defaultValue="dictation" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-1 md:grid-cols-3 h-auto md:h-12 mb-4 rounded-lg shadow-sm">
+        <TabsList className="grid w-full grid-cols-1 md:grid-cols-4 h-auto md:h-12 mb-4 rounded-lg shadow-sm">
           <TabsTrigger value="dictation" className="flex items-center gap-2 md:justify-center px-4 py-3 md:py-0 rounded-none data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900">
             <Mic className="h-4 w-4" />
             <span className="hidden md:inline">Dictation Method</span>
@@ -174,7 +177,34 @@ const ExercisesPage: React.FC = () => {
             <span className="hidden md:inline">Reading & Listening</span>
             <span className="md:hidden">Reading</span>
           </TabsTrigger>
-          <TabsTrigger value="bidirectional" className="flex items-center gap-2 md:justify-center px-4 py-3 md:py-0 rounded-none data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 relative">
+          <TabsTrigger value="sentence-mining" className="flex items-center gap-2 md:justify-center px-4 py-3 md:py-0 rounded-none data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900">
+            <Brain className="h-4 w-4" />
+            <span className="hidden md:inline">Smart Sentence Mining</span>
+            <span className="md:hidden">Sentence Mining</span>
+            <PopoverHint className="ml-1" triggerClassName="text-muted-foreground/60 hover:text-muted-foreground">
+              <div className="space-y-3">
+                <div>
+                  <h4 className="font-semibold mb-2">How Smart Sentence Mining works:</h4>
+                  <ul className="text-sm space-y-2 list-disc list-inside">
+                    <li><strong>AI-generated sentences:</strong> Each exercise is uniquely created with contextually appropriate vocabulary</li>
+                    <li><strong>Cloze deletion:</strong> Fill in the blank with the missing word to complete the sentence</li>
+                    <li><strong>Difficulty levels:</strong> Choose from beginner, intermediate, or advanced vocabulary</li>
+                    <li><strong>Contextual learning:</strong> Learn words in meaningful sentence contexts</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Benefits:</h4>
+                  <ul className="text-sm space-y-1 list-disc list-inside">
+                    <li>Builds vocabulary through context</li>
+                    <li>Improves reading comprehension</li>
+                    <li>Develops intuitive language understanding</li>
+                    <li>Tracks progress across difficulty levels</li>
+                  </ul>
+                </div>
+              </div>
+            </PopoverHint>
+          </TabsTrigger>
+          <TabsTrigger value="bidirectional" className="flex items-center gap-2 md:justify-center px-4 py-3 md:py-0 rounded-none data-[state=active]:bg-orange-100 data-[state=active]:text-orange-900 relative">
             <ArrowLeftRight className="h-4 w-4" />
             <span className="hidden md:inline">Bidirectional Method</span>
             <span className="md:hidden">Bidirectional</span>
@@ -207,8 +237,6 @@ const ExercisesPage: React.FC = () => {
 
         {/* Dictation Tab */}
         <TabsContent value="dictation" className="space-y-8">
-          
-
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
             <CreateExerciseCard onClick={onCreateExercise} />
             {/* Add more exercise type cards here as needed */}
@@ -231,16 +259,21 @@ const ExercisesPage: React.FC = () => {
 
         {/* Reading Tab */}
         <TabsContent value="reading" className="space-y-8">
-          
           {/* The section is already very visually consistent with new grid/card system */}
           <div>
             <ReadingExercisesSection />
           </div>
         </TabsContent>
 
+        {/* Smart Sentence Mining Tab */}
+        <TabsContent value="sentence-mining" className="space-y-8">
+          <div>
+            <MemoizedSentenceMiningSection />
+          </div>
+        </TabsContent>
+
         {/* Bidirectional Tab */}
         <TabsContent value="bidirectional" className="space-y-8">
-          
           <div>
             <MemoizedBidirectionalPage />
           </div>
