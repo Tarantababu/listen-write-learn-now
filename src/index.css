@@ -197,24 +197,33 @@
   }
 
   /* Enhanced button hover states for better contrast */
+  button[class*="variant-outline"]:hover,
   .btn-outline-enhanced:hover {
-    @apply bg-primary text-primary-foreground;
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+    border-color: hsl(var(--primary)) !important;
   }
 
-  .btn-outline-enhanced:hover .text-muted-foreground {
-    @apply text-primary-foreground;
+  /* Fix text color inside outline buttons on hover */
+  button[class*="variant-outline"]:hover *,
+  button[class*="outline"]:hover *,
+  .btn-outline-enhanced:hover * {
+    color: hsl(var(--primary-foreground)) !important;
   }
 
-  /* Specific button contrast fixes */
-  button[class*="outline"]:hover {
+  /* Ensure muted text becomes readable on hover */
+  button:hover .text-muted-foreground,
+  button:hover [class*="text-muted-foreground"] {
+    color: inherit !important;
+  }
+
+  /* Ghost button improvements */
+  button[class*="variant-ghost"]:hover {
+    background-color: hsl(var(--accent)) !important;
     color: hsl(var(--accent-foreground)) !important;
   }
 
-  button[class*="outline"]:hover .text-muted-foreground {
-    color: hsl(var(--accent-foreground)) !important;
-  }
-
-  button[class*="outline"]:hover [class*="text-muted-foreground"] {
+  button[class*="variant-ghost"]:hover * {
     color: hsl(var(--accent-foreground)) !important;
   }
 }
