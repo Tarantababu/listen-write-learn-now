@@ -291,7 +291,4 @@ const ExercisesPage: React.FC = () => {
     </div>;
 };
 
-// Add memoized component
-const MemoizedSentenceMiningSection = React.memo(SentenceMiningSection);
-
 export default ExercisesPage;
