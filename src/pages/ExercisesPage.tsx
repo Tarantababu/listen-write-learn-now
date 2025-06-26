@@ -290,4 +290,8 @@ const ExercisesPage: React.FC = () => {
       <DeleteExerciseDialog isOpen={!!deleteExerciseId} onOpenChange={open => !open && handleModalClose('delete')} onConfirm={confirmDeleteExercise} />
     </div>;
 };
+
+// Add memoized component
+const MemoizedSentenceMiningSection = React.memo(SentenceMiningSection);
+
 export default ExercisesPage;
