@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Volume2, VolumeX, Play, CheckCircle, XCircle } from 'lucide-react';
+import { Volume2, CheckCircle, XCircle, ArrowRight, Eye } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 
 interface MultipleChoiceExerciseProps {
@@ -43,20 +43,15 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
       result.push(part);
       if (index < parts.length - 1) {
         result.push(
-          <span key={index} className="relative inline-block">
-            <div className="w-32 h-16 bg-blue-100 border-2 border-blue-300 rounded-lg mx-2 flex items-center justify-center">
-              {showResult && userResponse ? (
-                <span className={`text-lg font-medium ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                  {userResponse}
-                </span>
-              ) : (
-                <span className="text-blue-400 text-lg">"it"</span>
-              )}
-            </div>
-            {showResult && userResponse && (
-              <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-500">
-                "it"
-              </div>
+          <span key={index} className="inline-block border-2 border-primary border-dashed min-w-[120px] mx-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded text-center">
+            {showResult && userResponse ? (
+              <span className={isCorrect ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                {userResponse}
+              </span>
+            ) : (
+              <span className="text-muted-foreground font-medium">
+                ?
+              </span>
             )}
           </span>
         );
@@ -67,56 +62,62 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Badge className="bg-blue-500 text-white px-4 py-2 text-base font-medium">
-            146 words
-          </Badge>
-          <Badge variant="outline" className="px-4 py-2 text-base bg-gray-100 text-gray-600">
-            Grammar Level: Advanced
-          </Badge>
-          <Button variant="ghost" className="text-gray-600">
-            Change
-          </Button>
-        </div>
-        <div className="text-gray-500 text-sm">
-          Exercise #15503 Sentence #10552
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <Card className="border-0 shadow-none">
-        <CardContent className="p-8">
-          <div className="space-y-8">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Find the missing word</CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="capitalize">
+                {exercise.difficulty}
+              </Badge>
+              {onPlayAudio && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onPlayAudio}
+                  disabled={audioLoading}
+                  className="flex items-center gap-1"
+                >
+                  <Volume2 className="h-4 w-4" />
+                  {audioLoading ? 'Loading...' : 'Listen'}
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent>
+          <div className="space-y-4">
             {/* Sentence with blank */}
-            <div className="text-center">
-              <p className="text-4xl font-normal text-black leading-relaxed">
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-xl leading-relaxed text-center">
                 {renderSentenceWithBlank(exercise.sentence, exercise.targetWord)}
               </p>
             </div>
-
-            {/* Instructions */}
-            <p className="text-gray-600 text-lg text-center">
+            
+            <p className="text-sm text-muted-foreground text-center">
               Find the missing word. Click any words you don't know.
             </p>
+          </div>
+        </CardContent>
+      </Card>
 
-            {/* Multiple Choice Options */}
-            <div className="grid grid-cols-6 gap-3 max-w-4xl">
+      {/* Multiple Choice Options */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {exercise.multipleChoiceOptions?.map((option, index) => (
                 <Button
                   key={index}
                   variant={userResponse === option ? 'default' : 'outline'}
-                  className={`h-14 text-lg font-medium ${
-                    userResponse === option
-                      ? 'bg-blue-800 text-white'
-                      : 'bg-blue-800 text-white hover:bg-blue-900'
-                  } ${
+                  className={`p-4 h-auto text-lg ${
                     showResult && option === exercise.correctAnswer
-                      ? 'bg-green-500 hover:bg-green-500'
+                      ? 'bg-green-100 border-green-500 text-green-700 hover:bg-green-100'
                       : showResult && userResponse === option && !isCorrect
-                      ? 'bg-red-500 hover:bg-red-500'
+                      ? 'bg-red-100 border-red-500 text-red-700 hover:bg-red-100'
                       : ''
                   }`}
                   onClick={() => !showResult && onResponseChange(option)}
@@ -126,25 +127,76 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
                 </Button>
               ))}
             </div>
+            
+            <div className="flex justify-between items-center">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onToggleTranslation}
+                  className="flex items-center gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  {showTranslation ? 'Hide Hint' : 'Hint'}
+                </Button>
+                <Button variant="outline" size="sm">
+                  Translate
+                </Button>
+                <Button variant="outline" size="sm">
+                  Reveal
+                </Button>
+              </div>
+              
+              {!showResult ? (
+                <Button
+                  onClick={onSubmit}
+                  disabled={!userResponse || loading}
+                  className="px-8"
+                >
+                  {loading ? 'Checking...' : 'Submit'}
+                </Button>
+              ) : (
+                <Button
+                  onClick={onNext}
+                  className="px-8 flex items-center gap-2"
+                >
+                  Continue <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
 
-            {/* Result Feedback */}
             {showResult && (
-              <div className="text-center space-y-4">
-                <div className="flex items-center justify-center gap-2">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
                   {isCorrect ? (
-                    <CheckCircle className="h-6 w-6 text-green-600" />
+                    <CheckCircle className="h-5 w-5 text-green-600" />
                   ) : (
-                    <XCircle className="h-6 w-6 text-red-600" />
+                    <XCircle className="h-5 w-5 text-red-600" />
                   )}
-                  <span className="text-2xl font-medium">
+                  <Badge variant={isCorrect ? 'default' : 'destructive'}>
                     {isCorrect ? 'Correct!' : 'Incorrect'}
-                  </span>
+                  </Badge>
                 </div>
 
                 {exercise.explanation && (
-                  <div className="text-gray-700 text-left max-w-2xl mx-auto">
-                    <p className="font-medium mb-2">Explanation:</p>
-                    <p>{exercise.explanation}</p>
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                      Explanation:
+                    </p>
+                    <p className="text-blue-700 dark:text-blue-300 text-sm">
+                      {exercise.explanation}
+                    </p>
+                  </div>
+                )}
+
+                {showTranslation && exercise.translation && (
+                  <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">
+                      Translation:
+                    </p>
+                    <p className="text-yellow-700 dark:text-yellow-300 text-sm">
+                      {exercise.translation}
+                    </p>
                   </div>
                 )}
               </div>
@@ -152,45 +204,6 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
           </div>
         </CardContent>
       </Card>
-
-      {/* Bottom Controls */}
-      <div className="flex items-center justify-between">
-        {/* Left side buttons */}
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="bg-blue-500 text-white px-6 py-3 text-lg border-0 hover:bg-blue-600"
-          >
-            Translate
-          </Button>
-          <Button
-            variant="outline"
-            className="bg-blue-500 text-white px-6 py-3 text-lg border-0 hover:bg-blue-600"
-          >
-            Reveal
-          </Button>
-        </div>
-
-        {/* Audio Controls */}
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={onPlayAudio}
-            disabled={audioLoading}
-            className="w-16 h-16 rounded-full bg-blue-500 text-white border-0 hover:bg-blue-600"
-          >
-            <Play className="h-6 w-6" />
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="w-16 h-16 rounded-full bg-blue-500 text-white border-0 hover:bg-blue-600"
-          >
-            <VolumeX className="h-6 w-6" />
-          </Button>
-        </div>
-      </div>
     </div>
   );
 };

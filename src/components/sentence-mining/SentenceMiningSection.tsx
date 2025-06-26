@@ -7,7 +7,8 @@ import { ExerciseTypeSelector } from './ExerciseTypeSelector';
 import { TranslationExercise } from './exercises/TranslationExercise';
 import { MultipleChoiceExercise } from './exercises/MultipleChoiceExercise';
 import { VocabularyMarkingExercise } from './exercises/VocabularyMarkingExercise';
-import { ClozeExercise } from './exercises/ClozeExercise';
+import { SentenceDisplay } from './SentenceDisplay';
+import { UserResponse } from './UserResponse';
 import { ProgressTracker } from './ProgressTracker';
 import { useSentenceMining } from '@/hooks/use-sentence-mining';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -159,19 +160,30 @@ export const SentenceMiningSection: React.FC = () => {
         
       default: // cloze
         return (
-          <ClozeExercise
-            {...commonProps}
-            userResponse={userResponse}
-            onResponseChange={updateUserResponse}
-            onSubmit={handleSubmitAnswer}
-            onNext={nextExercise}
-          />
+          <div className="space-y-4">
+            <SentenceDisplay
+              exercise={currentExercise}
+              onPlayAudio={handlePlayAudio}
+              audioLoading={audioLoading}
+            />
+            
+            <UserResponse
+              userResponse={userResponse}
+              onResponseChange={updateUserResponse}
+              onSubmit={handleSubmitAnswer}
+              onNext={nextExercise}
+              showResult={showResult}
+              isCorrect={isCorrect}
+              correctAnswer={currentExercise.targetWord}
+              loading={loading}
+            />
+          </div>
         );
     }
   };
 
   return (
-    <div className="space-y-6 min-h-screen bg-gray-50 py-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="text-center space-y-2">
         <h1 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent flex items-center justify-center gap-2">
@@ -198,27 +210,25 @@ export const SentenceMiningSection: React.FC = () => {
           />
         </div>
       ) : (
-        // Active Session - Full screen exercise
-        <div className="w-full">
-          {/* Session Header - smaller, less prominent */}
-          <div className="max-w-4xl mx-auto mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Play className="h-4 w-4 text-gray-500" />
-                <span className="text-sm text-gray-600">
-                  {currentExercise?.exerciseType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} Exercise
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={endSession}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-4 w-4" />
-                End Session
-              </Button>
+        // Active Session
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Session Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Play className="h-5 w-5 text-primary" />
+              <span className="font-semibold">
+                {currentExercise?.exerciseType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} Exercise
+              </span>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={endSession}
+              className="flex items-center gap-2"
+            >
+              <X className="h-4 w-4" />
+              End Session
+            </Button>
           </div>
 
           {/* Exercise Display */}
@@ -226,42 +236,40 @@ export const SentenceMiningSection: React.FC = () => {
         </div>
       )}
 
-      {/* Help Section - only show when not in active session */}
-      {!currentSession && (
-        <Card className="max-w-4xl mx-auto">
-          <CardHeader>
-            <CardTitle className="text-lg">Enhanced Smart Sentence Mining</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <h4 className="font-semibold">🔤 Translation Exercises</h4>
-                <p className="text-sm text-muted-foreground">
-                  Translate complete sentences to build comprehensive understanding and improve fluency.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold">✅ Multiple Choice</h4>
-                <p className="text-sm text-muted-foreground">
-                  Choose the correct word from options, with detailed explanations for grammar rules.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold">📚 Vocabulary Marking</h4>
-                <p className="text-sm text-muted-foreground">
-                  Click on unknown words to mark them for review and get instant definitions.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold">🧩 Fill in the Blank</h4>
-                <p className="text-sm text-muted-foreground">
-                  Complete sentences by filling in missing words based on context clues.
-                </p>
-              </div>
+      {/* Help Section */}
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle className="text-lg">Enhanced Smart Sentence Mining</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <h4 className="font-semibold">🔤 Translation Exercises</h4>
+              <p className="text-sm text-muted-foreground">
+                Translate complete sentences to build comprehensive understanding and improve fluency.
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <div className="space-y-2">
+              <h4 className="font-semibold">✅ Multiple Choice</h4>
+              <p className="text-sm text-muted-foreground">
+                Choose the correct word from options, with detailed explanations for grammar rules.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-semibold">📚 Vocabulary Marking</h4>
+              <p className="text-sm text-muted-foreground">
+                Click on unknown words to mark them for review and get instant definitions.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-semibold">🧩 Fill in the Blank</h4>
+              <p className="text-sm text-muted-foreground">
+                Complete sentences by filling in missing words based on context clues.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
