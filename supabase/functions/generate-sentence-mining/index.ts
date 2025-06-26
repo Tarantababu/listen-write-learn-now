@@ -64,13 +64,12 @@ const WORD_FREQUENCIES = {
 function getRandomWord(language: string, difficulty: string): string {
   const words = WORD_FREQUENCIES[language as keyof typeof WORD_FREQUENCIES]?.[difficulty as keyof typeof WORD_FREQUENCIES['english']];
   if (!words || words.length === 0) {
-    // Fallback to English if language not supported
     return WORD_FREQUENCIES.english[difficulty as keyof typeof WORD_FREQUENCIES['english']][Math.floor(Math.random() * WORD_FREQUENCIES.english[difficulty as keyof typeof WORD_FREQUENCIES['english']].length)];
   }
   return words[Math.floor(Math.random() * words.length)];
 }
 
-function createPrompt(language: string, difficulty: string, targetWord: string): string {
+function createPrompt(language: string, difficulty: string, targetWord: string, exerciseType: string): string {
   const difficultyDescriptions = {
     beginner: 'simple, common vocabulary and basic sentence structures',
     intermediate: 'moderate vocabulary and varied sentence patterns',
@@ -90,32 +89,65 @@ function createPrompt(language: string, difficulty: string, targetWord: string):
     english: 'Use proper English grammar and natural sentence structure.'
   };
 
-  return `Create a ${difficulty} level sentence in ${language} that naturally includes the word "${targetWord}". 
+  let specificInstructions = '';
+  let responseFormat = '';
 
-Requirements:
-- The sentence should be ${difficultyDescriptions[difficulty as keyof typeof difficultyDescriptions]}
-- The word "${targetWord}" should fit naturally in the context and be ESSENTIAL to the sentence meaning
-- ${languageInstructions[language as keyof typeof languageInstructions] || 'Use proper grammar and natural sentence structure.'}
-- The sentence should be educational and meaningful
-- Length: ${difficulty === 'beginner' ? '8-12' : difficulty === 'intermediate' ? '12-18' : '15-25'} words
-- The target word MUST be a complete word that can be removed to create a proper cloze exercise
-
-CRITICAL: The target word "${targetWord}" must appear exactly as provided in the sentence, and when removed, should create a meaningful gap that tests comprehension.
-
-Provide your response in the following JSON format:
-{
+  switch (exerciseType) {
+    case 'translation':
+      specificInstructions = `Create a sentence in ${language} that should be translated TO English. The sentence should be meaningful and educational.`;
+      responseFormat = `{
+  "sentence": "The sentence in ${language}",
+  "translation": "The English translation",
+  "context": "Brief explanation of the sentence context",
+  "targetWord": "${targetWord}",
+  "explanation": "Brief explanation of key grammar or vocabulary points"
+}`;
+      break;
+      
+    case 'multiple_choice':
+      specificInstructions = `Create a sentence in ${language} with a blank where "${targetWord}" should go. Generate 4-5 similar word options that could grammatically fit but only one is correct.`;
+      responseFormat = `{
+  "sentence": "The complete sentence with the target word",
+  "clozeSentence": "The sentence with ___ where the target word should go", 
+  "targetWord": "${targetWord}",
+  "multipleChoiceOptions": ["${targetWord}", "option2", "option3", "option4"],
+  "context": "Brief explanation of why this word is correct",
+  "explanation": "Detailed explanation of the grammar rule or usage"
+}`;
+      break;
+      
+    case 'vocabulary_marking':
+      specificInstructions = `Create a sentence in ${language} that includes several words that might be unknown to a ${difficulty} level learner. Include "${targetWord}" naturally in the sentence.`;
+      responseFormat = `{
+  "sentence": "The complete sentence",
+  "targetWord": "${targetWord}",
+  "context": "Brief explanation of the sentence context",
+  "clickableWords": [
+    {"word": "word1", "definition": "definition in English", "position": 0},
+    {"word": "word2", "definition": "definition in English", "position": 1}
+  ]
+}`;
+      break;
+      
+    default: // cloze
+      specificInstructions = `Create a ${difficulty} level sentence in ${language} that naturally includes the word "${targetWord}".`;
+      responseFormat = `{
   "sentence": "The complete sentence with the target word",
   "context": "Brief explanation of the context or situation",
   "targetWord": "${targetWord}"
-}
-
-Example for reference:
-If targetWord is "important" and difficulty is "intermediate":
-{
-  "sentence": "It is important to understand different perspectives before making a decision.",
-  "context": "This sentence emphasizes the value of considering multiple viewpoints in decision-making.",
-  "targetWord": "important"
 }`;
+  }
+
+  return `${specificInstructions}
+
+Requirements:
+- The sentence should be ${difficultyDescriptions[difficulty as keyof typeof difficultyDescriptions]}
+- ${languageInstructions[language as keyof typeof languageInstructions] || 'Use proper grammar and natural sentence structure.'}
+- The sentence should be educational and meaningful
+- Length: ${difficulty === 'beginner' ? '8-12' : difficulty === 'intermediate' ? '12-18' : '15-25'} words
+
+Provide your response in the following JSON format:
+${responseFormat}`;
 }
 
 serve(async (req) => {
@@ -124,26 +156,23 @@ serve(async (req) => {
   }
 
   try {
-    const { language, difficulty, knownWords } = await req.json();
+    const { language, difficulty, exerciseType = 'cloze', knownWords } = await req.json();
     
     if (!language || !difficulty) {
       throw new Error('Language and difficulty are required');
     }
 
-    console.log(`Generating sentence for ${language} at ${difficulty} level`);
+    console.log(`Generating ${exerciseType} exercise for ${language} at ${difficulty} level`);
 
-    // Get a random word for the given difficulty
     const targetWord = getRandomWord(language, difficulty);
     console.log(`Selected target word: ${targetWord}`);
 
-    // Get OpenAI API key
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiApiKey) {
       throw new Error('OpenAI API key not configured');
     }
 
-    // Generate sentence using OpenAI
-    const prompt = createPrompt(language, difficulty, targetWord);
+    const prompt = createPrompt(language, difficulty, targetWord, exerciseType);
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -156,7 +185,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a language learning expert. Create educational sentences that help students learn vocabulary in context. You must ensure that the target word appears exactly as specified and can be properly removed to create a cloze deletion exercise. Always respond with valid JSON format. Pay special attention to grammar rules for the target language.`
+            content: `You are a language learning expert. Create educational exercises that help students learn vocabulary in context. Always respond with valid JSON format. Pay special attention to grammar rules for the target language.`
           },
           {
             role: 'user',
@@ -164,7 +193,7 @@ serve(async (req) => {
           }
         ],
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 800,
       }),
     });
 
@@ -179,7 +208,6 @@ serve(async (req) => {
     
     console.log('Generated content:', content);
 
-    // Parse the JSON response
     let parsedContent;
     try {
       parsedContent = JSON.parse(content);
@@ -189,37 +217,30 @@ serve(async (req) => {
     }
 
     // Validate the response
-    if (!parsedContent.sentence || !parsedContent.targetWord) {
+    if (!parsedContent.sentence) {
       throw new Error('Invalid response structure from AI');
     }
 
-    // Verify that the target word actually appears in the sentence
-    const sentenceLower = parsedContent.sentence.toLowerCase();
-    const targetWordLower = parsedContent.targetWord.toLowerCase();
-    
-    if (!sentenceLower.includes(targetWordLower)) {
-      console.error('Target word not found in sentence:', { sentence: parsedContent.sentence, targetWord: parsedContent.targetWord });
-      throw new Error('Generated sentence does not contain the target word');
-    }
-
-    // Create the cloze sentence by replacing the target word with a blank
-    // Use a more precise regex that matches word boundaries
-    const wordRegex = new RegExp(`\\b${parsedContent.targetWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-    const clozeSentence = parsedContent.sentence.replace(wordRegex, '___');
-
-    // Verify that the cloze sentence actually has blanks
-    if (!clozeSentence.includes('___')) {
-      console.error('Failed to create cloze sentence:', { original: parsedContent.sentence, target: parsedContent.targetWord, result: clozeSentence });
-      throw new Error('Failed to create proper cloze deletion - target word may not be properly detectable');
+    // Create the cloze sentence for cloze exercises
+    let clozeSentence = parsedContent.clozeSentence;
+    if (exerciseType === 'cloze' && !clozeSentence) {
+      const wordRegex = new RegExp(`\\b${parsedContent.targetWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      clozeSentence = parsedContent.sentence.replace(wordRegex, '___');
     }
 
     const result = {
       sentence: parsedContent.sentence,
-      targetWord: parsedContent.targetWord,
-      clozeSentence: clozeSentence,
+      targetWord: parsedContent.targetWord || targetWord,
+      clozeSentence: clozeSentence || parsedContent.sentence,
       context: parsedContent.context || '',
       difficulty: difficulty,
-      language: language
+      language: language,
+      exerciseType: exerciseType,
+      translation: parsedContent.translation,
+      multipleChoiceOptions: parsedContent.multipleChoiceOptions,
+      explanation: parsedContent.explanation,
+      clickableWords: parsedContent.clickableWords || [],
+      correctAnswer: parsedContent.targetWord || targetWord
     };
 
     console.log('Final result:', result);

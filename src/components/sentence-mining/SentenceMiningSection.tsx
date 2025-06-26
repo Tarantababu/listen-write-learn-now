@@ -3,7 +3,10 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Brain, Play, X, Loader2 } from 'lucide-react';
-import { DifficultySelector } from './DifficultySelector';
+import { ExerciseTypeSelector } from './ExerciseTypeSelector';
+import { TranslationExercise } from './exercises/TranslationExercise';
+import { MultipleChoiceExercise } from './exercises/MultipleChoiceExercise';
+import { VocabularyMarkingExercise } from './exercises/VocabularyMarkingExercise';
 import { SentenceDisplay } from './SentenceDisplay';
 import { UserResponse } from './UserResponse';
 import { ProgressTracker } from './ProgressTracker';
@@ -12,6 +15,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { toast } from 'sonner';
+import { ExerciseType, DifficultyLevel } from '@/types/sentence-mining';
 
 export const SentenceMiningSection: React.FC = () => {
   const isMobile = useIsMobile();
@@ -22,16 +26,22 @@ export const SentenceMiningSection: React.FC = () => {
     currentSession,
     currentExercise,
     userResponse,
+    selectedWords,
     showResult,
     isCorrect,
     loading,
     error,
     progress,
+    showHint,
+    showTranslation,
     startSession,
     submitAnswer,
     nextExercise,
     endSession,
     updateUserResponse,
+    toggleWord,
+    toggleHint,
+    toggleTranslation,
   } = useSentenceMining();
 
   const handlePlayAudio = async () => {
@@ -63,7 +73,15 @@ export const SentenceMiningSection: React.FC = () => {
   };
 
   const handleSubmitAnswer = () => {
-    submitAnswer(userResponse);
+    if (currentExercise?.exerciseType === 'vocabulary_marking') {
+      submitAnswer('', selectedWords);
+    } else {
+      submitAnswer(userResponse, selectedWords);
+    }
+  };
+
+  const handleStartSession = (exerciseType: ExerciseType, difficulty: DifficultyLevel) => {
+    startSession(exerciseType, difficulty);
   };
 
   if (loading && !currentExercise) {
@@ -71,7 +89,7 @@ export const SentenceMiningSection: React.FC = () => {
       <div className="flex items-center justify-center py-12">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Generating your sentence...</p>
+          <p className="text-muted-foreground">Generating your exercise...</p>
         </div>
       </div>
     );
@@ -92,6 +110,78 @@ export const SentenceMiningSection: React.FC = () => {
     );
   }
 
+  const renderExercise = () => {
+    if (!currentExercise) return null;
+
+    const commonProps = {
+      exercise: currentExercise,
+      showResult,
+      isCorrect,
+      loading,
+      onPlayAudio: handlePlayAudio,
+      audioLoading,
+      showTranslation,
+      onToggleTranslation: toggleTranslation,
+    };
+
+    switch (currentExercise.exerciseType) {
+      case 'translation':
+        return (
+          <TranslationExercise
+            {...commonProps}
+            userResponse={userResponse}
+            onResponseChange={updateUserResponse}
+            onSubmit={handleSubmitAnswer}
+            onNext={nextExercise}
+          />
+        );
+        
+      case 'multiple_choice':
+        return (
+          <MultipleChoiceExercise
+            {...commonProps}
+            userResponse={userResponse}
+            onResponseChange={updateUserResponse}
+            onSubmit={handleSubmitAnswer}
+            onNext={nextExercise}
+          />
+        );
+        
+      case 'vocabulary_marking':
+        return (
+          <VocabularyMarkingExercise
+            {...commonProps}
+            selectedWords={selectedWords}
+            onWordSelect={toggleWord}
+            onSubmit={handleSubmitAnswer}
+            onNext={nextExercise}
+          />
+        );
+        
+      default: // cloze
+        return (
+          <div className="space-y-4">
+            <SentenceDisplay
+              exercise={currentExercise}
+              onPlayAudio={handlePlayAudio}
+              audioLoading={audioLoading}
+            />
+            
+            <UserResponse
+              userResponse={userResponse}
+              onResponseChange={updateUserResponse}
+              onSubmit={handleSubmitAnswer}
+              onNext={nextExercise}
+              showResult={showResult}
+              isCorrect={isCorrect}
+              correctAnswer={currentExercise.targetWord}
+              loading={loading}
+            />
+          </div>
+        );
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -101,7 +191,7 @@ export const SentenceMiningSection: React.FC = () => {
           Smart Sentence Mining
         </h1>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Master vocabulary through intelligent cloze deletion exercises. Each sentence is crafted to challenge you at just the right level.
+          Master vocabulary through intelligent exercises. Each sentence is crafted to challenge you at just the right level.
         </p>
       </div>
 
@@ -112,11 +202,11 @@ export const SentenceMiningSection: React.FC = () => {
 
       {/* Main Content */}
       {!currentSession ? (
-        // Difficulty Selection
+        // Exercise Type Selection
         <div className="max-w-5xl mx-auto">
-          <DifficultySelector
-            onSelectDifficulty={startSession}
-            progress={progress?.difficultyProgress}
+          <ExerciseTypeSelector
+            onSelectType={handleStartSession}
+            progress={progress?.exerciseTypeProgress}
           />
         </div>
       ) : (
@@ -126,7 +216,9 @@ export const SentenceMiningSection: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Play className="h-5 w-5 text-primary" />
-              <span className="font-semibold">Active Session</span>
+              <span className="font-semibold">
+                {currentExercise?.exerciseType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} Exercise
+              </span>
             </div>
             <Button
               variant="outline"
@@ -140,52 +232,39 @@ export const SentenceMiningSection: React.FC = () => {
           </div>
 
           {/* Exercise Display */}
-          {currentExercise && (
-            <div className="space-y-4">
-              <SentenceDisplay
-                exercise={currentExercise}
-                onPlayAudio={handlePlayAudio}
-                audioLoading={audioLoading}
-              />
-              
-              <UserResponse
-                userResponse={userResponse}
-                onResponseChange={updateUserResponse}
-                onSubmit={handleSubmitAnswer}
-                onNext={nextExercise}
-                showResult={showResult}
-                isCorrect={isCorrect}
-                correctAnswer={currentExercise.targetWord}
-                loading={loading}
-              />
-            </div>
-          )}
+          {renderExercise()}
         </div>
       )}
 
       {/* Help Section */}
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-lg">How Smart Sentence Mining Works</CardTitle>
+          <CardTitle className="text-lg">Enhanced Smart Sentence Mining</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <h4 className="font-semibold">1. Intelligent Generation</h4>
+              <h4 className="font-semibold">🔤 Translation Exercises</h4>
               <p className="text-sm text-muted-foreground">
-                AI creates sentences with carefully selected vocabulary based on your chosen difficulty level.
+                Translate complete sentences to build comprehensive understanding and improve fluency.
               </p>
             </div>
             <div className="space-y-2">
-              <h4 className="font-semibold">2. Contextual Learning</h4>
+              <h4 className="font-semibold">✅ Multiple Choice</h4>
               <p className="text-sm text-muted-foreground">
-                Learn words in meaningful contexts rather than isolated vocabulary lists.
+                Choose the correct word from options, with detailed explanations for grammar rules.
               </p>
             </div>
             <div className="space-y-2">
-              <h4 className="font-semibold">3. Progressive Mastery</h4>
+              <h4 className="font-semibold">📚 Vocabulary Marking</h4>
               <p className="text-sm text-muted-foreground">
-                Track your progress across difficulty levels and build lasting vocabulary knowledge.
+                Click on unknown words to mark them for review and get instant definitions.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <h4 className="font-semibold">🧩 Fill in the Blank</h4>
+              <p className="text-sm text-muted-foreground">
+                Complete sentences by filling in missing words based on context clues.
               </p>
             </div>
           </div>

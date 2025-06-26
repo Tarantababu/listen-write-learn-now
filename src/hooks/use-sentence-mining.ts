@@ -1,6 +1,5 @@
-
 import { useState, useCallback, useEffect } from 'react';
-import { SentenceMiningState, SentenceMiningSession, SentenceMiningExercise, DifficultyLevel, SentenceMiningProgress } from '@/types/sentence-mining';
+import { SentenceMiningState, SentenceMiningSession, SentenceMiningExercise, DifficultyLevel, SentenceMiningProgress, ExerciseType } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -14,11 +13,14 @@ export const useSentenceMining = () => {
     currentSession: null,
     currentExercise: null,
     userResponse: '',
+    selectedWords: [],
     showResult: false,
     isCorrect: false,
     loading: false,
     error: null,
     progress: null,
+    showHint: false,
+    showTranslation: false,
   });
 
   // Load progress from localStorage
@@ -44,6 +46,12 @@ export const useSentenceMining = () => {
               intermediate: { attempted: 0, correct: 0, accuracy: 0 },
               advanced: { attempted: 0, correct: 0, accuracy: 0 },
             },
+            exerciseTypeProgress: {
+              cloze: { attempted: 0, correct: 0, accuracy: 0 },
+              translation: { attempted: 0, correct: 0, accuracy: 0 },
+              multiple_choice: { attempted: 0, correct: 0, accuracy: 0 },
+              vocabulary_marking: { attempted: 0, correct: 0, accuracy: 0 },
+            },
           };
           setState(prev => ({ ...prev, progress: defaultProgress }));
         }
@@ -65,7 +73,7 @@ export const useSentenceMining = () => {
     }
   }, [settings.selectedLanguage]);
 
-  const generateSentence = useCallback(async (difficulty: DifficultyLevel): Promise<SentenceMiningExercise | null> => {
+  const generateSentence = useCallback(async (difficulty: DifficultyLevel, exerciseType: ExerciseType): Promise<SentenceMiningExercise | null> => {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
 
@@ -73,6 +81,7 @@ export const useSentenceMining = () => {
         body: {
           language: settings.selectedLanguage,
           difficulty,
+          exerciseType,
           knownWords: [], // Could be expanded to include user's known words
         },
       });
@@ -89,6 +98,12 @@ export const useSentenceMining = () => {
         createdAt: new Date(),
         attempts: 0,
         correctAttempts: 0,
+        exerciseType,
+        translation: data.translation,
+        multipleChoiceOptions: data.multipleChoiceOptions,
+        correctAnswer: data.correctAnswer || data.targetWord,
+        explanation: data.explanation,
+        clickableWords: data.clickableWords || [],
       };
 
       return exercise;
@@ -102,8 +117,8 @@ export const useSentenceMining = () => {
     }
   }, [settings.selectedLanguage]);
 
-  const startSession = useCallback(async (difficulty: DifficultyLevel) => {
-    const exercise = await generateSentence(difficulty);
+  const startSession = useCallback(async (exerciseType: ExerciseType, difficulty: DifficultyLevel) => {
+    const exercise = await generateSentence(difficulty, exerciseType);
     if (!exercise) return;
 
     const session: SentenceMiningSession = {
@@ -115,6 +130,7 @@ export const useSentenceMining = () => {
       startTime: new Date(),
       totalCorrect: 0,
       totalAttempts: 0,
+      exerciseTypes: [exerciseType],
     };
 
     setState(prev => ({
@@ -122,15 +138,44 @@ export const useSentenceMining = () => {
       currentSession: session,
       currentExercise: exercise,
       userResponse: '',
+      selectedWords: [],
       showResult: false,
       isCorrect: false,
+      showHint: false,
+      showTranslation: false,
     }));
   }, [generateSentence, settings.selectedLanguage]);
 
-  const submitAnswer = useCallback(async (answer: string) => {
+  const submitAnswer = useCallback(async (answer: string, selectedWords?: string[]) => {
     if (!state.currentExercise || !state.currentSession) return;
 
-    const isCorrect = answer.toLowerCase().trim() === state.currentExercise.targetWord.toLowerCase().trim();
+    let isCorrect = false;
+    
+    // Different validation logic based on exercise type
+    switch (state.currentExercise.exerciseType) {
+      case 'translation':
+        // For translation, we'll be more lenient with scoring
+        const expectedTranslation = state.currentExercise.translation?.toLowerCase() || '';
+        const userTranslation = answer.toLowerCase().trim();
+        isCorrect = userTranslation.length > 0 && (
+          expectedTranslation.includes(userTranslation) ||
+          userTranslation.includes(expectedTranslation.split(' ')[0]) ||
+          userTranslation.split(' ').some(word => expectedTranslation.includes(word) && word.length > 3)
+        );
+        break;
+        
+      case 'multiple_choice':
+        isCorrect = answer === state.currentExercise.correctAnswer;
+        break;
+        
+      case 'vocabulary_marking':
+        // For vocabulary marking, we always consider it correct (it's about learning)
+        isCorrect = true;
+        break;
+        
+      default: // cloze
+        isCorrect = answer.toLowerCase().trim() === state.currentExercise.targetWord.toLowerCase().trim();
+    }
     
     // Update exercise attempts
     const updatedExercise = {
@@ -155,6 +200,7 @@ export const useSentenceMining = () => {
       currentSession: updatedSession,
       showResult: true,
       isCorrect,
+      selectedWords: selectedWords || prev.selectedWords,
     }));
 
     // Update progress
@@ -174,6 +220,14 @@ export const useSentenceMining = () => {
             accuracy: ((state.progress.difficultyProgress[state.currentSession.difficulty].correct + (isCorrect ? 1 : 0)) / (state.progress.difficultyProgress[state.currentSession.difficulty].attempted + 1)) * 100,
           },
         },
+        exerciseTypeProgress: {
+          ...state.progress.exerciseTypeProgress,
+          [state.currentExercise.exerciseType]: {
+            attempted: (state.progress.exerciseTypeProgress[state.currentExercise.exerciseType]?.attempted || 0) + 1,
+            correct: (state.progress.exerciseTypeProgress[state.currentExercise.exerciseType]?.correct || 0) + (isCorrect ? 1 : 0),
+            accuracy: (((state.progress.exerciseTypeProgress[state.currentExercise.exerciseType]?.correct || 0) + (isCorrect ? 1 : 0)) / ((state.progress.exerciseTypeProgress[state.currentExercise.exerciseType]?.attempted || 0) + 1)) * 100,
+          },
+        },
       };
       saveProgress(newProgress);
     }
@@ -182,7 +236,8 @@ export const useSentenceMining = () => {
   const nextExercise = useCallback(async () => {
     if (!state.currentSession) return;
 
-    const newExercise = await generateSentence(state.currentSession.difficulty);
+    const exerciseType = state.currentSession.exerciseTypes[0]; // Use the same type for now
+    const newExercise = await generateSentence(state.currentSession.difficulty, exerciseType);
     if (!newExercise) return;
 
     const updatedSession = {
@@ -196,8 +251,11 @@ export const useSentenceMining = () => {
       currentSession: updatedSession,
       currentExercise: newExercise,
       userResponse: '',
+      selectedWords: [],
       showResult: false,
       isCorrect: false,
+      showHint: false,
+      showTranslation: false,
     }));
   }, [state.currentSession, generateSentence]);
 
@@ -223,8 +281,11 @@ export const useSentenceMining = () => {
       currentSession: null,
       currentExercise: null,
       userResponse: '',
+      selectedWords: [],
       showResult: false,
       isCorrect: false,
+      showHint: false,
+      showTranslation: false,
     }));
 
     toast.success(`Session completed! You got ${updatedSession.totalCorrect}/${updatedSession.totalAttempts} correct.`);
@@ -234,6 +295,23 @@ export const useSentenceMining = () => {
     setState(prev => ({ ...prev, userResponse: response }));
   }, []);
 
+  const toggleWord = useCallback((word: string) => {
+    setState(prev => ({
+      ...prev,
+      selectedWords: prev.selectedWords.includes(word)
+        ? prev.selectedWords.filter(w => w !== word)
+        : [...prev.selectedWords, word]
+    }));
+  }, []);
+
+  const toggleHint = useCallback(() => {
+    setState(prev => ({ ...prev, showHint: !prev.showHint }));
+  }, []);
+
+  const toggleTranslation = useCallback(() => {
+    setState(prev => ({ ...prev, showTranslation: !prev.showTranslation }));
+  }, []);
+
   return {
     ...state,
     startSession,
@@ -241,5 +319,8 @@ export const useSentenceMining = () => {
     nextExercise,
     endSession,
     updateUserResponse,
+    toggleWord,
+    toggleHint,
+    toggleTranslation,
   };
 };
