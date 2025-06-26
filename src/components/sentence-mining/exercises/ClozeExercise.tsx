@@ -3,10 +3,11 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Volume2, VolumeX, Play, CheckCircle, XCircle } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 
-interface MultipleChoiceExerciseProps {
+interface ClozeExerciseProps {
   exercise: SentenceMiningExercise;
   userResponse: string;
   onResponseChange: (response: string) => void;
@@ -17,11 +18,9 @@ interface MultipleChoiceExerciseProps {
   loading: boolean;
   onPlayAudio?: () => void;
   audioLoading?: boolean;
-  showTranslation: boolean;
-  onToggleTranslation: () => void;
 }
 
-export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
+export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   exercise,
   userResponse,
   onResponseChange,
@@ -32,8 +31,6 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
   loading,
   onPlayAudio,
   audioLoading = false,
-  showTranslation,
-  onToggleTranslation,
 }) => {
   const renderSentenceWithBlank = (sentence: string, targetWord: string) => {
     const parts = sentence.split(new RegExp(`\\b${targetWord}\\b`, 'gi'));
@@ -43,21 +40,24 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
       result.push(part);
       if (index < parts.length - 1) {
         result.push(
-          <span key={index} className="relative inline-block">
-            <div className="w-32 h-16 bg-blue-100 border-2 border-blue-300 rounded-lg mx-2 flex items-center justify-center">
-              {showResult && userResponse ? (
+          <span key={index} className="relative inline-block mx-2">
+            <div className="w-40 h-16 bg-blue-100 border-2 border-blue-300 rounded-lg flex items-center justify-center">
+              {showResult ? (
                 <span className={`text-lg font-medium ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                  {userResponse}
+                  {userResponse || exercise.targetWord}
                 </span>
               ) : (
-                <span className="text-blue-400 text-lg">"it"</span>
+                <Input
+                  value={userResponse}
+                  onChange={(e) => onResponseChange(e.target.value)}
+                  className="border-0 bg-transparent text-center text-lg font-medium focus:ring-0"
+                  disabled={loading}
+                />
               )}
             </div>
-            {showResult && userResponse && (
-              <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-500">
-                "it"
-              </div>
-            )}
+            <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-500">
+              "my"
+            </div>
           </span>
         );
       }
@@ -102,31 +102,6 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
               Find the missing word. Click any words you don't know.
             </p>
 
-            {/* Multiple Choice Options */}
-            <div className="grid grid-cols-6 gap-3 max-w-4xl">
-              {exercise.multipleChoiceOptions?.map((option, index) => (
-                <Button
-                  key={index}
-                  variant={userResponse === option ? 'default' : 'outline'}
-                  className={`h-14 text-lg font-medium ${
-                    userResponse === option
-                      ? 'bg-blue-800 text-white'
-                      : 'bg-blue-800 text-white hover:bg-blue-900'
-                  } ${
-                    showResult && option === exercise.correctAnswer
-                      ? 'bg-green-500 hover:bg-green-500'
-                      : showResult && userResponse === option && !isCorrect
-                      ? 'bg-red-500 hover:bg-red-500'
-                      : ''
-                  }`}
-                  onClick={() => !showResult && onResponseChange(option)}
-                  disabled={showResult || loading}
-                >
-                  {option}
-                </Button>
-              ))}
-            </div>
-
             {/* Result Feedback */}
             {showResult && (
               <div className="text-center space-y-4">
@@ -141,10 +116,9 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
                   </span>
                 </div>
 
-                {exercise.explanation && (
-                  <div className="text-gray-700 text-left max-w-2xl mx-auto">
-                    <p className="font-medium mb-2">Explanation:</p>
-                    <p>{exercise.explanation}</p>
+                {!isCorrect && (
+                  <div className="text-gray-700">
+                    <p className="font-medium">Correct answer: {exercise.targetWord}</p>
                   </div>
                 )}
               </div>
