@@ -22,6 +22,43 @@ export const UserResponse: React.FC<UserResponseProps> = ({
   correctAnswer,
   loading,
 }) => {
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+
+  // Prevent rapid clicking that might cause errors
+  const handleSubmitClick = () => {
+    if (buttonDisabled || loading) return;
+    
+    setButtonDisabled(true);
+    
+    try {
+      onSubmit();
+    } catch (error) {
+      console.error('Error in submit:', error);
+    } finally {
+      // Re-enable button after a short delay
+      setTimeout(() => {
+        setButtonDisabled(false);
+      }, 1000);
+    }
+  };
+
+  const handleNextClick = () => {
+    if (buttonDisabled || loading) return;
+    
+    setButtonDisabled(true);
+    
+    try {
+      onNext();
+    } catch (error) {
+      console.error('Error in next:', error);
+    } finally {
+      // Re-enable button after a short delay
+      setTimeout(() => {
+        setButtonDisabled(false);
+      }, 1000);
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardContent className="pt-6">
@@ -29,16 +66,17 @@ export const UserResponse: React.FC<UserResponseProps> = ({
           <div className="flex justify-center">
             {!showResult ? (
               <Button
-                onClick={onSubmit}
-                disabled={loading}
-                className="px-6 transition-transform duration-200 hover:scale-105 active:scale-95"
+                onClick={handleSubmitClick}
+                disabled={loading || buttonDisabled}
+                className="px-6 py-3 text-base transition-transform duration-200 hover:scale-105 active:scale-95"
               >
                 {loading ? 'Checking...' : 'Submit'}
               </Button>
             ) : (
               <Button
-                onClick={onNext}
-                className="px-6 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
+                onClick={handleNextClick}
+                disabled={loading || buttonDisabled}
+                className="px-6 py-3 text-base flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
               >
                 Next <ArrowRight className="h-4 w-4" />
               </Button>
@@ -69,7 +107,7 @@ export const UserResponse: React.FC<UserResponseProps> = ({
                 </div>
               )}
 
-              <div className="text-sm text-muted-foreground text-center">
+              <div className="text-sm text-muted-foreground text-center px-4">
                 {isCorrect 
                   ? "Great job! You've mastered this word pattern."
                   : "Don't worry, you'll get it next time. Keep practicing!"

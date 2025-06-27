@@ -33,6 +33,8 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
   showTranslation,
   onToggleTranslation,
 }) => {
+  const [buttonDisabled, setButtonDisabled] = React.useState(false);
+
   const renderClickableText = () => {
     const words = exercise.sentence.split(/(\s+)/);
     
@@ -49,7 +51,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
         return (
           <span
             key={index}
-            className={`inline-block cursor-pointer px-1 py-0.5 rounded transition-all duration-200 transform hover:scale-105 active:scale-95 ${
+            className={`inline-block cursor-pointer px-1 py-0.5 rounded transition-all duration-200 transform hover:scale-105 active:scale-95 text-sm md:text-base ${
               isSelected
                 ? 'bg-blue-500 text-white shadow-md'
                 : 'hover:bg-blue-100 dark:hover:bg-blue-900/30'
@@ -65,14 +67,35 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
     });
   };
 
+  const handleContinueClick = () => {
+    if (buttonDisabled || loading) return;
+    
+    setButtonDisabled(true);
+    
+    try {
+      if (showResult) {
+        onNext();
+      } else {
+        onSubmit();
+      }
+    } catch (error) {
+      console.error('Error in continue:', error);
+    } finally {
+      // Re-enable button after a short delay
+      setTimeout(() => {
+        setButtonDisabled(false);
+      }, 1000);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <CardTitle className="text-lg">Mark Unknown Words</CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 justify-start md:justify-end">
               <Badge variant="outline" className="capitalize">
                 {exercise.difficulty}
               </Badge>
@@ -98,13 +121,13 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
         <CardContent className="pt-6">
           <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
             <p className="text-blue-800 dark:text-blue-200 text-sm">
-              Read the sentence and click any word you don't understand. This marks them for later repetition. Then press continue.
+              Read the sentence and tap any word you don't understand. This marks them for later repetition. Then press continue.
             </p>
           </div>
           
           {/* Clickable sentence */}
-          <div className="p-6 bg-muted rounded-lg">
-            <p className="text-xl leading-relaxed">
+          <div className="p-4 md:p-6 bg-muted rounded-lg">
+            <p className="text-lg md:text-xl leading-relaxed">
               {renderClickableText()}
             </p>
           </div>
@@ -122,9 +145,9 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
                   const wordInfo = exercise.clickableWords?.find(cw => cw.word.toLowerCase() === word);
                   return (
                     <div key={word} className="bg-blue-100 dark:bg-blue-900/30 px-3 py-2 rounded-lg transform transition-all duration-200 hover:scale-105">
-                      <div className="font-medium">{word}</div>
+                      <div className="font-medium text-sm md:text-base">{word}</div>
                       {wordInfo && (
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-xs md:text-sm text-muted-foreground">
                           {wordInfo.definition}
                         </div>
                       )}
@@ -140,22 +163,22 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
       {/* Action buttons */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex justify-between items-center">
-            <div className="flex gap-2">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex gap-2 w-full md:w-auto">
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={onToggleTranslation}
-                className="transition-transform duration-200 hover:scale-105 active:scale-95"
+                className="transition-transform duration-200 hover:scale-105 active:scale-95 flex-1 md:flex-none"
               >
                 {showTranslation ? 'Hide Translation' : 'Translation'}
               </Button>
             </div>
             
             <Button
-              onClick={showResult ? onNext : onSubmit}
-              className="px-8 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
-              disabled={loading}
+              onClick={handleContinueClick}
+              className="px-6 md:px-8 py-3 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 w-full md:w-auto text-base"
+              disabled={loading || buttonDisabled}
             >
               {loading ? 'Processing...' : 'Continue'} <ArrowRight className="h-4 w-4" />
             </Button>
