@@ -38,14 +38,14 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
     
     return words.map((token, index) => {
       const cleanToken = token.replace(/[.,!?;:]/g, '').toLowerCase();
-      const isClickable = exercise.clickableWords?.some(cw => cw.word.toLowerCase() === cleanToken);
       const isSelected = selectedWords.includes(cleanToken);
       
       if (token.trim() === '') {
         return <span key={index}>{token}</span>;
       }
       
-      if (isClickable) {
+      // Make every word clickable (not just whitespace)
+      if (token.trim().length > 0) {
         return (
           <span
             key={index}

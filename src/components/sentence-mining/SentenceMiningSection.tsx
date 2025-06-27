@@ -153,11 +153,13 @@ export const SentenceMiningSection: React.FC = () => {
               exercise={currentExercise}
               onPlayAudio={handlePlayAudio}
               audioLoading={audioLoading}
+              userResponse={userResponse}
+              onResponseChange={updateUserResponse}
+              showResult={showResult}
+              isCorrect={isCorrect}
             />
             
             <UserResponse
-              userResponse={userResponse}
-              onResponseChange={updateUserResponse}
               onSubmit={handleSubmitAnswer}
               onNext={nextExercise}
               showResult={showResult}
@@ -240,13 +242,13 @@ export const SentenceMiningSection: React.FC = () => {
             <div className="space-y-2">
               <h4 className="font-semibold">📚 Vocabulary Marking</h4>
               <p className="text-sm text-muted-foreground">
-                Click on unknown words to mark them for review and get instant definitions.
+                Click on any word to mark it for review and get instant definitions.
               </p>
             </div>
             <div className="space-y-2">
               <h4 className="font-semibold">🧩 Fill in the Blank</h4>
               <p className="text-sm text-muted-foreground">
-                Complete sentences by filling in missing words based on context clues.
+                Type directly in the missing word area with helpful translation hints.
               </p>
             </div>
           </div>
