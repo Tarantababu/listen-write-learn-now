@@ -6,6 +6,7 @@ import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 interface SentenceDisplayProps {
   exercise: SentenceMiningExercise;
@@ -26,6 +27,8 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
   showResult = false,
   isCorrect = false,
 }) => {
+  const { settings } = useUserSettingsContext();
+
   const renderSentenceWithBlank = (sentence: string, targetWord: string) => {
     const parts = sentence.split(new RegExp(`\\b${targetWord}\\b`, 'gi'));
     const result = [];
@@ -49,7 +52,7 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
               placeholder="___"
             />
             <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/20 px-2 py-1 rounded border z-10 whitespace-nowrap">
-              {targetWord} (meaning: {getEnglishMeaning(targetWord, exercise.language)})
+              {targetWord} (meaning: {getEnglishMeaning(targetWord, settings.selectedLanguage)})
             </div>
           </div>
         );
@@ -383,7 +386,6 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
         'compter': 'to count',
         'entendre': 'to hear',
         'rendre': 'to give back',
-        'prendre': 'to take',
         'tenir': 'to hold',
         'mener': 'to lead',
         'écrire': 'to write',
@@ -426,7 +428,6 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
         'retourner': 'to return',
         'tomber': 'to fall',
         'rester': 'to stay',
-        'arriver': 'to happen',
         'entrer': 'to enter',
         'marcher': 'to walk',
         'aider': 'to help',
