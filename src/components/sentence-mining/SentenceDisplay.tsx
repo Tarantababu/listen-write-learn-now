@@ -50,7 +50,7 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
                 size="sm"
                 onClick={onPlayAudio}
                 disabled={audioLoading}
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 transition-transform duration-200 hover:scale-105 active:scale-95"
               >
                 <Volume2 className="h-4 w-4" />
                 {audioLoading ? 'Loading...' : 'Listen'}

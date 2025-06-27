@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { SentenceMiningState, SentenceMiningSession, SentenceMiningExercise, DifficultyLevel, SentenceMiningProgress, ExerciseType } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -5,6 +6,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const STORAGE_KEY_PREFIX = 'sentence-mining';
+
+// Available exercise types (excluding multiple_choice)
+const AVAILABLE_EXERCISE_TYPES: ExerciseType[] = ['translation', 'vocabulary_marking', 'cloze'];
 
 export const useSentenceMining = () => {
   const { settings } = useUserSettingsContext();
@@ -73,6 +77,12 @@ export const useSentenceMining = () => {
     }
   }, [settings.selectedLanguage]);
 
+  // Get random exercise type
+  const getRandomExerciseType = useCallback((): ExerciseType => {
+    const randomIndex = Math.floor(Math.random() * AVAILABLE_EXERCISE_TYPES.length);
+    return AVAILABLE_EXERCISE_TYPES[randomIndex];
+  }, []);
+
   const generateSentence = useCallback(async (difficulty: DifficultyLevel, exerciseType: ExerciseType): Promise<SentenceMiningExercise | null> => {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
@@ -117,7 +127,8 @@ export const useSentenceMining = () => {
     }
   }, [settings.selectedLanguage]);
 
-  const startSession = useCallback(async (exerciseType: ExerciseType, difficulty: DifficultyLevel) => {
+  const startSession = useCallback(async (difficulty: DifficultyLevel) => {
+    const exerciseType = getRandomExerciseType();
     const exercise = await generateSentence(difficulty, exerciseType);
     if (!exercise) return;
 
@@ -144,7 +155,7 @@ export const useSentenceMining = () => {
       showHint: false,
       showTranslation: false,
     }));
-  }, [generateSentence, settings.selectedLanguage]);
+  }, [generateSentence, getRandomExerciseType, settings.selectedLanguage]);
 
   const submitAnswer = useCallback(async (answer: string, selectedWords?: string[]) => {
     if (!state.currentExercise || !state.currentSession) return;
@@ -162,10 +173,6 @@ export const useSentenceMining = () => {
           userTranslation.includes(expectedTranslation.split(' ')[0]) ||
           userTranslation.split(' ').some(word => expectedTranslation.includes(word) && word.length > 3)
         );
-        break;
-        
-      case 'multiple_choice':
-        isCorrect = answer === state.currentExercise.correctAnswer;
         break;
         
       case 'vocabulary_marking':
@@ -236,7 +243,7 @@ export const useSentenceMining = () => {
   const nextExercise = useCallback(async () => {
     if (!state.currentSession) return;
 
-    const exerciseType = state.currentSession.exerciseTypes[0]; // Use the same type for now
+    const exerciseType = getRandomExerciseType(); // Get random exercise type for next exercise
     const newExercise = await generateSentence(state.currentSession.difficulty, exerciseType);
     if (!newExercise) return;
 
@@ -244,6 +251,7 @@ export const useSentenceMining = () => {
       ...state.currentSession,
       exercises: [...state.currentSession.exercises, newExercise],
       currentExerciseIndex: state.currentSession.currentExerciseIndex + 1,
+      exerciseTypes: [...state.currentSession.exerciseTypes, exerciseType],
     };
 
     setState(prev => ({
@@ -257,7 +265,7 @@ export const useSentenceMining = () => {
       showHint: false,
       showTranslation: false,
     }));
-  }, [state.currentSession, generateSentence]);
+  }, [state.currentSession, generateSentence, getRandomExerciseType]);
 
   const endSession = useCallback(() => {
     if (!state.currentSession) return;

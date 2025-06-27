@@ -3,9 +3,8 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Brain, Play, X, Loader2 } from 'lucide-react';
-import { ExerciseTypeSelector } from './ExerciseTypeSelector';
+import { DifficultySelector } from './DifficultySelector';
 import { TranslationExercise } from './exercises/TranslationExercise';
-import { MultipleChoiceExercise } from './exercises/MultipleChoiceExercise';
 import { VocabularyMarkingExercise } from './exercises/VocabularyMarkingExercise';
 import { SentenceDisplay } from './SentenceDisplay';
 import { UserResponse } from './UserResponse';
@@ -15,7 +14,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { toast } from 'sonner';
-import { ExerciseType, DifficultyLevel } from '@/types/sentence-mining';
+import { DifficultyLevel } from '@/types/sentence-mining';
 
 export const SentenceMiningSection: React.FC = () => {
   const isMobile = useIsMobile();
@@ -80,8 +79,8 @@ export const SentenceMiningSection: React.FC = () => {
     }
   };
 
-  const handleStartSession = (exerciseType: ExerciseType, difficulty: DifficultyLevel) => {
-    startSession(exerciseType, difficulty);
+  const handleStartSession = (difficulty: DifficultyLevel) => {
+    startSession(difficulty);
   };
 
   if (loading && !currentExercise) {
@@ -101,7 +100,7 @@ export const SentenceMiningSection: React.FC = () => {
         <CardContent className="pt-6">
           <div className="text-center space-y-4">
             <p className="text-red-600 dark:text-red-400">{error}</p>
-            <Button onClick={() => window.location.reload()}>
+            <Button onClick={() => window.location.reload()} className="transition-transform duration-200 hover:scale-105 active:scale-95">
               Try Again
             </Button>
           </div>
@@ -128,17 +127,6 @@ export const SentenceMiningSection: React.FC = () => {
       case 'translation':
         return (
           <TranslationExercise
-            {...commonProps}
-            userResponse={userResponse}
-            onResponseChange={updateUserResponse}
-            onSubmit={handleSubmitAnswer}
-            onNext={nextExercise}
-          />
-        );
-        
-      case 'multiple_choice':
-        return (
-          <MultipleChoiceExercise
             {...commonProps}
             userResponse={userResponse}
             onResponseChange={updateUserResponse}
@@ -202,11 +190,11 @@ export const SentenceMiningSection: React.FC = () => {
 
       {/* Main Content */}
       {!currentSession ? (
-        // Exercise Type Selection
-        <div className="max-w-5xl mx-auto">
-          <ExerciseTypeSelector
-            onSelectType={handleStartSession}
-            progress={progress?.exerciseTypeProgress}
+        // Difficulty Selection
+        <div className="max-w-4xl mx-auto">
+          <DifficultySelector
+            onSelectDifficulty={handleStartSession}
+            progress={progress?.difficultyProgress}
           />
         </div>
       ) : (
@@ -224,7 +212,7 @@ export const SentenceMiningSection: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={endSession}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
             >
               <X className="h-4 w-4" />
               End Session
@@ -242,17 +230,11 @@ export const SentenceMiningSection: React.FC = () => {
           <CardTitle className="text-lg">Enhanced Smart Sentence Mining</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <h4 className="font-semibold">🔤 Translation Exercises</h4>
               <p className="text-sm text-muted-foreground">
                 Translate complete sentences to build comprehensive understanding and improve fluency.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <h4 className="font-semibold">✅ Multiple Choice</h4>
-              <p className="text-sm text-muted-foreground">
-                Choose the correct word from options, with detailed explanations for grammar rules.
               </p>
             </div>
             <div className="space-y-2">

@@ -61,9 +61,9 @@ export const DifficultySelector: React.FC<DifficultySelectorProps> = ({
           const stats = progress?.[option.level];
           
           return (
-            <Card key={option.level} className="hover:shadow-lg transition-shadow">
+            <Card key={option.level} className="hover:shadow-lg transition-all duration-200 hover:scale-105 transform">
               <CardHeader className="text-center pb-2">
-                <div className={`w-12 h-12 rounded-full ${option.color} mx-auto mb-3 flex items-center justify-center`}>
+                <div className={`w-12 h-12 rounded-full ${option.color} mx-auto mb-3 flex items-center justify-center transition-transform duration-200 hover:scale-110`}>
                   <Icon className="h-6 w-6 text-white" />
                 </div>
                 <CardTitle className="text-lg">{option.title}</CardTitle>
@@ -90,7 +90,7 @@ export const DifficultySelector: React.FC<DifficultySelectorProps> = ({
                 
                 <Button
                   onClick={() => onSelectDifficulty(option.level)}
-                  className={`w-full ${option.color} ${option.hoverColor} text-white`}
+                  className={`w-full ${option.color} ${option.hoverColor} text-white transition-transform duration-200 hover:scale-105 active:scale-95`}
                 >
                   Start {option.title}
                 </Button>

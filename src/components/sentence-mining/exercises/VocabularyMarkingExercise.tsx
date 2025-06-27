@@ -49,9 +49,9 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
         return (
           <span
             key={index}
-            className={`inline-block cursor-pointer px-1 py-0.5 rounded transition-colors ${
+            className={`inline-block cursor-pointer px-1 py-0.5 rounded transition-all duration-200 transform hover:scale-105 active:scale-95 ${
               isSelected
-                ? 'bg-blue-500 text-white'
+                ? 'bg-blue-500 text-white shadow-md'
                 : 'hover:bg-blue-100 dark:hover:bg-blue-900/30'
             }`}
             onClick={() => onWordSelect(cleanToken)}
@@ -82,7 +82,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
                   size="sm"
                   onClick={onPlayAudio}
                   disabled={audioLoading}
-                  className="flex items-center gap-1"
+                  className="flex items-center gap-1 transition-transform duration-200 hover:scale-105 active:scale-95"
                 >
                   <Volume2 className="h-4 w-4" />
                   {audioLoading ? 'Loading...' : 'Listen'}
@@ -121,7 +121,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
                 {selectedWords.map(word => {
                   const wordInfo = exercise.clickableWords?.find(cw => cw.word.toLowerCase() === word);
                   return (
-                    <div key={word} className="bg-blue-100 dark:bg-blue-900/30 px-3 py-2 rounded-lg">
+                    <div key={word} className="bg-blue-100 dark:bg-blue-900/30 px-3 py-2 rounded-lg transform transition-all duration-200 hover:scale-105">
                       <div className="font-medium">{word}</div>
                       {wordInfo && (
                         <div className="text-sm text-muted-foreground">
@@ -142,14 +142,19 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
         <CardContent className="pt-6">
           <div className="flex justify-between items-center">
             <div className="flex gap-2">
-              <Button variant="outline" size="sm">
-                Translation
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={onToggleTranslation}
+                className="transition-transform duration-200 hover:scale-105 active:scale-95"
+              >
+                {showTranslation ? 'Hide Translation' : 'Translation'}
               </Button>
             </div>
             
             <Button
               onClick={showResult ? onNext : onSubmit}
-              className="px-8 flex items-center gap-2"
+              className="px-8 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
               disabled={loading}
             >
               {loading ? 'Processing...' : 'Continue'} <ArrowRight className="h-4 w-4" />

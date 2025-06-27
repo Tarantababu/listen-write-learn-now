@@ -52,7 +52,7 @@ export const UserResponse: React.FC<UserResponseProps> = ({
               onKeyPress={handleKeyPress}
               placeholder="Type the missing word here..."
               disabled={showResult || loading}
-              className={`flex-1 text-lg ${
+              className={`flex-1 text-lg transition-all duration-200 ${
                 showResult
                   ? isCorrect
                     ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
@@ -66,14 +66,14 @@ export const UserResponse: React.FC<UserResponseProps> = ({
               <Button
                 onClick={onSubmit}
                 disabled={!userResponse.trim() || loading}
-                className="px-6"
+                className="px-6 transition-transform duration-200 hover:scale-105 active:scale-95"
               >
                 {loading ? 'Checking...' : 'Submit'}
               </Button>
             ) : (
               <Button
                 onClick={onNext}
-                className="px-6 flex items-center gap-2"
+                className="px-6 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
               >
                 Next <ArrowRight className="h-4 w-4" />
               </Button>
@@ -81,7 +81,7 @@ export const UserResponse: React.FC<UserResponseProps> = ({
           </div>
 
           {showResult && (
-            <div className="space-y-3">
+            <div className="space-y-3 animate-fade-in">
               <div className="flex items-center gap-2">
                 {isCorrect ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
