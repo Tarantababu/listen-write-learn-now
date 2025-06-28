@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -52,14 +51,14 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
               }`}
               placeholder="___"
             />
-            {englishTranslation && (
-              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 whitespace-nowrap">
-                <div className="text-center font-medium text-primary">
-                  {englishTranslation}
-                </div>
-                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white dark:bg-gray-800 border-l border-t border-gray-200 dark:border-gray-700 rotate-45"></div>
+            {/* Always show hint, positioned below the input */}
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-3 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-600 rounded-lg shadow-md z-50 whitespace-nowrap">
+              <div className="text-center font-medium text-blue-800 dark:text-blue-200">
+                {englishTranslation || 'translation not available'}
               </div>
-            )}
+              {/* Arrow pointing up */}
+              <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-100 dark:bg-blue-900/30 border-l border-t border-blue-300 dark:border-blue-600 rotate-45"></div>
+            </div>
           </div>
         );
       }
@@ -185,11 +184,21 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
         'und': 'and',
         'ich': 'I',
         'du': 'you',
-        'er': 'he',
+        'er': 'he',  
         'sie': 'she/they',
         'es': 'it',
         'wir': 'we',
         'ihr': 'you (plural)',
+        'partei': 'party',
+        'organisation': 'organization',
+        'gruppe': 'group',
+        'regierung': 'government',
+        'verwaltung': 'administration',
+        'behörde': 'authority',
+        'abteilung': 'department',
+        'firma': 'company',
+        'unternehmen': 'company/enterprise',
+        'gesellschaft': 'society/company',
         'darauf': 'on it/thereupon',
         'damit': 'with it/so that',
         'dafür': 'for it/instead',
@@ -391,7 +400,7 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
         'vouloir': 'to want',
         'donner': 'to give',
         'falloir': 'to be necessary',
-        'devoir': 'must/to owe',
+        'devoir': 'must/to have to',
         'croire': 'to believe',
         'trouver': 'to find',
         'laisser': 'to leave',
