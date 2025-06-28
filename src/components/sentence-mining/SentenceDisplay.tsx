@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +7,7 @@ import { Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SentenceDisplayProps {
   exercise: SentenceMiningExercise;
@@ -27,6 +29,43 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
   isCorrect = false,
 }) => {
   const { settings } = useUserSettingsContext();
+  const [translationCache, setTranslationCache] = useState<Record<string, string>>({});
+  const [loadingTranslation, setLoadingTranslation] = useState<Record<string, boolean>>({});
+
+  const getTranslationFromOpenAI = async (word: string, language: string): Promise<string> => {
+    const cacheKey = `${word}-${language}`;
+    
+    if (translationCache[cacheKey]) {
+      return translationCache[cacheKey];
+    }
+
+    if (loadingTranslation[cacheKey]) {
+      return 'loading...';
+    }
+
+    try {
+      setLoadingTranslation(prev => ({ ...prev, [cacheKey]: true }));
+      
+      const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
+        body: {
+          text: word,
+          language: language
+        }
+      });
+
+      if (error) throw error;
+
+      const translation = data?.definition || 'translation unavailable';
+      setTranslationCache(prev => ({ ...prev, [cacheKey]: translation }));
+      
+      return translation;
+    } catch (error) {
+      console.error('Error getting translation:', error);
+      return 'translation unavailable';
+    } finally {
+      setLoadingTranslation(prev => ({ ...prev, [cacheKey]: false }));
+    }
+  };
 
   const renderSentenceWithBlank = (sentence: string, targetWord: string) => {
     const parts = sentence.split(new RegExp(`\\b${targetWord}\\b`, 'gi'));
@@ -35,7 +74,6 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
     parts.forEach((part, index) => {
       result.push(part);
       if (index < parts.length - 1) {
-        const englishTranslation = getEnglishMeaning(targetWord, settings.selectedLanguage);
         result.push(
           <div key={index} className="inline-block relative mx-1 my-2">
             <Input
@@ -52,607 +90,17 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
               placeholder="___"
             />
             {/* Translation hint positioned below the input with proper spacing */}
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-4 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-600 rounded-lg shadow-md z-50 whitespace-nowrap min-w-max">
-              <div className="text-center font-medium text-blue-800 dark:text-blue-200">
-                {englishTranslation || 'translation not available'}
-              </div>
-              {/* Arrow pointing up to the input */}
-              <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-100 dark:bg-blue-900/30 border-l border-t border-blue-300 dark:border-blue-600 rotate-45"></div>
-            </div>
+            <TranslationHint 
+              word={targetWord} 
+              language={settings.selectedLanguage}
+              getTranslation={getTranslationFromOpenAI}
+            />
           </div>
         );
       }
     });
     
     return result;
-  };
-
-  const getEnglishMeaning = (word: string, language: string) => {
-    // Enhanced word meanings with more comprehensive coverage
-    const meanings: Record<string, Record<string, string>> = {
-      'spanish': {
-        'mundo': 'world',
-        'el': 'the',
-        'perro': 'dog',
-        'gato': 'cat',
-        'casa': 'house',
-        'agua': 'water',
-        'tiempo': 'time',
-        'persona': 'person',
-        'año': 'year',
-        'vez': 'time/occasion',
-        'día': 'day',
-        'hombre': 'man',
-        'cosa': 'thing',
-        'vida': 'life',
-        'tanto': 'so much',
-        'este': 'this',
-        'ese': 'that',
-        'todo': 'all/everything',
-        'otro': 'other/another',
-        'mismo': 'same',
-        'gran': 'great/big',
-        'nuevo': 'new',
-        'primero': 'first',
-        'último': 'last',
-        'bueno': 'good',
-        'mejor': 'better',
-        'mayor': 'older/bigger',
-        'español': 'Spanish',
-        'estar': 'to be',
-        'ser': 'to be',
-        'tener': 'to have',
-        'hacer': 'to do/make',
-        'poder': 'to be able',
-        'ir': 'to go',
-        'ver': 'to see',
-        'dar': 'to give',
-        'saber': 'to know',
-        'querer': 'to want',
-        'llegar': 'to arrive',
-        'pasar': 'to pass',
-        'deber': 'to must/owe',
-        'poner': 'to put',
-        'parecer': 'to seem',
-        'quedar': 'to stay',
-        'creer': 'to believe',
-        'hablar': 'to speak',
-        'llevar': 'to carry',
-        'dejar': 'to leave',
-        'seguir': 'to follow',
-        'encontrar': 'to find',
-        'llamar': 'to call',
-        'venir': 'to come',
-        'pensar': 'to think',
-        'salir': 'to go out',
-        'volver': 'to return',
-        'tomar': 'to take',
-        'conocer': 'to know',
-        'vivir': 'to live',
-        'sentir': 'to feel',
-        'tratar': 'to try',
-        'mirar': 'to look',
-        'contar': 'to count/tell',
-        'empezar': 'to begin',
-        'esperar': 'to wait/hope',
-        'buscar': 'to search',
-        'existir': 'to exist',
-        'entrar': 'to enter',
-        'trabajar': 'to work',
-        'escribir': 'to write',
-        'perder': 'to lose',
-        'producir': 'to produce',
-        'ocurrir': 'to happen',
-        'entender': 'to understand',
-        'pedir': 'to ask for',
-        'recibir': 'to receive',
-        'recordar': 'to remember',
-        'terminar': 'to finish',
-        'permitir': 'to allow',
-        'aparecer': 'to appear',
-        'conseguir': 'to get',
-        'comenzar': 'to begin',
-        'servir': 'to serve',
-        'sacar': 'to take out',
-        'necesitar': 'to need',
-        'mantener': 'to maintain',
-        'resultar': 'to result',
-        'leer': 'to read',
-        'caer': 'to fall',
-        'cambiar': 'to change',
-        'presentar': 'to present',
-        'crear': 'to create',
-        'abrir': 'to open',
-        'considerar': 'to consider',
-        'oír': 'to hear',
-        'acabar': 'to finish',
-        'convertir': 'to convert',
-        'ganar': 'to win/earn',
-        'traer': 'to bring',
-        'realizar': 'to realize',
-        'cerrar': 'to close',
-        'morir': 'to die',
-        'ofrecer': 'to offer',
-        'descubrir': 'to discover',
-        'levantar': 'to lift',
-        'acercar': 'to approach'
-      },
-      'german': {
-        'der': 'the (masculine)',
-        'die': 'the (feminine/plural)',
-        'das': 'the (neuter)',
-        'den': 'the (accusative masculine)',
-        'dem': 'the (dative)',
-        'des': 'the (genitive)',
-        'ein': 'a/an (masculine/neuter)',
-        'eine': 'a/an (feminine)',
-        'einen': 'a/an (accusative masculine)',
-        'einem': 'a/an (dative)',
-        'einer': 'a/an (dative/genitive feminine)',
-        'eines': 'a/an (genitive)',
-        'kein': 'no/not a (masculine/neuter)',
-        'keine': 'no/not a (feminine/plural)',
-        'keinen': 'no/not a (accusative masculine)',
-        'keinem': 'no/not a (dative)',
-        'keiner': 'no/not a (dative/genitive feminine)',
-        'keines': 'no/not a (genitive)',
-        
-        // Basic conjunctions and prepositions
-        'und': 'and',
-        'oder': 'or',
-        'aber': 'but',
-        'denn': 'because',
-        'sondern': 'but rather',
-        'in': 'in',
-        'an': 'at/on',
-        'auf': 'on/onto',
-        'für': 'for',
-        'mit': 'with',
-        'nach': 'after/to',
-        'bei': 'at/with',
-        'von': 'from/of',
-        'zu': 'to',
-        'aus': 'from/out of',
-        'über': 'over/about',
-        'unter': 'under',
-        'vor': 'before/in front of',
-        'zwischen': 'between',
-        'neben': 'next to',
-        'hinter': 'behind',
-        'durch': 'through',
-        'ohne': 'without',
-        'gegen': 'against',
-        'um': 'around/at (time)',
-        
-        // Personal pronouns
-        'ich': 'I',
-        'du': 'you (informal)',
-        'er': 'he',  
-        'sie': 'she/they',
-        'es': 'it',
-        'wir': 'we',
-        'ihr': 'you (plural informal)',
-        'Sie': 'you (formal)',
-        'mich': 'me (accusative)',
-        'dich': 'you (accusative)',
-        'ihn': 'him',
-        'uns': 'us',
-        'euch': 'you (plural accusative)',
-        'mir': 'me (dative)',
-        'dir': 'you (dative)',
-        'ihm': 'him (dative)',
-        
-        // Common possessive pronouns
-        'mein': 'my (masculine/neuter)',
-        'meine': 'my (feminine/plural)',
-        'meinen': 'my (accusative masculine)',
-        'meinem': 'my (dative)',
-        'meiner': 'my (dative/genitive feminine)',
-        'meines': 'my (genitive)',
-        'dein': 'your (masculine/neuter)',
-        'deine': 'your (feminine/plural)',
-        'sein': 'his/its',
-        'seine': 'his/its (feminine/plural)',
-        'unser': 'our',
-        'unsere': 'our (feminine/plural)',
-        'euer': 'your (plural)',
-        'eure': 'your (plural feminine)',
-        
-        // Modal verbs and common verbs
-        'haben': 'to have',
-        'werden': 'to become',
-        'können': 'can/to be able',
-        'müssen': 'must/to have to',
-        'sollen': 'should/to be supposed to',
-        'wollen': 'to want',
-        'dürfen': 'may/to be allowed',
-        'mögen': 'to like',
-        'möchten': 'would like',
-        
-        // Essential verbs
-        'sagen': 'to say',
-        'machen': 'to make/do',
-        'geben': 'to give',
-        'kommen': 'to come',
-        'gehen': 'to go',
-        'wissen': 'to know',
-        'sehen': 'to see',
-        'lassen': 'to let',
-        'stehen': 'to stand',
-        'finden': 'to find',
-        'bleiben': 'to stay',
-        'liegen': 'to lie',
-        'heißen': 'to be called',
-        'denken': 'to think',
-        'nehmen': 'to take',
-        'tun': 'to do',
-        'glauben': 'to believe',
-        'halten': 'to hold',
-        'nennen': 'to name',
-        'zeigen': 'to show',
-        'führen': 'to lead',
-        'sprechen': 'to speak',
-        'bringen': 'to bring',
-        'leben': 'to live',
-        'fahren': 'to drive',
-        'meinen': 'to mean',
-        'fragen': 'to ask',
-        'kennen': 'to know',
-        'gelten': 'to be valid',
-        'stellen': 'to put',
-        'spielen': 'to play',
-        'arbeiten': 'to work',
-        'brauchen': 'to need',
-        'folgen': 'to follow',
-        'lernen': 'to learn',
-        'bestehen': 'to exist',
-        'verstehen': 'to understand',
-        'setzen': 'to set',
-        'bekommen': 'to get',
-        'beginnen': 'to begin',
-        'erzählen': 'to tell',
-        'versuchen': 'to try',
-        'schreiben': 'to write',
-        'laufen': 'to run',
-        'erklären': 'to explain',
-        'entsprechen': 'to correspond',
-        'sitzen': 'to sit',
-        'ziehen': 'to pull',
-        'scheinen': 'to seem',
-        'fallen': 'to fall',
-        'gehören': 'to belong',
-        'entstehen': 'to arise',
-        'erhalten': 'to receive',
-        'treffen': 'to meet',
-        'suchen': 'to search',
-        'legen': 'to lay',
-        'vorstellen': 'to introduce',
-        'handeln': 'to act',
-        'erreichen': 'to reach',
-        'tragen': 'to carry',
-        'schaffen': 'to create',
-        'lesen': 'to read',
-        'verlieren': 'to lose',
-        'darstellen': 'to represent',
-        'erkennen': 'to recognize',
-        'entwickeln': 'to develop',
-        'reden': 'to talk',
-        'aussehen': 'to look like',
-        'erscheinen': 'to appear',
-        'bilden': 'to form',
-        'anfangen': 'to start',
-        'erwarten': 'to expect',
-        'wohnen': 'to live',
-        'betreffen': 'to concern',
-        'warten': 'to wait',
-        'vergessen': 'to forget',
-        'hören': 'to hear',
-        'aufhören': 'to stop',
-        'funktionieren': 'to function',
-        'erfinden': 'to invent',
-        
-        // Common nouns
-        'Haus': 'house',
-        'Hause': 'home (dative)',
-        'Mann': 'man',
-        'Frau': 'woman',
-        'Kind': 'child',
-        'Jahr': 'year',
-        'Tag': 'day',
-        'Zeit': 'time',
-        'Welt': 'world',
-        'Leben': 'life',
-        'Hand': 'hand',
-        'Auge': 'eye',
-        'Mensch': 'human',
-        'Teil': 'part',
-        'Land': 'country',
-        'Stelle': 'place',
-        'Fall': 'case',
-        'Recht': 'right',
-        'Problem': 'problem',
-        'Frage': 'question',
-        'Grund': 'reason',
-        'Ende': 'end',
-        'Anfang': 'beginning',
-        'Weg': 'way',
-        'Raum': 'room/space',
-        'Wasser': 'water',
-        'Stadt': 'city',
-        'Auto': 'car',
-        'Buch': 'book',
-        'Geld': 'money',
-        'Hilfe': 'help',
-        'Politik': 'politics',
-        'Idee': 'idea',
-        'Stunden': 'hours',
-        'Hund': 'dog',
-        'Katze': 'cat',
-        'Tier': 'animal',
-        'Familie': 'family',
-        'Freund': 'friend',
-        'Freunde': 'friends',
-        'Leute': 'people',
-        'Name': 'name',
-        'Nummer': 'number',
-        'Platz': 'place/seat',
-        'Straße': 'street',
-        'Schule': 'school',
-        'Universität': 'university',
-        'Beruf': 'profession',
-        'Büro': 'office',
-        'Restaurant': 'restaurant',
-        'Hotel': 'hotel',
-        'Zimmer': 'room',
-        'Küche': 'kitchen',
-        'Bad': 'bathroom',
-        'Schlafzimmer': 'bedroom',
-        'Wohnzimmer': 'living room',
-        
-        // Adjectives
-        'groß': 'big',
-        'klein': 'small',
-        'gut': 'good',
-        'schlecht': 'bad',
-        'neu': 'new',
-        'alt': 'old',
-        'lang': 'long',
-        'kurz': 'short',
-        'hoch': 'high',
-        'niedrig': 'low',
-        'schnell': 'fast',
-        'langsam': 'slow',
-        'stark': 'strong',
-        'schwach': 'weak',
-        'hell': 'bright',
-        'dunkel': 'dark',
-        'warm': 'warm',
-        'kalt': 'cold',
-        'jung': 'young',
-        'wichtig': 'important',
-        'möglich': 'possible',
-        'richtig': 'correct',
-        'falsch': 'wrong',
-        'schwer': 'heavy/difficult',
-        'leicht': 'light/easy',
-        'frei': 'free',
-        'voll': 'full',
-        'leer': 'empty',
-        'sicher': 'safe',
-        'gefährlich': 'dangerous',
-        'schön': 'beautiful',
-        'hässlich': 'ugly',
-        'interessant': 'interesting',
-        'langweilig': 'boring',
-        'freundlich': 'friendly',
-        'unfreundlich': 'unfriendly',
-        
-        // Demonstrative pronouns and determiners
-        'dieser': 'this',
-        'diese': 'this (feminine/plural)',
-        'dieses': 'this (neuter)',
-        'diesen': 'this (accusative masculine)',
-        'diesem': 'this (dative)',
-        'jener': 'that',
-        'jene': 'that (feminine/plural)',
-        'jenes': 'that (neuter)',
-        'alle': 'all',
-        'viele': 'many',
-        'wenige': 'few',
-        'andere': 'other',
-        'einige': 'some',
-        'mehrere': 'several',
-        'verschiedene': 'different',
-        'gleiche': 'same',
-        
-        // Pronominal adverbs
-        'darauf': 'on it/thereupon',
-        'damit': 'with it/so that',
-        'dafür': 'for it/instead',
-        'davon': 'of it/from it',
-        'dabei': 'in doing so/at the same time',
-        'danach': 'after that/afterwards',
-        'daran': 'on it/at it',
-        'darum': 'therefore/around it',
-        'dadurch': 'through it/thereby',
-        'dagegen': 'against it/however',
-        'dahin': 'there/to that place',
-        'davor': 'before it/in front of it',
-        'dazu': 'to it/in addition',
-        
-        // Political and organizational terms
-        'partei': 'party',
-        'organisation': 'organization',
-        'gruppe': 'group',
-        'regierung': 'government',
-        'verwaltung': 'administration',
-        'behörde': 'authority',
-        'abteilung': 'department',
-        'firma': 'company',
-        'unternehmen': 'company/enterprise',
-        'gesellschaft': 'society/company'
-      },
-      'french': {
-        'le': 'the',
-        'de': 'of',
-        'et': 'and',
-        'être': 'to be',
-        'avoir': 'to have',
-        'faire': 'to do/make',
-        'dire': 'to say',
-        'aller': 'to go',
-        'voir': 'to see',
-        'savoir': 'to know',
-        'prendre': 'to take',
-        'venir': 'to come',
-        'pouvoir': 'can/to be able',
-        'vouloir': 'to want',
-        'donner': 'to give',
-        'falloir': 'to be necessary',
-        'devoir': 'must/to have to',
-        'croire': 'to believe',
-        'trouver': 'to find',
-        'laisser': 'to leave',
-        'porter': 'to carry',
-        'parler': 'to speak',
-        'montrer': 'to show',
-        'demander': 'to ask',
-        'passer': 'to pass',
-        'suivre': 'to follow',
-        'comprendre': 'to understand',
-        'compter': 'to count',
-        'entendre': 'to hear',
-        'rendre': 'to give back',
-        'tenir': 'to hold',
-        'mener': 'to lead',
-        'écrire': 'to write',
-        'connaître': 'to know',
-        'paraître': 'to appear',
-        'aimer': 'to love',
-        'appeler': 'to call',
-        'apprendre': 'to learn',
-        'regarder': 'to look',
-        'sortir': 'to go out',
-        'mettre': 'to put',
-        'arriver': 'to arrive',
-        'sentir': 'to feel',
-        'partir': 'to leave',
-        'vivre': 'to live',
-        'finir': 'to finish',
-        'servir': 'to serve',
-        'mourir': 'to die',
-        'ouvrir': 'to open',
-        'perdre': 'to lose',
-        'recevoir': 'to receive',
-        'revenir': 'to come back',
-        'lire': 'to read',
-        'attendre': 'to wait',
-        'jouer': 'to play',
-        'acheter': 'to buy',
-        'essayer': 'to try',
-        'commencer': 'to begin',
-        'continuer': 'to continue',
-        'chercher': 'to search',
-        'rappeler': 'to remind',
-        'amener': 'to bring',
-        'répondre': 'to answer',
-        'présenter': 'to present',
-        'accepter': 'to accept',
-        'gagner': 'to win',
-        'changer': 'to change',
-        'expliquer': 'to explain',
-        'décider': 'to decide',
-        'retourner': 'to return',
-        'tomber': 'to fall',
-        'rester': 'to stay',
-        'entrer': 'to enter',
-        'marcher': 'to walk',
-        'aider': 'to help',
-        'maison': 'house',
-        'homme': 'man',
-        'femme': 'woman',
-        'enfant': 'child',
-        'année': 'year',
-        'jour': 'day',
-        'temps': 'time',
-        'monde': 'world',
-        'vie': 'life',
-        'main': 'hand',
-        'œil': 'eye',
-        'personne': 'person',
-        'travail': 'work',
-        'partie': 'part',
-        'pays': 'country',
-        'place': 'place',
-        'cas': 'case',
-        'droit': 'right',
-        'problème': 'problem',
-        'question': 'question',
-        'raison': 'reason',
-        'fin': 'end',
-        'début': 'beginning',
-        'chemin': 'way',
-        'chambre': 'room',
-        'eau': 'water',
-        'ville': 'city',
-        'voiture': 'car',
-        'livre': 'book',
-        'argent': 'money',
-        'aide': 'help',
-        'politique': 'politics',
-        'idée': 'idea',
-        'heures': 'hours',
-        'grand': 'big',
-        'petit': 'small',
-        'bon': 'good',
-        'mauvais': 'bad',
-        'nouveau': 'new',
-        'vieux': 'old',
-        'long': 'long',
-        'court': 'short',
-        'haut': 'high',
-        'bas': 'low',
-        'rapide': 'fast',
-        'lent': 'slow',
-        'fort': 'strong',
-        'faible': 'weak',
-        'clair': 'bright',
-        'sombre': 'dark',
-        'chaud': 'warm',
-        'froid': 'cold',
-        'jeune': 'young',
-        'important': 'important',
-        'possible': 'possible',
-        'vrai': 'true',
-        'faux': 'false',
-        'difficile': 'difficult',
-        'facile': 'easy',
-        'libre': 'free',
-        'plein': 'full',
-        'vide': 'empty',
-        'sûr': 'safe',
-        'dangereux': 'dangerous',
-        'beau': 'beautiful',
-        'laid': 'ugly',
-        'intéressant': 'interesting',
-        'ennuyeux': 'boring',
-        'gentil': 'kind',
-        'méchant': 'mean',
-        'ce': 'this',
-        'celui': 'that one',
-        'tout': 'all',
-        'beaucoup': 'many',
-        'peu': 'few',
-        'autre': 'other',
-        'quelques': 'some',
-        'plusieurs': 'several',
-        'différent': 'different',
-        'même': 'same'
-      }
-    };
-    
-    const languageMeanings = meanings[language.toLowerCase()] || {};
-    return languageMeanings[word.toLowerCase()] || null;
   };
 
   return (
@@ -705,5 +153,36 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
         </div>
       </CardContent>
     </Card>
+  );
+};
+
+// Separate component for translation hint to manage its own state
+const TranslationHint: React.FC<{
+  word: string;
+  language: string;
+  getTranslation: (word: string, language: string) => Promise<string>;
+}> = ({ word, language, getTranslation }) => {
+  const [translation, setTranslation] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    const fetchTranslation = async () => {
+      setLoading(true);
+      const result = await getTranslation(word, language);
+      setTranslation(result);
+      setLoading(false);
+    };
+
+    fetchTranslation();
+  }, [word, language, getTranslation]);
+
+  return (
+    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-4 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-600 rounded-lg shadow-md z-50 whitespace-nowrap min-w-max">
+      <div className="text-center font-medium text-blue-800 dark:text-blue-200">
+        {loading ? 'loading...' : translation || 'translation unavailable'}
+      </div>
+      {/* Arrow pointing up to the input */}
+      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-100 dark:bg-blue-900/30 border-l border-t border-blue-300 dark:border-blue-600 rotate-45"></div>
+    </div>
   );
 };

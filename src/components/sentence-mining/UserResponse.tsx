@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowRight, Loader2 } from 'lucide-react';
 
 interface UserResponseProps {
   onSubmit: () => void;
@@ -22,41 +22,63 @@ export const UserResponse: React.FC<UserResponseProps> = ({
   correctAnswer,
   loading,
 }) => {
-  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [buttonState, setButtonState] = useState<'idle' | 'processing' | 'success'>('idle');
 
-  // Prevent rapid clicking that might cause errors
-  const handleSubmitClick = () => {
-    if (buttonDisabled || loading) return;
+  // Handle button click with proper feedback
+  const handleSubmitClick = async () => {
+    if (buttonState === 'processing' || loading) return;
     
-    setButtonDisabled(true);
+    setButtonState('processing');
     
     try {
-      onSubmit();
+      await onSubmit();
+      setButtonState('success');
+      
+      // Reset button state after a short delay
+      setTimeout(() => {
+        setButtonState('idle');
+      }, 1000);
     } catch (error) {
       console.error('Error in submit:', error);
-    } finally {
-      // Re-enable button after a short delay
-      setTimeout(() => {
-        setButtonDisabled(false);
-      }, 1000);
+      setButtonState('idle');
     }
   };
 
-  const handleNextClick = () => {
-    if (buttonDisabled || loading) return;
+  const handleNextClick = async () => {
+    if (buttonState === 'processing' || loading) return;
     
-    setButtonDisabled(true);
+    setButtonState('processing');
     
     try {
-      onNext();
+      await onNext();
+      setButtonState('success');
+      
+      // Reset button state after a short delay
+      setTimeout(() => {
+        setButtonState('idle');
+      }, 500);
     } catch (error) {
       console.error('Error in next:', error);
-    } finally {
-      // Re-enable button after a short delay
-      setTimeout(() => {
-        setButtonDisabled(false);
-      }, 1000);
+      setButtonState('idle');
     }
+  };
+
+  // Reset button state when showResult changes
+  useEffect(() => {
+    if (showResult) {
+      setButtonState('idle');
+    }
+  }, [showResult]);
+
+  const getButtonText = () => {
+    if (buttonState === 'processing') return 'Processing...';
+    if (loading) return 'Checking...';
+    return 'Submit';
+  };
+
+  const getNextButtonText = () => {
+    if (buttonState === 'processing') return 'Loading...';
+    return 'Next';
   };
 
   return (
@@ -67,18 +89,30 @@ export const UserResponse: React.FC<UserResponseProps> = ({
             {!showResult ? (
               <Button
                 onClick={handleSubmitClick}
-                disabled={loading || buttonDisabled}
-                className="px-6 py-3 text-base transition-transform duration-200 hover:scale-105 active:scale-95"
+                disabled={loading || buttonState === 'processing'}
+                className="px-6 py-3 text-base transition-all duration-200 hover:scale-105 active:scale-95 min-w-[120px]"
               >
-                {loading ? 'Checking...' : 'Submit'}
+                {buttonState === 'processing' && (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                )}
+                {getButtonText()}
               </Button>
             ) : (
               <Button
                 onClick={handleNextClick}
-                disabled={loading || buttonDisabled}
-                className="px-6 py-3 text-base flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
+                disabled={loading || buttonState === 'processing'}
+                className="px-6 py-3 text-base flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 min-w-[120px]"
               >
-                Next <ArrowRight className="h-4 w-4" />
+                {buttonState === 'processing' ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {getNextButtonText()}
+                  </>
+                ) : (
+                  <>
+                    {getNextButtonText()} <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
               </Button>
             )}
           </div>
