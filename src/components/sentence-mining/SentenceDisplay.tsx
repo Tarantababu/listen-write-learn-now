@@ -241,7 +241,6 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
         'mir': 'me (dative)',
         'dir': 'you (dative)',
         'ihm': 'him (dative)',
-        'ihr': 'her (dative)',
         
         // Common possessive pronouns
         'mein': 'my (masculine/neuter)',
@@ -260,7 +259,6 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
         'eure': 'your (plural feminine)',
         
         // Modal verbs and common verbs
-        'sein': 'to be',
         'haben': 'to have',
         'werden': 'to become',
         'können': 'can/to be able',
@@ -402,7 +400,6 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
         'Straße': 'street',
         'Schule': 'school',
         'Universität': 'university',
-        'Arbeit': 'work',
         'Beruf': 'profession',
         'Büro': 'office',
         'Restaurant': 'restaurant',
