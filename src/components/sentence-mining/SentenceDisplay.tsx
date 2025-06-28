@@ -51,12 +51,12 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
               }`}
               placeholder="___"
             />
-            {/* Always show hint, positioned below the input */}
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-3 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-600 rounded-lg shadow-md z-50 whitespace-nowrap">
+            {/* Translation hint positioned below the input with proper spacing */}
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-4 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-600 rounded-lg shadow-md z-50 whitespace-nowrap min-w-max">
               <div className="text-center font-medium text-blue-800 dark:text-blue-200">
                 {englishTranslation || 'translation not available'}
               </div>
-              {/* Arrow pointing up */}
+              {/* Arrow pointing up to the input */}
               <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-100 dark:bg-blue-900/30 border-l border-t border-blue-300 dark:border-blue-600 rotate-45"></div>
             </div>
           </div>
@@ -365,7 +365,6 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
         'Hand': 'hand',
         'Auge': 'eye',
         'Mensch': 'human',
-        'Arbeit': 'work',
         'Teil': 'part',
         'Land': 'country',
         'Stelle': 'place',
@@ -684,7 +683,7 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
       <CardContent>
         <div className="space-y-4">
           <div className="p-4 md:p-6 bg-muted rounded-lg">
-            <p className="text-lg md:text-xl leading-relaxed">
+            <p className="text-lg md:text-xl leading-relaxed pb-12">
               {renderSentenceWithBlank(exercise.sentence, exercise.targetWord)}
             </p>
           </div>
