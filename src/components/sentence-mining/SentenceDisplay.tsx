@@ -36,24 +36,30 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
     parts.forEach((part, index) => {
       result.push(part);
       if (index < parts.length - 1) {
+        const englishTranslation = getEnglishMeaning(targetWord, settings.selectedLanguage);
         result.push(
           <div key={index} className="inline-block relative mx-1 my-2">
             <Input
               value={userResponse}
               onChange={(e) => onResponseChange?.(e.target.value)}
               disabled={showResult}
-              className={`inline-block w-24 md:w-32 text-center border-b-2 border-dashed border-primary bg-transparent text-sm md:text-base ${
+              className={`inline-block w-32 md:w-40 text-center border-b-2 border-dashed border-primary bg-transparent text-base ${
                 showResult
                   ? isCorrect
                     ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
                     : 'border-red-500 bg-red-50 dark:bg-red-950/20'
-                  : ''
+                  : 'focus:ring-2 focus:ring-primary/20'
               }`}
               placeholder="___"
             />
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/20 px-2 py-1 rounded border z-10 whitespace-nowrap">
-              {targetWord} (meaning: {getEnglishMeaning(targetWord, settings.selectedLanguage)})
-            </div>
+            {englishTranslation && (
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 whitespace-nowrap">
+                <div className="text-center font-medium text-primary">
+                  {englishTranslation}
+                </div>
+                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white dark:bg-gray-800 border-l border-t border-gray-200 dark:border-gray-700 rotate-45"></div>
+              </div>
+            )}
           </div>
         );
       }
@@ -184,6 +190,19 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
         'es': 'it',
         'wir': 'we',
         'ihr': 'you (plural)',
+        'darauf': 'on it/thereupon',
+        'damit': 'with it/so that',
+        'dafür': 'for it/instead',
+        'davon': 'of it/from it',
+        'dabei': 'in doing so/at the same time',
+        'danach': 'after that/afterwards',
+        'daran': 'on it/at it',
+        'darum': 'therefore/around it',
+        'dadurch': 'through it/thereby',
+        'dagegen': 'against it/however',
+        'dahin': 'there/to that place',
+        'davor': 'before it/in front of it',
+        'dazu': 'to it/in addition',
         'sein': 'to be',
         'haben': 'to have',
         'werden': 'to become',
@@ -515,7 +534,7 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
     };
     
     const languageMeanings = meanings[language.toLowerCase()] || {};
-    return languageMeanings[word.toLowerCase()] || 'translation';
+    return languageMeanings[word.toLowerCase()] || null;
   };
 
   return (
@@ -545,8 +564,8 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
       
       <CardContent>
         <div className="space-y-4">
-          <div className="p-4 bg-muted rounded-lg">
-            <p className="text-base md:text-lg leading-relaxed">
+          <div className="p-4 md:p-6 bg-muted rounded-lg">
+            <p className="text-lg md:text-xl leading-relaxed">
               {renderSentenceWithBlank(exercise.sentence, exercise.targetWord)}
             </p>
           </div>
@@ -563,7 +582,7 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
           )}
           
           <div className="text-sm text-muted-foreground">
-            <p>Fill in the blank with the missing word. The hint shows the meaning in English.</p>
+            <p>Fill in the blank with the missing word. The hint shows the English translation.</p>
           </div>
         </div>
       </CardContent>
