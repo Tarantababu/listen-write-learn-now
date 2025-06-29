@@ -32,8 +32,8 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
   const [translationCache, setTranslationCache] = useState<Record<string, string>>({});
   const [loadingTranslation, setLoadingTranslation] = useState<Record<string, boolean>>({});
 
-  const getTranslationFromOpenAI = async (word: string, language: string): Promise<string> => {
-    const cacheKey = `${word}-${language}`;
+  const getShortTranslationFromOpenAI = async (word: string, language: string): Promise<string> => {
+    const cacheKey = `${word}-${language}-short`;
     
     if (translationCache[cacheKey]) {
       return translationCache[cacheKey];
@@ -49,16 +49,20 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
       const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
         body: {
           text: word,
-          language: language
+          language: language,
+          requestShort: true // Request short translation
         }
       });
 
       if (error) throw error;
 
-      const translation = data?.definition || 'translation unavailable';
-      setTranslationCache(prev => ({ ...prev, [cacheKey]: translation }));
+      // Extract just 1-2 key words from the definition
+      const fullTranslation = data?.definition || 'translation unavailable';
+      const shortTranslation = extractShortTranslation(fullTranslation);
       
-      return translation;
+      setTranslationCache(prev => ({ ...prev, [cacheKey]: shortTranslation }));
+      
+      return shortTranslation;
     } catch (error) {
       console.error('Error getting translation:', error);
       return 'translation unavailable';
@@ -67,7 +71,26 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
     }
   };
 
+  const extractShortTranslation = (fullTranslation: string): string => {
+    // Remove common prefixes and extract key words
+    const cleaned = fullTranslation
+      .replace(/^(A |An |The |To )/i, '')
+      .replace(/\(.*?\)/g, '') // Remove parentheses
+      .replace(/;.*$/g, '') // Remove everything after semicolon
+      .replace(/,.*$/g, '') // Remove everything after first comma
+      .trim();
+    
+    // Get first 1-2 significant words
+    const words = cleaned.split(' ').filter(word => 
+      word.length > 2 && 
+      !['that', 'which', 'with', 'from', 'into', 'onto', 'upon'].includes(word.toLowerCase())
+    );
+    
+    return words.slice(0, 2).join(' ') || cleaned.split(' ').slice(0, 2).join(' ');
+  };
+
   const renderSentenceWithBlank = (sentence: string, targetWord: string) => {
+    // For cloze exercises, show the English sentence with a blank for the target language word
     const parts = sentence.split(new RegExp(`\\b${targetWord}\\b`, 'gi'));
     const result = [];
     
@@ -89,11 +112,11 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
               }`}
               placeholder="___"
             />
-            {/* Translation hint positioned below the input with proper spacing */}
+            {/* Short translation hint positioned below the input */}
             <TranslationHint 
               word={targetWord} 
               language={settings.selectedLanguage}
-              getTranslation={getTranslationFromOpenAI}
+              getTranslation={getShortTranslationFromOpenAI}
             />
           </div>
         );
@@ -148,7 +171,7 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
           )}
           
           <div className="text-sm text-muted-foreground">
-            <p>Fill in the blank with the missing word. The hint shows the English translation.</p>
+            <p>Fill in the blank with the missing word in {settings.selectedLanguage}. The hint below shows a short English translation.</p>
           </div>
         </div>
       </CardContent>

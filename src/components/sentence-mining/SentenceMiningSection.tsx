@@ -166,6 +166,7 @@ export const SentenceMiningSection: React.FC = () => {
               isCorrect={isCorrect}
               correctAnswer={currentExercise.targetWord}
               loading={loading}
+              explanation={currentExercise.explanation}
             />
           </div>
         );

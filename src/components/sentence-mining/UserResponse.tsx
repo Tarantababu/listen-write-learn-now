@@ -12,6 +12,7 @@ interface UserResponseProps {
   isCorrect: boolean;
   correctAnswer: string;
   loading: boolean;
+  explanation?: string;
 }
 
 export const UserResponse: React.FC<UserResponseProps> = ({
@@ -21,6 +22,7 @@ export const UserResponse: React.FC<UserResponseProps> = ({
   isCorrect,
   correctAnswer,
   loading,
+  explanation,
 }) => {
   const [buttonState, setButtonState] = useState<'idle' | 'processing' | 'success'>('idle');
 
@@ -131,13 +133,26 @@ export const UserResponse: React.FC<UserResponseProps> = ({
               </div>
 
               {!isCorrect && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1 text-center">
-                    Correct answer:
-                  </p>
-                  <p className="text-blue-700 dark:text-blue-300 font-semibold text-center">
-                    {correctAnswer}
-                  </p>
+                <div className="space-y-3">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1 text-center">
+                      Correct answer:
+                    </p>
+                    <p className="text-blue-700 dark:text-blue-300 font-semibold text-center">
+                      {correctAnswer}
+                    </p>
+                  </div>
+
+                  {explanation && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                        Explanation:
+                      </p>
+                      <p className="text-amber-700 dark:text-amber-300 text-sm">
+                        {explanation}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { SentenceMiningState, SentenceMiningSession, SentenceMiningExercise, DifficultyLevel, SentenceMiningProgress, ExerciseType } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -94,7 +93,8 @@ export const useSentenceMining = () => {
           language: settings.selectedLanguage,
           difficulty,
           exerciseType,
-          knownWords: [], // Could be expanded to include user's known words
+          knownWords: [],
+          reverseDirection: true, // Generate English to target language
         },
       });
 
@@ -111,8 +111,8 @@ export const useSentenceMining = () => {
 
       const exercise: SentenceMiningExercise = {
         id: crypto.randomUUID(),
-        sentence: data.sentence,
-        targetWord: data.targetWord,
+        sentence: data.sentence, // This will be the English sentence
+        targetWord: data.targetWord, // This will be the target language word
         clozeSentence: data.clozeSentence || data.sentence,
         difficulty,
         context: data.context || '',
@@ -186,6 +186,25 @@ export const useSentenceMining = () => {
     }
   }, [generateSentence, getRandomExerciseType, settings.selectedLanguage]);
 
+  const getExplanationFromOpenAI = async (userAnswer: string, correctAnswer: string, sentence: string, language: string): Promise<string> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
+        body: {
+          text: `User answered "${userAnswer}" but correct answer is "${correctAnswer}" in the sentence: "${sentence}". Explain why "${correctAnswer}" is correct in ${language}.`,
+          language: language,
+          requestExplanation: true
+        }
+      });
+
+      if (error) throw error;
+
+      return data?.explanation || `The correct answer is "${correctAnswer}". This word fits the context and grammar of the sentence better than "${userAnswer}".`;
+    } catch (error) {
+      console.error('Error getting explanation:', error);
+      return `The correct answer is "${correctAnswer}". Please review the context and try to understand why this word fits better in the sentence.`;
+    }
+  };
+
   const submitAnswer = useCallback(async (answer: string, selectedWords?: string[]) => {
     if (!state.currentExercise || !state.currentSession) {
       console.error('No current exercise or session');
@@ -196,6 +215,7 @@ export const useSentenceMining = () => {
       console.log('Submitting answer:', { answer, selectedWords, exerciseType: state.currentExercise.exerciseType });
 
       let isCorrect = false;
+      let explanation = '';
       
       // Different validation logic based on exercise type
       switch (state.currentExercise.exerciseType) {
@@ -216,7 +236,19 @@ export const useSentenceMining = () => {
           break;
           
         default: // cloze
-          isCorrect = answer.toLowerCase().trim() === state.currentExercise.targetWord.toLowerCase().trim();
+          const correctAnswer = state.currentExercise.targetWord.toLowerCase().trim();
+          const userAnswer = answer.toLowerCase().trim();
+          isCorrect = userAnswer === correctAnswer;
+          
+          // Get explanation for incorrect cloze answers
+          if (!isCorrect && userAnswer.length > 0) {
+            explanation = await getExplanationFromOpenAI(
+              answer,
+              state.currentExercise.targetWord,
+              state.currentExercise.sentence,
+              settings.selectedLanguage
+            );
+          }
       }
       
       console.log('Answer validation result:', { isCorrect, answer, targetWord: state.currentExercise.targetWord });
@@ -226,6 +258,7 @@ export const useSentenceMining = () => {
         ...state.currentExercise,
         attempts: state.currentExercise.attempts + 1,
         correctAttempts: state.currentExercise.correctAttempts + (isCorrect ? 1 : 0),
+        explanation: explanation || state.currentExercise.explanation,
       };
 
       // Update session
@@ -279,7 +312,7 @@ export const useSentenceMining = () => {
       console.error('Error submitting answer:', error);
       toast.error('Error submitting answer. Please try again.');
     }
-  }, [state.currentExercise, state.currentSession, state.progress, saveProgress]);
+  }, [state.currentExercise, state.currentSession, state.progress, saveProgress, settings.selectedLanguage]);
 
   const nextExercise = useCallback(async () => {
     if (!state.currentSession) {

@@ -6,11 +6,14 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts"
 interface RequestBody {
   text: string
   language: string
+  requestShort?: boolean
+  requestExplanation?: boolean
 }
 
 interface VocabularyInfo {
   definition: string
   exampleSentence: string
+  explanation?: string
 }
 
 serve(async (req) => {
@@ -20,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, language } = await req.json() as RequestBody
+    const { text, language, requestShort = false, requestExplanation = false } = await req.json() as RequestBody
 
     if (!text || !language) {
       return new Response(
@@ -40,7 +43,7 @@ serve(async (req) => {
       throw new Error('OpenAI API key is not configured')
     }
 
-    const vocabularyData = await generateVocabularyInfo(text, language, openAIApiKey)
+    const vocabularyData = await generateVocabularyInfo(text, language, openAIApiKey, requestShort, requestExplanation)
     
     return new Response(
       JSON.stringify(vocabularyData),
@@ -67,9 +70,45 @@ serve(async (req) => {
 async function generateVocabularyInfo(
   word: string, 
   language: string, 
-  apiKey: string
+  apiKey: string,
+  requestShort: boolean = false,
+  requestExplanation: boolean = false
 ): Promise<VocabularyInfo> {
-  const prompt = `
+  let prompt = '';
+  
+  if (requestExplanation) {
+    prompt = `
+Provide an explanation for this language learning scenario: "${word}"
+
+Return a JSON object with the following structure:
+{
+  "explanation": "Clear, helpful explanation for the language learner"
+}
+
+Notes:
+- Focus on why the correct answer is better
+- Explain grammar rules or usage patterns
+- Keep it concise but educational
+- Format must be valid JSON
+`;
+  } else if (requestShort) {
+    prompt = `
+Provide a very short translation (1-2 words maximum) for this ${language} word/phrase: "${word}"
+
+Return a JSON object with the following structure:
+{
+  "definition": "1-2 word English translation (key meaning only)",
+  "exampleSentence": "An example sentence in ${language} using this word/phrase"
+}
+
+Notes:
+- Definition must be extremely concise (1-2 words only)
+- Remove articles (a, an, the) from the translation
+- Focus on the core meaning only
+- Format must be valid JSON
+`;
+  } else {
+    prompt = `
 Provide vocabulary information about this ${language} word/phrase: "${word}"
 
 Return a JSON object with the following structure:
@@ -83,7 +122,8 @@ Notes:
 - For languages other than English, include any relevant grammatical details (gender, etc.)
 - The example sentence should be in ${language}
 - Format must be valid JSON
-`
+`;
+  }
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -119,9 +159,17 @@ Notes:
       console.log('Raw response:', content)
       
       // Return a fallback object
-      return {
-        definition: `Failed to get definition for "${word}" in ${language}`,
-        exampleSentence: `Example with "${word}".`
+      if (requestExplanation) {
+        return {
+          definition: '',
+          exampleSentence: '',
+          explanation: `Please review the correct answer and practice more.`
+        }
+      } else {
+        return {
+          definition: requestShort ? 'translation' : `Failed to get definition for "${word}" in ${language}`,
+          exampleSentence: `Example with "${word}".`
+        }
       }
     }
   } catch (error) {
