@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,10 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
     }
   };
 
+  // For translation exercises, we always show English text and ask to translate to target language
+  const displayText = exercise.translation || exercise.sentence; // Use translation as the English text
+  const expectedAnswer = exercise.sentence; // The target language sentence is the expected answer
+
   // Mobile-optimized layout
   if (isMobile) {
     return (
@@ -106,7 +111,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
           {/* English Sentence */}
           <div className="px-4 py-6 bg-muted/50">
             <p className="text-lg font-medium text-center leading-relaxed">
-              "{exercise.sentence}"
+              "{displayText}"
             </p>
           </div>
 
@@ -122,10 +127,10 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
               {showTranslation ? 'Hide hint' : 'Show hint'}
             </Button>
             
-            {showTranslation && exercise.translation && (
+            {showTranslation && expectedAnswer && (
               <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-sm text-center">
                 <p className="text-blue-700 dark:text-blue-300">
-                  Expected: {exercise.translation}
+                  Expected: {expectedAnswer}
                 </p>
               </div>
             )}
@@ -220,7 +225,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
     );
   }
 
-  // Desktop layout (keep existing code)
+  // Desktop layout
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -253,7 +258,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             {/* English sentence to translate */}
             <div className="p-4 bg-muted rounded-lg">
               <p className="text-xl font-medium text-center">
-                "{exercise.sentence}"
+                "{displayText}"
               </p>
             </div>
             
@@ -269,10 +274,10 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
                 {showTranslation ? 'Hide hint' : 'Show hint'}
               </Button>
               
-              {showTranslation && exercise.translation && (
+              {showTranslation && expectedAnswer && (
                 <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-sm animate-fade-in">
                   <p className="text-blue-700 dark:text-blue-300">
-                    Expected: {exercise.translation}
+                    Expected: {expectedAnswer}
                   </p>
                 </div>
               )}
