@@ -168,16 +168,27 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
                     <XCircle className="h-5 w-5 text-red-600" />
                   )}
                   <Badge variant={isCorrect ? 'default' : 'destructive'}>
-                    {isCorrect ? 'Great translation!' : 'Try again next time'}
+                    {isCorrect ? 'Great translation!' : 'Needs improvement'}
                   </Badge>
                 </div>
 
-                {exercise.explanation && (
+                {!isCorrect && expectedAnswer && (
                   <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                     <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-                      Grammar Note:
+                      Correct answer:
                     </p>
                     <p className="text-blue-700 dark:text-blue-300 text-sm">
+                      {expectedAnswer}
+                    </p>
+                  </div>
+                )}
+
+                {exercise.explanation && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                      Explanation:
+                    </p>
+                    <p className="text-amber-700 dark:text-amber-300 text-sm">
                       {exercise.explanation}
                     </p>
                   </div>
@@ -345,16 +356,27 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
                     <XCircle className="h-5 w-5 text-red-600" />
                   )}
                   <Badge variant={isCorrect ? 'default' : 'destructive'}>
-                    {isCorrect ? 'Great translation!' : 'Try again next time'}
+                    {isCorrect ? 'Great translation!' : 'Needs improvement'}
                   </Badge>
                 </div>
 
-                {exercise.explanation && (
+                {!isCorrect && expectedAnswer && (
                   <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                     <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-                      Grammar Note:
+                      Correct answer:
                     </p>
                     <p className="text-blue-700 dark:text-blue-300 text-sm">
+                      {expectedAnswer}
+                    </p>
+                  </div>
+                )}
+
+                {exercise.explanation && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                      Explanation:
+                    </p>
+                    <p className="text-amber-700 dark:text-amber-300 text-sm">
                       {exercise.explanation}
                     </p>
                   </div>

@@ -1,8 +1,10 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { SentenceMiningState, SentenceMiningSession, SentenceMiningExercise, DifficultyLevel, SentenceMiningProgress, ExerciseType } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { compareTexts } from '@/utils/textComparison';
 
 const STORAGE_KEY_PREFIX = 'sentence-mining';
 
@@ -191,10 +193,12 @@ export const useSentenceMining = () => {
       let explanationPrompt = '';
       
       if (exerciseType === 'translation') {
-        explanationPrompt = `User translated "${sentence}" as "${userAnswer}" but the expected translation in ${language} is "${correctAnswer}". Explain in English why the expected translation is better, focusing on grammar, word choice, or cultural context.`;
+        explanationPrompt = `The user was asked to translate "${sentence}" into ${language}. Their answer was "${userAnswer}" but the correct translation is "${correctAnswer}". Please provide a detailed explanation in English of what was wrong with the user's translation, including specific grammar mistakes, vocabulary errors, spelling issues, or incorrect word usage. Be constructive and educational.`;
       } else {
         explanationPrompt = `User answered "${userAnswer}" but correct answer is "${correctAnswer}" in the sentence: "${sentence}". Explain in English why "${correctAnswer}" is correct in ${language}, focusing on grammar rules, word usage, or context.`;
       }
+
+      console.log('Requesting explanation from OpenAI:', explanationPrompt);
 
       const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
         body: {
@@ -206,11 +210,11 @@ export const useSentenceMining = () => {
 
       if (error) throw error;
 
-      return data?.explanation || `The correct answer is "${correctAnswer}". This fits the context and grammar better than "${userAnswer}".`;
+      return data?.explanation || data?.definition || `The correct answer is "${correctAnswer}". Please review the grammar and vocabulary for this translation.`;
     } catch (error) {
       console.error('Error getting explanation:', error);
       if (exerciseType === 'translation') {
-        return `The expected translation "${correctAnswer}" is more accurate. Consider the grammar rules and natural phrasing in ${language}.`;
+        return `The expected translation "${correctAnswer}" is more accurate. Your answer contained errors in grammar, vocabulary, or spelling. Please review the correct translation and try to understand the differences.`;
       } else {
         return `The correct answer is "${correctAnswer}". Please review the context and try to understand why this word fits better in the sentence.`;
       }
@@ -231,24 +235,38 @@ export const useSentenceMining = () => {
       
       switch (state.currentExercise.exerciseType) {
         case 'translation':
-          // More lenient scoring for translation exercises
-          const expectedTranslation = state.currentExercise.translation?.toLowerCase() || '';
-          const userTranslation = answer.toLowerCase().trim();
-          isCorrect = userTranslation.length > 0 && (
-            expectedTranslation.includes(userTranslation) ||
-            userTranslation.includes(expectedTranslation.split(' ')[0]) ||
-            userTranslation.split(' ').some(word => expectedTranslation.includes(word) && word.length > 3)
-          );
+          // Use text comparison for more accurate translation scoring
+          const expectedTranslation = state.currentExercise.translation || state.currentExercise.sentence;
+          const userTranslation = answer.trim();
           
-          // Get detailed explanation for incorrect translation
-          if (!isCorrect && userTranslation.length > 0) {
-            explanation = await getExplanationFromOpenAI(
-              answer,
-              state.currentExercise.translation || '',
-              state.currentExercise.sentence,
-              settings.selectedLanguage,
-              'translation'
-            );
+          console.log('Comparing translation:', { userTranslation, expectedTranslation });
+          
+          if (userTranslation.length === 0) {
+            isCorrect = false;
+            explanation = 'Please provide a translation.';
+          } else {
+            // Use the text comparison utility for better accuracy checking
+            const comparisonResult = compareTexts(expectedTranslation, userTranslation);
+            
+            // Consider it correct if accuracy is 80% or higher
+            isCorrect = comparisonResult.accuracy >= 80;
+            
+            console.log('Translation comparison result:', {
+              accuracy: comparisonResult.accuracy,
+              isCorrect,
+              tokenResults: comparisonResult.tokenResults
+            });
+            
+            // Get detailed explanation for incorrect or partially correct translations
+            if (!isCorrect || comparisonResult.accuracy < 95) {
+              explanation = await getExplanationFromOpenAI(
+                userTranslation,
+                expectedTranslation,
+                state.currentExercise.sentence,
+                settings.selectedLanguage,
+                'translation'
+              );
+            }
           }
           break;
           
@@ -273,7 +291,7 @@ export const useSentenceMining = () => {
           }
       }
       
-      console.log('Answer validation result:', { isCorrect, answer, targetWord: state.currentExercise.targetWord });
+      console.log('Answer validation result:', { isCorrect, explanation });
       
       const updatedExercise = {
         ...state.currentExercise,
