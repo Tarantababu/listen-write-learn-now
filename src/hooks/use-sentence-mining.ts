@@ -94,7 +94,7 @@ export const useSentenceMining = () => {
           difficulty,
           exerciseType,
           knownWords: [],
-          reverseDirection: true, // Generate English to target language
+          reverseDirection: true, // Always generate English to target language
         },
       });
 
@@ -111,8 +111,8 @@ export const useSentenceMining = () => {
 
       const exercise: SentenceMiningExercise = {
         id: crypto.randomUUID(),
-        sentence: data.sentence, // This will be the English sentence
-        targetWord: data.targetWord, // This will be the target language word
+        sentence: data.sentence, // English sentence for translation exercises
+        targetWord: data.targetWord, // Target language word for cloze exercises
         clozeSentence: data.clozeSentence || data.sentence,
         difficulty,
         context: data.context || '',
@@ -120,7 +120,7 @@ export const useSentenceMining = () => {
         attempts: 0,
         correctAttempts: 0,
         exerciseType,
-        translation: data.translation,
+        translation: data.translation, // Expected target language translation
         multipleChoiceOptions: data.multipleChoiceOptions,
         correctAnswer: data.correctAnswer || data.targetWord,
         explanation: data.explanation,
@@ -186,11 +186,19 @@ export const useSentenceMining = () => {
     }
   }, [generateSentence, getRandomExerciseType, settings.selectedLanguage]);
 
-  const getExplanationFromOpenAI = async (userAnswer: string, correctAnswer: string, sentence: string, language: string): Promise<string> => {
+  const getExplanationFromOpenAI = async (userAnswer: string, correctAnswer: string, sentence: string, language: string, exerciseType: ExerciseType): Promise<string> => {
     try {
+      let explanationPrompt = '';
+      
+      if (exerciseType === 'translation') {
+        explanationPrompt = `User translated "${sentence}" as "${userAnswer}" but the expected translation in ${language} is "${correctAnswer}". Explain in English why the expected translation is better, focusing on grammar, word choice, or cultural context.`;
+      } else {
+        explanationPrompt = `User answered "${userAnswer}" but correct answer is "${correctAnswer}" in the sentence: "${sentence}". Explain in English why "${correctAnswer}" is correct in ${language}, focusing on grammar rules, word usage, or context.`;
+      }
+
       const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
         body: {
-          text: `User answered "${userAnswer}" but correct answer is "${correctAnswer}" in the sentence: "${sentence}". Explain why "${correctAnswer}" is correct in ${language}.`,
+          text: explanationPrompt,
           language: language,
           requestExplanation: true
         }
@@ -198,10 +206,14 @@ export const useSentenceMining = () => {
 
       if (error) throw error;
 
-      return data?.explanation || `The correct answer is "${correctAnswer}". This word fits the context and grammar of the sentence better than "${userAnswer}".`;
+      return data?.explanation || `The correct answer is "${correctAnswer}". This fits the context and grammar better than "${userAnswer}".`;
     } catch (error) {
       console.error('Error getting explanation:', error);
-      return `The correct answer is "${correctAnswer}". Please review the context and try to understand why this word fits better in the sentence.`;
+      if (exerciseType === 'translation') {
+        return `The expected translation "${correctAnswer}" is more accurate. Consider the grammar rules and natural phrasing in ${language}.`;
+      } else {
+        return `The correct answer is "${correctAnswer}". Please review the context and try to understand why this word fits better in the sentence.`;
+      }
     }
   };
 
@@ -217,10 +229,9 @@ export const useSentenceMining = () => {
       let isCorrect = false;
       let explanation = '';
       
-      // Different validation logic based on exercise type
       switch (state.currentExercise.exerciseType) {
         case 'translation':
-          // For translation, we'll be more lenient with scoring
+          // More lenient scoring for translation exercises
           const expectedTranslation = state.currentExercise.translation?.toLowerCase() || '';
           const userTranslation = answer.toLowerCase().trim();
           isCorrect = userTranslation.length > 0 && (
@@ -228,11 +239,21 @@ export const useSentenceMining = () => {
             userTranslation.includes(expectedTranslation.split(' ')[0]) ||
             userTranslation.split(' ').some(word => expectedTranslation.includes(word) && word.length > 3)
           );
+          
+          // Get detailed explanation for incorrect translation
+          if (!isCorrect && userTranslation.length > 0) {
+            explanation = await getExplanationFromOpenAI(
+              answer,
+              state.currentExercise.translation || '',
+              state.currentExercise.sentence,
+              settings.selectedLanguage,
+              'translation'
+            );
+          }
           break;
           
         case 'vocabulary_marking':
-          // For vocabulary marking, we always consider it correct (it's about learning)
-          isCorrect = true;
+          isCorrect = true; // Always correct for learning purposes
           break;
           
         default: // cloze
@@ -246,14 +267,14 @@ export const useSentenceMining = () => {
               answer,
               state.currentExercise.targetWord,
               state.currentExercise.sentence,
-              settings.selectedLanguage
+              settings.selectedLanguage,
+              'cloze'
             );
           }
       }
       
       console.log('Answer validation result:', { isCorrect, answer, targetWord: state.currentExercise.targetWord });
       
-      // Update exercise attempts
       const updatedExercise = {
         ...state.currentExercise,
         attempts: state.currentExercise.attempts + 1,
@@ -261,7 +282,6 @@ export const useSentenceMining = () => {
         explanation: explanation || state.currentExercise.explanation,
       };
 
-      // Update session
       const updatedSession = {
         ...state.currentSession,
         exercises: state.currentSession.exercises.map(ex => 

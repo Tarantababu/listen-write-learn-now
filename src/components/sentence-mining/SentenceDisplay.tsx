@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SentenceDisplayProps {
   exercise: SentenceMiningExercise;
@@ -29,6 +29,7 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
   isCorrect = false,
 }) => {
   const { settings } = useUserSettingsContext();
+  const isMobile = useIsMobile();
   const [translationCache, setTranslationCache] = useState<Record<string, string>>({});
   const [loadingTranslation, setLoadingTranslation] = useState<Record<string, boolean>>({});
 
@@ -50,13 +51,12 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
         body: {
           text: word,
           language: language,
-          requestShort: true // Request short translation
+          requestShort: true
         }
       });
 
       if (error) throw error;
 
-      // Extract just 1-2 key words from the definition
       const fullTranslation = data?.definition || 'translation unavailable';
       const shortTranslation = extractShortTranslation(fullTranslation);
       
@@ -72,15 +72,13 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
   };
 
   const extractShortTranslation = (fullTranslation: string): string => {
-    // Remove common prefixes and extract key words
     const cleaned = fullTranslation
       .replace(/^(A |An |The |To )/i, '')
-      .replace(/\(.*?\)/g, '') // Remove parentheses
-      .replace(/;.*$/g, '') // Remove everything after semicolon
-      .replace(/,.*$/g, '') // Remove everything after first comma
+      .replace(/\(.*?\)/g, '')
+      .replace(/;.*$/g, '')
+      .replace(/,.*$/g, '')
       .trim();
     
-    // Get first 1-2 significant words
     const words = cleaned.split(' ').filter(word => 
       word.length > 2 && 
       !['that', 'which', 'with', 'from', 'into', 'onto', 'upon'].includes(word.toLowerCase())
@@ -90,7 +88,6 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
   };
 
   const renderSentenceWithBlank = (sentence: string, targetWord: string) => {
-    // For cloze exercises, show the English sentence with a blank for the target language word
     const parts = sentence.split(new RegExp(`\\b${targetWord}\\b`, 'gi'));
     const result = [];
     
@@ -98,12 +95,12 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
       result.push(part);
       if (index < parts.length - 1) {
         result.push(
-          <div key={index} className="inline-block relative mx-1 my-2">
+          <div key={index} className={`inline-block relative mx-1 my-2 ${isMobile ? 'w-28' : 'w-32 md:w-40'}`}>
             <Input
               value={userResponse}
               onChange={(e) => onResponseChange?.(e.target.value)}
               disabled={showResult}
-              className={`inline-block w-32 md:w-40 text-center border-b-2 border-dashed border-primary bg-transparent text-base ${
+              className={`inline-block w-full text-center border-b-2 border-dashed border-primary bg-transparent ${isMobile ? 'text-sm' : 'text-base'} ${
                 showResult
                   ? isCorrect
                     ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
@@ -120,6 +117,77 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
     return result;
   };
 
+  // Mobile-optimized layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Mobile Header - Fixed */}
+        <div className="bg-card border-b px-4 py-3 sticky top-0 z-10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                {exercise.difficulty}
+              </Badge>
+              <span className="text-sm font-medium">Complete Sentence</span>
+            </div>
+            {onPlayAudio && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onPlayAudio}
+                disabled={audioLoading}
+                className="text-xs px-2 py-1"
+              >
+                <Volume2 className="h-3 w-3 mr-1" />
+                {audioLoading ? 'Loading' : 'Listen'}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Content - Scrollable */}
+        <div className="flex-1 flex flex-col p-4 space-y-4">
+          {/* Sentence with blank */}
+          <div className="p-4 bg-muted rounded-lg">
+            <p className="text-base leading-relaxed text-center">
+              {renderSentenceWithBlank(exercise.sentence, exercise.targetWord)}
+            </p>
+          </div>
+          
+          {/* Translation hint */}
+          <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="text-center">
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                English hint:
+              </p>
+              <TranslationHint 
+                word={exercise.targetWord} 
+                language={settings.selectedLanguage}
+                getTranslation={getShortTranslationFromOpenAI}
+              />
+            </div>
+          </div>
+          
+          {exercise.context && (
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                Context:
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                {exercise.context}
+              </p>
+            </div>
+          )}
+          
+          <div className="text-sm text-muted-foreground text-center">
+            <p>Fill in the blank with the missing word in {settings.selectedLanguage}.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop layout (keep existing code)
   return (
     <Card className="w-full">
       <CardHeader>
@@ -153,7 +221,6 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
             </p>
           </div>
           
-          {/* Translation hint moved to separate section */}
           <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <div className="flex items-center justify-center">
               <div className="text-center">
@@ -189,7 +256,6 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
   );
 };
 
-// Separate component for translation hint to manage its own state
 const TranslationHint: React.FC<{
   word: string;
   language: string;

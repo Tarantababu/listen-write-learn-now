@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Volume2, CheckCircle, XCircle, Eye, ArrowRight, Loader2 } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface TranslationExerciseProps {
   exercise: SentenceMiningExercise;
@@ -38,6 +38,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
   onToggleTranslation,
 }) => {
   const { settings } = useUserSettingsContext();
+  const isMobile = useIsMobile();
   const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
 
   const handleSubmitClick = async () => {
@@ -50,7 +51,6 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
     } catch (error) {
       console.error('Error in submit:', error);
     } finally {
-      // Reset button state after a short delay
       setTimeout(() => {
         setButtonState('idle');
       }, 1000);
@@ -67,13 +67,160 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
     } catch (error) {
       console.error('Error in next:', error);
     } finally {
-      // Reset button state after a short delay
       setTimeout(() => {
         setButtonState('idle');
       }, 500);
     }
   };
 
+  // Mobile-optimized layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Mobile Header - Fixed */}
+        <div className="bg-card border-b px-4 py-3 sticky top-0 z-10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                {exercise.difficulty}
+              </Badge>
+              <span className="text-sm font-medium">Translation</span>
+            </div>
+            {onPlayAudio && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onPlayAudio}
+                disabled={audioLoading}
+                className="text-xs px-2 py-1"
+              >
+                <Volume2 className="h-3 w-3 mr-1" />
+                {audioLoading ? 'Loading' : 'Listen'}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Content - Scrollable */}
+        <div className="flex-1 flex flex-col">
+          {/* English Sentence */}
+          <div className="px-4 py-6 bg-muted/50">
+            <p className="text-lg font-medium text-center leading-relaxed">
+              "{exercise.sentence}"
+            </p>
+          </div>
+
+          {/* Translation Hint */}
+          <div className="px-4 py-4 border-b">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleTranslation}
+              className="w-full justify-center text-sm"
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              {showTranslation ? 'Hide hint' : 'Show hint'}
+            </Button>
+            
+            {showTranslation && exercise.translation && (
+              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-sm text-center">
+                <p className="text-blue-700 dark:text-blue-300">
+                  Expected: {exercise.translation}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Response Area */}
+          <div className="flex-1 flex flex-col px-4 py-4">
+            <div className="mb-3">
+              <p className="text-sm text-muted-foreground text-center">
+                Translate into {settings.selectedLanguage}:
+              </p>
+            </div>
+            
+            <Textarea
+              value={userResponse}
+              onChange={(e) => onResponseChange(e.target.value)}
+              placeholder={`Type your ${settings.selectedLanguage} translation...`}
+              disabled={showResult || loading || buttonState === 'processing'}
+              className={`flex-1 text-base resize-none ${
+                showResult
+                  ? isCorrect
+                    ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                    : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                  : ''
+              }`}
+              rows={4}
+            />
+
+            {showResult && (
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center justify-center gap-2">
+                  {isCorrect ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  )}
+                  <Badge variant={isCorrect ? 'default' : 'destructive'}>
+                    {isCorrect ? 'Great translation!' : 'Try again next time'}
+                  </Badge>
+                </div>
+
+                {exercise.explanation && (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                      Grammar Note:
+                    </p>
+                    <p className="text-blue-700 dark:text-blue-300 text-sm">
+                      {exercise.explanation}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Action Button - Fixed */}
+          <div className="p-4 border-t bg-card">
+            {!showResult ? (
+              <Button
+                onClick={handleSubmitClick}
+                disabled={!userResponse.trim() || loading || buttonState === 'processing'}
+                className="w-full py-3 text-base"
+                size="lg"
+              >
+                {buttonState === 'processing' && (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                )}
+                {buttonState === 'processing' || loading ? 'Checking...' : 'Submit Translation'}
+              </Button>
+            ) : (
+              <Button
+                onClick={handleNextClick}
+                disabled={buttonState === 'processing'}
+                className="w-full py-3 text-base"
+                size="lg"
+              >
+                {buttonState === 'processing' ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    Continue <ArrowRight className="h-4 w-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop layout (keep existing code)
   return (
     <div className="space-y-4">
       {/* Header */}
