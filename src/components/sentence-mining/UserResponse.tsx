@@ -24,7 +24,7 @@ export const UserResponse: React.FC<UserResponseProps> = ({
   loading,
   explanation,
 }) => {
-  const [buttonState, setButtonState] = useState<'idle' | 'processing' | 'success'>('idle');
+  const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
 
   // Handle button click with proper feedback
   const handleSubmitClick = async () => {
@@ -34,15 +34,13 @@ export const UserResponse: React.FC<UserResponseProps> = ({
     
     try {
       await onSubmit();
-      setButtonState('success');
-      
+    } catch (error) {
+      console.error('Error in submit:', error);
+    } finally {
       // Reset button state after a short delay
       setTimeout(() => {
         setButtonState('idle');
       }, 1000);
-    } catch (error) {
-      console.error('Error in submit:', error);
-      setButtonState('idle');
     }
   };
 
@@ -53,15 +51,13 @@ export const UserResponse: React.FC<UserResponseProps> = ({
     
     try {
       await onNext();
-      setButtonState('success');
-      
+    } catch (error) {
+      console.error('Error in next:', error);
+    } finally {
       // Reset button state after a short delay
       setTimeout(() => {
         setButtonState('idle');
       }, 500);
-    } catch (error) {
-      console.error('Error in next:', error);
-      setButtonState('idle');
     }
   };
 
@@ -72,17 +68,6 @@ export const UserResponse: React.FC<UserResponseProps> = ({
     }
   }, [showResult]);
 
-  const getButtonText = () => {
-    if (buttonState === 'processing') return 'Processing...';
-    if (loading) return 'Checking...';
-    return 'Submit';
-  };
-
-  const getNextButtonText = () => {
-    if (buttonState === 'processing') return 'Loading...';
-    return 'Next';
-  };
-
   return (
     <Card className="w-full">
       <CardContent className="pt-6">
@@ -92,12 +77,12 @@ export const UserResponse: React.FC<UserResponseProps> = ({
               <Button
                 onClick={handleSubmitClick}
                 disabled={loading || buttonState === 'processing'}
-                className="px-6 py-3 text-base transition-all duration-200 hover:scale-105 active:scale-95 min-w-[120px]"
+                className="px-6 py-3 text-base transition-all duration-200 hover:scale-105 active:scale-95 min-w-[140px]"
               >
                 {buttonState === 'processing' && (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 )}
-                {getButtonText()}
+                {buttonState === 'processing' || loading ? 'Checking...' : 'Submit'}
               </Button>
             ) : (
               <Button
@@ -108,11 +93,11 @@ export const UserResponse: React.FC<UserResponseProps> = ({
                 {buttonState === 'processing' ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    {getNextButtonText()}
+                    Loading...
                   </>
                 ) : (
                   <>
-                    {getNextButtonText()} <ArrowRight className="h-4 w-4" />
+                    Next <ArrowRight className="h-4 w-4" />
                   </>
                 )}
               </Button>

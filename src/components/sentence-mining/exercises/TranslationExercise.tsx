@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Volume2, CheckCircle, XCircle, Eye, ArrowRight } from 'lucide-react';
+import { Volume2, CheckCircle, XCircle, Eye, ArrowRight, Loader2 } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 interface TranslationExerciseProps {
   exercise: SentenceMiningExercise;
@@ -36,13 +37,50 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
   showTranslation,
   onToggleTranslation,
 }) => {
+  const { settings } = useUserSettingsContext();
+  const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
+
+  const handleSubmitClick = async () => {
+    if (buttonState === 'processing' || loading) return;
+    
+    setButtonState('processing');
+    
+    try {
+      await onSubmit();
+    } catch (error) {
+      console.error('Error in submit:', error);
+    } finally {
+      // Reset button state after a short delay
+      setTimeout(() => {
+        setButtonState('idle');
+      }, 1000);
+    }
+  };
+
+  const handleNextClick = async () => {
+    if (buttonState === 'processing' || loading) return;
+    
+    setButtonState('processing');
+    
+    try {
+      await onNext();
+    } catch (error) {
+      console.error('Error in next:', error);
+    } finally {
+      // Reset button state after a short delay
+      setTimeout(() => {
+        setButtonState('idle');
+      }, 500);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Translate into English:</CardTitle>
+            <CardTitle className="text-lg">Translate into {settings.selectedLanguage}:</CardTitle>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="capitalize">
                 {exercise.difficulty}
@@ -65,7 +103,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
         
         <CardContent>
           <div className="space-y-4">
-            {/* Original sentence */}
+            {/* English sentence to translate */}
             <div className="p-4 bg-muted rounded-lg">
               <p className="text-xl font-medium text-center">
                 "{exercise.sentence}"
@@ -103,8 +141,8 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             <Textarea
               value={userResponse}
               onChange={(e) => onResponseChange(e.target.value)}
-              placeholder="Type your English translation here..."
-              disabled={showResult || loading}
+              placeholder={`Type your ${settings.selectedLanguage} translation here...`}
+              disabled={showResult || loading || buttonState === 'processing'}
               className={`min-h-20 text-lg transition-all duration-200 ${
                 showResult
                   ? isCorrect
@@ -117,18 +155,31 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             <div className="flex justify-end">
               {!showResult ? (
                 <Button
-                  onClick={onSubmit}
-                  disabled={!userResponse.trim() || loading}
-                  className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
+                  onClick={handleSubmitClick}
+                  disabled={!userResponse.trim() || loading || buttonState === 'processing'}
+                  className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[140px]"
                 >
-                  {loading ? 'Checking...' : 'Submit Translation'}
+                  {buttonState === 'processing' && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
+                  {buttonState === 'processing' || loading ? 'Checking...' : 'Submit Translation'}
                 </Button>
               ) : (
                 <Button
-                  onClick={onNext}
-                  className="px-8 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
+                  onClick={handleNextClick}
+                  disabled={buttonState === 'processing'}
+                  className="px-8 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[120px]"
                 >
-                  Continue <ArrowRight className="h-4 w-4" />
+                  {buttonState === 'processing' ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      Continue <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
                 </Button>
               )}
             </div>

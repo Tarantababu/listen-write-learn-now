@@ -112,12 +112,6 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
               }`}
               placeholder="___"
             />
-            {/* Short translation hint positioned below the input */}
-            <TranslationHint 
-              word={targetWord} 
-              language={settings.selectedLanguage}
-              getTranslation={getShortTranslationFromOpenAI}
-            />
           </div>
         );
       }
@@ -152,26 +146,42 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
       </CardHeader>
       
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="p-4 md:p-6 bg-muted rounded-lg">
-            <p className="text-lg md:text-xl leading-relaxed pb-12">
+            <p className="text-lg md:text-xl leading-relaxed">
               {renderSentenceWithBlank(exercise.sentence, exercise.targetWord)}
             </p>
           </div>
           
+          {/* Translation hint moved to separate section */}
+          <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-center justify-center">
+              <div className="text-center">
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                  English hint:
+                </p>
+                <TranslationHint 
+                  word={exercise.targetWord} 
+                  language={settings.selectedLanguage}
+                  getTranslation={getShortTranslationFromOpenAI}
+                />
+              </div>
+            </div>
+          </div>
+          
           {exercise.context && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
                 Context:
               </p>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
+              <p className="text-sm text-amber-700 dark:text-amber-300">
                 {exercise.context}
               </p>
             </div>
           )}
           
           <div className="text-sm text-muted-foreground">
-            <p>Fill in the blank with the missing word in {settings.selectedLanguage}. The hint below shows a short English translation.</p>
+            <p>Fill in the blank with the missing word in {settings.selectedLanguage}. Use the English hint above to help you.</p>
           </div>
         </div>
       </CardContent>
@@ -200,12 +210,10 @@ const TranslationHint: React.FC<{
   }, [word, language, getTranslation]);
 
   return (
-    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-4 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-600 rounded-lg shadow-md z-50 whitespace-nowrap min-w-max">
+    <div className="px-4 py-2 text-base bg-white dark:bg-blue-800/50 border border-blue-300 dark:border-blue-600 rounded-lg shadow-sm">
       <div className="text-center font-medium text-blue-800 dark:text-blue-200">
         {loading ? 'loading...' : translation || 'translation unavailable'}
       </div>
-      {/* Arrow pointing up to the input */}
-      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-100 dark:bg-blue-900/30 border-l border-t border-blue-300 dark:border-blue-600 rotate-45"></div>
     </div>
   );
 };
