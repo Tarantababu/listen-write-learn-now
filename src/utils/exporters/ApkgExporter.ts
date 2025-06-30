@@ -356,7 +356,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         ]
       );
 
-      // Insert card with safe integer values
+      // Insert card with SAFE VALUES that meet Anki's requirements
       db.run(
         `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -369,12 +369,12 @@ export class ApkgExporter extends BaseVocabularyExporter {
           -1,                           // usn (update sequence number)
           0,                            // type (0 = new)
           0,                            // queue (0 = new)
-          index + 1,                    // due (due date)
-          0,                            // ivl (interval)
-          0,                            // factor
+          baseTime + (index * 86400),   // due (due date in seconds, spaced out by days)
+          0,                            // ivl (interval in days)
+          2500,                         // factor (ease factor, must be >= 1300, default 2500)
           0,                            // reps (repetitions)
           0,                            // lapses
-          0,                            // left
+          1001,                         // left (learning steps remaining, 1001 for new cards)
           0,                            // odue (original due)
           0,                            // odid (original deck id)
           0,                            // flags
