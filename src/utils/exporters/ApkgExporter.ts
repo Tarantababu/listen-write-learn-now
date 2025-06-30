@@ -30,7 +30,8 @@ export class ApkgExporter extends BaseVocabularyExporter {
           if (file.data) {
             const filename = `${i}.mp3`;
             zip.file(filename, file.data, { base64: true });
-            media[filename] = filename;
+            // Fix: Media map should use string index as key, filename as value
+            media[i.toString()] = filename;
           }
         }
       }
@@ -62,10 +63,10 @@ export class ApkgExporter extends BaseVocabularyExporter {
       // Create all required Anki tables
       this.createTables(db);
       
-      // Use safe, small timestamps and IDs
-      const baseTime = Math.floor(Date.now() / 1000);
+      // Use minimal, safe values
+      const baseTime = 1640995200; // Fixed timestamp: 2022-01-01 00:00:00 UTC
       const deckId = 1;
-      const modelId = 1000000; // Smaller, safer model ID
+      const modelId = 1000; // Much smaller model ID
       
       console.log('Base timestamp:', baseTime, 'Model ID:', modelId);
       
@@ -176,7 +177,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
     console.log('Inserting collection data...');
     
     try {
-      // Deck configuration with safe integer values
+      // Minimal deck configuration
       const decks = {
         [deckId]: {
           id: deckId,
@@ -196,7 +197,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         }
       };
 
-      // Note type (model) configuration
+      // Simplified note type (model) configuration
       const models = {
         [modelId]: {
           id: modelId,
@@ -242,7 +243,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         }
       };
 
-      // Deck configuration with safe values
+      // Minimal deck configuration
       const dconf = {
         1: {
           id: 1,
@@ -282,7 +283,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         }
       };
 
-      // Collection configuration with safe values
+      // Minimal collection configuration
       const conf = {
         nextPos: 1,
         estTimes: true,
@@ -299,7 +300,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         collapseTime: 1200
       };
 
-      // Insert collection data with properly bounded values
+      // Insert collection data with safe values
       db.run(
         `INSERT INTO col (id, crt, mod, scm, ver, dty, usn, ls, conf, models, decks, dconf, tags) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -332,9 +333,9 @@ export class ApkgExporter extends BaseVocabularyExporter {
     
     try {
       vocabulary.forEach((item, index) => {
-        // Generate safe, sequential IDs starting from smaller numbers
-        const noteId = 100000 + index;  // Much smaller base number
-        const cardId = 200000 + index;  // Much smaller base number
+        // Use very simple, safe ID generation
+        const noteId = 1000 + index;  // Start from 1000
+        const cardId = 2000 + index;  // Start from 2000
         
         // Prepare fields with proper sanitization
         const front = this.sanitizeText(item.word);
@@ -344,7 +345,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
           back += `<br><br><i>${this.sanitizeText(item.exampleSentence)}</i>`;
         }
         
-        // Add audio if available
+        // Add audio if available and media was processed
         if (item.audioUrl && options.includeAudio) {
           back += `<br>[sound:${index}.mp3]`;
         }
@@ -363,7 +364,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
             noteId,                        // id
             guid,                          // guid
             modelId,                       // mid (model id)
-            baseTime,                      // mod (modification time, no offset)
+            baseTime,                      // mod (modification time)
             -1,                            // usn (update sequence number)
             item.language || '',           // tags
             fields,                        // flds (fields)
@@ -374,7 +375,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
           ]
         );
 
-        // Insert card with safe Anki-compliant values for new cards
+        // Insert card with minimal safe values for new cards
         db.run(
           `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -383,16 +384,16 @@ export class ApkgExporter extends BaseVocabularyExporter {
             noteId,                        // nid (note id)
             deckId,                        // did (deck id)
             0,                             // ord (ordinal)
-            baseTime,                      // mod (modification time, no offset)
+            baseTime,                      // mod (modification time)
             -1,                            // usn (update sequence number)
             0,                             // type (0 = new)
             0,                             // queue (0 = new)
-            index + 1,                     // due (simple day number for new cards, NOT timestamp)
+            index + 1,                     // due (simple sequential number)
             0,                             // ivl (interval in days)
-            0,                             // factor (0 for new cards, not 2500)
+            0,                             // factor (0 for new cards)
             0,                             // reps (repetitions)
             0,                             // lapses
-            0,                             // left (0 for new cards, not 1001)
+            0,                             // left (0 for new cards)
             0,                             // odue (original due)
             0,                             // odid (original deck id)
             0,                             // flags
@@ -431,17 +432,17 @@ export class ApkgExporter extends BaseVocabularyExporter {
   }
 
   private calculateChecksum(text: string): number {
-    // Simplified checksum that stays within safe 32-bit signed integer range
+    // Very simple checksum that stays within tiny range
     if (!text || text.length === 0) return 0;
     
     let hash = 0;
     for (let i = 0; i < text.length; i++) {
       const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash + char) & 0x7FFFFFFF; // Keep within 31-bit range
+      hash = (hash + char) % 65536; // Keep within 16-bit range
     }
     
-    // Ensure positive result within SQLite INTEGER range
-    const result = Math.abs(hash) % 1000000; // Keep it small and positive
+    // Ensure positive result within very safe range
+    const result = Math.abs(hash) % 10000; // Keep it very small
     console.log(`Checksum for "${text.substring(0, 20)}...": ${result}`);
     return result;
   }
