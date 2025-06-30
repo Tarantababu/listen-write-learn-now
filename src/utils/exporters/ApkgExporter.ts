@@ -1,4 +1,3 @@
-
 import JSZip from 'jszip';
 import initSqlJs from 'sql.js';
 import { VocabularyItem } from '@/types';
@@ -61,12 +60,12 @@ export class ApkgExporter extends BaseVocabularyExporter {
     // Create all required Anki tables
     this.createTables(db);
     
-    // Generate base timestamps (in seconds, not milliseconds)
+    // Generate safe timestamps and IDs
     const baseTime = Math.floor(Date.now() / 1000);
     const deckId = 1;
-    const modelId = 1649441468; // Use a reasonable fixed model ID
+    const modelId = Math.floor(Date.now() / 1000); // Use current timestamp as model ID
     
-    console.log('Base timestamp:', baseTime);
+    console.log('Base timestamp:', baseTime, 'Model ID:', modelId);
     
     // Insert collection configuration
     this.insertCollectionData(db, baseTime, modelId, deckId, options.deckName);
@@ -291,15 +290,15 @@ export class ApkgExporter extends BaseVocabularyExporter {
       collapseTime: 1200
     };
 
-    // Insert collection data with proper integer values
+    // Insert collection data with safe integer values
     db.run(
       `INSERT INTO col (id, crt, mod, scm, ver, dty, usn, ls, conf, models, decks, dconf, tags) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         1,                              // id
         baseTime,                       // crt (creation time)
-        baseTime * 1000,               // mod (modification time in milliseconds)
-        baseTime * 1000,               // scm (schema modification time)
+        baseTime,                       // mod (modification time - keep as seconds, not milliseconds)
+        baseTime,                       // scm (schema modification time - keep as seconds)
         11,                            // ver (version)
         0,                             // dty (dirty)
         0,                             // usn (update sequence number)
@@ -317,9 +316,9 @@ export class ApkgExporter extends BaseVocabularyExporter {
     console.log('Inserting', vocabulary.length, 'notes and cards...');
     
     vocabulary.forEach((item, index) => {
-      // Generate safe IDs within proper integer ranges
-      const noteId = baseTime + index + 1;
-      const cardId = baseTime + index + 10000;
+      // Generate safe IDs using a more controlled approach
+      const noteId = 1000000 + index; // Start from 1 million to avoid conflicts
+      const cardId = 2000000 + index; // Start from 2 million to avoid conflicts
       
       // Prepare fields
       const front = this.sanitizeText(item.word);
@@ -336,7 +335,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
       
       const fields = `${front}\x1f${back}`;
       const guid = this.generateGuid();
-      const csum = this.calculateChecksum(front);
+      const csum = this.calculateSafeChecksum(front);
       
       // Insert note with safe integer values
       db.run(
@@ -386,20 +385,27 @@ export class ApkgExporter extends BaseVocabularyExporter {
   }
 
   private generateGuid(): string {
-    // Generate a simple 8-character hex string
-    return Array.from({ length: 8 }, () => 
-      Math.floor(Math.random() * 16).toString(16)
-    ).join('');
+    // Generate a proper 10-character base62 GUID as expected by Anki
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+    let result = '';
+    for (let i = 0; i < 10; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
   }
 
-  private calculateChecksum(text: string): number {
-    // Simple checksum calculation that stays within safe integer range
+  private calculateSafeChecksum(text: string): number {
+    // Use a simpler, safer checksum calculation that stays within 32-bit signed integer range
     let hash = 0;
+    if (text.length === 0) return hash;
+    
     for (let i = 0; i < text.length; i++) {
       const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash + char) & 0x7fffffff; // Keep within 32-bit signed integer range
+      hash = ((hash << 5) - hash + char);
+      // Keep hash within 32-bit signed integer range
+      hash = hash & 0x7FFFFFFF;
     }
-    return hash;
+    return Math.abs(hash);
   }
 
   private async processMediaFiles(vocabulary: VocabularyItem[]): Promise<Array<{ data: string | null, url?: string }>> {
