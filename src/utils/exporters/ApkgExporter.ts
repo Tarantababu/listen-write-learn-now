@@ -57,27 +57,32 @@ export class ApkgExporter extends BaseVocabularyExporter {
     
     const db = new SQL.Database();
     
-    // Create all required Anki tables
-    this.createTables(db);
-    
-    // Generate safe timestamps and IDs
-    const baseTime = Math.floor(Date.now() / 1000);
-    const deckId = 1;
-    const modelId = Math.floor(Date.now() / 1000); // Use current timestamp as model ID
-    
-    console.log('Base timestamp:', baseTime, 'Model ID:', modelId);
-    
-    // Insert collection configuration
-    this.insertCollectionData(db, baseTime, modelId, deckId, options.deckName);
-    
-    // Insert notes and cards
-    this.insertNotesAndCards(db, vocabulary, options, baseTime, modelId, deckId);
-    
-    const data = db.export();
-    db.close();
-    
-    console.log('Database created successfully, size:', data.length, 'bytes');
-    return data;
+    try {
+      // Create all required Anki tables
+      this.createTables(db);
+      
+      // Use safer timestamp generation
+      const baseTime = Math.floor(Date.now() / 1000);
+      const deckId = 1;
+      const modelId = 1000000000; // Use a fixed large number to avoid conflicts
+      
+      console.log('Base timestamp:', baseTime, 'Model ID:', modelId);
+      
+      // Insert collection configuration
+      this.insertCollectionData(db, baseTime, modelId, deckId, options.deckName);
+      
+      // Insert notes and cards
+      this.insertNotesAndCards(db, vocabulary, options, baseTime, modelId, deckId);
+      
+      const data = db.export();
+      console.log('Database created successfully, size:', data.length, 'bytes');
+      return data;
+    } catch (error) {
+      console.error('Database creation error:', error);
+      throw error;
+    } finally {
+      db.close();
+    }
   }
 
   private createTables(db: any): void {
@@ -167,245 +172,277 @@ export class ApkgExporter extends BaseVocabularyExporter {
   }
 
   private insertCollectionData(db: any, baseTime: number, modelId: number, deckId: number, deckName: string): void {
-    // Deck configuration
-    const decks = {
-      [deckId]: {
-        id: deckId,
-        name: deckName,
-        extendRev: 50,
-        usn: 0,
-        collapsed: false,
-        newToday: [0, 0],
-        revToday: [0, 0],
-        lrnToday: [0, 0],
-        timeToday: [0, 0],
-        conf: 1,
-        desc: "",
-        dyn: 0,
-        extendNew: 10,
-        mod: baseTime
-      }
-    };
+    console.log('Inserting collection data...');
+    
+    try {
+      // Deck configuration with safe integer values
+      const decks = {
+        [deckId]: {
+          id: deckId,
+          name: deckName,
+          extendRev: 50,
+          usn: 0,
+          collapsed: false,
+          newToday: [0, 0],
+          revToday: [0, 0],
+          lrnToday: [0, 0],
+          timeToday: [0, 0],
+          conf: 1,
+          desc: "",
+          dyn: 0,
+          extendNew: 10,
+          mod: baseTime
+        }
+      };
 
-    // Note type (model) configuration
-    const models = {
-      [modelId]: {
-        id: modelId,
-        name: "Basic",
-        type: 0,
-        mod: baseTime,
-        usn: 0,
-        sortf: 0,
-        did: deckId,
-        tmpls: [
-          {
-            name: "Card 1",
-            ord: 0,
-            qfmt: "{{Front}}",
-            afmt: "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}",
-            did: null,
-            bqfmt: "",
-            bafmt: ""
-          }
-        ],
-        flds: [
-          {
-            name: "Front",
-            ord: 0,
-            sticky: false,
-            rtl: false,
-            font: "Arial",
-            size: 20
+      // Note type (model) configuration
+      const models = {
+        [modelId]: {
+          id: modelId,
+          name: "Basic",
+          type: 0,
+          mod: baseTime,
+          usn: 0,
+          sortf: 0,
+          did: deckId,
+          tmpls: [
+            {
+              name: "Card 1",
+              ord: 0,
+              qfmt: "{{Front}}",
+              afmt: "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}",
+              did: null,
+              bqfmt: "",
+              bafmt: ""
+            }
+          ],
+          flds: [
+            {
+              name: "Front",
+              ord: 0,
+              sticky: false,
+              rtl: false,
+              font: "Arial",
+              size: 20
+            },
+            {
+              name: "Back",
+              ord: 1,
+              sticky: false,
+              rtl: false,
+              font: "Arial",
+              size: 20
+            }
+          ],
+          css: ".card {\n font-family: arial;\n font-size: 20px;\n text-align: center;\n color: black;\n background-color: white;\n}\n",
+          latexPre: "\\documentclass[12pt]{article}\n\\special{papersize=3in,5in}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amssymb,amsmath}\n\\pagestyle{empty}\n\\setlength{\\parindent}{0in}\n\\begin{document}\n",
+          latexPost: "\\end{document}",
+          req: [[0, "any", [0]]]
+        }
+      };
+
+      // Deck configuration with safe values
+      const dconf = {
+        1: {
+          id: 1,
+          name: "Default",
+          replayq: true,
+          lapse: {
+            delays: [10],
+            mult: 0,
+            minInt: 1,
+            leechFails: 8,
+            leechAction: 0
           },
-          {
-            name: "Back",
-            ord: 1,
-            sticky: false,
-            rtl: false,
-            font: "Arial",
-            size: 20
-          }
-        ],
-        css: ".card {\n font-family: arial;\n font-size: 20px;\n text-align: center;\n color: black;\n background-color: white;\n}\n",
-        latexPre: "\\documentclass[12pt]{article}\n\\special{papersize=3in,5in}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amssymb,amsmath}\n\\pagestyle{empty}\n\\setlength{\\parindent}{0in}\n\\begin{document}\n",
-        latexPost: "\\end{document}",
-        req: [[0, "any", [0]]]
-      }
-    };
+          rev: {
+            perDay: 200,
+            ease4: 1.3,
+            fuzz: 0.05,
+            minSpace: 1,
+            ivlFct: 1,
+            maxIvl: 36500,
+            bury: true,
+            hardFactor: 1.2
+          },
+          new: {
+            perDay: 20,
+            delays: [1, 10],
+            separate: true,
+            ints: [1, 4, 7],
+            initialFactor: 2500,
+            bury: true,
+            order: 1
+          },
+          timer: 0,
+          maxTaken: 60,
+          usn: 0,
+          mod: baseTime,
+          autoplay: true
+        }
+      };
 
-    // Deck configuration
-    const dconf = {
-      1: {
-        id: 1,
-        name: "Default",
-        replayq: true,
-        lapse: {
-          delays: [10],
-          mult: 0,
-          minInt: 1,
-          leechFails: 8,
-          leechAction: 0
-        },
-        rev: {
-          perDay: 200,
-          ease4: 1.3,
-          fuzz: 0.05,
-          minSpace: 1,
-          ivlFct: 1,
-          maxIvl: 36500,
-          bury: true,
-          hardFactor: 1.2
-        },
-        new: {
-          perDay: 20,
-          delays: [1, 10],
-          separate: true,
-          ints: [1, 4, 7],
-          initialFactor: 2500,
-          bury: true,
-          order: 1
-        },
-        timer: 0,
-        maxTaken: 60,
-        usn: 0,
-        mod: baseTime,
-        autoplay: true
-      }
-    };
+      // Collection configuration with safe values
+      const conf = {
+        nextPos: 1,
+        estTimes: true,
+        activeDecks: [deckId],
+        sortType: "noteFld",
+        timeLim: 0,
+        sortBackwards: false,
+        addToCur: true,
+        curDeck: deckId,
+        newBury: true,
+        newSpread: 0,
+        dueCounts: true,
+        curModel: modelId,
+        collapseTime: 1200
+      };
 
-    // Collection configuration
-    const conf = {
-      nextPos: 1,
-      estTimes: true,
-      activeDecks: [deckId],
-      sortType: "noteFld",
-      timeLim: 0,
-      sortBackwards: false,
-      addToCur: true,
-      curDeck: deckId,
-      newBury: true,
-      newSpread: 0,
-      dueCounts: true,
-      curModel: modelId,
-      collapseTime: 1200
-    };
-
-    // Insert collection data with safe integer values
-    db.run(
-      `INSERT INTO col (id, crt, mod, scm, ver, dty, usn, ls, conf, models, decks, dconf, tags) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        1,                              // id
-        baseTime,                       // crt (creation time)
-        baseTime,                       // mod (modification time - keep as seconds, not milliseconds)
-        baseTime,                       // scm (schema modification time - keep as seconds)
-        11,                            // ver (version)
-        0,                             // dty (dirty)
-        0,                             // usn (update sequence number)
-        0,                             // ls (last sync)
-        JSON.stringify(conf),          // conf
-        JSON.stringify(models),        // models
-        JSON.stringify(decks),         // decks
-        JSON.stringify(dconf),         // dconf
-        JSON.stringify({})             // tags
-      ]
-    );
+      // Insert collection data with properly bounded values
+      db.run(
+        `INSERT INTO col (id, crt, mod, scm, ver, dty, usn, ls, conf, models, decks, dconf, tags) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          1,                              // id
+          baseTime,                       // crt (creation time)
+          baseTime,                       // mod (modification time)
+          baseTime,                       // scm (schema modification time)
+          11,                             // ver (version)
+          0,                              // dty (dirty)
+          0,                              // usn (update sequence number)
+          0,                              // ls (last sync)
+          JSON.stringify(conf),           // conf
+          JSON.stringify(models),         // models
+          JSON.stringify(decks),          // decks
+          JSON.stringify(dconf),          // dconf
+          JSON.stringify({})              // tags
+        ]
+      );
+      
+      console.log('Collection data inserted successfully');
+    } catch (error) {
+      console.error('Error inserting collection data:', error);
+      throw error;
+    }
   }
 
   private insertNotesAndCards(db: any, vocabulary: VocabularyItem[], options: ExportOptions, baseTime: number, modelId: number, deckId: number): void {
     console.log('Inserting', vocabulary.length, 'notes and cards...');
     
-    vocabulary.forEach((item, index) => {
-      // Generate safe IDs using a more controlled approach
-      const noteId = 1000000 + index; // Start from 1 million to avoid conflicts
-      const cardId = 2000000 + index; // Start from 2 million to avoid conflicts
-      
-      // Prepare fields
-      const front = this.sanitizeText(item.word);
-      let back = this.sanitizeText(item.definition);
-      
-      if (item.exampleSentence) {
-        back += `<br><br><i>${this.sanitizeText(item.exampleSentence)}</i>`;
-      }
-      
-      // Add audio if available
-      if (item.audioUrl && options.includeAudio) {
-        back += `<br>[sound:${index}.mp3]`;
-      }
-      
-      const fields = `${front}\x1f${back}`;
-      const guid = this.generateGuid();
-      const csum = this.calculateSafeChecksum(front);
-      
-      // Insert note with safe integer values
-      db.run(
-        `INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          noteId,                        // id
-          guid,                          // guid
-          modelId,                       // mid (model id)
-          baseTime,                      // mod (modification time)
-          -1,                           // usn (update sequence number)
-          item.language || '',          // tags
-          fields,                       // flds (fields)
-          front,                        // sfld (sort field)
-          csum,                         // csum (checksum)
-          0,                            // flags
-          ""                            // data
-        ]
-      );
+    try {
+      vocabulary.forEach((item, index) => {
+        // Generate sequential IDs to avoid conflicts
+        const noteId = 1000000 + index;
+        const cardId = 2000000 + index;
+        
+        // Prepare fields with proper sanitization
+        const front = this.sanitizeText(item.word);
+        let back = this.sanitizeText(item.definition);
+        
+        if (item.exampleSentence) {
+          back += `<br><br><i>${this.sanitizeText(item.exampleSentence)}</i>`;
+        }
+        
+        // Add audio if available
+        if (item.audioUrl && options.includeAudio) {
+          back += `<br>[sound:${index}.mp3]`;
+        }
+        
+        const fields = `${front}\x1f${back}`;
+        const guid = this.generateAnkiGuid();
+        const csum = this.calculateChecksum(front);
+        
+        console.log(`Processing item ${index}: noteId=${noteId}, cardId=${cardId}, csum=${csum}`);
+        
+        // Insert note with validated values
+        db.run(
+          `INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            noteId,                        // id
+            guid,                          // guid
+            modelId,                       // mid (model id)
+            baseTime + index,              // mod (modification time, slightly offset)
+            -1,                            // usn (update sequence number)
+            item.language || '',           // tags
+            fields,                        // flds (fields)
+            front,                         // sfld (sort field)
+            csum,                          // csum (checksum)
+            0,                             // flags
+            ""                             // data
+          ]
+        );
 
-      // Insert card with SAFE VALUES that meet Anki's requirements
-      db.run(
-        `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          cardId,                       // id
-          noteId,                       // nid (note id)
-          deckId,                       // did (deck id)
-          0,                            // ord (ordinal)
-          baseTime,                     // mod (modification time)
-          -1,                           // usn (update sequence number)
-          0,                            // type (0 = new)
-          0,                            // queue (0 = new)
-          baseTime + (index * 86400),   // due (due date in seconds, spaced out by days)
-          0,                            // ivl (interval in days)
-          2500,                         // factor (ease factor, must be >= 1300, default 2500)
-          0,                            // reps (repetitions)
-          0,                            // lapses
-          1001,                         // left (learning steps remaining, 1001 for new cards)
-          0,                            // odue (original due)
-          0,                            // odid (original deck id)
-          0,                            // flags
-          ""                            // data
-        ]
-      );
-    });
+        // Insert card with Anki-compliant values
+        db.run(
+          `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            cardId,                        // id
+            noteId,                        // nid (note id)
+            deckId,                        // did (deck id)
+            0,                             // ord (ordinal)
+            baseTime + index,              // mod (modification time, slightly offset)
+            -1,                            // usn (update sequence number)
+            0,                             // type (0 = new)
+            0,                             // queue (0 = new)
+            baseTime + index + 1,          // due (due date, must be > 0)
+            0,                             // ivl (interval in days)
+            2500,                          // factor (ease factor, must be >= 1300)
+            0,                             // reps (repetitions)
+            0,                             // lapses
+            1001,                          // left (learning steps remaining, 1001 for new cards)
+            0,                             // odue (original due)
+            0,                             // odid (original deck id)
+            0,                             // flags
+            ""                             // data
+          ]
+        );
+      });
+      
+      console.log('All notes and cards inserted successfully');
+    } catch (error) {
+      console.error('Error inserting notes and cards:', error);
+      throw error;
+    }
   }
 
-  private generateGuid(): string {
+  private generateAnkiGuid(): string {
     // Generate a proper 10-character base62 GUID as expected by Anki
     const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
     let result = '';
-    for (let i = 0; i < 10; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    
+    // Use crypto.getRandomValues for better randomness if available
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      const array = new Uint8Array(10);
+      crypto.getRandomValues(array);
+      for (let i = 0; i < 10; i++) {
+        result += chars.charAt(array[i] % chars.length);
+      }
+    } else {
+      // Fallback to Math.random
+      for (let i = 0; i < 10; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
     }
+    
     return result;
   }
 
-  private calculateSafeChecksum(text: string): number {
-    // Use a simpler, safer checksum calculation that stays within 32-bit signed integer range
-    let hash = 0;
-    if (text.length === 0) return hash;
+  private calculateChecksum(text: string): number {
+    // Use a more robust checksum that guarantees staying within SQLite's safe range
+    if (!text || text.length === 0) return 0;
     
+    let hash = 0;
     for (let i = 0; i < text.length; i++) {
       const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash + char);
-      // Keep hash within 32-bit signed integer range
-      hash = hash & 0x7FFFFFFF;
+      hash = ((hash << 5) - hash + char) & 0x7FFFFFFF; // Keep within 31-bit signed integer
     }
-    return Math.abs(hash);
+    
+    // Ensure the result is positive and within a safe range
+    const result = Math.abs(hash) % 2147483647; // Max 32-bit signed integer
+    console.log(`Checksum for "${text.substring(0, 20)}...": ${result}`);
+    return result;
   }
 
   private async processMediaFiles(vocabulary: VocabularyItem[]): Promise<Array<{ data: string | null, url?: string }>> {
