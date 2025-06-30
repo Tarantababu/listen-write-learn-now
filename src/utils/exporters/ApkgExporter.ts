@@ -1,3 +1,4 @@
+
 import JSZip from 'jszip';
 import initSqlJs from 'sql.js';
 import { VocabularyItem } from '@/types';
@@ -61,10 +62,10 @@ export class ApkgExporter extends BaseVocabularyExporter {
       // Create all required Anki tables
       this.createTables(db);
       
-      // Use safer timestamp generation
+      // Use safe, small timestamps and IDs
       const baseTime = Math.floor(Date.now() / 1000);
       const deckId = 1;
-      const modelId = 1000000000; // Use a fixed large number to avoid conflicts
+      const modelId = 1000000; // Smaller, safer model ID
       
       console.log('Base timestamp:', baseTime, 'Model ID:', modelId);
       
@@ -331,9 +332,9 @@ export class ApkgExporter extends BaseVocabularyExporter {
     
     try {
       vocabulary.forEach((item, index) => {
-        // Generate sequential IDs to avoid conflicts
-        const noteId = 1000000 + index;
-        const cardId = 2000000 + index;
+        // Generate safe, sequential IDs starting from smaller numbers
+        const noteId = 100000 + index;  // Much smaller base number
+        const cardId = 200000 + index;  // Much smaller base number
         
         // Prepare fields with proper sanitization
         const front = this.sanitizeText(item.word);
@@ -362,7 +363,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
             noteId,                        // id
             guid,                          // guid
             modelId,                       // mid (model id)
-            baseTime + index,              // mod (modification time, slightly offset)
+            baseTime,                      // mod (modification time, no offset)
             -1,                            // usn (update sequence number)
             item.language || '',           // tags
             fields,                        // flds (fields)
@@ -373,7 +374,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
           ]
         );
 
-        // Insert card with Anki-compliant values
+        // Insert card with safe Anki-compliant values for new cards
         db.run(
           `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -382,16 +383,16 @@ export class ApkgExporter extends BaseVocabularyExporter {
             noteId,                        // nid (note id)
             deckId,                        // did (deck id)
             0,                             // ord (ordinal)
-            baseTime + index,              // mod (modification time, slightly offset)
+            baseTime,                      // mod (modification time, no offset)
             -1,                            // usn (update sequence number)
             0,                             // type (0 = new)
             0,                             // queue (0 = new)
-            baseTime + index + 1,          // due (due date, must be > 0)
+            index + 1,                     // due (simple day number for new cards, NOT timestamp)
             0,                             // ivl (interval in days)
-            2500,                          // factor (ease factor, must be >= 1300)
+            0,                             // factor (0 for new cards, not 2500)
             0,                             // reps (repetitions)
             0,                             // lapses
-            1001,                          // left (learning steps remaining, 1001 for new cards)
+            0,                             // left (0 for new cards, not 1001)
             0,                             // odue (original due)
             0,                             // odid (original deck id)
             0,                             // flags
@@ -430,17 +431,17 @@ export class ApkgExporter extends BaseVocabularyExporter {
   }
 
   private calculateChecksum(text: string): number {
-    // Use a more robust checksum that guarantees staying within SQLite's safe range
+    // Simplified checksum that stays within safe 32-bit signed integer range
     if (!text || text.length === 0) return 0;
     
     let hash = 0;
     for (let i = 0; i < text.length; i++) {
       const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash + char) & 0x7FFFFFFF; // Keep within 31-bit signed integer
+      hash = ((hash << 5) - hash + char) & 0x7FFFFFFF; // Keep within 31-bit range
     }
     
-    // Ensure the result is positive and within a safe range
-    const result = Math.abs(hash) % 2147483647; // Max 32-bit signed integer
+    // Ensure positive result within SQLite INTEGER range
+    const result = Math.abs(hash) % 1000000; // Keep it small and positive
     console.log(`Checksum for "${text.substring(0, 20)}...": ${result}`);
     return result;
   }
