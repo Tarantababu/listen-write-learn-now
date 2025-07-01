@@ -26,10 +26,10 @@ export class ApkgExporter extends BaseVocabularyExporter {
         console.log('Adding media files to archive...');
         for (const mediaFile of mediaMapping.files) {
           if (mediaFile.data) {
-            // Ensure we're adding the file with the correct name as referenced in media map
-            const filename = `${mediaFile.index}.mp3`;
+            // Use the EXACT filename from the media map
+            const filename = mediaMapping.map[mediaFile.index.toString()];
             zip.file(filename, mediaFile.data, { base64: true });
-            console.log(`Added media file: ${filename}`);
+            console.log(`Added media file: ${filename} (index: ${mediaFile.index})`);
           }
         }
         
@@ -93,12 +93,14 @@ export class ApkgExporter extends BaseVocabularyExporter {
             throw new Error('Failed to extract base64 data');
           }
           
+          // Generate filename with proper extension
           const filename = `${mediaIndex}.mp3`;
           
-          // CRITICAL: The media map uses index as key, filename as value
-          // This is the correct Anki format: "0" -> "0.mp3"
+          // CRITICAL FIX: Media map format must be consistent
+          // Anki expects: index (as string) -> filename
           mediaMap[mediaIndex.toString()] = filename;
           
+          // Only add files that were successfully processed
           mediaFiles.push({
             index: mediaIndex,
             data: base64Data,
@@ -112,19 +114,21 @@ export class ApkgExporter extends BaseVocabularyExporter {
         } catch (error) {
           console.error(`Failed to fetch audio for item ${i} (${item.word}):`, error);
           // Continue without this audio file - don't break the entire export
+          // IMPORTANT: Don't increment mediaIndex if the file failed to process
         }
       }
     }
     
     console.log(`Created media mapping: ${mediaFiles.length} files, indices 0-${mediaIndex - 1}`);
     console.log('Final media map:', mediaMap);
+    console.log('Item to media index mapping:', Array.from(itemToMediaIndex.entries()));
     return { map: mediaMap, files: mediaFiles, itemToMediaIndex };
   }
 
   private async createAnkiDatabase(
     vocabulary: VocabularyItem[], 
     options: ExportOptions, 
-    mediaMapping: { map: Record<string, string>; files: Array<{ index: number; data: string | null; originalIndex: number }>; itemToMediaIndex: Map<number, number> }
+    mediaMapping: { map: Record<string, string>; itemToMediaIndex: Map<number, number> }
   ): Promise<Uint8Array> {
     console.log('Creating Anki database...');
     
@@ -139,9 +143,9 @@ export class ApkgExporter extends BaseVocabularyExporter {
       this.createTables(db);
       
       // Use minimal, safe values
-      const baseTime = Math.floor(Date.now() / 1000); // Current timestamp for better compatibility
+      const baseTime = Math.floor(Date.now() / 1000);
       const deckId = 1;
-      const modelId = 1000; // Much smaller model ID
+      const modelId = 1000;
       
       console.log('Base timestamp:', baseTime, 'Model ID:', modelId);
       
@@ -410,15 +414,15 @@ export class ApkgExporter extends BaseVocabularyExporter {
     baseTime: number, 
     modelId: number, 
     deckId: number,
-    mediaMapping: { map: Record<string, string>; files: Array<{ index: number; data: string | null; originalIndex: number }>; itemToMediaIndex: Map<number, number> }
+    mediaMapping: { map: Record<string, string>; itemToMediaIndex: Map<number, number> }
   ): void {
     console.log('Inserting', vocabulary.length, 'notes and cards...');
     
     try {
       vocabulary.forEach((item, index) => {
         // Use very simple, safe ID generation
-        const noteId = 1000 + index;  // Start from 1000
-        const cardId = 2000 + index;  // Start from 2000
+        const noteId = 1000 + index;
+        const cardId = 2000 + index;
         
         // Prepare fields with proper sanitization
         const front = this.sanitizeText(item.word);
@@ -428,19 +432,16 @@ export class ApkgExporter extends BaseVocabularyExporter {
           back += `<br><br><i>${this.sanitizeText(item.exampleSentence)}</i>`;
         }
         
-        // Add audio reference only if this item has a corresponding media file AND the file was successfully processed
+        // CRITICAL FIX: Only add audio if we have a successful media mapping
         if (item.audioUrl && options.includeAudio && mediaMapping.itemToMediaIndex.has(index)) {
           const mediaIndex = mediaMapping.itemToMediaIndex.get(index)!;
-          const expectedFilename = `${mediaIndex}.mp3`;
+          const filename = mediaMapping.map[mediaIndex.toString()];
           
-          // Double-check that this media file actually exists in our files array
-          const mediaFileExists = mediaMapping.files.some(f => f.index === mediaIndex && f.data !== null);
-          
-          if (mediaFileExists) {
-            back += `<br>[sound:${expectedFilename}]`;
-            console.log(`Added audio reference for item ${index}: ${expectedFilename}`);
+          if (filename) {
+            back += `<br>[sound:${filename}]`;
+            console.log(`Added audio reference for item ${index}: ${filename} (media index: ${mediaIndex})`);
           } else {
-            console.warn(`Skipping audio reference for item ${index}: media file ${expectedFilename} not found in processed files`);
+            console.warn(`Media mapping inconsistency: media index ${mediaIndex} not found in map for item ${index}`);
           }
         }
         
@@ -448,7 +449,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         const guid = this.generateAnkiGuid();
         const csum = this.calculateChecksum(front);
         
-        console.log(`Processing item ${index}: noteId=${noteId}, cardId=${cardId}, csum=${csum}`);
+        console.log(`Processing item ${index}: noteId=${noteId}, cardId=${cardId}, guid=${guid}, csum=${csum}`);
         
         // Insert note with validated values
         db.run(
