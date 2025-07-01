@@ -5,42 +5,53 @@ import type { ExportFormat, ExportOptions, ExportResult } from "@/types/export"
 import { BaseVocabularyExporter } from "./BaseVocabularyExporter"
 import { EXPORT_FORMATS } from "@/types/export"
 
+interface ProcessedMediaFile {
+  originalItemIndex: number
+  mediaIndex: number
+  filename: string
+  data: string
+  itemId: string
+}
+
 export class ApkgExporter extends BaseVocabularyExporter {
   format: ExportFormat = EXPORT_FORMATS.find((f) => f.id === "apkg")!
 
   async export(vocabulary: VocabularyItem[], options: ExportOptions): Promise<ExportResult> {
     try {
       console.log("Starting APKG export for", vocabulary.length, "items")
+      console.log("Sample item structure:", vocabulary[0])
 
       const zip = new JSZip()
 
-      // Create media mapping first to get correct indices
-      const mediaMapping = await this.createMediaMapping(vocabulary, options)
+      // Process media files with bulletproof indexing
+      const mediaData = await this.processMediaFiles(vocabulary, options)
+      console.log("Media processing complete:", {
+        totalItems: vocabulary.length,
+        itemsWithAudio: vocabulary.filter((item) => this.getAudioUrl(item)).length,
+        successfulMediaFiles: mediaData.files.length,
+        mediaMap: mediaData.mediaMap,
+      })
 
       // Create the collection.anki2 SQLite database file
-      const dbArrayBuffer = await this.createAnkiDatabase(vocabulary, options, mediaMapping)
+      const dbArrayBuffer = await this.createAnkiDatabase(vocabulary, options, mediaData)
       zip.file("collection.anki2", dbArrayBuffer)
 
-      // Add media files to zip with correct filenames - ONLY successfully processed files
-      if (options.includeAudio && mediaMapping.successfulFiles.length > 0) {
-        console.log("Adding media files to archive...")
-        for (const mediaFile of mediaMapping.successfulFiles) {
-          const filename = `${mediaFile.finalIndex}.mp3`
-          zip.file(filename, mediaFile.data, { base64: true })
-          console.log(`Added media file: ${filename} for original item ${mediaFile.originalIndex}`)
+      // Add media files to ZIP - only the ones we successfully processed
+      if (options.includeAudio && mediaData.files.length > 0) {
+        console.log("Adding media files to ZIP archive...")
+        for (const mediaFile of mediaData.files) {
+          zip.file(mediaFile.filename, mediaFile.data, { base64: true })
+          console.log(
+            `✓ Added to ZIP: ${mediaFile.filename} (item ${mediaFile.originalItemIndex}: ${mediaFile.itemId})`,
+          )
         }
 
-        // Create media mapping file - only include successfully processed files
-        const validMediaMap: Record<string, string> = {}
-        for (const mediaFile of mediaMapping.successfulFiles) {
-          validMediaMap[mediaFile.finalIndex.toString()] = `${mediaFile.finalIndex}.mp3`
-        }
-
-        const mediaMapJson = JSON.stringify(validMediaMap)
+        // Create media mapping file
+        const mediaMapJson = JSON.stringify(mediaData.mediaMap)
         zip.file("media", mediaMapJson)
-        console.log("Media mapping file content:", mediaMapJson)
+        console.log("Media map created:", mediaMapJson)
       } else {
-        // Always create media file, even if empty
+        // Always create empty media file
         zip.file("media", JSON.stringify({}))
         console.log("Created empty media file")
       }
@@ -48,82 +59,101 @@ export class ApkgExporter extends BaseVocabularyExporter {
       const blob = await zip.generateAsync({ type: "blob" })
       const filename = this.generateFilename(options.deckName, this.format.fileExtension)
 
-      console.log("APKG export completed successfully")
-      console.log("Media files in archive:", mediaMapping.successfulFiles.length)
+      console.log("✅ APKG export completed successfully")
+      console.log("Final summary:", {
+        totalCards: vocabulary.length,
+        mediaFilesInArchive: mediaData.files.length,
+        archiveSize: blob.size,
+      })
 
       return this.createSuccessResult(blob, filename)
     } catch (error) {
-      console.error("APKG export error:", error)
+      console.error("❌ APKG export error:", error)
       return this.createErrorResult("Failed to create APKG file: " + (error as Error).message)
     }
   }
 
-  private async createMediaMapping(
+  private async processMediaFiles(
     vocabulary: VocabularyItem[],
     options: ExportOptions,
   ): Promise<{
-    successfulFiles: Array<{ originalIndex: number; finalIndex: number; data: string }>
+    files: ProcessedMediaFile[]
+    mediaMap: Record<string, string>
     itemToMediaIndex: Map<number, number>
   }> {
-    const successfulFiles: Array<{ originalIndex: number; finalIndex: number; data: string }> = []
+    const files: ProcessedMediaFile[] = []
+    const mediaMap: Record<string, string> = {}
     const itemToMediaIndex = new Map<number, number>()
 
     if (!options.includeAudio) {
-      return { successfulFiles, itemToMediaIndex }
+      console.log("Audio not included in export options")
+      return { files, mediaMap, itemToMediaIndex }
     }
 
-    let finalMediaIndex = 0
+    console.log("Processing media files...")
+    let mediaIndex = 0
 
-    for (let i = 0; i < vocabulary.length; i++) {
-      const item = vocabulary[i]
+    for (let itemIndex = 0; itemIndex < vocabulary.length; itemIndex++) {
+      const item = vocabulary[itemIndex]
+      const audioUrl = this.getAudioUrl(item)
+      const itemId = this.getItemId(item)
 
-      if (item.audioUrl) {
-        try {
-          console.log(`Processing audio for item ${i}: ${item.word}`)
-          const response = await fetch(item.audioUrl)
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-          }
+      if (!audioUrl) {
+        console.log(`Item ${itemIndex} (${itemId}): No audio URL`)
+        continue
+      }
 
-          const blob = await response.blob()
-          const base64 = await this.blobToBase64(blob)
+      try {
+        console.log(`Processing audio for item ${itemIndex} (${itemId}): ${audioUrl}`)
 
-          // Extract only the base64 data part (remove data:audio/mp3;base64, prefix)
-          const base64Data = base64.includes(",") ? base64.split(",")[1] : base64
-
-          if (!base64Data) {
-            throw new Error("Failed to extract base64 data")
-          }
-
-          // Only add to successful files if we have valid data
-          successfulFiles.push({
-            originalIndex: i,
-            finalIndex: finalMediaIndex,
-            data: base64Data,
-          })
-
-          // Map the original item index to the final media index
-          itemToMediaIndex.set(i, finalMediaIndex)
-
-          console.log(`Successfully processed media file ${finalMediaIndex} for item ${i}`)
-          finalMediaIndex++
-        } catch (error) {
-          console.error(`Failed to fetch audio for item ${i} (${item.word}):`, error)
-          // Don't add anything to successfulFiles or itemToMediaIndex for failed items
-          // This ensures no references to non-existent files
+        const response = await fetch(audioUrl)
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
         }
+
+        const blob = await response.blob()
+        console.log(`Downloaded blob for item ${itemIndex}: ${blob.size} bytes, type: ${blob.type}`)
+
+        const base64 = await this.blobToBase64(blob)
+        const base64Data = base64.includes(",") ? base64.split(",")[1] : base64
+
+        if (!base64Data) {
+          throw new Error("Failed to extract base64 data")
+        }
+
+        // Create filename and add to our collections
+        const filename = `${mediaIndex}.mp3`
+
+        const processedFile: ProcessedMediaFile = {
+          originalItemIndex: itemIndex,
+          mediaIndex: mediaIndex,
+          filename: filename,
+          data: base64Data,
+          itemId: itemId,
+        }
+
+        files.push(processedFile)
+        mediaMap[mediaIndex.toString()] = filename
+        itemToMediaIndex.set(itemIndex, mediaIndex)
+
+        console.log(`✅ Successfully processed media ${mediaIndex} for item ${itemIndex} (${itemId})`)
+        mediaIndex++
+      } catch (error) {
+        console.error(`❌ Failed to process audio for item ${itemIndex} (${itemId}):`, error)
+        // Don't add anything for failed items - this ensures no broken references
       }
     }
 
-    console.log(`Created media mapping: ${successfulFiles.length} successful files`)
-    return { successfulFiles, itemToMediaIndex }
+    console.log(`Media processing complete: ${files.length} files successfully processed`)
+    return { files, mediaMap, itemToMediaIndex }
   }
 
   private async createAnkiDatabase(
     vocabulary: VocabularyItem[],
     options: ExportOptions,
-    mediaMapping: {
-      successfulFiles: Array<{ originalIndex: number; finalIndex: number; data: string }>
+    mediaData: {
+      files: ProcessedMediaFile[]
+      mediaMap: Record<string, string>
       itemToMediaIndex: Map<number, number>
     },
   ): Promise<Uint8Array> {
@@ -136,31 +166,131 @@ export class ApkgExporter extends BaseVocabularyExporter {
     const db = new SQL.Database()
 
     try {
-      // Create all required Anki tables
       this.createTables(db)
 
-      // Use minimal, safe values
       const baseTime = Math.floor(Date.now() / 1000)
       const deckId = 1
       const modelId = 1000
 
-      console.log("Base timestamp:", baseTime, "Model ID:", modelId)
-
-      // Insert collection configuration
       this.insertCollectionData(db, baseTime, modelId, deckId, options.deckName)
-
-      // Insert notes and cards
-      this.insertNotesAndCards(db, vocabulary, options, baseTime, modelId, deckId, mediaMapping)
+      this.insertNotesAndCards(db, vocabulary, options, baseTime, modelId, deckId, mediaData)
 
       const data = db.export()
-      console.log("Database created successfully, size:", data.length, "bytes")
+      console.log("✅ Database created successfully, size:", data.length, "bytes")
       return data
     } catch (error) {
-      console.error("Database creation error:", error)
+      console.error("❌ Database creation error:", error)
       throw error
     } finally {
       db.close()
     }
+  }
+
+  private insertNotesAndCards(
+    db: any,
+    vocabulary: VocabularyItem[],
+    options: ExportOptions,
+    baseTime: number,
+    modelId: number,
+    deckId: number,
+    mediaData: {
+      files: ProcessedMediaFile[]
+      mediaMap: Record<string, string>
+      itemToMediaIndex: Map<number, number>
+    },
+  ): void {
+    console.log("Inserting notes and cards...")
+
+    try {
+      vocabulary.forEach((item, index) => {
+        const noteId = 1000 + index
+        const cardId = 2000 + index
+        const itemId = this.getItemId(item)
+
+        // Get the correct field values based on actual JSON structure
+        const front = this.sanitizeText(this.getFrontText(item))
+        let back = this.getBackText(item) // Already HTML formatted
+
+        // Add audio reference ONLY if we have a successfully processed media file
+        const audioUrl = this.getAudioUrl(item)
+        if (audioUrl && options.includeAudio && mediaData.itemToMediaIndex.has(index)) {
+          const mediaIndex = mediaData.itemToMediaIndex.get(index)!
+
+          // Double-check that this media file actually exists in our processed files
+          const mediaFile = mediaData.files.find((f) => f.originalItemIndex === index && f.mediaIndex === mediaIndex)
+
+          if (mediaFile && mediaData.mediaMap[mediaIndex.toString()]) {
+            const filename = mediaData.mediaMap[mediaIndex.toString()]
+            back += `<br><br>[sound:${filename}]`
+            console.log(`✅ Added audio reference for item ${index} (${itemId}): [sound:${filename}]`)
+          } else {
+            console.warn(
+              `⚠️ Skipping audio reference for item ${index} (${itemId}): media file not found in processed files`,
+            )
+          }
+        }
+
+        const fields = `${front}\x1f${back}`
+        const guid = this.generateAnkiGuid()
+        const csum = this.calculateChecksum(front)
+
+        console.log(`Processing card ${index}: noteId=${noteId}, cardId=${cardId}, itemId=${itemId}`)
+
+        // Insert note
+        db.run(
+          `INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [noteId, guid, modelId, baseTime, -1, this.getItemTags(item), fields, front, csum, 0, ""],
+        )
+
+        // Insert card
+        db.run(
+          `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [cardId, noteId, deckId, 0, baseTime, -1, 0, 0, index + 1, 0, 0, 0, 0, 0, 0, 0, 0, ""],
+        )
+      })
+
+      console.log("✅ All notes and cards inserted successfully")
+    } catch (error) {
+      console.error("❌ Error inserting notes and cards:", error)
+      throw error
+    }
+  }
+
+  // Helper methods to handle different JSON structures
+  private getItemId(item: any): string {
+    return item.id || item.word || item.front || `item_${Math.random()}`
+  }
+
+  private getFrontText(item: any): string {
+    return item.front || item.word || ""
+  }
+
+  private getBackText(item: any): string {
+    // If back is already HTML formatted, use it as-is
+    if (item.back) {
+      return item.back
+    }
+
+    // Fallback to building from definition and example
+    let back = this.sanitizeText(item.definition || "")
+    if (item.exampleSentence || item.example) {
+      const example = item.exampleSentence || item.example
+      back += `<br><br><i>${this.sanitizeText(example)}</i>`
+    }
+    return back
+  }
+
+  private getAudioUrl(item: any): string | null {
+    return item.audio || item.audioUrl || null
+  }
+
+  private getItemTags(item: any): string {
+    if (Array.isArray(item.tags)) {
+      return item.tags.join(" ")
+    }
+    return item.language || item.tags || ""
   }
 
   private createTables(db: any): void {
@@ -239,7 +369,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
       )
     `)
 
-    // Graves table (for deletions)
+    // Graves table
     db.run(`
       CREATE TABLE graves (
         usn INTEGER NOT NULL,
@@ -253,7 +383,6 @@ export class ApkgExporter extends BaseVocabularyExporter {
     console.log("Inserting collection data...")
 
     try {
-      // Minimal deck configuration
       const decks = {
         [deckId]: {
           id: deckId,
@@ -273,7 +402,6 @@ export class ApkgExporter extends BaseVocabularyExporter {
         },
       }
 
-      // Simplified note type (model) configuration
       const models = {
         [modelId]: {
           id: modelId,
@@ -320,7 +448,6 @@ export class ApkgExporter extends BaseVocabularyExporter {
         },
       }
 
-      // Minimal deck configuration
       const dconf = {
         1: {
           id: 1,
@@ -360,7 +487,6 @@ export class ApkgExporter extends BaseVocabularyExporter {
         },
       }
 
-      // Minimal collection configuration
       const conf = {
         nextPos: 1,
         estTimes: true,
@@ -377,145 +503,37 @@ export class ApkgExporter extends BaseVocabularyExporter {
         collapseTime: 1200,
       }
 
-      // Insert collection data with safe values
       db.run(
         `INSERT INTO col (id, crt, mod, scm, ver, dty, usn, ls, conf, models, decks, dconf, tags) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          1, // id
-          baseTime, // crt (creation time)
-          baseTime, // mod (modification time)
-          baseTime, // scm (schema modification time)
-          11, // ver (version)
-          0, // dty (dirty)
-          0, // usn (update sequence number)
-          0, // ls (last sync)
-          JSON.stringify(conf), // conf
-          JSON.stringify(models), // models
-          JSON.stringify(decks), // decks
-          JSON.stringify(dconf), // dconf
-          JSON.stringify({}), // tags
+          1,
+          baseTime,
+          baseTime,
+          baseTime,
+          11,
+          0,
+          0,
+          0,
+          JSON.stringify(conf),
+          JSON.stringify(models),
+          JSON.stringify(decks),
+          JSON.stringify(dconf),
+          JSON.stringify({}),
         ],
       )
 
-      console.log("Collection data inserted successfully")
+      console.log("✅ Collection data inserted successfully")
     } catch (error) {
-      console.error("Error inserting collection data:", error)
-      throw error
-    }
-  }
-
-  private insertNotesAndCards(
-    db: any,
-    vocabulary: VocabularyItem[],
-    options: ExportOptions,
-    baseTime: number,
-    modelId: number,
-    deckId: number,
-    mediaMapping: {
-      successfulFiles: Array<{ originalIndex: number; finalIndex: number; data: string }>
-      itemToMediaIndex: Map<number, number>
-    },
-  ): void {
-    console.log("Inserting", vocabulary.length, "notes and cards...")
-
-    try {
-      vocabulary.forEach((item, index) => {
-        // Use very simple, safe ID generation
-        const noteId = 1000 + index // Start from 1000
-        const cardId = 2000 + index // Start from 2000
-
-        // Prepare fields with proper sanitization
-        const front = this.sanitizeText(item.word)
-        let back = this.sanitizeText(item.definition)
-
-        if (item.exampleSentence) {
-          back += `<br><br><i>${this.sanitizeText(item.exampleSentence)}</i>`
-        }
-
-        // CRITICAL FIX: Only add audio reference if the media file exists in our successful files
-        if (item.audioUrl && options.includeAudio && mediaMapping.itemToMediaIndex.has(index)) {
-          const finalMediaIndex = mediaMapping.itemToMediaIndex.get(index)!
-
-          // Double-check that this media file actually exists in our successful files
-          const mediaFileExists = mediaMapping.successfulFiles.some(
-            (f) => f.originalIndex === index && f.finalIndex === finalMediaIndex,
-          )
-
-          if (mediaFileExists) {
-            const filename = `${finalMediaIndex}.mp3`
-            back += `<br>[sound:${filename}]`
-            console.log(`Added audio reference for item ${index}: ${filename}`)
-          } else {
-            console.warn(`Skipping audio reference for item ${index}: media file not found in successful files`)
-          }
-        }
-
-        const fields = `${front}\x1f${back}`
-        const guid = this.generateAnkiGuid()
-        const csum = this.calculateChecksum(front)
-
-        console.log(`Processing item ${index}: noteId=${noteId}, cardId=${cardId}, csum=${csum}`)
-
-        // Insert note with validated values
-        db.run(
-          `INSERT INTO notes (id, guid, mid, mod, usn, tags, flds, sfld, csum, flags, data) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            noteId, // id
-            guid, // guid
-            modelId, // mid (model id)
-            baseTime, // mod (modification time)
-            -1, // usn (update sequence number)
-            item.language || "", // tags
-            fields, // flds (fields)
-            front, // sfld (sort field)
-            csum, // csum (checksum)
-            0, // flags
-            "", // data
-          ],
-        )
-
-        // Insert card with minimal safe values for new cards
-        db.run(
-          `INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            cardId, // id
-            noteId, // nid (note id)
-            deckId, // did (deck id)
-            0, // ord (ordinal)
-            baseTime, // mod (modification time)
-            -1, // usn (update sequence number)
-            0, // type (0 = new)
-            0, // queue (0 = new)
-            index + 1, // due (simple sequential number)
-            0, // ivl (interval in days)
-            0, // factor (0 for new cards)
-            0, // reps (repetitions)
-            0, // lapses
-            0, // left (0 for new cards)
-            0, // odue (original due)
-            0, // odid (original deck id)
-            0, // flags
-            "", // data
-          ],
-        )
-      })
-
-      console.log("All notes and cards inserted successfully")
-    } catch (error) {
-      console.error("Error inserting notes and cards:", error)
+      console.error("❌ Error inserting collection data:", error)
       throw error
     }
   }
 
   private generateAnkiGuid(): string {
-    // Generate a proper 10-character base62 GUID as expected by Anki
     const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     let result = ""
 
-    // Use crypto.getRandomValues for better randomness if available
     if (typeof crypto !== "undefined" && crypto.getRandomValues) {
       const array = new Uint8Array(10)
       crypto.getRandomValues(array)
@@ -523,7 +541,6 @@ export class ApkgExporter extends BaseVocabularyExporter {
         result += chars.charAt(array[i] % chars.length)
       }
     } else {
-      // Fallback to Math.random
       for (let i = 0; i < 10; i++) {
         result += chars.charAt(Math.floor(Math.random() * chars.length))
       }
@@ -533,19 +550,15 @@ export class ApkgExporter extends BaseVocabularyExporter {
   }
 
   private calculateChecksum(text: string): number {
-    // Anki-compatible checksum calculation
     if (!text || text.length === 0) return 0
 
     let hash = 0
     for (let i = 0; i < text.length; i++) {
       const char = text.charCodeAt(i)
-      hash = ((hash << 5) - hash + char) & 0xffffffff // Use bitwise AND to ensure 32-bit
+      hash = ((hash << 5) - hash + char) & 0xffffffff
     }
 
-    // Convert to positive integer and keep within reasonable range
-    const result = Math.abs(hash) % 2147483647
-    console.log(`Checksum for "${text.substring(0, 20)}...": ${result}`)
-    return result
+    return Math.abs(hash) % 2147483647
   }
 
   private blobToBase64(blob: Blob): Promise<string> {
