@@ -32,12 +32,16 @@ export class ApkgExporter extends BaseVocabularyExporter {
             console.log(`Added media file: ${filename}`);
           }
         }
+        
+        // Create media mapping file - this is crucial for Anki to find media files
+        const mediaMapJson = JSON.stringify(mediaMapping.map);
+        zip.file('media', mediaMapJson);
+        console.log('Media mapping file content:', mediaMapJson);
+      } else {
+        // Always create media file, even if empty
+        zip.file('media', JSON.stringify({}));
+        console.log('Created empty media file');
       }
-      
-      // Create media mapping file - this is crucial for Anki to find media files
-      const mediaMapJson = JSON.stringify(mediaMapping.map);
-      zip.file('media', mediaMapJson);
-      console.log('Media mapping file content:', mediaMapJson);
       
       const blob = await zip.generateAsync({ type: 'blob' });
       const filename = this.generateFilename(options.deckName, this.format.fileExtension);
@@ -91,7 +95,8 @@ export class ApkgExporter extends BaseVocabularyExporter {
           
           const filename = `${mediaIndex}.mp3`;
           
-          // The media map should map the index (as string) to the filename
+          // CRITICAL: The media map uses index as key, filename as value
+          // This is the correct Anki format: "0" -> "0.mp3"
           mediaMap[mediaIndex.toString()] = filename;
           
           mediaFiles.push({
@@ -144,7 +149,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
       this.insertCollectionData(db, baseTime, modelId, deckId, options.deckName);
       
       // Insert notes and cards
-      this.insertNotesAndCards(db, vocabulary, options, baseTime, modelId, deckId, mediaMapping.itemToMediaIndex);
+      this.insertNotesAndCards(db, vocabulary, options, baseTime, modelId, deckId, mediaMapping);
       
       const data = db.export();
       console.log('Database created successfully, size:', data.length, 'bytes');
@@ -405,7 +410,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
     baseTime: number, 
     modelId: number, 
     deckId: number,
-    itemToMediaIndex: Map<number, number>
+    mediaMapping: { map: Record<string, string>; files: Array<{ index: number; data: string | null; originalIndex: number }>; itemToMediaIndex: Map<number, number> }
   ): void {
     console.log('Inserting', vocabulary.length, 'notes and cards...');
     
@@ -423,11 +428,20 @@ export class ApkgExporter extends BaseVocabularyExporter {
           back += `<br><br><i>${this.sanitizeText(item.exampleSentence)}</i>`;
         }
         
-        // Add audio reference only if this item has a corresponding media file
-        if (item.audioUrl && options.includeAudio && itemToMediaIndex.has(index)) {
-          const mediaIndex = itemToMediaIndex.get(index)!;
-          back += `<br>[sound:${mediaIndex}.mp3]`;
-          console.log(`Added audio reference for item ${index}: ${mediaIndex}.mp3`);
+        // Add audio reference only if this item has a corresponding media file AND the file was successfully processed
+        if (item.audioUrl && options.includeAudio && mediaMapping.itemToMediaIndex.has(index)) {
+          const mediaIndex = mediaMapping.itemToMediaIndex.get(index)!;
+          const expectedFilename = `${mediaIndex}.mp3`;
+          
+          // Double-check that this media file actually exists in our files array
+          const mediaFileExists = mediaMapping.files.some(f => f.index === mediaIndex && f.data !== null);
+          
+          if (mediaFileExists) {
+            back += `<br>[sound:${expectedFilename}]`;
+            console.log(`Added audio reference for item ${index}: ${expectedFilename}`);
+          } else {
+            console.warn(`Skipping audio reference for item ${index}: media file ${expectedFilename} not found in processed files`);
+          }
         }
         
         const fields = `${front}\x1f${back}`;
