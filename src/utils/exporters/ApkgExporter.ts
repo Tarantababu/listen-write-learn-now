@@ -124,7 +124,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
   private async createAnkiDatabase(
     vocabulary: VocabularyItem[], 
     options: ExportOptions, 
-    mediaMapping: { map: Record<string, string>; itemToMediaIndex: Map<number, number> }
+    mediaMapping: { map: Record<string, string>; files: Array<{ index: number; data: string | null; originalIndex: number }>; itemToMediaIndex: Map<number, number> }
   ): Promise<Uint8Array> {
     console.log('Creating Anki database...');
     
