@@ -26,6 +26,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         console.log('Adding media files to archive...');
         for (const mediaFile of mediaMapping.files) {
           if (mediaFile.data) {
+            // mediaFile.data is already base64-encoded, so we don't need { base64: true }
             zip.file(`${mediaFile.index}.mp3`, mediaFile.data, { base64: true });
           }
         }
@@ -77,7 +78,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
           mediaMap[mediaIndex.toString()] = filename;
           mediaFiles.push({
             index: mediaIndex,
-            data: base64.split(',')[1],
+            data: base64.split(',')[1], // Remove the data:audio/mp3;base64, prefix
             originalIndex: i
           });
           itemToMediaIndex.set(i, mediaIndex);
