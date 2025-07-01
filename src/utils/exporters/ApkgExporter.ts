@@ -15,6 +15,7 @@ interface ProcessedCard {
   hasSuccessfulAudio: boolean
   audioFilename: string | null
   audioData?: string
+  mediaIndex?: number // The actual index in the media map
 }
 
 export class ApkgExporter extends BaseVocabularyExporter {
@@ -23,24 +24,26 @@ export class ApkgExporter extends BaseVocabularyExporter {
   async export(vocabulary: VocabularyItem[], options: ExportOptions): Promise<ExportResult> {
     try {
       console.log("🚀 Starting APKG export for", vocabulary.length, "items")
-      console.log("Sample item:", vocabulary[0])
 
-      // Step 1: Process all cards and download audio in one pass
+      // Step 1: Process all cards and download audio
       const processedCards = await this.processAllCards(vocabulary, options)
 
-      // Step 2: Create ZIP with media files
-      const zip = new JSZip()
-      const mediaMap = await this.addMediaToZip(zip, processedCards)
+      // Step 2: Assign sequential media indices only to successful audio files
+      const cardsWithMediaIndices = this.assignMediaIndices(processedCards)
 
-      // Step 3: Create database with exact media references
-      const dbBuffer = await this.createDatabase(processedCards, options)
+      // Step 3: Create ZIP with properly indexed media files
+      const zip = new JSZip()
+      const mediaMap = await this.addMediaToZip(zip, cardsWithMediaIndices)
+
+      // Step 4: Create database with exact media references
+      const dbBuffer = await this.createDatabase(cardsWithMediaIndices, options)
       zip.file("collection.anki2", dbBuffer)
 
-      // Step 4: Generate final APKG
+      // Step 5: Generate final APKG
       const blob = await zip.generateAsync({ type: "blob" })
       const filename = this.generateFilename(options.deckName, this.format.fileExtension)
 
-      const successfulAudio = processedCards.filter((card) => card.hasSuccessfulAudio).length
+      const successfulAudio = cardsWithMediaIndices.filter((card) => card.hasSuccessfulAudio).length
       console.log("🎉 APKG export completed!")
       console.log(`📊 Stats: ${vocabulary.length} cards, ${successfulAudio} audio files, ${blob.size} bytes`)
       console.log("📋 Final media map:", mediaMap)
@@ -87,11 +90,11 @@ export class ApkgExporter extends BaseVocabularyExporter {
           const blob = await response.blob()
           audioData = await this.convertBlobToBase64(blob)
 
-          // Use simple sequential numbering for audio files
-          audioFilename = `${i}.mp3`
+          // Temporary filename - will be renamed during media indexing
+          audioFilename = `temp_${i}.mp3`
           hasSuccessfulAudio = true
 
-          console.log(`✅ Successfully downloaded audio for card ${i}: ${audioFilename}`)
+          console.log(`✅ Successfully downloaded audio for card ${i}`)
         } catch (error) {
           console.error(`❌ Failed to download audio for card ${i}:`, error)
           hasSuccessfulAudio = false
@@ -119,30 +122,49 @@ export class ApkgExporter extends BaseVocabularyExporter {
     return processedCards
   }
 
+  private assignMediaIndices(processedCards: ProcessedCard[]): ProcessedCard[] {
+    console.log("🔢 Assigning sequential media indices...")
+
+    let mediaIndex = 0
+
+    for (const card of processedCards) {
+      if (card.hasSuccessfulAudio && card.audioData) {
+        // Assign sequential media index and proper filename
+        card.mediaIndex = mediaIndex
+        card.audioFilename = `${mediaIndex}.mp3`
+
+        console.log(`📁 Card ${card.index} → Media index ${mediaIndex} → Filename: ${card.audioFilename}`)
+        mediaIndex++
+      }
+    }
+
+    console.log(`🔢 Assigned ${mediaIndex} sequential media indices`)
+    return processedCards
+  }
+
   private async addMediaToZip(zip: JSZip, processedCards: ProcessedCard[]): Promise<Record<string, string>> {
     console.log("📁 Adding media files to ZIP...")
 
     const mediaMap: Record<string, string> = {}
 
-    // Add media files and create proper mapping
+    // Add only cards with successful audio and assigned media indices
     for (const card of processedCards) {
-      if (card.hasSuccessfulAudio && card.audioFilename && card.audioData) {
+      if (card.hasSuccessfulAudio && card.audioFilename && card.audioData && card.mediaIndex !== undefined) {
         try {
-          // Add file to ZIP
+          // Add file to ZIP with the proper sequential filename
           zip.file(card.audioFilename, card.audioData, { base64: true })
 
-          // CRITICAL: Use the card index as the media map key
-          // This ensures the media map matches what Anki expects
-          mediaMap[card.index.toString()] = card.audioFilename
+          // Create media map entry: mediaIndex → filename
+          mediaMap[card.mediaIndex.toString()] = card.audioFilename
 
-          console.log(`✅ Added to ZIP: ${card.audioFilename} (media map key: ${card.index})`)
+          console.log(`✅ Added to ZIP: ${card.audioFilename} (card ${card.index} → media index ${card.mediaIndex})`)
         } catch (error) {
           console.error(`❌ Error adding media to ZIP for card ${card.index}:`, error)
         }
       }
     }
 
-    // Create media mapping file - this is crucial for Anki to find the audio files
+    // Create media mapping file
     const mediaMapJson = JSON.stringify(mediaMap)
     zip.file("media", mediaMapJson)
     console.log("📋 Media map created:", mediaMapJson)
@@ -198,19 +220,17 @@ export class ApkgExporter extends BaseVocabularyExporter {
         backContent += `<br><br><i>${card.example}</i>`
       }
 
-      // Add audio reference ONLY if we successfully processed the audio
-      if (options.includeAudio && card.hasSuccessfulAudio && card.audioFilename) {
+      // Add audio reference ONLY if we have successful audio with assigned media index
+      if (options.includeAudio && card.hasSuccessfulAudio && card.audioFilename && card.mediaIndex !== undefined) {
         backContent += `<br><br>[sound:${card.audioFilename}]`
-        console.log(`🎵 Added audio reference for card ${i}: [sound:${card.audioFilename}]`)
+        console.log(
+          `🎵 Added audio reference for card ${i}: [sound:${card.audioFilename}] (media index: ${card.mediaIndex})`,
+        )
       }
 
       const fields = `${card.front}\x1f${backContent}`
       const guid = this.generateGuid()
       const checksum = this.calculateChecksum(card.front)
-
-      console.log(
-        `📝 Creating note ${i}: front="${card.front.substring(0, 20)}..." back="${backContent.substring(0, 50)}..."`,
-      )
 
       // Insert note
       db.run(
