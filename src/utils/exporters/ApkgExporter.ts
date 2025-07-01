@@ -5,13 +5,13 @@ import type { ExportFormat, ExportOptions, ExportResult } from "@/types/export"
 import { BaseVocabularyExporter } from "./BaseVocabularyExporter"
 import { EXPORT_FORMATS } from "@/types/export"
 
-interface MediaFile {
-  itemIndex: number
-  mediaIndex: number
-  filename: string
-  base64Data: string
-  itemId: string
-  audioUrl: string
+// Extended interface to handle different property names
+interface ExtendedVocabularyItem extends VocabularyItem {
+  front?: string
+  back?: string
+  audio?: string
+  tags?: string[] | string
+  [key: string]: any // Allow additional properties
 }
 
 export class ApkgExporter extends BaseVocabularyExporter {
@@ -56,15 +56,44 @@ export class ApkgExporter extends BaseVocabularyExporter {
   }
 
   private prepareCardsData(vocabulary: VocabularyItem[]) {
-    return vocabulary.map((item, index) => ({
-      index,
-      id: item.id || `card_${index}`,
-      front: item.front || item.word || "",
-      back: item.back || item.definition || "",
-      tags: Array.isArray(item.tags) ? item.tags.join(" ") : item.language || item.tags || "",
-      audioUrl: item.audio || item.audioUrl || null,
-      hasAudio: Boolean(item.audio || item.audioUrl),
-    }))
+    return vocabulary.map((item, index) => {
+      const extendedItem = item as ExtendedVocabularyItem
+
+      return {
+        index,
+        id: this.getProperty(extendedItem, ["id"]) || `card_${index}`,
+        front: this.getProperty(extendedItem, ["front", "word"]) || "",
+        back: this.getProperty(extendedItem, ["back", "definition"]) || "",
+        tags: this.getTags(extendedItem),
+        audioUrl: this.getProperty(extendedItem, ["audio", "audioUrl"]),
+        hasAudio: Boolean(this.getProperty(extendedItem, ["audio", "audioUrl"])),
+      }
+    })
+  }
+
+  private getProperty(item: ExtendedVocabularyItem, keys: string[]): any {
+    for (const key of keys) {
+      if (item[key] !== undefined && item[key] !== null) {
+        return item[key]
+      }
+    }
+    return null
+  }
+
+  private getTags(item: ExtendedVocabularyItem): string {
+    const tags = this.getProperty(item, ["tags"])
+    const language = this.getProperty(item, ["language"])
+
+    if (Array.isArray(tags)) {
+      return tags.join(" ")
+    }
+    if (typeof tags === "string") {
+      return tags
+    }
+    if (language) {
+      return language
+    }
+    return ""
   }
 
   private async downloadMediaFiles(vocabulary: VocabularyItem[], options: ExportOptions) {
@@ -81,8 +110,8 @@ export class ApkgExporter extends BaseVocabularyExporter {
 
     console.log("🎵 Processing audio files...")
     for (let i = 0; i < vocabulary.length; i++) {
-      const item = vocabulary[i]
-      const audioUrl = item.audio || item.audioUrl
+      const item = vocabulary[i] as ExtendedVocabularyItem
+      const audioUrl = this.getProperty(item, ["audio", "audioUrl"])
 
       if (!audioUrl) continue
 
