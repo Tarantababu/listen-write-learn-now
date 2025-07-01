@@ -26,14 +26,18 @@ export class ApkgExporter extends BaseVocabularyExporter {
         console.log('Adding media files to archive...');
         for (const mediaFile of mediaMapping.files) {
           if (mediaFile.data) {
-            // mediaFile.data is already base64-encoded, so we don't need { base64: true }
-            zip.file(`${mediaFile.index}.mp3`, mediaFile.data, { base64: true });
+            // Ensure we're adding the file with the correct name as referenced in media map
+            const filename = `${mediaFile.index}.mp3`;
+            zip.file(filename, mediaFile.data, { base64: true });
+            console.log(`Added media file: ${filename}`);
           }
         }
       }
       
-      // Create media mapping file
-      zip.file('media', JSON.stringify(mediaMapping.map));
+      // Create media mapping file - this is crucial for Anki to find media files
+      const mediaMapJson = JSON.stringify(mediaMapping.map);
+      zip.file('media', mediaMapJson);
+      console.log('Media mapping file content:', mediaMapJson);
       
       const blob = await zip.generateAsync({ type: 'blob' });
       const filename = this.generateFilename(options.deckName, this.format.fileExtension);
@@ -71,28 +75,44 @@ export class ApkgExporter extends BaseVocabularyExporter {
         try {
           console.log(`Processing audio for item ${i}: ${item.word}`);
           const response = await fetch(item.audioUrl);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
           const blob = await response.blob();
           const base64 = await this.blobToBase64(blob);
           
+          // Extract only the base64 data part (remove data:audio/mp3;base64, prefix)
+          const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
+          
+          if (!base64Data) {
+            throw new Error('Failed to extract base64 data');
+          }
+          
           const filename = `${mediaIndex}.mp3`;
+          
+          // The media map should map the index (as string) to the filename
           mediaMap[mediaIndex.toString()] = filename;
+          
           mediaFiles.push({
             index: mediaIndex,
-            data: base64.split(',')[1], // Remove the data:audio/mp3;base64, prefix
+            data: base64Data,
             originalIndex: i
           });
+          
           itemToMediaIndex.set(i, mediaIndex);
           
-          console.log(`Media file ${mediaIndex} mapped for item ${i}`);
+          console.log(`Media file ${mediaIndex} (${filename}) mapped for item ${i}`);
           mediaIndex++;
         } catch (error) {
-          console.error(`Failed to fetch audio for item ${i}:`, error);
-          // Don't add to media map if fetch failed
+          console.error(`Failed to fetch audio for item ${i} (${item.word}):`, error);
+          // Continue without this audio file - don't break the entire export
         }
       }
     }
     
     console.log(`Created media mapping: ${mediaFiles.length} files, indices 0-${mediaIndex - 1}`);
+    console.log('Final media map:', mediaMap);
     return { map: mediaMap, files: mediaFiles, itemToMediaIndex };
   }
 
@@ -114,7 +134,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
       this.createTables(db);
       
       // Use minimal, safe values
-      const baseTime = 1640995200; // Fixed timestamp: 2022-01-01 00:00:00 UTC
+      const baseTime = Math.floor(Date.now() / 1000); // Current timestamp for better compatibility
       const deckId = 1;
       const modelId = 1000; // Much smaller model ID
       
@@ -492,17 +512,17 @@ export class ApkgExporter extends BaseVocabularyExporter {
   }
 
   private calculateChecksum(text: string): number {
-    // Very simple checksum that stays within tiny range
+    // Anki-compatible checksum calculation
     if (!text || text.length === 0) return 0;
     
     let hash = 0;
     for (let i = 0; i < text.length; i++) {
       const char = text.charCodeAt(i);
-      hash = (hash + char) % 65536; // Keep within 16-bit range
+      hash = ((hash << 5) - hash + char) & 0xffffffff; // Use bitwise AND to ensure 32-bit
     }
     
-    // Ensure positive result within very safe range
-    const result = Math.abs(hash) % 10000; // Keep it very small
+    // Convert to positive integer and keep within reasonable range
+    const result = Math.abs(hash) % 2147483647;
     console.log(`Checksum for "${text.substring(0, 20)}...": ${result}`);
     return result;
   }
@@ -510,8 +530,14 @@ export class ApkgExporter extends BaseVocabularyExporter {
   private blobToBase64(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
+      reader.onloadend = () => {
+        if (reader.result) {
+          resolve(reader.result as string);
+        } else {
+          reject(new Error('Failed to convert blob to base64'));
+        }
+      };
+      reader.onerror = () => reject(new Error('FileReader error'));
       reader.readAsDataURL(blob);
     });
   }
