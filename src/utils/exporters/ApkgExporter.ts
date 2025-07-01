@@ -505,7 +505,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
     })
   }
 
-  private sanitizeText(text: string): string {
+  protected sanitizeText(text: string): string {
     // Basic sanitization to remove unwanted characters
     return text.replace(/[^a-zA-Z0-9\s.,!?;:()'"-]/g, "")
   }
