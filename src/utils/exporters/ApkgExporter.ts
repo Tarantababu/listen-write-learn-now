@@ -18,13 +18,6 @@ interface ProcessedCard {
   mediaIndex?: number
 }
 
-interface ValidatedMediaFile {
-  mediaIndex: number
-  filename: string
-  data: string
-  cardIndex: number
-}
-
 export class ApkgExporter extends BaseVocabularyExporter {
   format: ExportFormat = EXPORT_FORMATS.find((f) => f.id === "apkg")!
 
@@ -35,29 +28,24 @@ export class ApkgExporter extends BaseVocabularyExporter {
       // Step 1: Process all cards and download audio
       const processedCards = await this.processAllCards(vocabulary, options)
 
-      // Step 2: Validate and prepare media files with proper indexing
-      const validatedMediaFiles = await this.validateAndPrepareMediaFiles(processedCards)
+      // Step 2: Assign media indices to cards with successful audio
+      this.assignMediaIndices(processedCards)
 
-      // Step 3: Update card references to match validated media
-      const finalCards = this.updateCardMediaReferences(processedCards, validatedMediaFiles)
-
-      // Step 4: Create ZIP with validated media files
+      // Step 3: Create ZIP with properly indexed media files
       const zip = new JSZip()
-      const mediaMap = await this.addValidatedMediaToZip(zip, validatedMediaFiles)
+      const mediaMap = await this.addMediaToZip(zip, processedCards)
 
-      // Step 5: Create database with validated media references
-      const dbBuffer = await this.createDatabase(finalCards, options, validatedMediaFiles)
+      // Step 4: Create database with correct media references
+      const dbBuffer = await this.createDatabase(processedCards, options)
       zip.file("collection.anki2", dbBuffer)
 
-      // Step 6: Final validation before export
-      await this.performFinalValidation(zip, finalCards, validatedMediaFiles)
-
-      // Step 7: Generate final APKG
+      // Step 5: Generate final APKG
       const blob = await zip.generateAsync({ type: "blob" })
       const filename = this.generateFilename(options.deckName, this.format.fileExtension)
 
-      console.log("🎉 APKG export completed successfully!")
-      console.log(`📊 Final stats: ${vocabulary.length} cards, ${validatedMediaFiles.length} validated audio files`)
+      const successfulAudio = processedCards.filter((card) => card.hasSuccessfulAudio).length
+      console.log("🎉 APKG export completed!")
+      console.log(`📊 Stats: ${vocabulary.length} cards, ${successfulAudio} audio files, ${blob.size} bytes`)
       console.log("📋 Final media map:", mediaMap)
 
       return this.createSuccessResult(blob, filename)
@@ -129,8 +117,9 @@ export class ApkgExporter extends BaseVocabularyExporter {
         tags: this.processTags(tags),
         audioUrl,
         hasSuccessfulAudio,
-        audioFilename: null, // Will be set later
+        audioFilename: null, // Will be set in assignMediaIndices
         audioData,
+        mediaIndex: undefined // Will be set in assignMediaIndices
       })
     }
 
@@ -140,94 +129,49 @@ export class ApkgExporter extends BaseVocabularyExporter {
     return processedCards
   }
 
-  private async validateAndPrepareMediaFiles(processedCards: ProcessedCard[]): Promise<ValidatedMediaFile[]> {
-    console.log("🔍 Validating and preparing media files...")
-
-    const validatedFiles: ValidatedMediaFile[] = []
+  private assignMediaIndices(processedCards: ProcessedCard[]): void {
+    console.log("🔢 Assigning media indices...")
+    
     let mediaIndex = 0
-
+    
     for (const card of processedCards) {
       if (card.hasSuccessfulAudio && card.audioData) {
-        // Double-check that we have valid audio data
-        try {
-          // Validate base64 data format
-          if (!card.audioData.match(/^[A-Za-z0-9+/]+=?$/)) {
-            throw new Error("Invalid base64 format")
-          }
-
-          // Create validated media file entry
-          const validatedFile: ValidatedMediaFile = {
-            mediaIndex,
-            filename: `${mediaIndex}.mp3`,
-            data: card.audioData,
-            cardIndex: card.index
-          }
-
-          validatedFiles.push(validatedFile)
-          console.log(`✅ Validated audio file ${mediaIndex} for card ${card.index}`)
-          mediaIndex++
-        } catch (error) {
-          console.error(`❌ Failed to validate audio for card ${card.index}:`, error)
-          // Don't include this file in the validated list
-        }
+        card.mediaIndex = mediaIndex
+        card.audioFilename = `${mediaIndex}.mp3` // Use simple numeric naming
+        console.log(`🎵 Assigned media index ${mediaIndex} to card ${card.index} → ${card.audioFilename}`)
+        mediaIndex++
       }
     }
-
-    console.log(`🔍 Validated ${validatedFiles.length} media files out of ${processedCards.filter(c => c.hasSuccessfulAudio).length} potential files`)
-    return validatedFiles
+    
+    console.log(`🔢 Assigned ${mediaIndex} media indices`)
   }
 
-  private updateCardMediaReferences(processedCards: ProcessedCard[], validatedMediaFiles: ValidatedMediaFile[]): ProcessedCard[] {
-    console.log("🔄 Updating card media references...")
-
-    // Create a lookup map for validated media files by card index
-    const mediaLookup = new Map<number, ValidatedMediaFile>()
-    for (const mediaFile of validatedMediaFiles) {
-      mediaLookup.set(mediaFile.cardIndex, mediaFile)
-    }
-
-    // Update card references
-    for (const card of processedCards) {
-      const validatedMedia = mediaLookup.get(card.index)
-      if (validatedMedia) {
-        card.mediaIndex = validatedMedia.mediaIndex
-        card.audioFilename = validatedMedia.filename
-        console.log(`🔄 Updated card ${card.index} → media ${validatedMedia.mediaIndex} (${validatedMedia.filename})`)
-      } else {
-        // Clear invalid references
-        card.mediaIndex = undefined
-        card.audioFilename = null
-        card.hasSuccessfulAudio = false
-        if (card.audioData) {
-          console.log(`⚠️ Clearing invalid audio reference for card ${card.index}`)
-        }
-      }
-    }
-
-    return processedCards
-  }
-
-  private async addValidatedMediaToZip(zip: JSZip, validatedMediaFiles: ValidatedMediaFile[]): Promise<Record<string, string>> {
-    console.log("📁 Adding validated media files to ZIP...")
+  private async addMediaToZip(zip: JSZip, processedCards: ProcessedCard[]): Promise<Record<string, string>> {
+    console.log("📁 Adding media files to ZIP...")
 
     const mediaMap: Record<string, string> = {}
 
-    for (const mediaFile of validatedMediaFiles) {
-      try {
-        // Add file to ZIP
-        zip.file(mediaFile.filename, mediaFile.data, { base64: true })
-
-        // Create media map entry: mediaIndex → filename
-        mediaMap[mediaFile.mediaIndex.toString()] = mediaFile.filename
-
-        console.log(`✅ Added to ZIP: ${mediaFile.filename} (card ${mediaFile.cardIndex} → media ${mediaFile.mediaIndex})`)
-      } catch (error) {
-        console.error(`❌ Error adding media file ${mediaFile.filename} to ZIP:`, error)
-        throw new Error(`Failed to add media file ${mediaFile.filename} to archive`)
+    for (const card of processedCards) {
+      if (card.hasSuccessfulAudio && card.audioFilename && card.audioData && card.mediaIndex !== undefined) {
+        try {
+          // Add the audio file to the ZIP
+          zip.file(card.audioFilename, card.audioData, { base64: true })
+          
+          // Create media map entry: mediaIndex → filename
+          mediaMap[card.mediaIndex.toString()] = card.audioFilename
+          
+          console.log(`✅ Added to ZIP: ${card.audioFilename} (card ${card.index} → media ${card.mediaIndex})`)
+        } catch (error) {
+          console.error(`❌ Error adding media to ZIP for card ${card.index}:`, error)
+          // Mark as failed so we don't reference it in the database
+          card.hasSuccessfulAudio = false
+          card.audioFilename = null
+          card.mediaIndex = undefined
+        }
       }
     }
 
-    // Create media mapping file
+    // Create the media mapping file that Anki expects
     const mediaMapJson = JSON.stringify(mediaMap)
     zip.file("media", mediaMapJson)
     console.log("📋 Media map created:", mediaMapJson)
@@ -235,11 +179,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
     return mediaMap
   }
 
-  private async createDatabase(
-    processedCards: ProcessedCard[], 
-    options: ExportOptions, 
-    validatedMediaFiles: ValidatedMediaFile[]
-  ): Promise<Uint8Array> {
+  private async createDatabase(processedCards: ProcessedCard[], options: ExportOptions): Promise<Uint8Array> {
     console.log("🗄️ Creating Anki database...")
 
     const SQL = await initSqlJs({
@@ -256,7 +196,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
       const modelId = 1
 
       this.insertCollection(db, timestamp, deckId, modelId, options.deckName)
-      this.insertCards(db, processedCards, timestamp, deckId, modelId, options, validatedMediaFiles)
+      this.insertCards(db, processedCards, timestamp, deckId, modelId, options)
 
       const buffer = db.export()
       console.log("✅ Database created successfully, size:", buffer.length, "bytes")
@@ -273,12 +213,8 @@ export class ApkgExporter extends BaseVocabularyExporter {
     deckId: number,
     modelId: number,
     options: ExportOptions,
-    validatedMediaFiles: ValidatedMediaFile[]
   ) {
     console.log("📝 Inserting notes and cards...")
-
-    // Create lookup for validated media files
-    const validatedMediaLookup = new Set(validatedMediaFiles.map(f => f.mediaIndex))
 
     for (let i = 0; i < processedCards.length; i++) {
       const card = processedCards[i]
@@ -291,16 +227,10 @@ export class ApkgExporter extends BaseVocabularyExporter {
         backContent += `<br><br><i>${card.example}</i>`
       }
 
-      // Add audio reference ONLY if we have validated media
-      if (
-        options.includeAudio && 
-        card.hasSuccessfulAudio && 
-        card.audioFilename && 
-        card.mediaIndex !== undefined &&
-        validatedMediaLookup.has(card.mediaIndex)
-      ) {
+      // Add audio reference ONLY if we have successfully processed audio and it's in the ZIP
+      if (options.includeAudio && card.hasSuccessfulAudio && card.audioFilename && card.mediaIndex !== undefined) {
         backContent += `<br><br>[sound:${card.audioFilename}]`
-        console.log(`🎵 Added validated audio reference for card ${i}: [sound:${card.audioFilename}] (media ${card.mediaIndex})`)
+        console.log(`🎵 Added audio reference for card ${i}: [sound:${card.audioFilename}] (media index: ${card.mediaIndex})`)
       }
 
       const fields = `${card.front}\x1f${backContent}`
@@ -325,49 +255,6 @@ export class ApkgExporter extends BaseVocabularyExporter {
     }
 
     console.log("✅ All notes and cards inserted successfully")
-  }
-
-  private async performFinalValidation(
-    zip: JSZip, 
-    finalCards: ProcessedCard[], 
-    validatedMediaFiles: ValidatedMediaFile[]
-  ): Promise<void> {
-    console.log("🔍 Performing final validation...")
-
-    // Check that all media references in cards have corresponding files in ZIP
-    const zipFiles = Object.keys(zip.files)
-    const cardsWithAudio = finalCards.filter(card => 
-      card.hasSuccessfulAudio && card.audioFilename && card.mediaIndex !== undefined
-    )
-
-    for (const card of cardsWithAudio) {
-      if (card.audioFilename && !zipFiles.includes(card.audioFilename)) {
-        throw new Error(`Missing media file in archive: ${card.audioFilename} for card ${card.index}`)
-      }
-    }
-
-    // Check that all validated media files are in ZIP
-    for (const mediaFile of validatedMediaFiles) {
-      if (!zipFiles.includes(mediaFile.filename)) {
-        throw new Error(`Missing validated media file in archive: ${mediaFile.filename}`)
-      }
-    }
-
-    // Validate media map consistency
-    const mediaMapFile = zip.files["media"]
-    if (mediaMapFile) {
-      const mediaMapContent = await mediaMapFile.async("string")
-      const mediaMap = JSON.parse(mediaMapContent)
-      
-      for (const mediaFile of validatedMediaFiles) {
-        const expectedFilename = mediaMap[mediaFile.mediaIndex.toString()]
-        if (expectedFilename !== mediaFile.filename) {
-          throw new Error(`Media map mismatch: index ${mediaFile.mediaIndex} maps to ${expectedFilename} but expected ${mediaFile.filename}`)
-        }
-      }
-    }
-
-    console.log("✅ Final validation passed - all media references are consistent")
   }
 
   private extractField(item: any, fieldNames: string[]): any {
