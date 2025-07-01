@@ -12,9 +12,9 @@ interface ProcessedCard {
   example: string
   tags: string
   audioUrl: string | null
-  hasSuccessfulAudio: boolean
+  hasValidAudio: boolean
   audioFilename: string | null
-  audioData?: string
+  audioBlob?: Blob
   mediaIndex?: number
 }
 
@@ -25,25 +25,28 @@ export class ApkgExporter extends BaseVocabularyExporter {
     try {
       console.log("🚀 Starting APKG export for", vocabulary.length, "items")
 
-      // Step 1: Process all cards and download audio
+      // Step 1: Process all cards and validate audio
       const processedCards = await this.processAllCards(vocabulary, options)
 
-      // Step 2: Assign media indices to cards with successful audio
+      // Step 2: Download all audio files with proper error handling
+      await this.downloadAudioFiles(processedCards, options)
+
+      // Step 3: Assign media indices only to cards with successfully downloaded audio
       this.assignMediaIndices(processedCards)
 
-      // Step 3: Create ZIP with properly indexed media files
+      // Step 4: Create ZIP with audio files
       const zip = new JSZip()
-      const mediaMap = await this.addMediaToZip(zip, processedCards)
+      const mediaMap = await this.addAudioToZip(zip, processedCards)
 
-      // Step 4: Create database with correct media references
+      // Step 5: Create database with correct media references
       const dbBuffer = await this.createDatabase(processedCards, options)
       zip.file("collection.anki2", dbBuffer)
 
-      // Step 5: Generate final APKG
+      // Step 6: Generate final APKG
       const blob = await zip.generateAsync({ type: "blob" })
       const filename = this.generateFilename(options.deckName, this.format.fileExtension)
 
-      const successfulAudio = processedCards.filter((card) => card.hasSuccessfulAudio).length
+      const successfulAudio = processedCards.filter((card) => card.hasValidAudio).length
       console.log("🎉 APKG export completed!")
       console.log(`📊 Stats: ${vocabulary.length} cards, ${successfulAudio} audio files, ${blob.size} bytes`)
       console.log("📋 Final media map:", mediaMap)
@@ -73,42 +76,6 @@ export class ApkgExporter extends BaseVocabularyExporter {
 
       console.log(`Processing card ${i}: "${front}" - Audio: ${audioUrl ? "Yes" : "No"}`)
 
-      let hasSuccessfulAudio = false
-      let audioData: string | undefined = undefined
-
-      // Download audio if available and audio is enabled
-      if (audioUrl && options.includeAudio) {
-        try {
-          console.log(`⬇️ Downloading audio for card ${i}: ${audioUrl}`)
-          const response = await fetch(audioUrl)
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-          }
-
-          const blob = await response.blob()
-          
-          // Validate that we have actual audio data
-          if (blob.size === 0) {
-            throw new Error("Empty audio file")
-          }
-
-          audioData = await this.convertBlobToBase64(blob)
-          
-          // Validate base64 data
-          if (!audioData || audioData.length === 0) {
-            throw new Error("Failed to convert audio to base64")
-          }
-
-          hasSuccessfulAudio = true
-          console.log(`✅ Successfully downloaded audio for card ${i} (${blob.size} bytes)`)
-        } catch (error) {
-          console.error(`❌ Failed to download audio for card ${i}:`, error)
-          hasSuccessfulAudio = false
-          audioData = undefined
-        }
-      }
-
       processedCards.push({
         index: i,
         front: this.sanitizeText(front),
@@ -116,17 +83,65 @@ export class ApkgExporter extends BaseVocabularyExporter {
         example: this.sanitizeText(example),
         tags: this.processTags(tags),
         audioUrl,
-        hasSuccessfulAudio,
-        audioFilename: null, // Will be set in assignMediaIndices
-        audioData,
+        hasValidAudio: false, // Will be set after download
+        audioFilename: null, // Will be set after successful download
+        audioBlob: undefined, // Will be set after successful download
         mediaIndex: undefined // Will be set in assignMediaIndices
       })
     }
 
-    const audioCount = processedCards.filter((card) => card.hasSuccessfulAudio).length
-    console.log(`📋 Processed ${processedCards.length} cards, ${audioCount} with successful audio`)
-
+    console.log(`📋 Processed ${processedCards.length} cards`)
     return processedCards
+  }
+
+  private async downloadAudioFiles(processedCards: ProcessedCard[], options: ExportOptions): Promise<void> {
+    if (!options.includeAudio) {
+      console.log("⏭️ Skipping audio download (includeAudio = false)")
+      return
+    }
+
+    console.log("⬇️ Starting audio downloads...")
+
+    for (const card of processedCards) {
+      if (!card.audioUrl) {
+        continue
+      }
+
+      try {
+        console.log(`⬇️ Downloading audio for card ${card.index}: ${card.audioUrl}`)
+        
+        const response = await fetch(card.audioUrl)
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+
+        const blob = await response.blob()
+        
+        // Validate that we have actual audio data
+        if (blob.size === 0) {
+          throw new Error("Empty audio file")
+        }
+
+        // Validate MIME type
+        if (!blob.type.startsWith('audio/')) {
+          console.warn(`⚠️ Unexpected MIME type for card ${card.index}: ${blob.type}`)
+        }
+
+        // Store the blob for later use
+        card.audioBlob = blob
+        card.hasValidAudio = true
+        
+        console.log(`✅ Successfully downloaded audio for card ${card.index} (${blob.size} bytes, ${blob.type})`)
+      } catch (error) {
+        console.error(`❌ Failed to download audio for card ${card.index}:`, error)
+        card.hasValidAudio = false
+        card.audioBlob = undefined
+      }
+    }
+
+    const audioCount = processedCards.filter((card) => card.hasValidAudio).length
+    console.log(`⬇️ Downloaded ${audioCount} audio files successfully`)
   }
 
   private assignMediaIndices(processedCards: ProcessedCard[]): void {
@@ -135,9 +150,9 @@ export class ApkgExporter extends BaseVocabularyExporter {
     let mediaIndex = 0
     
     for (const card of processedCards) {
-      if (card.hasSuccessfulAudio && card.audioData) {
+      if (card.hasValidAudio && card.audioBlob) {
         card.mediaIndex = mediaIndex
-        card.audioFilename = `${mediaIndex}.mp3` // Use simple numeric naming
+        card.audioFilename = `${mediaIndex}.mp3` // Use simple numeric naming as Anki expects
         console.log(`🎵 Assigned media index ${mediaIndex} to card ${card.index} → ${card.audioFilename}`)
         mediaIndex++
       }
@@ -146,25 +161,25 @@ export class ApkgExporter extends BaseVocabularyExporter {
     console.log(`🔢 Assigned ${mediaIndex} media indices`)
   }
 
-  private async addMediaToZip(zip: JSZip, processedCards: ProcessedCard[]): Promise<Record<string, string>> {
-    console.log("📁 Adding media files to ZIP...")
+  private async addAudioToZip(zip: JSZip, processedCards: ProcessedCard[]): Promise<Record<string, string>> {
+    console.log("📁 Adding audio files to ZIP...")
 
     const mediaMap: Record<string, string> = {}
 
     for (const card of processedCards) {
-      if (card.hasSuccessfulAudio && card.audioFilename && card.audioData && card.mediaIndex !== undefined) {
+      if (card.hasValidAudio && card.audioFilename && card.audioBlob && card.mediaIndex !== undefined) {
         try {
-          // Add the audio file to the ZIP
-          zip.file(card.audioFilename, card.audioData, { base64: true })
+          // Add the audio file directly as blob to the ZIP
+          zip.file(card.audioFilename, card.audioBlob)
           
           // Create media map entry: mediaIndex → filename
           mediaMap[card.mediaIndex.toString()] = card.audioFilename
           
-          console.log(`✅ Added to ZIP: ${card.audioFilename} (card ${card.index} → media ${card.mediaIndex})`)
+          console.log(`✅ Added to ZIP: ${card.audioFilename} (card ${card.index} → media ${card.mediaIndex}, ${card.audioBlob.size} bytes)`)
         } catch (error) {
-          console.error(`❌ Error adding media to ZIP for card ${card.index}:`, error)
+          console.error(`❌ Error adding audio to ZIP for card ${card.index}:`, error)
           // Mark as failed so we don't reference it in the database
-          card.hasSuccessfulAudio = false
+          card.hasValidAudio = false
           card.audioFilename = null
           card.mediaIndex = undefined
         }
@@ -227,8 +242,8 @@ export class ApkgExporter extends BaseVocabularyExporter {
         backContent += `<br><br><i>${card.example}</i>`
       }
 
-      // Add audio reference ONLY if we have successfully processed audio and it's in the ZIP
-      if (options.includeAudio && card.hasSuccessfulAudio && card.audioFilename && card.mediaIndex !== undefined) {
+      // Add audio reference ONLY if we have successfully downloaded audio and it's in the ZIP
+      if (options.includeAudio && card.hasValidAudio && card.audioFilename && card.mediaIndex !== undefined) {
         backContent += `<br><br>[sound:${card.audioFilename}]`
         console.log(`🎵 Added audio reference for card ${i}: [sound:${card.audioFilename}] (media index: ${card.mediaIndex})`)
       }
@@ -514,22 +529,5 @@ export class ApkgExporter extends BaseVocabularyExporter {
       hash = ((hash << 5) - hash + char) & 0xffffffff
     }
     return Math.abs(hash) % 2147483647
-  }
-
-  private async convertBlobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        if (reader.result) {
-          const base64 = reader.result as string
-          const data = base64.includes(",") ? base64.split(",")[1] : base64
-          resolve(data)
-        } else {
-          reject(new Error("Failed to convert blob to base64"))
-        }
-      }
-      reader.onerror = () => reject(new Error("FileReader error"))
-      reader.readAsDataURL(blob)
-    })
   }
 }
