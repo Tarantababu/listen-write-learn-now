@@ -14,6 +14,7 @@ interface ProcessedCard {
   audioUrl: string | null
   hasSuccessfulAudio: boolean
   audioFilename: string | null
+  audioData?: string
 }
 
 export class ApkgExporter extends BaseVocabularyExporter {
@@ -27,9 +28,9 @@ export class ApkgExporter extends BaseVocabularyExporter {
       // Step 1: Process all cards and download audio in one pass
       const processedCards = await this.processAllCards(vocabulary, options)
 
-      // Step 2: Create ZIP with only successful media files
+      // Step 2: Create ZIP with media files
       const zip = new JSZip()
-      const mediaMap = this.addMediaToZip(zip, processedCards)
+      const mediaMap = await this.addMediaToZip(zip, processedCards)
 
       // Step 3: Create database with exact media references
       const dbBuffer = await this.createDatabase(processedCards, options)
@@ -42,6 +43,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
       const successfulAudio = processedCards.filter((card) => card.hasSuccessfulAudio).length
       console.log("🎉 APKG export completed!")
       console.log(`📊 Stats: ${vocabulary.length} cards, ${successfulAudio} audio files, ${blob.size} bytes`)
+      console.log("📋 Final media map:", mediaMap)
 
       return this.createSuccessResult(blob, filename)
     } catch (error) {
@@ -70,6 +72,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
 
       let hasSuccessfulAudio = false
       let audioFilename: string | null = null
+      let audioData: string | undefined = undefined
 
       // Download audio if available and audio is enabled
       if (audioUrl && options.includeAudio) {
@@ -82,10 +85,10 @@ export class ApkgExporter extends BaseVocabularyExporter {
           }
 
           const blob = await response.blob()
-          const base64Data = await this.convertBlobToBase64(blob)
+          audioData = await this.convertBlobToBase64(blob)
 
-          // Create unique filename for this card
-          audioFilename = `card_${i}_audio.mp3`
+          // Use simple sequential numbering for audio files
+          audioFilename = `${i}.mp3`
           hasSuccessfulAudio = true
 
           console.log(`✅ Successfully downloaded audio for card ${i}: ${audioFilename}`)
@@ -93,6 +96,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
           console.error(`❌ Failed to download audio for card ${i}:`, error)
           hasSuccessfulAudio = false
           audioFilename = null
+          audioData = undefined
         }
       }
 
@@ -105,6 +109,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         audioUrl,
         hasSuccessfulAudio,
         audioFilename,
+        audioData,
       })
     }
 
@@ -114,35 +119,30 @@ export class ApkgExporter extends BaseVocabularyExporter {
     return processedCards
   }
 
-  private addMediaToZip(zip: JSZip, processedCards: ProcessedCard[]): Record<string, string> {
+  private async addMediaToZip(zip: JSZip, processedCards: ProcessedCard[]): Promise<Record<string, string>> {
     console.log("📁 Adding media files to ZIP...")
 
     const mediaMap: Record<string, string> = {}
-    let mediaIndex = 0
 
+    // Add media files and create proper mapping
     for (const card of processedCards) {
-      if (card.hasSuccessfulAudio && card.audioFilename && card.audioUrl) {
+      if (card.hasSuccessfulAudio && card.audioFilename && card.audioData) {
         try {
-          // Re-download and add to ZIP (we know it works from previous step)
-          fetch(card.audioUrl)
-            .then((response) => response.blob())
-            .then((blob) => this.convertBlobToBase64(blob))
-            .then((base64Data) => {
-              zip.file(card.audioFilename!, base64Data, { base64: true })
-              mediaMap[mediaIndex.toString()] = card.audioFilename!
-              console.log(`✅ Added to ZIP: ${card.audioFilename} (media index: ${mediaIndex})`)
-              mediaIndex++
-            })
-            .catch((error) => {
-              console.error(`❌ Failed to re-download for ZIP: ${card.audioFilename}`, error)
-            })
+          // Add file to ZIP
+          zip.file(card.audioFilename, card.audioData, { base64: true })
+
+          // CRITICAL: Use the card index as the media map key
+          // This ensures the media map matches what Anki expects
+          mediaMap[card.index.toString()] = card.audioFilename
+
+          console.log(`✅ Added to ZIP: ${card.audioFilename} (media map key: ${card.index})`)
         } catch (error) {
           console.error(`❌ Error adding media to ZIP for card ${card.index}:`, error)
         }
       }
     }
 
-    // Add media map file
+    // Create media mapping file - this is crucial for Anki to find the audio files
     const mediaMapJson = JSON.stringify(mediaMap)
     zip.file("media", mediaMapJson)
     console.log("📋 Media map created:", mediaMapJson)
@@ -207,6 +207,10 @@ export class ApkgExporter extends BaseVocabularyExporter {
       const fields = `${card.front}\x1f${backContent}`
       const guid = this.generateGuid()
       const checksum = this.calculateChecksum(card.front)
+
+      console.log(
+        `📝 Creating note ${i}: front="${card.front.substring(0, 20)}..." back="${backContent.substring(0, 50)}..."`,
+      )
 
       // Insert note
       db.run(
@@ -503,10 +507,5 @@ export class ApkgExporter extends BaseVocabularyExporter {
       reader.onerror = () => reject(new Error("FileReader error"))
       reader.readAsDataURL(blob)
     })
-  }
-
-  protected sanitizeText(text: string): string {
-    // Basic sanitization to remove unwanted characters
-    return text.replace(/[^a-zA-Z0-9\s.,!?;:()'"-]/g, "")
   }
 }
