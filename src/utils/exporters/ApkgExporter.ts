@@ -198,8 +198,51 @@ export class ApkgExporter extends BaseVocabularyExporter {
             {
               name: "Card 1",
               ord: 0,
-              qfmt: "{{Front}}",
-              afmt: "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}",
+              qfmt: `<div class="card-container">
+  <div class="header">
+    <div class="branding">lwlnow.com</div>
+  </div>
+  <div class="word-section">
+    <div class="word">{{Word}}</div>
+  </div>
+  <div class="example-section">
+    <div class="example-label">Example:</div>
+    <div class="example">{{Example}}</div>
+  </div>
+  {{#Audio}}
+  <div class="audio-section">
+    <audio controls class="audio-player">
+      <source src="{{Audio}}" type="audio/mpeg">
+      Your browser does not support the audio element.
+    </audio>
+  </div>
+  {{/Audio}}
+</div>`,
+              afmt: `<div class="card-container">
+  <div class="header">
+    <div class="branding">lwlnow.com</div>
+  </div>
+  <div class="word-section">
+    <div class="word">{{Word}}</div>
+  </div>
+  <div class="example-section">
+    <div class="example-label">Example:</div>
+    <div class="example">{{Example}}</div>
+  </div>
+  {{#Audio}}
+  <div class="audio-section">
+    <audio controls class="audio-player">
+      <source src="{{Audio}}" type="audio/mpeg">
+      Your browser does not support the audio element.
+    </audio>
+  </div>
+  {{/Audio}}
+  <hr class="divider">
+  <div class="definition-section">
+    <div class="definition-label">Definition:</div>
+    <div class="definition">{{Definition}}</div>
+  </div>
+</div>`,
               did: null,
               bqfmt: "",
               bafmt: ""
@@ -207,7 +250,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
           ],
           flds: [
             {
-              name: "Front",
+              name: "Word",
               ord: 0,
               sticky: false,
               rtl: false,
@@ -215,15 +258,171 @@ export class ApkgExporter extends BaseVocabularyExporter {
               size: 20
             },
             {
-              name: "Back",
+              name: "Definition",
               ord: 1,
+              sticky: false,
+              rtl: false,
+              font: "Arial",
+              size: 20
+            },
+            {
+              name: "Example",
+              ord: 2,
+              sticky: false,
+              rtl: false,
+              font: "Arial",
+              size: 20
+            },
+            {
+              name: "Audio",
+              ord: 3,
               sticky: false,
               rtl: false,
               font: "Arial",
               size: 20
             }
           ],
-          css: ".card {\n font-family: arial;\n font-size: 20px;\n text-align: center;\n color: black;\n background-color: white;\n}\n",
+          css: `
+/* Main card container */
+.card-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  color: white;
+  text-align: center;
+}
+
+/* Header with branding */
+.header {
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.3);
+}
+
+.branding {
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  font-weight: 300;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Word section */
+.word-section {
+  margin: 25px 0;
+}
+
+.word {
+  font-size: 36px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  letter-spacing: 1px;
+}
+
+/* Example section */
+.example-section {
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.example-label {
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+  font-weight: 500;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.example {
+  font-size: 18px;
+  line-height: 1.4;
+  font-style: italic;
+  color: rgba(255,255,255,0.95);
+}
+
+/* Audio section */
+.audio-section {
+  margin: 20px 0;
+}
+
+.audio-player {
+  width: 100%;
+  max-width: 300px;
+  border-radius: 25px;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+}
+
+.audio-player::-webkit-media-controls-panel {
+  background: rgba(255,255,255,0.2);
+  border-radius: 25px;
+}
+
+/* Divider */
+.divider {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  margin: 25px 0;
+}
+
+/* Definition section */
+.definition-section {
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.definition-label {
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+  font-weight: 500;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.definition {
+  font-size: 20px;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.95);
+  font-weight: 400;
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+  .card-container {
+    padding: 15px;
+    margin: 10px;
+  }
+  
+  .word {
+    font-size: 28px;
+  }
+  
+  .example, .definition {
+    font-size: 16px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .card-container {
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+  }
+}
+`,
           latexPre: "\\documentclass[12pt]{article}\n\\special{papersize=3in,5in}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amssymb,amsmath}\n\\pagestyle{empty}\n\\setlength{\\parindent}{0in}\n\\begin{document}\n",
           latexPost: "\\end{document}",
           req: [[0, "any", [0]]]
@@ -332,24 +531,21 @@ export class ApkgExporter extends BaseVocabularyExporter {
         const cardId = 2000 + index;  // Start from 2000
         
         // Prepare fields with proper sanitization
-        const front = this.sanitizeText(item.word);
-        let back = this.sanitizeText(item.definition);
+        const word = this.sanitizeText(item.word);
+        const definition = this.sanitizeText(item.definition);
+        const example = item.exampleSentence ? this.sanitizeText(item.exampleSentence) : '';
+        const audio = item.audioUrl && options.includeAudio ? item.audioUrl : '';
         
-        if (item.exampleSentence) {
-          back += `<br><br><i>${this.sanitizeText(item.exampleSentence)}</i>`;
-        }
+        // Create fields in the correct order: Word, Definition, Example, Audio
+        const fields = `${word}\x1f${definition}\x1f${example}\x1f${audio}`;
         
-        // Add audio URL as a clickable link instead of embedded file
-        if (item.audioUrl && options.includeAudio) {
-          back += `<br><br><a href="${item.audioUrl}" target="_blank">🔊 Audio</a>`;
-          console.log(`Added audio URL for item ${index} (${item.word}): ${item.audioUrl}`);
-        }
-        
-        const fields = `${front}\x1f${back}`;
         const guid = this.generateAnkiGuid();
-        const csum = this.calculateChecksum(front);
+        const csum = this.calculateChecksum(word);
         
         console.log(`Processing item ${index}: noteId=${noteId}, cardId=${cardId}, word="${item.word}"`);
+        if (audio) {
+          console.log(`Added audio URL for item ${index} (${item.word}): ${audio}`);
+        }
         
         // Insert note with validated values
         db.run(
@@ -363,7 +559,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
             -1,                            // usn (update sequence number)
             item.language || '',           // tags
             fields,                        // flds (fields)
-            front,                         // sfld (sort field)
+            word,                          // sfld (sort field)
             csum,                          // csum (checksum)
             0,                             // flags
             ""                             // data
@@ -439,7 +635,6 @@ export class ApkgExporter extends BaseVocabularyExporter {
     
     // Convert to positive integer and keep within reasonable range
     const result = Math.abs(hash) % 2147483647;
-    console.log(`Checksum for "${text.substring(0, 20)}...": ${result}`);
     return result;
   }
 }
