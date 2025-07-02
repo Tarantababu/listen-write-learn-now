@@ -102,25 +102,35 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
     }
 
     return (
-      <span className="text-lg leading-relaxed">
-        {parts[0]}
-        <Input
-          ref={inputRef}
-          value={userResponse}
-          onChange={(e) => onResponseChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={showResult || loading || buttonState === 'processing'}
-          className={`inline-block w-32 mx-1 text-center ${
-            showResult
-              ? isCorrect
-                ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                : 'border-red-500 bg-red-50 dark:bg-red-950/20'
-              : ''
-          }`}
-          placeholder="Type here..."
-        />
-        {parts[1]}
-      </span>
+      <div className="text-lg leading-relaxed">
+        <div className="flex flex-wrap items-center justify-center gap-1">
+          <span>{parts[0]}</span>
+          <div className="relative inline-block">
+            <Input
+              ref={inputRef}
+              value={userResponse}
+              onChange={(e) => onResponseChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={showResult || buttonState === 'processing'}
+              className={`w-32 text-center ${
+                showResult
+                  ? isCorrect
+                    ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                    : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                  : ''
+              }`}
+              placeholder="Type here..."
+            />
+            {/* English translation under the input */}
+            {exercise.translation && (
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded text-xs text-blue-700 dark:text-blue-300 whitespace-nowrap z-10">
+                ({exercise.targetWord})
+              </div>
+            )}
+          </div>
+          <span>{parts[1]}</span>
+        </div>
+      </div>
     );
   };
 
