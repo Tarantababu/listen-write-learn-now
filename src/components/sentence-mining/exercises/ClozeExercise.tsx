@@ -125,6 +125,14 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           <div className="flex flex-wrap items-baseline justify-center gap-1">
             <span>{parts[0]}</span>
             <div className="relative inline-flex flex-col items-center">
+              {/* Show the blank underscores when no user input */}
+              {!userResponse && !showResult && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="text-2xl font-bold text-muted-foreground tracking-widest">
+                    ______
+                  </span>
+                </div>
+              )}
               <Input
                 ref={inputRef}
                 value={userResponse}
@@ -132,13 +140,15 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 onKeyDown={handleKeyDown}
                 disabled={showResult || buttonState === 'processing'}
                 className={`w-32 text-center ${
+                  !userResponse && !showResult ? 'text-transparent' : ''
+                } ${
                   showResult
                     ? isCorrect
                       ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
                       : 'border-red-500 bg-red-50 dark:bg-red-950/20'
                     : ''
                 }`}
-                placeholder="Type here..."
+                placeholder=""
               />
             </div>
             <span>{parts.slice(1).join('_____')}</span>
@@ -191,31 +201,43 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
       );
     }
     
-    // If we still can't create a proper cloze, show a fallback
+    // If we still can't create a proper cloze, show a fallback with visible blanks
     return (
       <div className="text-lg leading-relaxed space-y-4">
         <div className="text-center">
           <p className="mb-4">Complete the sentence by filling in the missing word:</p>
-          <p className="mb-4 font-medium">{exercise.sentence.replace(
-            new RegExp(`\\b${exercise.targetWord}\\b`, 'gi'), 
-            '______'
-          )}</p>
+          <div className="mb-4 font-medium flex flex-wrap items-baseline justify-center gap-1">
+            {exercise.sentence.split(new RegExp(`(\\b${exercise.targetWord}\\b)`, 'gi')).map((part, index) => {
+              if (part.toLowerCase() === exercise.targetWord.toLowerCase()) {
+                return (
+                  <span key={index} className="inline-block relative">
+                    <span className="text-2xl font-bold text-muted-foreground tracking-widest">
+                      ______
+                    </span>
+                  </span>
+                );
+              }
+              return <span key={index}>{part}</span>;
+            })}
+          </div>
           <div className="flex flex-col items-center gap-3">
-            <Input
-              ref={inputRef}
-              value={userResponse}
-              onChange={(e) => onResponseChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={showResult || buttonState === 'processing'}
-              className={`w-32 text-center ${
-                showResult
-                  ? isCorrect
-                    ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                    : 'border-red-500 bg-red-50 dark:bg-red-950/20'
-                  : ''
-              }`}
-              placeholder="Type here..."
-            />
+            <div className="relative">
+              <Input
+                ref={inputRef}
+                value={userResponse}
+                onChange={(e) => onResponseChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={showResult || buttonState === 'processing'}
+                className={`w-32 text-center ${
+                  showResult
+                    ? isCorrect
+                      ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                      : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                    : ''
+                }`}
+                placeholder="Type here..."
+              />
+            </div>
             
             {/* Target word translation hint - Always visible when available */}
             {exercise.translation && (
