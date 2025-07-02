@@ -96,39 +96,79 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   };
 
   const renderSentenceWithBlank = () => {
-    const parts = exercise.clozeSentence.split('_____');
-    if (parts.length !== 2) {
-      return <span>{exercise.clozeSentence}</span>;
-    }
-
-    return (
-      <div className="text-lg leading-relaxed">
-        <div className="flex flex-wrap items-baseline justify-center gap-1">
-          <span>{parts[0]}</span>
-          <div className="relative inline-flex flex-col items-center">
-            <Input
-              ref={inputRef}
-              value={userResponse}
-              onChange={(e) => onResponseChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={showResult || buttonState === 'processing'}
-              className={`w-32 text-center ${
-                showResult
-                  ? isCorrect
-                    ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                    : 'border-red-500 bg-red-50 dark:bg-red-950/20'
-                  : ''
-              }`}
-              placeholder="Type here..."
-            />
-            {/* English translation below the input */}
-            {exercise.targetWord && (
-              <div className="mt-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded text-xs text-blue-700 dark:text-blue-300 whitespace-nowrap">
-                ({exercise.targetWord})
+    // Check if the clozeSentence has the blank placeholder
+    const hasBlank = exercise.clozeSentence && exercise.clozeSentence.includes('_____');
+    
+    if (hasBlank) {
+      const parts = exercise.clozeSentence.split('_____');
+      if (parts.length === 2) {
+        return (
+          <div className="text-lg leading-relaxed">
+            <div className="flex flex-wrap items-baseline justify-center gap-1">
+              <span>{parts[0]}</span>
+              <div className="relative inline-flex flex-col items-center">
+                <Input
+                  ref={inputRef}
+                  value={userResponse}
+                  onChange={(e) => onResponseChange(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={showResult || buttonState === 'processing'}
+                  className={`w-32 text-center ${
+                    showResult
+                      ? isCorrect
+                        ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                        : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                      : ''
+                  }`}
+                  placeholder="Type here..."
+                />
+                {/* Show English translation of the target word */}
+                {exercise.translation && (
+                  <div className="mt-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded text-xs text-blue-700 dark:text-blue-300 whitespace-nowrap">
+                    English: {exercise.translation}
+                  </div>
+                )}
               </div>
-            )}
+              <span>{parts[1]}</span>
+            </div>
           </div>
-          <span>{parts[1]}</span>
+        );
+      }
+    }
+    
+    // Fallback: if no proper cloze sentence, show the regular sentence with an input field
+    return (
+      <div className="text-lg leading-relaxed space-y-4">
+        <div className="text-center">
+          <p className="mb-4">{exercise.sentence}</p>
+          <div className="flex flex-col items-center gap-2">
+            <div className="text-sm text-muted-foreground">
+              Fill in the missing word:
+            </div>
+            <div className="flex flex-col items-center">
+              <Input
+                ref={inputRef}
+                value={userResponse}
+                onChange={(e) => onResponseChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={showResult || buttonState === 'processing'}
+                className={`w-32 text-center ${
+                  showResult
+                    ? isCorrect
+                      ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                      : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                    : ''
+                }`}
+                placeholder="Type here..."
+              />
+              {/* Show English translation of the target word */}
+              {exercise.translation && (
+                <div className="mt-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded text-xs text-blue-700 dark:text-blue-300 whitespace-nowrap">
+                  English: {exercise.translation}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     );
