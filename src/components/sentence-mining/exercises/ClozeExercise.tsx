@@ -175,26 +175,31 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
     );
   };
 
-  // Render hints separately - now includes translation when hint is shown
-  const renderHints = () => (
-    <div className="flex flex-col items-center gap-2 mt-3">
-      {showHint && exercise.translation && (
+  // Render hints separately - now shows target word translation when hint is shown
+  const renderHints = () => {
+    if (!showHint) return null;
+    
+    return (
+      <div className="flex flex-col items-center gap-2 mt-3">
+        {/* Show translation of the target word */}
         <div className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
           <span className="flex items-center gap-1.5">
             <Lightbulb className="h-3 w-3" />
-            English: {exercise.translation}
+            Missing word: {exercise.targetWord} (English: {exercise.targetWordTranslation || 'translation not available'})
           </span>
         </div>
-      )}
-      {showHint && exercise.explanation && (
-        <div className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/40 border border-amber-200 dark:border-amber-700 rounded-full text-xs font-medium text-amber-800 dark:text-amber-200 whitespace-nowrap shadow-sm max-w-xs">
-          <span className="block truncate">
-            💡 {exercise.explanation}
-          </span>
-        </div>
-      )}
-    </div>
-  );
+        
+        {/* Show full sentence explanation if available */}
+        {exercise.explanation && (
+          <div className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/40 border border-amber-200 dark:border-amber-700 rounded-full text-xs font-medium text-amber-800 dark:text-amber-200 whitespace-nowrap shadow-sm max-w-xs">
+            <span className="block truncate">
+              💡 {exercise.explanation}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Render English translation of correct answer
   const renderCorrectAnswerTranslation = () => {
@@ -273,14 +278,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               <Eye className="h-4 w-4 mr-2" />
               {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
             </Button>
-            
-            {showTranslation && exercise.translation && (
-              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-sm text-center">
-                <p className="text-blue-700 dark:text-blue-300">
-                  Full sentence translation: {exercise.translation}
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Keyboard shortcuts hint */}
@@ -430,14 +427,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 <Eye className="h-4 w-4" />
                 {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
               </Button>
-              
-              {showTranslation && exercise.translation && (
-                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-sm animate-fade-in">
-                  <p className="text-blue-700 dark:text-blue-300">
-                    Full sentence translation: {exercise.translation}
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Keyboard shortcuts hint */}
