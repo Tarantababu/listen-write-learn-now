@@ -262,18 +262,16 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
 
           {/* Hints Section */}
           <div className="px-4 py-4 border-b space-y-3">
-            {/* Main hint button for additional explanation */}
-            {exercise.explanation && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowHint(!showHint)}
-                className="w-full justify-center text-sm"
-              >
-                <Lightbulb className="h-4 w-4 mr-2" />
-                {showHint ? 'Hide extra hint' : 'Show extra hint'}
-              </Button>
-            )}
+            {/* Always show the Extra Hint button for translation */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowHint(!showHint)}
+              className="w-full justify-center text-sm"
+            >
+              <Lightbulb className="h-4 w-4 mr-2" />
+              {showHint ? 'Hide Extra Hint' : 'Show Extra Hint'}
+            </Button>
 
             {/* Translation toggle */}
             <Button
@@ -285,6 +283,14 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               <Eye className="h-4 w-4 mr-2" />
               {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
             </Button>
+            
+            {showTranslation && exercise.translation && (
+              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-sm text-center">
+                <p className="text-blue-700 dark:text-blue-300">
+                  Full sentence translation: {exercise.translation}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Keyboard shortcuts hint */}
@@ -413,18 +419,16 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             
             {/* Hints Section */}
             <div className="text-center space-y-3">
-              {/* Extra hint toggle */}
-              {exercise.explanation && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowHint(!showHint)}
-                  className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
-                >
-                  <Lightbulb className="h-4 w-4" />
-                  {showHint ? 'Hide extra hint' : 'Show extra hint'}
-                </Button>
-              )}
+              {/* Always show the Extra Hint button for translation */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowHint(!showHint)}
+                className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
+              >
+                <Lightbulb className="h-4 w-4" />
+                {showHint ? 'Hide Extra Hint' : 'Show Extra Hint'}
+              </Button>
 
               {/* Translation toggle */}
               <Button
@@ -436,6 +440,14 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 <Eye className="h-4 w-4" />
                 {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
               </Button>
+              
+              {showTranslation && exercise.translation && (
+                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-sm animate-fade-in">
+                  <p className="text-blue-700 dark:text-blue-300">
+                    Full sentence translation: {exercise.translation}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Keyboard shortcuts hint */}
