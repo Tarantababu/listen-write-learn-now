@@ -196,6 +196,22 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
     </div>
   );
 
+  // Render English translation of correct answer
+  const renderCorrectAnswerTranslation = () => {
+    if (!showResult || isCorrect || !exercise.translation) return null;
+    
+    return (
+      <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg mt-3">
+        <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+          English Translation:
+        </p>
+        <p className="text-blue-700 dark:text-blue-300 text-sm">
+          {exercise.translation}
+        </p>
+      </div>
+    );
+  };
+
   // Mobile-optimized layout
   if (isMobile) {
     return (
@@ -301,6 +317,9 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   </p>
                 </div>
               )}
+
+              {/* Added English translation of correct answer */}
+              {renderCorrectAnswerTranslation()}
 
               {exercise.explanation && (
                 <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
@@ -492,6 +511,9 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   </p>
                 </div>
               )}
+
+              {/* Added English translation of correct answer */}
+              {renderCorrectAnswerTranslation()}
 
               {exercise.explanation && (
                 <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
