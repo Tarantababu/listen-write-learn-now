@@ -30,7 +30,6 @@ const MemoizedBidirectionalPage = React.memo(BidirectionalPage);
 const MemoizedFilterBar = React.memo(FilterBar);
 const MemoizedPaginationControls = React.memo(PaginationControls);
 const MemoizedSentenceMiningSection = React.memo(SentenceMiningSection);
-
 const ExercisesPage: React.FC = () => {
   const {
     user
@@ -179,7 +178,7 @@ const ExercisesPage: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="sentence-mining" className="flex items-center gap-2 md:justify-center px-4 py-3 md:py-0 rounded-none data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900">
             <Brain className="h-4 w-4" />
-            <span className="hidden md:inline">Smart Sentence Mining</span>
+            <span className="hidden md:inline">Smart Sentence Mining (Beta)</span>
             <span className="md:hidden">Sentence Mining</span>
             <PopoverHint className="ml-1" triggerClassName="text-muted-foreground/60 hover:text-muted-foreground">
               <div className="space-y-3">
@@ -290,5 +289,4 @@ const ExercisesPage: React.FC = () => {
       <DeleteExerciseDialog isOpen={!!deleteExerciseId} onOpenChange={open => !open && handleModalClose('delete')} onConfirm={confirmDeleteExercise} />
     </div>;
 };
-
 export default ExercisesPage;
