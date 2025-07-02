@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Volume2, CheckCircle, XCircle, Eye, ArrowRight, Loader2, KeyboardIcon, Languages } from 'lucide-react';
+import { Volume2, CheckCircle, XCircle, Eye, ArrowRight, Loader2, KeyboardIcon, Lightbulb } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -40,7 +40,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   const { settings } = useUserSettingsContext();
   const isMobile = useIsMobile();
   const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
-  const [showTargetWordHint, setShowTargetWordHint] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-focus input when component mounts
@@ -61,10 +61,10 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
       e.preventDefault();
       onToggleTranslation();
     }
-    // Show/hide target word hint on Ctrl+H or Cmd+H
+    // Show/hide hint on Ctrl+H or Cmd+H
     if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
       e.preventDefault();
-      setShowTargetWordHint(!showTargetWordHint);
+      setShowHint(!showHint);
     }
   };
 
@@ -121,107 +121,10 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
     
     if (parts.length >= 2) {
       return (
-        <div className="text-lg leading-relaxed space-y-3">
+        <div className="text-lg leading-relaxed">
           <div className="flex flex-wrap items-baseline justify-center gap-1">
             <span>{parts[0]}</span>
             <div className="relative inline-flex flex-col items-center">
-              {/* Show the blank underscores when no user input */}
-              {!userResponse && !showResult && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <span className="text-2xl font-bold text-muted-foreground tracking-widest">
-                    ______
-                  </span>
-                </div>
-              )}
-              <Input
-                ref={inputRef}
-                value={userResponse}
-                onChange={(e) => onResponseChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={showResult || buttonState === 'processing'}
-                className={`w-32 text-center ${
-                  !userResponse && !showResult ? 'text-transparent' : ''
-                } ${
-                  showResult
-                    ? isCorrect
-                      ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                      : 'border-red-500 bg-red-50 dark:bg-red-950/20'
-                    : ''
-                }`}
-                placeholder=""
-              />
-            </div>
-            <span>{parts.slice(1).join('_____')}</span>
-          </div>
-          
-          {/* Target word translation hint - Always visible when available */}
-          {exercise.translation && (
-            <div className="flex justify-center">
-              <div className="px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200 dark:border-blue-700 rounded-lg shadow-sm">
-                <div className="flex items-center gap-2 text-sm">
-                  <Languages className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-blue-700 dark:text-blue-300 font-medium">
-                    English: {exercise.translation}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Additional hint button for target word */}
-          {!showResult && (
-            <div className="flex justify-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowTargetWordHint(!showTargetWordHint)}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                {showTargetWordHint ? 'Hide hint' : 'Need a hint?'}
-              </Button>
-            </div>
-          )}
-          
-          {/* Target word hint */}
-          {showTargetWordHint && !showResult && (
-            <div className="flex justify-center animate-fade-in">
-              <div className="px-3 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-700 rounded-lg">
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  First letter: <span className="font-bold">{exercise.targetWord.charAt(0).toUpperCase()}</span>
-                  {exercise.targetWord.length > 1 && (
-                    <span className="ml-2">
-                      Length: {exercise.targetWord.length} letters
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
-    
-    // If we still can't create a proper cloze, show a fallback with visible blanks
-    return (
-      <div className="text-lg leading-relaxed space-y-4">
-        <div className="text-center">
-          <p className="mb-4">Complete the sentence by filling in the missing word:</p>
-          <div className="mb-4 font-medium flex flex-wrap items-baseline justify-center gap-1">
-            {exercise.sentence.split(new RegExp(`(\\b${exercise.targetWord}\\b)`, 'gi')).map((part, index) => {
-              if (part.toLowerCase() === exercise.targetWord.toLowerCase()) {
-                return (
-                  <span key={index} className="inline-block relative">
-                    <span className="text-2xl font-bold text-muted-foreground tracking-widest">
-                      ______
-                    </span>
-                  </span>
-                );
-              }
-              return <span key={index}>{part}</span>;
-            })}
-          </div>
-          <div className="flex flex-col items-center gap-3">
-            <div className="relative">
               <Input
                 ref={inputRef}
                 value={userResponse}
@@ -237,45 +140,75 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 }`}
                 placeholder="Type here..."
               />
+              {/* Enhanced hint display - Always show English translation as primary hint */}
+              <div className="mt-2 space-y-1">
+                {exercise.translation && (
+                  <div className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
+                    <span className="flex items-center gap-1.5">
+                      <Lightbulb className="h-3 w-3" />
+                      English: {exercise.translation}
+                    </span>
+                  </div>
+                )}
+                {/* Additional hint toggle */}
+                {showHint && exercise.explanation && (
+                  <div className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/40 border border-amber-200 dark:border-amber-700 rounded-full text-xs font-medium text-amber-800 dark:text-amber-200 whitespace-nowrap shadow-sm max-w-xs">
+                    <span className="block truncate">
+                      💡 {exercise.explanation}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
-            
-            {/* Target word translation hint - Always visible when available */}
-            {exercise.translation && (
-              <div className="px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200 dark:border-blue-700 rounded-lg shadow-sm">
-                <div className="flex items-center gap-2 text-sm">
-                  <Languages className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-blue-700 dark:text-blue-300 font-medium">
+            <span>{parts.slice(1).join('_____')}</span>
+          </div>
+        </div>
+      );
+    }
+    
+    // If we still can't create a proper cloze, show a fallback
+    return (
+      <div className="text-lg leading-relaxed space-y-4">
+        <div className="text-center">
+          <p className="mb-4">Complete the sentence by filling in the missing word:</p>
+          <p className="mb-4 font-medium">{exercise.sentence.replace(
+            new RegExp(`\\b${exercise.targetWord}\\b`, 'gi'), 
+            '______'
+          )}</p>
+          <div className="flex flex-col items-center gap-2">
+            <Input
+              ref={inputRef}
+              value={userResponse}
+              onChange={(e) => onResponseChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={showResult || buttonState === 'processing'}
+              className={`w-32 text-center ${
+                showResult
+                  ? isCorrect
+                    ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                    : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                  : ''
+              }`}
+              placeholder="Type here..."
+            />
+            {/* Enhanced hint display for fallback */}
+            <div className="space-y-1">
+              {exercise.translation && (
+                <div className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
+                  <span className="flex items-center gap-1.5">
+                    <Lightbulb className="h-3 w-3" />
                     English: {exercise.translation}
                   </span>
                 </div>
-              </div>
-            )}
-            
-            {/* Additional hint button for target word */}
-            {!showResult && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowTargetWordHint(!showTargetWordHint)}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                {showTargetWordHint ? 'Hide hint' : 'Need a hint?'}
-              </Button>
-            )}
-            
-            {/* Target word hint */}
-            {showTargetWordHint && !showResult && (
-              <div className="px-3 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-700 rounded-lg animate-fade-in">
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  First letter: <span className="font-bold">{exercise.targetWord.charAt(0).toUpperCase()}</span>
-                  {exercise.targetWord.length > 1 && (
-                    <span className="ml-2">
-                      Length: {exercise.targetWord.length} letters
-                    </span>
-                  )}
-                </p>
-              </div>
-            )}
+              )}
+              {showHint && exercise.explanation && (
+                <div className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/40 border border-amber-200 dark:border-amber-700 rounded-full text-xs font-medium text-amber-800 dark:text-amber-200 whitespace-nowrap shadow-sm max-w-xs">
+                  <span className="block truncate">
+                    💡 {exercise.explanation}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -319,8 +252,22 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             </div>
           </div>
 
-          {/* Translation hint */}
-          <div className="px-4 py-4 border-b">
+          {/* Hints Section */}
+          <div className="px-4 py-4 border-b space-y-3">
+            {/* Main hint button for additional explanation */}
+            {exercise.explanation && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowHint(!showHint)}
+                className="w-full justify-center text-sm"
+              >
+                <Lightbulb className="h-4 w-4 mr-2" />
+                {showHint ? 'Hide extra hint' : 'Show extra hint'}
+              </Button>
+            )}
+
+            {/* Translation toggle */}
             <Button
               variant="ghost"
               size="sm"
@@ -328,7 +275,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               className="w-full justify-center text-sm"
             >
               <Eye className="h-4 w-4 mr-2" />
-              {showTranslation ? 'Hide full translation' : 'Show full translation'}
+              {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
             </Button>
             
             {showTranslation && exercise.translation && (
@@ -367,14 +314,9 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
                     Correct answer:
                   </p>
-                  <p className="text-blue-700 dark:text-blue-300 text-sm font-medium">
+                  <p className="text-blue-700 dark:text-blue-300 text-sm">
                     {exercise.targetWord}
                   </p>
-                  {exercise.translation && (
-                    <p className="text-blue-600 dark:text-blue-400 text-xs mt-1">
-                      Translation: {exercise.translation}
-                    </p>
-                  )}
                 </div>
               )}
 
@@ -465,16 +407,30 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               {renderSentenceWithBlank()}
             </div>
             
-            {/* Translation hint */}
-            <div className="text-center">
+            {/* Hints Section */}
+            <div className="text-center space-y-3">
+              {/* Extra hint toggle */}
+              {exercise.explanation && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHint(!showHint)}
+                  className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
+                >
+                  <Lightbulb className="h-4 w-4" />
+                  {showHint ? 'Hide extra hint' : 'Show extra hint'}
+                </Button>
+              )}
+
+              {/* Translation toggle */}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onToggleTranslation}
-                className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
+                className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 ml-2"
               >
                 <Eye className="h-4 w-4" />
-                {showTranslation ? 'Hide full translation' : 'Show full translation'}
+                {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
               </Button>
               
               {showTranslation && exercise.translation && (
@@ -489,7 +445,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             {/* Keyboard shortcuts hint */}
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <KeyboardIcon className="h-3 w-3" />
-              <span>Enter: submit • Ctrl+T: full translation • Ctrl+H: word hint</span>
+              <span>Enter: submit • Ctrl+T: translation • Ctrl+H: hint</span>
             </div>
           </div>
         </CardContent>
@@ -548,14 +504,9 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
                     Correct answer:
                   </p>
-                  <p className="text-blue-700 dark:text-blue-300 text-sm font-medium">
+                  <p className="text-blue-700 dark:text-blue-300 text-sm">
                     {exercise.targetWord}
                   </p>
-                  {exercise.translation && (
-                    <p className="text-blue-600 dark:text-blue-400 text-xs mt-1">
-                      Translation: {exercise.translation}
-                    </p>
-                  )}
                 </div>
               )}
 
