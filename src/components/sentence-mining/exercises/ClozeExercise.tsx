@@ -31,20 +31,67 @@ interface ClozeExerciseProps {
   onToggleTranslation: () => void;
 }
 
-// Simulated translation function - replace this with your actual OpenAI integration
+// REPLACE THIS with your actual OpenAI integration
 const getTranslation = async (text: string, targetLang: string = 'en'): Promise<string> => {
-  // This is where you would call your existing OpenAI integration
-  // For demonstration, I'm providing mock translations
-  const mockTranslations: { [key: string]: string } = {
-    'casa': 'house',
-    'perro': 'dog',
-    'gato': 'cat',
-    'agua': 'water',
-    'comida': 'food',
-  };
-  
-  // Return mock translation or fallback
-  return mockTranslations[text.toLowerCase()] || `${text} (translation)`;
+  try {
+    // Replace this entire function with your actual OpenAI API call
+    // Example of what it should look like:
+    /*
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "user",
+          content: `Translate the following text to ${targetLang}: "${text}"`
+        }
+      ],
+      max_tokens: 100,
+      temperature: 0.3,
+    });
+    
+    return response.choices[0]?.message?.content?.trim() || 'translation not available';
+    */
+    
+    // Temporary better mock translations for German words
+    const mockTranslations: { [key: string]: string } = {
+      'zukunft': 'future',
+      'haus': 'house',
+      'hund': 'dog',
+      'katze': 'cat',
+      'wasser': 'water',
+      'essen': 'food',
+      'liebe': 'love',
+      'zeit': 'time',
+      'leben': 'life',
+      'welt': 'world',
+      'mensch': 'person',
+      'jahr': 'year',
+      'tag': 'day',
+      'nacht': 'night',
+      'morgen': 'morning',
+      'abend': 'evening',
+      'arbeit': 'work',
+      'schule': 'school',
+      'buch': 'book',
+      'auto': 'car',
+    };
+    
+    const translation = mockTranslations[text.toLowerCase()];
+    if (translation) {
+      return translation;
+    }
+    
+    // For sentences, provide a basic fallback
+    if (text.includes(' ')) {
+      return 'sentence translation not available';
+    }
+    
+    return 'translation not available';
+    
+  } catch (error) {
+    console.error('Translation error:', error);
+    return 'translation not available';
+  }
 };
 
 // Enhanced exercise processor that ensures translations are available
