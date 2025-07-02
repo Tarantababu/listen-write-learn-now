@@ -14,50 +14,18 @@ export class ApkgExporter extends BaseVocabularyExporter {
       
       const zip = new JSZip();
       
-      // Create media mapping first to get correct indices
-      const mediaMapping = await this.createMediaMapping(vocabulary, options);
-      
       // Create the collection.anki2 SQLite database file
-      const dbArrayBuffer = await this.createAnkiDatabase(vocabulary, options, mediaMapping);
+      const dbArrayBuffer = await this.createAnkiDatabase(vocabulary, options);
       zip.file('collection.anki2', dbArrayBuffer);
       
-      // Add media files to zip with correct filenames - ONLY if they were successfully processed
-      if (options.includeAudio && mediaMapping.files.length > 0) {
-        console.log('Adding media files to archive...');
-        for (const mediaFile of mediaMapping.files) {
-          if (mediaFile.data) {
-            // Use the filename that matches the media map
-            const filename = mediaMapping.map[mediaFile.index.toString()];
-            if (filename) {
-              zip.file(filename, mediaFile.data, { base64: true });
-              console.log(`Added media file: ${filename} for index ${mediaFile.index}`);
-            }
-          }
-        }
-        
-        // Create media mapping file - only include successfully processed files
-        const validMediaMap: Record<string, string> = {};
-        for (const mediaFile of mediaMapping.files) {
-          if (mediaFile.data && mediaMapping.map[mediaFile.index.toString()]) {
-            validMediaMap[mediaFile.index.toString()] = mediaMapping.map[mediaFile.index.toString()];
-          }
-        }
-        
-        const mediaMapJson = JSON.stringify(validMediaMap);
-        zip.file('media', mediaMapJson);
-        console.log('Media mapping file content:', mediaMapJson);
-      } else {
-        // Always create media file, even if empty
-        zip.file('media', JSON.stringify({}));
-        console.log('Created empty media file');
-      }
+      // Always create an empty media file since we're using URLs
+      zip.file('media', JSON.stringify({}));
+      console.log('Created empty media file (using URLs instead of embedded files)');
       
       const blob = await zip.generateAsync({ type: 'blob' });
       const filename = this.generateFilename(options.deckName, this.format.fileExtension);
       
       console.log('APKG export completed successfully');
-      console.log('Final media map:', mediaMapping.map);
-      console.log('Media files in archive:', mediaMapping.files.filter(f => f.data).length);
       
       return this.createSuccessResult(blob, filename);
     } catch (error) {
@@ -66,143 +34,9 @@ export class ApkgExporter extends BaseVocabularyExporter {
     }
   }
 
-  private async createMediaMapping(vocabulary: VocabularyItem[], options: ExportOptions): Promise<{
-    map: Record<string, string>;
-    files: Array<{ index: number; data: string | null; originalIndex: number; urlHash: string }>;
-    itemToMediaIndex: Map<number, number>;
-  }> {
-    const mediaMap: Record<string, string> = {};
-    const mediaFiles: Array<{ index: number; data: string | null; originalIndex: number; urlHash: string }> = [];
-    const itemToMediaIndex = new Map<number, number>();
-    
-    if (!options.includeAudio) {
-      return { map: mediaMap, files: mediaFiles, itemToMediaIndex };
-    }
-    
-    // Process all items with audio first to determine successful downloads
-    const processingResults: Array<{
-      originalIndex: number;
-      data: string | null;
-      urlHash: string;
-      word: string;
-    }> = [];
-    
-    for (let i = 0; i < vocabulary.length; i++) {
-      const item = vocabulary[i];
-      
-      if (item.audioUrl) {
-        const urlHash = this.extractAudioIdentifier(item.audioUrl);
-        console.log(`Processing audio for item ${i}: ${item.word} (URL hash: ${urlHash})`);
-        
-        try {
-          const response = await fetch(item.audioUrl);
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
-          
-          const blob = await response.blob();
-          const base64 = await this.blobToBase64(blob);
-          
-          // Extract only the base64 data part (remove data:audio/mp3;base64, prefix)
-          const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
-          
-          if (!base64Data) {
-            throw new Error('Failed to extract base64 data');
-          }
-          
-          processingResults.push({
-            originalIndex: i,
-            data: base64Data,
-            urlHash,
-            word: item.word
-          });
-          
-          console.log(`Successfully processed audio for item ${i}: ${item.word}`);
-        } catch (error) {
-          console.error(`Failed to fetch audio for item ${i} (${item.word}):`, error);
-          processingResults.push({
-            originalIndex: i,
-            data: null,
-            urlHash,
-            word: item.word
-          });
-        }
-      }
-    }
-    
-    // Now assign sequential media indices only to successful downloads
-    let mediaIndex = 0;
-    for (const result of processingResults) {
-      if (result.data) {
-        const filename = `${mediaIndex}.mp3`;
-        
-        // Add to media map with sequential index
-        mediaMap[mediaIndex.toString()] = filename;
-        
-        mediaFiles.push({
-          index: mediaIndex,
-          data: result.data,
-          originalIndex: result.originalIndex,
-          urlHash: result.urlHash
-        });
-        
-        itemToMediaIndex.set(result.originalIndex, mediaIndex);
-        
-        console.log(`Media file ${mediaIndex} (${filename}) mapped for item ${result.originalIndex} (${result.word})`);
-        mediaIndex++;
-      } else {
-        // Track failed items but don't assign media index
-        mediaFiles.push({
-          index: -1,
-          data: null,
-          originalIndex: result.originalIndex,
-          urlHash: result.urlHash
-        });
-      }
-    }
-    
-    console.log(`Created media mapping: ${mediaFiles.filter(f => f.data).length} successful files out of ${mediaFiles.length} attempts`);
-    console.log('Final media map:', mediaMap);
-    console.log('Item to media index mapping:', Array.from(itemToMediaIndex.entries()));
-    return { map: mediaMap, files: mediaFiles, itemToMediaIndex };
-  }
-
-  private extractAudioIdentifier(audioUrl: string): string {
-    // Extract a unique identifier from the audio URL for consistent referencing
-    // For URLs like "https://...../audio_1751360032928_o6uz6c.mp3"
-    try {
-      const url = new URL(audioUrl);
-      const filename = url.pathname.split('/').pop() || '';
-      
-      // Try to extract the unique parts (timestamp and random string)
-      const match = filename.match(/audio_(\d+)_([a-zA-Z0-9]+)\.mp3$/);
-      if (match) {
-        return `${match[1]}_${match[2]}`; // Return "1751360032928_o6uz6c"
-      }
-      
-      // Fallback: use the entire filename without extension
-      return filename.replace('.mp3', '');
-    } catch (error) {
-      // If URL parsing fails, create a hash from the entire URL
-      console.warn('Failed to parse audio URL, using hash:', error);
-      return this.simpleHash(audioUrl);
-    }
-  }
-
-  private simpleHash(str: string): string {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash).toString(36);
-  }
-
   private async createAnkiDatabase(
     vocabulary: VocabularyItem[], 
-    options: ExportOptions, 
-    mediaMapping: { map: Record<string, string>; files: Array<{ index: number; data: string | null; originalIndex: number; urlHash: string }>; itemToMediaIndex: Map<number, number> }
+    options: ExportOptions
   ): Promise<Uint8Array> {
     console.log('Creating Anki database...');
     
@@ -217,9 +51,9 @@ export class ApkgExporter extends BaseVocabularyExporter {
       this.createTables(db);
       
       // Use minimal, safe values
-      const baseTime = Math.floor(Date.now() / 1000); // Current timestamp for better compatibility
+      const baseTime = Math.floor(Date.now() / 1000);
       const deckId = 1;
-      const modelId = 1000; // Much smaller model ID
+      const modelId = 1000;
       
       console.log('Base timestamp:', baseTime, 'Model ID:', modelId);
       
@@ -227,7 +61,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
       this.insertCollectionData(db, baseTime, modelId, deckId, options.deckName);
       
       // Insert notes and cards
-      this.insertNotesAndCards(db, vocabulary, options, baseTime, modelId, deckId, mediaMapping);
+      this.insertNotesAndCards(db, vocabulary, options, baseTime, modelId, deckId);
       
       const data = db.export();
       console.log('Database created successfully, size:', data.length, 'bytes');
@@ -487,8 +321,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
     options: ExportOptions, 
     baseTime: number, 
     modelId: number, 
-    deckId: number,
-    mediaMapping: { map: Record<string, string>; files: Array<{ index: number; data: string | null; originalIndex: number; urlHash: string }>; itemToMediaIndex: Map<number, number> }
+    deckId: number
   ): void {
     console.log('Inserting', vocabulary.length, 'notes and cards...');
     
@@ -506,24 +339,10 @@ export class ApkgExporter extends BaseVocabularyExporter {
           back += `<br><br><i>${this.sanitizeText(item.exampleSentence)}</i>`;
         }
         
-        // CRITICAL FIX: Only add audio reference if the media file was actually processed successfully
-        if (item.audioUrl && options.includeAudio && mediaMapping.itemToMediaIndex.has(index)) {
-          const mediaIndex = mediaMapping.itemToMediaIndex.get(index)!;
-          
-          // Double-check that this media file exists and was processed successfully
-          const mediaFile = mediaMapping.files.find(f => 
-            f.index === mediaIndex && 
-            f.originalIndex === index && 
-            f.data !== null
-          );
-          
-          if (mediaFile && mediaMapping.map[mediaIndex.toString()]) {
-            const filename = mediaMapping.map[mediaIndex.toString()];
-            back += `<br>[sound:${filename}]`;
-            console.log(`Added audio reference for item ${index} (${item.word}): ${filename} (media index: ${mediaIndex})`);
-          } else {
-            console.warn(`Skipping audio reference for item ${index} (${item.word}): media file not found or not processed`);
-          }
+        // Add audio URL as a clickable link instead of embedded file
+        if (item.audioUrl && options.includeAudio) {
+          back += `<br><br><a href="${item.audioUrl}" target="_blank">🔊 Audio</a>`;
+          console.log(`Added audio URL for item ${index} (${item.word}): ${item.audioUrl}`);
         }
         
         const fields = `${front}\x1f${back}`;
@@ -579,11 +398,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
       });
       
       console.log('All notes and cards inserted successfully');
-      console.log('Media mapping summary:');
-      console.log('- Total vocabulary items:', vocabulary.length);
-      console.log('- Items with audio URLs:', vocabulary.filter(item => item.audioUrl).length);
-      console.log('- Successfully processed audio files:', mediaMapping.files.filter(f => f.data !== null).length);
-      console.log('- Items with media references:', mediaMapping.itemToMediaIndex.size);
+      console.log('Audio handling: Using clickable URLs instead of embedded files');
     } catch (error) {
       console.error('Error inserting notes and cards:', error);
       throw error;
@@ -626,20 +441,5 @@ export class ApkgExporter extends BaseVocabularyExporter {
     const result = Math.abs(hash) % 2147483647;
     console.log(`Checksum for "${text.substring(0, 20)}...": ${result}`);
     return result;
-  }
-  
-  private blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (reader.result) {
-          resolve(reader.result as string);
-        } else {
-          reject(new Error('Failed to convert blob to base64'));
-        }
-      };
-      reader.onerror = () => reject(new Error('FileReader error'));
-      reader.readAsDataURL(blob);
-    });
   }
 }
