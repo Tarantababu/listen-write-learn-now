@@ -151,7 +151,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           <p className="mb-4">Complete the sentence by filling in the missing word:</p>
           <p className="mb-4 font-medium">{exercise.sentence.replace(
             new RegExp(`\\b${exercise.targetWord}\\b`, 'gi'), 
-            '_____'  // Fixed to 5 underscores
+            '_____'
           )}</p>
           <div className="flex flex-col items-center gap-2">
             <Input
@@ -212,6 +212,19 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
     );
   };
 
+  // Render English translation when sentence is first displayed
+  const renderInitialTranslation = () => {
+    if (showResult || !exercise.translation) return null;
+    
+    return (
+      <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg mt-4 text-center">
+        <p className="text-sm text-blue-700 dark:text-blue-300">
+          English: {exercise.translation}
+        </p>
+      </div>
+    );
+  };
+
   // Mobile-optimized layout
   if (isMobile) {
     return (
@@ -247,6 +260,8 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             <div className="text-center">
               {renderSentenceWithBlank()}
               {renderHints()}
+              {/* Added English translation when sentence is first displayed */}
+              {renderInitialTranslation()}
             </div>
           </div>
 
@@ -407,6 +422,8 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             <div className="p-4 bg-muted rounded-lg text-center">
               {renderSentenceWithBlank()}
               {renderHints()}
+              {/* Added English translation when sentence is first displayed */}
+              {renderInitialTranslation()}
             </div>
             
             {/* Hints Section */}
