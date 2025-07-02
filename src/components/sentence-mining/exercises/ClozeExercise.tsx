@@ -101,7 +101,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   };
 
   const renderSentenceWithBlank = () => {
-    // Create a cloze sentence by replacing the target word with a blank
+    // Create a cloze sentence by replacing the target word with a blank (5 underscores)
     let clozeSentence = exercise.clozeSentence;
     
     // If clozeSentence doesn't have the blank placeholder, create it
@@ -151,7 +151,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           <p className="mb-4">Complete the sentence by filling in the missing word:</p>
           <p className="mb-4 font-medium">{exercise.sentence.replace(
             new RegExp(`\\b${exercise.targetWord}\\b`, 'gi'), 
-            '______'
+            '_____'  // Fixed to 5 underscores
           )}</p>
           <div className="flex flex-col items-center gap-2">
             <Input
