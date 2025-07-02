@@ -137,12 +137,12 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 }`}
                 placeholder="Type here..."
               />
-              {/* Always show English translation of the missing word */}
+              {/* Always show English translation of the sentence */}
               {exercise.translation && !showResult && (
                 <div className="mt-2 px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
                   <span className="flex items-center gap-1.5">
                     <Lightbulb className="h-3 w-3" />
-                    English: {exercise.targetWordTranslation || exercise.translation}
+                    English: {exercise.translation}
                   </span>
                 </div>
               )}
@@ -178,12 +178,12 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               }`}
               placeholder="Type here..."
             />
-            {/* Always show English translation of the missing word in fallback view */}
+            {/* Always show English translation of the sentence in fallback view */}
             {exercise.translation && !showResult && (
               <div className="mt-2 px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
                 <span className="flex items-center gap-1.5">
                   <Lightbulb className="h-3 w-3" />
-                  English: {exercise.targetWordTranslation || exercise.translation}
+                  English: {exercise.translation}
                 </span>
               </div>
             )}
@@ -217,19 +217,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
         </p>
         <p className="text-blue-700 dark:text-blue-300 text-sm">
           {exercise.translation}
-        </p>
-      </div>
-    );
-  };
-
-  // Render English translation when sentence is first displayed
-  const renderInitialTranslation = () => {
-    if (showResult || !exercise.translation) return null;
-    
-    return (
-      <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg mt-4 text-center">
-        <p className="text-sm text-blue-700 dark:text-blue-300">
-          English: {exercise.translation}
         </p>
       </div>
     );
@@ -270,8 +257,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             <div className="text-center">
               {renderSentenceWithBlank()}
               {renderHints()}
-              {/* Added English translation when sentence is first displayed */}
-              {renderInitialTranslation()}
             </div>
           </div>
 
@@ -300,14 +285,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               <Eye className="h-4 w-4 mr-2" />
               {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
             </Button>
-            
-            {showTranslation && exercise.translation && (
-              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-sm text-center">
-                <p className="text-blue-700 dark:text-blue-300">
-                  Full sentence translation: {exercise.translation}
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Keyboard shortcuts hint */}
@@ -432,8 +409,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             <div className="p-4 bg-muted rounded-lg text-center">
               {renderSentenceWithBlank()}
               {renderHints()}
-              {/* Added English translation when sentence is first displayed */}
-              {renderInitialTranslation()}
             </div>
             
             {/* Hints Section */}
@@ -461,14 +436,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 <Eye className="h-4 w-4" />
                 {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
               </Button>
-              
-              {showTranslation && exercise.translation && (
-                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-sm animate-fade-in">
-                  <p className="text-blue-700 dark:text-blue-300">
-                    Full sentence translation: {exercise.translation}
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Keyboard shortcuts hint */}
