@@ -96,56 +96,30 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   };
 
   const renderSentenceWithBlank = () => {
-    // Check if the clozeSentence has the blank placeholder
-    const hasBlank = exercise.clozeSentence && exercise.clozeSentence.includes('_____');
+    // Create a cloze sentence by replacing the target word with a blank
+    let clozeSentence = exercise.clozeSentence;
     
-    if (hasBlank) {
-      const parts = exercise.clozeSentence.split('_____');
-      if (parts.length === 2) {
-        return (
-          <div className="text-lg leading-relaxed">
-            <div className="flex flex-wrap items-baseline justify-center gap-1">
-              <span>{parts[0]}</span>
-              <div className="relative inline-flex flex-col items-center">
-                <Input
-                  ref={inputRef}
-                  value={userResponse}
-                  onChange={(e) => onResponseChange(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  disabled={showResult || buttonState === 'processing'}
-                  className={`w-32 text-center ${
-                    showResult
-                      ? isCorrect
-                        ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                        : 'border-red-500 bg-red-50 dark:bg-red-950/20'
-                      : ''
-                  }`}
-                  placeholder="Type here..."
-                />
-                {/* Show English translation of the target word */}
-                {exercise.translation && (
-                  <div className="mt-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded text-xs text-blue-700 dark:text-blue-300 whitespace-nowrap">
-                    English: {exercise.translation}
-                  </div>
-                )}
-              </div>
-              <span>{parts[1]}</span>
-            </div>
-          </div>
-        );
-      }
+    // If clozeSentence doesn't have the blank placeholder, create it
+    if (!clozeSentence || !clozeSentence.includes('_____')) {
+      // Use the regular sentence and replace the target word with blanks
+      clozeSentence = exercise.sentence.replace(
+        new RegExp(`\\b${exercise.targetWord}\\b`, 'gi'), 
+        '_____'
+      );
     }
     
-    // Fallback: if no proper cloze sentence, show the regular sentence with an input field
-    return (
-      <div className="text-lg leading-relaxed space-y-4">
-        <div className="text-center">
-          <p className="mb-4">{exercise.sentence}</p>
-          <div className="flex flex-col items-center gap-2">
-            <div className="text-sm text-muted-foreground">
-              Fill in the missing word:
-            </div>
-            <div className="flex flex-col items-center">
+    console.log('Cloze sentence:', clozeSentence);
+    console.log('Target word:', exercise.targetWord);
+    
+    // Split by the blank placeholder
+    const parts = clozeSentence.split('_____');
+    
+    if (parts.length >= 2) {
+      return (
+        <div className="text-lg leading-relaxed">
+          <div className="flex flex-wrap items-baseline justify-center gap-1">
+            <span>{parts[0]}</span>
+            <div className="relative inline-flex flex-col items-center">
               <Input
                 ref={inputRef}
                 value={userResponse}
@@ -168,6 +142,43 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 </div>
               )}
             </div>
+            <span>{parts.slice(1).join('_____')}</span>
+          </div>
+        </div>
+      );
+    }
+    
+    // If we still can't create a proper cloze, show a fallback
+    return (
+      <div className="text-lg leading-relaxed space-y-4">
+        <div className="text-center">
+          <p className="mb-4">Complete the sentence by filling in the missing word:</p>
+          <p className="mb-4 font-medium">{exercise.sentence.replace(
+            new RegExp(`\\b${exercise.targetWord}\\b`, 'gi'), 
+            '______'
+          )}</p>
+          <div className="flex flex-col items-center gap-2">
+            <Input
+              ref={inputRef}
+              value={userResponse}
+              onChange={(e) => onResponseChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={showResult || buttonState === 'processing'}
+              className={`w-32 text-center ${
+                showResult
+                  ? isCorrect
+                    ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                    : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                  : ''
+              }`}
+              placeholder="Type here..."
+            />
+            {/* Show English translation of the target word */}
+            {exercise.translation && (
+              <div className="mt-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded text-xs text-blue-700 dark:text-blue-300 whitespace-nowrap">
+                English: {exercise.translation}
+              </div>
+            )}
           </div>
         </div>
       </div>
