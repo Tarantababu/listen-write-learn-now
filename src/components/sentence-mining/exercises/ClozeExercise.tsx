@@ -121,7 +121,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
         <div className="text-lg leading-relaxed">
           <div className="flex flex-wrap items-baseline justify-center gap-1">
             <span>{parts[0]}</span>
-            <div className="relative inline-flex flex-col items-center">
+            <div className="relative inline-flex">
               <Input
                 ref={inputRef}
                 value={userResponse}
@@ -137,15 +137,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 }`}
                 placeholder="Type here..."
               />
-              {/* Always show English translation of the sentence */}
-              {exercise.translation && !showResult && (
-                <div className="mt-2 px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
-                  <span className="flex items-center gap-1.5">
-                    <Lightbulb className="h-3 w-3" />
-                    English: {exercise.translation}
-                  </span>
-                </div>
-              )}
             </div>
             <span>{parts.slice(1).join('_____')}</span>
           </div>
@@ -178,24 +169,23 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               }`}
               placeholder="Type here..."
             />
-            {/* Always show English translation of the sentence in fallback view */}
-            {exercise.translation && !showResult && (
-              <div className="mt-2 px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
-                <span className="flex items-center gap-1.5">
-                  <Lightbulb className="h-3 w-3" />
-                  English: {exercise.translation}
-                </span>
-              </div>
-            )}
           </div>
         </div>
       </div>
     );
   };
 
-  // Render hints separately
+  // Render hints separately - now includes translation when hint is shown
   const renderHints = () => (
     <div className="flex flex-col items-center gap-2 mt-3">
+      {showHint && exercise.translation && (
+        <div className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
+          <span className="flex items-center gap-1.5">
+            <Lightbulb className="h-3 w-3" />
+            English: {exercise.translation}
+          </span>
+        </div>
+      )}
       {showHint && exercise.explanation && (
         <div className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/40 border border-amber-200 dark:border-amber-700 rounded-full text-xs font-medium text-amber-800 dark:text-amber-200 whitespace-nowrap shadow-sm max-w-xs">
           <span className="block truncate">
@@ -262,7 +252,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
 
           {/* Hints Section */}
           <div className="px-4 py-4 border-b space-y-3">
-            {/* Always show the Extra Hint button for translation */}
+            {/* Always show the Extra Hint button */}
             <Button
               variant="ghost"
               size="sm"
@@ -419,7 +409,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             
             {/* Hints Section */}
             <div className="text-center space-y-3">
-              {/* Always show the Extra Hint button for translation */}
+              {/* Always show the Extra Hint button */}
               <Button
                 variant="ghost"
                 size="sm"
