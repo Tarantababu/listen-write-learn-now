@@ -68,25 +68,33 @@ export class ApkgExporter extends BaseVocabularyExporter {
 
   private async createMediaMapping(vocabulary: VocabularyItem[], options: ExportOptions): Promise<{
     map: Record<string, string>;
-    files: Array<{ index: number; data: string | null; originalIndex: number }>;
+    files: Array<{ index: number; data: string | null; originalIndex: number; urlHash: string }>;
     itemToMediaIndex: Map<number, number>;
   }> {
     const mediaMap: Record<string, string> = {};
-    const mediaFiles: Array<{ index: number; data: string | null; originalIndex: number }> = [];
+    const mediaFiles: Array<{ index: number; data: string | null; originalIndex: number; urlHash: string }> = [];
     const itemToMediaIndex = new Map<number, number>();
     
     if (!options.includeAudio) {
       return { map: mediaMap, files: mediaFiles, itemToMediaIndex };
     }
     
-    let mediaIndex = 0;
+    // Process all items with audio first to determine successful downloads
+    const processingResults: Array<{
+      originalIndex: number;
+      data: string | null;
+      urlHash: string;
+      word: string;
+    }> = [];
     
     for (let i = 0; i < vocabulary.length; i++) {
       const item = vocabulary[i];
       
       if (item.audioUrl) {
+        const urlHash = this.extractAudioIdentifier(item.audioUrl);
+        console.log(`Processing audio for item ${i}: ${item.word} (URL hash: ${urlHash})`);
+        
         try {
-          console.log(`Processing audio for item ${i}: ${item.word}`);
           const response = await fetch(item.audioUrl);
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -102,43 +110,99 @@ export class ApkgExporter extends BaseVocabularyExporter {
             throw new Error('Failed to extract base64 data');
           }
           
-          const filename = `${mediaIndex}.mp3`;
-          
-          // CRITICAL: Only add to mapping if we successfully processed the file
-          mediaMap[mediaIndex.toString()] = filename;
-          
-          mediaFiles.push({
-            index: mediaIndex,
+          processingResults.push({
+            originalIndex: i,
             data: base64Data,
-            originalIndex: i
+            urlHash,
+            word: item.word
           });
           
-          itemToMediaIndex.set(i, mediaIndex);
-          
-          console.log(`Media file ${mediaIndex} (${filename}) mapped for item ${i}`);
-          mediaIndex++;
+          console.log(`Successfully processed audio for item ${i}: ${item.word}`);
         } catch (error) {
           console.error(`Failed to fetch audio for item ${i} (${item.word}):`, error);
-          // Add a placeholder entry to track the failed item, but with null data
-          mediaFiles.push({
-            index: -1, // Use -1 to indicate failed processing
+          processingResults.push({
+            originalIndex: i,
             data: null,
-            originalIndex: i
+            urlHash,
+            word: item.word
           });
-          // Don't increment mediaIndex or add to itemToMediaIndex for failed items
         }
+      }
+    }
+    
+    // Now assign sequential media indices only to successful downloads
+    let mediaIndex = 0;
+    for (const result of processingResults) {
+      if (result.data) {
+        const filename = `${mediaIndex}.mp3`;
+        
+        // Add to media map with sequential index
+        mediaMap[mediaIndex.toString()] = filename;
+        
+        mediaFiles.push({
+          index: mediaIndex,
+          data: result.data,
+          originalIndex: result.originalIndex,
+          urlHash: result.urlHash
+        });
+        
+        itemToMediaIndex.set(result.originalIndex, mediaIndex);
+        
+        console.log(`Media file ${mediaIndex} (${filename}) mapped for item ${result.originalIndex} (${result.word})`);
+        mediaIndex++;
+      } else {
+        // Track failed items but don't assign media index
+        mediaFiles.push({
+          index: -1,
+          data: null,
+          originalIndex: result.originalIndex,
+          urlHash: result.urlHash
+        });
       }
     }
     
     console.log(`Created media mapping: ${mediaFiles.filter(f => f.data).length} successful files out of ${mediaFiles.length} attempts`);
     console.log('Final media map:', mediaMap);
+    console.log('Item to media index mapping:', Array.from(itemToMediaIndex.entries()));
     return { map: mediaMap, files: mediaFiles, itemToMediaIndex };
+  }
+
+  private extractAudioIdentifier(audioUrl: string): string {
+    // Extract a unique identifier from the audio URL for consistent referencing
+    // For URLs like "https://...../audio_1751360032928_o6uz6c.mp3"
+    try {
+      const url = new URL(audioUrl);
+      const filename = url.pathname.split('/').pop() || '';
+      
+      // Try to extract the unique parts (timestamp and random string)
+      const match = filename.match(/audio_(\d+)_([a-zA-Z0-9]+)\.mp3$/);
+      if (match) {
+        return `${match[1]}_${match[2]}`; // Return "1751360032928_o6uz6c"
+      }
+      
+      // Fallback: use the entire filename without extension
+      return filename.replace('.mp3', '');
+    } catch (error) {
+      // If URL parsing fails, create a hash from the entire URL
+      console.warn('Failed to parse audio URL, using hash:', error);
+      return this.simpleHash(audioUrl);
+    }
+  }
+
+  private simpleHash(str: string): string {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(36);
   }
 
   private async createAnkiDatabase(
     vocabulary: VocabularyItem[], 
     options: ExportOptions, 
-    mediaMapping: { map: Record<string, string>; files: Array<{ index: number; data: string | null; originalIndex: number }>; itemToMediaIndex: Map<number, number> }
+    mediaMapping: { map: Record<string, string>; files: Array<{ index: number; data: string | null; originalIndex: number; urlHash: string }>; itemToMediaIndex: Map<number, number> }
   ): Promise<Uint8Array> {
     console.log('Creating Anki database...');
     
@@ -424,7 +488,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
     baseTime: number, 
     modelId: number, 
     deckId: number,
-    mediaMapping: { map: Record<string, string>; files: Array<{ index: number; data: string | null; originalIndex: number }>; itemToMediaIndex: Map<number, number> }
+    mediaMapping: { map: Record<string, string>; files: Array<{ index: number; data: string | null; originalIndex: number; urlHash: string }>; itemToMediaIndex: Map<number, number> }
   ): void {
     console.log('Inserting', vocabulary.length, 'notes and cards...');
     
@@ -446,16 +510,19 @@ export class ApkgExporter extends BaseVocabularyExporter {
         if (item.audioUrl && options.includeAudio && mediaMapping.itemToMediaIndex.has(index)) {
           const mediaIndex = mediaMapping.itemToMediaIndex.get(index)!;
           
-          // Check if this media file was successfully processed (has non-null data)
-          const mediaFile = mediaMapping.files.find(f => f.index === mediaIndex && f.originalIndex === index);
-          const mediaExists = mediaFile && mediaFile.data !== null && mediaMapping.map[mediaIndex.toString()];
+          // Double-check that this media file exists and was processed successfully
+          const mediaFile = mediaMapping.files.find(f => 
+            f.index === mediaIndex && 
+            f.originalIndex === index && 
+            f.data !== null
+          );
           
-          if (mediaExists) {
+          if (mediaFile && mediaMapping.map[mediaIndex.toString()]) {
             const filename = mediaMapping.map[mediaIndex.toString()];
             back += `<br>[sound:${filename}]`;
-            console.log(`Added audio reference for item ${index}: ${filename}`);
+            console.log(`Added audio reference for item ${index} (${item.word}): ${filename} (media index: ${mediaIndex})`);
           } else {
-            console.warn(`Skipping audio reference for item ${index}: media file not successfully processed`);
+            console.warn(`Skipping audio reference for item ${index} (${item.word}): media file not found or not processed`);
           }
         }
         
@@ -463,7 +530,7 @@ export class ApkgExporter extends BaseVocabularyExporter {
         const guid = this.generateAnkiGuid();
         const csum = this.calculateChecksum(front);
         
-        console.log(`Processing item ${index}: noteId=${noteId}, cardId=${cardId}, csum=${csum}`);
+        console.log(`Processing item ${index}: noteId=${noteId}, cardId=${cardId}, word="${item.word}"`);
         
         // Insert note with validated values
         db.run(
@@ -512,6 +579,11 @@ export class ApkgExporter extends BaseVocabularyExporter {
       });
       
       console.log('All notes and cards inserted successfully');
+      console.log('Media mapping summary:');
+      console.log('- Total vocabulary items:', vocabulary.length);
+      console.log('- Items with audio URLs:', vocabulary.filter(item => item.audioUrl).length);
+      console.log('- Successfully processed audio files:', mediaMapping.files.filter(f => f.data !== null).length);
+      console.log('- Items with media references:', mediaMapping.itemToMediaIndex.size);
     } catch (error) {
       console.error('Error inserting notes and cards:', error);
       throw error;
