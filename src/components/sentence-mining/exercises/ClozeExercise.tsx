@@ -103,9 +103,9 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
 
     return (
       <div className="text-lg leading-relaxed">
-        <div className="flex flex-wrap items-center justify-center gap-1">
+        <div className="flex flex-wrap items-baseline justify-center gap-1">
           <span>{parts[0]}</span>
-          <div className="relative inline-block">
+          <div className="relative inline-flex flex-col items-center">
             <Input
               ref={inputRef}
               value={userResponse}
@@ -121,9 +121,9 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               }`}
               placeholder="Type here..."
             />
-            {/* English translation under the input */}
-            {exercise.translation && (
-              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded text-xs text-blue-700 dark:text-blue-300 whitespace-nowrap z-10">
+            {/* English translation below the input */}
+            {exercise.targetWord && (
+              <div className="mt-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded text-xs text-blue-700 dark:text-blue-300 whitespace-nowrap">
                 ({exercise.targetWord})
               </div>
             )}
