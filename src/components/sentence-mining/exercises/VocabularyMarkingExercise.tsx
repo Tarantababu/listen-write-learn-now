@@ -1,10 +1,12 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Volume2, ArrowRight } from 'lucide-react';
+import { Volume2, ArrowRight, Eye, Loader2 } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
+import { supabase } from '@/integrations/supabase/client';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 interface VocabularyMarkingExerciseProps {
   exercise: SentenceMiningExercise;
@@ -20,6 +22,11 @@ interface VocabularyMarkingExerciseProps {
   onToggleTranslation: () => void;
 }
 
+interface WordDefinition {
+  word: string;
+  definition: string;
+}
+
 export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps> = ({
   exercise,
   selectedWords,
@@ -33,7 +40,67 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
   showTranslation,
   onToggleTranslation,
 }) => {
-  const [buttonDisabled, setButtonDisabled] = React.useState(false);
+  const { settings } = useUserSettingsContext();
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [wordDefinitions, setWordDefinitions] = useState<WordDefinition[]>([]);
+  const [loadingDefinitions, setLoadingDefinitions] = useState(false);
+
+  // Extract and get definitions for all words when component mounts
+  useEffect(() => {
+    const extractAndDefineWords = async () => {
+      setLoadingDefinitions(true);
+      try {
+        const words = exercise.sentence.split(/(\s+)/).filter(token => {
+          const cleanToken = token.replace(/[.,!?;:]/g, '').toLowerCase();
+          return cleanToken.trim().length > 0 && /^[a-zA-Z]+$/.test(cleanToken);
+        });
+
+        const uniqueWords = [...new Set(words.map(word => word.replace(/[.,!?;:]/g, '').toLowerCase()))];
+        
+        // Get definitions for all words
+        const definitions: WordDefinition[] = [];
+        
+        for (const word of uniqueWords) {
+          try {
+            const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
+              body: {
+                text: word,
+                language: settings.selectedLanguage,
+                requestDefinition: true
+              }
+            });
+
+            if (!error && data?.definition) {
+              definitions.push({
+                word: word,
+                definition: data.definition
+              });
+            } else {
+              // Fallback definition
+              definitions.push({
+                word: word,
+                definition: `${word} (definition not available)`
+              });
+            }
+          } catch (error) {
+            console.error(`Error getting definition for ${word}:`, error);
+            definitions.push({
+              word: word,
+              definition: `${word} (definition not available)`
+            });
+          }
+        }
+
+        setWordDefinitions(definitions);
+      } catch (error) {
+        console.error('Error extracting words:', error);
+      } finally {
+        setLoadingDefinitions(false);
+      }
+    };
+
+    extractAndDefineWords();
+  }, [exercise.sentence, settings.selectedLanguage]);
 
   const renderClickableText = () => {
     const words = exercise.sentence.split(/(\s+)/);
@@ -88,6 +155,11 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
     }
   };
 
+  const getWordDefinition = (word: string) => {
+    const definition = wordDefinitions.find(def => def.word === word);
+    return definition?.definition || `${word} (loading definition...)`;
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -131,6 +203,13 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
               {renderClickableText()}
             </p>
           </div>
+
+          {loadingDefinitions && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading word definitions...
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -141,19 +220,14 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
             <div className="space-y-3">
               <h3 className="font-medium">Words you've marked for review:</h3>
               <div className="flex flex-wrap gap-2">
-                {selectedWords.map(word => {
-                  const wordInfo = exercise.clickableWords?.find(cw => cw.word.toLowerCase() === word);
-                  return (
-                    <div key={word} className="bg-blue-100 dark:bg-blue-900/30 px-3 py-2 rounded-lg transform transition-all duration-200 hover:scale-105">
-                      <div className="font-medium text-sm md:text-base">{word}</div>
-                      {wordInfo && (
-                        <div className="text-xs md:text-sm text-muted-foreground">
-                          {wordInfo.definition}
-                        </div>
-                      )}
+                {selectedWords.map(word => (
+                  <div key={word} className="bg-blue-100 dark:bg-blue-900/30 px-3 py-2 rounded-lg transform transition-all duration-200 hover:scale-105">
+                    <div className="font-medium text-sm md:text-base">{word}</div>
+                    <div className="text-xs md:text-sm text-muted-foreground">
+                      {getWordDefinition(word)}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             </div>
           </CardContent>
@@ -169,9 +243,10 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
                 variant="outline" 
                 size="sm"
                 onClick={onToggleTranslation}
-                className="transition-transform duration-200 hover:scale-105 active:scale-95 flex-1 md:flex-none"
+                className="transition-transform duration-200 hover:scale-105 active:scale-95 flex-1 md:flex-none flex items-center gap-2"
               >
-                {showTranslation ? 'Hide Translation' : 'Translation'}
+                <Eye className="h-4 w-4" />
+                {showTranslation ? 'Hide Translation' : 'Show Translation'}
               </Button>
             </div>
             
@@ -183,6 +258,15 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
               {loading ? 'Processing...' : 'Continue'} <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
+
+          {/* Translation display */}
+          {showTranslation && exercise.translation && (
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg animate-fade-in">
+              <p className="text-blue-700 dark:text-blue-300 text-sm">
+                <strong>Translation:</strong> {exercise.translation}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

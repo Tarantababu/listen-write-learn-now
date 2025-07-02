@@ -96,7 +96,7 @@ export const useSentenceMining = () => {
           difficulty,
           exerciseType,
           knownWords: [],
-          reverseDirection: true, // Always generate English to target language
+          reverseDirection: exerciseType === 'translation', // Only for translation exercises
         },
       });
 
@@ -113,8 +113,8 @@ export const useSentenceMining = () => {
 
       const exercise: SentenceMiningExercise = {
         id: crypto.randomUUID(),
-        sentence: data.sentence, // English sentence for translation exercises
-        targetWord: data.targetWord, // Target language word for cloze exercises
+        sentence: data.sentence, // Target language sentence
+        targetWord: data.targetWord, // Target word for cloze exercises
         clozeSentence: data.clozeSentence || data.sentence,
         difficulty,
         context: data.context || '',
@@ -122,7 +122,7 @@ export const useSentenceMining = () => {
         attempts: 0,
         correctAttempts: 0,
         exerciseType,
-        translation: data.translation, // Expected target language translation
+        translation: data.translation, // English translation
         multipleChoiceOptions: data.multipleChoiceOptions,
         correctAnswer: data.correctAnswer || data.targetWord,
         explanation: data.explanation,
@@ -193,7 +193,7 @@ export const useSentenceMining = () => {
       let explanationPrompt = '';
       
       if (exerciseType === 'translation') {
-        explanationPrompt = `The user was asked to translate "${sentence}" into ${language}. Their answer was "${userAnswer}" but the correct translation is "${correctAnswer}". Please provide a detailed explanation in English of what was wrong with the user's translation, including specific grammar mistakes, vocabulary errors, spelling issues, or incorrect word usage. Be constructive and educational.`;
+        explanationPrompt = `The user was asked to translate an English sentence into ${language}. Their answer was "${userAnswer}" but the correct translation is "${correctAnswer}". Please provide a detailed explanation in English of what was wrong with the user's translation, including specific grammar mistakes, vocabulary errors, spelling issues, or incorrect word usage. Be constructive and educational.`;
       } else {
         explanationPrompt = `User answered "${userAnswer}" but correct answer is "${correctAnswer}" in the sentence: "${sentence}". Explain in English why "${correctAnswer}" is correct in ${language}, focusing on grammar rules, word usage, or context.`;
       }
@@ -235,8 +235,8 @@ export const useSentenceMining = () => {
       
       switch (state.currentExercise.exerciseType) {
         case 'translation':
-          // Use text comparison for more accurate translation scoring
-          const expectedTranslation = state.currentExercise.translation || state.currentExercise.sentence;
+          // For translation exercises, compare with the target language sentence
+          const expectedTranslation = state.currentExercise.sentence; // Target language sentence
           const userTranslation = answer.trim();
           
           console.log('Comparing translation:', { userTranslation, expectedTranslation });
@@ -262,7 +262,7 @@ export const useSentenceMining = () => {
               explanation = await getExplanationFromOpenAI(
                 userTranslation,
                 expectedTranslation,
-                state.currentExercise.sentence,
+                state.currentExercise.translation || '', // English sentence
                 settings.selectedLanguage,
                 'translation'
               );
@@ -271,115 +271,119 @@ export const useSentenceMining = () => {
           break;
           
         case 'vocabulary_marking':
-          isCorrect = true; // Always correct for learning purposes
+          // For vocabulary marking, always mark as correct (it's about word selection)
+          isCorrect = true;
+          explanation = selectedWords && selectedWords.length > 0 
+            ? `You marked ${selectedWords.length} word(s) for review. Great job identifying vocabulary to practice!`
+            : 'No words were marked. That\'s okay - this helps us know what you already understand!';
           break;
           
-        default: // cloze
-          const correctAnswer = state.currentExercise.targetWord.toLowerCase().trim();
-          const userAnswer = answer.toLowerCase().trim();
-          isCorrect = userAnswer === correctAnswer;
+        case 'cloze':
+        default:
+          // For cloze exercises, compare with target word
+          const expectedWord = state.currentExercise.targetWord.toLowerCase().trim();
+          const userWord = answer.toLowerCase().trim();
           
-          // Get explanation for incorrect cloze answers
-          if (!isCorrect && userAnswer.length > 0) {
-            explanation = await getExplanationFromOpenAI(
-              answer,
-              state.currentExercise.targetWord,
-              state.currentExercise.sentence,
-              settings.selectedLanguage,
-              'cloze'
-            );
+          if (userWord === expectedWord) {
+            isCorrect = true;
+          } else {
+            // Use text comparison for partial credit
+            const comparisonResult = compareTexts(expectedWord, userWord);
+            isCorrect = comparisonResult.accuracy >= 90;
+            
+            if (!isCorrect) {
+              explanation = await getExplanationFromOpenAI(
+                userWord,
+                expectedWord,
+                state.currentExercise.sentence,
+                settings.selectedLanguage,
+                'cloze'
+              );
+            }
           }
+          break;
       }
-      
-      console.log('Answer validation result:', { isCorrect, explanation });
-      
-      const updatedExercise = {
-        ...state.currentExercise,
-        attempts: state.currentExercise.attempts + 1,
-        correctAttempts: state.currentExercise.correctAttempts + (isCorrect ? 1 : 0),
-        explanation: explanation || state.currentExercise.explanation,
-      };
 
-      const updatedSession = {
-        ...state.currentSession,
-        exercises: state.currentSession.exercises.map(ex => 
-          ex.id === updatedExercise.id ? updatedExercise : ex
-        ),
-        totalAttempts: state.currentSession.totalAttempts + 1,
-        totalCorrect: state.currentSession.totalCorrect + (isCorrect ? 1 : 0),
-      };
-
+      // Update state with results
       setState(prev => ({
         ...prev,
-        currentExercise: updatedExercise,
-        currentSession: updatedSession,
         showResult: true,
         isCorrect,
-        selectedWords: selectedWords || prev.selectedWords,
+        currentExercise: prev.currentExercise ? {
+          ...prev.currentExercise,
+          explanation: explanation || prev.currentExercise.explanation,
+          attempts: prev.currentExercise.attempts + 1,
+          correctAttempts: prev.currentExercise.correctAttempts + (isCorrect ? 1 : 0)
+        } : null,
+        currentSession: prev.currentSession ? {
+          ...prev.currentSession,
+          totalAttempts: prev.currentSession.totalAttempts + 1,
+          totalCorrect: prev.currentSession.totalCorrect + (isCorrect ? 1 : 0)
+        } : null
       }));
 
       // Update progress
       if (state.progress) {
-        const newProgress = {
+        const updatedProgress = {
           ...state.progress,
           totalExercises: state.progress.totalExercises + 1,
           totalCorrect: state.progress.totalCorrect + (isCorrect ? 1 : 0),
           averageAccuracy: ((state.progress.totalCorrect + (isCorrect ? 1 : 0)) / (state.progress.totalExercises + 1)) * 100,
-          streak: isCorrect ? state.progress.streak + 1 : 0,
-          lastSessionDate: new Date(),
           difficultyProgress: {
             ...state.progress.difficultyProgress,
-            [state.currentSession.difficulty]: {
-              attempted: state.progress.difficultyProgress[state.currentSession.difficulty].attempted + 1,
-              correct: state.progress.difficultyProgress[state.currentSession.difficulty].correct + (isCorrect ? 1 : 0),
-              accuracy: ((state.progress.difficultyProgress[state.currentSession.difficulty].correct + (isCorrect ? 1 : 0)) / (state.progress.difficultyProgress[state.currentSession.difficulty].attempted + 1)) * 100,
-            },
+            [state.currentExercise.difficulty]: {
+              attempted: state.progress.difficultyProgress[state.currentExercise.difficulty].attempted + 1,
+              correct: state.progress.difficultyProgress[state.currentExercise.difficulty].correct + (isCorrect ? 1 : 0),
+              accuracy: ((state.progress.difficultyProgress[state.currentExercise.difficulty].correct + (isCorrect ? 1 : 0)) / 
+                        (state.progress.difficultyProgress[state.currentExercise.difficulty].attempted + 1)) * 100
+            }
           },
           exerciseTypeProgress: {
             ...state.progress.exerciseTypeProgress,
             [state.currentExercise.exerciseType]: {
-              attempted: (state.progress.exerciseTypeProgress[state.currentExercise.exerciseType]?.attempted || 0) + 1,
-              correct: (state.progress.exerciseTypeProgress[state.currentExercise.exerciseType]?.correct || 0) + (isCorrect ? 1 : 0),
-              accuracy: (((state.progress.exerciseTypeProgress[state.currentExercise.exerciseType]?.correct || 0) + (isCorrect ? 1 : 0)) / ((state.progress.exerciseTypeProgress[state.currentExercise.exerciseType]?.attempted || 0) + 1)) * 100,
-            },
-          },
+              attempted: state.progress.exerciseTypeProgress[state.currentExercise.exerciseType].attempted + 1,
+              correct: state.progress.exerciseTypeProgress[state.currentExercise.exerciseType].correct + (isCorrect ? 1 : 0),
+              accuracy: ((state.progress.exerciseTypeProgress[state.currentExercise.exerciseType].correct + (isCorrect ? 1 : 0)) / 
+                        (state.progress.exerciseTypeProgress[state.currentExercise.exerciseType].attempted + 1)) * 100
+            }
+          }
         };
-        saveProgress(newProgress);
+
+        saveProgress(updatedProgress);
+      }
+
+      // Show toast notification
+      if (isCorrect) {
+        toast.success('Correct! Well done!');
+      } else {
+        toast.error('Incorrect. Try again or continue to the next exercise.');
       }
     } catch (error) {
       console.error('Error submitting answer:', error);
-      toast.error('Error submitting answer. Please try again.');
+      toast.error('Error checking answer. Please try again.');
     }
-  }, [state.currentExercise, state.currentSession, state.progress, saveProgress, settings.selectedLanguage]);
+  }, [state.currentExercise, state.currentSession, state.progress, settings.selectedLanguage, saveProgress]);
 
   const nextExercise = useCallback(async () => {
-    if (!state.currentSession) {
-      console.error('No current session for next exercise');
-      return;
-    }
+    if (!state.currentSession) return;
 
     try {
-      console.log('Generating next exercise');
-      
-      const exerciseType = getRandomExerciseType(); // Get random exercise type for next exercise
+      setState(prev => ({ ...prev, loading: true }));
+
+      const exerciseType = getRandomExerciseType();
       const newExercise = await generateSentence(state.currentSession.difficulty, exerciseType);
+      
       if (!newExercise) {
-        console.error('Failed to generate next exercise');
+        setState(prev => ({ 
+          ...prev, 
+          loading: false, 
+          error: 'Failed to generate next exercise' 
+        }));
         return;
       }
 
-      const updatedSession = {
-        ...state.currentSession,
-        exercises: [...state.currentSession.exercises, newExercise],
-        currentExerciseIndex: state.currentSession.currentExerciseIndex + 1,
-        exerciseTypes: [...state.currentSession.exerciseTypes, exerciseType],
-      };
-
-      console.log('Updated session with new exercise:', updatedSession);
-
       setState(prev => ({
         ...prev,
-        currentSession: updatedSession,
         currentExercise: newExercise,
         userResponse: '',
         selectedWords: [],
@@ -387,52 +391,47 @@ export const useSentenceMining = () => {
         isCorrect: false,
         showHint: false,
         showTranslation: false,
+        loading: false,
         error: null,
+        currentSession: prev.currentSession ? {
+          ...prev.currentSession,
+          exercises: [...prev.currentSession.exercises, newExercise],
+          currentExerciseIndex: prev.currentSession.currentExerciseIndex + 1,
+          exerciseTypes: [...prev.currentSession.exerciseTypes, exerciseType]
+        } : null
       }));
     } catch (error) {
       console.error('Error generating next exercise:', error);
-      toast.error('Error generating next exercise. Please try again.');
+      setState(prev => ({ 
+        ...prev, 
+        loading: false, 
+        error: 'Failed to generate next exercise' 
+      }));
     }
-  }, [state.currentSession, generateSentence, getRandomExerciseType]);
+  }, [state.currentSession, getRandomExerciseType, generateSentence]);
 
   const endSession = useCallback(() => {
-    if (!state.currentSession) return;
-
-    try {
-      console.log('Ending session:', state.currentSession);
-
-      const updatedSession = {
-        ...state.currentSession,
-        endTime: new Date(),
+    if (state.currentSession && state.progress) {
+      const updatedProgress = {
+        ...state.progress,
+        totalSessions: state.progress.totalSessions + 1,
+        lastSessionDate: new Date()
       };
-
-      // Update progress with session data
-      if (state.progress) {
-        const newProgress = {
-          ...state.progress,
-          totalSessions: state.progress.totalSessions + 1,
-        };
-        saveProgress(newProgress);
-      }
-
-      setState(prev => ({
-        ...prev,
-        currentSession: null,
-        currentExercise: null,
-        userResponse: '',
-        selectedWords: [],
-        showResult: false,
-        isCorrect: false,
-        showHint: false,
-        showTranslation: false,
-        error: null,
-      }));
-
-      toast.success(`Session completed! You got ${updatedSession.totalCorrect}/${updatedSession.totalAttempts} correct.`);
-    } catch (error) {
-      console.error('Error ending session:', error);
-      toast.error('Error ending session.');
+      saveProgress(updatedProgress);
     }
+
+    setState(prev => ({
+      ...prev,
+      currentSession: null,
+      currentExercise: null,
+      userResponse: '',
+      selectedWords: [],
+      showResult: false,
+      isCorrect: false,
+      showHint: false,
+      showTranslation: false,
+      error: null
+    }));
   }, [state.currentSession, state.progress, saveProgress]);
 
   const updateUserResponse = useCallback((response: string) => {

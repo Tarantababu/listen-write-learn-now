@@ -74,9 +74,9 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
     }
   };
 
-  // For translation exercises, we always show English text and ask to translate to target language
-  const displayText = exercise.translation || exercise.sentence; // Use translation as the English text
-  const expectedAnswer = exercise.sentence; // The target language sentence is the expected answer
+  // For translation exercises, we show English text and ask to translate to target language
+  const displayText = exercise.translation || exercise.sentence; // English text to translate
+  const expectedAnswer = exercise.sentence; // Target language sentence is the expected answer
 
   // Mobile-optimized layout
   if (isMobile) {

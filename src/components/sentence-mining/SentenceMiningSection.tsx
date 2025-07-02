@@ -6,6 +6,7 @@ import { Brain, Play, X, Loader2 } from 'lucide-react';
 import { DifficultySelector } from './DifficultySelector';
 import { TranslationExercise } from './exercises/TranslationExercise';
 import { VocabularyMarkingExercise } from './exercises/VocabularyMarkingExercise';
+import { ClozeExercise } from './exercises/ClozeExercise';
 import { SentenceDisplay } from './SentenceDisplay';
 import { UserResponse } from './UserResponse';
 import { ProgressTracker } from './ProgressTracker';
@@ -146,7 +147,18 @@ export const SentenceMiningSection: React.FC = () => {
           />
         );
         
-      default: // cloze
+      case 'cloze':
+        return (
+          <ClozeExercise
+            {...commonProps}
+            userResponse={userResponse}
+            onResponseChange={updateUserResponse}
+            onSubmit={handleSubmitAnswer}
+            onNext={nextExercise}
+          />
+        );
+        
+      default:
         return (
           <div className="space-y-4">
             <SentenceDisplay
@@ -249,7 +261,7 @@ export const SentenceMiningSection: React.FC = () => {
             <div className="space-y-2">
               <h4 className="font-semibold">🧩 Fill in the Blank</h4>
               <p className="text-sm text-muted-foreground">
-                Type directly in the missing word area with helpful translation hints.
+                Complete sentences with missing words using keyboard shortcuts like Enter to submit.
               </p>
             </div>
           </div>
