@@ -3,7 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Volume2, CheckCircle, XCircle, Eye, ArrowRight, Loader2, KeyboardIcon, Lightbulb } from 'lucide-react';
+import {
+  Volume2,
+  CheckCircle,
+  XCircle,
+  Eye,
+  ArrowRight,
+  Loader2,
+  KeyboardIcon,
+  Lightbulb,
+} from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -43,7 +52,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   const [showHint, setShowHint] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus input when component mounts
   useEffect(() => {
     if (inputRef.current && !showResult) {
       inputRef.current.focus();
@@ -51,17 +59,14 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   }, [showResult]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Submit on Enter key
     if (e.key === 'Enter' && !showResult && userResponse.trim()) {
       e.preventDefault();
       handleSubmitClick();
     }
-    // Show/hide translation on Ctrl+T or Cmd+T
     if ((e.ctrlKey || e.metaKey) && e.key === 't') {
       e.preventDefault();
       onToggleTranslation();
     }
-    // Show/hide hint on Ctrl+H or Cmd+H
     if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
       e.preventDefault();
       setShowHint(!showHint);
@@ -70,58 +75,59 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
 
   const handleSubmitClick = async () => {
     if (buttonState === 'processing' || loading) return;
-    
     setButtonState('processing');
-    
     try {
       await onSubmit();
     } catch (error) {
       console.error('Error in submit:', error);
     } finally {
-      setTimeout(() => {
-        setButtonState('idle');
-      }, 1000);
+      setTimeout(() => setButtonState('idle'), 1000);
     }
   };
 
   const handleNextClick = async () => {
     if (buttonState === 'processing' || loading) return;
-    
     setButtonState('processing');
-    
     try {
       await onNext();
     } catch (error) {
       console.error('Error in next:', error);
     } finally {
-      setTimeout(() => {
-        setButtonState('idle');
-      }, 500);
+      setTimeout(() => setButtonState('idle'), 500);
     }
   };
 
+  const renderHint = () => (
+    <div className="mt-2 space-y-1 max-w-xs text-center mx-auto">
+      {exercise.translation && (
+        <div className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 shadow-sm">
+          <span className="flex items-center justify-center gap-1.5">
+            <Lightbulb className="h-3 w-3" />
+            English: {exercise.translation}
+          </span>
+        </div>
+      )}
+      {showHint && exercise.explanation && (
+        <div className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/40 border border-amber-200 dark:border-amber-700 rounded-full text-xs font-medium text-amber-800 dark:text-amber-200 shadow-sm truncate">
+          <span className="block truncate">💡 {exercise.explanation}</span>
+        </div>
+      )}
+    </div>
+  );
+
   const renderSentenceWithBlank = () => {
-    // Create a cloze sentence by replacing the target word with a blank
     let clozeSentence = exercise.clozeSentence;
-    
-    // If clozeSentence doesn't have the blank placeholder, create it
     if (!clozeSentence || !clozeSentence.includes('_____')) {
-      // Use the regular sentence and replace the target word with blanks
       clozeSentence = exercise.sentence.replace(
-        new RegExp(`\\b${exercise.targetWord}\\b`, 'gi'), 
+        new RegExp(`\\b${exercise.targetWord}\\b`, 'gi'),
         '_____'
       );
     }
-    
-    console.log('Cloze sentence:', clozeSentence);
-    console.log('Target word:', exercise.targetWord);
-    
-    // Split by the blank placeholder
+
     const parts = clozeSentence.split('_____');
-    
     if (parts.length >= 2) {
       return (
-        <div className="text-lg leading-relaxed">
+        <div className="text-lg leading-relaxed text-center">
           <div className="flex flex-wrap items-baseline justify-center gap-1">
             <span>{parts[0]}</span>
             <div className="relative inline-flex flex-col items-center">
@@ -140,86 +146,56 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 }`}
                 placeholder="Type here..."
               />
-              {/* Enhanced hint display - Always show English translation as primary hint */}
-              <div className="mt-2 space-y-1">
-                {exercise.translation && (
-                  <div className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
-                    <span className="flex items-center gap-1.5">
-                      <Lightbulb className="h-3 w-3" />
-                      English: {exercise.translation}
-                    </span>
-                  </div>
-                )}
-                {/* Additional hint toggle */}
-                {showHint && exercise.explanation && (
-                  <div className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/40 border border-amber-200 dark:border-amber-700 rounded-full text-xs font-medium text-amber-800 dark:text-amber-200 whitespace-nowrap shadow-sm max-w-xs">
-                    <span className="block truncate">
-                      💡 {exercise.explanation}
-                    </span>
-                  </div>
-                )}
-              </div>
+              {renderHint()}
             </div>
             <span>{parts.slice(1).join('_____')}</span>
           </div>
         </div>
       );
     }
-    
-    // If we still can't create a proper cloze, show a fallback
+
     return (
-      <div className="text-lg leading-relaxed space-y-4">
-        <div className="text-center">
-          <p className="mb-4">Complete the sentence by filling in the missing word:</p>
-          <p className="mb-4 font-medium">{exercise.sentence.replace(
-            new RegExp(`\\b${exercise.targetWord}\\b`, 'gi'), 
+      <div className="text-lg leading-relaxed space-y-4 text-center">
+        <p className="mb-4">Complete the sentence by filling in the missing word:</p>
+        <p className="mb-4 font-medium">
+          {exercise.sentence.replace(
+            new RegExp(`\\b${exercise.targetWord}\\b`, 'gi'),
             '______'
-          )}</p>
-          <div className="flex flex-col items-center gap-2">
-            <Input
-              ref={inputRef}
-              value={userResponse}
-              onChange={(e) => onResponseChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={showResult || buttonState === 'processing'}
-              className={`w-32 text-center ${
-                showResult
-                  ? isCorrect
-                    ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                    : 'border-red-500 bg-red-50 dark:bg-red-950/20'
-                  : ''
-              }`}
-              placeholder="Type here..."
-            />
-            {/* Enhanced hint display for fallback */}
-            <div className="space-y-1">
-              {exercise.translation && (
-                <div className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
-                  <span className="flex items-center gap-1.5">
-                    <Lightbulb className="h-3 w-3" />
-                    English: {exercise.translation}
-                  </span>
-                </div>
-              )}
-              {showHint && exercise.explanation && (
-                <div className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/40 border border-amber-200 dark:border-amber-700 rounded-full text-xs font-medium text-amber-800 dark:text-amber-200 whitespace-nowrap shadow-sm max-w-xs">
-                  <span className="block truncate">
-                    💡 {exercise.explanation}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
+          )}
+        </p>
+        <div className="flex flex-col items-center gap-2">
+          <Input
+            ref={inputRef}
+            value={userResponse}
+            onChange={(e) => onResponseChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={showResult || buttonState === 'processing'}
+            className={`w-32 text-center ${
+              showResult
+                ? isCorrect
+                  ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                  : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                : ''
+            }`}
+            placeholder="Type here..."
+          />
+          {renderHint()}
         </div>
       </div>
     );
   };
 
-  // Mobile-optimized layout
+  const keyboardShortcutsHint = (
+    <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+      <KeyboardIcon className="h-3 w-3" />
+      <span>Enter: submit • Ctrl+T: translation • Ctrl+H: hint</span>
+    </div>
+  );
+
+  // Use original layout render blocks below
   if (isMobile) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        {/* Mobile Header - Fixed */}
         <div className="bg-card border-b px-4 py-3 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -243,18 +219,10 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           </div>
         </div>
 
-        {/* Content - Scrollable */}
         <div className="flex-1 flex flex-col">
-          {/* Sentence with blank */}
-          <div className="px-4 py-6 bg-muted/50">
-            <div className="text-center">
-              {renderSentenceWithBlank()}
-            </div>
-          </div>
+          <div className="px-4 py-6 bg-muted/50">{renderSentenceWithBlank()}</div>
 
-          {/* Hints Section */}
           <div className="px-4 py-4 border-b space-y-3">
-            {/* Main hint button for additional explanation */}
             {exercise.explanation && (
               <Button
                 variant="ghost"
@@ -266,8 +234,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 {showHint ? 'Hide extra hint' : 'Show extra hint'}
               </Button>
             )}
-
-            {/* Translation toggle */}
             <Button
               variant="ghost"
               size="sm"
@@ -277,7 +243,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               <Eye className="h-4 w-4 mr-2" />
               {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
             </Button>
-            
             {showTranslation && exercise.translation && (
               <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-sm text-center">
                 <p className="text-blue-700 dark:text-blue-300">
@@ -287,15 +252,8 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             )}
           </div>
 
-          {/* Keyboard shortcuts hint */}
-          <div className="px-4 py-2 bg-muted/30">
-            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <KeyboardIcon className="h-3 w-3" />
-              <span>Enter: submit • Ctrl+T: translation • Ctrl+H: hint</span>
-            </div>
-          </div>
+          <div className="px-4 py-2 bg-muted/30">{keyboardShortcutsHint}</div>
 
-          {/* Results */}
           {showResult && (
             <div className="px-4 py-4 space-y-3">
               <div className="flex items-center justify-center gap-2">
@@ -308,7 +266,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   {isCorrect ? 'Correct!' : 'Incorrect'}
                 </Badge>
               </div>
-
               {!isCorrect && (
                 <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
@@ -319,7 +276,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   </p>
                 </div>
               )}
-
               {exercise.explanation && (
                 <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                   <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
@@ -333,7 +289,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             </div>
           )}
 
-          {/* Bottom Action Button - Fixed */}
           <div className="p-4 border-t bg-card mt-auto">
             {!showResult ? (
               <Button
@@ -375,7 +330,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   // Desktop layout
   return (
     <div className="space-y-4">
-      {/* Header */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -390,7 +344,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   size="sm"
                   onClick={onPlayAudio}
                   disabled={audioLoading}
-                  className="flex items-center gap-1 transition-transform duration-200 hover:scale-105 active:scale-95"
+                  className="flex items-center gap-1"
                 >
                   <Volume2 className="h-4 w-4" />
                   {audioLoading ? 'Loading...' : 'Listen'}
@@ -399,59 +353,45 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             </div>
           </div>
         </CardHeader>
-        
         <CardContent>
           <div className="space-y-4">
-            {/* Sentence with blank */}
             <div className="p-4 bg-muted rounded-lg text-center">
               {renderSentenceWithBlank()}
             </div>
-            
-            {/* Hints Section */}
             <div className="text-center space-y-3">
-              {/* Extra hint toggle */}
               {exercise.explanation && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowHint(!showHint)}
-                  className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
+                  className="flex items-center gap-2"
                 >
                   <Lightbulb className="h-4 w-4" />
                   {showHint ? 'Hide extra hint' : 'Show extra hint'}
                 </Button>
               )}
-
-              {/* Translation toggle */}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onToggleTranslation}
-                className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 ml-2"
+                className="flex items-center gap-2 ml-2"
               >
                 <Eye className="h-4 w-4" />
                 {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
               </Button>
-              
               {showTranslation && exercise.translation && (
-                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-sm animate-fade-in">
+                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-sm">
                   <p className="text-blue-700 dark:text-blue-300">
                     Full sentence translation: {exercise.translation}
                   </p>
                 </div>
               )}
             </div>
-
-            {/* Keyboard shortcuts hint */}
-            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <KeyboardIcon className="h-3 w-3" />
-              <span>Enter: submit • Ctrl+T: translation • Ctrl+H: hint</span>
-            </div>
+            {keyboardShortcutsHint}
           </div>
         </CardContent>
       </Card>
 
-      {/* Action buttons */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex justify-end">
@@ -459,7 +399,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               <Button
                 onClick={handleSubmitClick}
                 disabled={!userResponse.trim() || loading || buttonState === 'processing'}
-                className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[140px]"
+                className="px-8 min-w-[140px]"
               >
                 {buttonState === 'processing' && (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -470,7 +410,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               <Button
                 onClick={handleNextClick}
                 disabled={buttonState === 'processing'}
-                className="px-8 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[120px]"
+                className="px-8 min-w-[120px] flex items-center gap-2"
               >
                 {buttonState === 'processing' ? (
                   <>
@@ -487,7 +427,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           </div>
 
           {showResult && (
-            <div className="space-y-3 mt-4 animate-fade-in">
+            <div className="space-y-3 mt-4">
               <div className="flex items-center gap-2">
                 {isCorrect ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
@@ -504,9 +444,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
                     Correct answer:
                   </p>
-                  <p className="text-blue-700 dark:text-blue-300 text-sm">
-                    {exercise.targetWord}
-                  </p>
+                  <p className="text-blue-700 dark:text-blue-300 text-sm">{exercise.targetWord}</p>
                 </div>
               )}
 
