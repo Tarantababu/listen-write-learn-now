@@ -49,16 +49,29 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
     }
   }, [showResult]);
 
+  // Global keydown listener for Enter key
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        if (!showResult && userResponse.trim() && buttonState === 'idle' && !loading) {
+          e.preventDefault();
+          handleSubmitClick();
+        } else if (showResult && buttonState === 'idle' && !loading) {
+          e.preventDefault();
+          handleNextClick();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showResult, userResponse, buttonState, loading]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Submit on Enter key (but allow Shift+Enter for new lines)
     if (e.key === 'Enter' && !e.shiftKey && !showResult && userResponse.trim() && buttonState === 'idle' && !loading) {
       e.preventDefault();
       handleSubmitClick();
-    }
-    // Continue on Enter key when result is shown
-    if (e.key === 'Enter' && !e.shiftKey && showResult && buttonState === 'idle' && !loading) {
-      e.preventDefault();
-      handleNextClick();
     }
     // Show/hide translation on Ctrl+T or Cmd+T
     if ((e.ctrlKey || e.metaKey) && e.key === 't') {
