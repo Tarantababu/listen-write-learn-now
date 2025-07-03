@@ -42,12 +42,24 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
   const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-focus textarea when component mounts
+  // Auto-focus textarea when component mounts and when moving to next exercise
   useEffect(() => {
     if (textareaRef.current && !showResult) {
-      textareaRef.current.focus();
+      // Small delay to ensure the textarea is fully rendered
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
     }
   }, [showResult]);
+
+  // Also focus on component mount
+  useEffect(() => {
+    if (textareaRef.current) {
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+    }
+  }, []);
 
   // Global keydown listener for Enter key
   useEffect(() => {
