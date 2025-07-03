@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -105,8 +104,8 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
   // Add keyboard event listener for Enter key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Submit on Enter key
-      if (e.key === 'Enter' && !showResult && buttonState === 'idle' && !loading) {
+      // Use Enter key for both submitting and continuing
+      if (e.key === 'Enter' && buttonState === 'idle' && !loading) {
         e.preventDefault();
         handleContinueClick();
       }
@@ -225,7 +224,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
           {/* Keyboard shortcuts hint */}
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-4">
             <Keyboard className="h-3 w-3" />
-            <span>Enter: continue • Ctrl+T: translation</span>
+            <span>Enter: {showResult ? 'next' : 'submit'} • Ctrl+T: translation</span>
           </div>
 
           {loadingDefinitions && (
@@ -286,7 +285,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
                 </>
               ) : (
                 <>
-                  Continue <ArrowRight className="h-4 w-4" />
+                  {showResult ? 'Next' : 'Continue'} <ArrowRight className="h-4 w-4" />
                 </>
               )}
             </Button>
