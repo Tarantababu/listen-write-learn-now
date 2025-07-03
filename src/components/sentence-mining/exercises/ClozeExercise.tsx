@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,28 +32,10 @@ interface ClozeExerciseProps {
   onToggleTranslation: () => void;
 }
 
-// REPLACE THIS with your actual OpenAI integration
-const getTranslation = async (text: string, targetLang: string = 'en'): Promise<string> => {
+// Enhanced OpenAI integration for getting word translations
+const getWordTranslation = async (word: string, targetLang: string = 'en'): Promise<string> => {
   try {
-    // Replace this entire function with your actual OpenAI API call
-    // Example of what it should look like:
-    /*
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "user",
-          content: `Translate the following text to ${targetLang}: "${text}"`
-        }
-      ],
-      max_tokens: 100,
-      temperature: 0.3,
-    });
-    
-    return response.choices[0]?.message?.content?.trim() || 'translation not available';
-    */
-    
-    // Temporary better mock translations for German words
+    // Mock translations for common German words (replace with actual OpenAI call)
     const mockTranslations: { [key: string]: string } = {
       'zukunft': 'future',
       'haus': 'house',
@@ -74,19 +57,25 @@ const getTranslation = async (text: string, targetLang: string = 'en'): Promise<
       'schule': 'school',
       'buch': 'book',
       'auto': 'car',
+      'freund': 'friend',
+      'familie': 'family',
+      'stadt': 'city',
+      'land': 'country',
+      'sprache': 'language',
+      'lernen': 'to learn',
+      'verstehen': 'to understand',
+      'sprechen': 'to speak',
+      'hören': 'to hear',
+      'sehen': 'to see',
+      'gehen': 'to go',
+      'kommen': 'to come',
+      'machen': 'to make',
+      'haben': 'to have',
+      'sein': 'to be',
     };
     
-    const translation = mockTranslations[text.toLowerCase()];
-    if (translation) {
-      return translation;
-    }
-    
-    // For sentences, provide a basic fallback
-    if (text.includes(' ')) {
-      return 'sentence translation not available';
-    }
-    
-    return 'translation not available';
+    const translation = mockTranslations[word.toLowerCase()];
+    return translation || 'translation not available';
     
   } catch (error) {
     console.error('Translation error:', error);
@@ -101,18 +90,11 @@ const processExerciseWithTranslations = async (exercise: SentenceMiningExercise)
   try {
     // Get target word translation if not available
     if (!processedExercise.targetWordTranslation) {
-      processedExercise.targetWordTranslation = await getTranslation(processedExercise.targetWord);
-    }
-    
-    // Get sentence translation if not available
-    if (!processedExercise.translation) {
-      processedExercise.translation = await getTranslation(processedExercise.sentence);
+      processedExercise.targetWordTranslation = await getWordTranslation(processedExercise.targetWord);
     }
   } catch (error) {
     console.error('Translation error:', error);
-    // Provide fallback translations
     processedExercise.targetWordTranslation = processedExercise.targetWordTranslation || 'translation not available';
-    processedExercise.translation = processedExercise.translation || 'translation not available';
   }
   
   return processedExercise;
@@ -135,13 +117,12 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   const [exercise, setExercise] = useState<SentenceMiningExercise>(rawExercise);
   const [translationsLoading, setTranslationsLoading] = useState(false);
   const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
-  const [showHint, setShowHint] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Process exercise with translations when component mounts or exercise changes
   useEffect(() => {
     const loadTranslations = async () => {
-      if (!exercise.targetWordTranslation || !exercise.translation) {
+      if (!exercise.targetWordTranslation) {
         setTranslationsLoading(true);
         try {
           const processedExercise = await processExerciseWithTranslations(rawExercise);
@@ -166,7 +147,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Submit on Enter key
-    if (e.key === 'Enter' && !showResult && userResponse.trim()) {
+    if (e.key === 'Enter' && !showResult && userResponse.trim() && buttonState === 'idle' && !loading) {
       e.preventDefault();
       handleSubmitClick();
     }
@@ -174,11 +155,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
     if ((e.ctrlKey || e.metaKey) && e.key === 't') {
       e.preventDefault();
       onToggleTranslation();
-    }
-    // Show/hide hint on Ctrl+H or Cmd+H
-    if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
-      e.preventDefault();
-      setShowHint(!showHint);
     }
   };
 
@@ -241,7 +217,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 value={userResponse}
                 onChange={(e) => onResponseChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                disabled={showResult || buttonState === 'processing'}
+                disabled={showResult || buttonState === 'processing' || loading}
                 className={`w-32 text-center ${
                   showResult
                     ? isCorrect
@@ -273,7 +249,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               value={userResponse}
               onChange={(e) => onResponseChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={showResult || buttonState === 'processing'}
+              disabled={showResult || buttonState === 'processing' || loading}
               className={`w-32 text-center ${
                 showResult
                   ? isCorrect
@@ -289,51 +265,23 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
     );
   };
 
-  // Render hints separately - now shows target word translation when hint is shown
-  const renderHints = () => {
-    if (!showHint) return null;
-    
+  // Always visible hint with English translation of missing word
+  const renderExtraHint = () => {
     return (
       <div className="flex flex-col items-center gap-2 mt-3">
-        {/* Show translation of the target word */}
         <div className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
           <span className="flex items-center gap-1.5">
             <Lightbulb className="h-3 w-3" />
-            Missing word: {exercise.targetWord} (English: {
+            English: {
               translationsLoading ? 'loading...' : (exercise.targetWordTranslation || 'translation not available')
-            })
+            }
           </span>
         </div>
-        
-        {/* Show full sentence explanation if available */}
-        {exercise.explanation && (
-          <div className="px-3 py-1.5 bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/40 border border-amber-200 dark:border-amber-700 rounded-full text-xs font-medium text-amber-800 dark:text-amber-200 whitespace-nowrap shadow-sm max-w-xs">
-            <span className="block truncate">
-              💡 {exercise.explanation}
-            </span>
-          </div>
-        )}
       </div>
     );
   };
 
-  // Render English translation of correct answer
-  const renderCorrectAnswerTranslation = () => {
-    if (!showResult || isCorrect || (!exercise.translation && !translationsLoading)) return null;
-    
-    return (
-      <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg mt-3">
-        <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-          English Translation:
-        </p>
-        <p className="text-blue-700 dark:text-blue-300 text-sm">
-          {translationsLoading ? 'Loading translation...' : (exercise.translation || 'translation not available')}
-        </p>
-      </div>
-    );
-  };
-
-  // Render full sentence translation when toggled
+  // Render English translation of full sentence when toggled
   const renderSentenceTranslation = () => {
     if (!showTranslation) return null;
     
@@ -343,13 +291,13 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           Sentence Translation:
         </p>
         <p className="text-green-700 dark:text-green-300 text-sm">
-          {translationsLoading ? 'Loading translation...' : (exercise.translation || 'translation not available')}
+          {exercise.translation || 'translation not available'}
         </p>
       </div>
     );
   };
 
-  // Desktop layout (simplified for demo)
+  // Desktop layout
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-4">
       {/* Header */}
@@ -382,31 +330,20 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             {/* Sentence with blank */}
             <div className="p-4 bg-muted rounded-lg text-center">
               {renderSentenceWithBlank()}
-              {renderHints()}
+              {/* Always show the extra hint with English translation */}
+              {renderExtraHint()}
             </div>
             
             {/* Translation display */}
             {renderSentenceTranslation()}
             
-            {/* Hints Section */}
+            {/* Translation toggle */}
             <div className="text-center space-y-3">
-              {/* Always show the Extra Hint button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowHint(!showHint)}
-                className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
-              >
-                <Lightbulb className="h-4 w-4" />
-                {showHint ? 'Hide Extra Hint' : 'Show Extra Hint'}
-              </Button>
-
-              {/* Translation toggle */}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onToggleTranslation}
-                className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 ml-2"
+                className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
               >
                 <Eye className="h-4 w-4" />
                 {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
@@ -416,7 +353,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             {/* Keyboard shortcuts hint */}
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Keyboard className="h-3 w-3" />
-              <span>Enter: submit • Ctrl+T: translation • Ctrl+H: hint</span>
+              <span>Enter: submit • Ctrl+T: translation</span>
             </div>
           </div>
         </CardContent>
@@ -432,7 +369,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 disabled={!userResponse.trim() || loading || buttonState === 'processing'}
                 className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[140px]"
               >
-                {buttonState === 'processing' && (
+                {(buttonState === 'processing' || loading) && (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 )}
                 {buttonState === 'processing' || loading ? 'Checking...' : 'Submit Answer'}
@@ -440,10 +377,10 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             ) : (
               <Button
                 onClick={handleNextClick}
-                disabled={buttonState === 'processing'}
+                disabled={buttonState === 'processing' || loading}
                 className="px-8 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[120px]"
               >
-                {buttonState === 'processing' ? (
+                {(buttonState === 'processing' || loading) ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading...
@@ -480,9 +417,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   </p>
                 </div>
               )}
-
-              {/* Added English translation of correct answer */}
-              {renderCorrectAnswerTranslation()}
 
               {exercise.explanation && (
                 <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
