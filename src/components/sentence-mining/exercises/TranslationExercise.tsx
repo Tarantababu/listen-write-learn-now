@@ -1,13 +1,20 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Volume2, CheckCircle, XCircle, Eye, ArrowRight, Loader2, Keyboard } from 'lucide-react';
-import { SentenceMiningExercise } from '@/types/sentence-mining';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { useIsMobile } from '@/hooks/use-mobile';
+
+interface SentenceMiningExercise {
+  sentence: string;
+  translation?: string;
+  difficulty: string;
+  explanation?: string;
+}
+
+interface UserSettings {
+  selectedLanguage: string;
+}
 
 interface TranslationExerciseProps {
   exercise: SentenceMiningExercise;
@@ -38,8 +45,10 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
   showTranslation,
   onToggleTranslation,
 }) => {
-  const { settings } = useUserSettingsContext();
-  const isMobile = useIsMobile();
+  // Mock settings for demo
+  const settings: UserSettings = { selectedLanguage: 'Spanish' };
+  const isMobile = window.innerWidth < 768;
+  
   const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -51,11 +60,21 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
   }, [showResult]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Submit on Enter key (but allow Shift+Enter for new lines)
-    if (e.key === 'Enter' && !e.shiftKey && !showResult && userResponse.trim() && buttonState === 'idle' && !loading) {
+    // Handle Enter key for both submit and continue
+    if (e.key === 'Enter' && !e.shiftKey && buttonState === 'idle' && !loading) {
       e.preventDefault();
-      handleSubmitClick();
+      
+      if (!showResult) {
+        // Submit mode - only if there's a response
+        if (userResponse.trim()) {
+          handleSubmitClick();
+        }
+      } else {
+        // Continue mode - always allow continue after result is shown
+        handleNextClick();
+      }
     }
+    
     // Show/hide translation on Ctrl+T or Cmd+T
     if ((e.ctrlKey || e.metaKey) && e.key === 't') {
       e.preventDefault();
@@ -185,7 +204,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             {/* Keyboard shortcuts hint */}
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-2">
               <Keyboard className="h-3 w-3" />
-              <span>Enter: submit • Shift+Enter: new line • Ctrl+T: translation</span>
+              <span>Enter: {showResult ? 'continue' : 'submit'} • Shift+Enter: new line • Ctrl+T: translation</span>
             </div>
 
             {showResult && (
@@ -326,7 +345,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             {/* Keyboard shortcuts hint */}
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Keyboard className="h-3 w-3" />
-              <span>Enter: submit • Shift+Enter: new line • Ctrl+T: translation</span>
+              <span>Enter: {showResult ? 'continue' : 'submit'} • Shift+Enter: new line • Ctrl+T: translation</span>
             </div>
           </div>
         </CardContent>
