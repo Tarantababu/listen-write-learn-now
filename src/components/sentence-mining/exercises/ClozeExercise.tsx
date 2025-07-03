@@ -1,10 +1,11 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Volume2, CheckCircle, XCircle, Eye, ArrowRight, Loader2, Keyboard, Lightbulb } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 // Mock types for demonstration
 interface SentenceMiningExercise {
@@ -47,7 +48,46 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   onToggleTranslation,
 }) => {
   const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
+  const [wordTranslation, setWordTranslation] = useState<string>('');
+  const [translationLoading, setTranslationLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { settings } = useUserSettingsContext();
+
+  // Fetch translation for the target word
+  useEffect(() => {
+    const fetchTranslation = async () => {
+      if (exercise.targetWordTranslation) {
+        setWordTranslation(exercise.targetWordTranslation);
+        return;
+      }
+
+      setTranslationLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
+          body: {
+            text: exercise.targetWord,
+            language: settings.selectedLanguage,
+            requestShort: true
+          }
+        });
+
+        if (error) throw error;
+
+        if (data?.definition) {
+          setWordTranslation(data.definition);
+        } else {
+          setWordTranslation('translation unavailable');
+        }
+      } catch (error) {
+        console.error('Error fetching translation:', error);
+        setWordTranslation('translation unavailable');
+      } finally {
+        setTranslationLoading(false);
+      }
+    };
+
+    fetchTranslation();
+  }, [exercise.targetWord, exercise.targetWordTranslation, settings.selectedLanguage]);
 
   // Auto-focus input when component mounts
   useEffect(() => {
@@ -178,16 +218,12 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
 
   // Always visible hint with English translation of missing word
   const renderExtraHint = () => {
-    // Use the translation from the exercise data, with fallback to the target word itself
-    const translation = exercise.targetWordTranslation || 
-                       `English translation for "${exercise.targetWord}"`;
-    
     return (
       <div className="flex flex-col items-center gap-2 mt-3">
         <div className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
           <span className="flex items-center gap-1.5">
             <Lightbulb className="h-3 w-3" />
-            English: {translation}
+            English: {translationLoading ? 'loading...' : `"${wordTranslation}"`}
           </span>
         </div>
       </div>
