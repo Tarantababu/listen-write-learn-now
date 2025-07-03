@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Volume2, CheckCircle, XCircle, Eye, ArrowRight, Loader2 } from 'lucide-react';
+import { Volume2, CheckCircle, XCircle, Eye, ArrowRight, Loader2, Keyboard } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -41,6 +41,27 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
   const { settings } = useUserSettingsContext();
   const isMobile = useIsMobile();
   const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-focus textarea when component mounts
+  useEffect(() => {
+    if (textareaRef.current && !showResult) {
+      textareaRef.current.focus();
+    }
+  }, [showResult]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Submit on Enter key (but allow Shift+Enter for new lines)
+    if (e.key === 'Enter' && !e.shiftKey && !showResult && userResponse.trim() && buttonState === 'idle' && !loading) {
+      e.preventDefault();
+      handleSubmitClick();
+    }
+    // Show/hide translation on Ctrl+T or Cmd+T
+    if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+      e.preventDefault();
+      onToggleTranslation();
+    }
+  };
 
   const handleSubmitClick = async () => {
     if (buttonState === 'processing' || loading) return;
@@ -145,8 +166,10 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             </div>
             
             <Textarea
+              ref={textareaRef}
               value={userResponse}
               onChange={(e) => onResponseChange(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder={`Type your ${settings.selectedLanguage} translation...`}
               disabled={showResult || loading || buttonState === 'processing'}
               className={`flex-1 text-base resize-none ${
@@ -158,6 +181,12 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
               }`}
               rows={4}
             />
+
+            {/* Keyboard shortcuts hint */}
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-2">
+              <Keyboard className="h-3 w-3" />
+              <span>Enter: submit • Shift+Enter: new line • Ctrl+T: translation</span>
+            </div>
 
             {showResult && (
               <div className="mt-4 space-y-3">
@@ -206,7 +235,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
                 className="w-full py-3 text-base"
                 size="lg"
               >
-                {buttonState === 'processing' && (
+                {(buttonState === 'processing' || loading) && (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 )}
                 {buttonState === 'processing' || loading ? 'Checking...' : 'Submit Translation'}
@@ -214,11 +243,11 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             ) : (
               <Button
                 onClick={handleNextClick}
-                disabled={buttonState === 'processing'}
+                disabled={buttonState === 'processing' || loading}
                 className="w-full py-3 text-base"
                 size="lg"
               >
-                {buttonState === 'processing' ? (
+                {(buttonState === 'processing' || loading) ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Loading...
@@ -293,6 +322,12 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Keyboard shortcuts hint */}
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Keyboard className="h-3 w-3" />
+              <span>Enter: submit • Shift+Enter: new line • Ctrl+T: translation</span>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -302,8 +337,10 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
         <CardContent className="pt-6">
           <div className="space-y-4">
             <Textarea
+              ref={textareaRef}
               value={userResponse}
               onChange={(e) => onResponseChange(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder={`Type your ${settings.selectedLanguage} translation here...`}
               disabled={showResult || loading || buttonState === 'processing'}
               className={`min-h-20 text-lg transition-all duration-200 ${
@@ -322,7 +359,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
                   disabled={!userResponse.trim() || loading || buttonState === 'processing'}
                   className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[140px]"
                 >
-                  {buttonState === 'processing' && (
+                  {(buttonState === 'processing' || loading) && (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   )}
                   {buttonState === 'processing' || loading ? 'Checking...' : 'Submit Translation'}
@@ -330,10 +367,10 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
               ) : (
                 <Button
                   onClick={handleNextClick}
-                  disabled={buttonState === 'processing'}
+                  disabled={buttonState === 'processing' || loading}
                   className="px-8 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[120px]"
                 >
-                  {buttonState === 'processing' ? (
+                  {(buttonState === 'processing' || loading) ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading...

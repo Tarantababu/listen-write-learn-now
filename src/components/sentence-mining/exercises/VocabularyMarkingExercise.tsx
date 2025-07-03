@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Volume2, ArrowRight, Eye, Loader2 } from 'lucide-react';
+import { Volume2, ArrowRight, Eye, Loader2, Keyboard } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -41,7 +41,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
   onToggleTranslation,
 }) => {
   const { settings } = useUserSettingsContext();
-  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
   const [wordDefinitions, setWordDefinitions] = useState<WordDefinition[]>([]);
   const [loadingDefinitions, setLoadingDefinitions] = useState(false);
 
@@ -102,6 +102,25 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
     extractAndDefineWords();
   }, [exercise.sentence, settings.selectedLanguage]);
 
+  // Add keyboard event listener for Enter key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Submit on Enter key
+      if (e.key === 'Enter' && !showResult && buttonState === 'idle' && !loading) {
+        e.preventDefault();
+        handleContinueClick();
+      }
+      // Show/hide translation on Ctrl+T or Cmd+T
+      if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+        e.preventDefault();
+        onToggleTranslation();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showResult, buttonState, loading, onToggleTranslation]);
+
   const renderClickableText = () => {
     const words = exercise.sentence.split(/(\s+)/);
     
@@ -134,23 +153,22 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
     });
   };
 
-  const handleContinueClick = () => {
-    if (buttonDisabled || loading) return;
+  const handleContinueClick = async () => {
+    if (buttonState === 'processing' || loading) return;
     
-    setButtonDisabled(true);
+    setButtonState('processing');
     
     try {
       if (showResult) {
-        onNext();
+        await onNext();
       } else {
-        onSubmit();
+        await onSubmit();
       }
     } catch (error) {
       console.error('Error in continue:', error);
     } finally {
-      // Re-enable button after a short delay
       setTimeout(() => {
-        setButtonDisabled(false);
+        setButtonState('idle');
       }, 1000);
     }
   };
@@ -204,6 +222,12 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
             </p>
           </div>
 
+          {/* Keyboard shortcuts hint */}
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-4">
+            <Keyboard className="h-3 w-3" />
+            <span>Enter: continue • Ctrl+T: translation</span>
+          </div>
+
           {loadingDefinitions && (
             <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -253,9 +277,18 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
             <Button
               onClick={handleContinueClick}
               className="px-6 md:px-8 py-3 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 w-full md:w-auto text-base"
-              disabled={loading || buttonDisabled}
+              disabled={loading || buttonState === 'processing'}
             >
-              {loading ? 'Processing...' : 'Continue'} <ArrowRight className="h-4 w-4" />
+              {(loading || buttonState === 'processing') ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  Continue <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </Button>
           </div>
 
