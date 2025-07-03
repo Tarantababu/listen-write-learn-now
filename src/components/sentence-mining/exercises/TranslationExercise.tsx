@@ -4,17 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Volume2, CheckCircle, XCircle, Eye, ArrowRight, Loader2, Keyboard } from 'lucide-react';
-
-interface SentenceMiningExercise {
-  sentence: string;
-  translation?: string;
-  difficulty: string;
-  explanation?: string;
-}
-
-interface UserSettings {
-  selectedLanguage: string;
-}
+import { SentenceMiningExercise } from '@/types/sentence-mining';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface TranslationExerciseProps {
   exercise: SentenceMiningExercise;
@@ -45,10 +37,8 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
   showTranslation,
   onToggleTranslation,
 }) => {
-  // Mock settings for demo
-  const settings: UserSettings = { selectedLanguage: 'Spanish' };
-  const isMobile = window.innerWidth < 768;
-  
+  const { settings } = useUserSettingsContext();
+  const isMobile = useIsMobile();
   const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -60,21 +50,11 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
   }, [showResult]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Handle Enter key for both submit and continue
-    if (e.key === 'Enter' && !e.shiftKey && buttonState === 'idle' && !loading) {
+    // Submit on Enter key (but allow Shift+Enter for new lines)
+    if (e.key === 'Enter' && !e.shiftKey && !showResult && userResponse.trim() && buttonState === 'idle' && !loading) {
       e.preventDefault();
-      
-      if (!showResult) {
-        // Submit mode - only if there's a response
-        if (userResponse.trim()) {
-          handleSubmitClick();
-        }
-      } else {
-        // Continue mode - always allow continue after result is shown
-        handleNextClick();
-      }
+      handleSubmitClick();
     }
-    
     // Show/hide translation on Ctrl+T or Cmd+T
     if ((e.ctrlKey || e.metaKey) && e.key === 't') {
       e.preventDefault();
@@ -180,7 +160,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
           <div className="flex-1 flex flex-col px-4 py-4">
             <div className="mb-3">
               <p className="text-sm text-muted-foreground text-center">
-                Translate into {settings.selectedLanguage}:
+                Translate:
               </p>
             </div>
             
@@ -189,7 +169,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
               value={userResponse}
               onChange={(e) => onResponseChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={`Type your ${settings.selectedLanguage} translation...`}
+              placeholder="Type your translation..."
               disabled={showResult || loading || buttonState === 'processing'}
               className={`flex-1 text-base resize-none ${
                 showResult
@@ -204,7 +184,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             {/* Keyboard shortcuts hint */}
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-2">
               <Keyboard className="h-3 w-3" />
-              <span>Enter: {showResult ? 'continue' : 'submit'} • Shift+Enter: new line • Ctrl+T: translation</span>
+              <span>Enter: submit • Shift+Enter: new line • Ctrl+T: translation</span>
             </div>
 
             {showResult && (
@@ -291,7 +271,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Translate into {settings.selectedLanguage}:</CardTitle>
+            <CardTitle className="text-lg">Translate</CardTitle>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="capitalize">
                 {exercise.difficulty}
@@ -345,7 +325,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             {/* Keyboard shortcuts hint */}
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Keyboard className="h-3 w-3" />
-              <span>Enter: {showResult ? 'continue' : 'submit'} • Shift+Enter: new line • Ctrl+T: translation</span>
+              <span>Enter: submit • Shift+Enter: new line • Ctrl+T: translation</span>
             </div>
           </div>
         </CardContent>
@@ -360,7 +340,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
               value={userResponse}
               onChange={(e) => onResponseChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={`Type your ${settings.selectedLanguage} translation here...`}
+              placeholder="Type your translation here..."
               disabled={showResult || loading || buttonState === 'processing'}
               className={`min-h-20 text-lg transition-all duration-200 ${
                 showResult
