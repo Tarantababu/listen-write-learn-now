@@ -101,18 +101,18 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
 
       setSentenceTranslationLoading(true);
       try {
-        const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
+        const { data, error } = await supabase.functions.invoke('translate-sentence', {
           body: {
-            text: exercise.sentence,
-            language: settings.selectedLanguage,
-            requestShort: true
+            sentence: exercise.sentence,
+            sourceLanguage: settings.selectedLanguage,
+            targetLanguage: 'en'
           }
         });
 
         if (error) throw error;
 
-        if (data?.definition) {
-          setSentenceTranslation(data.definition);
+        if (data?.translation) {
+          setSentenceTranslation(data.translation);
         } else {
           setSentenceTranslation('Translation unavailable');
         }
