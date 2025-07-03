@@ -101,18 +101,18 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
 
       setSentenceTranslationLoading(true);
       try {
-        const { data, error } = await supabase.functions.invoke('translate-sentence', {
+        const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
           body: {
-            sentence: exercise.sentence,
-            sourceLanguage: settings.selectedLanguage,
-            targetLanguage: 'en'
+            text: exercise.sentence,
+            language: settings.selectedLanguage,
+            requestShort: true
           }
         });
 
         if (error) throw error;
 
-        if (data?.translation) {
-          setSentenceTranslation(data.translation);
+        if (data?.definition) {
+          setSentenceTranslation(data.definition);
         } else {
           setSentenceTranslation('Translation unavailable');
         }
@@ -135,10 +135,16 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   }, [showResult]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Submit on Enter key
-    if (e.key === 'Enter' && !showResult && userResponse.trim() && buttonState === 'idle' && !loading) {
+    // Handle Enter key for both submit and continue
+    if (e.key === 'Enter' && buttonState === 'idle' && !loading) {
       e.preventDefault();
-      handleSubmitClick();
+      if (!showResult && userResponse.trim()) {
+        // Submit answer
+        handleSubmitClick();
+      } else if (showResult) {
+        // Continue to next
+        handleNextClick();
+      }
     }
     // Show/hide translation on Ctrl+T or Cmd+T
     if ((e.ctrlKey || e.metaKey) && e.key === 't') {
@@ -146,6 +152,21 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
       onToggleTranslation();
     }
   };
+
+  // Handle global Enter key press when result is shown
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && showResult && buttonState === 'idle' && !loading) {
+        e.preventDefault();
+        handleNextClick();
+      }
+    };
+
+    if (showResult) {
+      document.addEventListener('keydown', handleGlobalKeyDown);
+      return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+    }
+  }, [showResult, buttonState, loading]);
 
   const handleSubmitClick = async () => {
     if (buttonState === 'processing' || loading) return;
@@ -340,7 +361,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             {/* Keyboard shortcuts hint */}
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Keyboard className="h-3 w-3" />
-              <span>Enter: submit • Ctrl+T: translation</span>
+              <span>Enter: {showResult ? 'continue' : 'submit'} • Ctrl+T: translation</span>
             </div>
           </div>
         </CardContent>
