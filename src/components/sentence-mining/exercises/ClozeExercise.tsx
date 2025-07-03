@@ -50,6 +50,8 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
   const [wordTranslation, setWordTranslation] = useState<string>('');
   const [translationLoading, setTranslationLoading] = useState(false);
+  const [sentenceTranslation, setSentenceTranslation] = useState<string>('');
+  const [sentenceTranslationLoading, setSentenceTranslationLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { settings } = useUserSettingsContext();
 
@@ -88,6 +90,42 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
 
     fetchTranslation();
   }, [exercise.targetWord, exercise.targetWordTranslation, settings.selectedLanguage]);
+
+  // Fetch translation for the full sentence
+  useEffect(() => {
+    const fetchSentenceTranslation = async () => {
+      if (exercise.translation) {
+        setSentenceTranslation(exercise.translation);
+        return;
+      }
+
+      setSentenceTranslationLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
+          body: {
+            text: exercise.sentence,
+            language: settings.selectedLanguage,
+            requestShort: true
+          }
+        });
+
+        if (error) throw error;
+
+        if (data?.definition) {
+          setSentenceTranslation(data.definition);
+        } else {
+          setSentenceTranslation('Translation unavailable');
+        }
+      } catch (error) {
+        console.error('Error fetching sentence translation:', error);
+        setSentenceTranslation('Translation unavailable');
+      } finally {
+        setSentenceTranslationLoading(false);
+      }
+    };
+
+    fetchSentenceTranslation();
+  }, [exercise.sentence, exercise.translation, settings.selectedLanguage]);
 
   // Auto-focus input when component mounts
   useEffect(() => {
@@ -240,7 +278,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           Sentence Translation:
         </p>
         <p className="text-green-700 dark:text-green-300 text-sm">
-          {exercise.translation || 'Full sentence translation will be provided here'}
+          {sentenceTranslationLoading ? 'Loading translation...' : sentenceTranslation}
         </p>
       </div>
     );
