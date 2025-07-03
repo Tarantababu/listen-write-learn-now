@@ -32,76 +32,8 @@ interface ClozeExerciseProps {
   onToggleTranslation: () => void;
 }
 
-// Enhanced OpenAI integration for getting word translations
-const getWordTranslation = async (word: string, targetLang: string = 'en'): Promise<string> => {
-  try {
-    // Mock translations for common German words (replace with actual OpenAI call)
-    const mockTranslations: { [key: string]: string } = {
-      'zukunft': 'future',
-      'haus': 'house',
-      'hund': 'dog',
-      'katze': 'cat',
-      'wasser': 'water',
-      'essen': 'food',
-      'liebe': 'love',
-      'zeit': 'time',
-      'leben': 'life',
-      'welt': 'world',
-      'mensch': 'person',
-      'jahr': 'year',
-      'tag': 'day',
-      'nacht': 'night',
-      'morgen': 'morning',
-      'abend': 'evening',
-      'arbeit': 'work',
-      'schule': 'school',
-      'buch': 'book',
-      'auto': 'car',
-      'freund': 'friend',
-      'familie': 'family',
-      'stadt': 'city',
-      'land': 'country',
-      'sprache': 'language',
-      'lernen': 'to learn',
-      'verstehen': 'to understand',
-      'sprechen': 'to speak',
-      'hören': 'to hear',
-      'sehen': 'to see',
-      'gehen': 'to go',
-      'kommen': 'to come',
-      'machen': 'to make',
-      'haben': 'to have',
-      'sein': 'to be',
-    };
-    
-    const translation = mockTranslations[word.toLowerCase()];
-    return translation || 'translation not available';
-    
-  } catch (error) {
-    console.error('Translation error:', error);
-    return 'translation not available';
-  }
-};
-
-// Enhanced exercise processor that ensures translations are available
-const processExerciseWithTranslations = async (exercise: SentenceMiningExercise): Promise<SentenceMiningExercise> => {
-  const processedExercise = { ...exercise };
-  
-  try {
-    // Get target word translation if not available
-    if (!processedExercise.targetWordTranslation) {
-      processedExercise.targetWordTranslation = await getWordTranslation(processedExercise.targetWord);
-    }
-  } catch (error) {
-    console.error('Translation error:', error);
-    processedExercise.targetWordTranslation = processedExercise.targetWordTranslation || 'translation not available';
-  }
-  
-  return processedExercise;
-};
-
 export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
-  exercise: rawExercise,
+  exercise,
   userResponse,
   onResponseChange,
   onSubmit,
@@ -114,29 +46,8 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   showTranslation,
   onToggleTranslation,
 }) => {
-  const [exercise, setExercise] = useState<SentenceMiningExercise>(rawExercise);
-  const [translationsLoading, setTranslationsLoading] = useState(false);
   const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Process exercise with translations when component mounts or exercise changes
-  useEffect(() => {
-    const loadTranslations = async () => {
-      if (!exercise.targetWordTranslation) {
-        setTranslationsLoading(true);
-        try {
-          const processedExercise = await processExerciseWithTranslations(rawExercise);
-          setExercise(processedExercise);
-        } catch (error) {
-          console.error('Failed to load translations:', error);
-        } finally {
-          setTranslationsLoading(false);
-        }
-      }
-    };
-
-    loadTranslations();
-  }, [rawExercise]);
 
   // Auto-focus input when component mounts
   useEffect(() => {
@@ -267,14 +178,16 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
 
   // Always visible hint with English translation of missing word
   const renderExtraHint = () => {
+    // Use the translation from the exercise data, with fallback to the target word itself
+    const translation = exercise.targetWordTranslation || 
+                       `English translation for "${exercise.targetWord}"`;
+    
     return (
       <div className="flex flex-col items-center gap-2 mt-3">
         <div className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
           <span className="flex items-center gap-1.5">
             <Lightbulb className="h-3 w-3" />
-            English: {
-              translationsLoading ? 'loading...' : (exercise.targetWordTranslation || 'translation not available')
-            }
+            English: {translation}
           </span>
         </div>
       </div>
@@ -291,7 +204,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           Sentence Translation:
         </p>
         <p className="text-green-700 dark:text-green-300 text-sm">
-          {exercise.translation || 'translation not available'}
+          {exercise.translation || 'Full sentence translation will be provided here'}
         </p>
       </div>
     );
