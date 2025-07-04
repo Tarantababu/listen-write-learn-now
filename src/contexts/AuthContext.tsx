@@ -12,9 +12,9 @@ interface AuthContextProps {
   login: (email?: string) => Promise<void>;
   logout: () => Promise<void>;
   signOut: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<{ data: any; error: any }>;
-  signUp: (email: string, password: string) => Promise<{ data: any; error: any }>;
-  signInWithGoogle: () => Promise<{ data: any; error: any }>;
+  signIn: (email: string, password: string) => Promise<any>;
+  signUp: (email: string, password: string) => Promise<any>;
+  signInWithGoogle: () => Promise<any>;
   loading: boolean;
 }
 
@@ -28,9 +28,9 @@ const AuthContext = createContext<AuthContextProps>({
   login: async () => {},
   logout: async () => {},
   signOut: async () => {},
-  signIn: async () => ({ data: null, error: null }),
-  signUp: async () => ({ data: null, error: null }),
-  signInWithGoogle: async () => ({ data: null, error: null }),
+  signIn: async () => ({}),
+  signUp: async () => ({}),
+  signInWithGoogle: async () => ({}),
   loading: true,
 });
 
