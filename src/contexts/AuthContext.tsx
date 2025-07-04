@@ -48,32 +48,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(session);
         setLoading(false);
         
-        // Set user data in GTM
-        gtmService.setUser(session?.user ?? null);
+        // Handle analytics tracking with proper error handling
+        try {
+          // Set user data in GTM
+          gtmService.setUser(session?.user ?? null);
+        } catch (error) {
+          console.warn('GTM setUser error:', error);
+        }
         
-        // Set user data in PostHog
-        posthogService.setUser(session?.user ?? null);
+        try {
+          // Set user data in PostHog with setTimeout to prevent blocking auth flow
+          setTimeout(() => {
+            posthogService.setUser(session?.user ?? null);
+          }, 0);
+        } catch (error) {
+          console.warn('PostHog setUser error:', error);
+        }
 
         if (event === 'SIGNED_IN' && session?.user) {
-          // Track login in GTM
-          gtmService.trackUserLogin({
-            login_method: 'email', // You might want to make this dynamic
-            is_new_user: false // You might want to determine this
-          }, session.user);
+          try {
+            // Track login in GTM
+            gtmService.trackUserLogin({
+              login_method: 'email', // You might want to make this dynamic
+              is_new_user: false // You might want to determine this
+            }, session.user);
+          } catch (error) {
+            console.warn('GTM trackUserLogin error:', error);
+          }
           
-          // Track login in PostHog
-          posthogService.trackUserLogin({
-            login_method: 'email', // You might want to make this dynamic
-            is_new_user: false // You might want to determine this
-          }, session.user);
+          try {
+            // Track login in PostHog with setTimeout to prevent blocking auth flow
+            setTimeout(() => {
+              posthogService.trackUserLogin({
+                login_method: 'email', // You might want to make this dynamic
+                is_new_user: false // You might want to determine this
+              }, session.user);
+            }, 0);
+          } catch (error) {
+            console.warn('PostHog trackUserLogin error:', error);
+          }
         }
 
         if (event === 'SIGNED_OUT') {
-          // Track logout in GTM
-          gtmService.trackUserLogout();
+          try {
+            // Track logout in GTM
+            gtmService.trackUserLogout();
+          } catch (error) {
+            console.warn('GTM trackUserLogout error:', error);
+          }
           
-          // Track logout in PostHog
-          posthogService.trackUserLogout();
+          try {
+            // Track logout in PostHog
+            setTimeout(() => {
+              posthogService.trackUserLogout();
+            }, 0);
+          } catch (error) {
+            console.warn('PostHog trackUserLogout error:', error);
+          }
         }
       }
     );
