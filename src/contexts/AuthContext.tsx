@@ -7,6 +7,7 @@ import { hasTutorialBeenViewed } from '@/utils/visitorTracking';
 import { EmailService } from '@/services/emailService';
 import { ResendContactService } from '@/services/resendContactService';
 import { gtmService } from '@/services/gtmService';
+import { posthogService } from '@/services/posthogService';
 
 interface AuthContextProps {
   session: Session | null;
@@ -38,8 +39,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Initialize GTM service
+    // Initialize GTM and PostHog services
     gtmService.initialize();
+    posthogService.initialize();
 
     // First set up auth state listener to avoid missing auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -60,11 +62,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const timeDiff = now.getTime() - userCreatedAt.getTime();
           const isRecentlyCreated = timeDiff < 10000; // 10 seconds
           
-          // Track login event
+          // Identify user in PostHog
+          posthogService.identify(session.user.id, {
+            email: session.user.email,
+            user_id: session.user.id,
+            created_at: session.user.created_at,
+            is_premium: false // This could be updated based on subscription status
+          });
+          
+          // Track login event in GTM
           gtmService.trackUserLogin({
             login_method: session.user.app_metadata?.provider === 'google' ? 'google' : 'email',
             is_new_user: isRecentlyCreated
           }, session.user);
+          
+          // Track login event in PostHog
+          posthogService.trackLogin(
+            session.user.app_metadata?.provider === 'google' ? 'google' : 'email',
+            isRecentlyCreated
+          );
           
           // Only process each user once per session to avoid duplicates
           if (isRecentlyCreated && !processedUsers.has(session.user.id)) {
@@ -120,8 +136,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (event === 'SIGNED_OUT') {
-          // Track logout event
+          // Track logout events
           gtmService.trackUserLogout();
+          posthogService.trackLogout();
+          
+          // Reset PostHog user
+          posthogService.reset();
           
           // Clear processed users on sign out
           setProcessedUsers(new Set());
