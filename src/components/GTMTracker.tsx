@@ -2,7 +2,6 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useGTM } from '@/hooks/use-gtm';
-import { usePostHog } from '@/hooks/use-posthog';
 
 interface GTMTrackerProps {
   children?: React.ReactNode;
@@ -10,22 +9,17 @@ interface GTMTrackerProps {
 
 export const GTMTracker: React.FC<GTMTrackerProps> = ({ children }) => {
   const location = useLocation();
-  const { trackPageView: trackGTMPageView } = useGTM();
-  const { trackPageView: trackPostHogPageView } = usePostHog();
+  const { trackPageView } = useGTM();
 
   // Track page views on route changes
   useEffect(() => {
     const pageTitle = document.title || 'Unknown Page';
-    const pageData = {
+    trackPageView(pageTitle, {
       page_path: location.pathname,
       page_search: location.search,
       page_hash: location.hash
-    };
-
-    // Track in both GTM and PostHog
-    trackGTMPageView(pageTitle, pageData);
-    trackPostHogPageView(pageTitle, pageData);
-  }, [location, trackGTMPageView, trackPostHogPageView]);
+    });
+  }, [location, trackPageView]);
 
   return <>{children}</>;
 };
