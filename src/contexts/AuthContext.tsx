@@ -1,13 +1,20 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { gtmService } from '@/services/gtmService';
 import { posthogService } from '@/services/posthogService';
+import { signUp as authSignUp, signIn as authSignIn, signInWithGoogle as authSignInWithGoogle, signOut as authSignOut } from '@/lib/auth';
 
 interface AuthContextProps {
   user: User | null;
+  session: Session | null;
   login: (email?: string) => Promise<void>;
   logout: () => Promise<void>;
+  signOut: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{ data: any; error: any }>;
+  signUp: (email: string, password: string) => Promise<{ data: any; error: any }>;
+  signInWithGoogle: () => Promise<{ data: any; error: any }>;
   loading: boolean;
 }
 
@@ -17,8 +24,13 @@ interface AuthProviderProps {
 
 const AuthContext = createContext<AuthContextProps>({
   user: null,
+  session: null,
   login: async () => {},
   logout: async () => {},
+  signOut: async () => {},
+  signIn: async () => ({ data: null, error: null }),
+  signUp: async () => ({ data: null, error: null }),
+  signInWithGoogle: async () => ({ data: null, error: null }),
   loading: true,
 });
 
@@ -26,12 +38,14 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setUser(session?.user ?? null);
+        setSession(session);
         setLoading(false);
         
         // Set user data in GTM
@@ -90,18 +104,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
-    setLoading(true);
-    try {
-      await supabase.auth.signOut();
-    } catch (error: any) {
-      alert(error.error_description || error.message);
-    } finally {
-      setLoading(false);
-    }
+    return authSignOut();
+  };
+
+  const signOut = async () => {
+    return authSignOut();
+  };
+
+  const signIn = async (email: string, password: string) => {
+    return authSignIn(email, password);
+  };
+
+  const signUp = async (email: string, password: string) => {
+    return authSignUp(email, password);
+  };
+
+  const signInWithGoogle = async () => {
+    return authSignInWithGoogle();
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session,
+      login, 
+      logout, 
+      signOut,
+      signIn,
+      signUp,
+      signInWithGoogle,
+      loading 
+    }}>
       {children}
     </AuthContext.Provider>
   );
