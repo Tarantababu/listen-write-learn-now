@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { CheckCircle, XCircle, ArrowRight, Loader2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -25,6 +27,28 @@ export const UserResponse: React.FC<UserResponseProps> = ({
   explanation,
 }) => {
   const isMobile = useIsMobile();
+  const [progress, setProgress] = useState(0);
+
+  // Animate progress bar while loading
+  useEffect(() => {
+    if (loading) {
+      setProgress(0);
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) return 90; // Stop at 90% until actual response
+          return prev + Math.random() * 15;
+        });
+      }, 200);
+
+      return () => clearInterval(interval);
+    } else {
+      // Complete the progress bar when done
+      if (progress > 0) {
+        setProgress(100);
+        setTimeout(() => setProgress(0), 500);
+      }
+    }
+  }, [loading, progress]);
 
   // Mobile layout
   if (isMobile) {
@@ -32,15 +56,33 @@ export const UserResponse: React.FC<UserResponseProps> = ({
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t p-4 z-20">
         <div className="space-y-4">
           {!showResult ? (
-            <Button
-              onClick={onSubmit}
-              disabled={loading}
-              className="w-full py-3 text-base"
-              size="lg"
-            >
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {loading ? 'Checking...' : 'Submit'}
-            </Button>
+            <div className="space-y-2">
+              <Button
+                onClick={onSubmit}
+                disabled={loading}
+                className="w-full py-3 text-base relative overflow-hidden"
+                size="lg"
+              >
+                {loading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-primary">
+                    <div className="flex items-center gap-2 text-primary-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Checking answer...</span>
+                    </div>
+                  </div>
+                )}
+                {loading ? '' : 'Submit'}
+              </Button>
+              
+              {loading && (
+                <div className="space-y-1">
+                  <Progress value={progress} className="w-full h-2" />
+                  <p className="text-xs text-center text-muted-foreground">
+                    Analyzing your response...
+                  </p>
+                </div>
+              )}
+            </div>
           ) : (
             <>
               <div className="space-y-3">
@@ -87,23 +129,37 @@ export const UserResponse: React.FC<UserResponseProps> = ({
                 </div>
               </div>
 
-              <Button
-                onClick={onNext}
-                disabled={loading}
-                className="w-full py-3 text-base"
-                size="lg"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    Next <ArrowRight className="h-4 w-4 ml-2" />
-                  </>
+              <div className="space-y-2">
+                <Button
+                  onClick={onNext}
+                  disabled={loading}
+                  className="w-full py-3 text-base relative overflow-hidden"
+                  size="lg"
+                >
+                  {loading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-primary">
+                      <div className="flex items-center gap-2 text-primary-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading next...</span>
+                      </div>
+                    </div>
+                  )}
+                  {loading ? '' : (
+                    <>
+                      Next <ArrowRight className="h-4 w-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+
+                {loading && (
+                  <div className="space-y-1">
+                    <Progress value={progress} className="w-full h-2" />
+                    <p className="text-xs text-center text-muted-foreground">
+                      Preparing next exercise...
+                    </p>
+                  </div>
                 )}
-              </Button>
+              </div>
             </>
           )}
         </div>
@@ -111,42 +167,74 @@ export const UserResponse: React.FC<UserResponseProps> = ({
     );
   }
 
-  // Desktop layout (keep existing code)
+  // Desktop layout
   return (
     <Card className="w-full">
       <CardContent className="pt-6">
         <div className="space-y-4">
           <div className="flex justify-center">
             {!showResult ? (
-              <Button
-                onClick={onSubmit}
-                disabled={loading}
-                className="px-6 py-3 text-base transition-all duration-200 hover:scale-105 active:scale-95 min-w-[140px]"
-              >
-                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {loading ? 'Checking...' : 'Submit'}
-              </Button>
-            ) : (
-              <Button
-                onClick={onNext}
-                disabled={loading}
-                className="px-6 py-3 text-base flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 min-w-[120px]"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    Next <ArrowRight className="h-4 w-4" />
-                  </>
+              <div className="flex flex-col items-center gap-3">
+                <Button
+                  onClick={onSubmit}
+                  disabled={loading}
+                  className="px-6 py-3 text-base transition-all duration-200 hover:scale-105 active:scale-95 min-w-[140px] relative overflow-hidden"
+                >
+                  {loading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-primary">
+                      <div className="flex items-center gap-2 text-primary-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Checking...</span>
+                      </div>
+                    </div>
+                  )}
+                  {loading ? '' : 'Submit'}
+                </Button>
+                
+                {loading && (
+                  <div className="w-48 space-y-2">
+                    <Progress value={progress} className="w-full h-2" />
+                    <p className="text-xs text-center text-muted-foreground">
+                      Analyzing your response...
+                    </p>
+                  </div>
                 )}
-              </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <Button
+                  onClick={onNext}
+                  disabled={loading}
+                  className="px-6 py-3 text-base flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 min-w-[120px] relative overflow-hidden"
+                >
+                  {loading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-primary">
+                      <div className="flex items-center gap-2 text-primary-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading...</span>
+                      </div>
+                    </div>
+                  )}
+                  {loading ? '' : (
+                    <>
+                      Next <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+
+                {loading && (
+                  <div className="w-48 space-y-2">
+                    <Progress value={progress} className="w-full h-2" />
+                    <p className="text-xs text-center text-muted-foreground">
+                      Preparing next exercise...
+                    </p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
-          {showResult && (
+          {showResult && !loading && (
             <div className="space-y-3 animate-fade-in">
               <div className="flex items-center justify-center gap-2">
                 {isCorrect ? (
