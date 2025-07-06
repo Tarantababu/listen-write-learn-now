@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,8 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
   const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
   const [wordDefinitions, setWordDefinitions] = useState<WordDefinition[]>([]);
   const [loadingDefinitions, setLoadingDefinitions] = useState(false);
+  const [translationText, setTranslationText] = useState<string>('');
+  const [translationLoading, setTranslationLoading] = useState(false);
 
   // Extract and get definitions for all words when component mounts
   useEffect(() => {
@@ -100,6 +103,46 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
 
     extractAndDefineWords();
   }, [exercise.sentence, settings.selectedLanguage]);
+
+  // Fetch translation when showTranslation changes to true
+  useEffect(() => {
+    if (showTranslation && !translationText && !translationLoading) {
+      fetchTranslation();
+    }
+  }, [showTranslation]);
+
+  const fetchTranslation = async () => {
+    if (translationLoading) return;
+    
+    setTranslationLoading(true);
+    try {
+      console.log('Fetching translation for sentence:', exercise.sentence);
+      
+      const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
+        body: {
+          text: `Translate this ${settings.selectedLanguage} sentence to English: "${exercise.sentence}"`,
+          language: settings.selectedLanguage,
+          requestExplanation: true
+        }
+      });
+
+      if (error) {
+        console.error('Translation error:', error);
+        setTranslationText('Translation not available');
+      } else if (data?.explanation) {
+        setTranslationText(data.explanation);
+      } else if (data?.definition) {
+        setTranslationText(data.definition);
+      } else {
+        setTranslationText('Translation not available');
+      }
+    } catch (error) {
+      console.error('Error fetching translation:', error);
+      setTranslationText('Translation not available');
+    } finally {
+      setTranslationLoading(false);
+    }
+  };
 
   // Add keyboard event listener for Enter key
   useEffect(() => {
@@ -266,10 +309,20 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
                 variant="outline" 
                 size="sm"
                 onClick={onToggleTranslation}
+                disabled={translationLoading}
                 className="transition-transform duration-200 hover:scale-105 active:scale-95 flex-1 md:flex-none flex items-center gap-2"
               >
-                <Eye className="h-4 w-4" />
-                {showTranslation ? 'Hide Translation' : 'Show Translation'}
+                {translationLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4" />
+                    {showTranslation ? 'Hide Translation' : 'Show Translation'}
+                  </>
+                )}
               </Button>
             </div>
             
@@ -292,11 +345,18 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
           </div>
 
           {/* Translation display */}
-          {showTranslation && exercise.translation && (
+          {showTranslation && (
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg animate-fade-in">
-              <p className="text-blue-700 dark:text-blue-300 text-sm">
-                <strong>Translation:</strong> {exercise.translation}
-              </p>
+              {translationLoading ? (
+                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading translation...
+                </div>
+              ) : (
+                <p className="text-blue-700 dark:text-blue-300 text-sm">
+                  <strong>Translation:</strong> {translationText || 'Translation not available'}
+                </p>
+              )}
             </div>
           )}
         </CardContent>
