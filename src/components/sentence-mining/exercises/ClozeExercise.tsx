@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Volume2, CheckCircle, XCircle, Eye, ArrowRight, Loader2, Keyboard, Lightbulb } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Mock types for demonstration
 interface SentenceMiningExercise {
@@ -54,6 +55,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   const [sentenceTranslationLoading, setSentenceTranslationLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { settings } = useUserSettingsContext();
+  const isMobile = useIsMobile();
 
   // Fetch translation for the target word
   useEffect(() => {
@@ -127,12 +129,16 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
     fetchSentenceTranslation();
   }, [exercise.sentence, exercise.translation, settings.selectedLanguage]);
 
-  // Auto-focus input when component mounts
+  // Auto-focus input when component mounts and on mobile
   useEffect(() => {
     if (inputRef.current && !showResult) {
-      inputRef.current.focus();
+      // Small delay to ensure proper focus on mobile
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [showResult]);
+  }, [showResult, exercise]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Handle Enter key for both submit and continue
@@ -279,7 +285,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   const renderExtraHint = () => {
     return (
       <div className="flex flex-col items-center gap-2 mt-3">
-        <div className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full text-xs font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm">
+        <div className={`px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full ${isMobile ? 'text-sm' : 'text-xs'} font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm`}>
           <span className="flex items-center gap-1.5">
             <Lightbulb className="h-3 w-3" />
             English: {translationLoading ? 'loading...' : `"${wordTranslation}"`}
@@ -304,6 +310,161 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
       </div>
     );
   };
+
+  // Mobile-first layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Mobile Header - Sticky */}
+        <div className="sticky top-0 z-10 bg-card border-b px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs capitalize">
+                {exercise.difficulty}
+              </Badge>
+              <span className="text-sm font-medium">Complete Sentence</span>
+            </div>
+            {onPlayAudio && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onPlayAudio}
+                disabled={audioLoading}
+                className="text-xs px-3 py-2 h-8"
+              >
+                <Volume2 className="h-3 w-3 mr-1" />
+                {audioLoading ? 'Loading' : 'Listen'}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Content - Scrollable */}
+        <div className="flex-1 flex flex-col px-4 py-4 space-y-4 pb-32">
+          {/* Sentence with blank - Mobile optimized */}
+          <div className="p-4 bg-muted rounded-lg text-center">
+            <div className="text-lg leading-relaxed space-y-4">
+              <div className="mb-4">
+                {renderSentenceWithBlank()}
+              </div>
+              <div className="flex flex-col items-center gap-3">
+                <Input
+                  ref={inputRef}
+                  value={userResponse}
+                  onChange={(e) => onResponseChange(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={showResult || buttonState === 'processing' || loading}
+                  className={`w-full max-w-xs text-center text-lg h-12 ${
+                    showResult
+                      ? isCorrect
+                        ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                        : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                      : 'focus:ring-2 focus:ring-primary'
+                  }`}
+                  placeholder="Type your answer..."
+                  autoFocus
+                />
+              </div>
+            </div>
+            {/* Always show the extra hint with English translation */}
+            {renderExtraHint()}
+          </div>
+          
+          {/* Translation display */}
+          {renderSentenceTranslation()}
+
+          {/* Result feedback */}
+          {showResult && (
+            <div className="space-y-3 animate-fade-in">
+              <div className="flex items-center justify-center gap-2">
+                {isCorrect ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600" />
+                )}
+                <Badge variant={isCorrect ? 'default' : 'destructive'} className="text-sm">
+                  {isCorrect ? 'Correct!' : 'Incorrect'}
+                </Badge>
+              </div>
+
+              {!isCorrect && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                    Correct answer:
+                  </p>
+                  <p className="text-blue-700 dark:text-blue-300 text-base font-semibold">
+                    {exercise.targetWord}
+                  </p>
+                </div>
+              )}
+
+              {exercise.explanation && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                    Explanation:
+                  </p>
+                  <p className="text-amber-700 dark:text-amber-300 text-sm">
+                    {exercise.explanation}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Bottom Actions - Fixed */}
+        <div className="fixed bottom-0 left-0 right-0 bg-card border-t px-4 py-4 safe-area-bottom">
+          <div className="flex flex-col gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleTranslation}
+              className="w-full h-10 flex items-center justify-center gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
+            </Button>
+            
+            {!showResult ? (
+              <Button
+                onClick={handleSubmitClick}
+                disabled={!userResponse.trim() || loading || buttonState === 'processing'}
+                className="w-full h-12 text-base flex items-center justify-center gap-2"
+              >
+                {(buttonState === 'processing' || loading) && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+                {buttonState === 'processing' || loading ? 'Checking...' : 'Submit Answer'}
+              </Button>
+            ) : (
+              <Button
+                onClick={handleNextClick}
+                disabled={buttonState === 'processing' || loading}
+                className="w-full h-12 text-base flex items-center justify-center gap-2"
+              >
+                {(buttonState === 'processing' || loading) ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    Continue <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            )}
+
+            {/* Keyboard shortcuts hint */}
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Keyboard className="h-3 w-3" />
+              <span>Enter: {showResult ? 'continue' : 'submit'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Desktop layout
   return (

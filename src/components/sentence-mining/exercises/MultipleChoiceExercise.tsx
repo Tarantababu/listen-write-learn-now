@@ -1,10 +1,10 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Volume2, CheckCircle, XCircle, ArrowRight, Eye } from 'lucide-react';
+import { Volume2, CheckCircle, XCircle, ArrowRight, Eye, Loader2, Keyboard } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MultipleChoiceExerciseProps {
   exercise: SentenceMiningExercise;
@@ -35,6 +35,63 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
   showTranslation,
   onToggleTranslation,
 }) => {
+  const isMobile = useIsMobile();
+  const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
+
+  // Add keyboard event listener for Enter key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && buttonState === 'idle' && !loading) {
+        e.preventDefault();
+        if (!showResult && userResponse) {
+          handleSubmitClick();
+        } else if (showResult) {
+          handleNextClick();
+        }
+      }
+      // Show/hide translation on Ctrl+T or Cmd+T
+      if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+        e.preventDefault();
+        onToggleTranslation();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showResult, userResponse, buttonState, loading, onToggleTranslation]);
+
+  const handleSubmitClick = async () => {
+    if (buttonState === 'processing' || loading) return;
+    
+    setButtonState('processing');
+    
+    try {
+      await onSubmit();
+    } catch (error) {
+      console.error('Error in submit:', error);
+    } finally {
+      setTimeout(() => {
+        setButtonState('idle');
+      }, 1000);
+    }
+  };
+
+  const handleNextClick = async () => {
+    if (buttonState === 'processing' || loading) return;
+    
+    setButtonState('processing');
+    
+    try {
+      await onNext();
+    } catch (error) {
+      console.error('Error in next:', error);
+    } finally {
+      setTimeout(() => {
+        setButtonState('idle');
+      }, 500);
+    }
+  };
+
   const renderSentenceWithBlank = (sentence: string, targetWord: string) => {
     const parts = sentence.split(new RegExp(`\\b${targetWord}\\b`, 'gi'));
     const result = [];
@@ -43,7 +100,7 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
       result.push(part);
       if (index < parts.length - 1) {
         result.push(
-          <span key={index} className="inline-block border-2 border-primary border-dashed min-w-[120px] mx-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded text-center">
+          <span key={index} className={`inline-block border-2 border-primary border-dashed mx-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/20 rounded text-center ${isMobile ? 'min-w-[100px]' : 'min-w-[120px]'}`}>
             {showResult && userResponse ? (
               <span className={isCorrect ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
                 {userResponse}
@@ -61,6 +118,162 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
     return result;
   };
 
+  // Mobile-first layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Mobile Header - Sticky */}
+        <div className="sticky top-0 z-10 bg-card border-b px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs capitalize">
+                {exercise.difficulty}
+              </Badge>
+              <span className="text-sm font-medium">Find Missing Word</span>
+            </div>
+            {onPlayAudio && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onPlayAudio}
+                disabled={audioLoading}
+                className="text-xs px-3 py-2 h-8"
+              >
+                <Volume2 className="h-3 w-3 mr-1" />
+                {audioLoading ? 'Loading' : 'Listen'}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Content - Scrollable */}
+        <div className="flex-1 flex flex-col px-4 py-4 space-y-4 pb-32">
+          {/* Sentence with blank */}
+          <div className="p-4 bg-muted rounded-lg">
+            <p className="text-lg leading-relaxed text-center">
+              {renderSentenceWithBlank(exercise.sentence, exercise.targetWord)}
+            </p>
+          </div>
+          
+          <p className="text-sm text-muted-foreground text-center">
+            Find the missing word by tapping one of the options below.
+          </p>
+
+          {/* Multiple Choice Options - Mobile Grid */}
+          <div className="grid grid-cols-1 gap-3">
+            {exercise.multipleChoiceOptions?.map((option, index) => (
+              <Button
+                key={index}
+                variant={userResponse === option ? 'default' : 'outline'}
+                className={`p-4 h-auto text-lg min-h-[56px] transition-all duration-200 ${
+                  showResult && option === exercise.correctAnswer
+                    ? 'bg-green-100 border-green-500 text-green-700 hover:bg-green-100'
+                    : showResult && userResponse === option && !isCorrect
+                    ? 'bg-red-100 border-red-500 text-red-700 hover:bg-red-100'
+                    : ''
+                }`}
+                onClick={() => !showResult && onResponseChange(option)}
+                disabled={showResult || loading}
+              >
+                {option}
+              </Button>
+            ))}
+          </div>
+
+          {/* Result feedback */}
+          {showResult && (
+            <div className="space-y-3 animate-fade-in">
+              <div className="flex items-center justify-center gap-2">
+                {isCorrect ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600" />
+                )}
+                <Badge variant={isCorrect ? 'default' : 'destructive'} className="text-sm">
+                  {isCorrect ? 'Correct!' : 'Incorrect'}
+                </Badge>
+              </div>
+
+              {exercise.explanation && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                    Explanation:
+                  </p>
+                  <p className="text-blue-700 dark:text-blue-300 text-sm">
+                    {exercise.explanation}
+                  </p>
+                </div>
+              )}
+
+              {showTranslation && exercise.translation && (
+                <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">
+                    Translation:
+                  </p>
+                  <p className="text-yellow-700 dark:text-yellow-300 text-sm">
+                    {exercise.translation}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Bottom Actions - Fixed */}
+        <div className="fixed bottom-0 left-0 right-0 bg-card border-t px-4 py-4 safe-area-bottom">
+          <div className="flex flex-col gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onToggleTranslation}
+              className="w-full h-10 flex items-center justify-center gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              {showTranslation ? 'Hide Hint' : 'Show Hint'}
+            </Button>
+            
+            {!showResult ? (
+              <Button
+                onClick={handleSubmitClick}
+                disabled={!userResponse || loading || buttonState === 'processing'}
+                className="w-full h-12 text-base flex items-center justify-center gap-2"
+              >
+                {(loading || buttonState === 'processing') && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+                {loading || buttonState === 'processing' ? 'Checking...' : 'Submit'}
+              </Button>
+            ) : (
+              <Button
+                onClick={handleNextClick}
+                disabled={buttonState === 'processing' || loading}
+                className="w-full h-12 text-base flex items-center justify-center gap-2"
+              >
+                {(buttonState === 'processing' || loading) ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    Continue <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            )}
+
+            {/* Keyboard shortcuts hint */}
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Keyboard className="h-3 w-3" />
+              <span>Enter: {showResult ? 'continue' : 'submit'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop layout (keep existing code)
   return (
     <div className="space-y-4">
       {/* Header */}

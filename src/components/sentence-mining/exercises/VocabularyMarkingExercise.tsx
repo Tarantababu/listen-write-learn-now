@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Volume2, ArrowRight, Eye, Loader2, Keyboard } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface VocabularyMarkingExerciseProps {
   exercise: SentenceMiningExercise;
@@ -41,6 +41,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
   onToggleTranslation,
 }) => {
   const { settings } = useUserSettingsContext();
+  const isMobile = useIsMobile();
   const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
   const [wordDefinitions, setWordDefinitions] = useState<WordDefinition[]>([]);
   const [loadingDefinitions, setLoadingDefinitions] = useState(false);
@@ -174,12 +175,16 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
         return <span key={index}>{token}</span>;
       }
       
-      // Make every word clickable (not just whitespace)
+      // Make every word clickable with better mobile touch targets
       if (token.trim().length > 0) {
         return (
           <span
             key={index}
-            className={`inline-block cursor-pointer px-1 py-0.5 rounded transition-all duration-200 transform hover:scale-105 active:scale-95 text-sm md:text-base ${
+            className={`inline-block cursor-pointer transition-all duration-200 transform hover:scale-105 active:scale-95 ${
+              isMobile 
+                ? 'px-2 py-1.5 m-0.5 text-base min-h-[44px] flex items-center rounded-lg' 
+                : 'px-1 py-0.5 rounded text-sm md:text-base'
+            } ${
               isSelected
                 ? 'bg-blue-500 text-white shadow-md'
                 : 'hover:bg-blue-100 dark:hover:bg-blue-900/30'
@@ -220,6 +225,143 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
     return definition?.definition || `${word} (loading definition...)`;
   };
 
+  // Mobile-first layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Mobile Header - Sticky */}
+        <div className="sticky top-0 z-10 bg-card border-b px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs capitalize">
+                {exercise.difficulty}
+              </Badge>
+              <span className="text-sm font-medium">Mark Unknown Words</span>
+            </div>
+            {onPlayAudio && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onPlayAudio}
+                disabled={audioLoading}
+                className="text-xs px-3 py-2 h-8"
+              >
+                <Volume2 className="h-3 w-3 mr-1" />
+                {audioLoading ? 'Loading' : 'Listen'}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Content - Scrollable */}
+        <div className="flex-1 flex flex-col px-4 py-4 space-y-4 pb-24">
+          {/* Instructions */}
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-blue-800 dark:text-blue-200 text-sm">
+              Tap any word you don't understand to mark it for review.
+            </p>
+          </div>
+          
+          {/* Clickable sentence */}
+          <div className="p-4 bg-muted rounded-lg">
+            <div className="text-lg leading-relaxed flex flex-wrap">
+              {renderClickableText()}
+            </div>
+          </div>
+
+          {/* Selected words feedback */}
+          {selectedWords.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-medium text-sm">Words marked for review:</h3>
+              <div className="grid grid-cols-1 gap-2">
+                {selectedWords.map(word => (
+                  <div key={word} className="bg-blue-100 dark:bg-blue-900/30 px-3 py-3 rounded-lg">
+                    <div className="font-medium text-base">{word}</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {getWordDefinition(word)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Translation display */}
+          {showTranslation && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg animate-fade-in">
+              {translationLoading ? (
+                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading translation...
+                </div>
+              ) : (
+                <p className="text-blue-700 dark:text-blue-300 text-sm">
+                  <strong>Translation:</strong> {translationText || 'Translation not available'}
+                </p>
+              )}
+            </div>
+          )}
+
+          {loadingDefinitions && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading word definitions...
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Bottom Actions - Fixed */}
+        <div className="fixed bottom-0 left-0 right-0 bg-card border-t px-4 py-4 safe-area-bottom">
+          <div className="flex flex-col gap-3">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={onToggleTranslation}
+              disabled={translationLoading}
+              className="w-full h-12 flex items-center justify-center gap-2"
+            >
+              {translationLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4" />
+                  {showTranslation ? 'Hide Translation' : 'Show Translation'}
+                </>
+              )}
+            </Button>
+            
+            <Button
+              onClick={handleContinueClick}
+              className="w-full h-12 text-base flex items-center justify-center gap-2"
+              disabled={loading || buttonState === 'processing'}
+            >
+              {(loading || buttonState === 'processing') ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  {showResult ? 'Next Exercise' : 'Continue'} <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </Button>
+
+            {/* Keyboard shortcuts hint */}
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Keyboard className="h-3 w-3" />
+              <span>Enter: continue</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop layout (keep existing desktop code)
   return (
     <div className="space-y-4">
       {/* Header */}
