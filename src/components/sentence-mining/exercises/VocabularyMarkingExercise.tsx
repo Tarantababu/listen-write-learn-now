@@ -42,7 +42,6 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
 }) => {
   const { settings } = useUserSettingsContext();
   const isMobile = useIsMobile();
-  const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
   const [wordDefinitions, setWordDefinitions] = useState<WordDefinition[]>([]);
   const [loadingDefinitions, setLoadingDefinitions] = useState(false);
   const [translationText, setTranslationText] = useState<string>('');
@@ -149,9 +148,13 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Use Enter key for both submitting and continuing
-      if (e.key === 'Enter' && buttonState === 'idle' && !loading) {
+      if (e.key === 'Enter' && !loading) {
         e.preventDefault();
-        handleContinueClick();
+        if (showResult) {
+          onNext();
+        } else {
+          onSubmit();
+        }
       }
       // Show/hide translation on Ctrl+T or Cmd+T
       if ((e.ctrlKey || e.metaKey) && e.key === 't') {
@@ -162,7 +165,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showResult, buttonState, loading, onToggleTranslation]);
+  }, [showResult, loading, onSubmit, onNext, onToggleTranslation]);
 
   const renderClickableText = () => {
     const words = exercise.sentence.split(/(\s+)/);
@@ -198,26 +201,6 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
       
       return <span key={index}>{token}</span>;
     });
-  };
-
-  const handleContinueClick = async () => {
-    if (buttonState === 'processing' || loading) return;
-    
-    setButtonState('processing');
-    
-    try {
-      if (showResult) {
-        await onNext();
-      } else {
-        await onSubmit();
-      }
-    } catch (error) {
-      console.error('Error in continue:', error);
-    } finally {
-      setTimeout(() => {
-        setButtonState('idle');
-      }, 1000);
-    }
   };
 
   const getWordDefinition = (word: string) => {
@@ -334,11 +317,11 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
             </Button>
             
             <Button
-              onClick={handleContinueClick}
+              onClick={showResult ? onNext : onSubmit}
               className="w-full h-12 text-base flex items-center justify-center gap-2"
-              disabled={loading || buttonState === 'processing'}
+              disabled={loading}
             >
-              {(loading || buttonState === 'processing') ? (
+              {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Processing...
@@ -469,11 +452,11 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
             </div>
             
             <Button
-              onClick={handleContinueClick}
+              onClick={showResult ? onNext : onSubmit}
               className="px-6 md:px-8 py-3 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 w-full md:w-auto text-base"
-              disabled={loading || buttonState === 'processing'}
+              disabled={loading}
             >
-              {(loading || buttonState === 'processing') ? (
+              {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Processing...

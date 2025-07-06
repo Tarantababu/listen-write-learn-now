@@ -36,17 +36,16 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
   onToggleTranslation,
 }) => {
   const isMobile = useIsMobile();
-  const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
 
   // Add keyboard event listener for Enter key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && buttonState === 'idle' && !loading) {
+      if (e.key === 'Enter' && !loading) {
         e.preventDefault();
         if (!showResult && userResponse) {
-          handleSubmitClick();
+          onSubmit();
         } else if (showResult) {
-          handleNextClick();
+          onNext();
         }
       }
       // Show/hide translation on Ctrl+T or Cmd+T
@@ -58,39 +57,7 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showResult, userResponse, buttonState, loading, onToggleTranslation]);
-
-  const handleSubmitClick = async () => {
-    if (buttonState === 'processing' || loading) return;
-    
-    setButtonState('processing');
-    
-    try {
-      await onSubmit();
-    } catch (error) {
-      console.error('Error in submit:', error);
-    } finally {
-      setTimeout(() => {
-        setButtonState('idle');
-      }, 1000);
-    }
-  };
-
-  const handleNextClick = async () => {
-    if (buttonState === 'processing' || loading) return;
-    
-    setButtonState('processing');
-    
-    try {
-      await onNext();
-    } catch (error) {
-      console.error('Error in next:', error);
-    } finally {
-      setTimeout(() => {
-        setButtonState('idle');
-      }, 500);
-    }
-  };
+  }, [showResult, userResponse, loading, onSubmit, onNext, onToggleTranslation]);
 
   const renderSentenceWithBlank = (sentence: string, targetWord: string) => {
     const parts = sentence.split(new RegExp(`\\b${targetWord}\\b`, 'gi'));
@@ -234,22 +201,20 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
             
             {!showResult ? (
               <Button
-                onClick={handleSubmitClick}
-                disabled={!userResponse || loading || buttonState === 'processing'}
+                onClick={onSubmit}
+                disabled={!userResponse || loading}
                 className="w-full h-12 text-base flex items-center justify-center gap-2"
               >
-                {(loading || buttonState === 'processing') && (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                )}
-                {loading || buttonState === 'processing' ? 'Checking...' : 'Submit'}
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {loading ? 'Checking...' : 'Submit'}
               </Button>
             ) : (
               <Button
-                onClick={handleNextClick}
-                disabled={buttonState === 'processing' || loading}
+                onClick={onNext}
+                disabled={loading}
                 className="w-full h-12 text-base flex items-center justify-center gap-2"
               >
-                {(buttonState === 'processing' || loading) ? (
+                {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading...

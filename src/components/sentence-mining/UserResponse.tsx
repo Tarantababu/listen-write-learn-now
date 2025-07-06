@@ -25,49 +25,6 @@ export const UserResponse: React.FC<UserResponseProps> = ({
   explanation,
 }) => {
   const isMobile = useIsMobile();
-  const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
-
-  // Handle button click with proper feedback
-  const handleSubmitClick = async () => {
-    if (buttonState === 'processing' || loading) return;
-    
-    setButtonState('processing');
-    
-    try {
-      await onSubmit();
-    } catch (error) {
-      console.error('Error in submit:', error);
-    } finally {
-      // Reset button state after a short delay
-      setTimeout(() => {
-        setButtonState('idle');
-      }, 1000);
-    }
-  };
-
-  const handleNextClick = async () => {
-    if (buttonState === 'processing' || loading) return;
-    
-    setButtonState('processing');
-    
-    try {
-      await onNext();
-    } catch (error) {
-      console.error('Error in next:', error);
-    } finally {
-      // Reset button state after a short delay
-      setTimeout(() => {
-        setButtonState('idle');
-      }, 500);
-    }
-  };
-
-  // Reset button state when showResult changes
-  useEffect(() => {
-    if (showResult) {
-      setButtonState('idle');
-    }
-  }, [showResult]);
 
   // Mobile layout
   if (isMobile) {
@@ -76,15 +33,13 @@ export const UserResponse: React.FC<UserResponseProps> = ({
         <div className="space-y-4">
           {!showResult ? (
             <Button
-              onClick={handleSubmitClick}
-              disabled={loading || buttonState === 'processing'}
+              onClick={onSubmit}
+              disabled={loading}
               className="w-full py-3 text-base"
               size="lg"
             >
-              {buttonState === 'processing' && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
-              {buttonState === 'processing' || loading ? 'Checking...' : 'Submit'}
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {loading ? 'Checking...' : 'Submit'}
             </Button>
           ) : (
             <>
@@ -133,12 +88,12 @@ export const UserResponse: React.FC<UserResponseProps> = ({
               </div>
 
               <Button
-                onClick={handleNextClick}
-                disabled={loading || buttonState === 'processing'}
+                onClick={onNext}
+                disabled={loading}
                 className="w-full py-3 text-base"
                 size="lg"
               >
-                {buttonState === 'processing' ? (
+                {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Loading...
@@ -164,22 +119,20 @@ export const UserResponse: React.FC<UserResponseProps> = ({
           <div className="flex justify-center">
             {!showResult ? (
               <Button
-                onClick={handleSubmitClick}
-                disabled={loading || buttonState === 'processing'}
+                onClick={onSubmit}
+                disabled={loading}
                 className="px-6 py-3 text-base transition-all duration-200 hover:scale-105 active:scale-95 min-w-[140px]"
               >
-                {buttonState === 'processing' && (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                )}
-                {buttonState === 'processing' || loading ? 'Checking...' : 'Submit'}
+                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {loading ? 'Checking...' : 'Submit'}
               </Button>
             ) : (
               <Button
-                onClick={handleNextClick}
-                disabled={loading || buttonState === 'processing'}
+                onClick={onNext}
+                disabled={loading}
                 className="px-6 py-3 text-base flex items-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 min-w-[120px]"
               >
-                {buttonState === 'processing' ? (
+                {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading...

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,7 +49,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   showTranslation,
   onToggleTranslation,
 }) => {
-  const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
   const [wordTranslation, setWordTranslation] = useState<string>('');
   const [translationLoading, setTranslationLoading] = useState(false);
   const [sentenceTranslation, setSentenceTranslation] = useState<string>('');
@@ -142,14 +142,14 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Handle Enter key for both submit and continue
-    if (e.key === 'Enter' && buttonState === 'idle' && !loading) {
+    if (e.key === 'Enter' && !loading) {
       e.preventDefault();
       if (!showResult && userResponse.trim()) {
         // Submit answer
-        handleSubmitClick();
+        onSubmit();
       } else if (showResult) {
         // Continue to next
-        handleNextClick();
+        onNext();
       }
     }
     // Show/hide translation on Ctrl+T or Cmd+T
@@ -162,9 +162,9 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   // Handle global Enter key press when result is shown
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && showResult && buttonState === 'idle' && !loading) {
+      if (e.key === 'Enter' && showResult && !loading) {
         e.preventDefault();
-        handleNextClick();
+        onNext();
       }
     };
 
@@ -172,39 +172,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
       document.addEventListener('keydown', handleGlobalKeyDown);
       return () => document.removeEventListener('keydown', handleGlobalKeyDown);
     }
-  }, [showResult, buttonState, loading]);
-
-  const handleSubmitClick = async () => {
-    if (buttonState === 'processing' || loading) return;
-    
-    setButtonState('processing');
-    
-    try {
-      await onSubmit();
-    } catch (error) {
-      console.error('Error in submit:', error);
-    } finally {
-      setTimeout(() => {
-        setButtonState('idle');
-      }, 1000);
-    }
-  };
-
-  const handleNextClick = async () => {
-    if (buttonState === 'processing' || loading) return;
-    
-    setButtonState('processing');
-    
-    try {
-      await onNext();
-    } catch (error) {
-      console.error('Error in next:', error);
-    } finally {
-      setTimeout(() => {
-        setButtonState('idle');
-      }, 500);
-    }
-  };
+  }, [showResult, loading, onNext]);
 
   const renderSentenceWithBlank = () => {
     // Create a cloze sentence by replacing the target word with a blank (5 underscores)
@@ -233,7 +201,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 value={userResponse}
                 onChange={(e) => onResponseChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                disabled={showResult || buttonState === 'processing' || loading}
+                disabled={showResult || loading}
                 className={`w-32 text-center ${
                   showResult
                     ? isCorrect
@@ -265,7 +233,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               value={userResponse}
               onChange={(e) => onResponseChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={showResult || buttonState === 'processing' || loading}
+              disabled={showResult || loading}
               className={`w-32 text-center ${
                 showResult
                   ? isCorrect
@@ -353,7 +321,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   value={userResponse}
                   onChange={(e) => onResponseChange(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  disabled={showResult || buttonState === 'processing' || loading}
+                  disabled={showResult || loading}
                   className={`w-full max-w-xs text-center text-lg h-12 ${
                     showResult
                       ? isCorrect
@@ -427,22 +395,20 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             
             {!showResult ? (
               <Button
-                onClick={handleSubmitClick}
-                disabled={!userResponse.trim() || loading || buttonState === 'processing'}
+                onClick={onSubmit}
+                disabled={!userResponse.trim() || loading}
                 className="w-full h-12 text-base flex items-center justify-center gap-2"
               >
-                {(buttonState === 'processing' || loading) && (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                )}
-                {buttonState === 'processing' || loading ? 'Checking...' : 'Submit Answer'}
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {loading ? 'Checking...' : 'Submit Answer'}
               </Button>
             ) : (
               <Button
-                onClick={handleNextClick}
-                disabled={buttonState === 'processing' || loading}
+                onClick={onNext}
+                disabled={loading}
                 className="w-full h-12 text-base flex items-center justify-center gap-2"
               >
-                {(buttonState === 'processing' || loading) ? (
+                {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading...
@@ -534,22 +500,20 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           <div className="flex justify-end">
             {!showResult ? (
               <Button
-                onClick={handleSubmitClick}
-                disabled={!userResponse.trim() || loading || buttonState === 'processing'}
+                onClick={onSubmit}
+                disabled={!userResponse.trim() || loading}
                 className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[140px]"
               >
-                {(buttonState === 'processing' || loading) && (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                )}
-                {buttonState === 'processing' || loading ? 'Checking...' : 'Submit Answer'}
+                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {loading ? 'Checking...' : 'Submit Answer'}
               </Button>
             ) : (
               <Button
-                onClick={handleNextClick}
-                disabled={buttonState === 'processing' || loading}
+                onClick={onNext}
+                disabled={loading}
                 className="px-8 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[120px]"
               >
-                {(buttonState === 'processing' || loading) ? (
+                {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Loading...
