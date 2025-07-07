@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -183,10 +182,10 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
               </motion.div>
             )}
             <Card className={`
-              border-2 overflow-hidden transition-all duration-300 hover:shadow-lg
+              border-2 overflow-hidden transition-all duration-300 hover:shadow-lg dark:hover:bg-muted/5
               ${analysisAllowed 
-                ? 'border-primary/20 hover:border-primary/40 bg-gradient-to-br from-primary/5 to-primary/10 hover:bg-gradient-to-br hover:from-primary/10 hover:to-primary/15' 
-                : 'border-muted/50 bg-muted/20 hover:bg-muted/30'
+                ? 'border-primary/20 hover:border-primary/40 bg-gradient-to-br from-primary/5 to-primary/10' 
+                : 'border-muted/50 bg-muted/20'
               }
               ${recommendation.action === 'analysis' && analysisAllowed ? 'ring-2 ring-primary/20' : ''}
               ${isMobile?'rounded-xl':''}
@@ -198,7 +197,7 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
                   disabled={!analysisAllowed || loadingAnalysisCheck} 
                   className={`
                     h-auto py-7 px-2 md:px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent touch-manipulation
-                    transition-all
+                    active:bg-primary/10 transition-all
                   `}
                   data-gtm-cta-type="start_exercise" 
                   data-gtm-cta-location="learning_options_menu" 
@@ -208,7 +207,7 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
                   <div className="flex flex-col items-center text-center space-y-3 md:space-y-4 w-full">
                     <div className={`
                       flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full transition-all
-                      ${analysisAllowed ? 'bg-primary/15 group-hover:bg-primary/25':'bg-muted/30 group-hover:bg-muted/40'}`}>
+                      ${analysisAllowed ? 'bg-primary/15 group-hover:bg-primary/25':'bg-muted/30'}`}>
                       <Search className={`h-6 w-6 md:h-7 md:w-7 ${analysisAllowed ? 'text-primary' : 'text-muted-foreground'}`} />
                     </div>
                     <div className="space-y-2 md:space-y-3 w-full">
@@ -259,7 +258,7 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
                 </Badge>
               </motion.div>
             )}
-            <Card className={`border-2 overflow-hidden transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-muted/20 to-muted/30 hover:bg-gradient-to-br hover:from-muted/30 hover:to-muted/40 border-muted hover:border-muted/60
+            <Card className={`border-2 overflow-hidden transition-all duration-300 hover:shadow-lg dark:hover:bg-muted/5 bg-gradient-to-br from-muted/20 to-muted/30 border-muted hover:border-muted/60
               ${recommendation.action === 'dictation' ? 'ring-2 ring-primary/20' : ''}
               ${isMobile?'rounded-xl':''}
             `}>
@@ -267,14 +266,14 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
                 <Button 
                   onClick={handleDictationClick}
                   variant="ghost"
-                  className="h-auto py-7 px-2 md:px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent touch-manipulation transition-all"
+                  className="h-auto py-7 px-2 md:px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent touch-manipulation active:bg-primary/10 transition-all"
                   data-gtm-cta-type="start_exercise"
                   data-gtm-cta-location="learning_options_menu"
                   data-gtm-cta-text="Dictation Practice"
                   aria-label={`Start Dictation Practice for ${exerciseTitle}`}
                 >
                   <div className="flex flex-col items-center text-center space-y-3 md:space-y-4 w-full">
-                    <div className="flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-muted/40 group-hover:bg-muted/60 transition-all">
+                    <div className="flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-muted/40 group-hover:bg-muted/60">
                       <Headphones className="h-6 w-6 md:h-7 md:w-7 text-foreground" />
                     </div>
                     <div className="space-y-2 md:space-y-3 w-full">
