@@ -7,6 +7,7 @@ import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { EnhancedAudioPlayer } from './EnhancedAudioPlayer';
 
 interface VocabularyMarkingExerciseProps {
   exercise: SentenceMiningExercise;
@@ -221,18 +222,13 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
               </Badge>
               <span className="text-sm font-medium">Mark Unknown Words</span>
             </div>
-            {onPlayAudio && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onPlayAudio}
-                disabled={audioLoading}
-                className="text-xs px-3 py-2 h-8"
-              >
-                <Volume2 className="h-3 w-3 mr-1" />
-                {audioLoading ? 'Loading' : 'Listen'}
-              </Button>
-            )}
+            <EnhancedAudioPlayer
+              text={exercise.sentence}
+              onPlayAudio={onPlayAudio}
+              audioLoading={audioLoading}
+              size="sm"
+              className="text-xs px-3 py-2 h-8"
+            />
           </div>
         </div>
 
@@ -344,7 +340,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
     );
   }
 
-  // Desktop layout (keep existing desktop code)
+  // Desktop layout
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -356,18 +352,13 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
               <Badge variant="outline" className="capitalize">
                 {exercise.difficulty}
               </Badge>
-              {onPlayAudio && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onPlayAudio}
-                  disabled={audioLoading}
-                  className="flex items-center gap-1 transition-transform duration-200 hover:scale-105 active:scale-95"
-                >
-                  <Volume2 className="h-4 w-4" />
-                  {audioLoading ? 'Loading...' : 'Listen'}
-                </Button>
-              )}
+              <EnhancedAudioPlayer
+                text={exercise.sentence}
+                onPlayAudio={onPlayAudio}
+                audioLoading={audioLoading}
+                size="sm"
+                className="flex items-center gap-1 transition-transform duration-200 hover:scale-105 active:scale-95"
+              />
             </div>
           </div>
         </CardHeader>

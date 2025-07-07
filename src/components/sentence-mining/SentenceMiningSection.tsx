@@ -15,6 +15,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { toast } from 'sonner';
 import { DifficultyLevel } from '@/types/sentence-mining';
+import { EnhancedAudioPlayer } from './exercises/EnhancedAudioPlayer';
+
 export const SentenceMiningSection: React.FC = () => {
   const isMobile = useIsMobile();
   const {
@@ -42,20 +44,23 @@ export const SentenceMiningSection: React.FC = () => {
     toggleHint,
     toggleTranslation
   } = useSentenceMining();
+
   const handlePlayAudio = async () => {
     if (!currentExercise) return;
+    
     try {
       setAudioLoading(true);
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('text-to-speech', {
+      
+      // The EnhancedAudioPlayer will handle Norwegian optimization automatically
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text: currentExercise.sentence,
           language: settings.selectedLanguage
         }
       });
+
       if (error) throw error;
+
       if (data?.audio_url || data?.audioUrl) {
         const audio = new Audio(data.audio_url || data.audioUrl);
         audio.play();
@@ -69,6 +74,7 @@ export const SentenceMiningSection: React.FC = () => {
       setAudioLoading(false);
     }
   };
+
   const handleSubmitAnswer = () => {
     if (currentExercise?.exerciseType === 'vocabulary_marking') {
       submitAnswer('', selectedWords);
@@ -76,9 +82,11 @@ export const SentenceMiningSection: React.FC = () => {
       submitAnswer(userResponse, selectedWords);
     }
   };
+
   const handleStartSession = (difficulty: DifficultyLevel) => {
     startSession(difficulty);
   };
+
   if (loading && !currentExercise) {
     return <div className="flex items-center justify-center py-12">
         <div className="flex flex-col items-center space-y-4">
@@ -87,6 +95,7 @@ export const SentenceMiningSection: React.FC = () => {
         </div>
       </div>;
   }
+
   if (error) {
     return <Card className="w-full max-w-2xl mx-auto">
         <CardContent className="pt-6">
@@ -99,8 +108,11 @@ export const SentenceMiningSection: React.FC = () => {
         </CardContent>
       </Card>;
   }
+
   const renderExercise = () => {
     if (!currentExercise) return null;
+    
+    // For exercises that don't have built-in audio handling, use EnhancedAudioPlayer
     const commonProps = {
       exercise: currentExercise,
       showResult,
@@ -111,6 +123,7 @@ export const SentenceMiningSection: React.FC = () => {
       showTranslation,
       onToggleTranslation: toggleTranslation
     };
+
     switch (currentExercise.exerciseType) {
       case 'translation':
         return <TranslationExercise {...commonProps} userResponse={userResponse} onResponseChange={updateUserResponse} onSubmit={handleSubmitAnswer} onNext={nextExercise} />;
@@ -126,6 +139,7 @@ export const SentenceMiningSection: React.FC = () => {
           </div>;
     }
   };
+
   return <div className="space-y-6">
       {/* Header */}
       

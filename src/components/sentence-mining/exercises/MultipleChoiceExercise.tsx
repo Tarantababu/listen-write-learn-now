@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Volume2, CheckCircle, XCircle, ArrowRight, Eye, Loader2, Keyboard } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { EnhancedAudioPlayer } from './EnhancedAudioPlayer';
 
 interface MultipleChoiceExerciseProps {
   exercise: SentenceMiningExercise;
@@ -98,18 +99,13 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
               </Badge>
               <span className="text-sm font-medium">Find Missing Word</span>
             </div>
-            {onPlayAudio && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onPlayAudio}
-                disabled={audioLoading}
-                className="text-xs px-3 py-2 h-8"
-              >
-                <Volume2 className="h-3 w-3 mr-1" />
-                {audioLoading ? 'Loading' : 'Listen'}
-              </Button>
-            )}
+            <EnhancedAudioPlayer
+              text={exercise.sentence}
+              onPlayAudio={onPlayAudio}
+              audioLoading={audioLoading}
+              size="sm"
+              className="text-xs px-3 py-2 h-8"
+            />
           </div>
         </div>
 
@@ -238,7 +234,7 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
     );
   }
 
-  // Desktop layout (keep existing code)
+  // Desktop layout
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -250,18 +246,13 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
               <Badge variant="outline" className="capitalize">
                 {exercise.difficulty}
               </Badge>
-              {onPlayAudio && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onPlayAudio}
-                  disabled={audioLoading}
-                  className="flex items-center gap-1"
-                >
-                  <Volume2 className="h-4 w-4" />
-                  {audioLoading ? 'Loading...' : 'Listen'}
-                </Button>
-              )}
+              <EnhancedAudioPlayer
+                text={exercise.sentence}
+                onPlayAudio={onPlayAudio}
+                audioLoading={audioLoading}
+                size="sm"
+                className="flex items-center gap-1"
+              />
             </div>
           </div>
         </CardHeader>
