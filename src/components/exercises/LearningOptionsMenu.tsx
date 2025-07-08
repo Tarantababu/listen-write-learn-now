@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -87,7 +86,7 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
   return (
     <>
       {/* Custom styles to override global button hover states */}
-      <style jsx>{`
+      <style>{`
         .learning-options-button:hover,
         .learning-options-button:hover *,
         .learning-options-button:hover .text-muted-foreground,
@@ -403,4 +402,3 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
 };
 
 export default LearningOptionsMenu;
-
