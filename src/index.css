@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -196,36 +195,146 @@
     color: rgb(147, 197, 253);
   }
 
-  /* Enhanced button hover states for better contrast */
-  button[class*="variant-outline"]:hover,
-  .btn-outline-enhanced:hover {
+  /* FIXED: Enhanced button hover states with proper contrast */
+  
+  /* Primary button hover - dark background with light text */
+  button[class*="variant-default"]:hover,
+  button.bg-primary:hover {
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  button[class*="variant-default"]:hover *,
+  button.bg-primary:hover * {
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  /* Outline button hover - fills with primary color */
+  button[class*="variant-outline"]:hover {
     background-color: hsl(var(--primary)) !important;
     color: hsl(var(--primary-foreground)) !important;
     border-color: hsl(var(--primary)) !important;
   }
 
-  /* Fix text color inside outline buttons on hover */
   button[class*="variant-outline"]:hover *,
-  button[class*="outline"]:hover *,
-  .btn-outline-enhanced:hover * {
+  button[class*="outline"]:hover * {
     color: hsl(var(--primary-foreground)) !important;
   }
 
-  /* Ensure muted text becomes readable on hover */
-  button:hover .text-muted-foreground,
-  button:hover [class*="text-muted-foreground"] {
-    color: inherit !important;
+  /* Ghost button hover - subtle background with proper text contrast */
+  button[class*="variant-ghost"]:hover {
+    background-color: hsl(var(--muted)) !important;
+    color: hsl(var(--foreground)) !important;
   }
 
-  /* Ghost button improvements */
-  button[class*="variant-ghost"]:hover {
+  button[class*="variant-ghost"]:hover * {
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Secondary button hover */
+  button[class*="variant-secondary"]:hover {
+    background-color: hsl(var(--secondary)) !important;
+    color: hsl(var(--secondary-foreground)) !important;
+  }
+
+  button[class*="variant-secondary"]:hover * {
+    color: hsl(var(--secondary-foreground)) !important;
+  }
+
+  /* Destructive button hover */
+  button[class*="variant-destructive"]:hover {
+    background-color: hsl(var(--destructive)) !important;
+    color: hsl(var(--destructive-foreground)) !important;
+  }
+
+  button[class*="variant-destructive"]:hover * {
+    color: hsl(var(--destructive-foreground)) !important;
+  }
+
+  /* General interactive element hover states */
+  .hover-card:hover,
+  [role="button"]:hover,
+  .cursor-pointer:hover {
+    background-color: hsl(var(--muted)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .hover-card:hover *,
+  [role="button"]:hover *,
+  .cursor-pointer:hover * {
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Card hover states */
+  .card:hover {
+    background-color: hsl(var(--card)) !important;
+    color: hsl(var(--card-foreground)) !important;
+  }
+
+  .card:hover * {
+    color: hsl(var(--card-foreground)) !important;
+  }
+
+  /* Ensure muted text maintains proper contrast on hover */
+  .text-muted-foreground:hover,
+  [class*="text-muted-foreground"]:hover {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  /* Link hover states */
+  a:hover {
+    color: hsl(var(--primary)) !important;
+  }
+
+  /* Dropdown and menu item hover states */
+  [role="menuitem"]:hover,
+  [role="option"]:hover {
     background-color: hsl(var(--accent)) !important;
     color: hsl(var(--accent-foreground)) !important;
   }
 
-  button[class*="variant-ghost"]:hover * {
+  [role="menuitem"]:hover *,
+  [role="option"]:hover * {
     color: hsl(var(--accent-foreground)) !important;
   }
+}
+
+/* Custom styles for the new landing page */
+.language-chip {
+  @apply flex items-center gap-1 px-2 py-1 rounded-full text-sm;
+}
+
+.feature-card {
+  @apply relative px-5 py-4 rounded-xl border-2 border-brand-light/20 bg-white/50 hover:border-brand-primary/30 transition-colors;
+}
+
+/* Enhanced word selection styles */
+::selection {
+  background-color: rgba(59, 130, 246, 0.3);
+  color: inherit;
+}
+
+::-moz-selection {
+  background-color: rgba(59, 130, 246, 0.3);
+  color: inherit;
+}
+
+/* Custom scrollbar for better UX */
+.enhanced-reading-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.enhanced-reading-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.enhanced-reading-content::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 3px;
+}
+
+.enhanced-reading-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.5);
 }
 
 @keyframes fadeIn {
@@ -365,42 +474,4 @@
     -ms-user-select: none !important;
     user-select: none !important;
   }
-}
-
-/* Custom styles for the new landing page */
-.language-chip {
-  @apply flex items-center gap-1 px-2 py-1 rounded-full text-sm;
-}
-
-.feature-card {
-  @apply relative px-5 py-4 rounded-xl border-2 border-brand-light/20 bg-white/50 hover:border-brand-primary/30 transition-colors;
-}
-
-/* Enhanced word selection styles */
-::selection {
-  background-color: rgba(59, 130, 246, 0.3);
-  color: inherit;
-}
-
-::-moz-selection {
-  background-color: rgba(59, 130, 246, 0.3);
-  color: inherit;
-}
-
-/* Custom scrollbar for better UX */
-.enhanced-reading-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.enhanced-reading-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.enhanced-reading-content::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.3);
-  border-radius: 3px;
-}
-
-.enhanced-reading-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.5);
 }

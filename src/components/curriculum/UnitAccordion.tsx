@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, BookOpen, Trophy, Clock } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -64,124 +65,105 @@ const UnitAccordion: React.FC<UnitAccordionProps> = ({
   };
 
   return (
-    <>
-      {/* Custom styles to fix hover contrast issues */}
-      <style>{`
-        .unit-accordion-trigger:hover,
-        .unit-accordion-trigger:hover * {
-          color: hsl(var(--foreground)) !important;
-        }
-        
-        .unit-accordion-trigger:hover .text-muted-foreground,
-        .unit-accordion-trigger:hover [class*="text-muted-foreground"] {
-          color: hsl(var(--muted-foreground)) !important;
-        }
-        
-        .unit-accordion-trigger:hover {
-          background-color: hsl(var(--muted) / 0.3) !important;
-        }
-      `}</style>
-      
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
-        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          <CollapsibleTrigger className="unit-accordion-trigger w-full p-6 text-left hover:bg-gray-50/50 transition-colors rounded-t-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4 flex-1">
-                {/* Unit number badge */}
-                <div className={`
-                  flex items-center justify-center w-10 h-10 rounded-lg font-bold text-sm
-                  ${getStatusColor(unitStatus)}
-                `}>
-                  {unitStatus === 'completed' ? (
-                    <Trophy className="h-5 w-5" />
-                  ) : (
-                    unitNumber
-                  )}
-                </div>
-
-                {/* Unit info */}
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900 leading-tight">
-                      Unit {unitNumber}: {title}
-                    </h3>
-                    <div className={`
-                      inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium border
-                      ${getStatusColor(unitStatus)}
-                    `}>
-                      {getStatusIcon(unitStatus)}
-                      <span className="capitalize">{unitStatus.replace('-', ' ')}</span>
-                    </div>
-                  </div>
-
-                  {/* Progress bar and stats */}
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-1 max-w-xs">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-gradient-to-r from-blue-500 to-emerald-500 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${progressPercentage}%` }}
-                        />
-                      </div>
-                    </div>
-                    <span className="text-sm text-gray-600 font-medium">
-                      {completedLessons}/{totalLessons} lessons
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Expand/collapse icon */}
-              <div className="ml-4">
-                {isOpen ? (
-                  <ChevronDown className="h-5 w-5 text-gray-500 transition-transform" />
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger className="w-full p-6 text-left hover:bg-gray-50/50 transition-colors rounded-t-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4 flex-1">
+              {/* Unit number badge */}
+              <div className={`
+                flex items-center justify-center w-10 h-10 rounded-lg font-bold text-sm
+                ${getStatusColor(unitStatus)}
+              `}>
+                {unitStatus === 'completed' ? (
+                  <Trophy className="h-5 w-5" />
                 ) : (
-                  <ChevronRight className="h-5 w-5 text-gray-500 transition-transform" />
+                  unitNumber
                 )}
               </div>
-            </div>
-          </CollapsibleTrigger>
 
-          <CollapsibleContent className="border-t border-gray-100">
-            <div className="p-6 pt-4 space-y-3">
-              {/* Lesson stats summary */}
-              {totalLessons > 0 && (
-                <div className="grid grid-cols-3 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-emerald-600">{completedLessons}</div>
-                    <div className="text-xs text-gray-600">Completed</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-amber-600">{inProgressLessons}</div>
-                    <div className="text-xs text-gray-600">In Progress</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-blue-600">{notStartedLessons}</div>
-                    <div className="text-xs text-gray-600">Not Started</div>
+              {/* Unit info */}
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-2">
+                  <h3 className="text-lg font-semibold text-gray-900 leading-tight">
+                    Unit {unitNumber}: {title}
+                  </h3>
+                  <div className={`
+                    inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium border
+                    ${getStatusColor(unitStatus)}
+                  `}>
+                    {getStatusIcon(unitStatus)}
+                    <span className="capitalize">{unitStatus.replace('-', ' ')}</span>
                   </div>
                 </div>
-              )}
 
-              {/* Lessons */}
-              <div className="space-y-2">
-                {lessons.map((lesson, index) => (
-                  <LessonItem
-                    key={lesson.id}
-                    lessonNumber={index + 1}
-                    title={lesson.title}
-                    description={lesson.description || ''}
-                    status={lesson.status}
-                    completionCount={lesson.completionCount || 0}
-                    onPractice={() => onPracticeExercise(lesson.id)}
-                    onAdd={() => onAddExercise(lesson.id)}
-                  />
-                ))}
+                {/* Progress bar and stats */}
+                <div className="flex items-center space-x-4">
+                  <div className="flex-1 max-w-xs">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-blue-500 to-emerald-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${progressPercentage}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-600 font-medium">
+                    {completedLessons}/{totalLessons} lessons
+                  </span>
+                </div>
               </div>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
-    </>
+
+            {/* Expand/collapse icon */}
+            <div className="ml-4">
+              {isOpen ? (
+                <ChevronDown className="h-5 w-5 text-gray-500 transition-transform" />
+              ) : (
+                <ChevronRight className="h-5 w-5 text-gray-500 transition-transform" />
+              )}
+            </div>
+          </div>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent className="border-t border-gray-100">
+          <div className="p-6 pt-4 space-y-3">
+            {/* Lesson stats summary */}
+            {totalLessons > 0 && (
+              <div className="grid grid-cols-3 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-emerald-600">{completedLessons}</div>
+                  <div className="text-xs text-gray-600">Completed</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-amber-600">{inProgressLessons}</div>
+                  <div className="text-xs text-gray-600">In Progress</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-blue-600">{notStartedLessons}</div>
+                  <div className="text-xs text-gray-600">Not Started</div>
+                </div>
+              </div>
+            )}
+
+            {/* Lessons */}
+            <div className="space-y-2">
+              {lessons.map((lesson, index) => (
+                <LessonItem
+                  key={lesson.id}
+                  lessonNumber={index + 1}
+                  title={lesson.title}
+                  description={lesson.description || ''}
+                  status={lesson.status}
+                  completionCount={lesson.completionCount || 0}
+                  onPractice={() => onPracticeExercise(lesson.id)}
+                  onAdd={() => onAddExercise(lesson.id)}
+                />
+              ))}
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
   );
 };
 
