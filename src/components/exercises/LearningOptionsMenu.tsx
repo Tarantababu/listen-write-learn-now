@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -182,9 +183,9 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
               </motion.div>
             )}
             <Card className={`
-              border-2 overflow-hidden transition-all duration-300 hover:shadow-lg dark:hover:bg-muted/5
+              border-2 overflow-hidden transition-all duration-300 hover:shadow-lg
               ${analysisAllowed 
-                ? 'border-primary/20 hover:border-primary/40 bg-gradient-to-br from-primary/5 to-primary/10' 
+                ? 'border-primary/20 hover:border-primary/40 bg-gradient-to-br from-primary/5 to-primary/10 hover:bg-gradient-to-br hover:from-primary/10 hover:to-primary/20' 
                 : 'border-muted/50 bg-muted/20'
               }
               ${recommendation.action === 'analysis' && analysisAllowed ? 'ring-2 ring-primary/20' : ''}
@@ -197,7 +198,7 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
                   disabled={!analysisAllowed || loadingAnalysisCheck} 
                   className={`
                     h-auto py-7 px-2 md:px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent touch-manipulation
-                    active:bg-primary/10 transition-all
+                    transition-all group-hover:scale-100
                   `}
                   data-gtm-cta-type="start_exercise" 
                   data-gtm-cta-location="learning_options_menu" 
@@ -258,7 +259,7 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
                 </Badge>
               </motion.div>
             )}
-            <Card className={`border-2 overflow-hidden transition-all duration-300 hover:shadow-lg dark:hover:bg-muted/5 bg-gradient-to-br from-muted/20 to-muted/30 border-muted hover:border-muted/60
+            <Card className={`border-2 overflow-hidden transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-muted/20 to-muted/30 border-muted hover:border-muted/60 hover:bg-gradient-to-br hover:from-muted/30 hover:to-muted/40
               ${recommendation.action === 'dictation' ? 'ring-2 ring-primary/20' : ''}
               ${isMobile?'rounded-xl':''}
             `}>
@@ -266,7 +267,7 @@ const LearningOptionsMenu: React.FC<LearningOptionsMenuProps> = ({
                 <Button 
                   onClick={handleDictationClick}
                   variant="ghost"
-                  className="h-auto py-7 px-2 md:px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent touch-manipulation active:bg-primary/10 transition-all"
+                  className="h-auto py-7 px-2 md:px-6 w-full rounded-none border-0 flex flex-col items-center justify-center text-left bg-transparent hover:bg-transparent touch-manipulation transition-all group-hover:scale-100"
                   data-gtm-cta-type="start_exercise"
                   data-gtm-cta-location="learning_options_menu"
                   data-gtm-cta-text="Dictation Practice"
