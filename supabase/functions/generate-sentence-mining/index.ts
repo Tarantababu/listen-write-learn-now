@@ -217,6 +217,144 @@ function getSampleSentences(difficulty: string, language: string) {
         { text: 'La durabilité environnementale nécessite des changements politiques complets.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
         { text: 'L\'avancement technologique a révolutionné les méthodes de communication.', translation: 'The technological advancement revolutionized communication methods.' }
       ]
+    },
+    turkish: {
+      beginner: [
+        { text: 'Kedi sandalyede oturuyor.', translation: 'The cat sits on the chair.' },
+        { text: 'Elma yemeyi seviyorum.', translation: 'I like to eat apples.' },
+        { text: 'Kitap masanın üzerinde.', translation: 'The book is on the table.' },
+        { text: 'O her gün su içer.', translation: 'She drinks water every day.' },
+        { text: 'Güneş bugün parlıyor.', translation: 'The sun is shining today.' }
+      ],
+      intermediate: [
+        { text: 'Hava durumu yarın yağmur öngörüyor.', translation: 'The weather forecast predicts rain tomorrow.' },
+        { text: 'Akşam yemeğinden önce ödevimi bitirmem gerekiyor.', translation: 'I need to finish my homework before dinner.' },
+        { text: 'Konser kötü hava nedeniyle iptal edildi.', translation: 'The concert was cancelled due to bad weather.' },
+        { text: 'Boş zamanlarında polisiye roman okumayı seviyor.', translation: 'She enjoys reading mystery novels in her free time.' },
+        { text: 'Restoran lezzetli geleneksel yemekler sunuyor.', translation: 'The restaurant serves delicious traditional cuisine.' }
+      ],
+      advanced: [
+        { text: 'Arkeolojik keşif ekibi antik eserler buldu.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
+        { text: 'Ekonomik dalgalanmalar uluslararası ticaret modellerini etkiliyor.', translation: 'Economic fluctuations affect international trade patterns.' },
+        { text: 'İlaç şirketi yenilikçi tedaviler geliştirdi.', translation: 'The pharmaceutical company developed innovative treatments.' },
+        { text: 'Çevresel sürdürülebilirlik kapsamlı politika değişiklikleri gerektiriyor.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
+        { text: 'Teknolojik ilerleme iletişim yöntemlerinde devrim yarattı.', translation: 'The technological advancement revolutionized communication methods.' }
+      ]
+    },
+    norwegian: {
+      beginner: [
+        { text: 'Katten sitter på stolen.', translation: 'The cat sits on the chair.' },
+        { text: 'Jeg liker å spise epler.', translation: 'I like to eat apples.' },
+        { text: 'Boka ligger på bordet.', translation: 'The book is on the table.' },
+        { text: 'Hun drikker vann hver dag.', translation: 'She drinks water every day.' },
+        { text: 'Sola skinner i dag.', translation: 'The sun is shining today.' }
+      ],
+      intermediate: [
+        { text: 'Værmelding varsler regn i morgen.', translation: 'The weather forecast predicts rain tomorrow.' },
+        { text: 'Jeg må fullføre leksene mine før middag.', translation: 'I need to finish my homework before dinner.' },
+        { text: 'Konserten ble avlyst på grunn av dårlig vær.', translation: 'The concert was cancelled due to bad weather.' },
+        { text: 'Hun liker å lese kriminalromaner på fritiden.', translation: 'She enjoys reading mystery novels in her free time.' },
+        { text: 'Restauranten serverer deilig tradisjonell mat.', translation: 'The restaurant serves delicious traditional cuisine.' }
+      ],
+      advanced: [
+        { text: 'Den arkeologiske ekspedisjonen oppdaget gamle gjenstander.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
+        { text: 'Økonomiske svingninger påvirker internasjonale handelsmønstre.', translation: 'Economic fluctuations affect international trade patterns.' },
+        { text: 'Farmasøytisk selskap utviklet innovative behandlinger.', translation: 'The pharmaceutical company developed innovative treatments.' },
+        { text: 'Miljømessig bærekraft krever omfattende politiske endringer.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
+        { text: 'Teknologiske fremskritt revolusjonerte kommunikasjonsmetoder.', translation: 'The technological advancement revolutionized communication methods.' }
+      ]
+    },
+    italian: {
+      beginner: [
+        { text: 'Il gatto si siede sulla sedia.', translation: 'The cat sits on the chair.' },
+        { text: 'Mi piace mangiare le mele.', translation: 'I like to eat apples.' },
+        { text: 'Il libro è sul tavolo.', translation: 'The book is on the table.' },
+        { text: 'Lei beve acqua ogni giorno.', translation: 'She drinks water every day.' },
+        { text: 'Il sole splende oggi.', translation: 'The sun is shining today.' }
+      ],
+      intermediate: [
+        { text: 'Le previsioni meteo predicono pioggia domani.', translation: 'The weather forecast predicts rain tomorrow.' },
+        { text: 'Devo finire i compiti prima di cena.', translation: 'I need to finish my homework before dinner.' },
+        { text: 'Il concerto è stato cancellato a causa del maltempo.', translation: 'The concert was cancelled due to bad weather.' },
+        { text: 'Le piace leggere romanzi gialli nel tempo libero.', translation: 'She enjoys reading mystery novels in her free time.' },
+        { text: 'Il ristorante serve deliziosa cucina tradizionale.', translation: 'The restaurant serves delicious traditional cuisine.' }
+      ],
+      advanced: [
+        { text: 'La spedizione archeologica ha scoperto antichi manufatti.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
+        { text: 'Le fluttuazioni economiche influenzano i modelli commerciali internazionali.', translation: 'Economic fluctuations affect international trade patterns.' },
+        { text: 'L\'azienda farmaceutica ha sviluppato trattamenti innovativi.', translation: 'The pharmaceutical company developed innovative treatments.' },
+        { text: 'La sostenibilità ambientale richiede cambiamenti politici completi.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
+        { text: 'L\'avanzamento tecnologico ha rivoluzionato i metodi di comunicazione.', translation: 'The technological advancement revolutionized communication methods.' }
+      ]
+    },
+    portuguese: {
+      beginner: [
+        { text: 'O gato senta na cadeira.', translation: 'The cat sits on the chair.' },
+        { text: 'Eu gosto de comer maçãs.', translation: 'I like to eat apples.' },
+        { text: 'O livro está na mesa.', translation: 'The book is on the table.' },
+        { text: 'Ela bebe água todos os dias.', translation: 'She drinks water every day.' },
+        { text: 'O sol brilha hoje.', translation: 'The sun is shining today.' }
+      ],
+      intermediate: [
+        { text: 'A previsão do tempo prevê chuva amanhã.', translation: 'The weather forecast predicts rain tomorrow.' },
+        { text: 'Preciso terminar minha lição de casa antes do jantar.', translation: 'I need to finish my homework before dinner.' },
+        { text: 'O concerto foi cancelado devido ao mau tempo.', translation: 'The concert was cancelled due to bad weather.' },
+        { text: 'Ela gosta de ler romances policiais no tempo livre.', translation: 'She enjoys reading mystery novels in her free time.' },
+        { text: 'O restaurante serve deliciosa culinária tradicional.', translation: 'The restaurant serves delicious traditional cuisine.' }
+      ],
+      advanced: [
+        { text: 'A expedição arqueológica descobriu artefatos antigos.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
+        { text: 'Flutuações econômicas afetam padrões de comércio internacional.', translation: 'Economic fluctuations affect international trade patterns.' },
+        { text: 'A empresa farmacêutica desenvolveu tratamentos inovadores.', translation: 'The pharmaceutical company developed innovative treatments.' },
+        { text: 'A sustentabilidade ambiental requer mudanças políticas abrangentes.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
+        { text: 'O avanço tecnológico revolucionou os métodos de comunicação.', translation: 'The technological advancement revolutionized communication methods.' }
+      ]
+    },
+    swedish: {
+      beginner: [
+        { text: 'Katten sitter på stolen.', translation: 'The cat sits on the chair.' },
+        { text: 'Jag tycker om att äta äpplen.', translation: 'I like to eat apples.' },
+        { text: 'Boken ligger på bordet.', translation: 'The book is on the table.' },
+        { text: 'Hon dricker vatten varje dag.', translation: 'She drinks water every day.' },
+        { text: 'Solen skiner idag.', translation: 'The sun is shining today.' }
+      ],
+      intermediate: [
+        { text: 'Väderleken förutspår regn imorgon.', translation: 'The weather forecast predicts rain tomorrow.' },
+        { text: 'Jag måste avsluta mina läxor före middagen.', translation: 'I need to finish my homework before dinner.' },
+        { text: 'Konserten ställdes in på grund av dåligt väder.', translation: 'The concert was cancelled due to bad weather.' },
+        { text: 'Hon tycker om att läsa deckare på fritiden.', translation: 'She enjoys reading mystery novels in her free time.' },
+        { text: 'Restaurangen serverar läcker traditionell mat.', translation: 'The restaurant serves delicious traditional cuisine.' }
+      ],
+      advanced: [
+        { text: 'Den arkeologiska expeditionen upptäckte gamla föremål.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
+        { text: 'Ekonomiska fluktuationer påverkar internationella handelsmönster.', translation: 'Economic fluctuations affect international trade patterns.' },
+        { text: 'Läkemedelsföretaget utvecklade innovativa behandlingar.', translation: 'The pharmaceutical company developed innovative treatments.' },
+        { text: 'Miljömässig hållbarhet kräver omfattande politiska förändringar.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
+        { text: 'Teknologiska framsteg revolutionerade kommunikationsmetoder.', translation: 'The technological advancement revolutionized communication methods.' }
+      ]
+    },
+    dutch: {
+      beginner: [
+        { text: 'De kat zit op de stoel.', translation: 'The cat sits on the chair.' },
+        { text: 'Ik eet graag appels.', translation: 'I like to eat apples.' },
+        { text: 'Het boek ligt op de tafel.', translation: 'The book is on the table.' },
+        { text: 'Zij drinkt elke dag water.', translation: 'She drinks water every day.' },
+        { text: 'De zon schijnt vandaag.', translation: 'The sun is shining today.' }
+      ],
+      intermediate: [
+        { text: 'De weersvoorspelling voorspelt morgen regen.', translation: 'The weather forecast predicts rain tomorrow.' },
+        { text: 'Ik moet mijn huiswerk afmaken voor het avondeten.', translation: 'I need to finish my homework before dinner.' },
+        { text: 'Het concert werd afgelast vanwege slecht weer.', translation: 'The concert was cancelled due to bad weather.' },
+        { text: 'Zij leest graag detectiveromans in haar vrije tijd.', translation: 'She enjoys reading mystery novels in her free time.' },
+        { text: 'Het restaurant serveert heerlijke traditionele keuken.', translation: 'The restaurant serves delicious traditional cuisine.' }
+      ],
+      advanced: [
+        { text: 'De archeologische expeditie ontdekte oude artefacten.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
+        { text: 'Economische fluctuaties beïnvloeden internationale handelspatronen.', translation: 'Economic fluctuations affect international trade patterns.' },
+        { text: 'Het farmaceutische bedrijf ontwikkelde innovatieve behandelingen.', translation: 'The pharmaceutical company developed innovative treatments.' },
+        { text: 'Duurzaamheid vereist uitgebreide beleidsveranderingen.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
+        { text: 'Technologische vooruitgang revolutioneerde communicatiemethoden.', translation: 'The technological advancement revolutionized communication methods.' }
+      ]
     }
   }
   
