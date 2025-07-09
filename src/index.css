@@ -1,4 +1,5 @@
 
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -76,7 +77,7 @@
 
 @layer components {
   .gradient-card {
-    @apply relative bg-gradient-to-br from-background via-background to-accent/5 hover:to-accent/10 border border-border/50 hover:shadow-md dark:from-background dark:via-background/80 dark:to-accent/10 dark:hover:to-accent/15;
+    @apply relative bg-gradient-to-br from-background via-background to-accent/5 border border-border/50 dark:from-background dark:via-background/80 dark:to-accent/10;
   }
   
   /* Add styles for dictation practice in dark mode */
@@ -114,7 +115,7 @@
   }
 
   .enhanced-word-hover {
-    @apply hover:bg-gray-50/60 hover:shadow-sm hover:scale-102;
+    @apply bg-gray-50/60 shadow-sm scale-102;
   }
 
   .enhanced-word-selected {
@@ -136,10 +137,6 @@
     -webkit-user-select: text;
     -moz-user-select: text;
     -ms-user-select: text;
-  }
-
-  .word-span:hover {
-    @apply bg-gray-50/40;
   }
 
   /* Word highlighting for audio sync */
@@ -176,10 +173,6 @@
   }
 
   /* Dark mode support for word highlighting */
-  .dark .word-span:hover {
-    @apply bg-gray-800/40;
-  }
-
   .dark .word-highlighted {
     @apply bg-yellow-400/30;
     color: rgb(254, 240, 138);
@@ -194,109 +187,6 @@
     @apply bg-blue-400/30 border-blue-400/40;
     color: rgb(147, 197, 253);
   }
-
-  /* FIXED: Enhanced button hover states with proper contrast - NO ANIMATIONS */
-  
-  /* Primary button hover - dark background with light text */
-  button[class*="variant-default"]:hover,
-  button.bg-primary:hover {
-    background-color: hsl(var(--primary)) !important;
-    color: hsl(var(--primary-foreground)) !important;
-  }
-
-  button[class*="variant-default"]:hover *,
-  button.bg-primary:hover * {
-    color: hsl(var(--primary-foreground)) !important;
-  }
-
-  /* Outline button hover - fills with primary color */
-  button[class*="variant-outline"]:hover {
-    background-color: hsl(var(--primary)) !important;
-    color: hsl(var(--primary-foreground)) !important;
-    border-color: hsl(var(--primary)) !important;
-  }
-
-  button[class*="variant-outline"]:hover *,
-  button[class*="outline"]:hover * {
-    color: hsl(var(--primary-foreground)) !important;
-  }
-
-  /* Ghost button hover - subtle background with proper text contrast */
-  button[class*="variant-ghost"]:hover {
-    background-color: hsl(var(--muted)) !important;
-    color: hsl(var(--foreground)) !important;
-  }
-
-  button[class*="variant-ghost"]:hover * {
-    color: hsl(var(--foreground)) !important;
-  }
-
-  /* Secondary button hover */
-  button[class*="variant-secondary"]:hover {
-    background-color: hsl(var(--secondary)) !important;
-    color: hsl(var(--secondary-foreground)) !important;
-  }
-
-  button[class*="variant-secondary"]:hover * {
-    color: hsl(var(--secondary-foreground)) !important;
-  }
-
-  /* Destructive button hover */
-  button[class*="variant-destructive"]:hover {
-    background-color: hsl(var(--destructive)) !important;
-    color: hsl(var(--destructive-foreground)) !important;
-  }
-
-  button[class*="variant-destructive"]:hover * {
-    color: hsl(var(--destructive-foreground)) !important;
-  }
-
-  /* General interactive element hover states */
-  .hover-card:hover,
-  [role="button"]:hover,
-  .cursor-pointer:hover {
-    background-color: hsl(var(--muted)) !important;
-    color: hsl(var(--foreground)) !important;
-  }
-
-  .hover-card:hover *,
-  [role="button"]:hover *,
-  .cursor-pointer:hover * {
-    color: hsl(var(--foreground)) !important;
-  }
-
-  /* Card hover states */
-  .card:hover {
-    background-color: hsl(var(--card)) !important;
-    color: hsl(var(--card-foreground)) !important;
-  }
-
-  .card:hover * {
-    color: hsl(var(--card-foreground)) !important;
-  }
-
-  /* Ensure muted text maintains proper contrast on hover */
-  .text-muted-foreground:hover,
-  [class*="text-muted-foreground"]:hover {
-    color: hsl(var(--muted-foreground)) !important;
-  }
-
-  /* Link hover states */
-  a:hover {
-    color: hsl(var(--primary)) !important;
-  }
-
-  /* Dropdown and menu item hover states */
-  [role="menuitem"]:hover,
-  [role="option"]:hover {
-    background-color: hsl(var(--accent)) !important;
-    color: hsl(var(--accent-foreground)) !important;
-  }
-
-  [role="menuitem"]:hover *,
-  [role="option"]:hover * {
-    color: hsl(var(--accent-foreground)) !important;
-  }
 }
 
 /* Custom styles for the new landing page */
@@ -305,7 +195,7 @@
 }
 
 .feature-card {
-  @apply relative px-5 py-4 rounded-xl border-2 border-brand-light/20 bg-white/50 hover:border-brand-primary/30;
+  @apply relative px-5 py-4 rounded-xl border-2 border-brand-light/20 bg-white/50;
 }
 
 /* Enhanced word selection styles */
@@ -440,7 +330,7 @@
     animation: wordPulse 0.5s ease-in-out;
   }
   
-  /* Hover effects - NO TRANSITIONS */
+  /* Hover effects - NO STYLING OR COLOR CHANGES */
   .hover-scale {
     transform: scale(1);
   }
@@ -487,3 +377,4 @@
     user-select: none !important;
   }
 }
+
