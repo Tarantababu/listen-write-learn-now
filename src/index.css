@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -75,7 +76,7 @@
 
 @layer components {
   .gradient-card {
-    @apply relative bg-gradient-to-br from-background via-background to-accent/5 hover:to-accent/10 transition-all border border-border/50 hover:shadow-md dark:from-background dark:via-background/80 dark:to-accent/10 dark:hover:to-accent/15;
+    @apply relative bg-gradient-to-br from-background via-background to-accent/5 hover:to-accent/10 border border-border/50 hover:shadow-md dark:from-background dark:via-background/80 dark:to-accent/10 dark:hover:to-accent/15;
   }
   
   /* Add styles for dictation practice in dark mode */
@@ -113,7 +114,7 @@
   }
 
   .enhanced-word-hover {
-    @apply transition-all duration-200 hover:bg-gray-50/60 hover:shadow-sm hover:scale-102;
+    @apply hover:bg-gray-50/60 hover:shadow-sm hover:scale-102;
   }
 
   .enhanced-word-selected {
@@ -126,7 +127,6 @@
 
   /* CSS-only highlighting system for stable DOM */
   .word-span {
-    @apply transition-all duration-200 ease-out;
     position: relative;
     padding: 1px 2px;
     margin: 0 1px;
@@ -195,7 +195,7 @@
     color: rgb(147, 197, 253);
   }
 
-  /* FIXED: Enhanced button hover states with proper contrast */
+  /* FIXED: Enhanced button hover states with proper contrast - NO ANIMATIONS */
   
   /* Primary button hover - dark background with light text */
   button[class*="variant-default"]:hover,
@@ -305,7 +305,7 @@
 }
 
 .feature-card {
-  @apply relative px-5 py-4 rounded-xl border-2 border-brand-light/20 bg-white/50 hover:border-brand-primary/30 transition-colors;
+  @apply relative px-5 py-4 rounded-xl border-2 border-brand-light/20 bg-white/50 hover:border-brand-primary/30;
 }
 
 /* Enhanced word selection styles */
@@ -440,17 +440,29 @@
     animation: wordPulse 0.5s ease-in-out;
   }
   
-  /* Hover effects */
+  /* Hover effects - NO TRANSITIONS */
   .hover-scale {
-    @apply transition-transform hover:scale-105 duration-200;
+    transform: scale(1);
+  }
+
+  .hover-scale:hover {
+    transform: scale(1.05);
   }
 
   .hover-scale-102 {
-    @apply transition-transform hover:scale-102 duration-200;
+    transform: scale(1);
+  }
+
+  .hover-scale-102:hover {
+    transform: scale(1.02);
   }
   
   .hover-glow {
-    @apply transition-shadow hover:shadow-lg hover:shadow-primary/20 duration-300;
+    box-shadow: none;
+  }
+
+  .hover-glow:hover {
+    box-shadow: 0 10px 15px -3px rgba(var(--primary) / 0.2), 0 4px 6px -2px rgba(var(--primary) / 0.2);
   }
 
   /* Dark mode specific utilities */
