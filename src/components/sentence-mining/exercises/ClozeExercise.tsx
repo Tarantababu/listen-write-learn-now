@@ -53,6 +53,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   const [translationLoading, setTranslationLoading] = useState(false);
   const [sentenceTranslation, setSentenceTranslation] = useState<string>('');
   const [sentenceTranslationLoading, setSentenceTranslationLoading] = useState(false);
+  const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
   const inputRef = useRef<HTMLInputElement>(null);
   const { settings } = useUserSettingsContext();
   const isMobile = useIsMobile();
@@ -140,16 +141,49 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
     }
   }, [showResult, exercise]);
 
+  const handleSubmitClick = async () => {
+    if (buttonState === 'processing' || loading) return;
+    
+    setButtonState('processing');
+    
+    try {
+      await onSubmit();
+    } catch (error) {
+      console.error('Error in submit:', error);
+    } finally {
+      // Reset button state after a short delay
+      setTimeout(() => {
+        setButtonState('idle');
+      }, 1000);
+    }
+  };
+
+  const handleNextClick = async () => {
+    if (buttonState === 'processing' || loading) return;
+    
+    setButtonState('processing');
+    
+    try {
+      await onNext();
+    } catch (error) {
+      console.error('Error in next:', error);
+    } finally {
+      setTimeout(() => {
+        setButtonState('idle');
+      }, 500);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Handle Enter key for both submit and continue
-    if (e.key === 'Enter' && !loading) {
+    if (e.key === 'Enter' && !loading && buttonState === 'idle') {
       e.preventDefault();
       if (!showResult && userResponse.trim()) {
         // Submit answer
-        onSubmit();
+        handleSubmitClick();
       } else if (showResult) {
         // Continue to next
-        onNext();
+        handleNextClick();
       }
     }
     // Show/hide translation on Ctrl+T or Cmd+T
@@ -162,9 +196,9 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   // Handle global Enter key press when result is shown
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && showResult && !loading) {
+      if (e.key === 'Enter' && showResult && !loading && buttonState === 'idle') {
         e.preventDefault();
-        onNext();
+        handleNextClick();
       }
     };
 
@@ -172,7 +206,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
       document.addEventListener('keydown', handleGlobalKeyDown);
       return () => document.removeEventListener('keydown', handleGlobalKeyDown);
     }
-  }, [showResult, loading, onNext]);
+  }, [showResult, loading, buttonState]);
 
   const renderSentenceWithBlank = () => {
     // Create a cloze sentence by replacing the target word with a blank (5 underscores)
@@ -201,7 +235,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 value={userResponse}
                 onChange={(e) => onResponseChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                disabled={showResult || loading}
+                disabled={showResult || loading || buttonState === 'processing'}
                 className={`w-32 text-center ${
                   showResult
                     ? isCorrect
@@ -233,7 +267,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               value={userResponse}
               onChange={(e) => onResponseChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={showResult || loading}
+              disabled={showResult || loading || buttonState === 'processing'}
               className={`w-32 text-center ${
                 showResult
                   ? isCorrect
@@ -249,37 +283,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
     );
   };
 
-  // Always visible hint with English translation of missing word
-  const renderExtraHint = () => {
-    return (
-      <div className="flex flex-col items-center gap-2 mt-3">
-        <div className={`px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-700 rounded-full ${isMobile ? 'text-sm' : 'text-xs'} font-medium text-blue-800 dark:text-blue-200 whitespace-nowrap shadow-sm`}>
-          <span className="flex items-center gap-1.5">
-            <Lightbulb className="h-3 w-3" />
-            English: {translationLoading ? 'loading...' : `"${wordTranslation}"`}
-          </span>
-        </div>
-      </div>
-    );
-  };
-
-  // Render English translation of full sentence when toggled
-  const renderSentenceTranslation = () => {
-    if (!showTranslation) return null;
-    
-    return (
-      <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg mt-3">
-        <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
-          Sentence Translation:
-        </p>
-        <p className="text-green-700 dark:text-green-300 text-sm">
-          {sentenceTranslationLoading ? 'Loading translation...' : sentenceTranslation}
-        </p>
-      </div>
-    );
-  };
-
-  // Mobile-first layout
+  // Mobile layout
   if (isMobile) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
@@ -290,7 +294,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               <Badge variant="outline" className="text-xs capitalize">
                 {exercise.difficulty}
               </Badge>
-              <span className="text-sm font-medium">Complete Sentence</span>
+              <span className="text-sm font-medium">Fill in the Blank</span>
             </div>
             {onPlayAudio && (
               <Button
@@ -298,7 +302,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 size="sm"
                 onClick={onPlayAudio}
                 disabled={audioLoading}
-                className="text-xs px-3 py-2 h-8"
+                className="text-xs px-2 py-1"
               >
                 <Volume2 className="h-3 w-3 mr-1" />
                 {audioLoading ? 'Loading' : 'Listen'}
@@ -307,41 +311,35 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           </div>
         </div>
 
-        {/* Content - Scrollable */}
-        <div className="flex-1 flex flex-col px-4 py-4 space-y-4 pb-32">
-          {/* Sentence with blank - Mobile optimized */}
-          <div className="p-4 bg-muted rounded-lg text-center">
-            <div className="text-lg leading-relaxed space-y-4">
-              <div className="mb-4">
-                {renderSentenceWithBlank()}
-              </div>
-              <div className="flex flex-col items-center gap-3">
-                <Input
-                  ref={inputRef}
-                  value={userResponse}
-                  onChange={(e) => onResponseChange(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  disabled={showResult || loading}
-                  className={`w-full max-w-xs text-center text-lg h-12 ${
-                    showResult
-                      ? isCorrect
-                        ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                        : 'border-red-500 bg-red-50 dark:bg-red-950/20'
-                      : 'focus:ring-2 focus:ring-primary'
-                  }`}
-                  placeholder="Type your answer..."
-                  autoFocus
-                />
+        {/* Content */}
+        <div className="flex-1 flex flex-col px-4 py-4 space-y-4 pb-24">
+          <div className="p-4 bg-muted rounded-lg">
+            {renderSentenceWithBlank()}
+          </div>
+
+          {/* Keyboard shortcuts hint */}
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Keyboard className="h-3 w-3" />
+            <span>Enter: {showResult ? 'continue' : 'submit'}</span>
+          </div>
+
+          {/* Show hint and result */}
+          {showTranslation && wordTranslation && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Lightbulb className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                    Hint (English):
+                  </p>
+                  <p className="text-blue-700 dark:text-blue-300 text-sm">
+                    {translationLoading ? 'Loading...' : wordTranslation}
+                  </p>
+                </div>
               </div>
             </div>
-            {/* Always show the extra hint with English translation */}
-            {renderExtraHint()}
-          </div>
-          
-          {/* Translation display */}
-          {renderSentenceTranslation()}
+          )}
 
-          {/* Result feedback */}
           {showResult && (
             <div className="space-y-3 animate-fade-in">
               <div className="flex items-center justify-center gap-2">
@@ -350,7 +348,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 ) : (
                   <XCircle className="h-5 w-5 text-red-600" />
                 )}
-                <Badge variant={isCorrect ? 'default' : 'destructive'} className="text-sm">
+                <Badge variant={isCorrect ? 'default' : 'destructive'}>
                   {isCorrect ? 'Correct!' : 'Incorrect'}
                 </Badge>
               </div>
@@ -360,7 +358,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
                     Correct answer:
                   </p>
-                  <p className="text-blue-700 dark:text-blue-300 text-base font-semibold">
+                  <p className="text-blue-700 dark:text-blue-300 text-sm font-semibold">
                     {exercise.targetWord}
                   </p>
                 </div>
@@ -384,48 +382,52 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t px-4 py-4 safe-area-bottom">
           <div className="flex flex-col gap-3">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={onToggleTranslation}
               className="w-full h-10 flex items-center justify-center gap-2"
             >
               <Eye className="h-4 w-4" />
-              {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
+              {showTranslation ? 'Hide Hint' : 'Show Hint'}
             </Button>
             
             {!showResult ? (
               <Button
-                onClick={onSubmit}
-                disabled={!userResponse.trim() || loading}
-                className="w-full h-12 text-base flex items-center justify-center gap-2"
+                onClick={handleSubmitClick}
+                disabled={!userResponse.trim() || loading || buttonState === 'processing'}
+                className="w-full h-12 text-base relative overflow-hidden"
               >
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {loading ? 'Checking...' : 'Submit Answer'}
+                {(buttonState === 'processing' || loading) && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-primary">
+                    <div className="flex items-center gap-2 text-primary-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Checking...</span>
+                    </div>
+                  </div>
+                )}
+                {(buttonState === 'processing' || loading) ? '' : 'Submit'}
               </Button>
             ) : (
               <Button
-                onClick={onNext}
-                disabled={loading}
-                className="w-full h-12 text-base flex items-center justify-center gap-2"
+                onClick={handleNextClick}
+                disabled={buttonState === 'processing' || loading}
+                className="w-full h-12 text-base relative overflow-hidden"
               >
-                {loading ? (
+                {(buttonState === 'processing' || loading) && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-primary">
+                    <div className="flex items-center gap-2 text-primary-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Loading...</span>
+                    </div>
+                  </div>
+                )}
+                {(buttonState === 'processing' || loading) ? '' : (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    Continue <ArrowRight className="h-4 w-4" />
+                    Continue <ArrowRight className="h-4 w-4 ml-2" />
                   </>
                 )}
               </Button>
             )}
-
-            {/* Keyboard shortcuts hint */}
-            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <Keyboard className="h-3 w-3" />
-              <span>Enter: {showResult ? 'continue' : 'submit'}</span>
-            </div>
           </div>
         </div>
       </div>
@@ -434,12 +436,12 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
 
   // Desktop layout
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-4">
+    <div className="space-y-4">
       {/* Header */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Complete the Sentence</CardTitle>
+            <CardTitle className="text-lg">Fill in the missing word</CardTitle>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="capitalize">
                 {exercise.difficulty}
@@ -450,7 +452,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   size="sm"
                   onClick={onPlayAudio}
                   disabled={audioLoading}
-                  className="flex items-center gap-1 transition-transform duration-200 hover:scale-105 active:scale-95"
+                  className="flex items-center gap-1"
                 >
                   <Volume2 className="h-4 w-4" />
                   {audioLoading ? 'Loading...' : 'Listen'}
@@ -462,107 +464,123 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
         
         <CardContent>
           <div className="space-y-4">
-            {/* Sentence with blank */}
-            <div className="p-4 bg-muted rounded-lg text-center">
+            <div className="p-4 bg-muted rounded-lg">
               {renderSentenceWithBlank()}
-              {/* Always show the extra hint with English translation */}
-              {renderExtraHint()}
             </div>
             
-            {/* Translation display */}
-            {renderSentenceTranslation()}
-            
-            {/* Translation toggle */}
-            <div className="text-center space-y-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onToggleTranslation}
-                className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95"
-              >
-                <Eye className="h-4 w-4" />
-                {showTranslation ? 'Hide sentence translation' : 'Show sentence translation'}
-              </Button>
-            </div>
-
             {/* Keyboard shortcuts hint */}
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Keyboard className="h-3 w-3" />
-              <span>Enter: {showResult ? 'continue' : 'submit'} • Ctrl+T: translation</span>
+              <span>Enter: {showResult ? 'continue' : 'submit'} • Ctrl+T: hint</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Action buttons */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex justify-end">
-            {!showResult ? (
-              <Button
-                onClick={onSubmit}
-                disabled={!userResponse.trim() || loading}
-                className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[140px]"
-              >
-                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {loading ? 'Checking...' : 'Submit Answer'}
-              </Button>
-            ) : (
-              <Button
-                onClick={onNext}
-                disabled={loading}
-                className="px-8 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[120px]"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    Continue <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-
-          {showResult && (
-            <div className="space-y-3 mt-4 animate-fade-in">
-              <div className="flex items-center gap-2">
-                {isCorrect ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                ) : (
-                  <XCircle className="h-5 w-5 text-red-600" />
-                )}
-                <Badge variant={isCorrect ? 'default' : 'destructive'}>
-                  {isCorrect ? 'Correct!' : 'Incorrect'}
-                </Badge>
-              </div>
-
-              {!isCorrect && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+      {/* Show hint */}
+      {showTranslation && wordTranslation && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Lightbulb className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-                    Correct answer:
+                    Hint (English):
                   </p>
                   <p className="text-blue-700 dark:text-blue-300 text-sm">
-                    {exercise.targetWord}
+                    {translationLoading ? 'Loading...' : wordTranslation}
                   </p>
                 </div>
-              )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-              {exercise.explanation && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
-                    Explanation:
-                  </p>
-                  <p className="text-amber-700 dark:text-amber-300 text-sm">
-                    {exercise.explanation}
-                  </p>
-                </div>
+      {/* Actions and results */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleTranslation}
+                className="flex items-center gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                {showTranslation ? 'Hide Hint' : 'Show Hint'}
+              </Button>
+              
+              {!showResult ? (
+                <Button
+                  onClick={handleSubmitClick}
+                  disabled={!userResponse.trim() || loading || buttonState === 'processing'}
+                  className="px-8 min-w-[140px]"
+                >
+                  {(buttonState === 'processing' || loading) && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
+                  {(buttonState === 'processing' || loading) ? 'Checking...' : 'Submit'}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleNextClick}
+                  disabled={buttonState === 'processing' || loading}
+                  className="px-8 flex items-center gap-2 min-w-[120px]"
+                >
+                  {(buttonState === 'processing' || loading) ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      Continue <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </Button>
               )}
             </div>
-          )}
+
+            {showResult && (
+              <div className="space-y-3 animate-fade-in">
+                <div className="flex items-center gap-2">
+                  {isCorrect ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  )}
+                  <Badge variant={isCorrect ? 'default' : 'destructive'}>
+                    {isCorrect ? 'Correct!' : 'Incorrect'}
+                  </Badge>
+                </div>
+
+                {!isCorrect && (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                      Correct answer:
+                    </p>
+                    <p className="text-blue-700 dark:text-blue-300 font-semibold">
+                      {exercise.targetWord}
+                    </p>
+                  </div>
+                )}
+
+                {exercise.explanation && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                      Explanation:
+                    </p>
+                    <p className="text-amber-700 dark:text-amber-300 text-sm">
+                      {exercise.explanation}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
