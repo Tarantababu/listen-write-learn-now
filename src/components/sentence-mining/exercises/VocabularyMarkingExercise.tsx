@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Volume2, CheckCircle, XCircle } from 'lucide-react';
+import { Volume2, BookOpen } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
@@ -58,26 +58,16 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
     return selectedWords.includes(cleanWord);
   };
 
-  const isWordTarget = (word: string) => {
-    const cleanWord = word.replace(/[^\w]/g, '').toLowerCase();
-    return targetWords.some(target => target.toLowerCase() === cleanWord);
-  };
-
   const getWordClassName = (word: string) => {
     const isSelected = isWordSelected(word);
-    const isTarget = isWordTarget(word);
     
     if (showResult) {
-      if (isTarget && isSelected) {
-        return 'bg-green-200 text-green-800 border-green-500'; // Correct selection
-      } else if (isTarget && !isSelected) {
-        return 'bg-yellow-200 text-yellow-800 border-yellow-500'; // Missed target
-      } else if (!isTarget && isSelected) {
-        return 'bg-red-200 text-red-800 border-red-500'; // Wrong selection
-      } else {
-        return 'hover:bg-gray-100'; // Normal word
-      }
+      // In result mode, just show selected words as marked for learning
+      return isSelected 
+        ? 'bg-blue-200 text-blue-800 border-blue-500' 
+        : 'hover:bg-gray-100';
     } else {
+      // In selection mode, show selected state
       return isSelected 
         ? 'bg-primary text-primary-foreground border-primary' 
         : 'hover:bg-muted/50 border-border';
@@ -185,54 +175,38 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
           {!showResult && (
             <Button
               onClick={onSubmit}
-              disabled={selectedWords.length === 0 || loading}
+              disabled={loading}
               className="w-full"
             >
-              {loading ? 'Checking...' : 'Submit Selection'}
+              {loading ? 'Saving...' : 'Mark Words for Learning'}
             </Button>
           )}
 
           {/* Result */}
           {showResult && (
             <div className="space-y-4">
-              <div className={`text-center text-lg font-semibold ${
-                isCorrect ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <div className="text-center text-lg font-semibold text-blue-600">
                 <div className="flex items-center justify-center gap-2">
-                  {isCorrect ? (
-                    <>
-                      <CheckCircle className="h-6 w-6" />
-                      Great job!
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-6 w-6" />
-                      Good try!
-                    </>
-                  )}
+                  <BookOpen className="h-6 w-6" />
+                  Words marked for learning!
                 </div>
               </div>
 
-              {/* Color Legend */}
-              <div className="text-xs space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-green-200 border border-green-500 rounded"></div>
-                  <span>Correctly identified</span>
+              {selectedWords.length > 0 && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                    Words marked for learning:
+                  </p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    {selectedWords.join(', ')}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-yellow-200 border border-yellow-500 rounded"></div>
-                  <span>Target words you missed</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-red-200 border border-red-500 rounded"></div>
-                  <span>Incorrectly selected</span>
-                </div>
-              </div>
+              )}
 
               {exercise.explanation && (
                 <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                   <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
-                    Explanation:
+                    Learning tip:
                   </p>
                   <p className="text-sm text-amber-700 dark:text-amber-300">
                     {exercise.explanation}
@@ -339,50 +313,34 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
             {!showResult ? (
               <Button
                 onClick={onSubmit}
-                disabled={selectedWords.length === 0 || loading}
+                disabled={loading}
                 size="lg"
                 className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
               >
-                {loading ? 'Checking...' : 'Submit Selection'}
+                {loading ? 'Saving...' : 'Mark Words for Learning'}
               </Button>
             ) : (
               <div className="text-center space-y-4">
-                <div className={`flex items-center justify-center gap-2 text-lg font-semibold ${
-                  isCorrect ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {isCorrect ? (
-                    <>
-                      <CheckCircle className="h-6 w-6" />
-                      Excellent selection!
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-6 w-6" />
-                      Good effort! Check the highlighted words.
-                    </>
-                  )}
+                <div className="flex items-center justify-center gap-2 text-lg font-semibold text-blue-600">
+                  <BookOpen className="h-6 w-6" />
+                  Words marked for learning!
                 </div>
 
-                {/* Color Legend */}
-                <div className="text-sm space-y-2 max-w-md mx-auto">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-green-200 border border-green-500 rounded"></div>
-                    <span>Correctly identified target words</span>
+                {selectedWords.length > 0 && (
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg max-w-md mx-auto">
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                      Words marked for learning:
+                    </p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      {selectedWords.join(', ')}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-yellow-200 border border-yellow-500 rounded"></div>
-                    <span>Target words you missed</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-red-200 border border-red-500 rounded"></div>
-                    <span>Words incorrectly selected</span>
-                  </div>
-                </div>
+                )}
 
                 {exercise.explanation && (
                   <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                     <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
-                      Explanation:
+                      Learning tip:
                     </p>
                     <p className="text-sm text-amber-700 dark:text-amber-300">
                       {exercise.explanation}

@@ -30,7 +30,7 @@ serve(async (req) => {
 
     const { difficulty_level, language, exercise_type, session_id } = await req.json()
 
-    console.log('Generating exercise for language:', language, 'difficulty:', difficulty_level, 'type:', exercise_type)
+    console.log('Generating exercise for target language:', language, 'difficulty:', difficulty_level, 'type:', exercise_type)
 
     // Get user's known words for this language
     const { data: knownWords } = await supabaseClient
