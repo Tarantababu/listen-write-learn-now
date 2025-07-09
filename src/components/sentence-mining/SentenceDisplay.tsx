@@ -120,6 +120,17 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
     return result;
   };
 
+  // Get language display name
+  const getLanguageDisplayName = (language: string) => {
+    const languageNames: Record<string, string> = {
+      'german': 'German',
+      'spanish': 'Spanish', 
+      'french': 'French',
+      'english': 'English'
+    };
+    return languageNames[language] || language;
+  };
+
   // Mobile-optimized layout
   if (isMobile) {
     return (
@@ -150,18 +161,18 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
 
         {/* Content - Scrollable */}
         <div className="flex-1 flex flex-col p-4 space-y-4">
-          {/* Sentence with blank */}
+          {/* Sentence with blank in target language */}
           <div className="p-4 bg-muted rounded-lg">
             <p className="text-base leading-relaxed text-center">
               {renderSentenceWithBlank(exercise.sentence, exercise.targetWords)}
             </p>
           </div>
           
-          {/* Translation hint */}
+          {/* English translation hint */}
           <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <div className="text-center">
               <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                English hint:
+                English hint for missing word:
               </p>
               <TranslationHint 
                 word={exercise.targetWords[0] || ''} 
@@ -183,14 +194,14 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
           )}
           
           <div className="text-sm text-muted-foreground text-center">
-            <p>Fill in the blank with the missing word in {settings.selectedLanguage}.</p>
+            <p>Fill in the blank with the missing word in {getLanguageDisplayName(settings.selectedLanguage)}.</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Desktop layout (keep existing code)
+  // Desktop layout
   return (
     <Card className="w-full">
       <CardHeader>
@@ -218,17 +229,19 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
       
       <CardContent>
         <div className="space-y-6">
+          {/* Sentence with blank in target language */}
           <div className="p-4 md:p-6 bg-muted rounded-lg">
             <p className="text-lg md:text-xl leading-relaxed">
               {renderSentenceWithBlank(exercise.sentence, exercise.targetWords)}
             </p>
           </div>
           
+          {/* English hint for the missing word */}
           <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <div className="flex items-center justify-center">
               <div className="text-center">
                 <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                  English hint:
+                  English hint for missing word:
                 </p>
                 <TranslationHint 
                   word={exercise.targetWords[0] || ''} 
@@ -251,7 +264,7 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
           )}
           
           <div className="text-sm text-muted-foreground">
-            <p>Fill in the blank with the missing word in {settings.selectedLanguage}. Use the English hint above to help you.</p>
+            <p>Fill in the blank with the missing word in {getLanguageDisplayName(settings.selectedLanguage)}. Use the English hint above to help you.</p>
           </div>
         </div>
       </CardContent>

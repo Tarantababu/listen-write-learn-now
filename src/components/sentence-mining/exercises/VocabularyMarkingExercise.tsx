@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Volume2, CheckCircle, XCircle } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 interface VocabularyMarkingExerciseProps {
   exercise: SentenceMiningExercise;
@@ -37,6 +38,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
   onToggleTranslation
 }) => {
   const isMobile = useIsMobile();
+  const { settings } = useUserSettingsContext();
 
   // Split sentence into words for selection
   const words = exercise.sentence.split(/\s+/).filter(word => word.length > 0);
@@ -82,6 +84,17 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
     }
   };
 
+  // Get language display name
+  const getLanguageDisplayName = (language: string) => {
+    const languageNames: Record<string, string> = {
+      'german': 'German',
+      'spanish': 'Spanish', 
+      'french': 'French',
+      'english': 'English'
+    };
+    return languageNames[language] || language;
+  };
+
   // Mobile-optimized layout
   if (isMobile) {
     return (
@@ -115,11 +128,11 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
           {/* Instructions */}
           <div className="text-center">
             <p className="text-sm text-muted-foreground mb-4">
-              Tap on the words you don't know or want to learn:
+              Tap on the {getLanguageDisplayName(settings.selectedLanguage)} words you don't know or want to learn:
             </p>
           </div>
           
-          {/* Interactive Sentence */}
+          {/* Interactive Sentence in target language */}
           <div className="p-4 bg-muted rounded-lg">
             <div className="flex flex-wrap gap-2 text-base leading-relaxed justify-center">
               {words.map((word, index) => (
@@ -143,6 +156,30 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
               Selected words: {selectedWords.length}
             </p>
           </div>
+
+          {/* Translation Toggle */}
+          <div className="text-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onToggleTranslation}
+              className="transition-transform duration-200 hover:scale-105 active:scale-95"
+            >
+              {showTranslation ? 'Hide' : 'Show'} English Translation
+            </Button>
+          </div>
+
+          {/* English Translation Display */}
+          {showTranslation && exercise.translation && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                English translation:
+              </p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                {exercise.translation}
+              </p>
+            </div>
+          )}
 
           {/* Submit Button */}
           {!showResult && (
@@ -244,11 +281,11 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
           {/* Instructions */}
           <div className="text-center">
             <p className="text-base font-medium mb-4">
-              Click on the words you don't know or want to learn:
+              Click on the {getLanguageDisplayName(settings.selectedLanguage)} words you don't know or want to learn:
             </p>
           </div>
 
-          {/* Interactive Sentence */}
+          {/* Interactive Sentence in target language */}
           <div className="p-4 md:p-6 bg-muted rounded-lg">
             <div className="flex flex-wrap gap-2 text-lg md:text-xl leading-relaxed justify-center">
               {words.map((word, index) => (
@@ -281,15 +318,15 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
               onClick={onToggleTranslation}
               className="transition-transform duration-200 hover:scale-105 active:scale-95"
             >
-              {showTranslation ? 'Hide' : 'Show'} Translation
+              {showTranslation ? 'Hide' : 'Show'} English Translation
             </Button>
           </div>
 
-          {/* Translation Display */}
+          {/* English Translation Display */}
           {showTranslation && exercise.translation && (
             <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                Translation:
+                English translation:
               </p>
               <p className="text-sm text-blue-700 dark:text-blue-300">
                 {exercise.translation}

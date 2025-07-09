@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Volume2, CheckCircle, XCircle } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 interface TranslationExerciseProps {
   exercise: SentenceMiningExercise;
@@ -38,6 +39,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
   onToggleTranslation
 }) => {
   const isMobile = useIsMobile();
+  const { settings } = useUserSettingsContext();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +53,17 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
       e.preventDefault();
       handleSubmit(e);
     }
+  };
+
+  // Get language display name
+  const getLanguageDisplayName = (language: string) => {
+    const languageNames: Record<string, string> = {
+      'german': 'German',
+      'spanish': 'Spanish', 
+      'french': 'French',
+      'english': 'English'
+    };
+    return languageNames[language] || language;
   };
 
   // Mobile-optimized layout
@@ -83,7 +96,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
 
         {/* Content - Scrollable */}
         <div className="flex-1 flex flex-col p-4 space-y-4">
-          {/* Sentence */}
+          {/* Sentence in target language */}
           <div className="p-4 bg-muted rounded-lg">
             <p className="text-base leading-relaxed text-center">
               {exercise.sentence}
@@ -93,7 +106,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
           {/* Instructions */}
           <div className="text-center">
             <p className="text-sm text-muted-foreground mb-4">
-              Translate this sentence to English:
+              Translate this {getLanguageDisplayName(settings.selectedLanguage)} sentence to English:
             </p>
           </div>
           
@@ -103,7 +116,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
               value={userResponse}
               onChange={(e) => onResponseChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Enter your translation..."
+              placeholder="Enter your English translation..."
               disabled={showResult}
               className={`text-base ${showResult
                 ? isCorrect
@@ -149,7 +162,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
               {!isCorrect && exercise.translation && (
                 <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-                    Correct translation:
+                    Correct English translation:
                   </p>
                   <p className="text-sm text-blue-700 dark:text-blue-300">
                     {exercise.translation}
@@ -206,7 +219,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
       
       <CardContent>
         <div className="space-y-6">
-          {/* Sentence Display */}
+          {/* Sentence Display in target language */}
           <div className="p-4 md:p-6 bg-muted rounded-lg">
             <p className="text-lg md:text-xl leading-relaxed text-center">
               {exercise.sentence}
@@ -216,7 +229,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
           {/* Instructions */}
           <div className="text-center">
             <p className="text-base font-medium mb-4">
-              Translate this sentence to English:
+              Translate this {getLanguageDisplayName(settings.selectedLanguage)} sentence to English:
             </p>
           </div>
 
@@ -226,7 +239,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
               value={userResponse}
               onChange={(e) => onResponseChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Enter your translation..."
+              placeholder="Enter your English translation..."
               disabled={showResult}
               className={`text-lg py-3 ${showResult
                 ? isCorrect
@@ -251,7 +264,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             )}
           </form>
 
-          {/* Translation Toggle */}
+          {/* Translation Hint Toggle */}
           <div className="text-center">
             <Button
               variant="outline"
@@ -259,15 +272,15 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
               onClick={onToggleTranslation}
               className="transition-transform duration-200 hover:scale-105 active:scale-95"
             >
-              {showTranslation ? 'Hide' : 'Show'} Hint
+              {showTranslation ? 'Hide' : 'Show'} English Hint
             </Button>
           </div>
 
-          {/* Translation Hint */}
+          {/* Translation Hint - Always in English */}
           {showTranslation && exercise.translation && (
             <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                Hint - Correct translation:
+                English hint:
               </p>
               <p className="text-sm text-blue-700 dark:text-blue-300">
                 {exercise.translation}
@@ -297,7 +310,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
               {!isCorrect && exercise.translation && (
                 <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                    Correct translation:
+                    Correct English translation:
                   </p>
                   <p className="text-sm text-blue-700 dark:text-blue-300">
                     {exercise.translation}
