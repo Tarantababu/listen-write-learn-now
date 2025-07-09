@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,9 @@ interface WordDefinition {
   definition: string;
 }
 
+// Simple in-memory cache for word definitions
+const definitionCache = new Map<string, string>();
+
 export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps> = ({
   exercise,
   selectedWords,
@@ -48,6 +52,41 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
   const [translationText, setTranslationText] = useState<string>('');
   const [translationLoading, setTranslationLoading] = useState(false);
 
+  // Optimized function to fetch a single word definition
+  const fetchWordDefinition = async (word: string, language: string): Promise<WordDefinition> => {
+    const cacheKey = `${word}-${language}`;
+    
+    // Check cache first
+    if (definitionCache.has(cacheKey)) {
+      return { word, definition: definitionCache.get(cacheKey)! };
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
+        body: {
+          text: word,
+          language: language,
+          requestShort: true // Request shorter definitions for faster processing
+        }
+      });
+
+      if (!error && data?.definition) {
+        const definition = data.definition;
+        definitionCache.set(cacheKey, definition);
+        return { word, definition };
+      } else {
+        const fallbackDefinition = `${word} (definition not available)`;
+        definitionCache.set(cacheKey, fallbackDefinition);
+        return { word, definition: fallbackDefinition };
+      }
+    } catch (error) {
+      console.error(`Error getting definition for ${word}:`, error);
+      const fallbackDefinition = `${word} (definition not available)`;
+      definitionCache.set(cacheKey, fallbackDefinition);
+      return { word, definition: fallbackDefinition };
+    }
+  };
+
   // Extract and get definitions for all words when component mounts
   useEffect(() => {
     const extractAndDefineWords = async () => {
@@ -60,43 +99,29 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
 
         const uniqueWords = [...new Set(words.map(word => word.replace(/[.,!?;:]/g, '').toLowerCase()))];
         
-        // Get definitions for all words
-        const definitions: WordDefinition[] = [];
+        // Fetch all definitions in parallel for much faster loading
+        const definitionPromises = uniqueWords.map(word => 
+          fetchWordDefinition(word, settings.selectedLanguage)
+        );
+
+        // Wait for all definitions to complete (or fail)
+        const definitions = await Promise.allSettled(definitionPromises);
         
-        for (const word of uniqueWords) {
-          try {
-            const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
-              body: {
-                text: word,
-                language: settings.selectedLanguage,
-                requestDefinition: true
-              }
-            });
-
-            if (!error && data?.definition) {
-              definitions.push({
-                word: word,
-                definition: data.definition
-              });
-            } else {
-              // Fallback definition
-              definitions.push({
-                word: word,
-                definition: `${word} (definition not available)`
-              });
-            }
-          } catch (error) {
-            console.error(`Error getting definition for ${word}:`, error);
-            definitions.push({
-              word: word,
-              definition: `${word} (definition not available)`
-            });
+        // Extract successful results and handle failed ones
+        const wordDefinitions: WordDefinition[] = definitions.map((result, index) => {
+          if (result.status === 'fulfilled') {
+            return result.value;
+          } else {
+            const word = uniqueWords[index];
+            console.error(`Failed to get definition for ${word}:`, result.reason);
+            return { word, definition: `${word} (definition not available)` };
           }
-        }
+        });
 
-        setWordDefinitions(definitions);
+        setWordDefinitions(wordDefinitions);
       } catch (error) {
         console.error('Error extracting words:', error);
+        setWordDefinitions([]);
       } finally {
         setLoadingDefinitions(false);
       }
@@ -248,6 +273,14 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
             </div>
           </div>
 
+          {/* Loading definitions feedback */}
+          {loadingDefinitions && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground p-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading word definitions...
+            </div>
+          )}
+
           {/* Selected words feedback */}
           {selectedWords.length > 0 && (
             <div className="space-y-3">
@@ -278,13 +311,6 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
                   <strong>Translation:</strong> {translationText || 'Translation not available'}
                 </p>
               )}
-            </div>
-          )}
-
-          {loadingDefinitions && (
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading word definitions...
             </div>
           )}
         </div>
