@@ -3,8 +3,10 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DifficultyLevel, ExerciseType, SentenceMiningSession, SentenceMiningExercise } from '@/types/sentence-mining';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 export const useSentenceMining = () => {
+  const { settings } = useUserSettingsContext();
   const [currentSession, setCurrentSession] = useState<SentenceMiningSession | null>(null);
   const [currentExercise, setCurrentExercise] = useState<SentenceMiningExercise | null>(null);
   const [userResponse, setUserResponse] = useState('');
@@ -86,7 +88,7 @@ export const useSentenceMining = () => {
         .from('sentence_mining_sessions')
         .insert({
           user_id: user.id,
-          language: 'english', // This should come from user settings
+          language: settings.selectedLanguage, // Use selected language from settings
           difficulty_level: difficulty,
           exercise_types: ['translation', 'vocabulary_marking', 'cloze'],
           total_exercises: 0,
@@ -154,7 +156,7 @@ export const useSentenceMining = () => {
       const { data: exercise, error } = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
           difficulty_level: difficulty,
-          language: 'english',
+          language: settings.selectedLanguage, // Use selected language from settings
           exercise_type: randomType,
           session_id: sessionId
         }

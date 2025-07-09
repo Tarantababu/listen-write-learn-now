@@ -3,364 +3,211 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Volume2, ArrowRight, Eye, Loader2, Keyboard } from 'lucide-react';
+import { Volume2, CheckCircle, XCircle } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
-import { supabase } from '@/integrations/supabase/client';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { EnhancedAudioPlayer } from './EnhancedAudioPlayer';
 
 interface VocabularyMarkingExerciseProps {
   exercise: SentenceMiningExercise;
   selectedWords: string[];
   onWordSelect: (word: string) => void;
-  onSubmit: () => void;
-  onNext: () => void;
   showResult: boolean;
+  isCorrect: boolean;
   loading: boolean;
   onPlayAudio?: () => void;
   audioLoading?: boolean;
+  onSubmit: () => void;
+  onNext: () => void;
   showTranslation: boolean;
   onToggleTranslation: () => void;
 }
-
-interface WordDefinition {
-  word: string;
-  definition: string;
-}
-
-// Simple in-memory cache for word definitions
-const definitionCache = new Map<string, string>();
 
 export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps> = ({
   exercise,
   selectedWords,
   onWordSelect,
-  onSubmit,
-  onNext,
   showResult,
+  isCorrect,
   loading,
   onPlayAudio,
   audioLoading = false,
+  onSubmit,
+  onNext,
   showTranslation,
-  onToggleTranslation,
+  onToggleTranslation
 }) => {
-  const { settings } = useUserSettingsContext();
   const isMobile = useIsMobile();
-  const [wordDefinitions, setWordDefinitions] = useState<WordDefinition[]>([]);
-  const [loadingDefinitions, setLoadingDefinitions] = useState(false);
-  const [translationText, setTranslationText] = useState<string>('');
-  const [translationLoading, setTranslationLoading] = useState(false);
 
-  // Optimized function to fetch a single word definition
-  const fetchWordDefinition = async (word: string, language: string): Promise<WordDefinition> => {
-    const cacheKey = `${word}-${language}`;
+  // Split sentence into words for selection
+  const words = exercise.sentence.split(/\s+/).filter(word => word.length > 0);
+  
+  // Get target words (words that should be selected)
+  const targetWords = exercise.targetWords || [];
+
+  const handleWordClick = (word: string) => {
+    if (showResult) return;
+    // Clean the word of punctuation for comparison
+    const cleanWord = word.replace(/[^\w]/g, '').toLowerCase();
+    onWordSelect(cleanWord);
+  };
+
+  const isWordSelected = (word: string) => {
+    const cleanWord = word.replace(/[^\w]/g, '').toLowerCase();
+    return selectedWords.includes(cleanWord);
+  };
+
+  const isWordTarget = (word: string) => {
+    const cleanWord = word.replace(/[^\w]/g, '').toLowerCase();
+    return targetWords.some(target => target.toLowerCase() === cleanWord);
+  };
+
+  const getWordClassName = (word: string) => {
+    const isSelected = isWordSelected(word);
+    const isTarget = isWordTarget(word);
     
-    // Check cache first
-    if (definitionCache.has(cacheKey)) {
-      return { word, definition: definitionCache.get(cacheKey)! };
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
-        body: {
-          text: word,
-          language: language,
-          requestShort: true // Request shorter definitions for faster processing
-        }
-      });
-
-      if (!error && data?.definition) {
-        const definition = data.definition;
-        definitionCache.set(cacheKey, definition);
-        return { word, definition };
+    if (showResult) {
+      if (isTarget && isSelected) {
+        return 'bg-green-200 text-green-800 border-green-500'; // Correct selection
+      } else if (isTarget && !isSelected) {
+        return 'bg-yellow-200 text-yellow-800 border-yellow-500'; // Missed target
+      } else if (!isTarget && isSelected) {
+        return 'bg-red-200 text-red-800 border-red-500'; // Wrong selection
       } else {
-        const fallbackDefinition = `${word} (definition not available)`;
-        definitionCache.set(cacheKey, fallbackDefinition);
-        return { word, definition: fallbackDefinition };
+        return 'hover:bg-gray-100'; // Normal word
       }
-    } catch (error) {
-      console.error(`Error getting definition for ${word}:`, error);
-      const fallbackDefinition = `${word} (definition not available)`;
-      definitionCache.set(cacheKey, fallbackDefinition);
-      return { word, definition: fallbackDefinition };
+    } else {
+      return isSelected 
+        ? 'bg-primary text-primary-foreground border-primary' 
+        : 'hover:bg-muted/50 border-border';
     }
   };
 
-  // Extract and get definitions for all words when component mounts
-  useEffect(() => {
-    const extractAndDefineWords = async () => {
-      setLoadingDefinitions(true);
-      try {
-        const words = exercise.sentence.split(/(\s+)/).filter(token => {
-          const cleanToken = token.replace(/[.,!?;:]/g, '').toLowerCase();
-          return cleanToken.trim().length > 0 && /^[a-zA-Z]+$/.test(cleanToken);
-        });
-
-        const uniqueWords = [...new Set(words.map(word => word.replace(/[.,!?;:]/g, '').toLowerCase()))];
-        
-        // Fetch all definitions in parallel for much faster loading
-        const definitionPromises = uniqueWords.map(word => 
-          fetchWordDefinition(word, settings.selectedLanguage)
-        );
-
-        // Wait for all definitions to complete (or fail)
-        const definitions = await Promise.allSettled(definitionPromises);
-        
-        // Extract successful results and handle failed ones
-        const wordDefinitions: WordDefinition[] = definitions.map((result, index) => {
-          if (result.status === 'fulfilled') {
-            return result.value;
-          } else {
-            const word = uniqueWords[index];
-            console.error(`Failed to get definition for ${word}:`, result.reason);
-            return { word, definition: `${word} (definition not available)` };
-          }
-        });
-
-        setWordDefinitions(wordDefinitions);
-      } catch (error) {
-        console.error('Error extracting words:', error);
-        setWordDefinitions([]);
-      } finally {
-        setLoadingDefinitions(false);
-      }
-    };
-
-    extractAndDefineWords();
-  }, [exercise.sentence, settings.selectedLanguage]);
-
-  // Fetch translation when showTranslation changes to true
-  useEffect(() => {
-    if (showTranslation && !translationText && !translationLoading) {
-      fetchTranslation();
-    }
-  }, [showTranslation]);
-
-  const fetchTranslation = async () => {
-    if (translationLoading) return;
-    
-    setTranslationLoading(true);
-    try {
-      console.log('Fetching translation for sentence:', exercise.sentence);
-      
-      const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
-        body: {
-          text: `Translate this ${settings.selectedLanguage} sentence to English: "${exercise.sentence}"`,
-          language: settings.selectedLanguage,
-          requestExplanation: true
-        }
-      });
-
-      if (error) {
-        console.error('Translation error:', error);
-        setTranslationText('Translation not available');
-      } else if (data?.explanation) {
-        setTranslationText(data.explanation);
-      } else if (data?.definition) {
-        setTranslationText(data.definition);
-      } else {
-        setTranslationText('Translation not available');
-      }
-    } catch (error) {
-      console.error('Error fetching translation:', error);
-      setTranslationText('Translation not available');
-    } finally {
-      setTranslationLoading(false);
-    }
-  };
-
-  // Add keyboard event listener for Enter key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Use Enter key for both submitting and continuing
-      if (e.key === 'Enter' && !loading) {
-        e.preventDefault();
-        if (showResult) {
-          onNext();
-        } else {
-          onSubmit();
-        }
-      }
-      // Show/hide translation on Ctrl+T or Cmd+T
-      if ((e.ctrlKey || e.metaKey) && e.key === 't') {
-        e.preventDefault();
-        onToggleTranslation();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showResult, loading, onSubmit, onNext, onToggleTranslation]);
-
-  const renderClickableText = () => {
-    const words = exercise.sentence.split(/(\s+)/);
-    
-    return words.map((token, index) => {
-      const cleanToken = token.replace(/[.,!?;:]/g, '').toLowerCase();
-      const isSelected = selectedWords.includes(cleanToken);
-      
-      if (token.trim() === '') {
-        return <span key={index}>{token}</span>;
-      }
-      
-      // Make every word clickable with better mobile touch targets
-      if (token.trim().length > 0) {
-        return (
-          <span
-            key={index}
-            className={`inline-block cursor-pointer transition-all duration-200 transform hover:scale-105 active:scale-95 ${
-              isMobile 
-                ? 'px-2 py-1.5 m-0.5 text-base min-h-[44px] flex items-center rounded-lg' 
-                : 'px-1 py-0.5 rounded text-sm md:text-base'
-            } ${
-              isSelected
-                ? 'bg-blue-500 text-white shadow-md'
-                : 'hover:bg-blue-100 dark:hover:bg-blue-900/30'
-            }`}
-            onClick={() => onWordSelect(cleanToken)}
-          >
-            {token}
-          </span>
-        );
-      }
-      
-      return <span key={index}>{token}</span>;
-    });
-  };
-
-  const getWordDefinition = (word: string) => {
-    const definition = wordDefinitions.find(def => def.word === word);
-    return definition?.definition || `${word} (loading definition...)`;
-  };
-
-  // Mobile-first layout
+  // Mobile-optimized layout
   if (isMobile) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        {/* Mobile Header - Sticky */}
-        <div className="sticky top-0 z-10 bg-card border-b px-4 py-3">
+        {/* Mobile Header - Fixed */}
+        <div className="bg-card border-b px-4 py-3 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs capitalize">
+              <Badge variant="outline" className="text-xs">
                 {exercise.difficulty}
               </Badge>
-              <span className="text-sm font-medium">Mark Unknown Words</span>
+              <span className="text-sm font-medium">Mark Words</span>
             </div>
-            <EnhancedAudioPlayer
-              text={exercise.sentence}
-              onPlayAudio={onPlayAudio}
-              audioLoading={audioLoading}
-              size="sm"
-              className="text-xs px-3 py-2 h-8"
-            />
+            {onPlayAudio && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onPlayAudio}
+                disabled={audioLoading}
+                className="text-xs px-2 py-1"
+              >
+                <Volume2 className="h-3 w-3 mr-1" />
+                {audioLoading ? 'Loading' : 'Listen'}
+              </Button>
+            )}
           </div>
         </div>
 
         {/* Content - Scrollable */}
-        <div className="flex-1 flex flex-col px-4 py-4 space-y-4 pb-24">
+        <div className="flex-1 flex flex-col p-4 space-y-4">
           {/* Instructions */}
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-blue-800 dark:text-blue-200 text-sm">
-              Tap any word you don't understand to mark it for review.
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-4">
+              Tap on the words you don't know or want to learn:
             </p>
           </div>
           
-          {/* Clickable sentence */}
+          {/* Interactive Sentence */}
           <div className="p-4 bg-muted rounded-lg">
-            <div className="text-lg leading-relaxed flex flex-wrap">
-              {renderClickableText()}
+            <div className="flex flex-wrap gap-2 text-base leading-relaxed justify-center">
+              {words.map((word, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleWordClick(word)}
+                  disabled={showResult}
+                  className={`px-2 py-1 rounded border-2 transition-all duration-200 ${getWordClassName(word)} ${
+                    showResult ? 'cursor-default' : 'cursor-pointer active:scale-95'
+                  }`}
+                >
+                  {word}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Loading definitions feedback */}
-          {loadingDefinitions && (
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground p-4">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading word definitions...
-            </div>
-          )}
+          {/* Selected Words Counter */}
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
+              Selected words: {selectedWords.length}
+            </p>
+          </div>
 
-          {/* Selected words feedback */}
-          {selectedWords.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="font-medium text-sm">Words marked for review:</h3>
-              <div className="grid grid-cols-1 gap-2">
-                {selectedWords.map(word => (
-                  <div key={word} className="bg-blue-100 dark:bg-blue-900/30 px-3 py-3 rounded-lg">
-                    <div className="font-medium text-base">{word}</div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {getWordDefinition(word)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Translation display */}
-          {showTranslation && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg animate-fade-in">
-              {translationLoading ? (
-                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading translation...
-                </div>
-              ) : (
-                <p className="text-blue-700 dark:text-blue-300 text-sm">
-                  <strong>Translation:</strong> {translationText || 'Translation not available'}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Mobile Bottom Actions - Fixed */}
-        <div className="fixed bottom-0 left-0 right-0 bg-card border-t px-4 py-4 safe-area-bottom">
-          <div className="flex flex-col gap-3">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={onToggleTranslation}
-              disabled={translationLoading}
-              className="w-full h-12 flex items-center justify-center gap-2"
-            >
-              {translationLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                <>
-                  <Eye className="h-4 w-4" />
-                  {showTranslation ? 'Hide Translation' : 'Show Translation'}
-                </>
-              )}
-            </Button>
-            
+          {/* Submit Button */}
+          {!showResult && (
             <Button
-              onClick={showResult ? onNext : onSubmit}
-              className="w-full h-12 text-base flex items-center justify-center gap-2"
-              disabled={loading}
+              onClick={onSubmit}
+              disabled={selectedWords.length === 0 || loading}
+              className="w-full"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  {showResult ? 'Next Exercise' : 'Continue'} <ArrowRight className="h-4 w-4" />
-                </>
-              )}
+              {loading ? 'Checking...' : 'Submit Selection'}
             </Button>
+          )}
 
-            {/* Keyboard shortcuts hint */}
-            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <Keyboard className="h-3 w-3" />
-              <span>Enter: continue</span>
+          {/* Result */}
+          {showResult && (
+            <div className="space-y-4">
+              <div className={`text-center text-lg font-semibold ${
+                isCorrect ? 'text-green-600' : 'text-red-600'
+              }`}>
+                <div className="flex items-center justify-center gap-2">
+                  {isCorrect ? (
+                    <>
+                      <CheckCircle className="h-6 w-6" />
+                      Great job!
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-6 w-6" />
+                      Good try!
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Color Legend */}
+              <div className="text-xs space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-green-200 border border-green-500 rounded"></div>
+                  <span>Correctly identified</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-yellow-200 border border-yellow-500 rounded"></div>
+                  <span>Target words you missed</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-red-200 border border-red-500 rounded"></div>
+                  <span>Incorrectly selected</span>
+                </div>
+              </div>
+
+              {exercise.explanation && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                    Explanation:
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    {exercise.explanation}
+                  </p>
+                </div>
+              )}
+
+              <Button onClick={onNext} className="w-full">
+                Next Exercise
+              </Button>
             </div>
-          </div>
+          )}
         </div>
       </div>
     );
@@ -368,141 +215,156 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
 
   // Desktop layout
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <CardTitle className="text-lg">Mark Unknown Words</CardTitle>
-            <div className="flex items-center gap-2 justify-start md:justify-end">
-              <Badge variant="outline" className="capitalize">
-                {exercise.difficulty}
-              </Badge>
-              <EnhancedAudioPlayer
-                text={exercise.sentence}
-                onPlayAudio={onPlayAudio}
-                audioLoading={audioLoading}
+    <Card className="w-full">
+      <CardHeader>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <CardTitle className="text-lg">Vocabulary Marking</CardTitle>
+          <div className="flex items-center gap-2 justify-start md:justify-end">
+            <Badge variant="outline" className="capitalize">
+              {exercise.difficulty}
+            </Badge>
+            {onPlayAudio && (
+              <Button
+                variant="outline"
                 size="sm"
+                onClick={onPlayAudio}
+                disabled={audioLoading}
                 className="flex items-center gap-1 transition-transform duration-200 hover:scale-105 active:scale-95"
-              />
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Instructions */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
-            <p className="text-blue-800 dark:text-blue-200 text-sm">
-              Read the sentence and tap any word you don't understand. This marks them for later repetition. Then press continue.
-            </p>
-          </div>
-          
-          {/* Clickable sentence */}
-          <div className="p-4 md:p-6 bg-muted rounded-lg">
-            <p className="text-lg md:text-xl leading-relaxed">
-              {renderClickableText()}
-            </p>
-          </div>
-
-          {/* Keyboard shortcuts hint */}
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-4">
-            <Keyboard className="h-3 w-3" />
-            <span>Enter: {showResult ? 'next' : 'submit'} • Ctrl+T: translation</span>
-          </div>
-
-          {loadingDefinitions && (
-            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading word definitions...
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Selected words feedback */}
-      {selectedWords.length > 0 && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-3">
-              <h3 className="font-medium">Words you've marked for review:</h3>
-              <div className="flex flex-wrap gap-2">
-                {selectedWords.map(word => (
-                  <div key={word} className="bg-blue-100 dark:bg-blue-900/30 px-3 py-2 rounded-lg transform transition-all duration-200 hover:scale-105">
-                    <div className="font-medium text-sm md:text-base">{word}</div>
-                    <div className="text-xs md:text-sm text-muted-foreground">
-                      {getWordDefinition(word)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Action buttons */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex gap-2 w-full md:w-auto">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={onToggleTranslation}
-                disabled={translationLoading}
-                className="transition-transform duration-200 hover:scale-105 active:scale-95 flex-1 md:flex-none flex items-center gap-2"
               >
-                {translationLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    <Eye className="h-4 w-4" />
-                    {showTranslation ? 'Hide Translation' : 'Show Translation'}
-                  </>
-                )}
+                <Volume2 className="h-4 w-4" />
+                {audioLoading ? 'Loading...' : 'Listen'}
               </Button>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      
+      <CardContent>
+        <div className="space-y-6">
+          {/* Instructions */}
+          <div className="text-center">
+            <p className="text-base font-medium mb-4">
+              Click on the words you don't know or want to learn:
+            </p>
+          </div>
+
+          {/* Interactive Sentence */}
+          <div className="p-4 md:p-6 bg-muted rounded-lg">
+            <div className="flex flex-wrap gap-2 text-lg md:text-xl leading-relaxed justify-center">
+              {words.map((word, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleWordClick(word)}
+                  disabled={showResult}
+                  className={`px-3 py-2 rounded-lg border-2 transition-all duration-200 ${getWordClassName(word)} ${
+                    showResult ? 'cursor-default' : 'cursor-pointer hover:scale-105 active:scale-95'
+                  }`}
+                >
+                  {word}
+                </button>
+              ))}
             </div>
-            
+          </div>
+
+          {/* Selected Words Counter */}
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
+              Selected words: {selectedWords.length}
+            </p>
+          </div>
+
+          {/* Translation Toggle */}
+          <div className="text-center">
             <Button
-              onClick={showResult ? onNext : onSubmit}
-              className="px-6 md:px-8 py-3 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 w-full md:w-auto text-base"
-              disabled={loading}
+              variant="outline"
+              size="sm"
+              onClick={onToggleTranslation}
+              className="transition-transform duration-200 hover:scale-105 active:scale-95"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  {showResult ? 'Next' : 'Continue'} <ArrowRight className="h-4 w-4" />
-                </>
-              )}
+              {showTranslation ? 'Hide' : 'Show'} Translation
             </Button>
           </div>
 
-          {/* Translation display */}
-          {showTranslation && (
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg animate-fade-in">
-              {translationLoading ? (
-                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading translation...
-                </div>
-              ) : (
-                <p className="text-blue-700 dark:text-blue-300 text-sm">
-                  <strong>Translation:</strong> {translationText || 'Translation not available'}
-                </p>
-              )}
+          {/* Translation Display */}
+          {showTranslation && exercise.translation && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                Translation:
+              </p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                {exercise.translation}
+              </p>
             </div>
           )}
-        </CardContent>
-      </Card>
-    </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-center gap-4">
+            {!showResult ? (
+              <Button
+                onClick={onSubmit}
+                disabled={selectedWords.length === 0 || loading}
+                size="lg"
+                className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
+              >
+                {loading ? 'Checking...' : 'Submit Selection'}
+              </Button>
+            ) : (
+              <div className="text-center space-y-4">
+                <div className={`flex items-center justify-center gap-2 text-lg font-semibold ${
+                  isCorrect ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {isCorrect ? (
+                    <>
+                      <CheckCircle className="h-6 w-6" />
+                      Excellent selection!
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-6 w-6" />
+                      Good effort! Check the highlighted words.
+                    </>
+                  )}
+                </div>
+
+                {/* Color Legend */}
+                <div className="text-sm space-y-2 max-w-md mx-auto">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-green-200 border border-green-500 rounded"></div>
+                    <span>Correctly identified target words</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-yellow-200 border border-yellow-500 rounded"></div>
+                    <span>Target words you missed</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-red-200 border border-red-500 rounded"></div>
+                    <span>Words incorrectly selected</span>
+                  </div>
+                </div>
+
+                {exercise.explanation && (
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
+                      Explanation:
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                      {exercise.explanation}
+                    </p>
+                  </div>
+                )}
+                
+                <Button
+                  onClick={onNext}
+                  size="lg"
+                  className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
+                >
+                  Next Exercise
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
