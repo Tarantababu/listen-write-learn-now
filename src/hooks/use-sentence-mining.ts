@@ -102,13 +102,27 @@ export const useSentenceMining = () => {
       // Convert database session to our interface format
       const mappedSession: SentenceMiningSession = {
         ...session,
+        id: session.id,
+        language: session.language,
         difficulty: session.difficulty_level as DifficultyLevel,
         exercises: [],
         currentExerciseIndex: 0,
         startTime: new Date(session.started_at),
+        endTime: session.completed_at ? new Date(session.completed_at) : undefined,
         totalCorrect: session.correct_exercises,
         totalAttempts: session.total_exercises,
-        exerciseTypes: session.exercise_types as ExerciseType[]
+        exerciseTypes: session.exercise_types as ExerciseType[],
+        // Database fields
+        user_id: session.user_id,
+        difficulty_level: session.difficulty_level as DifficultyLevel,
+        total_exercises: session.total_exercises,
+        correct_exercises: session.correct_exercises,
+        new_words_encountered: session.new_words_encountered,
+        words_mastered: session.words_mastered,
+        started_at: session.started_at,
+        completed_at: session.completed_at,
+        created_at: session.created_at,
+        session_data: session.session_data
       };
 
       setCurrentSession(mappedSession);

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -87,7 +88,9 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
     return words.slice(0, 2).join(' ') || cleaned.split(' ').slice(0, 2).join(' ');
   };
 
-  const renderSentenceWithBlank = (sentence: string, targetWord: string) => {
+  const renderSentenceWithBlank = (sentence: string, targetWords: string[]) => {
+    // Use the first target word for cloze exercises
+    const targetWord = targetWords[0] || '';
     const parts = sentence.split(new RegExp(`\\b${targetWord}\\b`, 'gi'));
     const result = [];
     
@@ -150,7 +153,7 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
           {/* Sentence with blank */}
           <div className="p-4 bg-muted rounded-lg">
             <p className="text-base leading-relaxed text-center">
-              {renderSentenceWithBlank(exercise.sentence, exercise.targetWord)}
+              {renderSentenceWithBlank(exercise.sentence, exercise.targetWords)}
             </p>
           </div>
           
@@ -161,7 +164,7 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
                 English hint:
               </p>
               <TranslationHint 
-                word={exercise.targetWord} 
+                word={exercise.targetWords[0] || ''} 
                 language={settings.selectedLanguage}
                 getTranslation={getShortTranslationFromOpenAI}
               />
@@ -217,7 +220,7 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
         <div className="space-y-6">
           <div className="p-4 md:p-6 bg-muted rounded-lg">
             <p className="text-lg md:text-xl leading-relaxed">
-              {renderSentenceWithBlank(exercise.sentence, exercise.targetWord)}
+              {renderSentenceWithBlank(exercise.sentence, exercise.targetWords)}
             </p>
           </div>
           
@@ -228,7 +231,7 @@ export const SentenceDisplay: React.FC<SentenceDisplayProps> = ({
                   English hint:
                 </p>
                 <TranslationHint 
-                  word={exercise.targetWord} 
+                  word={exercise.targetWords[0] || ''} 
                   language={settings.selectedLanguage}
                   getTranslation={getShortTranslationFromOpenAI}
                 />
