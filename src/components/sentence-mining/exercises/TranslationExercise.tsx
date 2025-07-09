@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -261,27 +262,35 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
               <Button
                 onClick={handleSubmitClick}
                 disabled={!userResponse.trim() || loading || buttonState === 'processing'}
-                className="w-full py-3 text-base"
+                className="w-full py-3 text-base relative overflow-hidden"
                 size="lg"
               >
                 {(buttonState === 'processing' || loading) && (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-primary">
+                    <div className="flex items-center gap-2 text-primary-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Checking...</span>
+                    </div>
+                  </div>
                 )}
-                {buttonState === 'processing' || loading ? 'Checking...' : 'Submit Translation'}
+                {(buttonState === 'processing' || loading) ? '' : 'Submit Translation'}
               </Button>
             ) : (
               <Button
                 onClick={handleNextClick}
                 disabled={buttonState === 'processing' || loading}
-                className="w-full py-3 text-base"
+                className="w-full py-3 text-base relative overflow-hidden"
                 size="lg"
               >
-                {(buttonState === 'processing' || loading) ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
+                {(buttonState === 'processing' || loading) && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-primary">
+                    <div className="flex items-center gap-2 text-primary-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Loading...</span>
+                    </div>
+                  </div>
+                )}
+                {(buttonState === 'processing' || loading) ? '' : (
                   <>
                     Continue <ArrowRight className="h-4 w-4 ml-2" />
                   </>
@@ -386,25 +395,33 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
                 <Button
                   onClick={handleSubmitClick}
                   disabled={!userResponse.trim() || loading || buttonState === 'processing'}
-                  className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[140px]"
+                  className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[140px] relative overflow-hidden"
                 >
                   {(buttonState === 'processing' || loading) && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-primary">
+                      <div className="flex items-center gap-2 text-primary-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Checking...</span>
+                      </div>
+                    </div>
                   )}
-                  {buttonState === 'processing' || loading ? 'Checking...' : 'Submit Translation'}
+                  {(buttonState === 'processing' || loading) ? '' : 'Submit Translation'}
                 </Button>
               ) : (
                 <Button
                   onClick={handleNextClick}
                   disabled={buttonState === 'processing' || loading}
-                  className="px-8 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[120px]"
+                  className="px-8 flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95 min-w-[120px] relative overflow-hidden"
                 >
-                  {(buttonState === 'processing' || loading) ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
+                  {(buttonState === 'processing' || loading) && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-primary">
+                      <div className="flex items-center gap-2 text-primary-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading...</span>
+                      </div>
+                    </div>
+                  )}
+                  {(buttonState === 'processing' || loading) ? '' : (
                     <>
                       Continue <ArrowRight className="h-4 w-4" />
                     </>
