@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -199,19 +198,44 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   }, [showResult, loading, buttonState]);
 
   const renderSentenceWithBlank = () => {
-    // Create a cloze sentence by replacing the target word with a blank (5 underscores)
+    // Get the cloze sentence with proper blanks
     let clozeSentence = exercise.clozeSentence;
     
-    // If clozeSentence doesn't have the blank placeholder, create it
+    // Ensure we have a cloze sentence with blanks
     if (!clozeSentence || !clozeSentence.includes('_____')) {
-      // Use the regular sentence and replace the target word with blanks
-      clozeSentence = exercise.sentence.replace(
-        new RegExp(`\\b${targetWord}\\b`, 'gi'), 
-        '_____'
-      );
+      // Create cloze sentence by replacing the target word with blanks
+      if (targetWord) {
+        const regex = new RegExp(`\\b${targetWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+        clozeSentence = exercise.sentence.replace(regex, '_____');
+      }
+      
+      // If still no blanks, try a different approach
+      if (!clozeSentence || !clozeSentence.includes('_____')) {
+        const words = exercise.sentence.split(' ');
+        const targetWordLower = targetWord?.toLowerCase() || '';
+        
+        // Find and replace the target word
+        for (let i = 0; i < words.length; i++) {
+          const cleanWord = words[i].replace(/[.,!?;:]/g, '').toLowerCase();
+          if (cleanWord === targetWordLower) {
+            words[i] = '_____';
+            break;
+          }
+        }
+        clozeSentence = words.join(' ');
+      }
+      
+      // Final fallback - replace first word if still no blanks
+      if (!clozeSentence || !clozeSentence.includes('_____')) {
+        const words = exercise.sentence.split(' ');
+        if (words.length > 0) {
+          words[0] = '_____';
+          clozeSentence = words.join(' ');
+        }
+      }
     }
     
-    // Split by the blank placeholder
+    // Split by the blank placeholder and render
     const parts = clozeSentence.split('_____');
     
     if (parts.length >= 2) {
@@ -242,15 +266,12 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
       );
     }
     
-    // If we still can't create a proper cloze, show a fallback
+    // Fallback rendering if sentence parsing fails
     return (
       <div className="text-lg leading-relaxed space-y-4">
         <div className="text-center">
           <p className="mb-4">Complete the sentence by filling in the missing word:</p>
-          <p className="mb-4 font-medium">{exercise.sentence.replace(
-            new RegExp(`\\b${targetWord}\\b`, 'gi'), 
-            '_____'
-          )}</p>
+          <p className="mb-4 font-medium">{clozeSentence || exercise.sentence}</p>
           <div className="flex flex-col items-center gap-2">
             <Input
               ref={inputRef}

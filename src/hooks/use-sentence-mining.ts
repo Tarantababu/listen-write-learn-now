@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DifficultyLevel, ExerciseType, SentenceMiningSession, SentenceMiningExercise } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { compareTexts } from '@/utils/textComparison';
 
 export const useSentenceMining = () => {
   const { settings } = useUserSettingsContext();
@@ -181,11 +181,18 @@ export const useSentenceMining = () => {
 
       if (storeError) throw storeError;
 
-      setCurrentExercise({
+      // For cloze exercises, ensure we have a proper cloze sentence with blanks
+      let processedExercise = {
         ...exercise,
         id: storedExercise.id,
         sessionId: storedExercise.session_id
-      });
+      };
+
+      if (exercise.exerciseType === 'cloze') {
+        processedExercise = ensureClozeHasBlanks(processedExercise);
+      }
+
+      setCurrentExercise(processedExercise);
 
       // Reset UI state
       setUserResponse('');
@@ -204,6 +211,54 @@ export const useSentenceMining = () => {
     }
   };
 
+  // Ensure cloze exercises always have missing words
+  const ensureClozeHasBlanks = (exercise: SentenceMiningExercise): SentenceMiningExercise => {
+    const targetWord = exercise.targetWords?.[0];
+    
+    if (!targetWord) {
+      console.error('No target word found for cloze exercise');
+      return exercise;
+    }
+
+    let clozeSentence = exercise.clozeSentence;
+    
+    // If no cloze sentence or it doesn't contain blanks, create one
+    if (!clozeSentence || !clozeSentence.includes('_____')) {
+      // Create cloze sentence by replacing the target word with blanks
+      const regex = new RegExp(`\\b${targetWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      clozeSentence = exercise.sentence.replace(regex, '_____');
+      
+      // If replacement didn't work, try case-insensitive match
+      if (!clozeSentence.includes('_____')) {
+        const words = exercise.sentence.split(' ');
+        const targetWordLower = targetWord.toLowerCase();
+        
+        for (let i = 0; i < words.length; i++) {
+          const cleanWord = words[i].replace(/[.,!?;:]/g, '').toLowerCase();
+          if (cleanWord === targetWordLower) {
+            words[i] = '_____';
+            break;
+          }
+        }
+        clozeSentence = words.join(' ');
+      }
+    }
+
+    // Final check - if still no blanks, replace the first word as fallback
+    if (!clozeSentence.includes('_____')) {
+      const words = exercise.sentence.split(' ');
+      if (words.length > 0) {
+        words[0] = '_____';
+        clozeSentence = words.join(' ');
+      }
+    }
+
+    return {
+      ...exercise,
+      clozeSentence
+    };
+  };
+
   const submitAnswer = async (response: string, selectedWords: string[] = []) => {
     if (!currentExercise || !currentSession) return;
 
@@ -218,7 +273,7 @@ export const useSentenceMining = () => {
       
       switch (currentExercise.exerciseType) {
         case 'translation':
-          correct = evaluateTranslation(response, currentExercise.translation || '');
+          correct = evaluateTranslation(response, currentExercise.sentence || '');
           break;
         case 'vocabulary_marking':
           correct = evaluateVocabularyMarking(selectedWords, currentExercise.targetWords || []);
@@ -285,18 +340,14 @@ export const useSentenceMining = () => {
   };
 
   const evaluateTranslation = (userAnswer: string, correctAnswer: string): boolean => {
-    // Simple similarity check - in a real app, you'd use more sophisticated NLP
-    const userWords = userAnswer.toLowerCase().split(/\s+/);
-    const correctWords = correctAnswer.toLowerCase().split(/\s+/);
+    if (!userAnswer || !correctAnswer) return false;
+
+    // Use the enhanced text comparison utility for better evaluation
+    const result = compareTexts(correctAnswer, userAnswer);
     
-    let matches = 0;
-    for (const word of userWords) {
-      if (correctWords.includes(word)) {
-        matches++;
-      }
-    }
-    
-    return matches / correctWords.length >= 0.7; // 70% similarity threshold
+    // Consider it correct if accuracy is 70% or higher
+    // This accounts for minor differences in translation while maintaining standards
+    return result.accuracy >= 70;
   };
 
   const evaluateVocabularyMarking = (selectedWords: string[], targetWords: string[]): boolean => {
@@ -315,9 +366,26 @@ export const useSentenceMining = () => {
   };
 
   const evaluateCloze = (userAnswer: string, targetWords: string[]): boolean => {
-    // For cloze exercises, check if the answer contains any of the target words
-    const answerLower = userAnswer.toLowerCase();
-    return targetWords.some(word => answerLower.includes(word.toLowerCase()));
+    if (!userAnswer || !targetWords || targetWords.length === 0) return false;
+    
+    const userAnswerLower = userAnswer.toLowerCase().trim();
+    
+    // Check if the answer matches any of the target words (case-insensitive)
+    return targetWords.some(word => {
+      const targetWordLower = word.toLowerCase().trim();
+      
+      // Exact match
+      if (userAnswerLower === targetWordLower) return true;
+      
+      // Check if user answer contains the target word (for compound words or variations)
+      if (userAnswerLower.includes(targetWordLower) || targetWordLower.includes(userAnswerLower)) {
+        // Only accept if the difference in length is not too significant
+        const lengthDiff = Math.abs(userAnswerLower.length - targetWordLower.length);
+        return lengthDiff <= 3;
+      }
+      
+      return false;
+    });
   };
 
   const nextExercise = () => {
