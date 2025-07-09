@@ -8,17 +8,7 @@ import { Volume2, CheckCircle, XCircle, Eye, ArrowRight, Loader2, Keyboard, Ligh
 import { supabase } from '@/integrations/supabase/client';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-
-// Mock types for demonstration
-interface SentenceMiningExercise {
-  clozeSentence: string;
-  sentence: string;
-  targetWord: string;
-  targetWordTranslation?: string;
-  translation?: string;
-  explanation?: string;
-  difficulty: string;
-}
+import { SentenceMiningExercise } from '@/types/sentence-mining';
 
 interface ClozeExerciseProps {
   exercise: SentenceMiningExercise;
@@ -58,19 +48,19 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   const { settings } = useUserSettingsContext();
   const isMobile = useIsMobile();
 
+  // Get the first target word for this exercise
+  const targetWord = exercise.targetWords?.[0] || '';
+
   // Fetch translation for the target word
   useEffect(() => {
     const fetchTranslation = async () => {
-      if (exercise.targetWordTranslation) {
-        setWordTranslation(exercise.targetWordTranslation);
-        return;
-      }
+      if (!targetWord) return;
 
       setTranslationLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
           body: {
-            text: exercise.targetWord,
+            text: targetWord,
             language: settings.selectedLanguage,
             requestShort: true
           }
@@ -92,7 +82,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
     };
 
     fetchTranslation();
-  }, [exercise.targetWord, exercise.targetWordTranslation, settings.selectedLanguage]);
+  }, [targetWord, settings.selectedLanguage]);
 
   // Fetch translation for the full sentence
   useEffect(() => {
@@ -216,7 +206,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
     if (!clozeSentence || !clozeSentence.includes('_____')) {
       // Use the regular sentence and replace the target word with blanks
       clozeSentence = exercise.sentence.replace(
-        new RegExp(`\\b${exercise.targetWord}\\b`, 'gi'), 
+        new RegExp(`\\b${targetWord}\\b`, 'gi'), 
         '_____'
       );
     }
@@ -258,7 +248,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
         <div className="text-center">
           <p className="mb-4">Complete the sentence by filling in the missing word:</p>
           <p className="mb-4 font-medium">{exercise.sentence.replace(
-            new RegExp(`\\b${exercise.targetWord}\\b`, 'gi'), 
+            new RegExp(`\\b${targetWord}\\b`, 'gi'), 
             '_____'
           )}</p>
           <div className="flex flex-col items-center gap-2">
@@ -359,7 +349,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                     Correct answer:
                   </p>
                   <p className="text-blue-700 dark:text-blue-300 text-sm font-semibold">
-                    {exercise.targetWord}
+                    {targetWord}
                   </p>
                 </div>
               )}
@@ -563,7 +553,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                       Correct answer:
                     </p>
                     <p className="text-blue-700 dark:text-blue-300 font-semibold">
-                      {exercise.targetWord}
+                      {targetWord}
                     </p>
                   </div>
                 )}
