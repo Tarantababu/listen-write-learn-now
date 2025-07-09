@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Brain, Play, X, Loader2 } from 'lucide-react';
+import { Brain, Play, X, Loader2, BookOpen, Award, TrendingUp } from 'lucide-react';
 import { DifficultySelector } from './DifficultySelector';
 import { TranslationExercise } from './exercises/TranslationExercise';
 import { VocabularyMarkingExercise } from './exercises/VocabularyMarkingExercise';
@@ -19,9 +20,7 @@ import { EnhancedAudioPlayer } from './exercises/EnhancedAudioPlayer';
 
 export const SentenceMiningSection: React.FC = () => {
   const isMobile = useIsMobile();
-  const {
-    settings
-  } = useUserSettingsContext();
+  const { settings } = useUserSettingsContext();
   const [audioLoading, setAudioLoading] = useState(false);
   const {
     currentSession,
@@ -51,7 +50,6 @@ export const SentenceMiningSection: React.FC = () => {
     try {
       setAudioLoading(true);
       
-      // The EnhancedAudioPlayer will handle Norwegian optimization automatically
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text: currentExercise.sentence,
@@ -88,16 +86,19 @@ export const SentenceMiningSection: React.FC = () => {
   };
 
   if (loading && !currentExercise) {
-    return <div className="flex items-center justify-center py-12">
+    return (
+      <div className="flex items-center justify-center py-12">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Generating your exercise...</p>
+          <p className="text-muted-foreground">Generating your personalized exercise...</p>
         </div>
-      </div>;
+      </div>
+    );
   }
 
   if (error) {
-    return <Card className="w-full max-w-2xl mx-auto">
+    return (
+      <Card className="w-full max-w-2xl mx-auto">
         <CardContent className="pt-6">
           <div className="text-center space-y-4">
             <p className="text-red-600 dark:text-red-400">{error}</p>
@@ -106,13 +107,13 @@ export const SentenceMiningSection: React.FC = () => {
             </Button>
           </div>
         </CardContent>
-      </Card>;
+      </Card>
+    );
   }
 
   const renderExercise = () => {
     if (!currentExercise) return null;
     
-    // For exercises that don't have built-in audio handling, use EnhancedAudioPlayer
     const commonProps = {
       exercise: currentExercise,
       showResult,
@@ -126,35 +127,128 @@ export const SentenceMiningSection: React.FC = () => {
 
     switch (currentExercise.exerciseType) {
       case 'translation':
-        return <TranslationExercise {...commonProps} userResponse={userResponse} onResponseChange={updateUserResponse} onSubmit={handleSubmitAnswer} onNext={nextExercise} />;
+        return (
+          <TranslationExercise 
+            {...commonProps} 
+            userResponse={userResponse} 
+            onResponseChange={updateUserResponse} 
+            onSubmit={handleSubmitAnswer} 
+            onNext={nextExercise} 
+          />
+        );
       case 'vocabulary_marking':
-        return <VocabularyMarkingExercise {...commonProps} selectedWords={selectedWords} onWordSelect={toggleWord} onSubmit={handleSubmitAnswer} onNext={nextExercise} />;
+        return (
+          <VocabularyMarkingExercise 
+            {...commonProps} 
+            selectedWords={selectedWords} 
+            onWordSelect={toggleWord} 
+            onSubmit={handleSubmitAnswer} 
+            onNext={nextExercise} 
+          />
+        );
       case 'cloze':
-        return <ClozeExercise {...commonProps} userResponse={userResponse} onResponseChange={updateUserResponse} onSubmit={handleSubmitAnswer} onNext={nextExercise} />;
+        return (
+          <ClozeExercise 
+            {...commonProps} 
+            userResponse={userResponse} 
+            onResponseChange={updateUserResponse} 
+            onSubmit={handleSubmitAnswer} 
+            onNext={nextExercise} 
+          />
+        );
       default:
-        return <div className="space-y-4">
-            <SentenceDisplay exercise={currentExercise} onPlayAudio={handlePlayAudio} audioLoading={audioLoading} userResponse={userResponse} onResponseChange={updateUserResponse} showResult={showResult} isCorrect={isCorrect} />
+        return (
+          <div className="space-y-4">
+            <SentenceDisplay 
+              exercise={currentExercise} 
+              onPlayAudio={handlePlayAudio} 
+              audioLoading={audioLoading} 
+              userResponse={userResponse} 
+              onResponseChange={updateUserResponse} 
+              showResult={showResult} 
+              isCorrect={isCorrect} 
+            />
             
-            <UserResponse onSubmit={handleSubmitAnswer} onNext={nextExercise} showResult={showResult} isCorrect={isCorrect} correctAnswer={currentExercise.targetWord} loading={loading} explanation={currentExercise.explanation} />
-          </div>;
+            <UserResponse 
+              onSubmit={handleSubmitAnswer} 
+              onNext={nextExercise} 
+              showResult={showResult} 
+              isCorrect={isCorrect} 
+              correctAnswer={currentExercise.targetWords.join(', ')} 
+              loading={loading} 
+              explanation={currentExercise.explanation} 
+            />
+          </div>
+        );
     }
   };
 
-  return <div className="space-y-6">
+  return (
+    <div className="space-y-6">
       {/* Header */}
-      
+      <div className="text-center space-y-2">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <Brain className="h-8 w-8 text-primary" />
+          <h1 className="text-3xl font-bold">Sentence Mining</h1>
+        </div>
+        <p className="text-muted-foreground max-w-2xl mx-auto">
+          Learn vocabulary through context using the n+1 method. Each exercise introduces just the right number of new words based on your current knowledge.
+        </p>
+      </div>
+
+      {/* Progress Overview */}
+      {progress && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center space-x-2">
+                <BookOpen className="h-5 w-5 text-blue-500" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Words Learned</p>
+                  <p className="text-2xl font-bold">{progress.wordsLearned}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center space-x-2">
+                <Award className="h-5 w-5 text-green-500" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Sessions</p>
+                  <p className="text-2xl font-bold">{progress.totalSessions}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center space-x-2">
+                <TrendingUp className="h-5 w-5 text-purple-500" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Accuracy</p>
+                  <p className="text-2xl font-bold">{progress.averageAccuracy}%</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Progress Tracker */}
       {progress && <ProgressTracker progress={progress} currentSession={currentSession} />}
 
       {/* Main Content */}
-      {!currentSession ?
-    // Difficulty Selection
-    <div className="max-w-4xl mx-auto">
+      {!currentSession ? (
+        // Difficulty Selection
+        <div className="max-w-4xl mx-auto">
           <DifficultySelector onSelectDifficulty={handleStartSession} progress={progress?.difficultyProgress} />
-        </div> :
-    // Active Session
-    <div className="max-w-4xl mx-auto space-y-6">
+        </div>
+      ) : (
+        // Active Session
+        <div className="max-w-4xl mx-auto space-y-6">
           {/* Session Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -162,6 +256,11 @@ export const SentenceMiningSection: React.FC = () => {
               <span className="font-semibold">
                 {currentExercise?.exerciseType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} Exercise
               </span>
+              {currentSession && (
+                <span className="text-sm text-muted-foreground">
+                  ({currentSession.correct_exercises}/{currentSession.total_exercises})
+                </span>
+              )}
             </div>
             <Button variant="outline" size="sm" onClick={endSession} className="flex items-center gap-2 transition-transform duration-200 hover:scale-105 active:scale-95">
               <X className="h-4 w-4" />
@@ -171,9 +270,39 @@ export const SentenceMiningSection: React.FC = () => {
 
           {/* Exercise Display */}
           {renderExercise()}
-        </div>}
+        </div>
+      )}
 
       {/* Help Section */}
-      
-    </div>;
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5" />
+            How Sentence Mining Works
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Our sentence mining system uses the proven n+1 methodology, where each sentence contains mostly words you know plus just a few new words to learn.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div>
+                <h4 className="font-semibold mb-2">Beginner Level</h4>
+                <p className="text-muted-foreground">Learn 1 new word per sentence with familiar context</p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2">Intermediate Level</h4>
+                <p className="text-muted-foreground">Practice with 2-3 new words in more complex sentences</p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2">Advanced Level</h4>
+                <p className="text-muted-foreground">Challenge yourself with 3+ new words in sophisticated contexts</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 };

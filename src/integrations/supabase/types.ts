@@ -555,6 +555,51 @@ export type Database = {
         }
         Relationships: []
       }
+      known_words: {
+        Row: {
+          correct_count: number
+          created_at: string
+          first_seen_at: string
+          id: string
+          language: string
+          last_reviewed_at: string
+          mastery_level: number
+          next_review_date: string | null
+          review_count: number
+          updated_at: string
+          user_id: string
+          word: string
+        }
+        Insert: {
+          correct_count?: number
+          created_at?: string
+          first_seen_at?: string
+          id?: string
+          language: string
+          last_reviewed_at?: string
+          mastery_level?: number
+          next_review_date?: string | null
+          review_count?: number
+          updated_at?: string
+          user_id: string
+          word: string
+        }
+        Update: {
+          correct_count?: number
+          created_at?: string
+          first_seen_at?: string
+          id?: string
+          language?: string
+          last_reviewed_at?: string
+          mastery_level?: number
+          next_review_date?: string | null
+          review_count?: number
+          updated_at?: string
+          user_id?: string
+          word?: string
+        }
+        Relationships: []
+      }
       node_exercises: {
         Row: {
           created_at: string
@@ -966,6 +1011,113 @@ export type Database = {
           ip_address?: string | null
           user_agent?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      sentence_mining_exercises: {
+        Row: {
+          completed_at: string | null
+          completion_time: number | null
+          created_at: string
+          difficulty_score: number
+          exercise_type: string
+          hints_used: number
+          id: string
+          is_correct: boolean | null
+          sentence: string
+          session_id: string
+          target_words: string[]
+          translation: string | null
+          unknown_words: string[]
+          user_response: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          completion_time?: number | null
+          created_at?: string
+          difficulty_score?: number
+          exercise_type: string
+          hints_used?: number
+          id?: string
+          is_correct?: boolean | null
+          sentence: string
+          session_id: string
+          target_words: string[]
+          translation?: string | null
+          unknown_words: string[]
+          user_response?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          completion_time?: number | null
+          created_at?: string
+          difficulty_score?: number
+          exercise_type?: string
+          hints_used?: number
+          id?: string
+          is_correct?: boolean | null
+          sentence?: string
+          session_id?: string
+          target_words?: string[]
+          translation?: string | null
+          unknown_words?: string[]
+          user_response?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sentence_mining_exercises_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sentence_mining_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sentence_mining_sessions: {
+        Row: {
+          completed_at: string | null
+          correct_exercises: number
+          created_at: string
+          difficulty_level: string
+          exercise_types: string[]
+          id: string
+          language: string
+          new_words_encountered: number
+          session_data: Json | null
+          started_at: string
+          total_exercises: number
+          user_id: string
+          words_mastered: number
+        }
+        Insert: {
+          completed_at?: string | null
+          correct_exercises?: number
+          created_at?: string
+          difficulty_level: string
+          exercise_types: string[]
+          id?: string
+          language: string
+          new_words_encountered?: number
+          session_data?: Json | null
+          started_at?: string
+          total_exercises?: number
+          user_id: string
+          words_mastered?: number
+        }
+        Update: {
+          completed_at?: string | null
+          correct_exercises?: number
+          created_at?: string
+          difficulty_level?: string
+          exercise_types?: string[]
+          id?: string
+          language?: string
+          new_words_encountered?: number
+          session_data?: Json | null
+          started_at?: string
+          total_exercises?: number
+          user_id?: string
+          words_mastered?: number
         }
         Relationships: []
       }
@@ -1618,6 +1770,18 @@ export type Database = {
         Args: { user_id_param: string; language_param: string }
         Returns: number
       }
+      get_words_for_review: {
+        Args: {
+          user_id_param: string
+          language_param: string
+          limit_param?: number
+        }
+        Returns: {
+          word: string
+          mastery_level: number
+          days_overdue: number
+        }[]
+      }
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
@@ -1726,6 +1890,15 @@ export type Database = {
           user_id_param: string
           sentence_index_param: number
           total_sentences_param: number
+        }
+        Returns: undefined
+      }
+      update_word_mastery: {
+        Args: {
+          user_id_param: string
+          word_param: string
+          language_param: string
+          is_correct_param: boolean
         }
         Returns: undefined
       }
