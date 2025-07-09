@@ -174,7 +174,7 @@ export const SentenceMiningSection: React.FC = () => {
               onNext={nextExercise} 
               showResult={showResult} 
               isCorrect={isCorrect} 
-              correctAnswer={currentExercise.targetWords.join(', ')} 
+              correctAnswer={currentExercise.targetWords?.join(', ') || ''} 
               loading={loading} 
               explanation={currentExercise.explanation} 
             />
@@ -205,7 +205,7 @@ export const SentenceMiningSection: React.FC = () => {
                 <BookOpen className="h-5 w-5 text-blue-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">Words Learned</p>
-                  <p className="text-2xl font-bold">{progress.wordsLearned}</p>
+                  <p className="text-2xl font-bold">{progress.wordsLearned || 0}</p>
                 </div>
               </div>
             </CardContent>

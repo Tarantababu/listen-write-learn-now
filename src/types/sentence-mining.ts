@@ -2,7 +2,7 @@
 export interface SentenceMiningExercise {
   id: string;
   sentence: string;
-  targetWord: string;
+  targetWords: string[]; // Changed from targetWord to targetWords (array)
   clozeSentence: string;
   difficulty: DifficultyLevel;
   context: string;
@@ -15,6 +15,12 @@ export interface SentenceMiningExercise {
   correctAnswer: string;
   explanation?: string;
   clickableWords?: ClickableWord[];
+  // Database fields
+  session_id?: string;
+  sessionId?: string;
+  unknownWords?: string[];
+  difficultyScore?: number;
+  hints?: string[];
 }
 
 export interface ClickableWord {
@@ -35,6 +41,17 @@ export interface SentenceMiningSession {
   totalCorrect: number;
   totalAttempts: number;
   exerciseTypes: ExerciseType[];
+  // Database fields that match the actual schema
+  user_id: string;
+  difficulty_level: DifficultyLevel;
+  total_exercises: number;
+  correct_exercises: number;
+  new_words_encountered: number;
+  words_mastered: number;
+  started_at: string;
+  completed_at?: string;
+  created_at: string;
+  session_data?: any;
 }
 
 export interface SentenceMiningProgress {
@@ -55,6 +72,8 @@ export interface SentenceMiningProgress {
     correct: number;
     accuracy: number;
   }>;
+  // Additional fields from the working code
+  wordsLearned?: number;
 }
 
 export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';

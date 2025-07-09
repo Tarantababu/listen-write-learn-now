@@ -99,12 +99,24 @@ export const useSentenceMining = () => {
 
       if (sessionError) throw sessionError;
 
-      setCurrentSession(session);
+      // Convert database session to our interface format
+      const mappedSession: SentenceMiningSession = {
+        ...session,
+        difficulty: session.difficulty_level as DifficultyLevel,
+        exercises: [],
+        currentExerciseIndex: 0,
+        startTime: new Date(session.started_at),
+        totalCorrect: session.correct_exercises,
+        totalAttempts: session.total_exercises,
+        exerciseTypes: session.exercise_types as ExerciseType[]
+      };
+
+      setCurrentSession(mappedSession);
       
       // Generate first exercise
       await generateNextExercise(session.id, difficulty);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error starting session:', error);
       setError(error.message);
       toast.error('Failed to start session');
@@ -167,7 +179,7 @@ export const useSentenceMining = () => {
       setShowHint(false);
       setShowTranslation(false);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating exercise:', error);
       setError(error.message);
       toast.error('Failed to generate exercise');
@@ -190,13 +202,13 @@ export const useSentenceMining = () => {
       
       switch (currentExercise.exerciseType) {
         case 'translation':
-          correct = evaluateTranslation(response, currentExercise.translation);
+          correct = evaluateTranslation(response, currentExercise.translation || '');
           break;
         case 'vocabulary_marking':
-          correct = evaluateVocabularyMarking(selectedWords, currentExercise.targetWords);
+          correct = evaluateVocabularyMarking(selectedWords, currentExercise.targetWords || []);
           break;
         case 'cloze':
-          correct = evaluateCloze(response, currentExercise.targetWords);
+          correct = evaluateCloze(response, currentExercise.targetWords || []);
           break;
       }
 
@@ -224,13 +236,15 @@ export const useSentenceMining = () => {
         .eq('id', currentSession.id);
 
       // Update word mastery for target words
-      for (const word of currentExercise.targetWords) {
-        await supabase.rpc('update_word_mastery', {
-          user_id_param: user.id,
-          word_param: word,
-          language_param: currentSession.language,
-          is_correct_param: correct
-        });
+      if (currentExercise.targetWords) {
+        for (const word of currentExercise.targetWords) {
+          await supabase.rpc('update_word_mastery', {
+            user_id_param: user.id,
+            word_param: word,
+            language_param: currentSession.language,
+            is_correct_param: correct
+          });
+        }
       }
 
       // Update session object
@@ -246,7 +260,7 @@ export const useSentenceMining = () => {
         toast.error('Not quite right. Keep practicing!');
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting answer:', error);
       toast.error('Failed to submit answer');
     } finally {
@@ -320,7 +334,7 @@ export const useSentenceMining = () => {
       await loadProgress();
       
       toast.success('Session completed!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error ending session:', error);
       toast.error('Failed to end session');
     }
