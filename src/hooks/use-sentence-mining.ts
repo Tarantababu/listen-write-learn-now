@@ -88,7 +88,7 @@ export const useSentenceMining = () => {
         .from('sentence_mining_sessions')
         .insert({
           user_id: user.id,
-          language: settings.selectedLanguage, // Use selected language from settings
+          language: settings.selectedLanguage,
           difficulty_level: difficulty,
           exercise_types: ['translation', 'vocabulary_marking', 'cloze'],
           total_exercises: 0,
@@ -156,7 +156,7 @@ export const useSentenceMining = () => {
       const { data: exercise, error } = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
           difficulty_level: difficulty,
-          language: settings.selectedLanguage, // Use selected language from settings
+          language: settings.selectedLanguage,
           exercise_type: randomType,
           session_id: sessionId
         }
@@ -276,7 +276,9 @@ export const useSentenceMining = () => {
           correct = evaluateTranslation(response, currentExercise.sentence || '');
           break;
         case 'vocabulary_marking':
-          correct = evaluateVocabularyMarking(selectedWords, currentExercise.targetWords || []);
+          // For vocabulary marking, we don't evaluate correct/incorrect anymore
+          // Just mark words for learning
+          correct = true; // Always mark as "correct" since it's just for learning
           break;
         case 'cloze':
           correct = evaluateCloze(response, currentExercise.targetWords || []);
@@ -325,7 +327,10 @@ export const useSentenceMining = () => {
         correct_exercises: prev.correct_exercises + (correct ? 1 : 0)
       } : null);
 
-      if (correct) {
+      // Show appropriate feedback
+      if (currentExercise.exerciseType === 'vocabulary_marking') {
+        toast.success('Words marked for learning!');
+      } else if (correct) {
         toast.success('Correct! Well done!');
       } else {
         toast.error('Not quite right. Keep practicing!');
@@ -342,27 +347,33 @@ export const useSentenceMining = () => {
   const evaluateTranslation = (userAnswer: string, correctAnswer: string): boolean => {
     if (!userAnswer || !correctAnswer) return false;
 
-    // Use the enhanced text comparison utility for better evaluation
+    // Use a more lenient approach for translation evaluation
+    const normalizeForComparison = (text: string) => {
+      return text.toLowerCase()
+        .trim()
+        .replace(/[.,!?;:]/g, '')
+        .replace(/\s+/g, ' ');
+    };
+
+    const normalizedUser = normalizeForComparison(userAnswer);
+    const normalizedCorrect = normalizeForComparison(correctAnswer);
+
+    // Check for exact match first
+    if (normalizedUser === normalizedCorrect) {
+      return true;
+    }
+
+    // Use the enhanced text comparison utility but with a lower threshold
     const result = compareTexts(correctAnswer, userAnswer);
     
-    // Consider it correct if accuracy is 70% or higher
-    // This accounts for minor differences in translation while maintaining standards
-    return result.accuracy >= 70;
+    // Consider it correct if accuracy is 60% or higher (more lenient than before)
+    return result.accuracy >= 60;
   };
 
   const evaluateVocabularyMarking = (selectedWords: string[], targetWords: string[]): boolean => {
-    const selectedSet = new Set(selectedWords.map(w => w.toLowerCase()));
-    const targetSet = new Set(targetWords.map(w => w.toLowerCase()));
-    
-    // Check if user selected at least 80% of target words
-    let correctSelections = 0;
-    for (const word of targetWords) {
-      if (selectedSet.has(word.toLowerCase())) {
-        correctSelections++;
-      }
-    }
-    
-    return correctSelections / targetWords.length >= 0.8;
+    // For vocabulary marking, we don't need strict evaluation anymore
+    // Just return true if user selected any words
+    return selectedWords.length > 0;
   };
 
   const evaluateCloze = (userAnswer: string, targetWords: string[]): boolean => {
