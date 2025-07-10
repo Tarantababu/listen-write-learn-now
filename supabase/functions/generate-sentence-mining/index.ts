@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -82,7 +81,7 @@ async function generateExercise(
   const targetUnknownWords = getTargetUnknownWords(difficulty)
   
   for (const sentence of sentences) {
-    const words = extractWords(sentence.text)
+    const words = extractWords(sentence.targetText)
     const unknownWords = words.filter(word => !knownWords.has(word.toLowerCase()))
     
     if (unknownWords.length >= targetUnknownWords && unknownWords.length <= targetUnknownWords + 2) {
@@ -90,33 +89,33 @@ async function generateExercise(
         id: crypto.randomUUID(),
         sessionId,
         exerciseType,
-        sentence: sentence.text,
-        translation: sentence.translation, // This is always English
+        sentence: sentence.targetText, // Target language sentence
+        translation: sentence.englishText, // English translation for reference
         targetWords: unknownWords.slice(0, targetUnknownWords),
         unknownWords: unknownWords,
         difficultyScore: calculateDifficultyScore(unknownWords.length, words.length),
         explanation: `Focus on learning: ${unknownWords.slice(0, targetUnknownWords).join(', ')}`,
-        hints: generateHints(unknownWords.slice(0, targetUnknownWords), sentence.translation)
+        hints: generateHints(unknownWords.slice(0, targetUnknownWords), sentence.englishText)
       }
     }
   }
   
   // Fallback to first available sentence if no perfect match
   const fallbackSentence = sentences[0]
-  const words = extractWords(fallbackSentence.text)
+  const words = extractWords(fallbackSentence.targetText)
   const unknownWords = words.filter(word => !knownWords.has(word.toLowerCase()))
   
   return {
     id: crypto.randomUUID(),
     sessionId,
     exerciseType,
-    sentence: fallbackSentence.text,
-    translation: fallbackSentence.translation, // This is always English
+    sentence: fallbackSentence.targetText, // Target language sentence
+    translation: fallbackSentence.englishText, // English translation for reference
     targetWords: unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)),
     unknownWords: unknownWords,
     difficultyScore: calculateDifficultyScore(unknownWords.length, words.length),
     explanation: `Focus on learning: ${unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)).join(', ')}`,
-    hints: generateHints(unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)), fallbackSentence.translation)
+    hints: generateHints(unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)), fallbackSentence.englishText)
   }
 }
 
@@ -147,239 +146,239 @@ function generateHints(targetWords: string[], translation: string): string[] {
 }
 
 function getSampleSentences(difficulty: string, language: string) {
-  // Sample sentences in different languages with English translations
+  // Updated structure to have targetText (target language) and englishText (English translation)
   const sentencesData = {
     german: {
       beginner: [
-        { text: 'Die Katze sitzt auf dem Stuhl.', translation: 'The cat sits on the chair.' },
-        { text: 'Ich esse gerne Äpfel.', translation: 'I like to eat apples.' },
-        { text: 'Das Buch liegt auf dem Tisch.', translation: 'The book is on the table.' },
-        { text: 'Sie trinkt jeden Tag Wasser.', translation: 'She drinks water every day.' },
-        { text: 'Die Sonne scheint heute hell.', translation: 'The sun is shining bright today.' }
+        { targetText: 'Die Katze sitzt auf dem Stuhl.', englishText: 'The cat sits on the chair.' },
+        { targetText: 'Ich esse gerne Äpfel.', englishText: 'I like to eat apples.' },
+        { targetText: 'Das Buch liegt auf dem Tisch.', englishText: 'The book is on the table.' },
+        { targetText: 'Sie trinkt jeden Tag Wasser.', englishText: 'She drinks water every day.' },
+        { targetText: 'Die Sonne scheint heute hell.', englishText: 'The sun is shining bright today.' }
       ],
       intermediate: [
-        { text: 'Die Wettervorhersage sagt morgen Regen voraus.', translation: 'The weather forecast predicts rain tomorrow.' },
-        { text: 'Ich muss meine Hausaufgaben vor dem Abendessen beenden.', translation: 'I need to finish my homework before dinner.' },
-        { text: 'Das Konzert wurde wegen schlechten Wetters abgesagt.', translation: 'The concert was cancelled due to bad weather.' },
-        { text: 'Sie liest gerne Kriminalromane in ihrer Freizeit.', translation: 'She enjoys reading mystery novels in her free time.' },
-        { text: 'Das Restaurant serviert köstliche traditionelle Küche.', translation: 'The restaurant serves delicious traditional cuisine.' }
+        { targetText: 'Die Wettervorhersage sagt morgen Regen voraus.', englishText: 'The weather forecast predicts rain tomorrow.' },
+        { targetText: 'Ich muss meine Hausaufgaben vor dem Abendessen beenden.', englishText: 'I need to finish my homework before dinner.' },
+        { targetText: 'Das Konzert wurde wegen schlechten Wetters abgesagt.', englishText: 'The concert was cancelled due to bad weather.' },
+        { targetText: 'Sie liest gerne Kriminalromane in ihrer Freizeit.', englishText: 'She enjoys reading mystery novels in her free time.' },
+        { targetText: 'Das Restaurant serviert köstliche traditionelle Küche.', englishText: 'The restaurant serves delicious traditional cuisine.' }
       ],
       advanced: [
-        { text: 'Die archäologische Expedition entdeckte antike Artefakte.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
-        { text: 'Wirtschaftliche Schwankungen beeinflussen internationale Handelsmuster.', translation: 'Economic fluctuations affect international trade patterns.' },
-        { text: 'Das Pharmaunternehmen entwickelte innovative Behandlungen.', translation: 'The pharmaceutical company developed innovative treatments.' },
-        { text: 'Umweltschutz erfordert umfassende politische Veränderungen.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
-        { text: 'Der technologische Fortschritt revolutionierte die Kommunikationsmethoden.', translation: 'The technological advancement revolutionized communication methods.' }
+        { targetText: 'Die archäologische Expedition entdeckte antike Artefakte.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
+        { targetText: 'Wirtschaftliche Schwankungen beeinflussen internationale Handelsmuster.', englishText: 'Economic fluctuations affect international trade patterns.' },
+        { targetText: 'Das Pharmaunternehmen entwickelte innovative Behandlungen.', englishText: 'The pharmaceutical company developed innovative treatments.' },
+        { targetText: 'Umweltschutz erfordert umfassende politische Veränderungen.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
+        { targetText: 'Der technologische Fortschritt revolutionierte die Kommunikationsmethoden.', englishText: 'The technological advancement revolutionized communication methods.' }
       ]
     },
     spanish: {
       beginner: [
-        { text: 'El gato se sienta en la silla.', translation: 'The cat sits on the chair.' },
-        { text: 'Me gusta comer manzanas.', translation: 'I like to eat apples.' },
-        { text: 'El libro está en la mesa.', translation: 'The book is on the table.' },
-        { text: 'Ella bebe agua todos los días.', translation: 'She drinks water every day.' },
-        { text: 'El sol brilla hoy.', translation: 'The sun is shining today.' }
+        { targetText: 'El gato se sienta en la silla.', englishText: 'The cat sits on the chair.' },
+        { targetText: 'Me gusta comer manzanas.', englishText: 'I like to eat apples.' },
+        { targetText: 'El libro está en la mesa.', englishText: 'The book is on the table.' },
+        { targetText: 'Ella bebe agua todos los días.', englishText: 'She drinks water every day.' },
+        { targetText: 'El sol brilla hoy.', englishText: 'The sun is shining today.' }
       ],
       intermediate: [
-        { text: 'El pronóstico del tiempo predice lluvia mañana.', translation: 'The weather forecast predicts rain tomorrow.' },
-        { text: 'Necesito terminar mi tarea antes de la cena.', translation: 'I need to finish my homework before dinner.' },
-        { text: 'El concierto fue cancelado debido al mal tiempo.', translation: 'The concert was cancelled due to bad weather.' },
-        { text: 'A ella le gusta leer novelas de misterio en su tiempo libre.', translation: 'She enjoys reading mystery novels in her free time.' },
-        { text: 'El restaurante sirve deliciosa cocina tradicional.', translation: 'The restaurant serves delicious traditional cuisine.' }
+        { targetText: 'El pronóstico del tiempo predice lluvia mañana.', englishText: 'The weather forecast predicts rain tomorrow.' },
+        { targetText: 'Necesito terminar mi tarea antes de la cena.', englishText: 'I need to finish my homework before dinner.' },
+        { targetText: 'El concierto fue cancelado debido al mal tiempo.', englishText: 'The concert was cancelled due to bad weather.' },
+        { targetText: 'A ella le gusta leer novelas de misterio en su tiempo libre.', englishText: 'She enjoys reading mystery novels in her free time.' },
+        { targetText: 'El restaurante sirve deliciosa cocina tradicional.', englishText: 'The restaurant serves delicious traditional cuisine.' }
       ],
       advanced: [
-        { text: 'La expedición arqueológica descubrió artefactos antiguos.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
-        { text: 'Las fluctuaciones económicas afectan los patrones de comercio internacional.', translation: 'Economic fluctuations affect international trade patterns.' },
-        { text: 'La empresa farmacéutica desarrolló tratamientos innovadores.', translation: 'The pharmaceutical company developed innovative treatments.' },
-        { text: 'La sostenibilidad ambiental requiere cambios políticos integrales.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
-        { text: 'El avance tecnológico revolucionó los métodos de comunicación.', translation: 'The technological advancement revolutionized communication methods.' }
+        { targetText: 'La expedición arqueológica descubrió artefactos antiguos.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
+        { targetText: 'Las fluctuaciones económicas afectan los patrones de comercio internacional.', englishText: 'Economic fluctuations affect international trade patterns.' },
+        { targetText: 'La empresa farmacéutica desarrolló tratamientos innovadores.', englishText: 'The pharmaceutical company developed innovative treatments.' },
+        { targetText: 'La sostenibilidad ambiental requiere cambios políticos integrales.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
+        { targetText: 'El avance tecnológico revolucionó los métodos de comunicación.', englishText: 'The technological advancement revolutionized communication methods.' }
       ]
     },
     french: {
       beginner: [
-        { text: 'Le chat s\'assoit sur la chaise.', translation: 'The cat sits on the chair.' },
-        { text: 'J\'aime manger des pommes.', translation: 'I like to eat apples.' },
-        { text: 'Le livre est sur la table.', translation: 'The book is on the table.' },
-        { text: 'Elle boit de l\'eau tous les jours.', translation: 'She drinks water every day.' },
-        { text: 'Le soleil brille aujourd\'hui.', translation: 'The sun is shining today.' }
+        { targetText: 'Le chat s\'assoit sur la chaise.', englishText: 'The cat sits on the chair.' },
+        { targetText: 'J\'aime manger des pommes.', englishText: 'I like to eat apples.' },
+        { targetText: 'Le livre est sur la table.', englishText: 'The book is on the table.' },
+        { targetText: 'Elle boit de l\'eau tous les jours.', englishText: 'She drinks water every day.' },
+        { targetText: 'Le soleil brille aujourd\'hui.', englishText: 'The sun is shining today.' }
       ],
       intermediate: [
-        { text: 'Les prévisions météorologiques prévoient de la pluie demain.', translation: 'The weather forecast predicts rain tomorrow.' },
-        { text: 'Je dois finir mes devoirs avant le dîner.', translation: 'I need to finish my homework before dinner.' },
-        { text: 'Le concert a été annulé à cause du mauvais temps.', translation: 'The concert was cancelled due to bad weather.' },
-        { text: 'Elle aime lire des romans policiers pendant son temps libre.', translation: 'She enjoys reading mystery novels in her free time.' },
-        { text: 'Le restaurant sert une délicieuse cuisine traditionnelle.', translation: 'The restaurant serves delicious traditional cuisine.' }
+        { targetText: 'Les prévisions météorologiques prévoient de la pluie demain.', englishText: 'The weather forecast predicts rain tomorrow.' },
+        { targetText: 'Je dois finir mes devoirs avant le dîner.', englishText: 'I need to finish my homework before dinner.' },
+        { targetText: 'Le concert a été annulé à cause du mauvais temps.', englishText: 'The concert was cancelled due to bad weather.' },
+        { targetText: 'Elle aime lire des romans policiers pendant son temps libre.', englishText: 'She enjoys reading mystery novels in her free time.' },
+        { targetText: 'Le restaurant sert une délicieuse cuisine traditionnelle.', englishText: 'The restaurant serves delicious traditional cuisine.' }
       ],
       advanced: [
-        { text: 'L\'expédition archéologique a découvert des artefacts anciens.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
-        { text: 'Les fluctuations économiques affectent les modèles de commerce international.', translation: 'Economic fluctuations affect international trade patterns.' },
-        { text: 'L\'entreprise pharmaceutique a développé des traitements innovants.', translation: 'The pharmaceutical company developed innovative treatments.' },
-        { text: 'La durabilité environnementale nécessite des changements politiques complets.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
-        { text: 'L\'avancement technologique a révolutionné les méthodes de communication.', translation: 'The technological advancement revolutionized communication methods.' }
+        { targetText: 'L\'expédition archéologique a découvert des artefacts anciens.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
+        { targetText: 'Les fluctuations économiques affectent les modèles de commerce international.', englishText: 'Economic fluctuations affect international trade patterns.' },
+        { targetText: 'L\'entreprise pharmaceutique a développé des traitements innovants.', englishText: 'The pharmaceutical company developed innovative treatments.' },
+        { targetText: 'La durabilité environnementale nécessite des changements politiques complets.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
+        { targetText: 'L\'avancement technologique a révolutionné les méthodes de communication.', englishText: 'The technological advancement revolutionized communication methods.' }
       ]
     },
     turkish: {
       beginner: [
-        { text: 'Kedi sandalyede oturuyor.', translation: 'The cat sits on the chair.' },
-        { text: 'Elma yemeyi seviyorum.', translation: 'I like to eat apples.' },
-        { text: 'Kitap masanın üzerinde.', translation: 'The book is on the table.' },
-        { text: 'O her gün su içer.', translation: 'She drinks water every day.' },
-        { text: 'Güneş bugün parlıyor.', translation: 'The sun is shining today.' }
+        { targetText: 'Kedi sandalyede oturuyor.', englishText: 'The cat sits on the chair.' },
+        { targetText: 'Elma yemeyi seviyorum.', englishText: 'I like to eat apples.' },
+        { targetText: 'Kitap masanın üzerinde.', englishText: 'The book is on the table.' },
+        { targetText: 'O her gün su içer.', englishText: 'She drinks water every day.' },
+        { targetText: 'Güneş bugün parlıyor.', englishText: 'The sun is shining today.' }
       ],
       intermediate: [
-        { text: 'Hava durumu yarın yağmur öngörüyor.', translation: 'The weather forecast predicts rain tomorrow.' },
-        { text: 'Akşam yemeğinden önce ödevimi bitirmem gerekiyor.', translation: 'I need to finish my homework before dinner.' },
-        { text: 'Konser kötü hava nedeniyle iptal edildi.', translation: 'The concert was cancelled due to bad weather.' },
-        { text: 'Boş zamanlarında polisiye roman okumayı seviyor.', translation: 'She enjoys reading mystery novels in her free time.' },
-        { text: 'Restoran lezzetli geleneksel yemekler sunuyor.', translation: 'The restaurant serves delicious traditional cuisine.' }
+        { targetText: 'Hava durumu yarın yağmur öngörüyor.', englishText: 'The weather forecast predicts rain tomorrow.' },
+        { targetText: 'Akşam yemeğinden önce ödevimi bitirmem gerekiyor.', englishText: 'I need to finish my homework before dinner.' },
+        { targetText: 'Konser kötü hava nedeniyle iptal edildi.', englishText: 'The concert was cancelled due to bad weather.' },
+        { targetText: 'Boş zamanlarında polisiye roman okumayı seviyor.', englishText: 'She enjoys reading mystery novels in her free time.' },
+        { targetText: 'Restoran lezzetli geleneksel yemekler sunuyor.', englishText: 'The restaurant serves delicious traditional cuisine.' }
       ],
       advanced: [
-        { text: 'Arkeolojik keşif ekibi antik eserler buldu.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
-        { text: 'Ekonomik dalgalanmalar uluslararası ticaret modellerini etkiliyor.', translation: 'Economic fluctuations affect international trade patterns.' },
-        { text: 'İlaç şirketi yenilikçi tedaviler geliştirdi.', translation: 'The pharmaceutical company developed innovative treatments.' },
-        { text: 'Çevresel sürdürülebilirlik kapsamlı politika değişiklikleri gerektiriyor.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
-        { text: 'Teknolojik ilerleme iletişim yöntemlerinde devrim yarattı.', translation: 'The technological advancement revolutionized communication methods.' }
+        { targetText: 'Arkeolojik keşif ekibi antik eserler buldu.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
+        { targetText: 'Ekonomik dalgalanmalar uluslararası ticaret modellerini etkiliyor.', englishText: 'Economic fluctuations affect international trade patterns.' },
+        { targetText: 'İlaç şirketi yenilikçi tedaviler geliştirdi.', englishText: 'The pharmaceutical company developed innovative treatments.' },
+        { targetText: 'Çevresel sürdürülebilirlik kapsamlı politika değişiklikleri gerektiriyor.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
+        { targetText: 'Teknolojik ilerleme iletişim yöntemlerinde devrim yarattı.', englishText: 'The technological advancement revolutionized communication methods.' }
       ]
     },
     norwegian: {
       beginner: [
-        { text: 'Katten sitter på stolen.', translation: 'The cat sits on the chair.' },
-        { text: 'Jeg liker å spise epler.', translation: 'I like to eat apples.' },
-        { text: 'Boka ligger på bordet.', translation: 'The book is on the table.' },
-        { text: 'Hun drikker vann hver dag.', translation: 'She drinks water every day.' },
-        { text: 'Sola skinner i dag.', translation: 'The sun is shining today.' }
+        { targetText: 'Katten sitter på stolen.', englishText: 'The cat sits on the chair.' },
+        { targetText: 'Jeg liker å spise epler.', englishText: 'I like to eat apples.' },
+        { targetText: 'Boka ligger på bordet.', englishText: 'The book is on the table.' },
+        { targetText: 'Hun drikker vann hver dag.', englishText: 'She drinks water every day.' },
+        { targetText: 'Sola skinner i dag.', englishText: 'The sun is shining today.' }
       ],
       intermediate: [
-        { text: 'Værmelding varsler regn i morgen.', translation: 'The weather forecast predicts rain tomorrow.' },
-        { text: 'Jeg må fullføre leksene mine før middag.', translation: 'I need to finish my homework before dinner.' },
-        { text: 'Konserten ble avlyst på grunn av dårlig vær.', translation: 'The concert was cancelled due to bad weather.' },
-        { text: 'Hun liker å lese kriminalromaner på fritiden.', translation: 'She enjoys reading mystery novels in her free time.' },
-        { text: 'Restauranten serverer deilig tradisjonell mat.', translation: 'The restaurant serves delicious traditional cuisine.' }
+        { targetText: 'Værmelding varsler regn i morgen.', englishText: 'The weather forecast predicts rain tomorrow.' },
+        { targetText: 'Jeg må fullføre leksene mine før middag.', englishText: 'I need to finish my homework before dinner.' },
+        { targetText: 'Konserten ble avlyst på grunn av dårlig vær.', englishText: 'The concert was cancelled due to bad weather.' },
+        { targetText: 'Hun liker å lese kriminalromaner på fritiden.', englishText: 'She enjoys reading mystery novels in her free time.' },
+        { targetText: 'Restauranten serverer deilig tradisjonell mat.', englishText: 'The restaurant serves delicious traditional cuisine.' }
       ],
       advanced: [
-        { text: 'Den arkeologiske ekspedisjonen oppdaget gamle gjenstander.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
-        { text: 'Økonomiske svingninger påvirker internasjonale handelsmønstre.', translation: 'Economic fluctuations affect international trade patterns.' },
-        { text: 'Farmasøytisk selskap utviklet innovative behandlinger.', translation: 'The pharmaceutical company developed innovative treatments.' },
-        { text: 'Miljømessig bærekraft krever omfattende politiske endringer.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
-        { text: 'Teknologiske fremskritt revolusjonerte kommunikasjonsmetoder.', translation: 'The technological advancement revolutionized communication methods.' }
+        { targetText: 'Den arkeologiske ekspedisjonen oppdaget gamle gjenstander.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
+        { targetText: 'Økonomiske svingninger påvirker internasjonale handelsmønstre.', englishText: 'Economic fluctuations affect international trade patterns.' },
+        { targetText: 'Farmasøytisk selskap utviklet innovative behandlinger.', englishText: 'The pharmaceutical company developed innovative treatments.' },
+        { targetText: 'Miljømessig bærekraft krever omfattende politiske endringer.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
+        { targetText: 'Teknologiske fremskritt revolusjonerte kommunikasjonsmetoder.', englishText: 'The technological advancement revolutionized communication methods.' }
       ]
     },
     italian: {
       beginner: [
-        { text: 'Il gatto si siede sulla sedia.', translation: 'The cat sits on the chair.' },
-        { text: 'Mi piace mangiare le mele.', translation: 'I like to eat apples.' },
-        { text: 'Il libro è sul tavolo.', translation: 'The book is on the table.' },
-        { text: 'Lei beve acqua ogni giorno.', translation: 'She drinks water every day.' },
-        { text: 'Il sole splende oggi.', translation: 'The sun is shining today.' }
+        { targetText: 'Il gatto si siede sulla sedia.', englishText: 'The cat sits on the chair.' },
+        { targetText: 'Mi piace mangiare le mele.', englishText: 'I like to eat apples.' },
+        { targetText: 'Il libro è sul tavolo.', englishText: 'The book is on the table.' },
+        { targetText: 'Lei beve acqua ogni giorno.', englishText: 'She drinks water every day.' },
+        { targetText: 'Il sole splende oggi.', englishText: 'The sun is shining today.' }
       ],
       intermediate: [
-        { text: 'Le previsioni meteo predicono pioggia domani.', translation: 'The weather forecast predicts rain tomorrow.' },
-        { text: 'Devo finire i compiti prima di cena.', translation: 'I need to finish my homework before dinner.' },
-        { text: 'Il concerto è stato cancellato a causa del maltempo.', translation: 'The concert was cancelled due to bad weather.' },
-        { text: 'Le piace leggere romanzi gialli nel tempo libero.', translation: 'She enjoys reading mystery novels in her free time.' },
-        { text: 'Il ristorante serve deliziosa cucina tradizionale.', translation: 'The restaurant serves delicious traditional cuisine.' }
+        { targetText: 'Le previsioni meteo predicono pioggia domani.', englishText: 'The weather forecast predicts rain tomorrow.' },
+        { targetText: 'Devo finire i compiti prima di cena.', englishText: 'I need to finish my homework before dinner.' },
+        { targetText: 'Il concerto è stato cancellato a causa del maltempo.', englishText: 'The concert was cancelled due to bad weather.' },
+        { targetText: 'Le piace leggere romanzi gialli nel tempo libero.', englishText: 'She enjoys reading mystery novels in her free time.' },
+        { targetText: 'Il ristorante serve deliziosa cucina tradizionale.', englishText: 'The restaurant serves delicious traditional cuisine.' }
       ],
       advanced: [
-        { text: 'La spedizione archeologica ha scoperto antichi manufatti.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
-        { text: 'Le fluttuazioni economiche influenzano i modelli commerciali internazionali.', translation: 'Economic fluctuations affect international trade patterns.' },
-        { text: 'L\'azienda farmaceutica ha sviluppato trattamenti innovativi.', translation: 'The pharmaceutical company developed innovative treatments.' },
-        { text: 'La sostenibilità ambientale richiede cambiamenti politici completi.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
-        { text: 'L\'avanzamento tecnologico ha rivoluzionato i metodi di comunicazione.', translation: 'The technological advancement revolutionized communication methods.' }
+        { targetText: 'La spedizione archeologica ha scoperto antichi manufatti.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
+        { targetText: 'Le fluttuazioni economiche influenzano i modelli commerciali internazionali.', englishText: 'Economic fluctuations affect international trade patterns.' },
+        { targetText: 'L\'azienda farmaceutica ha sviluppato trattamenti innovativi.', englishText: 'The pharmaceutical company developed innovative treatments.' },
+        { targetText: 'La sostenibilità ambientale richiede cambiamenti politici completi.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
+        { targetText: 'L\'avanzamento tecnologico ha rivoluzionato i metodi di comunicazione.', englishText: 'The technological advancement revolutionized communication methods.' }
       ]
     },
     portuguese: {
       beginner: [
-        { text: 'O gato senta na cadeira.', translation: 'The cat sits on the chair.' },
-        { text: 'Eu gosto de comer maçãs.', translation: 'I like to eat apples.' },
-        { text: 'O livro está na mesa.', translation: 'The book is on the table.' },
-        { text: 'Ela bebe água todos os dias.', translation: 'She drinks water every day.' },
-        { text: 'O sol brilha hoje.', translation: 'The sun is shining today.' }
+        { targetText: 'O gato senta na cadeira.', englishText: 'The cat sits on the chair.' },
+        { targetText: 'Eu gosto de comer maçãs.', englishText: 'I like to eat apples.' },
+        { targetText: 'O livro está na mesa.', englishText: 'The book is on the table.' },
+        { targetText: 'Ela bebe água todos os dias.', englishText: 'She drinks water every day.' },
+        { targetText: 'O sol brilha hoje.', englishText: 'The sun is shining today.' }
       ],
       intermediate: [
-        { text: 'A previsão do tempo prevê chuva amanhã.', translation: 'The weather forecast predicts rain tomorrow.' },
-        { text: 'Preciso terminar minha lição de casa antes do jantar.', translation: 'I need to finish my homework before dinner.' },
-        { text: 'O concerto foi cancelado devido ao mau tempo.', translation: 'The concert was cancelled due to bad weather.' },
-        { text: 'Ela gosta de ler romances policiais no tempo livre.', translation: 'She enjoys reading mystery novels in her free time.' },
-        { text: 'O restaurante serve deliciosa culinária tradicional.', translation: 'The restaurant serves delicious traditional cuisine.' }
+        { targetText: 'A previsão do tempo prevê chuva amanhã.', englishText: 'The weather forecast predicts rain tomorrow.' },
+        { targetText: 'Preciso terminar minha lição de casa antes do jantar.', englishText: 'I need to finish my homework before dinner.' },
+        { targetText: 'O concerto foi cancelado devido ao mau tempo.', englishText: 'The concert was cancelled due to bad weather.' },
+        { targetText: 'Ela gosta de ler romances policiais no tempo livre.', englishText: 'She enjoys reading mystery novels in her free time.' },
+        { targetText: 'O restaurante serve deliciosa culinária tradicional.', englishText: 'The restaurant serves delicious traditional cuisine.' }
       ],
       advanced: [
-        { text: 'A expedição arqueológica descobriu artefatos antigos.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
-        { text: 'Flutuações econômicas afetam padrões de comércio internacional.', translation: 'Economic fluctuations affect international trade patterns.' },
-        { text: 'A empresa farmacêutica desenvolveu tratamentos inovadores.', translation: 'The pharmaceutical company developed innovative treatments.' },
-        { text: 'A sustentabilidade ambiental requer mudanças políticas abrangentes.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
-        { text: 'O avanço tecnológico revolucionou os métodos de comunicação.', translation: 'The technological advancement revolutionized communication methods.' }
+        { targetText: 'A expedição arqueológica descobriu artefatos antigos.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
+        { targetText: 'Flutuações econômicas afetam padrões de comércio internacional.', englishText: 'Economic fluctuations affect international trade patterns.' },
+        { targetText: 'A empresa farmacêutica desenvolveu tratamentos inovadores.', englishText: 'The pharmaceutical company developed innovative treatments.' },
+        { targetText: 'A sustentabilidade ambiental requer mudanças políticas abrangentes.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
+        { targetText: 'O avanço tecnológico revolucionou os métodos de comunicação.', englishText: 'The technological advancement revolutionized communication methods.' }
       ]
     },
     swedish: {
       beginner: [
-        { text: 'Katten sitter på stolen.', translation: 'The cat sits on the chair.' },
-        { text: 'Jag tycker om att äta äpplen.', translation: 'I like to eat apples.' },
-        { text: 'Boken ligger på bordet.', translation: 'The book is on the table.' },
-        { text: 'Hon dricker vatten varje dag.', translation: 'She drinks water every day.' },
-        { text: 'Solen skiner idag.', translation: 'The sun is shining today.' }
+        { targetText: 'Katten sitter på stolen.', englishText: 'The cat sits on the chair.' },
+        { targetText: 'Jag tycker om att äta äpplen.', englishText: 'I like to eat apples.' },
+        { targetText: 'Boken ligger på bordet.', englishText: 'The book is on the table.' },
+        { targetText: 'Hon dricker vatten varje dag.', englishText: 'She drinks water every day.' },
+        { targetText: 'Solen skiner idag.', englishText: 'The sun is shining today.' }
       ],
       intermediate: [
-        { text: 'Väderleken förutspår regn imorgon.', translation: 'The weather forecast predicts rain tomorrow.' },
-        { text: 'Jag måste avsluta mina läxor före middagen.', translation: 'I need to finish my homework before dinner.' },
-        { text: 'Konserten ställdes in på grund av dåligt väder.', translation: 'The concert was cancelled due to bad weather.' },
-        { text: 'Hon tycker om att läsa deckare på fritiden.', translation: 'She enjoys reading mystery novels in her free time.' },
-        { text: 'Restaurangen serverar läcker traditionell mat.', translation: 'The restaurant serves delicious traditional cuisine.' }
+        { targetText: 'Väderleken förutspår regn imorgon.', englishText: 'The weather forecast predicts rain tomorrow.' },
+        { targetText: 'Jag måste avsluta mina läxor före middagen.', englishText: 'I need to finish my homework before dinner.' },
+        { targetText: 'Konserten ställdes in på grund av dåligt väder.', englishText: 'The concert was cancelled due to bad weather.' },
+        { targetText: 'Hon tycker om att läsa deckare på fritiden.', englishText: 'She enjoys reading mystery novels in her free time.' },
+        { targetText: 'Restaurangen serverar läcker traditionell mat.', englishText: 'The restaurant serves delicious traditional cuisine.' }
       ],
       advanced: [
-        { text: 'Den arkeologiska expeditionen upptäckte gamla föremål.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
-        { text: 'Ekonomiska fluktuationer påverkar internationella handelsmönster.', translation: 'Economic fluctuations affect international trade patterns.' },
-        { text: 'Läkemedelsföretaget utvecklade innovativa behandlingar.', translation: 'The pharmaceutical company developed innovative treatments.' },
-        { text: 'Miljömässig hållbarhet kräver omfattande politiska förändringar.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
-        { text: 'Teknologiska framsteg revolutionerade kommunikationsmetoder.', translation: 'The technological advancement revolutionized communication methods.' }
+        { targetText: 'Den arkeologiska expeditionen upptäckte gamla föremål.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
+        { targetText: 'Ekonomiska fluktuationer påverkar internationella handelsmönster.', englishText: 'Economic fluctuations affect international trade patterns.' },
+        { targetText: 'Läkemedelsföretaget utvecklade innovativa behandlingar.', englishText: 'The pharmaceutical company developed innovative treatments.' },
+        { targetText: 'Miljömässig hållbarhet kräver omfattande politiska förändringar.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
+        { targetText: 'Teknologiska framsteg revolutionerade kommunikationsmetoder.', englishText: 'The technological advancement revolutionized communication methods.' }
       ]
     },
     dutch: {
       beginner: [
-        { text: 'De kat zit op de stoel.', translation: 'The cat sits on the chair.' },
-        { text: 'Ik eet graag appels.', translation: 'I like to eat apples.' },
-        { text: 'Het boek ligt op de tafel.', translation: 'The book is on the table.' },
-        { text: 'Zij drinkt elke dag water.', translation: 'She drinks water every day.' },
-        { text: 'De zon schijnt vandaag.', translation: 'The sun is shining today.' }
+        { targetText: 'De kat zit op de stoel.', englishText: 'The cat sits on the chair.' },
+        { targetText: 'Ik eet graag appels.', englishText: 'I like to eat apples.' },
+        { targetText: 'Het boek ligt op de tafel.', englishText: 'The book is on the table.' },
+        { targetText: 'Zij drinkt elke dag water.', englishText: 'She drinks water every day.' },
+        { targetText: 'De zon schijnt vandaag.', englishText: 'The sun is shining today.' }
       ],
       intermediate: [
-        { text: 'De weersvoorspelling voorspelt morgen regen.', translation: 'The weather forecast predicts rain tomorrow.' },
-        { text: 'Ik moet mijn huiswerk afmaken voor het avondeten.', translation: 'I need to finish my homework before dinner.' },
-        { text: 'Het concert werd afgelast vanwege slecht weer.', translation: 'The concert was cancelled due to bad weather.' },
-        { text: 'Zij leest graag detectiveromans in haar vrije tijd.', translation: 'She enjoys reading mystery novels in her free time.' },
-        { text: 'Het restaurant serveert heerlijke traditionele keuken.', translation: 'The restaurant serves delicious traditional cuisine.' }
+        { targetText: 'De weersvoorspelling voorspelt morgen regen.', englishText: 'The weather forecast predicts rain tomorrow.' },
+        { targetText: 'Ik moet mijn huiswerk afmaken voor het avondeten.', englishText: 'I need to finish my homework before dinner.' },
+        { targetText: 'Het concert werd afgelast vanwege slecht weer.', englishText: 'The concert was cancelled due to bad weather.' },
+        { targetText: 'Zij leest graag detectiveromans in haar vrije tijd.', englishText: 'She enjoys reading mystery novels in her free time.' },
+        { targetText: 'Het restaurant serveert heerlijke traditionele keuken.', englishText: 'The restaurant serves delicious traditional cuisine.' }
       ],
       advanced: [
-        { text: 'De archeologische expeditie ontdekte oude artefacten.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
-        { text: 'Economische fluctuaties beïnvloeden internationale handelspatronen.', translation: 'Economic fluctuations affect international trade patterns.' },
-        { text: 'Het farmaceutische bedrijf ontwikkelde innovatieve behandelingen.', translation: 'The pharmaceutical company developed innovative treatments.' },
-        { text: 'Duurzaamheid vereist uitgebreide beleidsveranderingen.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
-        { text: 'Technologische vooruitgang revolutioneerde communicatiemethoden.', translation: 'The technological advancement revolutionized communication methods.' }
+        { targetText: 'De archeologische expeditie ontdekte oude artefacten.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
+        { targetText: 'Economische fluctuaties beïnvloeden internationale handelspatronen.', englishText: 'Economic fluctuations affect international trade patterns.' },
+        { targetText: 'Het farmaceutische bedrijf ontwikkelde innovatieve behandelingen.', englishText: 'The pharmaceutical company developed innovative treatments.' },
+        { targetText: 'Duurzaamheid vereist uitgebreide beleidsveranderingen.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
+        { targetText: 'Technologische vooruitgang revolutioneerde communicatiemethoden.', englishText: 'The technological advancement revolutionized communication methods.' }
       ]
     }
   }
   
-  // Default to English if language not found
+  // Default to English sentences if language not found
   const defaultSentences = {
     beginner: [
-      { text: 'The cat sits on the mat.', translation: 'The cat sits on the mat.' },
-      { text: 'I like to eat apples.', translation: 'I like to eat apples.' },
-      { text: 'The book is on the table.', translation: 'The book is on the table.' },
-      { text: 'She drinks water every day.', translation: 'She drinks water every day.' },
-      { text: 'The sun is bright today.', translation: 'The sun is bright today.' }
+      { targetText: 'The cat sits on the mat.', englishText: 'The cat sits on the mat.' },
+      { targetText: 'I like to eat apples.', englishText: 'I like to eat apples.' },
+      { targetText: 'The book is on the table.', englishText: 'The book is on the table.' },
+      { targetText: 'She drinks water every day.', englishText: 'She drinks water every day.' },
+      { targetText: 'The sun is bright today.', englishText: 'The sun is bright today.' }
     ],
     intermediate: [
-      { text: 'The weather forecast predicts rain tomorrow.', translation: 'The weather forecast predicts rain tomorrow.' },
-      { text: 'I need to finish my homework before dinner.', translation: 'I need to finish my homework before dinner.' },
-      { text: 'The concert was cancelled due to bad weather.', translation: 'The concert was cancelled due to bad weather.' },
-      { text: 'She enjoys reading mystery novels in her free time.', translation: 'She enjoys reading mystery novels in her free time.' },
-      { text: 'The restaurant serves delicious traditional cuisine.', translation: 'The restaurant serves delicious traditional cuisine.' }
+      { targetText: 'The weather forecast predicts rain tomorrow.', englishText: 'The weather forecast predicts rain tomorrow.' },
+      { targetText: 'I need to finish my homework before dinner.', englishText: 'I need to finish my homework before dinner.' },
+      { targetText: 'The concert was cancelled due to bad weather.', englishText: 'The concert was cancelled due to bad weather.' },
+      { targetText: 'She enjoys reading mystery novels in her free time.', englishText: 'She enjoys reading mystery novels in her free time.' },
+      { targetText: 'The restaurant serves delicious traditional cuisine.', englishText: 'The restaurant serves delicious traditional cuisine.' }
     ],
     advanced: [
-      { text: 'The archaeological expedition uncovered ancient artifacts.', translation: 'The archaeological expedition uncovered ancient artifacts.' },
-      { text: 'Economic fluctuations affect international trade patterns.', translation: 'Economic fluctuations affect international trade patterns.' },
-      { text: 'The pharmaceutical company developed innovative treatments.', translation: 'The pharmaceutical company developed innovative treatments.' },
-      { text: 'Environmental sustainability requires comprehensive policy changes.', translation: 'Environmental sustainability requires comprehensive policy changes.' },
-      { text: 'The technological advancement revolutionized communication methods.', translation: 'The technological advancement revolutionized communication methods.' }
+      { targetText: 'The archaeological expedition uncovered ancient artifacts.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
+      { targetText: 'Economic fluctuations affect international trade patterns.', englishText: 'Economic fluctuations affect international trade patterns.' },
+      { targetText: 'The pharmaceutical company developed innovative treatments.', englishText: 'The pharmaceutical company developed innovative treatments.' },
+      { targetText: 'Environmental sustainability requires comprehensive policy changes.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
+      { targetText: 'The technological advancement revolutionized communication methods.', englishText: 'The technological advancement revolutionized communication methods.' }
     ]
   }
   

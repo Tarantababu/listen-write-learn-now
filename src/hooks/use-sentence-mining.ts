@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -227,21 +226,26 @@ export const useSentenceMining = () => {
       // Enhanced answer evaluation based on exercise type
       switch (currentExercise.exerciseType) {
         case 'translation':
-          // For translation exercises, the user's response should be compared against the correct translation
-          // The currentExercise.sentence is the original sentence, currentExercise.translation is the expected translation
+          // For translation exercises, compare user's response against the target language sentence
           evaluationResult = evaluateAnswer(
             response, 
-            currentExercise.sentence || '', // Compare against the target language sentence
+            currentExercise.sentence || '', 
             'translation',
             0.7
           );
           break;
           
         case 'vocabulary_marking':
-          evaluationResult = evaluateVocabularyMarking(
-            selectedWords, 
-            currentExercise.targetWords || []
-          );
+          // For vocabulary marking, always consider it successful (just marking words for learning)
+          evaluationResult = {
+            isCorrect: true,
+            accuracy: 100,
+            feedback: selectedWords.length > 0 
+              ? `Marked ${selectedWords.length} word(s) for learning` 
+              : 'No words selected - that\'s okay!',
+            similarityScore: 1,
+            category: 'excellent' as const
+          };
           break;
           
         case 'cloze':
@@ -308,8 +312,10 @@ export const useSentenceMining = () => {
         correct_exercises: prev.correct_exercises + (evaluationResult.isCorrect ? 1 : 0)
       } : null);
 
-      // Enhanced feedback
-      if (evaluationResult.isCorrect) {
+      // Show appropriate feedback
+      if (currentExercise.exerciseType === 'vocabulary_marking') {
+        toast.success(evaluationResult.feedback);
+      } else if (evaluationResult.isCorrect) {
         toast.success(evaluationResult.feedback);
       } else {
         toast.error(evaluationResult.feedback);
@@ -321,42 +327,6 @@ export const useSentenceMining = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const evaluateTranslation = (userAnswer: string, correctAnswer: string): boolean => {
-    // Simple similarity check - in a real app, you'd use more sophisticated NLP
-    const userWords = userAnswer.toLowerCase().split(/\s+/);
-    const correctWords = correctAnswer.toLowerCase().split(/\s+/);
-    
-    let matches = 0;
-    for (const word of userWords) {
-      if (correctWords.includes(word)) {
-        matches++;
-      }
-    }
-    
-    return matches / correctWords.length >= 0.7; // 70% similarity threshold
-  };
-
-  const evaluateVocabularyMarking = (selectedWords: string[], targetWords: string[]): boolean => {
-    const selectedSet = new Set(selectedWords.map(w => w.toLowerCase()));
-    const targetSet = new Set(targetWords.map(w => w.toLowerCase()));
-    
-    // Check if user selected at least 80% of target words
-    let correctSelections = 0;
-    for (const word of targetWords) {
-      if (selectedSet.has(word.toLowerCase())) {
-        correctSelections++;
-      }
-    }
-    
-    return correctSelections / targetWords.length >= 0.8;
-  };
-
-  const evaluateCloze = (userAnswer: string, targetWords: string[]): boolean => {
-    // For cloze exercises, check if the answer contains any of the target words
-    const answerLower = userAnswer.toLowerCase();
-    return targetWords.some(word => answerLower.includes(word.toLowerCase()));
   };
 
   const nextExercise = () => {

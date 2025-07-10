@@ -42,9 +42,6 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
 
   // Split sentence into words for selection
   const words = exercise.sentence.split(/\s+/).filter(word => word.length > 0);
-  
-  // Get target words (words that should be selected)
-  const targetWords = exercise.targetWords || [];
 
   const handleWordClick = (word: string) => {
     if (showResult) return;
@@ -62,7 +59,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
     const isSelected = isWordSelected(word);
     
     if (showResult) {
-      // In result mode, just show selected words as marked for learning
+      // In result mode, show selected words as marked for learning
       return isSelected 
         ? 'bg-blue-200 text-blue-800 border-blue-500' 
         : 'hover:bg-gray-100';
@@ -74,7 +71,6 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
     }
   };
 
-  // Get language display name
   const getLanguageDisplayName = (language: string) => {
     const languageNames: Record<string, string> = {
       'german': 'German',
@@ -199,6 +195,14 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
                   </p>
                   <p className="text-sm text-blue-700 dark:text-blue-300">
                     {selectedWords.join(', ')}
+                  </p>
+                </div>
+              )}
+
+              {selectedWords.length === 0 && (
+                <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    No words selected - that's okay! You can move on to the next exercise.
                   </p>
                 </div>
               )}
@@ -333,6 +337,14 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
                     </p>
                     <p className="text-sm text-blue-700 dark:text-blue-300">
                       {selectedWords.join(', ')}
+                    </p>
+                  </div>
+                )}
+
+                {selectedWords.length === 0 && (
+                  <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg max-w-md mx-auto">
+                    <p className="text-sm text-green-700 dark:text-green-300">
+                      No words selected - that's okay! You can move on to the next exercise.
                     </p>
                   </div>
                 )}
