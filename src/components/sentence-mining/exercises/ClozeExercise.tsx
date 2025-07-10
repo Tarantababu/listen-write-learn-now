@@ -1,26 +1,26 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Volume2, CheckCircle, XCircle, Eye, ArrowRight, Loader2, Keyboard, Lightbulb } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { Volume2, CheckCircle, XCircle } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { compareTexts } from '@/utils/textComparison';
 
 interface ClozeExerciseProps {
   exercise: SentenceMiningExercise;
   userResponse: string;
   onResponseChange: (response: string) => void;
-  onSubmit: () => void;
-  onNext: () => void;
   showResult: boolean;
   isCorrect: boolean;
   loading: boolean;
   onPlayAudio?: () => void;
   audioLoading?: boolean;
+  onSubmit: () => void;
+  onNext: () => void;
   showTranslation: boolean;
   onToggleTranslation: () => void;
 }
@@ -29,262 +29,77 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   exercise,
   userResponse,
   onResponseChange,
-  onSubmit,
-  onNext,
   showResult,
   isCorrect,
   loading,
   onPlayAudio,
   audioLoading = false,
+  onSubmit,
+  onNext,
   showTranslation,
-  onToggleTranslation,
+  onToggleTranslation
 }) => {
-  const [wordTranslation, setWordTranslation] = useState<string>('');
-  const [translationLoading, setTranslationLoading] = useState(false);
-  const [sentenceTranslation, setSentenceTranslation] = useState<string>('');
-  const [sentenceTranslationLoading, setSentenceTranslationLoading] = useState(false);
-  const [buttonState, setButtonState] = useState<'idle' | 'processing'>('idle');
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { settings } = useUserSettingsContext();
   const isMobile = useIsMobile();
+  const { settings } = useUserSettingsContext();
+  const [comparisonResult, setComparisonResult] = useState<any>(null);
 
-  // Get the first target word for this exercise
-  const targetWord = exercise.targetWords?.[0] || '';
+  // Get target words for the blank
+  const targetWords = exercise.targetWords || [];
+  const targetWord = targetWords[0] || '';
 
-  // Fetch translation for the target word
+  // Create cloze sentence by replacing target word with blank
+  const createClozeSentence = (sentence: string, word: string) => {
+    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+    return sentence.replace(regex, '___');
+  };
+
+  const clozeSentence = createClozeSentence(exercise.sentence, targetWord);
+
+  // Enhanced answer checking with fuzzy matching
   useEffect(() => {
-    const fetchTranslation = async () => {
-      if (!targetWord) return;
-
-      setTranslationLoading(true);
-      try {
-        const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
-          body: {
-            text: targetWord,
-            language: settings.selectedLanguage,
-            requestShort: true
-          }
-        });
-
-        if (error) throw error;
-
-        if (data?.definition) {
-          setWordTranslation(data.definition);
-        } else {
-          setWordTranslation('translation unavailable');
-        }
-      } catch (error) {
-        console.error('Error fetching translation:', error);
-        setWordTranslation('translation unavailable');
-      } finally {
-        setTranslationLoading(false);
-      }
-    };
-
-    fetchTranslation();
-  }, [targetWord, settings.selectedLanguage]);
-
-  // Fetch translation for the full sentence
-  useEffect(() => {
-    const fetchSentenceTranslation = async () => {
-      if (exercise.translation) {
-        setSentenceTranslation(exercise.translation);
-        return;
-      }
-
-      setSentenceTranslationLoading(true);
-      try {
-        const { data, error } = await supabase.functions.invoke('generate-vocabulary-info', {
-          body: {
-            text: exercise.sentence,
-            language: settings.selectedLanguage,
-            requestShort: true
-          }
-        });
-
-        if (error) throw error;
-
-        if (data?.definition) {
-          setSentenceTranslation(data.definition);
-        } else {
-          setSentenceTranslation('Translation unavailable');
-        }
-      } catch (error) {
-        console.error('Error fetching sentence translation:', error);
-        setSentenceTranslation('Translation unavailable');
-      } finally {
-        setSentenceTranslationLoading(false);
-      }
-    };
-
-    fetchSentenceTranslation();
-  }, [exercise.sentence, exercise.translation, settings.selectedLanguage]);
-
-  // Auto-focus input when component mounts and on mobile
-  useEffect(() => {
-    if (inputRef.current && !showResult) {
-      // Small delay to ensure proper focus on mobile
-      const timer = setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
-      return () => clearTimeout(timer);
+    if (showResult && userResponse) {
+      const result = compareTexts(targetWord, userResponse);
+      setComparisonResult(result);
     }
-  }, [showResult, exercise]);
+  }, [showResult, userResponse, targetWord]);
 
-  const handleSubmitClick = async () => {
-    if (buttonState === 'processing' || loading) return;
-    
-    setButtonState('processing');
-    
-    try {
-      await onSubmit();
-    } catch (error) {
-      console.error('Error in submit:', error);
-    } finally {
-      // Reset button state after a short delay
-      setTimeout(() => {
-        setButtonState('idle');
-      }, 1000);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (userResponse.trim()) {
+      onSubmit();
     }
   };
 
-  const handleNextClick = async () => {
-    if (buttonState === 'processing' || loading) return;
-    
-    setButtonState('processing');
-    
-    try {
-      await onNext();
-    } catch (error) {
-      console.error('Error in next:', error);
-    } finally {
-      setTimeout(() => {
-        setButtonState('idle');
-      }, 500);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Handle Enter key for both submit and continue
-    if (e.key === 'Enter' && !loading && buttonState === 'idle') {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey && !showResult) {
       e.preventDefault();
-      if (!showResult && userResponse.trim()) {
-        // Submit answer
-        handleSubmitClick();
-      } else if (showResult) {
-        // Continue to next
-        handleNextClick();
-      }
-    }
-    // Show/hide translation on Ctrl+T or Cmd+T
-    if ((e.ctrlKey || e.metaKey) && e.key === 't') {
-      e.preventDefault();
-      onToggleTranslation();
+      handleSubmit(e);
     }
   };
 
-  // Handle global Enter key press when result is shown
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && showResult && !loading && buttonState === 'idle') {
-        e.preventDefault();
-        handleNextClick();
-      }
+  // Get language display name
+  const getLanguageDisplayName = (language: string) => {
+    const languageNames: Record<string, string> = {
+      'german': 'German',
+      'spanish': 'Spanish', 
+      'french': 'French',
+      'english': 'English'
     };
-
-    if (showResult) {
-      document.addEventListener('keydown', handleGlobalKeyDown);
-      return () => document.removeEventListener('keydown', handleGlobalKeyDown);
-    }
-  }, [showResult, loading, buttonState]);
-
-  const renderSentenceWithBlank = () => {
-    // Create a cloze sentence by replacing the target word with a blank (5 underscores)
-    let clozeSentence = exercise.clozeSentence;
-    
-    // If clozeSentence doesn't have the blank placeholder, create it
-    if (!clozeSentence || !clozeSentence.includes('_____')) {
-      // Use the regular sentence and replace the target word with blanks
-      clozeSentence = exercise.sentence.replace(
-        new RegExp(`\\b${targetWord}\\b`, 'gi'), 
-        '_____'
-      );
-    }
-    
-    // Split by the blank placeholder
-    const parts = clozeSentence.split('_____');
-    
-    if (parts.length >= 2) {
-      return (
-        <div className="text-lg leading-relaxed">
-          <div className="flex flex-wrap items-baseline justify-center gap-1">
-            <span>{parts[0]}</span>
-            <div className="relative inline-flex">
-              <Input
-                ref={inputRef}
-                value={userResponse}
-                onChange={(e) => onResponseChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={showResult || loading || buttonState === 'processing'}
-                className={`w-32 text-center ${
-                  showResult
-                    ? isCorrect
-                      ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                      : 'border-red-500 bg-red-50 dark:bg-red-950/20'
-                    : ''
-                }`}
-                placeholder="Type here..."
-              />
-            </div>
-            <span>{parts.slice(1).join('_____')}</span>
-          </div>
-        </div>
-      );
-    }
-    
-    // If we still can't create a proper cloze, show a fallback
-    return (
-      <div className="text-lg leading-relaxed space-y-4">
-        <div className="text-center">
-          <p className="mb-4">Complete the sentence by filling in the missing word:</p>
-          <p className="mb-4 font-medium">{exercise.sentence.replace(
-            new RegExp(`\\b${targetWord}\\b`, 'gi'), 
-            '_____'
-          )}</p>
-          <div className="flex flex-col items-center gap-2">
-            <Input
-              ref={inputRef}
-              value={userResponse}
-              onChange={(e) => onResponseChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={showResult || loading || buttonState === 'processing'}
-              className={`w-32 text-center ${
-                showResult
-                  ? isCorrect
-                    ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                    : 'border-red-500 bg-red-50 dark:bg-red-950/20'
-                  : ''
-              }`}
-              placeholder="Type here..."
-            />
-          </div>
-        </div>
-      </div>
-    );
+    return languageNames[language] || language;
   };
 
-  // Mobile layout
+  // Mobile-optimized layout
   if (isMobile) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        {/* Mobile Header - Sticky */}
-        <div className="sticky top-0 z-10 bg-card border-b px-4 py-3">
+        {/* Mobile Header - Fixed */}
+        <div className="bg-card border-b px-4 py-3 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs capitalize">
+              <Badge variant="outline" className="text-xs">
                 {exercise.difficulty}
               </Badge>
-              <span className="text-sm font-medium">Fill in the Blank</span>
+              <span className="text-sm font-medium">Complete Sentence</span>
             </div>
             {onPlayAudio && (
               <Button
@@ -301,56 +116,117 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 flex flex-col px-4 py-4 space-y-4 pb-24">
+        {/* Content - Scrollable */}
+        <div className="flex-1 flex flex-col p-4 space-y-4">
+          {/* Cloze sentence */}
           <div className="p-4 bg-muted rounded-lg">
-            {renderSentenceWithBlank()}
+            <p className="text-base leading-relaxed text-center font-medium">
+              {clozeSentence}
+            </p>
+          </div>
+          
+          {/* Instructions */}
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-4">
+              Fill in the blank with the missing {getLanguageDisplayName(settings.selectedLanguage)} word:
+            </p>
+          </div>
+          
+          {/* Input */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              value={userResponse}
+              onChange={(e) => onResponseChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Enter the missing word..."
+              disabled={showResult}
+              className={`text-base text-center ${showResult
+                ? isCorrect
+                  ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                  : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                : ''
+              }`}
+              autoFocus
+            />
+            
+            {!showResult && (
+              <Button
+                type="submit"
+                disabled={!userResponse.trim() || loading}
+                className="w-full"
+              >
+                {loading ? 'Checking...' : 'Submit Answer'}
+              </Button>
+            )}
+          </form>
+
+          {/* Translation Toggle */}
+          <div className="text-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onToggleTranslation}
+              className="transition-transform duration-200 hover:scale-105 active:scale-95"
+            >
+              {showTranslation ? 'Hide' : 'Show'} English Translation
+            </Button>
           </div>
 
-          {/* Keyboard shortcuts hint */}
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Keyboard className="h-3 w-3" />
-            <span>Enter: {showResult ? 'continue' : 'submit'}</span>
-          </div>
-
-          {/* Show hint and result */}
-          {showTranslation && wordTranslation && (
+          {/* Translation Display */}
+          {showTranslation && exercise.translation && (
             <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-start gap-2">
-                <Lightbulb className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-                    Hint (English):
-                  </p>
-                  <p className="text-blue-700 dark:text-blue-300 text-sm">
-                    {translationLoading ? 'Loading...' : wordTranslation}
-                  </p>
-                </div>
-              </div>
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                English translation:
+              </p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                {exercise.translation}
+              </p>
             </div>
           )}
 
+          {/* Result */}
           {showResult && (
-            <div className="space-y-3 animate-fade-in">
-              <div className="flex items-center justify-center gap-2">
-                {isCorrect ? (
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                ) : (
-                  <XCircle className="h-5 w-5 text-red-600" />
-                )}
-                <Badge variant={isCorrect ? 'default' : 'destructive'}>
-                  {isCorrect ? 'Correct!' : 'Incorrect'}
-                </Badge>
+            <div className="space-y-4">
+              <div className={`text-center text-lg font-semibold ${
+                isCorrect ? 'text-green-600' : 'text-red-600'
+              }`}>
+                <div className="flex items-center justify-center gap-2">
+                  {isCorrect ? (
+                    <>
+                      <CheckCircle className="h-6 w-6" />
+                      Excellent!
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-6 w-6" />
+                      Not quite right
+                    </>
+                  )}
+                </div>
               </div>
 
-              {!isCorrect && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-                    Correct answer:
-                  </p>
-                  <p className="text-blue-700 dark:text-blue-300 text-sm font-semibold">
-                    {targetWord}
-                  </p>
+              {/* Enhanced feedback with comparison details */}
+              {comparisonResult && (
+                <div className="space-y-3">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                      Correct answer:
+                    </p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 font-semibold">
+                      {targetWord}
+                    </p>
+                  </div>
+
+                  {comparisonResult.accuracy < 100 && comparisonResult.accuracy > 0 && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                        Your answer was {comparisonResult.accuracy}% similar
+                      </p>
+                      <p className="text-sm text-amber-700 dark:text-amber-300">
+                        Keep practicing! You're getting close.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -359,66 +235,17 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
                     Explanation:
                   </p>
-                  <p className="text-amber-700 dark:text-amber-300 text-sm">
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
                     {exercise.explanation}
                   </p>
                 </div>
               )}
+
+              <Button onClick={onNext} className="w-full">
+                Next Exercise
+              </Button>
             </div>
           )}
-        </div>
-
-        {/* Mobile Bottom Actions - Fixed */}
-        <div className="fixed bottom-0 left-0 right-0 bg-card border-t px-4 py-4 safe-area-bottom">
-          <div className="flex flex-col gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onToggleTranslation}
-              className="w-full h-10 flex items-center justify-center gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              {showTranslation ? 'Hide Hint' : 'Show Hint'}
-            </Button>
-            
-            {!showResult ? (
-              <Button
-                onClick={handleSubmitClick}
-                disabled={!userResponse.trim() || loading || buttonState === 'processing'}
-                className="w-full h-12 text-base relative overflow-hidden"
-              >
-                {(buttonState === 'processing' || loading) && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-primary">
-                    <div className="flex items-center gap-2 text-primary-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Checking...</span>
-                    </div>
-                  </div>
-                )}
-                {(buttonState === 'processing' || loading) ? '' : 'Submit'}
-              </Button>
-            ) : (
-              <Button
-                onClick={handleNextClick}
-                disabled={buttonState === 'processing' || loading}
-                className="w-full h-12 text-base relative overflow-hidden"
-              >
-                {(buttonState === 'processing' || loading) && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-primary">
-                    <div className="flex items-center gap-2 text-primary-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Loading...</span>
-                    </div>
-                  </div>
-                )}
-                {(buttonState === 'processing' || loading) ? '' : (
-                  <>
-                    Continue <ArrowRight className="h-4 w-4 ml-2" />
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
         </div>
       </div>
     );
@@ -426,153 +253,167 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
 
   // Desktop layout
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Fill in the missing word</CardTitle>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="capitalize">
-                {exercise.difficulty}
-              </Badge>
-              {onPlayAudio && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onPlayAudio}
-                  disabled={audioLoading}
-                  className="flex items-center gap-1"
-                >
-                  <Volume2 className="h-4 w-4" />
-                  {audioLoading ? 'Loading...' : 'Listen'}
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        
-        <CardContent>
-          <div className="space-y-4">
-            <div className="p-4 bg-muted rounded-lg">
-              {renderSentenceWithBlank()}
-            </div>
-            
-            {/* Keyboard shortcuts hint */}
-            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <Keyboard className="h-3 w-3" />
-              <span>Enter: {showResult ? 'continue' : 'submit'} • Ctrl+T: hint</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Show hint */}
-      {showTranslation && wordTranslation && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-start gap-2">
-                <Lightbulb className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-                    Hint (English):
-                  </p>
-                  <p className="text-blue-700 dark:text-blue-300 text-sm">
-                    {translationLoading ? 'Loading...' : wordTranslation}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Actions and results */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
+    <Card className="w-full">
+      <CardHeader>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <CardTitle className="text-lg">Complete the Sentence</CardTitle>
+          <div className="flex items-center gap-2 justify-start md:justify-end">
+            <Badge variant="outline" className="capitalize">
+              {exercise.difficulty}
+            </Badge>
+            {onPlayAudio && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                onClick={onToggleTranslation}
-                className="flex items-center gap-2"
+                onClick={onPlayAudio}
+                disabled={audioLoading}
+                className="flex items-center gap-1 transition-transform duration-200 hover:scale-105 active:scale-95"
               >
-                <Eye className="h-4 w-4" />
-                {showTranslation ? 'Hide Hint' : 'Show Hint'}
+                <Volume2 className="h-4 w-4" />
+                {audioLoading ? 'Loading...' : 'Listen'}
               </Button>
-              
-              {!showResult ? (
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      
+      <CardContent>
+        <div className="space-y-6">
+          {/* Cloze Sentence Display */}
+          <div className="p-4 md:p-6 bg-muted rounded-lg">
+            <p className="text-lg md:text-xl leading-relaxed text-center font-medium">
+              {clozeSentence}
+            </p>
+          </div>
+
+          {/* Instructions */}
+          <div className="text-center">
+            <p className="text-base font-medium mb-4">
+              Fill in the blank with the missing {getLanguageDisplayName(settings.selectedLanguage)} word:
+            </p>
+          </div>
+
+          {/* Answer Input */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              value={userResponse}
+              onChange={(e) => onResponseChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Enter the missing word..."
+              disabled={showResult}
+              className={`text-lg py-3 text-center ${showResult
+                ? isCorrect
+                  ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                  : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                : ''
+              }`}
+              autoFocus
+            />
+            
+            {!showResult && (
+              <div className="flex justify-center">
                 <Button
-                  onClick={handleSubmitClick}
-                  disabled={!userResponse.trim() || loading || buttonState === 'processing'}
-                  className="px-8 min-w-[140px]"
+                  type="submit"
+                  disabled={!userResponse.trim() || loading}
+                  size="lg"
+                  className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
                 >
-                  {(buttonState === 'processing' || loading) && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  )}
-                  {(buttonState === 'processing' || loading) ? 'Checking...' : 'Submit'}
+                  {loading ? 'Checking...' : 'Submit Answer'}
                 </Button>
-              ) : (
-                <Button
-                  onClick={handleNextClick}
-                  disabled={buttonState === 'processing' || loading}
-                  className="px-8 flex items-center gap-2 min-w-[120px]"
-                >
-                  {(buttonState === 'processing' || loading) ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      Continue <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              )}
+              </div>
+            )}
+          </form>
+
+          {/* Translation Toggle */}
+          <div className="text-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onToggleTranslation}
+              className="transition-transform duration-200 hover:scale-105 active:scale-95"
+            >
+              {showTranslation ? 'Hide' : 'Show'} English Translation
+            </Button>
+          </div>
+
+          {/* Translation Display */}
+          {showTranslation && exercise.translation && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                English translation:
+              </p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                {exercise.translation}
+              </p>
             </div>
+          )}
 
-            {showResult && (
-              <div className="space-y-3 animate-fade-in">
-                <div className="flex items-center gap-2">
-                  {isCorrect ? (
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-red-600" />
-                  )}
-                  <Badge variant={isCorrect ? 'default' : 'destructive'}>
-                    {isCorrect ? 'Correct!' : 'Incorrect'}
-                  </Badge>
-                </div>
+          {/* Result Display */}
+          {showResult && (
+            <div className="text-center space-y-4">
+              <div className={`flex items-center justify-center gap-2 text-lg font-semibold ${
+                isCorrect ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {isCorrect ? (
+                  <>
+                    <CheckCircle className="h-6 w-6" />
+                    Perfect!
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-6 w-6" />
+                    Not quite right
+                  </>
+                )}
+              </div>
 
-                {!isCorrect && (
-                  <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+              {/* Enhanced feedback */}
+              {comparisonResult && (
+                <div className="space-y-3 max-w-md mx-auto">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
                       Correct answer:
                     </p>
-                    <p className="text-blue-700 dark:text-blue-300 font-semibold">
+                    <p className="text-sm text-blue-700 dark:text-blue-300 font-semibold">
                       {targetWord}
                     </p>
                   </div>
-                )}
 
-                {exercise.explanation && (
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
-                      Explanation:
-                    </p>
-                    <p className="text-amber-700 dark:text-amber-300 text-sm">
-                      {exercise.explanation}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+                  {comparisonResult.accuracy < 100 && comparisonResult.accuracy > 0 && (
+                    <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
+                        Your answer was {comparisonResult.accuracy}% similar
+                      </p>
+                      <p className="text-sm text-amber-700 dark:text-amber-300">
+                        Keep practicing! You're getting close.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {exercise.explanation && (
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg max-w-md mx-auto">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
+                    Explanation:
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    {exercise.explanation}
+                  </p>
+                </div>
+              )}
+              
+              <Button
+                onClick={onNext}
+                size="lg"
+                className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
+              >
+                Next Exercise
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };

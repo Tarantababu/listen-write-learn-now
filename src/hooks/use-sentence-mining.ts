@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DifficultyLevel, ExerciseType, SentenceMiningSession, SentenceMiningExercise } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { evaluateAnswer, evaluateVocabularyMarking, evaluateMultipleChoice } from '@/utils/answerEvaluation';
 
 export const useSentenceMining = () => {
   const { settings } = useUserSettingsContext();
@@ -88,9 +89,9 @@ export const useSentenceMining = () => {
         .from('sentence_mining_sessions')
         .insert({
           user_id: user.id,
-          language: settings.selectedLanguage, // Use selected language from settings
+          language: settings.selectedLanguage,
           difficulty_level: difficulty,
-          exercise_types: ['translation', 'vocabulary_marking', 'cloze'],
+          exercise_types: ['translation', 'vocabulary_marking', 'cloze', 'multiple_choice'],
           total_exercises: 0,
           correct_exercises: 0,
           new_words_encountered: 0,
@@ -149,14 +150,14 @@ export const useSentenceMining = () => {
       if (!user) throw new Error('User not authenticated');
 
       // Determine exercise type (cycle through different types)
-      const exerciseTypes: ExerciseType[] = ['translation', 'vocabulary_marking', 'cloze'];
+      const exerciseTypes: ExerciseType[] = ['translation', 'vocabulary_marking', 'cloze', 'multiple_choice'];
       const randomType = exerciseTypes[Math.floor(Math.random() * exerciseTypes.length)];
 
       // Generate exercise using the edge function
       const { data: exercise, error } = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
           difficulty_level: difficulty,
-          language: settings.selectedLanguage, // Use selected language from settings
+          language: settings.selectedLanguage,
           exercise_type: randomType,
           session_id: sessionId
         }
@@ -213,22 +214,47 @@ export const useSentenceMining = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Evaluate answer based on exercise type
-      let correct = false;
-      
+      let evaluationResult;
+
+      // Enhanced answer evaluation based on exercise type
       switch (currentExercise.exerciseType) {
         case 'translation':
-          correct = evaluateTranslation(response, currentExercise.translation || '');
+          evaluationResult = evaluateAnswer(
+            response, 
+            currentExercise.translation || '', 
+            'translation',
+            0.7
+          );
           break;
+          
         case 'vocabulary_marking':
-          correct = evaluateVocabularyMarking(selectedWords, currentExercise.targetWords || []);
+          evaluationResult = evaluateVocabularyMarking(
+            selectedWords, 
+            currentExercise.targetWords || []
+          );
           break;
+          
         case 'cloze':
-          correct = evaluateCloze(response, currentExercise.targetWords || []);
+          evaluationResult = evaluateAnswer(
+            response, 
+            currentExercise.targetWords || [], 
+            'cloze',
+            0.8
+          );
           break;
+          
+        case 'multiple_choice':
+          evaluationResult = evaluateMultipleChoice(
+            response,
+            currentExercise.correctAnswer || ''
+          );
+          break;
+          
+        default:
+          evaluationResult = { isCorrect: false, accuracy: 0, feedback: 'Unknown exercise type', similarityScore: 0, category: 'poor' as const };
       }
 
-      setIsCorrect(correct);
+      setIsCorrect(evaluationResult.isCorrect);
       setShowResult(true);
 
       // Update exercise in database
@@ -236,7 +262,7 @@ export const useSentenceMining = () => {
         .from('sentence_mining_exercises')
         .update({
           user_response: response,
-          is_correct: correct,
+          is_correct: evaluationResult.isCorrect,
           completed_at: new Date().toISOString(),
           completion_time: Math.floor(Math.random() * 30) + 10 // Placeholder
         })
@@ -247,7 +273,7 @@ export const useSentenceMining = () => {
         .from('sentence_mining_sessions')
         .update({
           total_exercises: currentSession.total_exercises + 1,
-          correct_exercises: currentSession.correct_exercises + (correct ? 1 : 0)
+          correct_exercises: currentSession.correct_exercises + (evaluationResult.isCorrect ? 1 : 0)
         })
         .eq('id', currentSession.id);
 
@@ -258,7 +284,7 @@ export const useSentenceMining = () => {
             user_id_param: user.id,
             word_param: word,
             language_param: currentSession.language,
-            is_correct_param: correct
+            is_correct_param: evaluationResult.isCorrect
           });
         }
       }
@@ -267,13 +293,14 @@ export const useSentenceMining = () => {
       setCurrentSession(prev => prev ? {
         ...prev,
         total_exercises: prev.total_exercises + 1,
-        correct_exercises: prev.correct_exercises + (correct ? 1 : 0)
+        correct_exercises: prev.correct_exercises + (evaluationResult.isCorrect ? 1 : 0)
       } : null);
 
-      if (correct) {
-        toast.success('Correct! Well done!');
+      // Enhanced feedback
+      if (evaluationResult.isCorrect) {
+        toast.success(evaluationResult.feedback);
       } else {
-        toast.error('Not quite right. Keep practicing!');
+        toast.error(evaluationResult.feedback);
       }
 
     } catch (error: any) {

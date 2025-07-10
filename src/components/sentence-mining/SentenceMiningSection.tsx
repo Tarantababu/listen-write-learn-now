@@ -4,11 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Brain, Play, X, Loader2, BookOpen, Award, TrendingUp } from 'lucide-react';
 import { DifficultySelector } from './DifficultySelector';
-import { TranslationExercise } from './exercises/TranslationExercise';
-import { VocabularyMarkingExercise } from './exercises/VocabularyMarkingExercise';
-import { ClozeExercise } from './exercises/ClozeExercise';
-import { SentenceDisplay } from './SentenceDisplay';
-import { UserResponse } from './UserResponse';
+import { EnhancedExerciseRenderer } from './exercises/EnhancedExerciseRenderer';
 import { ProgressTracker } from './ProgressTracker';
 import { useSentenceMining } from '@/hooks/use-sentence-mining';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -16,7 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { toast } from 'sonner';
 import { DifficultyLevel } from '@/types/sentence-mining';
-import { EnhancedAudioPlayer } from './exercises/EnhancedAudioPlayer';
 
 export const SentenceMiningSection: React.FC = () => {
   const isMobile = useIsMobile();
@@ -111,78 +106,6 @@ export const SentenceMiningSection: React.FC = () => {
     );
   }
 
-  const renderExercise = () => {
-    if (!currentExercise) return null;
-    
-    const commonProps = {
-      exercise: currentExercise,
-      showResult,
-      isCorrect,
-      loading,
-      onPlayAudio: handlePlayAudio,
-      audioLoading,
-      showTranslation,
-      onToggleTranslation: toggleTranslation
-    };
-
-    switch (currentExercise.exerciseType) {
-      case 'translation':
-        return (
-          <TranslationExercise 
-            {...commonProps} 
-            userResponse={userResponse} 
-            onResponseChange={updateUserResponse} 
-            onSubmit={handleSubmitAnswer} 
-            onNext={nextExercise} 
-          />
-        );
-      case 'vocabulary_marking':
-        return (
-          <VocabularyMarkingExercise 
-            {...commonProps} 
-            selectedWords={selectedWords} 
-            onWordSelect={toggleWord} 
-            onSubmit={handleSubmitAnswer} 
-            onNext={nextExercise} 
-          />
-        );
-      case 'cloze':
-        return (
-          <ClozeExercise 
-            {...commonProps} 
-            userResponse={userResponse} 
-            onResponseChange={updateUserResponse} 
-            onSubmit={handleSubmitAnswer} 
-            onNext={nextExercise} 
-          />
-        );
-      default:
-        return (
-          <div className="space-y-4">
-            <SentenceDisplay 
-              exercise={currentExercise} 
-              onPlayAudio={handlePlayAudio} 
-              audioLoading={audioLoading} 
-              userResponse={userResponse} 
-              onResponseChange={updateUserResponse} 
-              showResult={showResult} 
-              isCorrect={isCorrect} 
-            />
-            
-            <UserResponse 
-              onSubmit={handleSubmitAnswer} 
-              onNext={nextExercise} 
-              showResult={showResult} 
-              isCorrect={isCorrect} 
-              correctAnswer={currentExercise.targetWords?.join(', ') || ''} 
-              loading={loading} 
-              explanation={currentExercise.explanation} 
-            />
-          </div>
-        );
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -268,8 +191,25 @@ export const SentenceMiningSection: React.FC = () => {
             </Button>
           </div>
 
-          {/* Exercise Display */}
-          {renderExercise()}
+          {/* Enhanced Exercise Display */}
+          {currentExercise && (
+            <EnhancedExerciseRenderer
+              exercise={currentExercise}
+              userResponse={userResponse}
+              selectedWords={selectedWords}
+              showResult={showResult}
+              isCorrect={isCorrect}
+              loading={loading}
+              onPlayAudio={handlePlayAudio}
+              audioLoading={audioLoading}
+              showTranslation={showTranslation}
+              onToggleTranslation={toggleTranslation}
+              onResponseChange={updateUserResponse}
+              onWordSelect={toggleWord}
+              onSubmit={handleSubmitAnswer}
+              onNext={nextExercise}
+            />
+          )}
         </div>
       )}
 
@@ -286,18 +226,22 @@ export const SentenceMiningSection: React.FC = () => {
             <p className="text-sm text-muted-foreground">
               Our sentence mining system uses the proven n+1 methodology, where each sentence contains mostly words you know plus just a few new words to learn.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
               <div>
-                <h4 className="font-semibold mb-2">Beginner Level</h4>
-                <p className="text-muted-foreground">Learn 1 new word per sentence with familiar context</p>
+                <h4 className="font-semibold mb-2">Translation</h4>
+                <p className="text-muted-foreground">Translate sentences between languages to build comprehension</p>
               </div>
               <div>
-                <h4 className="font-semibold mb-2">Intermediate Level</h4>
-                <p className="text-muted-foreground">Practice with 2-3 new words in more complex sentences</p>
+                <h4 className="font-semibold mb-2">Vocabulary Marking</h4>
+                <p className="text-muted-foreground">Identify and mark unknown words for focused learning</p>
               </div>
               <div>
-                <h4 className="font-semibold mb-2">Advanced Level</h4>
-                <p className="text-muted-foreground">Challenge yourself with 3+ new words in sophisticated contexts</p>
+                <h4 className="font-semibold mb-2">Cloze Exercises</h4>
+                <p className="text-muted-foreground">Fill in blanks to practice word usage in context</p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2">Multiple Choice</h4>
+                <p className="text-muted-foreground">Choose correct meanings to test comprehension</p>
               </div>
             </div>
           </div>
