@@ -1,9 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DifficultyLevel, ExerciseType, SentenceMiningSession, SentenceMiningExercise } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { compareTexts } from '@/utils/textComparison';
 
 export const useSentenceMining = () => {
   const { settings } = useUserSettingsContext();
@@ -88,7 +88,7 @@ export const useSentenceMining = () => {
         .from('sentence_mining_sessions')
         .insert({
           user_id: user.id,
-          language: settings.selectedLanguage,
+          language: settings.selectedLanguage, // Use selected language from settings
           difficulty_level: difficulty,
           exercise_types: ['translation', 'vocabulary_marking', 'cloze'],
           total_exercises: 0,
@@ -156,7 +156,7 @@ export const useSentenceMining = () => {
       const { data: exercise, error } = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
           difficulty_level: difficulty,
-          language: settings.selectedLanguage,
+          language: settings.selectedLanguage, // Use selected language from settings
           exercise_type: randomType,
           session_id: sessionId
         }
@@ -181,18 +181,11 @@ export const useSentenceMining = () => {
 
       if (storeError) throw storeError;
 
-      // For cloze exercises, ensure we have a proper cloze sentence with blanks
-      let processedExercise = {
+      setCurrentExercise({
         ...exercise,
         id: storedExercise.id,
         sessionId: storedExercise.session_id
-      };
-
-      if (exercise.exerciseType === 'cloze') {
-        processedExercise = ensureClozeHasBlanks(processedExercise);
-      }
-
-      setCurrentExercise(processedExercise);
+      });
 
       // Reset UI state
       setUserResponse('');
@@ -211,54 +204,6 @@ export const useSentenceMining = () => {
     }
   };
 
-  // Ensure cloze exercises always have missing words
-  const ensureClozeHasBlanks = (exercise: SentenceMiningExercise): SentenceMiningExercise => {
-    const targetWord = exercise.targetWords?.[0];
-    
-    if (!targetWord) {
-      console.error('No target word found for cloze exercise');
-      return exercise;
-    }
-
-    let clozeSentence = exercise.clozeSentence;
-    
-    // If no cloze sentence or it doesn't contain blanks, create one
-    if (!clozeSentence || !clozeSentence.includes('_____')) {
-      // Create cloze sentence by replacing the target word with blanks
-      const regex = new RegExp(`\\b${targetWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-      clozeSentence = exercise.sentence.replace(regex, '_____');
-      
-      // If replacement didn't work, try case-insensitive match
-      if (!clozeSentence.includes('_____')) {
-        const words = exercise.sentence.split(' ');
-        const targetWordLower = targetWord.toLowerCase();
-        
-        for (let i = 0; i < words.length; i++) {
-          const cleanWord = words[i].replace(/[.,!?;:]/g, '').toLowerCase();
-          if (cleanWord === targetWordLower) {
-            words[i] = '_____';
-            break;
-          }
-        }
-        clozeSentence = words.join(' ');
-      }
-    }
-
-    // Final check - if still no blanks, replace the first word as fallback
-    if (!clozeSentence.includes('_____')) {
-      const words = exercise.sentence.split(' ');
-      if (words.length > 0) {
-        words[0] = '_____';
-        clozeSentence = words.join(' ');
-      }
-    }
-
-    return {
-      ...exercise,
-      clozeSentence
-    };
-  };
-
   const submitAnswer = async (response: string, selectedWords: string[] = []) => {
     if (!currentExercise || !currentSession) return;
 
@@ -273,12 +218,10 @@ export const useSentenceMining = () => {
       
       switch (currentExercise.exerciseType) {
         case 'translation':
-          correct = evaluateTranslation(response, currentExercise.sentence || '');
+          correct = evaluateTranslation(response, currentExercise.translation || '');
           break;
         case 'vocabulary_marking':
-          // For vocabulary marking, we don't evaluate correct/incorrect anymore
-          // Just mark words for learning
-          correct = true; // Always mark as "correct" since it's just for learning
+          correct = evaluateVocabularyMarking(selectedWords, currentExercise.targetWords || []);
           break;
         case 'cloze':
           correct = evaluateCloze(response, currentExercise.targetWords || []);
@@ -327,10 +270,7 @@ export const useSentenceMining = () => {
         correct_exercises: prev.correct_exercises + (correct ? 1 : 0)
       } : null);
 
-      // Show appropriate feedback
-      if (currentExercise.exerciseType === 'vocabulary_marking') {
-        toast.success('Words marked for learning!');
-      } else if (correct) {
+      if (correct) {
         toast.success('Correct! Well done!');
       } else {
         toast.error('Not quite right. Keep practicing!');
@@ -345,58 +285,39 @@ export const useSentenceMining = () => {
   };
 
   const evaluateTranslation = (userAnswer: string, correctAnswer: string): boolean => {
-    if (!userAnswer || !correctAnswer) return false;
-
-    // Use a more lenient approach for translation evaluation
-    const normalizeForComparison = (text: string) => {
-      return text.toLowerCase()
-        .trim()
-        .replace(/[.,!?;:]/g, '')
-        .replace(/\s+/g, ' ');
-    };
-
-    const normalizedUser = normalizeForComparison(userAnswer);
-    const normalizedCorrect = normalizeForComparison(correctAnswer);
-
-    // Check for exact match first
-    if (normalizedUser === normalizedCorrect) {
-      return true;
-    }
-
-    // Use the enhanced text comparison utility but with a lower threshold
-    const result = compareTexts(correctAnswer, userAnswer);
+    // Simple similarity check - in a real app, you'd use more sophisticated NLP
+    const userWords = userAnswer.toLowerCase().split(/\s+/);
+    const correctWords = correctAnswer.toLowerCase().split(/\s+/);
     
-    // Consider it correct if accuracy is 60% or higher (more lenient than before)
-    return result.accuracy >= 60;
+    let matches = 0;
+    for (const word of userWords) {
+      if (correctWords.includes(word)) {
+        matches++;
+      }
+    }
+    
+    return matches / correctWords.length >= 0.7; // 70% similarity threshold
   };
 
   const evaluateVocabularyMarking = (selectedWords: string[], targetWords: string[]): boolean => {
-    // For vocabulary marking, we don't need strict evaluation anymore
-    // Just return true if user selected any words
-    return selectedWords.length > 0;
+    const selectedSet = new Set(selectedWords.map(w => w.toLowerCase()));
+    const targetSet = new Set(targetWords.map(w => w.toLowerCase()));
+    
+    // Check if user selected at least 80% of target words
+    let correctSelections = 0;
+    for (const word of targetWords) {
+      if (selectedSet.has(word.toLowerCase())) {
+        correctSelections++;
+      }
+    }
+    
+    return correctSelections / targetWords.length >= 0.8;
   };
 
   const evaluateCloze = (userAnswer: string, targetWords: string[]): boolean => {
-    if (!userAnswer || !targetWords || targetWords.length === 0) return false;
-    
-    const userAnswerLower = userAnswer.toLowerCase().trim();
-    
-    // Check if the answer matches any of the target words (case-insensitive)
-    return targetWords.some(word => {
-      const targetWordLower = word.toLowerCase().trim();
-      
-      // Exact match
-      if (userAnswerLower === targetWordLower) return true;
-      
-      // Check if user answer contains the target word (for compound words or variations)
-      if (userAnswerLower.includes(targetWordLower) || targetWordLower.includes(userAnswerLower)) {
-        // Only accept if the difference in length is not too significant
-        const lengthDiff = Math.abs(userAnswerLower.length - targetWordLower.length);
-        return lengthDiff <= 3;
-      }
-      
-      return false;
-    });
+    // For cloze exercises, check if the answer contains any of the target words
+    const answerLower = userAnswer.toLowerCase();
+    return targetWords.some(word => answerLower.includes(word.toLowerCase()));
   };
 
   const nextExercise = () => {

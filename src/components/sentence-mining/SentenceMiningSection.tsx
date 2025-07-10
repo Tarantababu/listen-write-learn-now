@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -140,7 +141,7 @@ export const SentenceMiningSection: React.FC = () => {
           <VocabularyMarkingExercise 
             {...commonProps} 
             selectedWords={selectedWords} 
-            onWordToggle={toggleWord} 
+            onWordSelect={toggleWord} 
             onSubmit={handleSubmitAnswer} 
             onNext={nextExercise} 
           />

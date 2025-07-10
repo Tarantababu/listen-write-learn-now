@@ -11,8 +11,9 @@ import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 interface VocabularyMarkingExerciseProps {
   exercise: SentenceMiningExercise;
   selectedWords: string[];
-  onWordToggle: (word: string) => void;
+  onWordSelect: (word: string) => void;
   showResult: boolean;
+  isCorrect: boolean;
   loading: boolean;
   onPlayAudio?: () => void;
   audioLoading?: boolean;
@@ -25,8 +26,9 @@ interface VocabularyMarkingExerciseProps {
 export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps> = ({
   exercise,
   selectedWords,
-  onWordToggle,
+  onWordSelect,
   showResult,
+  isCorrect,
   loading,
   onPlayAudio,
   audioLoading = false,
@@ -38,12 +40,38 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
   const isMobile = useIsMobile();
   const { settings } = useUserSettingsContext();
 
-  // Split sentence into words for marking
-  const words = exercise.sentence.split(/(\s+|[.,!?;:])/).filter(word => word.trim().length > 0);
+  // Split sentence into words for selection
+  const words = exercise.sentence.split(/\s+/).filter(word => word.length > 0);
+  
+  // Get target words (words that should be selected)
+  const targetWords = exercise.targetWords || [];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit();
+  const handleWordClick = (word: string) => {
+    if (showResult) return;
+    // Clean the word of punctuation for comparison
+    const cleanWord = word.replace(/[^\w]/g, '').toLowerCase();
+    onWordSelect(cleanWord);
+  };
+
+  const isWordSelected = (word: string) => {
+    const cleanWord = word.replace(/[^\w]/g, '').toLowerCase();
+    return selectedWords.includes(cleanWord);
+  };
+
+  const getWordClassName = (word: string) => {
+    const isSelected = isWordSelected(word);
+    
+    if (showResult) {
+      // In result mode, just show selected words as marked for learning
+      return isSelected 
+        ? 'bg-blue-200 text-blue-800 border-blue-500' 
+        : 'hover:bg-gray-100';
+    } else {
+      // In selection mode, show selected state
+      return isSelected 
+        ? 'bg-primary text-primary-foreground border-primary' 
+        : 'hover:bg-muted/50 border-border';
+    }
   };
 
   // Get language display name
@@ -68,7 +96,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
               <Badge variant="outline" className="text-xs">
                 {exercise.difficulty}
               </Badge>
-              <span className="text-sm font-medium">Mark Unknown Words</span>
+              <span className="text-sm font-medium">Mark Words</span>
             </div>
             {onPlayAudio && (
               <Button
@@ -87,60 +115,55 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
 
         {/* Content - Scrollable */}
         <div className="flex-1 flex flex-col p-4 space-y-4">
-          {/* Sentence with clickable words */}
-          <div className="p-4 bg-muted rounded-lg">
-            <p className="text-base leading-relaxed text-center">
-              {words.map((word, index) => {
-                const cleanWord = word.replace(/[.,!?;:]/g, '');
-                const isPunctuation = /^[.,!?;:\s]+$/.test(word);
-                const isSelected = selectedWords.includes(cleanWord);
-                
-                if (isPunctuation || word.trim().length === 0) {
-                  return <span key={index}>{word}</span>;
-                }
-                
-                return (
-                  <button
-                    key={index}
-                    onClick={() => !showResult && onWordToggle(cleanWord)}
-                    disabled={showResult}
-                    className={`inline-block mx-0.5 px-1 py-0.5 rounded transition-colors ${
-                      isSelected
-                        ? 'bg-blue-500 text-white'
-                        : 'hover:bg-blue-100 dark:hover:bg-blue-900'
-                    } ${showResult ? 'cursor-default' : 'cursor-pointer'}`}
-                  >
-                    {word}
-                  </button>
-                );
-              })}
-            </p>
-          </div>
-          
           {/* Instructions */}
           <div className="text-center">
             <p className="text-sm text-muted-foreground mb-4">
-              Tap on words you don't know in this {getLanguageDisplayName(settings.selectedLanguage)} sentence:
+              Tap on the {getLanguageDisplayName(settings.selectedLanguage)} words you don't know or want to learn:
             </p>
           </div>
           
-          {/* Translation toggle */}
+          {/* Interactive Sentence in target language */}
+          <div className="p-4 bg-muted rounded-lg">
+            <div className="flex flex-wrap gap-2 text-base leading-relaxed justify-center">
+              {words.map((word, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleWordClick(word)}
+                  disabled={showResult}
+                  className={`px-2 py-1 rounded border-2 transition-all duration-200 ${getWordClassName(word)} ${
+                    showResult ? 'cursor-default' : 'cursor-pointer active:scale-95'
+                  }`}
+                >
+                  {word}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Selected Words Counter */}
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
+              Selected words: {selectedWords.length}
+            </p>
+          </div>
+
+          {/* Translation Toggle */}
           <div className="text-center">
             <Button
               variant="outline"
               size="sm"
               onClick={onToggleTranslation}
-              className="text-xs"
+              className="transition-transform duration-200 hover:scale-105 active:scale-95"
             >
               {showTranslation ? 'Hide' : 'Show'} English Translation
             </Button>
           </div>
 
-          {/* Translation display */}
+          {/* English Translation Display */}
           {showTranslation && exercise.translation && (
             <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-                English Translation:
+                English translation:
               </p>
               <p className="text-sm text-blue-700 dark:text-blue-300">
                 {exercise.translation}
@@ -148,45 +171,48 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
             </div>
           )}
 
-          {/* Selected words display */}
-          {selectedWords.length > 0 && (
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
-                Words marked for learning:
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {selectedWords.map((word, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
-                    {word}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Submit/Next button */}
-          {!showResult ? (
+          {/* Submit Button */}
+          {!showResult && (
             <Button
-              onClick={handleSubmit}
+              onClick={onSubmit}
               disabled={loading}
               className="w-full"
             >
               {loading ? 'Saving...' : 'Mark Words for Learning'}
             </Button>
-          ) : (
+          )}
+
+          {/* Result */}
+          {showResult && (
             <div className="space-y-4">
-              <div className="text-center text-lg font-semibold text-green-600">
+              <div className="text-center text-lg font-semibold text-blue-600">
                 <div className="flex items-center justify-center gap-2">
                   <BookOpen className="h-6 w-6" />
-                  Words Marked for Learning!
+                  Words marked for learning!
                 </div>
               </div>
 
-              <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                <p className="text-sm text-green-700 dark:text-green-300 text-center">
-                  These words have been added to your vocabulary for review.
-                </p>
-              </div>
+              {selectedWords.length > 0 && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                    Words marked for learning:
+                  </p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    {selectedWords.join(', ')}
+                  </p>
+                </div>
+              )}
+
+              {exercise.explanation && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                    Learning tip:
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    {exercise.explanation}
+                  </p>
+                </div>
+              )}
 
               <Button onClick={onNext} className="w-full">
                 Next Exercise
@@ -203,7 +229,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
     <Card className="w-full">
       <CardHeader>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <CardTitle className="text-lg">Mark Unknown Words</CardTitle>
+          <CardTitle className="text-lg">Vocabulary Marking</CardTitle>
           <div className="flex items-center gap-2 justify-start md:justify-end">
             <Badge variant="outline" className="capitalize">
               {exercise.difficulty}
@@ -226,59 +252,55 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
       
       <CardContent>
         <div className="space-y-6">
-          {/* Sentence with clickable words */}
-          <div className="p-4 md:p-6 bg-muted rounded-lg">
-            <p className="text-lg md:text-xl leading-relaxed">
-              {words.map((word, index) => {
-                const cleanWord = word.replace(/[.,!?;:]/g, '');
-                const isPunctuation = /^[.,!?;:\s]+$/.test(word);
-                const isSelected = selectedWords.includes(cleanWord);
-                
-                if (isPunctuation || word.trim().length === 0) {
-                  return <span key={index}>{word}</span>;
-                }
-                
-                return (
-                  <button
-                    key={index}
-                    onClick={() => !showResult && onWordToggle(cleanWord)}
-                    disabled={showResult}
-                    className={`inline-block mx-1 px-2 py-1 rounded transition-colors ${
-                      isSelected
-                        ? 'bg-blue-500 text-white'
-                        : 'hover:bg-blue-100 dark:hover:bg-blue-900'
-                    } ${showResult ? 'cursor-default' : 'cursor-pointer'}`}
-                  >
-                    {word}
-                  </button>
-                );
-              })}
-            </p>
-          </div>
-
           {/* Instructions */}
           <div className="text-center">
             <p className="text-base font-medium mb-4">
-              Click on words you don't know in this {getLanguageDisplayName(settings.selectedLanguage)} sentence:
+              Click on the {getLanguageDisplayName(settings.selectedLanguage)} words you don't know or want to learn:
             </p>
           </div>
 
-          {/* Translation toggle */}
+          {/* Interactive Sentence in target language */}
+          <div className="p-4 md:p-6 bg-muted rounded-lg">
+            <div className="flex flex-wrap gap-2 text-lg md:text-xl leading-relaxed justify-center">
+              {words.map((word, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleWordClick(word)}
+                  disabled={showResult}
+                  className={`px-3 py-2 rounded-lg border-2 transition-all duration-200 ${getWordClassName(word)} ${
+                    showResult ? 'cursor-default' : 'cursor-pointer hover:scale-105 active:scale-95'
+                  }`}
+                >
+                  {word}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Selected Words Counter */}
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
+              Selected words: {selectedWords.length}
+            </p>
+          </div>
+
+          {/* Translation Toggle */}
           <div className="text-center">
             <Button
               variant="outline"
               size="sm"
               onClick={onToggleTranslation}
+              className="transition-transform duration-200 hover:scale-105 active:scale-95"
             >
               {showTranslation ? 'Hide' : 'Show'} English Translation
             </Button>
           </div>
 
-          {/* Translation display */}
+          {/* English Translation Display */}
           {showTranslation && exercise.translation && (
             <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                English Translation:
+                English translation:
               </p>
               <p className="text-sm text-blue-700 dark:text-blue-300">
                 {exercise.translation}
@@ -286,56 +308,56 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
             </div>
           )}
 
-          {/* Selected words display */}
-          {selectedWords.length > 0 && (
-            <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
-                Words marked for learning:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {selectedWords.map((word, index) => (
-                  <Badge key={index} variant="secondary">
-                    {word}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Submit/Next button */}
-          {!showResult ? (
-            <div className="flex justify-center">
+          {/* Action Buttons */}
+          <div className="flex justify-center gap-4">
+            {!showResult ? (
               <Button
-                onClick={handleSubmit}
+                onClick={onSubmit}
                 disabled={loading}
                 size="lg"
                 className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
               >
                 {loading ? 'Saving...' : 'Mark Words for Learning'}
               </Button>
-            </div>
-          ) : (
-            <div className="text-center space-y-4">
-              <div className="flex items-center justify-center gap-2 text-lg font-semibold text-green-600">
-                <BookOpen className="h-6 w-6" />
-                Words Marked for Learning!
-              </div>
+            ) : (
+              <div className="text-center space-y-4">
+                <div className="flex items-center justify-center gap-2 text-lg font-semibold text-blue-600">
+                  <BookOpen className="h-6 w-6" />
+                  Words marked for learning!
+                </div>
 
-              <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                <p className="text-sm text-green-700 dark:text-green-300">
-                  These words have been added to your vocabulary for review.
-                </p>
+                {selectedWords.length > 0 && (
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg max-w-md mx-auto">
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                      Words marked for learning:
+                    </p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      {selectedWords.join(', ')}
+                    </p>
+                  </div>
+                )}
+
+                {exercise.explanation && (
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
+                      Learning tip:
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                      {exercise.explanation}
+                    </p>
+                  </div>
+                )}
+                
+                <Button
+                  onClick={onNext}
+                  size="lg"
+                  className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
+                >
+                  Next Exercise
+                </Button>
               </div>
-              
-              <Button
-                onClick={onNext}
-                size="lg"
-                className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
-              >
-                Next Exercise
-              </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
