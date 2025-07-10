@@ -1,3 +1,4 @@
+
 /**
  * Computes the Levenshtein distance between two strings
  * This algorithm measures the minimum number of single-character edits 
@@ -59,14 +60,19 @@ export interface TokenComparisonResult {
 }
 
 /**
- * Normalized a string by converting to lowercase and removing punctuation
+ * Improved text normalization that's consistent with answer evaluation
  */
 export const normalizeText = (text: string): string => {
+  if (!text) return '';
+  
   return text
     .toLowerCase()
-    // Normalize apostrophes: convert right single quotation mark (U+2019) and other variants to straight apostrophe (U+0027)
-    .replace(/[\u2019\u2018\u201B]/g, "'")
-    // Remove all punctuation and special characters
+    // Normalize different types of quotes and apostrophes
+    .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
+    // Normalize different types of dashes
+    .replace(/[\u2013\u2014\u2015]/g, '-')
+    // Remove punctuation for word comparison
     .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()\[\]"']/g, '')
     // Replace multiple spaces with a single space
     .replace(/\s+/g, ' ')
@@ -189,13 +195,44 @@ export const compareTexts = (originalText: string, userText: string): {
   extra: number;
   accuracy: number;
 } => {
+  console.log('compareTexts input:', { originalText, userText });
+  
   // Stage 1: Input Normalization
   const normalizedOriginal = normalizeText(originalText);
   const normalizedUser = normalizeText(userText);
   
+  console.log('After normalization:', { normalizedOriginal, normalizedUser });
+  
+  // For exact match comparison, let's also check without removing punctuation
+  const simpleNormalizedOriginal = originalText.toLowerCase().trim().replace(/\s+/g, ' ');
+  const simpleNormalizedUser = userText.toLowerCase().trim().replace(/\s+/g, ' ');
+  
+  console.log('Simple normalization:', { simpleNormalizedOriginal, simpleNormalizedUser });
+  
+  // If they match exactly after simple normalization, return perfect score
+  if (simpleNormalizedOriginal === simpleNormalizedUser) {
+    console.log('Exact match found with simple normalization!');
+    return {
+      tokenResults: [{
+        originalToken: originalText,
+        userToken: userText,
+        status: 'correct',
+        similarity: 1
+      }],
+      correct: 1,
+      almost: 0,
+      incorrect: 0,
+      missing: 0,
+      extra: 0,
+      accuracy: 100
+    };
+  }
+  
   // Split into tokens
   const originalTokens = normalizedOriginal.split(' ').filter(Boolean);
   const userTokens = normalizedUser.split(' ').filter(Boolean);
+  
+  console.log('Tokens:', { originalTokens, userTokens });
   
   // Stage 2: Sequence Alignment
   const { alignedOriginal, alignedUser } = alignSequences(originalTokens, userTokens);
@@ -261,6 +298,16 @@ export const compareTexts = (originalText: string, userText: string): {
   const effectiveCorrect = correct + (almost * 0.5);
   const accuracy = Math.min(100, Math.round((effectiveCorrect / totalExpectedWords) * 100));
   
+  console.log('Final comparison result:', {
+    tokenResults,
+    correct,
+    almost,
+    incorrect,
+    missing,
+    extra,
+    accuracy
+  });
+
   return {
     tokenResults,
     correct,

@@ -19,10 +19,18 @@ export const evaluateAnswer = (
   threshold: number = 0.7
 ): AnswerEvaluationResult => {
   
-  // Normalize inputs
-  const normalizedUser = userAnswer.trim().toLowerCase();
+  // Normalize inputs - more robust normalization
+  const normalizedUser = normalizeForComparison(userAnswer);
   const answerArray = Array.isArray(correctAnswers) ? correctAnswers : [correctAnswers];
-  const normalizedCorrect = answerArray.map(ans => ans.trim().toLowerCase());
+  const normalizedCorrect = answerArray.map(ans => normalizeForComparison(ans));
+
+  console.log('Answer evaluation debug:', {
+    userAnswer,
+    normalizedUser,
+    correctAnswers: answerArray,
+    normalizedCorrect,
+    exerciseType
+  });
 
   if (!normalizedUser) {
     return {
@@ -37,9 +45,14 @@ export const evaluateAnswer = (
   let bestMatch = { accuracy: 0, similarity: 0 };
 
   // Test against all possible correct answers
-  for (const correctAnswer of normalizedCorrect) {
-    // Exact match check
+  for (let i = 0; i < normalizedCorrect.length; i++) {
+    const correctAnswer = normalizedCorrect[i];
+    
+    console.log(`Comparing "${normalizedUser}" with "${correctAnswer}"`);
+    
+    // Exact match check first
     if (normalizedUser === correctAnswer) {
+      console.log('Exact match found!');
       return {
         isCorrect: true,
         accuracy: 100,
@@ -53,6 +66,11 @@ export const evaluateAnswer = (
     const comparisonResult = compareTexts(correctAnswer, normalizedUser);
     const stringSim = stringSimilarity(correctAnswer, normalizedUser);
     
+    console.log('Comparison result:', {
+      accuracy: comparisonResult.accuracy,
+      similarity: stringSim
+    });
+    
     if (comparisonResult.accuracy > bestMatch.accuracy) {
       bestMatch = {
         accuracy: comparisonResult.accuracy,
@@ -63,6 +81,12 @@ export const evaluateAnswer = (
 
   // Determine correctness based on threshold
   const isCorrect = bestMatch.accuracy >= (threshold * 100);
+  
+  console.log('Final evaluation:', {
+    bestMatchAccuracy: bestMatch.accuracy,
+    threshold: threshold * 100,
+    isCorrect
+  });
   
   // Categorize performance
   let category: AnswerEvaluationResult['category'];
@@ -96,6 +120,25 @@ export const evaluateAnswer = (
 };
 
 /**
+ * Improved text normalization for comparison
+ */
+const normalizeForComparison = (text: string): string => {
+  if (!text) return '';
+  
+  return text
+    .trim()
+    .toLowerCase()
+    // Normalize different types of quotes and apostrophes
+    .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
+    // Normalize different types of dashes
+    .replace(/[\u2013\u2014\u2015]/g, '-')
+    // Normalize whitespace (multiple spaces to single space)
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+/**
  * Vocabulary marking specific evaluation
  */
 export const evaluateVocabularyMarking = (
@@ -114,8 +157,8 @@ export const evaluateVocabularyMarking = (
     };
   }
 
-  const normalizedSelected = selectedWords.map(w => w.toLowerCase());
-  const normalizedTarget = targetWords.map(w => w.toLowerCase());
+  const normalizedSelected = selectedWords.map(w => normalizeForComparison(w));
+  const normalizedTarget = targetWords.map(w => normalizeForComparison(w));
 
   // Calculate overlap
   const correctSelections = normalizedSelected.filter(word => 
@@ -164,7 +207,7 @@ export const evaluateMultipleChoice = (
   correctAnswer: string
 ): AnswerEvaluationResult => {
   
-  const isCorrect = selectedOption === correctAnswer;
+  const isCorrect = normalizeForComparison(selectedOption) === normalizeForComparison(correctAnswer);
   
   return {
     isCorrect,

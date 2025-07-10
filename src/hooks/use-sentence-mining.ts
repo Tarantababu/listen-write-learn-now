@@ -216,12 +216,22 @@ export const useSentenceMining = () => {
 
       let evaluationResult;
 
+      console.log('Submitting answer:', {
+        exerciseType: currentExercise.exerciseType,
+        userResponse: response,
+        correctAnswer: currentExercise.sentence,
+        translation: currentExercise.translation,
+        targetWords: currentExercise.targetWords
+      });
+
       // Enhanced answer evaluation based on exercise type
       switch (currentExercise.exerciseType) {
         case 'translation':
+          // For translation exercises, the user's response should be compared against the correct translation
+          // The currentExercise.sentence is the original sentence, currentExercise.translation is the expected translation
           evaluationResult = evaluateAnswer(
             response, 
-            currentExercise.translation || '', 
+            currentExercise.sentence || '', // Compare against the target language sentence
             'translation',
             0.7
           );
@@ -253,6 +263,8 @@ export const useSentenceMining = () => {
         default:
           evaluationResult = { isCorrect: false, accuracy: 0, feedback: 'Unknown exercise type', similarityScore: 0, category: 'poor' as const };
       }
+
+      console.log('Evaluation result:', evaluationResult);
 
       setIsCorrect(evaluationResult.isCorrect);
       setShowResult(true);
