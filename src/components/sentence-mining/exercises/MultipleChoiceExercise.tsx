@@ -34,7 +34,15 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
   const [selectedOption, setSelectedOption] = useState<string>('');
 
   // Get the first target word for this exercise
-  const targetWord = exercise.targetWords?.[0] || '';
+  const targetWord = exercise.targetWords?.[0] || (exercise.targetWords?.length > 0 ? exercise.targetWords[0] : 'unknown word');
+
+  // Fallback multiple choice options if not provided
+  const multipleChoiceOptions = exercise.multipleChoiceOptions || [
+    exercise.correctAnswer || 'Option 1',
+    'Option 2',
+    'Option 3',
+    'Option 4'
+  ];
 
   const handleOptionSelect = (option: string) => {
     if (showResult) return;
@@ -89,13 +97,13 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
           {/* Question */}
           <div className="text-center">
             <p className="text-base font-medium mb-4">
-              What does "{targetWord}" mean?
+              What does "<strong>{targetWord}</strong>" mean?
             </p>
           </div>
 
           {/* Multiple Choice Options */}
           <div className="space-y-3">
-            {exercise.multipleChoiceOptions?.map((option, index) => (
+            {multipleChoiceOptions.map((option, index) => (
               <button
                 key={index}
                 onClick={() => handleOptionSelect(option)}

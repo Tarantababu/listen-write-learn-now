@@ -85,18 +85,36 @@ async function generateExercise(
     const unknownWords = words.filter(word => !knownWords.has(word.toLowerCase()))
     
     if (unknownWords.length >= targetUnknownWords && unknownWords.length <= targetUnknownWords + 2) {
-      return {
+      const targetWord = unknownWords[0] || words[0] // Ensure we have a target word
+      
+      const baseExercise = {
         id: crypto.randomUUID(),
         sessionId,
         exerciseType,
-        sentence: sentence.targetText, // Target language sentence
-        translation: sentence.englishText, // English translation for reference
+        sentence: sentence.targetText,
+        translation: sentence.englishText,
         targetWords: unknownWords.slice(0, targetUnknownWords),
         unknownWords: unknownWords,
         difficultyScore: calculateDifficultyScore(unknownWords.length, words.length),
         explanation: `Focus on learning: ${unknownWords.slice(0, targetUnknownWords).join(', ')}`,
         hints: generateHints(unknownWords.slice(0, targetUnknownWords), sentence.englishText)
       }
+
+      // Add exercise-specific properties
+      if (exerciseType === 'multiple_choice') {
+        return {
+          ...baseExercise,
+          multipleChoiceOptions: generateMultipleChoiceOptions(targetWord, language),
+          correctAnswer: getCorrectTranslation(targetWord, language)
+        }
+      } else if (exerciseType === 'cloze') {
+        return {
+          ...baseExercise,
+          clozeSentence: generateClozeSentence(sentence.targetText, targetWord)
+        }
+      }
+      
+      return baseExercise
     }
   }
   
@@ -104,19 +122,170 @@ async function generateExercise(
   const fallbackSentence = sentences[0]
   const words = extractWords(fallbackSentence.targetText)
   const unknownWords = words.filter(word => !knownWords.has(word.toLowerCase()))
+  const targetWord = unknownWords[0] || words[0] // Ensure we have a target word
   
-  return {
+  const baseExercise = {
     id: crypto.randomUUID(),
     sessionId,
     exerciseType,
-    sentence: fallbackSentence.targetText, // Target language sentence
-    translation: fallbackSentence.englishText, // English translation for reference
+    sentence: fallbackSentence.targetText,
+    translation: fallbackSentence.englishText,
     targetWords: unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)),
     unknownWords: unknownWords,
     difficultyScore: calculateDifficultyScore(unknownWords.length, words.length),
     explanation: `Focus on learning: ${unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)).join(', ')}`,
     hints: generateHints(unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)), fallbackSentence.englishText)
   }
+
+  // Add exercise-specific properties for fallback
+  if (exerciseType === 'multiple_choice') {
+    return {
+      ...baseExercise,
+      multipleChoiceOptions: generateMultipleChoiceOptions(targetWord, language),
+      correctAnswer: getCorrectTranslation(targetWord, language)
+    }
+  } else if (exerciseType === 'cloze') {
+    return {
+      ...baseExercise,
+      clozeSentence: generateClozeSentence(fallbackSentence.targetText, targetWord)
+    }
+  }
+  
+  return baseExercise
+}
+
+function generateMultipleChoiceOptions(targetWord: string, language: string): string[] {
+  // Generate plausible wrong answers based on language
+  const correctAnswer = getCorrectTranslation(targetWord, language)
+  const wrongAnswers = getWrongAnswers(targetWord, language)
+  
+  // Combine and shuffle
+  const allOptions = [correctAnswer, ...wrongAnswers]
+  return shuffleArray(allOptions)
+}
+
+function getCorrectTranslation(word: string, language: string): string {
+  // Simple translation mapping for common words
+  const translations: Record<string, Record<string, string>> = {
+    german: {
+      'die': 'the (feminine)',
+      'der': 'the (masculine)', 
+      'das': 'the (neuter)',
+      'katze': 'cat',
+      'sitzt': 'sits',
+      'auf': 'on',
+      'dem': 'the (dative)',
+      'stuhl': 'chair',
+      'ich': 'I',
+      'esse': 'eat',
+      'gerne': 'gladly/like to',
+      'äpfel': 'apples',
+      'buch': 'book',
+      'liegt': 'lies',
+      'tisch': 'table',
+      'sie': 'she/they',
+      'trinkt': 'drinks',
+      'jeden': 'every',
+      'tag': 'day',
+      'wasser': 'water',
+      'sonne': 'sun',
+      'scheint': 'shines',
+      'heute': 'today',
+      'hell': 'bright'
+    },
+    spanish: {
+      'el': 'the (masculine)',
+      'la': 'the (feminine)',
+      'gato': 'cat',
+      'se': 'reflexive pronoun',
+      'sienta': 'sits',
+      'en': 'in/on',
+      'silla': 'chair',
+      'me': 'me',
+      'gusta': 'like',
+      'comer': 'to eat',
+      'manzanas': 'apples',
+      'libro': 'book',
+      'está': 'is',
+      'mesa': 'table',
+      'ella': 'she',
+      'bebe': 'drinks',
+      'agua': 'water',
+      'todos': 'all',
+      'los': 'the (plural)',
+      'días': 'days',
+      'sol': 'sun',
+      'brilla': 'shines',
+      'hoy': 'today'
+    },
+    french: {
+      'le': 'the (masculine)',
+      'la': 'the (feminine)',
+      'chat': 'cat',
+      's\'assoit': 'sits',
+      'sur': 'on',
+      'chaise': 'chair',
+      'j\'aime': 'I like',
+      'manger': 'to eat',
+      'des': 'some',
+      'pommes': 'apples',
+      'livre': 'book',
+      'est': 'is',
+      'table': 'table',
+      'elle': 'she',
+      'boit': 'drinks',
+      'de': 'of',
+      'l\'eau': 'water',
+      'tous': 'all',
+      'les': 'the (plural)',
+      'jours': 'days',
+      'soleil': 'sun',
+      'brille': 'shines',
+      'aujourd\'hui': 'today'
+    }
+  }
+
+  return translations[language]?.[word.toLowerCase()] || `${word} (translation)`
+}
+
+function getWrongAnswers(word: string, language: string): string[] {
+  // Generate plausible but incorrect translations
+  const wrongAnswerPool = [
+    'house', 'dog', 'run', 'big', 'small', 'green', 'blue', 'happy', 'sad',
+    'book', 'pen', 'door', 'window', 'car', 'tree', 'flower', 'bird', 'fish'
+  ]
+  
+  // Remove the correct answer if it's in the pool
+  const correctAnswer = getCorrectTranslation(word, language)
+  const filtered = wrongAnswerPool.filter(answer => 
+    !correctAnswer.toLowerCase().includes(answer.toLowerCase())
+  )
+  
+  // Return 3 random wrong answers
+  return shuffleArray(filtered).slice(0, 3)
+}
+
+function generateClozeSentence(sentence: string, targetWord: string): string {
+  // Replace the target word with a blank
+  const words = sentence.split(' ')
+  const targetIndex = words.findIndex(word => 
+    word.toLowerCase().includes(targetWord.toLowerCase())
+  )
+  
+  if (targetIndex !== -1) {
+    words[targetIndex] = '___'
+  }
+  
+  return words.join(' ')
+}
+
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
 }
 
 function getTargetUnknownWords(difficulty: string): number {
