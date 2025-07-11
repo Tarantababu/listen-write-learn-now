@@ -33,8 +33,10 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
 }) => {
   const [selectedOption, setSelectedOption] = useState<string>('');
 
-  // Get the first target word for this exercise
-  const targetWord = exercise.targetWords?.[0] || (exercise.targetWords?.length > 0 ? exercise.targetWords[0] : 'unknown word');
+  // Get the first target word for this exercise - fixed to handle array properly
+  const targetWord = Array.isArray(exercise.targetWords) && exercise.targetWords.length > 0 
+    ? exercise.targetWords[0] 
+    : 'the target word';
 
   // Fallback multiple choice options if not provided
   const multipleChoiceOptions = exercise.multipleChoiceOptions || [
@@ -94,7 +96,7 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
             </p>
           </div>
 
-          {/* Question */}
+          {/* Question - Fixed to show actual target word */}
           <div className="text-center">
             <p className="text-base font-medium mb-4">
               What does "<strong>{targetWord}</strong>" mean?

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -258,9 +259,9 @@ export const useSentenceMining = () => {
           break;
           
         case 'multiple_choice':
-          // For multiple choice, use the userResponse which should be the selected option
+          // For multiple choice, use the selected option from userResponse
           evaluationResult = evaluateMultipleChoice(
-            userResponse, // Use the stored userResponse which contains the selected option
+            response || userResponse, // Use the response parameter which contains the selected option
             currentExercise.correctAnswer || ''
           );
           break;
@@ -278,7 +279,7 @@ export const useSentenceMining = () => {
       await supabase
         .from('sentence_mining_exercises')
         .update({
-          user_response: currentExercise.exerciseType === 'multiple_choice' ? userResponse : response,
+          user_response: currentExercise.exerciseType === 'multiple_choice' ? (response || userResponse) : response,
           is_correct: evaluationResult.isCorrect,
           completed_at: new Date().toISOString(),
           completion_time: Math.floor(Math.random() * 30) + 10 // Placeholder

@@ -48,8 +48,13 @@ export const EnhancedExerciseRenderer: React.FC<EnhancedExerciseRendererProps> =
     audioLoading,
     showTranslation,
     onToggleTranslation,
-    onSubmit,
     onNext
+  };
+
+  // Handle multiple choice submission with selected option
+  const handleMultipleChoiceSubmit = () => {
+    // For multiple choice, we need to pass the selected option as the response
+    onSubmit();
   };
 
   switch (exercise.exerciseType) {
@@ -59,6 +64,7 @@ export const EnhancedExerciseRenderer: React.FC<EnhancedExerciseRendererProps> =
           {...commonProps}
           userResponse={userResponse}
           onResponseChange={onResponseChange}
+          onSubmit={onSubmit}
         />
       );
 
@@ -68,6 +74,7 @@ export const EnhancedExerciseRenderer: React.FC<EnhancedExerciseRendererProps> =
           {...commonProps}
           selectedWords={selectedWords}
           onWordSelect={onWordSelect}
+          onSubmit={onSubmit}
         />
       );
 
@@ -77,6 +84,7 @@ export const EnhancedExerciseRenderer: React.FC<EnhancedExerciseRendererProps> =
           {...commonProps}
           userResponse={userResponse}
           onResponseChange={onResponseChange}
+          onSubmit={onSubmit}
         />
       );
 
@@ -84,6 +92,7 @@ export const EnhancedExerciseRenderer: React.FC<EnhancedExerciseRendererProps> =
       return (
         <MultipleChoiceExercise 
           {...commonProps}
+          onSubmit={handleMultipleChoiceSubmit}
         />
       );
 

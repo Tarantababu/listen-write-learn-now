@@ -53,8 +53,9 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !showResult && localResponse.trim()) {
+      e.preventDefault();
       handleSubmit();
     }
   };
@@ -106,7 +107,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             </div>
           </div>
 
-          {/* Input Field */}
+          {/* Input Field - Fixed to properly accept keyboard input */}
           {!showResult && (
             <div className="flex justify-center">
               <div className="w-full max-w-md">
@@ -114,10 +115,11 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   type="text"
                   value={localResponse}
                   onChange={(e) => handleInputChange(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   placeholder="Type your answer here..."
                   className="text-center text-lg py-3"
                   disabled={loading}
+                  autoFocus
                 />
               </div>
             </div>

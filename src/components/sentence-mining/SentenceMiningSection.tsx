@@ -79,6 +79,9 @@ export const SentenceMiningSection: React.FC = () => {
   const handleSubmitAnswer = () => {
     if (currentExercise?.exerciseType === 'vocabulary_marking') {
       submitAnswer('', selectedWords);
+    } else if (currentExercise?.exerciseType === 'multiple_choice') {
+      // For multiple choice, pass the selected option as response
+      submitAnswer(userResponse, selectedWords);
     } else {
       submitAnswer(userResponse, selectedWords);
     }

@@ -3,20 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Volume2, BookOpen } from 'lucide-react';
+import { Volume2, CheckCircle, XCircle, Book } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 interface VocabularyMarkingExerciseProps {
   exercise: SentenceMiningExercise;
   selectedWords: string[];
-  onWordSelect: (word: string) => void;
   showResult: boolean;
   isCorrect: boolean;
   loading: boolean;
   onPlayAudio?: () => void;
   audioLoading?: boolean;
+  onWordSelect: (word: string) => void;
   onSubmit: () => void;
   onNext: () => void;
   showTranslation: boolean;
@@ -26,214 +24,141 @@ interface VocabularyMarkingExerciseProps {
 export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps> = ({
   exercise,
   selectedWords,
-  onWordSelect,
   showResult,
   isCorrect,
   loading,
   onPlayAudio,
   audioLoading = false,
+  onWordSelect,
   onSubmit,
   onNext,
   showTranslation,
   onToggleTranslation
 }) => {
-  const isMobile = useIsMobile();
-  const { settings } = useUserSettingsContext();
+  const [wordDefinitions, setWordDefinitions] = useState<Record<string, string>>({});
 
-  // Split sentence into words for selection
-  const words = exercise.sentence.split(/\s+/).filter(word => word.length > 0);
-
-  const handleWordClick = (word: string) => {
-    if (showResult) return;
-    // Clean the word of punctuation for comparison
-    const cleanWord = word.replace(/[^\w]/g, '').toLowerCase();
-    onWordSelect(cleanWord);
-  };
-
-  const isWordSelected = (word: string) => {
-    const cleanWord = word.replace(/[^\w]/g, '').toLowerCase();
-    return selectedWords.includes(cleanWord);
-  };
-
-  const getWordClassName = (word: string) => {
-    const isSelected = isWordSelected(word);
-    
-    if (showResult) {
-      // In result mode, show selected words as marked for learning
-      return isSelected 
-        ? 'bg-blue-200 text-blue-800 border-blue-500' 
-        : 'hover:bg-gray-100';
-    } else {
-      // In selection mode, show selected state
-      return isSelected 
-        ? 'bg-primary text-primary-foreground border-primary' 
-        : 'hover:bg-muted/50 border-border';
-    }
-  };
-
-  const getLanguageDisplayName = (language: string) => {
-    const languageNames: Record<string, string> = {
-      'german': 'German',
-      'spanish': 'Spanish', 
-      'french': 'French',
-      'english': 'English'
+  // Mock function to get word definitions - in a real app, this would call an API
+  const getWordDefinition = (word: string): string => {
+    const mockDefinitions: Record<string, string> = {
+      'katze': 'cat - a small domesticated carnivorous mammal',
+      'sitzt': 'sits - to be in a position where your body is resting on your bottom',
+      'auf': 'on - in a position above and touching something',
+      'dem': 'the - definite article (masculine/neuter dative)',
+      'stuhl': 'chair - a piece of furniture for one person to sit on',
+      'die': 'the - definite article (feminine nominative/accusative)',
+      'der': 'the - definite article (masculine nominative)',
+      'das': 'the - definite article (neuter nominative/accusative)',
+      'ist': 'is - third person singular form of "to be"',
+      'ein': 'a/an - indefinite article',
+      'eine': 'a/an - indefinite article (feminine)',
+      'und': 'and - conjunction connecting words or phrases',
+      'oder': 'or - conjunction expressing alternative',
+      'aber': 'but - conjunction expressing contrast',
+      'nicht': 'not - negation particle',
+      'ich': 'I - first person singular pronoun',
+      'du': 'you - second person singular pronoun (informal)',
+      'er': 'he - third person singular masculine pronoun',
+      'sie': 'she/they - third person singular feminine or plural pronoun',
+      'es': 'it - third person singular neuter pronoun',
+      'wir': 'we - first person plural pronoun',
+      'ihr': 'you - second person plural pronoun',
+      'haben': 'to have - auxiliary and main verb',
+      'sein': 'to be - auxiliary and main verb',
+      'werden': 'to become/will - auxiliary verb for future and passive',
+      'können': 'can/to be able to - modal verb',
+      'müssen': 'must/to have to - modal verb',
+      'sollen': 'should/to be supposed to - modal verb',
+      'wollen': 'to want - modal verb',
+      'dürfen': 'may/to be allowed to - modal verb',
+      'mögen': 'to like - modal verb',
+      'gehen': 'to go - verb of movement',
+      'kommen': 'to come - verb of movement',
+      'machen': 'to make/to do - general action verb',
+      'sagen': 'to say - speech verb',
+      'sehen': 'to see - perception verb',
+      'hören': 'to hear - perception verb',
+      'essen': 'to eat - verb related to food',
+      'trinken': 'to drink - verb related to beverages',
+      'schlafen': 'to sleep - verb related to rest',
+      'arbeiten': 'to work - verb related to employment',
+      'spielen': 'to play - verb related to games/music',
+      'lernen': 'to learn - verb related to education',
+      'lesen': 'to read - verb related to texts',
+      'schreiben': 'to write - verb related to texts',
+      'sprechen': 'to speak - verb related to communication',
+      'verstehen': 'to understand - verb related to comprehension'
     };
-    return languageNames[language] || language;
+    
+    const cleanWord = word.toLowerCase().replace(/[^\w]/g, '');
+    return mockDefinitions[cleanWord] || `${word} - definition not available`;
   };
 
-  // Mobile-optimized layout
-  if (isMobile) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        {/* Mobile Header - Fixed */}
-        <div className="bg-card border-b px-4 py-3 sticky top-0 z-10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs">
-                {exercise.difficulty}
-              </Badge>
-              <span className="text-sm font-medium">Mark Words</span>
-            </div>
-            {onPlayAudio && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onPlayAudio}
-                disabled={audioLoading}
-                className="text-xs px-2 py-1"
-              >
-                <Volume2 className="h-3 w-3 mr-1" />
-                {audioLoading ? 'Loading' : 'Listen'}
-              </Button>
-            )}
-          </div>
-        </div>
+  // Load definitions for selected words
+  useEffect(() => {
+    const newDefinitions: Record<string, string> = {};
+    selectedWords.forEach(word => {
+      if (!wordDefinitions[word]) {
+        newDefinitions[word] = getWordDefinition(word);
+      }
+    });
+    
+    if (Object.keys(newDefinitions).length > 0) {
+      setWordDefinitions(prev => ({ ...prev, ...newDefinitions }));
+    }
+  }, [selectedWords]);
 
-        {/* Content - Scrollable */}
-        <div className="flex-1 flex flex-col p-4 space-y-4">
-          {/* Instructions */}
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-4">
-              Tap on the {getLanguageDisplayName(settings.selectedLanguage)} words you don't know or want to learn:
-            </p>
-          </div>
-          
-          {/* Interactive Sentence in target language */}
-          <div className="p-4 bg-muted rounded-lg">
-            <div className="flex flex-wrap gap-2 text-base leading-relaxed justify-center">
-              {words.map((word, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleWordClick(word)}
-                  disabled={showResult}
-                  className={`px-2 py-1 rounded border-2 transition-all duration-200 ${getWordClassName(word)} ${
-                    showResult ? 'cursor-default' : 'cursor-pointer active:scale-95'
-                  }`}
-                >
-                  {word}
-                </button>
-              ))}
-            </div>
-          </div>
+  // Split sentence into clickable words
+  const renderClickableWords = () => {
+    const words = exercise.sentence.split(/(\s+|[^\w\s])/);
+    
+    return words.map((segment, index) => {
+      // Skip whitespace and punctuation
+      if (/^\s+$/.test(segment) || /^[^\w\s]+$/.test(segment)) {
+        return <span key={index}>{segment}</span>;
+      }
 
-          {/* Selected Words Counter */}
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">
-              Selected words: {selectedWords.length}
-            </p>
-          </div>
+      // Skip empty segments
+      if (!segment.trim()) {
+        return <span key={index}>{segment}</span>;
+      }
 
-          {/* Translation Toggle */}
-          <div className="text-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onToggleTranslation}
-              className="transition-transform duration-200 hover:scale-105 active:scale-95"
-            >
-              {showTranslation ? 'Hide' : 'Show'} English Translation
-            </Button>
-          </div>
+      const isSelected = selectedWords.includes(segment);
+      const isTargetWord = exercise.targetWords?.some(target => 
+        segment.toLowerCase().includes(target.toLowerCase())
+      );
 
-          {/* English Translation Display */}
-          {showTranslation && exercise.translation && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-                English translation:
-              </p>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                {exercise.translation}
-              </p>
-            </div>
-          )}
+      return (
+        <button
+          key={index}
+          onClick={() => !showResult && onWordSelect(segment)}
+          disabled={showResult}
+          className={`mx-1 px-2 py-1 rounded transition-all duration-200 ${
+            showResult
+              ? isTargetWord
+                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 cursor-default'
+                : isSelected
+                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 cursor-default'
+                : 'cursor-default'
+              : isSelected
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+              : 'hover:bg-muted hover:text-foreground cursor-pointer'
+          } ${!showResult ? 'hover:scale-105 active:scale-95' : ''}`}
+        >
+          {segment}
+        </button>
+      );
+    });
+  };
 
-          {/* Submit Button */}
-          {!showResult && (
-            <Button
-              onClick={onSubmit}
-              disabled={loading}
-              className="w-full"
-            >
-              {loading ? 'Saving...' : 'Mark Words for Learning'}
-            </Button>
-          )}
+  const handleSubmit = () => {
+    onSubmit();
+  };
 
-          {/* Result */}
-          {showResult && (
-            <div className="space-y-4">
-              <div className="text-center text-lg font-semibold text-blue-600">
-                <div className="flex items-center justify-center gap-2">
-                  <BookOpen className="h-6 w-6" />
-                  Words marked for learning!
-                </div>
-              </div>
-
-              {selectedWords.length > 0 && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
-                    Words marked for learning:
-                  </p>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    {selectedWords.join(', ')}
-                  </p>
-                </div>
-              )}
-
-              {selectedWords.length === 0 && (
-                <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    No words selected - that's okay! You can move on to the next exercise.
-                  </p>
-                </div>
-              )}
-
-              {exercise.explanation && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
-                    Learning tip:
-                  </p>
-                  <p className="text-sm text-amber-700 dark:text-amber-300">
-                    {exercise.explanation}
-                  </p>
-                </div>
-              )}
-
-              <Button onClick={onNext} className="w-full">
-                Next Exercise
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Desktop layout
   return (
     <Card className="w-full">
       <CardHeader>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <CardTitle className="text-lg">Vocabulary Marking</CardTitle>
+          <CardTitle className="text-lg">Mark Unknown Words</CardTitle>
           <div className="flex items-center gap-2 justify-start md:justify-end">
             <Badge variant="outline" className="capitalize">
               {exercise.difficulty}
@@ -259,34 +184,43 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
           {/* Instructions */}
           <div className="text-center">
             <p className="text-base font-medium mb-4">
-              Click on the {getLanguageDisplayName(settings.selectedLanguage)} words you don't know or want to learn:
+              Click on words you don't know or want to learn:
             </p>
           </div>
 
-          {/* Interactive Sentence in target language */}
-          <div className="p-4 md:p-6 bg-muted rounded-lg">
-            <div className="flex flex-wrap gap-2 text-lg md:text-xl leading-relaxed justify-center">
-              {words.map((word, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleWordClick(word)}
-                  disabled={showResult}
-                  className={`px-3 py-2 rounded-lg border-2 transition-all duration-200 ${getWordClassName(word)} ${
-                    showResult ? 'cursor-default' : 'cursor-pointer hover:scale-105 active:scale-95'
-                  }`}
-                >
-                  {word}
-                </button>
-              ))}
+          {/* Interactive Sentence */}
+          <div className="p-6 md:p-8 bg-muted rounded-lg">
+            <div className="text-lg md:text-xl leading-relaxed text-center">
+              {renderClickableWords()}
             </div>
           </div>
 
-          {/* Selected Words Counter */}
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">
-              Selected words: {selectedWords.length}
-            </p>
-          </div>
+          {/* Selected Words Definitions - Fixed to show English definitions */}
+          {selectedWords.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-4">
+                <Book className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-semibold">Selected Words & Definitions:</h3>
+              </div>
+              <div className="grid gap-3">
+                {selectedWords.map((word, index) => (
+                  <div
+                    key={index}
+                    className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="font-semibold text-blue-800 dark:text-blue-200">
+                        {word}
+                      </span>
+                      <span className="text-sm text-blue-700 dark:text-blue-300 flex-1">
+                        {wordDefinitions[word] || 'Loading definition...'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Translation Toggle */}
           <div className="text-center">
@@ -296,15 +230,15 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
               onClick={onToggleTranslation}
               className="transition-transform duration-200 hover:scale-105 active:scale-95"
             >
-              {showTranslation ? 'Hide' : 'Show'} English Translation
+              {showTranslation ? 'Hide' : 'Show'} Translation
             </Button>
           </div>
 
-          {/* English Translation Display */}
+          {/* Translation Display */}
           {showTranslation && exercise.translation && (
             <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                English translation:
+                Translation:
               </p>
               <p className="text-sm text-blue-700 dark:text-blue-300">
                 {exercise.translation}
@@ -316,49 +250,24 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
           <div className="flex justify-center gap-4">
             {!showResult ? (
               <Button
-                onClick={onSubmit}
+                onClick={handleSubmit}
                 disabled={loading}
                 size="lg"
                 className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
               >
-                {loading ? 'Saving...' : 'Mark Words for Learning'}
+                {loading ? 'Processing...' : 'Continue'}
               </Button>
             ) : (
               <div className="text-center space-y-4">
-                <div className="flex items-center justify-center gap-2 text-lg font-semibold text-blue-600">
-                  <BookOpen className="h-6 w-6" />
-                  Words marked for learning!
+                <div className={`flex items-center justify-center gap-2 text-lg font-semibold ${
+                  isCorrect ? 'text-green-600' : 'text-blue-600'
+                }`}>
+                  <CheckCircle className="h-6 w-6" />
+                  {selectedWords.length > 0 
+                    ? `Great! You marked ${selectedWords.length} word(s) for learning.`
+                    : 'Words marked for learning!'
+                  }
                 </div>
-
-                {selectedWords.length > 0 && (
-                  <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg max-w-md mx-auto">
-                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                      Words marked for learning:
-                    </p>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      {selectedWords.join(', ')}
-                    </p>
-                  </div>
-                )}
-
-                {selectedWords.length === 0 && (
-                  <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg max-w-md mx-auto">
-                    <p className="text-sm text-green-700 dark:text-green-300">
-                      No words selected - that's okay! You can move on to the next exercise.
-                    </p>
-                  </div>
-                )}
-
-                {exercise.explanation && (
-                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
-                      Learning tip:
-                    </p>
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                      {exercise.explanation}
-                    </p>
-                  </div>
-                )}
                 
                 <Button
                   onClick={onNext}
