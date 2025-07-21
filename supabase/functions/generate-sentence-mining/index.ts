@@ -93,11 +93,11 @@ async function generateExercise(
         exerciseType,
         sentence: sentence.targetText,
         translation: sentence.englishText,
-        targetWords: unknownWords.slice(0, targetUnknownWords),
+        targetWords: [targetWord], // Fixed: Always include the target word
         unknownWords: unknownWords,
         difficultyScore: calculateDifficultyScore(unknownWords.length, words.length),
-        explanation: generateExplanation(exerciseType, unknownWords.slice(0, targetUnknownWords), sentence.targetText, sentence.englishText),
-        hints: generateHints(unknownWords.slice(0, targetUnknownWords), sentence.englishText, exerciseType),
+        explanation: generateExplanation(exerciseType, [targetWord], sentence.targetText, sentence.englishText),
+        hints: generateHints([targetWord], sentence.englishText, exerciseType),
         difficulty: difficulty
       }
 
@@ -131,11 +131,11 @@ async function generateExercise(
     exerciseType,
     sentence: fallbackSentence.targetText,
     translation: fallbackSentence.englishText,
-    targetWords: unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)),
+    targetWords: [targetWord], // Fixed: Always include the target word
     unknownWords: unknownWords,
     difficultyScore: calculateDifficultyScore(unknownWords.length, words.length),
-    explanation: generateExplanation(exerciseType, unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)), fallbackSentence.targetText, fallbackSentence.englishText),
-    hints: generateHints(unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)), fallbackSentence.englishText, exerciseType),
+    explanation: generateExplanation(exerciseType, [targetWord], fallbackSentence.targetText, fallbackSentence.englishText),
+    hints: generateHints([targetWord], fallbackSentence.englishText, exerciseType),
     difficulty: difficulty
   }
 
@@ -157,9 +157,11 @@ async function generateExercise(
 }
 
 function generateExplanation(exerciseType: string, targetWords: string[], sentence: string, translation: string): string {
+  const wordList = targetWords.join(', ')
+  
   switch (exerciseType) {
     case 'translation':
-      return `Focus on translating these key words: ${targetWords.join(', ')}. Pay attention to word order and grammar patterns.`
+      return `Focus on translating these key words: ${wordList}. Pay attention to word order and grammar patterns.`
     case 'vocabulary_marking':
       return `Identify words you don't know yet. This helps build your vocabulary systematically.`
     case 'cloze':
@@ -167,7 +169,7 @@ function generateExplanation(exerciseType: string, targetWords: string[], senten
     case 'multiple_choice':
       return `Choose the correct meaning of "${targetWords[0] || 'unknown'}" based on the sentence context.`
     default:
-      return `Practice with these words: ${targetWords.join(', ')}`
+      return `Practice with these words: ${wordList}`
   }
 }
 
@@ -182,7 +184,7 @@ function generateMultipleChoiceOptions(targetWord: string, language: string): st
 }
 
 function getCorrectTranslation(word: string, language: string): string {
-  // Simple translation mapping for common words
+  // Enhanced translation mapping for common words
   const translations: Record<string, Record<string, string>> = {
     german: {
       'die': 'the (feminine)',
@@ -208,7 +210,18 @@ function getCorrectTranslation(word: string, language: string): string {
       'sonne': 'sun',
       'scheint': 'shines',
       'heute': 'today',
-      'hell': 'bright'
+      'hell': 'bright',
+      'wettervorhersage': 'weather forecast',
+      'sagt': 'says',
+      'morgen': 'tomorrow',
+      'regen': 'rain',
+      'voraus': 'ahead/predicts',
+      'muss': 'must',
+      'meine': 'my',
+      'hausaufgaben': 'homework',
+      'vor': 'before',
+      'abendessen': 'dinner',
+      'beenden': 'finish'
     },
     spanish: {
       'el': 'the (masculine)',
@@ -233,7 +246,17 @@ function getCorrectTranslation(word: string, language: string): string {
       'días': 'days',
       'sol': 'sun',
       'brilla': 'shines',
-      'hoy': 'today'
+      'hoy': 'today',
+      'pronóstico': 'forecast',
+      'tiempo': 'weather/time',
+      'predice': 'predicts',
+      'lluvia': 'rain',
+      'mañana': 'tomorrow',
+      'necesito': 'I need',
+      'terminar': 'to finish',
+      'tarea': 'homework',
+      'antes': 'before',
+      'cena': 'dinner'
     },
     french: {
       'le': 'the (masculine)',
@@ -258,7 +281,179 @@ function getCorrectTranslation(word: string, language: string): string {
       'jours': 'days',
       'soleil': 'sun',
       'brille': 'shines',
-      'aujourd\'hui': 'today'
+      'aujourd\'hui': 'today',
+      'prévisions': 'forecast',
+      'météorologiques': 'weather',
+      'prévoient': 'predict',
+      'pluie': 'rain',
+      'demain': 'tomorrow',
+      'dois': 'must',
+      'finir': 'finish',
+      'devoirs': 'homework',
+      'avant': 'before',
+      'dîner': 'dinner'
+    },
+    turkish: {
+      'kedi': 'cat',
+      'sandalyede': 'on the chair',
+      'oturuyor': 'is sitting',
+      'elma': 'apple',
+      'yemeyi': 'eating',
+      'seviyorum': 'I love',
+      'kitap': 'book',
+      'masanın': 'table\'s',
+      'üzerinde': 'on top of',
+      'o': 'he/she/it',
+      'her': 'every',
+      'gün': 'day',
+      'su': 'water',
+      'içer': 'drinks',
+      'güneş': 'sun',
+      'bugün': 'today',
+      'parlıyor': 'is shining',
+      'hava': 'weather',
+      'durumu': 'condition',
+      'yarın': 'tomorrow',
+      'yağmur': 'rain',
+      'öngörüyor': 'predicts'
+    },
+    norwegian: {
+      'katten': 'the cat',
+      'sitter': 'sits',
+      'på': 'on',
+      'stolen': 'the chair',
+      'jeg': 'I',
+      'liker': 'like',
+      'å': 'to',
+      'spise': 'eat',
+      'epler': 'apples',
+      'boka': 'the book',
+      'ligger': 'lies',
+      'bordet': 'the table',
+      'hun': 'she',
+      'drikker': 'drinks',
+      'vann': 'water',
+      'hver': 'every',
+      'dag': 'day',
+      'sola': 'the sun',
+      'skinner': 'shines',
+      'i': 'in/today',
+      'værmelding': 'weather forecast',
+      'varsler': 'warns/predicts',
+      'regn': 'rain',
+      'morgen': 'tomorrow'
+    },
+    italian: {
+      'il': 'the (masculine)',
+      'gatto': 'cat',
+      'si': 'reflexive pronoun',
+      'siede': 'sits',
+      'sulla': 'on the',
+      'sedia': 'chair',
+      'mi': 'me',
+      'piace': 'like',
+      'mangiare': 'to eat',
+      'le': 'the (plural)',
+      'mele': 'apples',
+      'libro': 'book',
+      'è': 'is',
+      'sul': 'on the',
+      'tavolo': 'table',
+      'lei': 'she',
+      'beve': 'drinks',
+      'acqua': 'water',
+      'ogni': 'every',
+      'giorno': 'day',
+      'sole': 'sun',
+      'splende': 'shines',
+      'oggi': 'today',
+      'previsioni': 'forecast',
+      'meteo': 'weather',
+      'predicono': 'predict',
+      'pioggia': 'rain',
+      'domani': 'tomorrow'
+    },
+    portuguese: {
+      'o': 'the (masculine)',
+      'gato': 'cat',
+      'senta': 'sits',
+      'na': 'on the',
+      'cadeira': 'chair',
+      'eu': 'I',
+      'gosto': 'like',
+      'comer': 'to eat',
+      'maçãs': 'apples',
+      'livro': 'book',
+      'está': 'is',
+      'mesa': 'table',
+      'ela': 'she',
+      'bebe': 'drinks',
+      'água': 'water',
+      'todos': 'all',
+      'os': 'the (plural)',
+      'dias': 'days',
+      'sol': 'sun',
+      'brilha': 'shines',
+      'hoje': 'today',
+      'previsão': 'forecast',
+      'tempo': 'weather',
+      'prevê': 'predicts',
+      'chuva': 'rain',
+      'amanhã': 'tomorrow'
+    },
+    swedish: {
+      'katten': 'the cat',
+      'sitter': 'sits',
+      'på': 'on',
+      'stolen': 'the chair',
+      'jag': 'I',
+      'tycker': 'think',
+      'om': 'about',
+      'att': 'to',
+      'äta': 'eat',
+      'äpplen': 'apples',
+      'boken': 'the book',
+      'ligger': 'lies',
+      'bordet': 'the table',
+      'hon': 'she',
+      'dricker': 'drinks',
+      'vatten': 'water',
+      'varje': 'every',
+      'dag': 'day',
+      'solen': 'the sun',
+      'skiner': 'shines',
+      'idag': 'today',
+      'väderleken': 'weather forecast',
+      'förutspår': 'predicts',
+      'regn': 'rain',
+      'imorgon': 'tomorrow'
+    },
+    dutch: {
+      'de': 'the',
+      'kat': 'cat',
+      'zit': 'sits',
+      'op': 'on',
+      'stoel': 'chair',
+      'ik': 'I',
+      'eet': 'eat',
+      'graag': 'gladly',
+      'appels': 'apples',
+      'het': 'the (neuter)',
+      'boek': 'book',
+      'ligt': 'lies',
+      'tafel': 'table',
+      'zij': 'she',
+      'drinkt': 'drinks',
+      'elke': 'every',
+      'dag': 'day',
+      'water': 'water',
+      'zon': 'sun',
+      'schijnt': 'shines',
+      'vandaag': 'today',
+      'weersvoorspelling': 'weather forecast',
+      'voorspelt': 'predicts',
+      'morgen': 'tomorrow',
+      'regen': 'rain'
     }
   }
 
@@ -269,7 +464,8 @@ function getWrongAnswers(word: string, language: string): string[] {
   // Generate plausible but incorrect translations
   const wrongAnswerPool = [
     'house', 'dog', 'run', 'big', 'small', 'green', 'blue', 'happy', 'sad',
-    'book', 'pen', 'door', 'window', 'car', 'tree', 'flower', 'bird', 'fish'
+    'book', 'pen', 'door', 'window', 'car', 'tree', 'flower', 'bird', 'fish',
+    'walk', 'talk', 'fast', 'slow', 'hot', 'cold', 'new', 'old', 'good', 'bad'
   ]
   
   // Remove the correct answer if it's in the pool
@@ -343,6 +539,9 @@ function generateHints(targetWords: string[], translation: string, exerciseType:
       break
     case 'multiple_choice':
       hints.push(`Consider the context of the sentence to determine the meaning`)
+      if (targetWords.length > 0) {
+        hints.push(`The word "${targetWords[0]}" appears in the sentence context`)
+      }
       break
     case 'vocabulary_marking':
       hints.push(`Click on words you don't know yet to mark them for learning`)

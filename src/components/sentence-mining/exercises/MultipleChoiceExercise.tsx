@@ -33,10 +33,10 @@ export const MultipleChoiceExercise: React.FC<MultipleChoiceExerciseProps> = ({
 }) => {
   const [selectedOption, setSelectedOption] = useState<string>('');
 
-  // Get the first target word for this exercise - fixed to handle array properly
+  // Get the first target word for this exercise - improved to handle array properly
   const targetWord = Array.isArray(exercise.targetWords) && exercise.targetWords.length > 0 
     ? exercise.targetWords[0] 
-    : 'the target word';
+    : exercise.targetWords || 'the target word';
 
   // Fallback multiple choice options if not provided
   const multipleChoiceOptions = exercise.multipleChoiceOptions || [

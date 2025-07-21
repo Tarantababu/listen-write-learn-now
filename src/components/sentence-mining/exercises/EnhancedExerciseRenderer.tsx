@@ -51,12 +51,6 @@ export const EnhancedExerciseRenderer: React.FC<EnhancedExerciseRendererProps> =
     onNext
   };
 
-  // Handle multiple choice submission with selected option
-  const handleMultipleChoiceSubmit = () => {
-    // For multiple choice, we need to pass the selected option as the response
-    onSubmit();
-  };
-
   switch (exercise.exerciseType) {
     case 'translation':
       return (
@@ -92,7 +86,7 @@ export const EnhancedExerciseRenderer: React.FC<EnhancedExerciseRendererProps> =
       return (
         <MultipleChoiceExercise 
           {...commonProps}
-          onSubmit={handleMultipleChoiceSubmit}
+          onSubmit={onSubmit}
         />
       );
 
