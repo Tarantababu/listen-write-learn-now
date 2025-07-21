@@ -15,8 +15,22 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
   progress,
   currentSession
 }) => {
+  console.log('ProgressTracker received progress:', progress);
+  console.log('ProgressTracker received currentSession:', currentSession);
+
   if (!progress) {
-    return null;
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center text-muted-foreground">
+              <p>No progress data available yet.</p>
+              <p className="text-sm mt-2">Start your first session to see your progress!</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const sessionAccuracy = currentSession 

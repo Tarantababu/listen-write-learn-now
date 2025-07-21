@@ -96,8 +96,9 @@ async function generateExercise(
         targetWords: unknownWords.slice(0, targetUnknownWords),
         unknownWords: unknownWords,
         difficultyScore: calculateDifficultyScore(unknownWords.length, words.length),
-        explanation: `Focus on learning: ${unknownWords.slice(0, targetUnknownWords).join(', ')}`,
-        hints: generateHints(unknownWords.slice(0, targetUnknownWords), sentence.englishText)
+        explanation: generateExplanation(exerciseType, unknownWords.slice(0, targetUnknownWords), sentence.targetText, sentence.englishText),
+        hints: generateHints(unknownWords.slice(0, targetUnknownWords), sentence.englishText, exerciseType),
+        difficulty: difficulty
       }
 
       // Add exercise-specific properties
@@ -133,8 +134,9 @@ async function generateExercise(
     targetWords: unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)),
     unknownWords: unknownWords,
     difficultyScore: calculateDifficultyScore(unknownWords.length, words.length),
-    explanation: `Focus on learning: ${unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)).join(', ')}`,
-    hints: generateHints(unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)), fallbackSentence.englishText)
+    explanation: generateExplanation(exerciseType, unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)), fallbackSentence.targetText, fallbackSentence.englishText),
+    hints: generateHints(unknownWords.slice(0, Math.min(targetUnknownWords, unknownWords.length)), fallbackSentence.englishText, exerciseType),
+    difficulty: difficulty
   }
 
   // Add exercise-specific properties for fallback
@@ -152,6 +154,21 @@ async function generateExercise(
   }
   
   return baseExercise
+}
+
+function generateExplanation(exerciseType: string, targetWords: string[], sentence: string, translation: string): string {
+  switch (exerciseType) {
+    case 'translation':
+      return `Focus on translating these key words: ${targetWords.join(', ')}. Pay attention to word order and grammar patterns.`
+    case 'vocabulary_marking':
+      return `Identify words you don't know yet. This helps build your vocabulary systematically.`
+    case 'cloze':
+      return `The missing word is "${targetWords[0] || 'unknown'}". Consider the context and grammar to determine the correct word.`
+    case 'multiple_choice':
+      return `Choose the correct meaning of "${targetWords[0] || 'unknown'}" based on the sentence context.`
+    default:
+      return `Practice with these words: ${targetWords.join(', ')}`
+  }
 }
 
 function generateMultipleChoiceOptions(targetWord: string, language: string): string[] {
@@ -308,10 +325,33 @@ function calculateDifficultyScore(unknownWords: number, totalWords: number): num
   return Math.round((unknownWords / totalWords) * 100)
 }
 
-function generateHints(targetWords: string[], translation: string): string[] {
-  return targetWords.map(word => 
-    `The word "${word}" appears in the translation: "${translation}"`
-  )
+function generateHints(targetWords: string[], translation: string, exerciseType: string): string[] {
+  const hints = []
+  
+  switch (exerciseType) {
+    case 'translation':
+      hints.push(`The sentence means: "${translation}"`)
+      if (targetWords.length > 0) {
+        hints.push(`Focus on translating: ${targetWords.join(', ')}`)
+      }
+      break
+    case 'cloze':
+      if (targetWords.length > 0) {
+        hints.push(`The missing word starts with "${targetWords[0].charAt(0).toUpperCase()}"`)
+        hints.push(`Think about what word would make sense grammatically in this context`)
+      }
+      break
+    case 'multiple_choice':
+      hints.push(`Consider the context of the sentence to determine the meaning`)
+      break
+    case 'vocabulary_marking':
+      hints.push(`Click on words you don't know yet to mark them for learning`)
+      break
+    default:
+      hints.push(`Focus on these key words: ${targetWords.join(', ')}`)
+  }
+  
+  return hints
 }
 
 function getSampleSentences(difficulty: string, language: string) {

@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { DifficultyLevel, ExerciseType, SentenceMiningSession, SentenceMiningExercise } from '@/types/sentence-mining';
+import { DifficultyLevel, ExerciseType, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { evaluateAnswer, evaluateVocabularyMarking, evaluateMultipleChoice } from '@/utils/answerEvaluation';
 
@@ -16,7 +15,7 @@ export const useSentenceMining = () => {
   const [isCorrect, setIsCorrect] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState<any>(null);
+  const [progress, setProgress] = useState<SentenceMiningProgress | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
 
@@ -29,27 +28,151 @@ export const useSentenceMining = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Load user's sentence mining progress
-      const { data: sessions } = await supabase
+      console.log('Loading sentence mining progress for user:', user.id);
+
+      // Load user's sentence mining sessions
+      const { data: sessions, error: sessionsError } = await supabase
         .from('sentence_mining_sessions')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
+      if (sessionsError) {
+        console.error('Error loading sessions:', sessionsError);
+        return;
+      }
+
+      console.log('Loaded sessions:', sessions);
+
+      // Load exercises data for analysis
+      const { data: exercises, error: exercisesError } = await supabase
+        .from('sentence_mining_exercises')
+        .select('*')
+        .in('session_id', sessions?.map(s => s.id) || []);
+
+      if (exercisesError) {
+        console.error('Error loading exercises:', exercisesError);
+      }
+
+      console.log('Loaded exercises:', exercises);
+
       if (sessions && sessions.length > 0) {
-        const recentSessions = sessions.slice(0, 10);
-        const difficultyProgress = {
-          beginner: recentSessions.filter(s => s.difficulty_level === 'beginner').length,
-          intermediate: recentSessions.filter(s => s.difficulty_level === 'intermediate').length,
-          advanced: recentSessions.filter(s => s.difficulty_level === 'advanced').length,
+        const recentSessions = sessions.slice(0, 30); // Analyze more sessions for better stats
+        
+        // Calculate difficulty progress
+        const difficultyStats = {
+          beginner: { attempted: 0, correct: 0, accuracy: 0 },
+          intermediate: { attempted: 0, correct: 0, accuracy: 0 },
+          advanced: { attempted: 0, correct: 0, accuracy: 0 }
         };
 
-        setProgress({
-          totalSessions: sessions.length,
-          averageAccuracy: calculateAverageAccuracy(recentSessions),
-          difficultyProgress,
-          wordsLearned: await getWordsLearned(user.id)
+        recentSessions.forEach(session => {
+          const difficulty = session.difficulty_level as DifficultyLevel;
+          if (difficultyStats[difficulty]) {
+            difficultyStats[difficulty].attempted += session.total_exercises;
+            difficultyStats[difficulty].correct += session.correct_exercises;
+          }
         });
+
+        // Calculate accuracy for each difficulty
+        Object.keys(difficultyStats).forEach(key => {
+          const stats = difficultyStats[key as DifficultyLevel];
+          stats.accuracy = stats.attempted > 0 ? Math.round((stats.correct / stats.attempted) * 100) : 0;
+        });
+
+        // Calculate exercise type progress
+        const exerciseTypeStats = {
+          translation: { attempted: 0, correct: 0, accuracy: 0 },
+          vocabulary_marking: { attempted: 0, correct: 0, accuracy: 0 },
+          cloze: { attempted: 0, correct: 0, accuracy: 0 },
+          multiple_choice: { attempted: 0, correct: 0, accuracy: 0 }
+        };
+
+        if (exercises) {
+          exercises.forEach(exercise => {
+            const type = exercise.exercise_type as ExerciseType;
+            if (exerciseTypeStats[type]) {
+              exerciseTypeStats[type].attempted += 1;
+              if (exercise.is_correct) {
+                exerciseTypeStats[type].correct += 1;
+              }
+            }
+          });
+
+          // Calculate accuracy for each exercise type
+          Object.keys(exerciseTypeStats).forEach(key => {
+            const stats = exerciseTypeStats[key as ExerciseType];
+            stats.accuracy = stats.attempted > 0 ? Math.round((stats.correct / stats.attempted) * 100) : 0;
+          });
+        }
+
+        // Calculate streak
+        const today = new Date().toDateString();
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString();
+        let streak = 0;
+        let lastDate = '';
+
+        const sortedSessions = [...sessions].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        for (const session of sortedSessions) {
+          const sessionDate = new Date(session.created_at).toDateString();
+          
+          if (streak === 0) {
+            if (sessionDate === today || sessionDate === yesterday) {
+              streak = 1;
+              lastDate = sessionDate;
+            } else {
+              break;
+            }
+          } else {
+            const expectedDate = new Date(new Date(lastDate).getTime() - 24 * 60 * 60 * 1000).toDateString();
+            if (sessionDate === expectedDate) {
+              streak++;
+              lastDate = sessionDate;
+            } else {
+              break;
+            }
+          }
+        }
+
+        const progressData: SentenceMiningProgress = {
+          language: settings.selectedLanguage,
+          totalSessions: sessions.length,
+          totalExercises: sessions.reduce((sum, s) => sum + s.total_exercises, 0),
+          totalCorrect: sessions.reduce((sum, s) => sum + s.correct_exercises, 0),
+          averageAccuracy: calculateAverageAccuracy(recentSessions),
+          streak,
+          lastSessionDate: sessions.length > 0 ? new Date(sessions[0].created_at) : undefined,
+          difficultyProgress: difficultyStats,
+          exerciseTypeProgress: exerciseTypeStats,
+          wordsLearned: await getWordsLearned(user.id)
+        };
+
+        console.log('Setting progress data:', progressData);
+        setProgress(progressData);
+      } else {
+        // No sessions yet, set empty progress
+        const emptyProgress: SentenceMiningProgress = {
+          language: settings.selectedLanguage,
+          totalSessions: 0,
+          totalExercises: 0,
+          totalCorrect: 0,
+          averageAccuracy: 0,
+          streak: 0,
+          difficultyProgress: {
+            beginner: { attempted: 0, correct: 0, accuracy: 0 },
+            intermediate: { attempted: 0, correct: 0, accuracy: 0 },
+            advanced: { attempted: 0, correct: 0, accuracy: 0 }
+          },
+          exerciseTypeProgress: {
+            translation: { attempted: 0, correct: 0, accuracy: 0 },
+            vocabulary_marking: { attempted: 0, correct: 0, accuracy: 0 },
+            cloze: { attempted: 0, correct: 0, accuracy: 0 },
+            multiple_choice: { attempted: 0, correct: 0, accuracy: 0 }
+          },
+          wordsLearned: 0
+        };
+        setProgress(emptyProgress);
       }
     } catch (error) {
       console.error('Error loading progress:', error);
@@ -84,6 +207,8 @@ export const useSentenceMining = () => {
         throw new Error('User not authenticated');
       }
 
+      console.log('Starting new session with difficulty:', difficulty);
+
       // Create new session
       const { data: session, error: sessionError } = await supabase
         .from('sentence_mining_sessions')
@@ -101,6 +226,8 @@ export const useSentenceMining = () => {
         .single();
 
       if (sessionError) throw sessionError;
+
+      console.log('Session created:', session);
 
       // Convert database session to our interface format
       const mappedSession: SentenceMiningSession = {
@@ -149,6 +276,8 @@ export const useSentenceMining = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      console.log('Generating next exercise for session:', sessionId);
+
       // Determine exercise type (cycle through different types)
       const exerciseTypes: ExerciseType[] = ['translation', 'vocabulary_marking', 'cloze', 'multiple_choice'];
       const randomType = exerciseTypes[Math.floor(Math.random() * exerciseTypes.length)];
@@ -164,6 +293,8 @@ export const useSentenceMining = () => {
       });
 
       if (error) throw error;
+
+      console.log('Generated exercise:', exercise);
 
       // Store exercise in database
       const { data: storedExercise, error: storeError } = await supabase
@@ -181,6 +312,8 @@ export const useSentenceMining = () => {
         .single();
 
       if (storeError) throw storeError;
+
+      console.log('Stored exercise:', storedExercise);
 
       setCurrentExercise({
         ...exercise,

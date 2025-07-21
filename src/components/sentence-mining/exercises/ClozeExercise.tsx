@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Volume2, CheckCircle, XCircle } from 'lucide-react';
+import { Volume2, CheckCircle, XCircle, Lightbulb } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 
 interface ClozeExerciseProps {
@@ -107,7 +107,24 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             </div>
           </div>
 
-          {/* Input Field - Fixed to properly accept keyboard input */}
+          {/* Hints */}
+          {exercise.hints && exercise.hints.length > 0 && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Lightbulb className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                    Hint:
+                  </p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    {exercise.hints[0]}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Input Field */}
           {!showResult && (
             <div className="flex justify-center">
               <div className="w-full max-w-md">
@@ -125,7 +142,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             </div>
           )}
 
-          {/* Translation Toggle */}
+          {/* English Translation Toggle */}
           <div className="text-center">
             <Button
               variant="outline"
@@ -133,17 +150,17 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               onClick={onToggleTranslation}
               className="transition-transform duration-200 hover:scale-105 active:scale-95"
             >
-              {showTranslation ? 'Hide' : 'Show'} Translation
+              {showTranslation ? 'Hide' : 'Show'} English Translation
             </Button>
           </div>
 
-          {/* Translation Display */}
+          {/* English Translation Display */}
           {showTranslation && exercise.translation && (
-            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                Translation:
+            <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+                English Translation:
               </p>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
+              <p className="text-sm text-green-700 dark:text-green-300">
                 {exercise.translation}
               </p>
             </div>
