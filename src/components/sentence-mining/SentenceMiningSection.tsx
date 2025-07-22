@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -79,9 +78,6 @@ export const SentenceMiningSection: React.FC = () => {
   const handleSubmitAnswer = () => {
     if (currentExercise?.exerciseType === 'vocabulary_marking') {
       submitAnswer('', selectedWords);
-    } else if (currentExercise?.exerciseType === 'multiple_choice') {
-      // For multiple choice, pass the selected option as response
-      submitAnswer(userResponse, selectedWords);
     } else {
       submitAnswer(userResponse, selectedWords);
     }
@@ -290,7 +286,7 @@ export const SentenceMiningSection: React.FC = () => {
             <p className="text-sm text-muted-foreground">
               Our sentence mining system uses the proven n+1 methodology, where each sentence contains mostly words you know plus just a few new words to learn.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div>
                 <h4 className="font-semibold mb-2">Translation</h4>
                 <p className="text-muted-foreground">Translate sentences between languages to build comprehension</p>
@@ -302,10 +298,6 @@ export const SentenceMiningSection: React.FC = () => {
               <div>
                 <h4 className="font-semibold mb-2">Cloze Exercises</h4>
                 <p className="text-muted-foreground">Fill in blanks to practice word usage in context</p>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-2">Multiple Choice</h4>
-                <p className="text-muted-foreground">Choose correct meanings to test comprehension</p>
               </div>
             </div>
           </div>
