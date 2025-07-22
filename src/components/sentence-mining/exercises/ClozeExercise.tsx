@@ -36,35 +36,27 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   showTranslation,
   onToggleTranslation
 }) => {
-  const [localResponse, setLocalResponse] = useState('');
-
   // Get the cloze sentence or create one if not provided
   const clozeSentence = exercise.clozeSentence || generateClozeSentence(exercise.sentence, exercise.targetWords?.[0] || '');
   const targetWord = exercise.targetWords?.[0] || '';
 
-  const handleInputChange = (value: string) => {
-    setLocalResponse(value);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
     onResponseChange(value);
   };
 
   const handleSubmit = () => {
-    if (localResponse.trim()) {
+    if (userResponse.trim()) {
       onSubmit();
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !showResult && localResponse.trim()) {
+    if (e.key === 'Enter' && !showResult && userResponse.trim()) {
       e.preventDefault();
       handleSubmit();
     }
   };
-
-  // Reset response when exercise changes
-  useEffect(() => {
-    setLocalResponse('');
-    onResponseChange('');
-  }, [exercise.id, onResponseChange]);
 
   return (
     <Card className="w-full">
@@ -103,7 +95,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           {/* Cloze Sentence Display */}
           <div className="p-6 md:p-8 bg-muted rounded-lg">
             <div className="text-lg md:text-xl leading-relaxed text-center">
-              {renderClozeSentence(clozeSentence, localResponse, showResult, isCorrect, targetWord)}
+              {renderClozeSentence(clozeSentence, userResponse, showResult, isCorrect, targetWord)}
             </div>
           </div>
 
@@ -130,8 +122,8 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               <div className="w-full max-w-md">
                 <Input
                   type="text"
-                  value={localResponse}
-                  onChange={(e) => handleInputChange(e.target.value)}
+                  value={userResponse}
+                  onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   placeholder="Type your answer here..."
                   className="text-center text-lg py-3"
@@ -171,7 +163,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             {!showResult ? (
               <Button
                 onClick={handleSubmit}
-                disabled={!localResponse.trim() || loading}
+                disabled={!userResponse.trim() || loading}
                 size="lg"
                 className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
               >
