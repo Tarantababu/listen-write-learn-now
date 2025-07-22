@@ -37,8 +37,8 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
   onToggleTranslation
 }) => {
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    onResponseChange(value);
+    console.log('Translation input change:', e.target.value);
+    onResponseChange(e.target.value);
   };
 
   const handleSubmit = () => {
@@ -49,8 +49,11 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
 
   // Reset response when exercise changes
   useEffect(() => {
+    console.log('Translation exercise changed, resetting response');
     onResponseChange('');
   }, [exercise.id, onResponseChange]);
+
+  console.log('TranslationExercise render - userResponse:', userResponse);
 
   return (
     <Card className="w-full">
