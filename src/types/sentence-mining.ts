@@ -2,7 +2,7 @@
 export interface SentenceMiningExercise {
   id: string;
   sentence: string;
-  targetWords: string[]; // Changed from targetWord to targetWords (array)
+  targetWords: string[];
   clozeSentence: string;
   difficulty: DifficultyLevel;
   context: string;
@@ -11,7 +11,6 @@ export interface SentenceMiningExercise {
   correctAttempts: number;
   exerciseType: ExerciseType;
   translation?: string;
-  multipleChoiceOptions?: string[];
   correctAnswer: string;
   explanation?: string;
   clickableWords?: ClickableWord[];
@@ -77,7 +76,7 @@ export interface SentenceMiningProgress {
 }
 
 export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
-export type ExerciseType = 'cloze' | 'translation' | 'multiple_choice' | 'vocabulary_marking';
+export type ExerciseType = 'cloze' | 'translation' | 'vocabulary_marking';
 
 export interface UserResponse {
   text: string;

@@ -4,7 +4,6 @@ import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { TranslationExercise } from './TranslationExercise';
 import { VocabularyMarkingExercise } from './VocabularyMarkingExercise';
 import { ClozeExercise } from './ClozeExercise';
-import { MultipleChoiceExercise } from './MultipleChoiceExercise';
 
 interface EnhancedExerciseRendererProps {
   exercise: SentenceMiningExercise;
@@ -78,14 +77,6 @@ export const EnhancedExerciseRenderer: React.FC<EnhancedExerciseRendererProps> =
           {...commonProps}
           userResponse={userResponse}
           onResponseChange={onResponseChange}
-          onSubmit={onSubmit}
-        />
-      );
-
-    case 'multiple_choice':
-      return (
-        <MultipleChoiceExercise 
-          {...commonProps}
           onSubmit={onSubmit}
         />
       );

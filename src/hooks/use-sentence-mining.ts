@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DifficultyLevel, ExerciseType, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { evaluateAnswer, evaluateVocabularyMarking, evaluateMultipleChoice } from '@/utils/answerEvaluation';
+import { evaluateAnswer, evaluateVocabularyMarking } from '@/utils/answerEvaluation';
 
 export const useSentenceMining = () => {
   const { settings } = useUserSettingsContext();
@@ -85,8 +85,7 @@ export const useSentenceMining = () => {
         const exerciseTypeStats = {
           translation: { attempted: 0, correct: 0, accuracy: 0 },
           vocabulary_marking: { attempted: 0, correct: 0, accuracy: 0 },
-          cloze: { attempted: 0, correct: 0, accuracy: 0 },
-          multiple_choice: { attempted: 0, correct: 0, accuracy: 0 }
+          cloze: { attempted: 0, correct: 0, accuracy: 0 }
         };
 
         if (exercises) {
@@ -168,8 +167,7 @@ export const useSentenceMining = () => {
           exerciseTypeProgress: {
             translation: { attempted: 0, correct: 0, accuracy: 0 },
             vocabulary_marking: { attempted: 0, correct: 0, accuracy: 0 },
-            cloze: { attempted: 0, correct: 0, accuracy: 0 },
-            multiple_choice: { attempted: 0, correct: 0, accuracy: 0 }
+            cloze: { attempted: 0, correct: 0, accuracy: 0 }
           },
           wordsLearned: 0
         };
@@ -217,7 +215,7 @@ export const useSentenceMining = () => {
           user_id: user.id,
           language: settings.selectedLanguage,
           difficulty_level: difficulty,
-          exercise_types: ['translation', 'vocabulary_marking', 'cloze', 'multiple_choice'],
+          exercise_types: ['translation', 'vocabulary_marking', 'cloze'],
           total_exercises: 0,
           correct_exercises: 0,
           new_words_encountered: 0,
@@ -279,8 +277,8 @@ export const useSentenceMining = () => {
 
       console.log('Generating next exercise for session:', sessionId);
 
-      // Determine exercise type (cycle through different types)
-      const exerciseTypes: ExerciseType[] = ['translation', 'vocabulary_marking', 'cloze', 'multiple_choice'];
+      // Determine exercise type (cycle through different types, excluding multiple_choice)
+      const exerciseTypes: ExerciseType[] = ['translation', 'vocabulary_marking', 'cloze'];
       const randomType = exerciseTypes[Math.floor(Math.random() * exerciseTypes.length)];
 
       // Generate exercise using the edge function
@@ -392,14 +390,6 @@ export const useSentenceMining = () => {
           );
           break;
           
-        case 'multiple_choice':
-          // For multiple choice, use the selected option from userResponse
-          evaluationResult = evaluateMultipleChoice(
-            response || userResponse, // Use the response parameter which contains the selected option
-            currentExercise.correctAnswer || ''
-          );
-          break;
-          
         default:
           evaluationResult = { isCorrect: false, accuracy: 0, feedback: 'Unknown exercise type', similarityScore: 0, category: 'poor' as const };
       }
@@ -413,7 +403,7 @@ export const useSentenceMining = () => {
       await supabase
         .from('sentence_mining_exercises')
         .update({
-          user_response: currentExercise.exerciseType === 'multiple_choice' ? (response || userResponse) : response,
+          user_response: response,
           is_correct: evaluationResult.isCorrect,
           completed_at: new Date().toISOString(),
           completion_time: Math.floor(Math.random() * 30) + 10 // Placeholder

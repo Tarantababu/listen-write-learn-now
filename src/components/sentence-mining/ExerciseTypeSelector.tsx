@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Languages, Brain, CheckSquare, BookOpen } from 'lucide-react';
+import { Languages, Brain, BookOpen } from 'lucide-react';
 import { ExerciseType, DifficultyLevel } from '@/types/sentence-mining';
 
 interface ExerciseTypeSelectorProps {
@@ -23,14 +23,6 @@ export const ExerciseTypeSelector: React.FC<ExerciseTypeSelectorProps> = ({
       icon: Languages,
       color: 'bg-blue-500',
       hoverColor: 'hover:bg-blue-600',
-    },
-    {
-      type: 'multiple_choice' as ExerciseType,
-      title: 'Multiple Choice',
-      description: 'Fill in the blank with the correct word from options',
-      icon: CheckSquare,
-      color: 'bg-green-500',
-      hoverColor: 'hover:bg-green-600',
     },
     {
       type: 'vocabulary_marking' as ExerciseType,
