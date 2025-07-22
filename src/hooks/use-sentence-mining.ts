@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -356,13 +355,13 @@ export const useSentenceMining = () => {
         targetWords: currentExercise.targetWords
       });
 
-      // Enhanced answer evaluation based on exercise type
+      // Fixed answer evaluation based on exercise type
       switch (currentExercise.exerciseType) {
         case 'translation':
-          // For translation exercises, compare user's response against the target language sentence
+          // For translation exercises, compare user's response against the English translation
           evaluationResult = evaluateAnswer(
             response, 
-            currentExercise.sentence || '', 
+            currentExercise.translation || '', // Compare against English translation, not original sentence
             'translation',
             0.7
           );
