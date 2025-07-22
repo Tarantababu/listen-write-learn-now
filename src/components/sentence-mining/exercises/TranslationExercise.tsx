@@ -36,22 +36,19 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
   showTranslation,
   onToggleTranslation
 }) => {
-  const [localResponse, setLocalResponse] = useState('');
-
-  const handleInputChange = (value: string) => {
-    setLocalResponse(value);
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
     onResponseChange(value);
   };
 
   const handleSubmit = () => {
-    if (localResponse.trim()) {
+    if (userResponse.trim()) {
       onSubmit();
     }
   };
 
   // Reset response when exercise changes
   useEffect(() => {
-    setLocalResponse('');
     onResponseChange('');
   }, [exercise.id, onResponseChange]);
 
@@ -126,8 +123,8 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
                 </label>
                 <Textarea
                   id="translation"
-                  value={localResponse}
-                  onChange={(e) => handleInputChange(e.target.value)}
+                  value={userResponse}
+                  onChange={handleInputChange}
                   placeholder="Type your translation here..."
                   className="min-h-[100px] text-base"
                   disabled={loading}
@@ -177,7 +174,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             {!showResult ? (
               <Button
                 onClick={handleSubmit}
-                disabled={!localResponse.trim() || loading}
+                disabled={!userResponse.trim() || loading}
                 size="lg"
                 className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
               >
@@ -209,7 +206,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
                         Your translation:
                       </p>
                       <p className="text-sm text-red-700 dark:text-red-300">
-                        {localResponse}
+                        {userResponse}
                       </p>
                     </div>
                     
