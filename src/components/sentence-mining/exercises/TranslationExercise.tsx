@@ -47,11 +47,11 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
     }
   };
 
-  // Reset response when exercise changes
+  // Reset response when exercise changes (but not when onResponseChange changes)
   useEffect(() => {
     console.log('Translation exercise changed, resetting response');
     onResponseChange('');
-  }, [exercise.id, onResponseChange]);
+  }, [exercise.id]); // Removed onResponseChange from dependencies
 
   console.log('TranslationExercise render - userResponse:', userResponse);
 
