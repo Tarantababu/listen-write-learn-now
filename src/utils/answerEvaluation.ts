@@ -19,7 +19,7 @@ export const evaluateAnswer = (
   threshold: number = 0.7
 ): AnswerEvaluationResult => {
   
-  // Normalize inputs - more robust normalization
+  // Normalize inputs
   const normalizedUser = normalizeForComparison(userAnswer);
   const answerArray = Array.isArray(correctAnswers) ? correctAnswers : [correctAnswers];
   const normalizedCorrect = answerArray.map(ans => normalizeForComparison(ans));
@@ -79,12 +79,20 @@ export const evaluateAnswer = (
     }
   }
 
+  // Adjust threshold based on exercise type
+  let adjustedThreshold = threshold;
+  if (exerciseType === 'translation') {
+    adjustedThreshold = 0.75; // Higher threshold for translations
+  } else if (exerciseType === 'cloze') {
+    adjustedThreshold = 0.8; // Even higher for cloze exercises
+  }
+
   // Determine correctness based on threshold
-  const isCorrect = bestMatch.accuracy >= (threshold * 100);
+  const isCorrect = bestMatch.accuracy >= (adjustedThreshold * 100);
   
   console.log('Final evaluation:', {
     bestMatchAccuracy: bestMatch.accuracy,
-    threshold: threshold * 100,
+    threshold: adjustedThreshold * 100,
     isCorrect
   });
   
@@ -139,7 +147,7 @@ const normalizeForComparison = (text: string): string => {
 };
 
 /**
- * Vocabulary marking specific evaluation
+ * Vocabulary marking specific evaluation - FIXED
  */
 export const evaluateVocabularyMarking = (
   selectedWords: string[],
@@ -147,13 +155,14 @@ export const evaluateVocabularyMarking = (
   allowPartialCredit: boolean = true
 ): AnswerEvaluationResult => {
   
+  // Fixed: Handle empty selections correctly
   if (selectedWords.length === 0) {
     return {
-      isCorrect: false,
-      accuracy: 0,
-      feedback: 'Please select some words to learn.',
-      similarityScore: 0,
-      category: 'poor'
+      isCorrect: true, // Changed: Empty selection is valid for vocabulary marking
+      accuracy: 100,
+      feedback: 'No words selected - that\'s perfectly fine!',
+      similarityScore: 1,
+      category: 'excellent'
     };
   }
 
@@ -169,11 +178,11 @@ export const evaluateVocabularyMarking = (
   const missedWords = normalizedTarget.length - correctSelections;
 
   // Calculate accuracy with penalties for extra selections
-  let accuracy = 0;
+  let accuracy = 100; // Start with perfect score
   if (normalizedTarget.length > 0) {
     const baseAccuracy = (correctSelections / normalizedTarget.length) * 100;
-    const penalty = (extraSelections * 10); // 10% penalty per extra word
-    accuracy = Math.max(0, baseAccuracy - penalty);
+    const penalty = (extraSelections * 5); // Reduced penalty per extra word
+    accuracy = Math.max(30, baseAccuracy - penalty); // Minimum 30% accuracy
   }
 
   const isCorrect = allowPartialCredit ? accuracy >= 60 : correctSelections === normalizedTarget.length;

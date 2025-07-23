@@ -47,11 +47,11 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
     }
   };
 
-  // Reset response when exercise changes (but not when onResponseChange changes)
+  // Reset response when exercise changes
   useEffect(() => {
     console.log('Translation exercise changed, resetting response');
     onResponseChange('');
-  }, [exercise.id]); // Removed onResponseChange from dependencies
+  }, [exercise.id]);
 
   console.log('TranslationExercise render - userResponse:', userResponse);
 
@@ -82,14 +82,14 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
       
       <CardContent>
         <div className="space-y-6">
-          {/* Instructions */}
+          {/* Instructions - UPDATED */}
           <div className="text-center">
             <p className="text-base font-medium mb-4">
-              Translate the following sentence to English:
+              Translate the following English sentence to the target language:
             </p>
           </div>
 
-          {/* Original Sentence Display */}
+          {/* English Sentence Display - UPDATED */}
           <div className="p-6 md:p-8 bg-muted rounded-lg">
             <p className="text-lg md:text-xl font-medium text-center leading-relaxed">
               {exercise.sentence}
@@ -117,12 +117,12 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             </div>
           )}
 
-          {/* Translation Input */}
+          {/* Translation Input - UPDATED */}
           {!showResult && (
             <div className="space-y-4">
               <div>
                 <label htmlFor="translation" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-                  Your English translation:
+                  Your translation in the target language:
                 </label>
                 <Textarea
                   id="translation"
@@ -136,7 +136,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             </div>
           )}
 
-          {/* Show Translation Toggle */}
+          {/* Show Translation Toggle - UPDATED */}
           <div className="text-center">
             <Button
               variant="outline"
@@ -148,14 +148,14 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
             </Button>
           </div>
 
-          {/* Expected Translation Display */}
-          {showTranslation && exercise.translation && (
+          {/* Expected Translation Display - UPDATED */}
+          {showTranslation && exercise.correctAnswer && (
             <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
               <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
                 Expected Translation:
               </p>
               <p className="text-sm text-green-700 dark:text-green-300">
-                {exercise.translation}
+                {exercise.correctAnswer}
               </p>
             </div>
           )}
@@ -201,7 +201,7 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
                   )}
                 </div>
                 
-                {/* Show user's translation vs expected */}
+                {/* Show user's translation vs expected - UPDATED */}
                 {!isCorrect && (
                   <div className="space-y-3">
                     <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -213,13 +213,13 @@ export const TranslationExercise: React.FC<TranslationExerciseProps> = ({
                       </p>
                     </div>
                     
-                    {exercise.translation && (
+                    {exercise.correctAnswer && (
                       <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
                         <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
                           Expected translation:
                         </p>
                         <p className="text-sm text-green-700 dark:text-green-300">
-                          {exercise.translation}
+                          {exercise.correctAnswer}
                         </p>
                       </div>
                     )}

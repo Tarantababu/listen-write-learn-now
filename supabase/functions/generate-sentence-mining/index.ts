@@ -81,24 +81,29 @@ async function generateExercise(
   const targetUnknownWords = getTargetUnknownWords(difficulty)
   
   for (const sentence of sentences) {
+    // FIXED: For translation exercises, show English and expect target language
+    const displayText = exerciseType === 'translation' ? sentence.englishText : sentence.targetText
+    const expectedAnswer = exerciseType === 'translation' ? sentence.targetText : sentence.englishText
+    
     const words = extractWords(sentence.targetText)
     const unknownWords = words.filter(word => !knownWords.has(word.toLowerCase()))
     
     if (unknownWords.length >= targetUnknownWords && unknownWords.length <= targetUnknownWords + 2) {
-      const targetWord = unknownWords[0] || words[0] // Ensure we have a target word
+      const targetWord = unknownWords[0] || words[0]
       
       const baseExercise = {
         id: crypto.randomUUID(),
         sessionId,
         exerciseType,
-        sentence: sentence.targetText,
+        sentence: displayText, // Show English for translation exercises
         translation: sentence.englishText,
-        targetWords: [targetWord], // Fixed: Always include the target word
+        targetWords: [targetWord],
         unknownWords: unknownWords,
         difficultyScore: calculateDifficultyScore(unknownWords.length, words.length),
-        explanation: generateExplanation(exerciseType, [targetWord], sentence.targetText, sentence.englishText),
+        explanation: generateExplanation(exerciseType, [targetWord], displayText, expectedAnswer),
         hints: generateHints([targetWord], sentence.englishText, exerciseType),
-        difficulty: difficulty
+        difficulty: difficulty,
+        correctAnswer: expectedAnswer // Expected answer in target language
       }
 
       // Add exercise-specific properties
@@ -121,22 +126,26 @@ async function generateExercise(
   
   // Fallback to first available sentence if no perfect match
   const fallbackSentence = sentences[0]
+  const displayText = exerciseType === 'translation' ? fallbackSentence.englishText : fallbackSentence.targetText
+  const expectedAnswer = exerciseType === 'translation' ? fallbackSentence.targetText : fallbackSentence.englishText
+  
   const words = extractWords(fallbackSentence.targetText)
   const unknownWords = words.filter(word => !knownWords.has(word.toLowerCase()))
-  const targetWord = unknownWords[0] || words[0] // Ensure we have a target word
+  const targetWord = unknownWords[0] || words[0]
   
   const baseExercise = {
     id: crypto.randomUUID(),
     sessionId,
     exerciseType,
-    sentence: fallbackSentence.targetText,
+    sentence: displayText,
     translation: fallbackSentence.englishText,
-    targetWords: [targetWord], // Fixed: Always include the target word
+    targetWords: [targetWord],
     unknownWords: unknownWords,
     difficultyScore: calculateDifficultyScore(unknownWords.length, words.length),
-    explanation: generateExplanation(exerciseType, [targetWord], fallbackSentence.targetText, fallbackSentence.englishText),
+    explanation: generateExplanation(exerciseType, [targetWord], displayText, expectedAnswer),
     hints: generateHints([targetWord], fallbackSentence.englishText, exerciseType),
-    difficulty: difficulty
+    difficulty: difficulty,
+    correctAnswer: expectedAnswer
   }
 
   // Add exercise-specific properties for fallback
@@ -156,12 +165,12 @@ async function generateExercise(
   return baseExercise
 }
 
-function generateExplanation(exerciseType: string, targetWords: string[], sentence: string, translation: string): string {
+function generateExplanation(exerciseType: string, targetWords: string[], sentence: string, expectedAnswer: string): string {
   const wordList = targetWords.join(', ')
   
   switch (exerciseType) {
     case 'translation':
-      return `Focus on translating these key words: ${wordList}. Pay attention to word order and grammar patterns.`
+      return `Translate the English sentence to the target language. Focus on these key words: ${wordList}. Pay attention to word order and grammar patterns.`
     case 'vocabulary_marking':
       return `Identify words you don't know yet. This helps build your vocabulary systematically.`
     case 'cloze':
@@ -526,7 +535,7 @@ function generateHints(targetWords: string[], translation: string, exerciseType:
   
   switch (exerciseType) {
     case 'translation':
-      hints.push(`The sentence means: "${translation}"`)
+      hints.push(`Translate this English sentence to the target language`)
       if (targetWords.length > 0) {
         hints.push(`Focus on translating: ${targetWords.join(', ')}`)
       }

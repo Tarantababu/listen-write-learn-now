@@ -352,32 +352,29 @@ export const useSentenceMining = () => {
         userResponse: response,
         correctAnswer: currentExercise.correctAnswer || currentExercise.sentence,
         translation: currentExercise.translation,
-        targetWords: currentExercise.targetWords
+        targetWords: currentExercise.targetWords,
+        selectedWords
       });
 
       // Fixed answer evaluation based on exercise type
       switch (currentExercise.exerciseType) {
         case 'translation':
-          // For translation exercises, compare user's response against the English translation
+          // For translation exercises, compare user's response against the target language sentence
           evaluationResult = evaluateAnswer(
             response, 
-            currentExercise.translation || '', // Compare against English translation, not original sentence
+            currentExercise.sentence || '', // Compare against target language sentence
             'translation',
-            0.7
+            0.75 // Higher threshold for translations
           );
           break;
           
         case 'vocabulary_marking':
-          // For vocabulary marking, always consider it successful (just marking words for learning)
-          evaluationResult = {
-            isCorrect: true,
-            accuracy: 100,
-            feedback: selectedWords.length > 0 
-              ? `Marked ${selectedWords.length} word(s) for learning` 
-              : 'No words selected - that\'s okay!',
-            similarityScore: 1,
-            category: 'excellent' as const
-          };
+          // For vocabulary marking, use the specialized evaluation
+          evaluationResult = evaluateVocabularyMarking(
+            selectedWords,
+            currentExercise.targetWords || [],
+            true
+          );
           break;
           
         case 'cloze':
@@ -438,9 +435,7 @@ export const useSentenceMining = () => {
       } : null);
 
       // Show appropriate feedback
-      if (currentExercise.exerciseType === 'vocabulary_marking') {
-        toast.success(evaluationResult.feedback);
-      } else if (evaluationResult.isCorrect) {
+      if (evaluationResult.isCorrect) {
         toast.success(evaluationResult.feedback);
       } else {
         toast.error(evaluationResult.feedback);
