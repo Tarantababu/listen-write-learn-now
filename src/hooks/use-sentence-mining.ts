@@ -23,20 +23,21 @@ export const useSentenceMining = () => {
 
   useEffect(() => {
     loadProgress();
-  }, []);
+  }, [settings.selectedLanguage]); // Reload progress when language changes
 
   const loadProgress = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      console.log('Loading sentence mining progress for user:', user.id);
+      console.log('Loading sentence mining progress for user:', user.id, 'language:', settings.selectedLanguage);
 
-      // Load user's sentence mining sessions
+      // Load user's sentence mining sessions for the selected language
       const { data: sessions, error: sessionsError } = await supabase
         .from('sentence_mining_sessions')
         .select('*')
         .eq('user_id', user.id)
+        .eq('language', settings.selectedLanguage) // Filter by selected language
         .order('created_at', { ascending: false });
 
       if (sessionsError) {
@@ -184,6 +185,7 @@ export const useSentenceMining = () => {
       .from('known_words')
       .select('word, mastery_level')
       .eq('user_id', userId)
+      .eq('language', settings.selectedLanguage) // Filter by selected language
       .gte('mastery_level', 2);
 
     return knownWords?.length || 0;
@@ -207,14 +209,14 @@ export const useSentenceMining = () => {
         throw new Error('User not authenticated');
       }
 
-      console.log('Starting new session with difficulty:', difficulty);
+      console.log('Starting new session with difficulty:', difficulty, 'language:', settings.selectedLanguage);
 
-      // Create new session
+      // Create new session with the selected language
       const { data: session, error: sessionError } = await supabase
         .from('sentence_mining_sessions')
         .insert({
           user_id: user.id,
-          language: settings.selectedLanguage,
+          language: settings.selectedLanguage, // Use selected language
           difficulty_level: difficulty,
           exercise_types: ['translation', 'vocabulary_marking', 'cloze'],
           total_exercises: 0,
@@ -276,14 +278,14 @@ export const useSentenceMining = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      console.log('Generating next exercise for session:', sessionId);
+      console.log('Generating next exercise for session:', sessionId, 'language:', settings.selectedLanguage);
 
-      // Get user's known words for N+1 methodology
+      // Get user's known words for N+1 methodology (filtered by selected language)
       const { data: knownWords } = await supabase
         .from('known_words')
         .select('word, mastery_level')
         .eq('user_id', user.id)
-        .eq('language', settings.selectedLanguage)
+        .eq('language', settings.selectedLanguage) // Filter by selected language
         .gte('mastery_level', 1);
 
       // Get previous exercises from this session to avoid repetition
@@ -300,7 +302,7 @@ export const useSentenceMining = () => {
       const { data: exercise, error } = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
           difficulty_level: difficulty,
-          language: settings.selectedLanguage,
+          language: settings.selectedLanguage, // Pass selected language
           exercise_type: randomType,
           session_id: sessionId,
           known_words: knownWords?.map(w => w.word) || [],
@@ -452,7 +454,7 @@ export const useSentenceMining = () => {
           await supabase.rpc('update_word_mastery', {
             user_id_param: user.id,
             word_param: word,
-            language_param: currentSession.language,
+            language_param: settings.selectedLanguage, // Use selected language
             is_correct_param: evaluationResult.isCorrect
           });
         }
