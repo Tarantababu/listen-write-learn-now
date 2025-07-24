@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
-import { CheckCircle, XCircle, Volume2, Skip } from 'lucide-react';
+import { CheckCircle, XCircle, Volume2, SkipForward } from 'lucide-react';
 
 interface VocabularyMarkingExerciseProps {
   exercise: SentenceMiningExercise;
@@ -148,7 +148,7 @@ export const VocabularyMarkingExercise: React.FC<VocabularyMarkingExerciseProps>
                 disabled={loading}
                 className="flex items-center gap-2"
               >
-                <Skip className="h-4 w-4" />
+                <SkipForward className="h-4 w-4" />
                 Skip Exercise
               </Button>
             </>
