@@ -4,6 +4,30 @@
  */
 
 /**
+ * Token comparison result interface
+ */
+export interface TokenComparisonResult {
+  originalToken: string;
+  userToken: string;
+  status: 'correct' | 'almost' | 'incorrect' | 'missing' | 'extra';
+  similarity?: number;
+}
+
+/**
+ * Detailed comparison result interface
+ */
+export interface DetailedComparisonResult {
+  accuracy: number;
+  differences: string[];
+  tokenResults: TokenComparisonResult[];
+  correct: number;
+  almost: number;
+  incorrect: number;
+  missing: number;
+  extra: number;
+}
+
+/**
  * Calculate string similarity using multiple algorithms
  */
 export const stringSimilarity = (str1: string, str2: string): number => {
@@ -28,9 +52,18 @@ export const stringSimilarity = (str1: string, str2: string): number => {
 /**
  * Compare texts and return detailed comparison result
  */
-export const compareTexts = (expected: string, actual: string): { accuracy: number; differences: string[] } => {
+export const compareTexts = (expected: string, actual: string): DetailedComparisonResult => {
   if (!expected || !actual) {
-    return { accuracy: 0, differences: ['Empty input'] };
+    return { 
+      accuracy: 0, 
+      differences: ['Empty input'],
+      tokenResults: [],
+      correct: 0,
+      almost: 0,
+      incorrect: 0,
+      missing: 0,
+      extra: 0
+    };
   }
   
   const normalizedExpected = normalizeText(expected);
@@ -38,17 +71,164 @@ export const compareTexts = (expected: string, actual: string): { accuracy: numb
   
   // Exact match
   if (normalizedExpected === normalizedActual) {
-    return { accuracy: 100, differences: [] };
+    const tokens = normalizedExpected.split(/\s+/).filter(t => t.length > 0);
+    const tokenResults = tokens.map(token => ({
+      originalToken: token,
+      userToken: token,
+      status: 'correct' as const
+    }));
+    
+    return { 
+      accuracy: 100, 
+      differences: [],
+      tokenResults,
+      correct: tokens.length,
+      almost: 0,
+      incorrect: 0,
+      missing: 0,
+      extra: 0
+    };
   }
   
-  // Calculate similarity
-  const similarity = stringSimilarity(normalizedExpected, normalizedActual);
-  const accuracy = Math.round(similarity * 100);
+  // Perform detailed token comparison
+  const tokenResults = performTokenComparison(normalizedExpected, normalizedActual);
+  
+  // Calculate statistics
+  const stats = {
+    correct: tokenResults.filter(t => t.status === 'correct').length,
+    almost: tokenResults.filter(t => t.status === 'almost').length,
+    incorrect: tokenResults.filter(t => t.status === 'incorrect').length,
+    missing: tokenResults.filter(t => t.status === 'missing').length,
+    extra: tokenResults.filter(t => t.status === 'extra').length
+  };
+  
+  // Calculate overall accuracy
+  const totalTokens = stats.correct + stats.almost + stats.incorrect + stats.missing + stats.extra;
+  const weightedScore = (stats.correct * 1.0) + (stats.almost * 0.8) + (stats.incorrect * 0.0) + (stats.missing * 0.0) + (stats.extra * 0.0);
+  const accuracy = totalTokens > 0 ? (weightedScore / totalTokens) * 100 : 0;
   
   // Find differences
   const differences = findDifferences(normalizedExpected, normalizedActual);
   
-  return { accuracy, differences };
+  return { 
+    accuracy, 
+    differences, 
+    tokenResults,
+    ...stats
+  };
+};
+
+/**
+ * Perform detailed token-by-token comparison
+ */
+const performTokenComparison = (expected: string, actual: string): TokenComparisonResult[] => {
+  const expectedTokens = expected.split(/\s+/).filter(t => t.length > 0);
+  const actualTokens = actual.split(/\s+/).filter(t => t.length > 0);
+  
+  const results: TokenComparisonResult[] = [];
+  const usedActualIndices = new Set<number>();
+  
+  // First pass: find exact and almost matches
+  for (let i = 0; i < expectedTokens.length; i++) {
+    const expectedToken = expectedTokens[i];
+    let bestMatch: { index: number; similarity: number; status: 'correct' | 'almost' } | null = null;
+    
+    for (let j = 0; j < actualTokens.length; j++) {
+      if (usedActualIndices.has(j)) continue;
+      
+      const actualToken = actualTokens[j];
+      const similarity = stringSimilarity(expectedToken, actualToken);
+      
+      if (similarity === 1) {
+        bestMatch = { index: j, similarity, status: 'correct' };
+        break;
+      } else if (similarity > 0.7 && (!bestMatch || similarity > bestMatch.similarity)) {
+        bestMatch = { index: j, similarity, status: 'almost' };
+      }
+    }
+    
+    if (bestMatch) {
+      usedActualIndices.add(bestMatch.index);
+      results.push({
+        originalToken: expectedToken,
+        userToken: actualTokens[bestMatch.index],
+        status: bestMatch.status,
+        similarity: bestMatch.similarity
+      });
+    } else {
+      results.push({
+        originalToken: expectedToken,
+        userToken: '',
+        status: 'missing'
+      });
+    }
+  }
+  
+  // Second pass: find incorrect matches for remaining expected tokens
+  for (let i = 0; i < expectedTokens.length; i++) {
+    if (results[i] && results[i].status !== 'missing') continue;
+    
+    const expectedToken = expectedTokens[i];
+    let bestMatch: { index: number; similarity: number } | null = null;
+    
+    for (let j = 0; j < actualTokens.length; j++) {
+      if (usedActualIndices.has(j)) continue;
+      
+      const actualToken = actualTokens[j];
+      const similarity = stringSimilarity(expectedToken, actualToken);
+      
+      if (similarity > 0.3 && (!bestMatch || similarity > bestMatch.similarity)) {
+        bestMatch = { index: j, similarity };
+      }
+    }
+    
+    if (bestMatch) {
+      usedActualIndices.add(bestMatch.index);
+      results[i] = {
+        originalToken: expectedToken,
+        userToken: actualTokens[bestMatch.index],
+        status: 'incorrect',
+        similarity: bestMatch.similarity
+      };
+    }
+  }
+  
+  // Third pass: mark remaining actual tokens as extra
+  for (let j = 0; j < actualTokens.length; j++) {
+    if (!usedActualIndices.has(j)) {
+      results.push({
+        originalToken: '',
+        userToken: actualTokens[j],
+        status: 'extra'
+      });
+    }
+  }
+  
+  return results;
+};
+
+/**
+ * Generate highlighted text from token comparison results
+ */
+export const generateHighlightedText = (tokenResults: TokenComparisonResult[]): string => {
+  return tokenResults.map(result => {
+    const token = result.userToken || result.originalToken;
+    
+    switch (result.status) {
+      case 'correct':
+        return `<span class="bg-green-100 text-green-800 px-1 rounded">${token}</span>`;
+      case 'almost':
+        return `<span class="bg-yellow-100 text-yellow-800 px-1 rounded">${token}</span>`;
+      case 'incorrect':
+        return `<span class="bg-red-100 text-red-800 px-1 rounded">${token}</span>`;
+      case 'missing':
+        return `<span class="bg-blue-100 text-blue-800 px-1 rounded opacity-50">[${result.originalToken}]</span>`;
+      case 'extra':
+        return `<span class="bg-purple-100 text-purple-800 px-1 rounded">${token}</span>`;
+      default:
+        return token;
+    }
+  }).join(' ');
 };
 
 /**
