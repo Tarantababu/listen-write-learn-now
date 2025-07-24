@@ -18,6 +18,7 @@ export const useSentenceMining = () => {
   const [progress, setProgress] = useState<SentenceMiningProgress | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
+  const [showTestingPanel, setShowTestingPanel] = useState(false);
 
   useEffect(() => {
     loadProgress();
@@ -356,13 +357,14 @@ export const useSentenceMining = () => {
         selectedWords
       });
 
-      // Fixed answer evaluation based on exercise type
+      // FIXED: Proper answer evaluation based on exercise type
       switch (currentExercise.exerciseType) {
         case 'translation':
-          // For translation exercises, compare user's response against the target language sentence
+          // For translation exercises, compare user's translation against the expected target language translation
+          const expectedTranslation = currentExercise.correctAnswer || currentExercise.translation;
           evaluationResult = evaluateAnswer(
             response, 
-            currentExercise.sentence || '', // Compare against target language sentence
+            expectedTranslation || '', 
             'translation',
             0.75 // Higher threshold for translations
           );
@@ -505,6 +507,10 @@ export const useSentenceMining = () => {
     setShowTranslation(!showTranslation);
   };
 
+  const toggleTestingPanel = () => {
+    setShowTestingPanel(!showTestingPanel);
+  };
+
   return {
     currentSession,
     currentExercise,
@@ -517,6 +523,7 @@ export const useSentenceMining = () => {
     progress,
     showHint,
     showTranslation,
+    showTestingPanel,
     startSession,
     submitAnswer,
     nextExercise,
@@ -524,6 +531,7 @@ export const useSentenceMining = () => {
     updateUserResponse,
     toggleWord,
     toggleHint,
-    toggleTranslation
+    toggleTranslation,
+    toggleTestingPanel
   };
 };
