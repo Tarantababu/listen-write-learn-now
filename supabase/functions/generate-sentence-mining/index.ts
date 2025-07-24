@@ -1,804 +1,171 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
+
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    )
+    const { 
+      difficulty_level, 
+      language, 
+      exercise_type, 
+      session_id,
+      known_words = [],
+      previous_sentences = [],
+      n_plus_one = false
+    } = await req.json();
 
-    const { data: { user } } = await supabaseClient.auth.getUser()
-    if (!user) {
-      return new Response('Unauthorized', { status: 401 })
+    console.log(`Generating exercise for target language: ${language} difficulty: ${difficulty_level} type: ${exercise_type}`);
+
+    // Build the prompt based on N+1 methodology
+    let prompt = `Generate a sentence mining exercise with the following requirements:
+
+Language: ${language}
+Difficulty: ${difficulty_level}
+Exercise Type: ${exercise_type}
+`;
+
+    if (n_plus_one && known_words.length > 0) {
+      prompt += `
+N+1 Methodology: The sentence should contain mostly known words with only 1-2 unknown words.
+Known words (use these as base vocabulary): ${known_words.slice(0, 50).join(', ')}
+`;
     }
 
-    const { difficulty_level, language, exercise_type, session_id } = await req.json()
+    if (previous_sentences.length > 0) {
+      prompt += `
+Avoid repetition: Do not use these previously seen sentences or very similar structures:
+${previous_sentences.slice(-10).join('\n')}
+`;
+    }
 
-    console.log('Generating exercise for target language:', language, 'difficulty:', difficulty_level, 'type:', exercise_type)
+    prompt += `
+Requirements:
+1. Create a natural, contextually appropriate sentence
+2. Ensure the sentence follows ${n_plus_one ? 'N+1 methodology (mostly known words + 1-2 new words)' : 'appropriate difficulty level'}
+3. Provide accurate translation
+4. Identify 2-4 target words based on exercise type
+5. Make the sentence different from previously seen content
+6. Focus on practical, everyday language usage
 
-    // Get user's known words for this language
-    const { data: knownWords } = await supabaseClient
-      .from('known_words')
-      .select('word, mastery_level')
-      .eq('user_id', user.id)
-      .eq('language', language)
+Return a JSON object with:
+- sentence: The ${language} sentence
+- translation: English translation
+- targetWords: Array of 2-4 key words to focus on
+- exerciseType: "${exercise_type}"
+- difficultyScore: Number from 1-10
+- unknownWords: Array of words that might be unknown to learners
+- context: Brief context about the sentence usage
 
-    const knownWordSet = new Set(knownWords?.map(w => w.word.toLowerCase()) || [])
+Example format:
+{
+  "sentence": "Example sentence in ${language}",
+  "translation": "English translation",
+  "targetWords": ["word1", "word2"],
+  "exerciseType": "${exercise_type}",
+  "difficultyScore": 5,
+  "unknownWords": ["difficult1", "difficult2"],
+  "context": "This sentence is used when..."
+}`;
 
-    // Generate exercise based on difficulty and known words
-    const exercise = await generateExercise(
-      difficulty_level,
-      language,
-      exercise_type,
-      knownWordSet,
-      session_id
-    )
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { 
+            role: 'system', 
+            content: `You are a language learning expert specializing in sentence mining and the N+1 methodology. Create engaging, practical exercises that help learners acquire vocabulary naturally through context.` 
+          },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 800
+      }),
+    });
 
-    return new Response(
-      JSON.stringify(exercise),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    )
+    const data = await response.json();
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error('Invalid response from OpenAI');
+    }
+
+    const content = data.choices[0].message.content;
+    console.log('OpenAI response content:', content);
+
+    // Parse the JSON response
+    let exercise;
+    try {
+      exercise = JSON.parse(content);
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response:', parseError);
+      // Fallback: create a basic exercise
+      exercise = {
+        sentence: "This is a sample sentence.",
+        translation: "This is a sample sentence.",
+        targetWords: ["sample", "sentence"],
+        exerciseType: exercise_type,
+        difficultyScore: 5,
+        unknownWords: ["sample"],
+        context: "This is a basic example."
+      };
+    }
+
+    // Ensure the exercise has the correct structure
+    const finalExercise = {
+      sentence: exercise.sentence || "Sample sentence",
+      translation: exercise.translation || "Sample translation",
+      targetWords: exercise.targetWords || ["sample"],
+      exerciseType: exercise_type,
+      difficultyScore: exercise.difficultyScore || 5,
+      unknownWords: exercise.unknownWords || [],
+      context: exercise.context || "Sample context",
+      correctAnswer: exercise_type === 'translation' ? exercise.translation : exercise.sentence,
+      difficulty: difficulty_level,
+      createdAt: new Date(),
+      attempts: 0,
+      correctAttempts: 0,
+      clozeSentence: exercise_type === 'cloze' ? generateClozeSentence(exercise.sentence, exercise.targetWords) : exercise.sentence,
+      id: crypto.randomUUID()
+    };
+
+    return new Response(JSON.stringify(finalExercise), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
   } catch (error) {
-    console.error('Error generating sentence mining exercise:', error)
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    )
+    console.error('Error in generate-sentence-mining function:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
-})
+});
 
-async function generateExercise(
-  difficulty: string,
-  language: string,
-  exerciseType: string,
-  knownWords: Set<string>,
-  sessionId: string
-) {
-  // Get language-appropriate sentences based on the selected language
-  const sentences = getSampleSentences(difficulty, language)
+function generateClozeSentence(sentence: string, targetWords: string[]): string {
+  let clozeSentence = sentence;
   
-  // Find a sentence with the right number of unknown words (n+1 methodology)
-  const targetUnknownWords = getTargetUnknownWords(difficulty)
+  // Replace target words with blanks
+  targetWords.forEach(word => {
+    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+    clozeSentence = clozeSentence.replace(regex, '___');
+  });
   
-  for (const sentence of sentences) {
-    // FIXED: For translation exercises, show English and expect target language
-    const displayText = exerciseType === 'translation' ? sentence.englishText : sentence.targetText
-    const expectedAnswer = exerciseType === 'translation' ? sentence.targetText : sentence.englishText
-    
-    const words = extractWords(sentence.targetText)
-    const unknownWords = words.filter(word => !knownWords.has(word.toLowerCase()))
-    
-    if (unknownWords.length >= targetUnknownWords && unknownWords.length <= targetUnknownWords + 2) {
-      const targetWord = unknownWords[0] || words[0]
-      
-      const baseExercise = {
-        id: crypto.randomUUID(),
-        sessionId,
-        exerciseType,
-        sentence: displayText, // Show English for translation exercises
-        translation: sentence.englishText,
-        targetWords: [targetWord],
-        unknownWords: unknownWords,
-        difficultyScore: calculateDifficultyScore(unknownWords.length, words.length),
-        explanation: generateExplanation(exerciseType, [targetWord], displayText, expectedAnswer),
-        hints: generateHints([targetWord], sentence.englishText, exerciseType),
-        difficulty: difficulty,
-        correctAnswer: expectedAnswer // Expected answer in target language
-      }
-
-      // Add exercise-specific properties
-      if (exerciseType === 'multiple_choice') {
-        return {
-          ...baseExercise,
-          multipleChoiceOptions: generateMultipleChoiceOptions(targetWord, language),
-          correctAnswer: getCorrectTranslation(targetWord, language)
-        }
-      } else if (exerciseType === 'cloze') {
-        return {
-          ...baseExercise,
-          clozeSentence: generateClozeSentence(sentence.targetText, targetWord)
-        }
-      }
-      
-      return baseExercise
-    }
-  }
-  
-  // Fallback to first available sentence if no perfect match
-  const fallbackSentence = sentences[0]
-  const displayText = exerciseType === 'translation' ? fallbackSentence.englishText : fallbackSentence.targetText
-  const expectedAnswer = exerciseType === 'translation' ? fallbackSentence.targetText : fallbackSentence.englishText
-  
-  const words = extractWords(fallbackSentence.targetText)
-  const unknownWords = words.filter(word => !knownWords.has(word.toLowerCase()))
-  const targetWord = unknownWords[0] || words[0]
-  
-  const baseExercise = {
-    id: crypto.randomUUID(),
-    sessionId,
-    exerciseType,
-    sentence: displayText,
-    translation: fallbackSentence.englishText,
-    targetWords: [targetWord],
-    unknownWords: unknownWords,
-    difficultyScore: calculateDifficultyScore(unknownWords.length, words.length),
-    explanation: generateExplanation(exerciseType, [targetWord], displayText, expectedAnswer),
-    hints: generateHints([targetWord], fallbackSentence.englishText, exerciseType),
-    difficulty: difficulty,
-    correctAnswer: expectedAnswer
-  }
-
-  // Add exercise-specific properties for fallback
-  if (exerciseType === 'multiple_choice') {
-    return {
-      ...baseExercise,
-      multipleChoiceOptions: generateMultipleChoiceOptions(targetWord, language),
-      correctAnswer: getCorrectTranslation(targetWord, language)
-    }
-  } else if (exerciseType === 'cloze') {
-    return {
-      ...baseExercise,
-      clozeSentence: generateClozeSentence(fallbackSentence.targetText, targetWord)
-    }
-  }
-  
-  return baseExercise
-}
-
-function generateExplanation(exerciseType: string, targetWords: string[], sentence: string, expectedAnswer: string): string {
-  const wordList = targetWords.join(', ')
-  
-  switch (exerciseType) {
-    case 'translation':
-      return `Translate the English sentence to the target language. Focus on these key words: ${wordList}. Pay attention to word order and grammar patterns.`
-    case 'vocabulary_marking':
-      return `Identify words you don't know yet. This helps build your vocabulary systematically.`
-    case 'cloze':
-      return `The missing word is "${targetWords[0] || 'unknown'}". Consider the context and grammar to determine the correct word.`
-    case 'multiple_choice':
-      return `Choose the correct meaning of "${targetWords[0] || 'unknown'}" based on the sentence context.`
-    default:
-      return `Practice with these words: ${wordList}`
-  }
-}
-
-function generateMultipleChoiceOptions(targetWord: string, language: string): string[] {
-  // Generate plausible wrong answers based on language
-  const correctAnswer = getCorrectTranslation(targetWord, language)
-  const wrongAnswers = getWrongAnswers(targetWord, language)
-  
-  // Combine and shuffle
-  const allOptions = [correctAnswer, ...wrongAnswers]
-  return shuffleArray(allOptions)
-}
-
-function getCorrectTranslation(word: string, language: string): string {
-  // Enhanced translation mapping for common words
-  const translations: Record<string, Record<string, string>> = {
-    german: {
-      'die': 'the (feminine)',
-      'der': 'the (masculine)', 
-      'das': 'the (neuter)',
-      'katze': 'cat',
-      'sitzt': 'sits',
-      'auf': 'on',
-      'dem': 'the (dative)',
-      'stuhl': 'chair',
-      'ich': 'I',
-      'esse': 'eat',
-      'gerne': 'gladly/like to',
-      'äpfel': 'apples',
-      'buch': 'book',
-      'liegt': 'lies',
-      'tisch': 'table',
-      'sie': 'she/they',
-      'trinkt': 'drinks',
-      'jeden': 'every',
-      'tag': 'day',
-      'wasser': 'water',
-      'sonne': 'sun',
-      'scheint': 'shines',
-      'heute': 'today',
-      'hell': 'bright',
-      'wettervorhersage': 'weather forecast',
-      'sagt': 'says',
-      'morgen': 'tomorrow',
-      'regen': 'rain',
-      'voraus': 'ahead/predicts',
-      'muss': 'must',
-      'meine': 'my',
-      'hausaufgaben': 'homework',
-      'vor': 'before',
-      'abendessen': 'dinner',
-      'beenden': 'finish'
-    },
-    spanish: {
-      'el': 'the (masculine)',
-      'la': 'the (feminine)',
-      'gato': 'cat',
-      'se': 'reflexive pronoun',
-      'sienta': 'sits',
-      'en': 'in/on',
-      'silla': 'chair',
-      'me': 'me',
-      'gusta': 'like',
-      'comer': 'to eat',
-      'manzanas': 'apples',
-      'libro': 'book',
-      'está': 'is',
-      'mesa': 'table',
-      'ella': 'she',
-      'bebe': 'drinks',
-      'agua': 'water',
-      'todos': 'all',
-      'los': 'the (plural)',
-      'días': 'days',
-      'sol': 'sun',
-      'brilla': 'shines',
-      'hoy': 'today',
-      'pronóstico': 'forecast',
-      'tiempo': 'weather/time',
-      'predice': 'predicts',
-      'lluvia': 'rain',
-      'mañana': 'tomorrow',
-      'necesito': 'I need',
-      'terminar': 'to finish',
-      'tarea': 'homework',
-      'antes': 'before',
-      'cena': 'dinner'
-    },
-    french: {
-      'le': 'the (masculine)',
-      'la': 'the (feminine)',
-      'chat': 'cat',
-      's\'assoit': 'sits',
-      'sur': 'on',
-      'chaise': 'chair',
-      'j\'aime': 'I like',
-      'manger': 'to eat',
-      'des': 'some',
-      'pommes': 'apples',
-      'livre': 'book',
-      'est': 'is',
-      'table': 'table',
-      'elle': 'she',
-      'boit': 'drinks',
-      'de': 'of',
-      'l\'eau': 'water',
-      'tous': 'all',
-      'les': 'the (plural)',
-      'jours': 'days',
-      'soleil': 'sun',
-      'brille': 'shines',
-      'aujourd\'hui': 'today',
-      'prévisions': 'forecast',
-      'météorologiques': 'weather',
-      'prévoient': 'predict',
-      'pluie': 'rain',
-      'demain': 'tomorrow',
-      'dois': 'must',
-      'finir': 'finish',
-      'devoirs': 'homework',
-      'avant': 'before',
-      'dîner': 'dinner'
-    },
-    turkish: {
-      'kedi': 'cat',
-      'sandalyede': 'on the chair',
-      'oturuyor': 'is sitting',
-      'elma': 'apple',
-      'yemeyi': 'eating',
-      'seviyorum': 'I love',
-      'kitap': 'book',
-      'masanın': 'table\'s',
-      'üzerinde': 'on top of',
-      'o': 'he/she/it',
-      'her': 'every',
-      'gün': 'day',
-      'su': 'water',
-      'içer': 'drinks',
-      'güneş': 'sun',
-      'bugün': 'today',
-      'parlıyor': 'is shining',
-      'hava': 'weather',
-      'durumu': 'condition',
-      'yarın': 'tomorrow',
-      'yağmur': 'rain',
-      'öngörüyor': 'predicts'
-    },
-    norwegian: {
-      'katten': 'the cat',
-      'sitter': 'sits',
-      'på': 'on',
-      'stolen': 'the chair',
-      'jeg': 'I',
-      'liker': 'like',
-      'å': 'to',
-      'spise': 'eat',
-      'epler': 'apples',
-      'boka': 'the book',
-      'ligger': 'lies',
-      'bordet': 'the table',
-      'hun': 'she',
-      'drikker': 'drinks',
-      'vann': 'water',
-      'hver': 'every',
-      'dag': 'day',
-      'sola': 'the sun',
-      'skinner': 'shines',
-      'i': 'in/today',
-      'værmelding': 'weather forecast',
-      'varsler': 'warns/predicts',
-      'regn': 'rain',
-      'morgen': 'tomorrow'
-    },
-    italian: {
-      'il': 'the (masculine)',
-      'gatto': 'cat',
-      'si': 'reflexive pronoun',
-      'siede': 'sits',
-      'sulla': 'on the',
-      'sedia': 'chair',
-      'mi': 'me',
-      'piace': 'like',
-      'mangiare': 'to eat',
-      'le': 'the (plural)',
-      'mele': 'apples',
-      'libro': 'book',
-      'è': 'is',
-      'sul': 'on the',
-      'tavolo': 'table',
-      'lei': 'she',
-      'beve': 'drinks',
-      'acqua': 'water',
-      'ogni': 'every',
-      'giorno': 'day',
-      'sole': 'sun',
-      'splende': 'shines',
-      'oggi': 'today',
-      'previsioni': 'forecast',
-      'meteo': 'weather',
-      'predicono': 'predict',
-      'pioggia': 'rain',
-      'domani': 'tomorrow'
-    },
-    portuguese: {
-      'o': 'the (masculine)',
-      'gato': 'cat',
-      'senta': 'sits',
-      'na': 'on the',
-      'cadeira': 'chair',
-      'eu': 'I',
-      'gosto': 'like',
-      'comer': 'to eat',
-      'maçãs': 'apples',
-      'livro': 'book',
-      'está': 'is',
-      'mesa': 'table',
-      'ela': 'she',
-      'bebe': 'drinks',
-      'água': 'water',
-      'todos': 'all',
-      'os': 'the (plural)',
-      'dias': 'days',
-      'sol': 'sun',
-      'brilha': 'shines',
-      'hoje': 'today',
-      'previsão': 'forecast',
-      'tempo': 'weather',
-      'prevê': 'predicts',
-      'chuva': 'rain',
-      'amanhã': 'tomorrow'
-    },
-    swedish: {
-      'katten': 'the cat',
-      'sitter': 'sits',
-      'på': 'on',
-      'stolen': 'the chair',
-      'jag': 'I',
-      'tycker': 'think',
-      'om': 'about',
-      'att': 'to',
-      'äta': 'eat',
-      'äpplen': 'apples',
-      'boken': 'the book',
-      'ligger': 'lies',
-      'bordet': 'the table',
-      'hon': 'she',
-      'dricker': 'drinks',
-      'vatten': 'water',
-      'varje': 'every',
-      'dag': 'day',
-      'solen': 'the sun',
-      'skiner': 'shines',
-      'idag': 'today',
-      'väderleken': 'weather forecast',
-      'förutspår': 'predicts',
-      'regn': 'rain',
-      'imorgon': 'tomorrow'
-    },
-    dutch: {
-      'de': 'the',
-      'kat': 'cat',
-      'zit': 'sits',
-      'op': 'on',
-      'stoel': 'chair',
-      'ik': 'I',
-      'eet': 'eat',
-      'graag': 'gladly',
-      'appels': 'apples',
-      'het': 'the (neuter)',
-      'boek': 'book',
-      'ligt': 'lies',
-      'tafel': 'table',
-      'zij': 'she',
-      'drinkt': 'drinks',
-      'elke': 'every',
-      'dag': 'day',
-      'water': 'water',
-      'zon': 'sun',
-      'schijnt': 'shines',
-      'vandaag': 'today',
-      'weersvoorspelling': 'weather forecast',
-      'voorspelt': 'predicts',
-      'morgen': 'tomorrow',
-      'regen': 'rain'
-    }
-  }
-
-  return translations[language]?.[word.toLowerCase()] || `${word} (translation)`
-}
-
-function getWrongAnswers(word: string, language: string): string[] {
-  // Generate plausible but incorrect translations
-  const wrongAnswerPool = [
-    'house', 'dog', 'run', 'big', 'small', 'green', 'blue', 'happy', 'sad',
-    'book', 'pen', 'door', 'window', 'car', 'tree', 'flower', 'bird', 'fish',
-    'walk', 'talk', 'fast', 'slow', 'hot', 'cold', 'new', 'old', 'good', 'bad'
-  ]
-  
-  // Remove the correct answer if it's in the pool
-  const correctAnswer = getCorrectTranslation(word, language)
-  const filtered = wrongAnswerPool.filter(answer => 
-    !correctAnswer.toLowerCase().includes(answer.toLowerCase())
-  )
-  
-  // Return 3 random wrong answers
-  return shuffleArray(filtered).slice(0, 3)
-}
-
-function generateClozeSentence(sentence: string, targetWord: string): string {
-  // Replace the target word with a blank
-  const words = sentence.split(' ')
-  const targetIndex = words.findIndex(word => 
-    word.toLowerCase().includes(targetWord.toLowerCase())
-  )
-  
-  if (targetIndex !== -1) {
-    words[targetIndex] = '___'
-  }
-  
-  return words.join(' ')
-}
-
-function shuffleArray<T>(array: T[]): T[] {
-  const shuffled = [...array]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-  }
-  return shuffled
-}
-
-function getTargetUnknownWords(difficulty: string): number {
-  switch (difficulty) {
-    case 'beginner': return 1
-    case 'intermediate': return 2
-    case 'advanced': return 3
-    default: return 1
-  }
-}
-
-function extractWords(text: string): string[] {
-  return text.toLowerCase()
-    .replace(/[^\w\s]/g, '')
-    .split(/\s+/)
-    .filter(word => word.length > 0)
-}
-
-function calculateDifficultyScore(unknownWords: number, totalWords: number): number {
-  return Math.round((unknownWords / totalWords) * 100)
-}
-
-function generateHints(targetWords: string[], translation: string, exerciseType: string): string[] {
-  const hints = []
-  
-  switch (exerciseType) {
-    case 'translation':
-      hints.push(`Translate this English sentence to the target language`)
-      if (targetWords.length > 0) {
-        hints.push(`Focus on translating: ${targetWords.join(', ')}`)
-      }
-      break
-    case 'cloze':
-      if (targetWords.length > 0) {
-        hints.push(`The missing word starts with "${targetWords[0].charAt(0).toUpperCase()}"`)
-        hints.push(`Think about what word would make sense grammatically in this context`)
-      }
-      break
-    case 'multiple_choice':
-      hints.push(`Consider the context of the sentence to determine the meaning`)
-      if (targetWords.length > 0) {
-        hints.push(`The word "${targetWords[0]}" appears in the sentence context`)
-      }
-      break
-    case 'vocabulary_marking':
-      hints.push(`Click on words you don't know yet to mark them for learning`)
-      break
-    default:
-      hints.push(`Focus on these key words: ${targetWords.join(', ')}`)
-  }
-  
-  return hints
-}
-
-function getSampleSentences(difficulty: string, language: string) {
-  // Updated structure to have targetText (target language) and englishText (English translation)
-  const sentencesData = {
-    german: {
-      beginner: [
-        { targetText: 'Die Katze sitzt auf dem Stuhl.', englishText: 'The cat sits on the chair.' },
-        { targetText: 'Ich esse gerne Äpfel.', englishText: 'I like to eat apples.' },
-        { targetText: 'Das Buch liegt auf dem Tisch.', englishText: 'The book is on the table.' },
-        { targetText: 'Sie trinkt jeden Tag Wasser.', englishText: 'She drinks water every day.' },
-        { targetText: 'Die Sonne scheint heute hell.', englishText: 'The sun is shining bright today.' }
-      ],
-      intermediate: [
-        { targetText: 'Die Wettervorhersage sagt morgen Regen voraus.', englishText: 'The weather forecast predicts rain tomorrow.' },
-        { targetText: 'Ich muss meine Hausaufgaben vor dem Abendessen beenden.', englishText: 'I need to finish my homework before dinner.' },
-        { targetText: 'Das Konzert wurde wegen schlechten Wetters abgesagt.', englishText: 'The concert was cancelled due to bad weather.' },
-        { targetText: 'Sie liest gerne Kriminalromane in ihrer Freizeit.', englishText: 'She enjoys reading mystery novels in her free time.' },
-        { targetText: 'Das Restaurant serviert köstliche traditionelle Küche.', englishText: 'The restaurant serves delicious traditional cuisine.' }
-      ],
-      advanced: [
-        { targetText: 'Die archäologische Expedition entdeckte antike Artefakte.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
-        { targetText: 'Wirtschaftliche Schwankungen beeinflussen internationale Handelsmuster.', englishText: 'Economic fluctuations affect international trade patterns.' },
-        { targetText: 'Das Pharmaunternehmen entwickelte innovative Behandlungen.', englishText: 'The pharmaceutical company developed innovative treatments.' },
-        { targetText: 'Umweltschutz erfordert umfassende politische Veränderungen.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
-        { targetText: 'Der technologische Fortschritt revolutionierte die Kommunikationsmethoden.', englishText: 'The technological advancement revolutionized communication methods.' }
-      ]
-    },
-    spanish: {
-      beginner: [
-        { targetText: 'El gato se sienta en la silla.', englishText: 'The cat sits on the chair.' },
-        { targetText: 'Me gusta comer manzanas.', englishText: 'I like to eat apples.' },
-        { targetText: 'El libro está en la mesa.', englishText: 'The book is on the table.' },
-        { targetText: 'Ella bebe agua todos los días.', englishText: 'She drinks water every day.' },
-        { targetText: 'El sol brilla hoy.', englishText: 'The sun is shining today.' }
-      ],
-      intermediate: [
-        { targetText: 'El pronóstico del tiempo predice lluvia mañana.', englishText: 'The weather forecast predicts rain tomorrow.' },
-        { targetText: 'Necesito terminar mi tarea antes de la cena.', englishText: 'I need to finish my homework before dinner.' },
-        { targetText: 'El concierto fue cancelado debido al mal tiempo.', englishText: 'The concert was cancelled due to bad weather.' },
-        { targetText: 'A ella le gusta leer novelas de misterio en su tiempo libre.', englishText: 'She enjoys reading mystery novels in her free time.' },
-        { targetText: 'El restaurante sirve deliciosa cocina tradicional.', englishText: 'The restaurant serves delicious traditional cuisine.' }
-      ],
-      advanced: [
-        { targetText: 'La expedición arqueológica descubrió artefactos antiguos.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
-        { targetText: 'Las fluctuaciones económicas afectan los patrones de comercio internacional.', englishText: 'Economic fluctuations affect international trade patterns.' },
-        { targetText: 'La empresa farmacéutica desarrolló tratamientos innovadores.', englishText: 'The pharmaceutical company developed innovative treatments.' },
-        { targetText: 'La sostenibilidad ambiental requiere cambios políticos integrales.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
-        { targetText: 'El avance tecnológico revolucionó los métodos de comunicación.', englishText: 'The technological advancement revolutionized communication methods.' }
-      ]
-    },
-    french: {
-      beginner: [
-        { targetText: 'Le chat s\'assoit sur la chaise.', englishText: 'The cat sits on the chair.' },
-        { targetText: 'J\'aime manger des pommes.', englishText: 'I like to eat apples.' },
-        { targetText: 'Le livre est sur la table.', englishText: 'The book is on the table.' },
-        { targetText: 'Elle boit de l\'eau tous les jours.', englishText: 'She drinks water every day.' },
-        { targetText: 'Le soleil brille aujourd\'hui.', englishText: 'The sun is shining today.' }
-      ],
-      intermediate: [
-        { targetText: 'Les prévisions météorologiques prévoient de la pluie demain.', englishText: 'The weather forecast predicts rain tomorrow.' },
-        { targetText: 'Je dois finir mes devoirs avant le dîner.', englishText: 'I need to finish my homework before dinner.' },
-        { targetText: 'Le concert a été annulé à cause du mauvais temps.', englishText: 'The concert was cancelled due to bad weather.' },
-        { targetText: 'Elle aime lire des romans policiers pendant son temps libre.', englishText: 'She enjoys reading mystery novels in her free time.' },
-        { targetText: 'Le restaurant sert une délicieuse cuisine traditionnelle.', englishText: 'The restaurant serves delicious traditional cuisine.' }
-      ],
-      advanced: [
-        { targetText: 'L\'expédition archéologique a découvert des artefacts anciens.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
-        { targetText: 'Les fluctuations économiques affectent les modèles de commerce international.', englishText: 'Economic fluctuations affect international trade patterns.' },
-        { targetText: 'L\'entreprise pharmaceutique a développé des traitements innovants.', englishText: 'The pharmaceutical company developed innovative treatments.' },
-        { targetText: 'La durabilité environnementale nécessite des changements politiques complets.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
-        { targetText: 'L\'avancement technologique a révolutionné les méthodes de communication.', englishText: 'The technological advancement revolutionized communication methods.' }
-      ]
-    },
-    turkish: {
-      beginner: [
-        { targetText: 'Kedi sandalyede oturuyor.', englishText: 'The cat sits on the chair.' },
-        { targetText: 'Elma yemeyi seviyorum.', englishText: 'I like to eat apples.' },
-        { targetText: 'Kitap masanın üzerinde.', englishText: 'The book is on the table.' },
-        { targetText: 'O her gün su içer.', englishText: 'She drinks water every day.' },
-        { targetText: 'Güneş bugün parlıyor.', englishText: 'The sun is shining today.' }
-      ],
-      intermediate: [
-        { targetText: 'Hava durumu yarın yağmur öngörüyor.', englishText: 'The weather forecast predicts rain tomorrow.' },
-        { targetText: 'Akşam yemeğinden önce ödevimi bitirmem gerekiyor.', englishText: 'I need to finish my homework before dinner.' },
-        { targetText: 'Konser kötü hava nedeniyle iptal edildi.', englishText: 'The concert was cancelled due to bad weather.' },
-        { targetText: 'Boş zamanlarında polisiye roman okumayı seviyor.', englishText: 'She enjoys reading mystery novels in her free time.' },
-        { targetText: 'Restoran lezzetli geleneksel yemekler sunuyor.', englishText: 'The restaurant serves delicious traditional cuisine.' }
-      ],
-      advanced: [
-        { targetText: 'Arkeolojik keşif ekibi antik eserler buldu.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
-        { targetText: 'Ekonomik dalgalanmalar uluslararası ticaret modellerini etkiliyor.', englishText: 'Economic fluctuations affect international trade patterns.' },
-        { targetText: 'İlaç şirketi yenilikçi tedaviler geliştirdi.', englishText: 'The pharmaceutical company developed innovative treatments.' },
-        { targetText: 'Çevresel sürdürülebilirlik kapsamlı politika değişiklikleri gerektiriyor.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
-        { targetText: 'Teknolojik ilerleme iletişim yöntemlerinde devrim yarattı.', englishText: 'The technological advancement revolutionized communication methods.' }
-      ]
-    },
-    norwegian: {
-      beginner: [
-        { targetText: 'Katten sitter på stolen.', englishText: 'The cat sits on the chair.' },
-        { targetText: 'Jeg liker å spise epler.', englishText: 'I like to eat apples.' },
-        { targetText: 'Boka ligger på bordet.', englishText: 'The book is on the table.' },
-        { targetText: 'Hun drikker vann hver dag.', englishText: 'She drinks water every day.' },
-        { targetText: 'Sola skinner i dag.', englishText: 'The sun is shining today.' }
-      ],
-      intermediate: [
-        { targetText: 'Værmelding varsler regn i morgen.', englishText: 'The weather forecast predicts rain tomorrow.' },
-        { targetText: 'Jeg må fullføre leksene mine før middag.', englishText: 'I need to finish my homework before dinner.' },
-        { targetText: 'Konserten ble avlyst på grunn av dårlig vær.', englishText: 'The concert was cancelled due to bad weather.' },
-        { targetText: 'Hun liker å lese kriminalromaner på fritiden.', englishText: 'She enjoys reading mystery novels in her free time.' },
-        { targetText: 'Restauranten serverer deilig tradisjonell mat.', englishText: 'The restaurant serves delicious traditional cuisine.' }
-      ],
-      advanced: [
-        { targetText: 'Den arkeologiske ekspedisjonen oppdaget gamle gjenstander.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
-        { targetText: 'Økonomiske svingninger påvirker internasjonale handelsmønstre.', englishText: 'Economic fluctuations affect international trade patterns.' },
-        { targetText: 'Farmasøytisk selskap utviklet innovative behandlinger.', englishText: 'The pharmaceutical company developed innovative treatments.' },
-        { targetText: 'Miljømessig bærekraft krever omfattende politiske endringer.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
-        { targetText: 'Teknologiske fremskritt revolusjonerte kommunikasjonsmetoder.', englishText: 'The technological advancement revolutionized communication methods.' }
-      ]
-    },
-    italian: {
-      beginner: [
-        { targetText: 'Il gatto si siede sulla sedia.', englishText: 'The cat sits on the chair.' },
-        { targetText: 'Mi piace mangiare le mele.', englishText: 'I like to eat apples.' },
-        { targetText: 'Il libro è sul tavolo.', englishText: 'The book is on the table.' },
-        { targetText: 'Lei beve acqua ogni giorno.', englishText: 'She drinks water every day.' },
-        { targetText: 'Il sole splende oggi.', englishText: 'The sun is shining today.' }
-      ],
-      intermediate: [
-        { targetText: 'Le previsioni meteo predicono pioggia domani.', englishText: 'The weather forecast predicts rain tomorrow.' },
-        { targetText: 'Devo finire i compiti prima di cena.', englishText: 'I need to finish my homework before dinner.' },
-        { targetText: 'Il concerto è stato cancellato a causa del maltempo.', englishText: 'The concert was cancelled due to bad weather.' },
-        { targetText: 'Le piace leggere romanzi gialli nel tempo libero.', englishText: 'She enjoys reading mystery novels in her free time.' },
-        { targetText: 'Il ristorante serve deliziosa cucina tradizionale.', englishText: 'The restaurant serves delicious traditional cuisine.' }
-      ],
-      advanced: [
-        { targetText: 'La spedizione archeologica ha scoperto antichi manufatti.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
-        { targetText: 'Le fluttuazioni economiche influenzano i modelli commerciali internazionali.', englishText: 'Economic fluctuations affect international trade patterns.' },
-        { targetText: 'L\'azienda farmaceutica ha sviluppato trattamenti innovativi.', englishText: 'The pharmaceutical company developed innovative treatments.' },
-        { targetText: 'La sostenibilità ambientale richiede cambiamenti politici completi.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
-        { targetText: 'L\'avanzamento tecnologico ha rivoluzionato i metodi di comunicazione.', englishText: 'The technological advancement revolutionized communication methods.' }
-      ]
-    },
-    portuguese: {
-      beginner: [
-        { targetText: 'O gato senta na cadeira.', englishText: 'The cat sits on the chair.' },
-        { targetText: 'Eu gosto de comer maçãs.', englishText: 'I like to eat apples.' },
-        { targetText: 'O livro está na mesa.', englishText: 'The book is on the table.' },
-        { targetText: 'Ela bebe água todos os dias.', englishText: 'She drinks water every day.' },
-        { targetText: 'O sol brilha hoje.', englishText: 'The sun is shining today.' }
-      ],
-      intermediate: [
-        { targetText: 'A previsão do tempo prevê chuva amanhã.', englishText: 'The weather forecast predicts rain tomorrow.' },
-        { targetText: 'Preciso terminar minha lição de casa antes do jantar.', englishText: 'I need to finish my homework before dinner.' },
-        { targetText: 'O concerto foi cancelado devido ao mau tempo.', englishText: 'The concert was cancelled due to bad weather.' },
-        { targetText: 'Ela gosta de ler romances policiais no tempo livre.', englishText: 'She enjoys reading mystery novels in her free time.' },
-        { targetText: 'O restaurante serve deliciosa culinária tradicional.', englishText: 'The restaurant serves delicious traditional cuisine.' }
-      ],
-      advanced: [
-        { targetText: 'A expedição arqueológica descobriu artefatos antigos.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
-        { targetText: 'Flutuações econômicas afetam padrões de comércio internacional.', englishText: 'Economic fluctuations affect international trade patterns.' },
-        { targetText: 'A empresa farmacêutica desenvolveu tratamentos inovadores.', englishText: 'The pharmaceutical company developed innovative treatments.' },
-        { targetText: 'A sustentabilidade ambiental requer mudanças políticas abrangentes.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
-        { targetText: 'O avanço tecnológico revolucionou os métodos de comunicação.', englishText: 'The technological advancement revolutionized communication methods.' }
-      ]
-    },
-    swedish: {
-      beginner: [
-        { targetText: 'Katten sitter på stolen.', englishText: 'The cat sits on the chair.' },
-        { targetText: 'Jag tycker om att äta äpplen.', englishText: 'I like to eat apples.' },
-        { targetText: 'Boken ligger på bordet.', englishText: 'The book is on the table.' },
-        { targetText: 'Hon dricker vatten varje dag.', englishText: 'She drinks water every day.' },
-        { targetText: 'Solen skiner idag.', englishText: 'The sun is shining today.' }
-      ],
-      intermediate: [
-        { targetText: 'Väderleken förutspår regn imorgon.', englishText: 'The weather forecast predicts rain tomorrow.' },
-        { targetText: 'Jag måste avsluta mina läxor före middagen.', englishText: 'I need to finish my homework before dinner.' },
-        { targetText: 'Konserten ställdes in på grund av dåligt väder.', englishText: 'The concert was cancelled due to bad weather.' },
-        { targetText: 'Hon tycker om att läsa deckare på fritiden.', englishText: 'She enjoys reading mystery novels in her free time.' },
-        { targetText: 'Restaurangen serverar läcker traditionell mat.', englishText: 'The restaurant serves delicious traditional cuisine.' }
-      ],
-      advanced: [
-        { targetText: 'Den arkeologiska expeditionen upptäckte gamla föremål.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
-        { targetText: 'Ekonomiska fluktuationer påverkar internationella handelsmönster.', englishText: 'Economic fluctuations affect international trade patterns.' },
-        { targetText: 'Läkemedelsföretaget utvecklade innovativa behandlingar.', englishText: 'The pharmaceutical company developed innovative treatments.' },
-        { targetText: 'Miljömässig hållbarhet kräver omfattande politiska förändringar.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
-        { targetText: 'Teknologiska framsteg revolutionerade kommunikationsmetoder.', englishText: 'The technological advancement revolutionized communication methods.' }
-      ]
-    },
-    dutch: {
-      beginner: [
-        { targetText: 'De kat zit op de stoel.', englishText: 'The cat sits on the chair.' },
-        { targetText: 'Ik eet graag appels.', englishText: 'I like to eat apples.' },
-        { targetText: 'Het boek ligt op de tafel.', englishText: 'The book is on the table.' },
-        { targetText: 'Zij drinkt elke dag water.', englishText: 'She drinks water every day.' },
-        { targetText: 'De zon schijnt vandaag.', englishText: 'The sun is shining today.' }
-      ],
-      intermediate: [
-        { targetText: 'De weersvoorspelling voorspelt morgen regen.', englishText: 'The weather forecast predicts rain tomorrow.' },
-        { targetText: 'Ik moet mijn huiswerk afmaken voor het avondeten.', englishText: 'I need to finish my homework before dinner.' },
-        { targetText: 'Het concert werd afgelast vanwege slecht weer.', englishText: 'The concert was cancelled due to bad weather.' },
-        { targetText: 'Zij leest graag detectiveromans in haar vrije tijd.', englishText: 'She enjoys reading mystery novels in her free time.' },
-        { targetText: 'Het restaurant serveert heerlijke traditionele keuken.', englishText: 'The restaurant serves delicious traditional cuisine.' }
-      ],
-      advanced: [
-        { targetText: 'De archeologische expeditie ontdekte oude artefacten.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
-        { targetText: 'Economische fluctuaties beïnvloeden internationale handelspatronen.', englishText: 'Economic fluctuations affect international trade patterns.' },
-        { targetText: 'Het farmaceutische bedrijf ontwikkelde innovatieve behandelingen.', englishText: 'The pharmaceutical company developed innovative treatments.' },
-        { targetText: 'Duurzaamheid vereist uitgebreide beleidsveranderingen.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
-        { targetText: 'Technologische vooruitgang revolutioneerde communicatiemethoden.', englishText: 'The technological advancement revolutionized communication methods.' }
-      ]
-    }
-  }
-  
-  // Default to English sentences if language not found
-  const defaultSentences = {
-    beginner: [
-      { targetText: 'The cat sits on the mat.', englishText: 'The cat sits on the mat.' },
-      { targetText: 'I like to eat apples.', englishText: 'I like to eat apples.' },
-      { targetText: 'The book is on the table.', englishText: 'The book is on the table.' },
-      { targetText: 'She drinks water every day.', englishText: 'She drinks water every day.' },
-      { targetText: 'The sun is bright today.', englishText: 'The sun is bright today.' }
-    ],
-    intermediate: [
-      { targetText: 'The weather forecast predicts rain tomorrow.', englishText: 'The weather forecast predicts rain tomorrow.' },
-      { targetText: 'I need to finish my homework before dinner.', englishText: 'I need to finish my homework before dinner.' },
-      { targetText: 'The concert was cancelled due to bad weather.', englishText: 'The concert was cancelled due to bad weather.' },
-      { targetText: 'She enjoys reading mystery novels in her free time.', englishText: 'She enjoys reading mystery novels in her free time.' },
-      { targetText: 'The restaurant serves delicious traditional cuisine.', englishText: 'The restaurant serves delicious traditional cuisine.' }
-    ],
-    advanced: [
-      { targetText: 'The archaeological expedition uncovered ancient artifacts.', englishText: 'The archaeological expedition uncovered ancient artifacts.' },
-      { targetText: 'Economic fluctuations affect international trade patterns.', englishText: 'Economic fluctuations affect international trade patterns.' },
-      { targetText: 'The pharmaceutical company developed innovative treatments.', englishText: 'The pharmaceutical company developed innovative treatments.' },
-      { targetText: 'Environmental sustainability requires comprehensive policy changes.', englishText: 'Environmental sustainability requires comprehensive policy changes.' },
-      { targetText: 'The technological advancement revolutionized communication methods.', englishText: 'The technological advancement revolutionized communication methods.' }
-    ]
-  }
-  
-  const languageData = sentencesData[language as keyof typeof sentencesData] || defaultSentences
-  return languageData[difficulty as keyof typeof languageData] || languageData.beginner
+  return clozeSentence;
 }

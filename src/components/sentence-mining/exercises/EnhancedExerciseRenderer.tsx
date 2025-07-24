@@ -4,6 +4,7 @@ import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { TranslationExercise } from './TranslationExercise';
 import { VocabularyMarkingExercise } from './VocabularyMarkingExercise';
 import { ClozeExercise } from './ClozeExercise';
+import { useSentenceMining } from '@/hooks/use-sentence-mining';
 
 interface EnhancedExerciseRendererProps {
   exercise: SentenceMiningExercise;
@@ -12,8 +13,6 @@ interface EnhancedExerciseRendererProps {
   showResult: boolean;
   isCorrect: boolean;
   loading: boolean;
-  onPlayAudio?: () => void;
-  audioLoading?: boolean;
   showTranslation: boolean;
   onToggleTranslation: () => void;
   onResponseChange: (response: string) => void;
@@ -29,8 +28,6 @@ export const EnhancedExerciseRenderer: React.FC<EnhancedExerciseRendererProps> =
   showResult,
   isCorrect,
   loading,
-  onPlayAudio,
-  audioLoading,
   showTranslation,
   onToggleTranslation,
   onResponseChange,
@@ -38,54 +35,59 @@ export const EnhancedExerciseRenderer: React.FC<EnhancedExerciseRendererProps> =
   onSubmit,
   onNext
 }) => {
-  const commonProps = {
-    exercise,
-    showResult,
-    isCorrect,
-    loading,
-    onPlayAudio,
-    audioLoading,
-    showTranslation,
-    onToggleTranslation,
-    onNext
+  const { skipExercise } = useSentenceMining();
+
+  const renderExercise = () => {
+    switch (exercise.exerciseType) {
+      case 'translation':
+        return (
+          <TranslationExercise
+            exercise={exercise}
+            userResponse={userResponse}
+            showResult={showResult}
+            isCorrect={isCorrect}
+            loading={loading}
+            showTranslation={showTranslation}
+            onToggleTranslation={onToggleTranslation}
+            onResponseChange={onResponseChange}
+            onSubmit={onSubmit}
+            onNext={onNext}
+          />
+        );
+      
+      case 'vocabulary_marking':
+        return (
+          <VocabularyMarkingExercise
+            exercise={exercise}
+            selectedWords={selectedWords}
+            showResult={showResult}
+            isCorrect={isCorrect}
+            loading={loading}
+            onWordSelect={onWordSelect}
+            onSubmit={onSubmit}
+            onSkip={skipExercise}
+            onNext={onNext}
+          />
+        );
+      
+      case 'cloze':
+        return (
+          <ClozeExercise
+            exercise={exercise}
+            userResponse={userResponse}
+            showResult={showResult}
+            isCorrect={isCorrect}
+            loading={loading}
+            onResponseChange={onResponseChange}
+            onSubmit={onSubmit}
+            onNext={onNext}
+          />
+        );
+      
+      default:
+        return <div>Unknown exercise type</div>;
+    }
   };
 
-  switch (exercise.exerciseType) {
-    case 'translation':
-      return (
-        <TranslationExercise 
-          {...commonProps}
-          userResponse={userResponse}
-          onResponseChange={onResponseChange}
-          onSubmit={onSubmit}
-        />
-      );
-
-    case 'vocabulary_marking':
-      return (
-        <VocabularyMarkingExercise 
-          {...commonProps}
-          selectedWords={selectedWords}
-          onWordSelect={onWordSelect}
-          onSubmit={onSubmit}
-        />
-      );
-
-    case 'cloze':
-      return (
-        <ClozeExercise 
-          {...commonProps}
-          userResponse={userResponse}
-          onResponseChange={onResponseChange}
-          onSubmit={onSubmit}
-        />
-      );
-
-    default:
-      return (
-        <div className="p-4 text-center text-muted-foreground">
-          Unknown exercise type: {exercise.exerciseType}
-        </div>
-      );
-  }
+  return <div>{renderExercise()}</div>;
 };

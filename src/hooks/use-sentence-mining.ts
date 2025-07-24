@@ -19,6 +19,7 @@ export const useSentenceMining = () => {
   const [showHint, setShowHint] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
   const [showTestingPanel, setShowTestingPanel] = useState(false);
+  const [isGeneratingNext, setIsGeneratingNext] = useState(false);
 
   useEffect(() => {
     loadProgress();
@@ -269,7 +270,7 @@ export const useSentenceMining = () => {
   };
 
   const generateNextExercise = async (sessionId: string, difficulty: DifficultyLevel) => {
-    setLoading(true);
+    setIsGeneratingNext(true);
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -277,17 +278,34 @@ export const useSentenceMining = () => {
 
       console.log('Generating next exercise for session:', sessionId);
 
-      // Determine exercise type (cycle through different types, excluding multiple_choice)
+      // Get user's known words for N+1 methodology
+      const { data: knownWords } = await supabase
+        .from('known_words')
+        .select('word, mastery_level')
+        .eq('user_id', user.id)
+        .eq('language', settings.selectedLanguage)
+        .gte('mastery_level', 1);
+
+      // Get previous exercises from this session to avoid repetition
+      const { data: previousExercises } = await supabase
+        .from('sentence_mining_exercises')
+        .select('sentence, target_words')
+        .eq('session_id', sessionId);
+
+      // Determine exercise type (cycle through different types)
       const exerciseTypes: ExerciseType[] = ['translation', 'vocabulary_marking', 'cloze'];
       const randomType = exerciseTypes[Math.floor(Math.random() * exerciseTypes.length)];
 
-      // Generate exercise using the edge function
+      // Generate exercise using the edge function with N+1 methodology
       const { data: exercise, error } = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
           difficulty_level: difficulty,
           language: settings.selectedLanguage,
           exercise_type: randomType,
-          session_id: sessionId
+          session_id: sessionId,
+          known_words: knownWords?.map(w => w.word) || [],
+          previous_sentences: previousExercises?.map(e => e.sentence) || [],
+          n_plus_one: true // Enable N+1 methodology
         }
       });
 
@@ -333,11 +351,11 @@ export const useSentenceMining = () => {
       setError(error.message);
       toast.error('Failed to generate exercise');
     } finally {
-      setLoading(false);
+      setIsGeneratingNext(false);
     }
   };
 
-  const submitAnswer = async (response: string, selectedWords: string[] = []) => {
+  const submitAnswer = async (response: string, selectedWords: string[] = [], isSkipped: boolean = false) => {
     if (!currentExercise || !currentSession) return;
 
     setLoading(true);
@@ -354,42 +372,52 @@ export const useSentenceMining = () => {
         correctAnswer: currentExercise.correctAnswer || currentExercise.sentence,
         translation: currentExercise.translation,
         targetWords: currentExercise.targetWords,
-        selectedWords
+        selectedWords,
+        isSkipped
       });
 
-      // FIXED: Proper answer evaluation based on exercise type
-      switch (currentExercise.exerciseType) {
-        case 'translation':
-          // For translation exercises, compare user's translation against the expected target language translation
-          const expectedTranslation = currentExercise.correctAnswer || currentExercise.translation;
-          evaluationResult = evaluateAnswer(
-            response, 
-            expectedTranslation || '', 
-            'translation',
-            0.75 // Higher threshold for translations
-          );
-          break;
-          
-        case 'vocabulary_marking':
-          // For vocabulary marking, use the specialized evaluation
-          evaluationResult = evaluateVocabularyMarking(
-            selectedWords,
-            currentExercise.targetWords || [],
-            true
-          );
-          break;
-          
-        case 'cloze':
-          evaluationResult = evaluateAnswer(
-            response, 
-            currentExercise.targetWords || [], 
-            'cloze',
-            0.8
-          );
-          break;
-          
-        default:
-          evaluationResult = { isCorrect: false, accuracy: 0, feedback: 'Unknown exercise type', similarityScore: 0, category: 'poor' as const };
+      // Handle skipped vocabulary marking exercises
+      if (isSkipped && currentExercise.exerciseType === 'vocabulary_marking') {
+        evaluationResult = {
+          isCorrect: false,
+          accuracy: 0,
+          feedback: 'Exercise skipped',
+          similarityScore: 0,
+          category: 'skipped' as const
+        };
+      } else {
+        // Regular answer evaluation
+        switch (currentExercise.exerciseType) {
+          case 'translation':
+            const expectedTranslation = currentExercise.correctAnswer || currentExercise.translation;
+            evaluationResult = evaluateAnswer(
+              response, 
+              expectedTranslation || '', 
+              'translation',
+              0.75
+            );
+            break;
+            
+          case 'vocabulary_marking':
+            evaluationResult = evaluateVocabularyMarking(
+              selectedWords,
+              currentExercise.targetWords || [],
+              true
+            );
+            break;
+            
+          case 'cloze':
+            evaluationResult = evaluateAnswer(
+              response, 
+              currentExercise.targetWords || [], 
+              'cloze',
+              0.8
+            );
+            break;
+            
+          default:
+            evaluationResult = { isCorrect: false, accuracy: 0, feedback: 'Unknown exercise type', similarityScore: 0, category: 'poor' as const };
+        }
       }
 
       console.log('Evaluation result:', evaluationResult);
@@ -404,7 +432,8 @@ export const useSentenceMining = () => {
           user_response: response,
           is_correct: evaluationResult.isCorrect,
           completed_at: new Date().toISOString(),
-          completion_time: Math.floor(Math.random() * 30) + 10 // Placeholder
+          completion_time: Math.floor(Math.random() * 30) + 10,
+          is_skipped: isSkipped
         })
         .eq('id', currentExercise.id);
 
@@ -417,8 +446,8 @@ export const useSentenceMining = () => {
         })
         .eq('id', currentSession.id);
 
-      // Update word mastery for target words
-      if (currentExercise.targetWords) {
+      // Update word mastery for target words (unless skipped)
+      if (!isSkipped && currentExercise.targetWords) {
         for (const word of currentExercise.targetWords) {
           await supabase.rpc('update_word_mastery', {
             user_id_param: user.id,
@@ -437,10 +466,17 @@ export const useSentenceMining = () => {
       } : null);
 
       // Show appropriate feedback
-      if (evaluationResult.isCorrect) {
+      if (isSkipped) {
+        toast.info('Exercise skipped');
+      } else if (evaluationResult.isCorrect) {
         toast.success(evaluationResult.feedback);
       } else {
         toast.error(evaluationResult.feedback);
+      }
+
+      // Pre-generate next exercise for smoother UX
+      if (currentSession) {
+        generateNextExercise(currentSession.id, currentSession.difficulty_level as DifficultyLevel);
       }
 
     } catch (error: any) {
@@ -448,6 +484,12 @@ export const useSentenceMining = () => {
       toast.error('Failed to submit answer');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const skipExercise = async () => {
+    if (currentExercise?.exerciseType === 'vocabulary_marking') {
+      await submitAnswer('', [], true);
     }
   };
 
@@ -524,8 +566,10 @@ export const useSentenceMining = () => {
     showHint,
     showTranslation,
     showTestingPanel,
+    isGeneratingNext,
     startSession,
     submitAnswer,
+    skipExercise,
     nextExercise,
     endSession,
     updateUserResponse,

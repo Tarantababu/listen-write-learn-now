@@ -20,6 +20,7 @@ export interface SentenceMiningExercise {
   unknownWords?: string[];
   difficultyScore?: number;
   hints?: string[];
+  isSkipped?: boolean;
 }
 
 export interface ClickableWord {
@@ -85,6 +86,7 @@ export interface UserResponse {
   hints?: string[];
   selectedWords?: string[];
   exerciseType: ExerciseType;
+  isSkipped?: boolean;
 }
 
 export interface SentenceMiningState {
@@ -99,4 +101,5 @@ export interface SentenceMiningState {
   progress: SentenceMiningProgress | null;
   showHint: boolean;
   showTranslation: boolean;
+  isGeneratingNext: boolean;
 }
