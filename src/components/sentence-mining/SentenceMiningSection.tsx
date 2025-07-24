@@ -93,7 +93,7 @@ export const SentenceMiningSection: React.FC = () => {
       </div>
 
       {/* Progress Overview */}
-      {progress && <ProgressTracker progress={progress} />}
+      {progress && <ProgressTracker progress={progress} currentSession={currentSession} />}
 
       {/* Session Status */}
       {currentSession && (
@@ -123,8 +123,11 @@ export const SentenceMiningSection: React.FC = () => {
       {/* Main Content */}
       {!currentSession ? (
         <div className="space-y-6">
-          <DifficultySelector onSelect={handleStartSession} loading={loading} />
-          {progress && <SessionInsights progress={progress} />}
+          <DifficultySelector 
+            onSelectDifficulty={handleStartSession} 
+            progress={progress?.difficultyProgress}
+          />
+          {progress && <SessionInsights progress={progress} currentSession={currentSession} />}
         </div>
       ) : currentExercise ? (
         <EnhancedExerciseRenderer
@@ -134,14 +137,12 @@ export const SentenceMiningSection: React.FC = () => {
           showResult={showResult}
           isCorrect={isCorrect}
           loading={loading}
-          showHint={showHint}
           showTranslation={showTranslation}
+          onToggleTranslation={toggleTranslation}
           onResponseChange={updateUserResponse}
-          onWordToggle={toggleWord}
+          onWordSelect={toggleWord}
           onSubmit={handleSubmitAnswer}
           onNext={nextExercise}
-          onToggleHint={toggleHint}
-          onToggleTranslation={toggleTranslation}
         />
       ) : (
         <Card>
