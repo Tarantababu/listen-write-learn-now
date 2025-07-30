@@ -125,37 +125,39 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({
         </CardContent>
       </Card>
 
-      {/* Difficulty Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Calendar className="h-5 w-5 text-indigo-500" />
-            Difficulty Breakdown
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {Object.entries(progress.difficultyProgress).map(([difficulty, stats]) => (
-              <div key={difficulty} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium capitalize">{difficulty}</span>
-                  <Badge variant="outline">
-                    {stats.accuracy}% accuracy
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <Progress value={stats.accuracy} className="w-full" />
+      {/* Difficulty Breakdown - simplified for cloze only */}
+      {progress.difficultyProgress && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Calendar className="h-5 w-5 text-indigo-500" />
+              Difficulty Breakdown
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {Object.entries(progress.difficultyProgress).map(([difficulty, stats]) => (
+                <div key={difficulty} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium capitalize">{difficulty}</span>
+                    <Badge variant="outline">
+                      {stats.accuracy}% accuracy
+                    </Badge>
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {stats.correct}/{stats.attempted}
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <Progress value={stats.accuracy} className="w-full" />
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {stats.correct}/{stats.attempted}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

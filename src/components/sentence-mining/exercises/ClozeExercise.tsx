@@ -37,8 +37,8 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   onToggleTranslation
 }) => {
   // Get the cloze sentence or create one if not provided
-  const clozeSentence = exercise.clozeSentence || generateClozeSentence(exercise.sentence, exercise.targetWords?.[0] || '');
-  const targetWord = exercise.targetWords?.[0] || '';
+  const clozeSentence = exercise.clozeSentence || generateClozeSentence(exercise.sentence, exercise.targetWord || '');
+  const targetWord = exercise.targetWord || '';
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;

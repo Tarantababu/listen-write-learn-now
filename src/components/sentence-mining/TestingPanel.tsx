@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, XCircle, TestTube, AlertTriangle } from 'lucide-react';
-import { ExerciseType } from '@/types/sentence-mining';
 import { testAnswerEvaluation, getTestCases } from '@/utils/exerciseValidation';
 
 interface TestingPanelProps {
@@ -14,16 +13,14 @@ interface TestingPanelProps {
 
 export const TestingPanel: React.FC<TestingPanelProps> = ({ onClose }) => {
   const [testResults, setTestResults] = useState<any>(null);
-  const [selectedExerciseType, setSelectedExerciseType] = useState<ExerciseType>('translation');
   const [isRunning, setIsRunning] = useState(false);
 
-  const runTests = async (exerciseType: ExerciseType) => {
+  const runTests = async () => {
     setIsRunning(true);
-    setSelectedExerciseType(exerciseType);
 
     try {
-      const testCases = getTestCases(exerciseType);
-      const results = testAnswerEvaluation(exerciseType, testCases);
+      const testCases = getTestCases('cloze');
+      const results = testAnswerEvaluation('cloze', testCases);
       setTestResults(results);
     } catch (error) {
       console.error('Error running tests:', error);
@@ -31,8 +28,6 @@ export const TestingPanel: React.FC<TestingPanelProps> = ({ onClose }) => {
       setIsRunning(false);
     }
   };
-
-  const exerciseTypes: ExerciseType[] = ['translation', 'vocabulary_marking', 'cloze'];
 
   return (
     <Card className="w-full max-w-4xl">
@@ -52,19 +47,13 @@ export const TestingPanel: React.FC<TestingPanelProps> = ({ onClose }) => {
         {/* Test Controls */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Run Tests</h3>
-          <div className="flex flex-wrap gap-2">
-            {exerciseTypes.map(type => (
-              <Button
-                key={type}
-                variant="outline"
-                onClick={() => runTests(type)}
-                disabled={isRunning}
-                className="capitalize"
-              >
-                Test {type.replace('_', ' ')}
-              </Button>
-            ))}
-          </div>
+          <Button
+            variant="outline"
+            onClick={runTests}
+            disabled={isRunning}
+          >
+            Test Cloze Exercises
+          </Button>
         </div>
 
         <Separator />
@@ -73,8 +62,8 @@ export const TestingPanel: React.FC<TestingPanelProps> = ({ onClose }) => {
         {testResults && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold capitalize">
-                {selectedExerciseType.replace('_', ' ')} Test Results
+              <h3 className="text-lg font-semibold">
+                Cloze Test Results
               </h3>
               <Badge variant={testResults.summary.percentage >= 80 ? "default" : "destructive"}>
                 {testResults.summary.passed}/{testResults.summary.total} passed 
@@ -106,19 +95,13 @@ export const TestingPanel: React.FC<TestingPanelProps> = ({ onClose }) => {
                       <div>
                         <span className="font-medium">Input: </span>
                         <span className="text-muted-foreground">
-                          {Array.isArray(result.userAnswer) 
-                            ? result.userAnswer.join(', ') || 'None'
-                            : result.userAnswer || 'Empty'
-                          }
+                          {result.userAnswer || 'Empty'}
                         </span>
                       </div>
                       <div>
                         <span className="font-medium">Expected: </span>
                         <span className="text-muted-foreground">
-                          {Array.isArray(result.correctAnswer)
-                            ? result.correctAnswer.join(', ')
-                            : result.correctAnswer
-                          }
+                          {result.correctAnswer}
                         </span>
                       </div>
                       <div>
@@ -150,7 +133,7 @@ export const TestingPanel: React.FC<TestingPanelProps> = ({ onClose }) => {
                 Testing Information
               </p>
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                This panel tests the answer evaluation logic for different exercise types. 
+                This panel tests the answer evaluation logic for cloze exercises. 
                 All tests should pass to ensure consistent and accurate exercise grading.
               </p>
             </div>

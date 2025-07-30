@@ -1,5 +1,5 @@
 
-import { SentenceMiningExercise, ExerciseType } from '@/types/sentence-mining';
+import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { evaluateAnswer, evaluateVocabularyMarking } from './answerEvaluation';
 
 export interface ValidationResult {
@@ -18,37 +18,14 @@ export const validateExercise = (exercise: SentenceMiningExercise): ValidationRe
   // Basic required fields
   if (!exercise.id) errors.push('Exercise ID is required');
   if (!exercise.sentence) errors.push('Sentence is required');
-  if (!exercise.exerciseType) errors.push('Exercise type is required');
   if (!exercise.difficulty) errors.push('Difficulty level is required');
 
-  // Exercise type specific validation
-  switch (exercise.exerciseType) {
-    case 'translation':
-      if (!exercise.translation) {
-        errors.push('Translation is required for translation exercises');
-      }
-      if (!exercise.correctAnswer) {
-        warnings.push('Correct answer should be provided for better evaluation');
-      }
-      break;
-
-    case 'vocabulary_marking':
-      if (!exercise.targetWords || exercise.targetWords.length === 0) {
-        errors.push('Target words are required for vocabulary marking exercises');
-      }
-      if (exercise.targetWords && exercise.targetWords.length > 10) {
-        warnings.push('Too many target words may make the exercise too difficult');
-      }
-      break;
-
-    case 'cloze':
-      if (!exercise.clozeSentence) {
-        errors.push('Cloze sentence is required for cloze exercises');
-      }
-      if (!exercise.targetWords || exercise.targetWords.length === 0) {
-        errors.push('Target words are required for cloze exercises');
-      }
-      break;
+  // Cloze exercise validation
+  if (!exercise.clozeSentence) {
+    errors.push('Cloze sentence is required for cloze exercises');
+  }
+  if (!exercise.targetWord) {
+    errors.push('Target word is required for cloze exercises');
   }
 
   // Difficulty validation
@@ -67,7 +44,7 @@ export const validateExercise = (exercise: SentenceMiningExercise): ValidationRe
  * Test answer evaluation for different scenarios
  */
 export const testAnswerEvaluation = (
-  exerciseType: ExerciseType,
+  exerciseType: 'cloze',
   testCases: Array<{
     userAnswer: string | string[];
     correctAnswer: string | string[];
@@ -76,21 +53,11 @@ export const testAnswerEvaluation = (
   }>
 ) => {
   const results = testCases.map(testCase => {
-    let evaluationResult;
-
-    if (exerciseType === 'vocabulary_marking') {
-      evaluationResult = evaluateVocabularyMarking(
-        testCase.userAnswer as string[],
-        testCase.correctAnswer as string[],
-        true
-      );
-    } else {
-      evaluationResult = evaluateAnswer(
-        testCase.userAnswer as string,
-        testCase.correctAnswer as string | string[],
-        exerciseType
-      );
-    }
+    const evaluationResult = evaluateAnswer(
+      testCase.userAnswer as string,
+      testCase.correctAnswer as string,
+      exerciseType
+    );
 
     const passed = evaluationResult.isCorrect === testCase.expectedResult;
 
@@ -118,89 +85,33 @@ export const testAnswerEvaluation = (
 };
 
 /**
- * Predefined test cases for different exercise types
+ * Predefined test cases for cloze exercises
  */
-export const getTestCases = (exerciseType: ExerciseType) => {
-  switch (exerciseType) {
-    case 'translation':
-      return [
-        {
-          userAnswer: 'Hola, ¿cómo estás?',
-          correctAnswer: 'Hola, ¿cómo estás?',
-          expectedResult: true,
-          description: 'Exact match'
-        },
-        {
-          userAnswer: 'Hola, como estas?',
-          correctAnswer: 'Hola, ¿cómo estás?',
-          expectedResult: true,
-          description: 'Close match without accents'
-        },
-        {
-          userAnswer: 'Hello, how are you?',
-          correctAnswer: 'Hola, ¿cómo estás?',
-          expectedResult: false,
-          description: 'Wrong language'
-        },
-        {
-          userAnswer: '',
-          correctAnswer: 'Hola, ¿cómo estás?',
-          expectedResult: false,
-          description: 'Empty answer'
-        }
-      ];
-
-    case 'vocabulary_marking':
-      return [
-        {
-          userAnswer: ['casa', 'perro'],
-          correctAnswer: ['casa', 'perro'],
-          expectedResult: true,
-          description: 'Perfect selection'
-        },
-        {
-          userAnswer: ['casa'],
-          correctAnswer: ['casa', 'perro'],
-          expectedResult: true,
-          description: 'Partial correct selection'
-        },
-        {
-          userAnswer: ['gato'],
-          correctAnswer: ['casa', 'perro'],
-          expectedResult: false,
-          description: 'Wrong words selected'
-        },
-        {
-          userAnswer: [],
-          correctAnswer: ['casa', 'perro'],
-          expectedResult: true,
-          description: 'No selection (valid for vocabulary marking)'
-        }
-      ];
-
-    case 'cloze':
-      return [
-        {
-          userAnswer: 'casa',
-          correctAnswer: 'casa',
-          expectedResult: true,
-          description: 'Exact match'
-        },
-        {
-          userAnswer: 'casas',
-          correctAnswer: 'casa',
-          expectedResult: false,
-          description: 'Plural vs singular'
-        },
-        {
-          userAnswer: 'hogar',
-          correctAnswer: 'casa',
-          expectedResult: false,
-          description: 'Synonym but not exact'
-        }
-      ];
-
-    default:
-      return [];
-  }
+export const getTestCases = (exerciseType: 'cloze') => {
+  return [
+    {
+      userAnswer: 'casa',
+      correctAnswer: 'casa',
+      expectedResult: true,
+      description: 'Exact match'
+    },
+    {
+      userAnswer: 'casas',
+      correctAnswer: 'casa',
+      expectedResult: false,
+      description: 'Plural vs singular'
+    },
+    {
+      userAnswer: 'hogar',
+      correctAnswer: 'casa',
+      expectedResult: false,
+      description: 'Synonym but not exact'
+    },
+    {
+      userAnswer: '',
+      correctAnswer: 'casa',
+      expectedResult: false,
+      description: 'Empty answer'
+    }
+  ];
 };

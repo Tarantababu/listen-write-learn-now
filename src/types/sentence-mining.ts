@@ -1,4 +1,3 @@
-
 export interface SentenceMiningExercise {
   id: string;
   sentence: string;
@@ -49,6 +48,7 @@ export interface VocabularyStats {
   language: string;
 }
 
+// Simplified progress interface for cloze-only exercises
 export interface SentenceMiningProgress {
   language: string;
   totalSessions: number;
@@ -58,6 +58,10 @@ export interface SentenceMiningProgress {
   streak: number;
   lastSessionDate?: Date;
   vocabularyStats: VocabularyStats;
+  // Simplified for cloze-only
+  wordsLearned?: number;
+  difficultyProgress?: Record<string, { attempted: number; correct: number; accuracy: number }>;
+  exerciseTypeProgress?: Record<string, { attempted: number; correct: number; accuracy: number }>;
 }
 
 export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
@@ -83,3 +87,6 @@ export interface SentenceMiningState {
   showTranslation: boolean;
   isGeneratingNext: boolean;
 }
+
+// Keep ExerciseType for backward compatibility but only support cloze
+export type ExerciseType = 'cloze';

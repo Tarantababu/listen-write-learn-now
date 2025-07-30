@@ -52,16 +52,13 @@ export const SessionInsights: React.FC<SessionInsightsProps> = ({
       });
     }
 
-    // Exercise type recommendations
-    const weakestType = Object.entries(progress.exerciseTypeProgress)
-      .sort(([,a], [,b]) => a.accuracy - b.accuracy)[0];
-    
-    if (weakestType && weakestType[1].accuracy < 70) {
+    // Simplified insight for cloze exercises
+    if (progress.totalExercises >= 10 && progress.averageAccuracy < 70) {
       insights.push({
         type: 'info',
         icon: Lightbulb,
         title: 'Focus Area',
-        description: `Consider practicing more ${weakestType[0].replace('_', ' ')} exercises to improve.`,
+        description: 'Consider practicing more fill-in-the-blank exercises to improve vocabulary recognition.',
       });
     }
 
