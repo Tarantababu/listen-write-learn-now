@@ -2,32 +2,21 @@
 export interface SentenceMiningExercise {
   id: string;
   sentence: string;
-  targetWords: string[];
+  targetWord: string; // Simplified to single target word for cloze
   clozeSentence: string;
   difficulty: DifficultyLevel;
   context: string;
   createdAt: Date;
   attempts: number;
   correctAttempts: number;
-  exerciseType: ExerciseType;
   translation?: string;
   correctAnswer: string;
-  explanation?: string;
-  clickableWords?: ClickableWord[];
+  hints?: string[];
   // Database fields
   session_id?: string;
   sessionId?: string;
-  unknownWords?: string[];
   difficultyScore?: number;
-  hints?: string[];
   isSkipped?: boolean;
-}
-
-export interface ClickableWord {
-  word: string;
-  definition: string;
-  isKnown: boolean;
-  position: number;
 }
 
 export interface SentenceMiningSession {
@@ -40,7 +29,6 @@ export interface SentenceMiningSession {
   endTime?: Date;
   totalCorrect: number;
   totalAttempts: number;
-  exerciseTypes: ExerciseType[];
   // Database fields that match the actual schema
   user_id: string;
   difficulty_level: DifficultyLevel;
@@ -54,6 +42,13 @@ export interface SentenceMiningSession {
   session_data?: any;
 }
 
+export interface VocabularyStats {
+  passiveVocabulary: number; // Words seen/recognized
+  activeVocabulary: number;  // Words correctly used/mastered
+  totalWordsEncountered: number;
+  language: string;
+}
+
 export interface SentenceMiningProgress {
   language: string;
   totalSessions: number;
@@ -62,30 +57,16 @@ export interface SentenceMiningProgress {
   averageAccuracy: number;
   streak: number;
   lastSessionDate?: Date;
-  difficultyProgress: Record<DifficultyLevel, {
-    attempted: number;
-    correct: number;
-    accuracy: number;
-  }>;
-  exerciseTypeProgress: Record<ExerciseType, {
-    attempted: number;
-    correct: number;
-    accuracy: number;
-  }>;
-  // Additional fields from the working code
-  wordsLearned?: number;
+  vocabularyStats: VocabularyStats;
 }
 
 export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
-export type ExerciseType = 'cloze' | 'translation' | 'vocabulary_marking';
 
 export interface UserResponse {
   text: string;
   isCorrect: boolean;
   timestamp: Date;
   hints?: string[];
-  selectedWords?: string[];
-  exerciseType: ExerciseType;
   isSkipped?: boolean;
 }
 
@@ -93,7 +74,6 @@ export interface SentenceMiningState {
   currentSession: SentenceMiningSession | null;
   currentExercise: SentenceMiningExercise | null;
   userResponse: string;
-  selectedWords: string[];
   showResult: boolean;
   isCorrect: boolean;
   loading: boolean;
