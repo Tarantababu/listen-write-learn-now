@@ -1,3 +1,4 @@
+
 export interface SentenceMiningExercise {
   id: string;
   sentence: string;
@@ -48,6 +49,19 @@ export interface VocabularyStats {
   language: string;
 }
 
+// Define a specific type for difficulty progress with required keys
+export interface DifficultyProgressStats {
+  attempted: number;
+  correct: number;
+  accuracy: number;
+}
+
+export interface DifficultyProgress {
+  beginner: DifficultyProgressStats;
+  intermediate: DifficultyProgressStats;
+  advanced: DifficultyProgressStats;
+}
+
 // Simplified progress interface for cloze-only exercises
 export interface SentenceMiningProgress {
   language: string;
@@ -60,7 +74,7 @@ export interface SentenceMiningProgress {
   vocabularyStats: VocabularyStats;
   // Simplified for cloze-only
   wordsLearned?: number;
-  difficultyProgress?: Record<string, { attempted: number; correct: number; accuracy: number }>;
+  difficultyProgress?: DifficultyProgress;
   exerciseTypeProgress?: Record<string, { attempted: number; correct: number; accuracy: number }>;
 }
 
