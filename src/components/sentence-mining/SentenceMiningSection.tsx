@@ -3,13 +3,12 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Trophy, BookOpen, Loader2 } from 'lucide-react';
+import { Brain, Trophy, BookOpen, Loader2, Keyboard } from 'lucide-react';
 import { useSentenceMining } from '@/hooks/use-sentence-mining';
 import { DifficultyLevel } from '@/types/sentence-mining';
 import { SimpleClozeExercise } from './SimpleClozeExercise';
-import { ProgressTracker } from './ProgressTracker';
+import { EnhancedProgressIndicator } from './EnhancedProgressIndicator';
 import { VocabularyStats } from './VocabularyStats';
-import { SessionStats } from './SessionStats';
 
 export const SentenceMiningSection: React.FC = () => {
   const {
@@ -79,6 +78,43 @@ export const SentenceMiningSection: React.FC = () => {
           </div>
         )}
 
+        {/* Keyboard Shortcuts Info */}
+        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border-blue-200 dark:border-blue-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+              <Keyboard className="h-5 w-5" />
+              Keyboard Shortcuts
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span>Check Answer</span>
+                  <div className="flex gap-1">
+                    <kbd className="px-2 py-1 bg-white dark:bg-gray-800 border rounded text-xs">Enter</kbd>
+                    <span className="text-muted-foreground">or</span>
+                    <kbd className="px-2 py-1 bg-white dark:bg-gray-800 border rounded text-xs">Ctrl+Enter</kbd>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Toggle Translation</span>
+                  <kbd className="px-2 py-1 bg-white dark:bg-gray-800 border rounded text-xs">Space</kbd>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span>Next Exercise</span>
+                  <kbd className="px-2 py-1 bg-white dark:bg-gray-800 border rounded text-xs">Enter</kbd>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Use these shortcuts to practice more efficiently!
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Difficulty Selection */}
         <Card>
           <CardHeader>
@@ -98,11 +134,17 @@ export const SentenceMiningSection: React.FC = () => {
                   size="lg"
                   onClick={() => handleStartSession('beginner')}
                   disabled={loading}
-                  className="h-20 flex flex-col gap-2"
+                  className="h-20 flex flex-col gap-2 relative"
                 >
-                  <BookOpen className="h-6 w-6" />
-                  <span className="font-medium">Beginner</span>
-                  <span className="text-xs text-muted-foreground">Simple sentences</span>
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    <>
+                      <BookOpen className="h-6 w-6" />
+                      <span className="font-medium">Beginner</span>
+                      <span className="text-xs text-muted-foreground">Simple sentences</span>
+                    </>
+                  )}
                 </Button>
                 
                 <Button
@@ -110,11 +152,17 @@ export const SentenceMiningSection: React.FC = () => {
                   size="lg"
                   onClick={() => handleStartSession('intermediate')}
                   disabled={loading}
-                  className="h-20 flex flex-col gap-2"
+                  className="h-20 flex flex-col gap-2 relative"
                 >
-                  <Brain className="h-6 w-6" />
-                  <span className="font-medium">Intermediate</span>
-                  <span className="text-xs text-muted-foreground">Moderate complexity</span>
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    <>
+                      <Brain className="h-6 w-6" />
+                      <span className="font-medium">Intermediate</span>
+                      <span className="text-xs text-muted-foreground">Moderate complexity</span>
+                    </>
+                  )}
                 </Button>
                 
                 <Button
@@ -122,11 +170,17 @@ export const SentenceMiningSection: React.FC = () => {
                   size="lg"
                   onClick={() => handleStartSession('advanced')}
                   disabled={loading}
-                  className="h-20 flex flex-col gap-2"
+                  className="h-20 flex flex-col gap-2 relative"
                 >
-                  <Trophy className="h-6 w-6" />
-                  <span className="font-medium">Advanced</span>
-                  <span className="text-xs text-muted-foreground">Complex sentences</span>
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    <>
+                      <Trophy className="h-6 w-6" />
+                      <span className="font-medium">Advanced</span>
+                      <span className="text-xs text-muted-foreground">Complex sentences</span>
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -141,8 +195,14 @@ export const SentenceMiningSection: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-          <p className="text-muted-foreground">Generating your next exercise...</p>
+          <div className="relative">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+            <div className="absolute -inset-4 border-2 border-blue-200 dark:border-blue-800 rounded-full animate-pulse opacity-30" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-muted-foreground font-medium">Generating your next exercise...</p>
+            <p className="text-xs text-muted-foreground">This may take a few seconds</p>
+          </div>
         </div>
       </div>
     );
@@ -162,6 +222,12 @@ export const SentenceMiningSection: React.FC = () => {
             <Badge variant="secondary">
               Exercise {currentSession.total_exercises + 1}
             </Badge>
+            {loading && (
+              <Badge variant="outline" className="text-blue-600">
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                Processing
+              </Badge>
+            )}
           </div>
         </div>
         <Button
@@ -192,17 +258,22 @@ export const SentenceMiningSection: React.FC = () => {
           ) : (
             <div className="flex items-center justify-center min-h-[400px]">
               <div className="text-center space-y-4">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                <div className="relative">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                  <div className="absolute -inset-4 border-2 border-blue-200 dark:border-blue-800 rounded-full animate-pulse opacity-30" />
+                </div>
                 <p className="text-muted-foreground">Loading exercise...</p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Sidebar */}
+        {/* Enhanced Sidebar */}
         <div className="space-y-6">
-          <SessionStats session={currentSession} />
-          <ProgressTracker progress={progress} currentSession={currentSession} />
+          <EnhancedProgressIndicator 
+            session={currentSession} 
+            isGeneratingNext={isGeneratingNext}
+          />
         </div>
       </div>
     </div>

@@ -1,9 +1,9 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CheckCircle, XCircle, Lightbulb } from 'lucide-react';
+import { CheckCircle, XCircle, Lightbulb, Loader2, Zap } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { ClozeAudioPlayer } from './ClozeAudioPlayer';
 
@@ -37,11 +37,39 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !showResult && userResponse.trim()) {
+    if (e.key === 'Enter' && !showResult && userResponse.trim() && !loading) {
       e.preventDefault();
       onSubmit();
     }
+    if (e.key === 'Enter' && showResult) {
+      e.preventDefault();
+      onNext();
+    }
   };
+
+  // Add global keyboard shortcuts
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + Enter to submit answer
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!showResult && userResponse.trim() && !loading) {
+          onSubmit();
+        } else if (showResult) {
+          onNext();
+        }
+      }
+      
+      // Space to toggle translation (when not focused on input)
+      if (e.key === ' ' && e.target !== document.querySelector('input[type="text"]')) {
+        e.preventDefault();
+        onToggleTranslation();
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showResult, userResponse, loading, onSubmit, onNext, onToggleTranslation]);
 
   const renderClozeSentence = () => {
     if (!showResult) {
@@ -74,10 +102,18 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
     <div className="max-w-2xl mx-auto">
       <Card className="border-none shadow-lg">
         <CardContent className="p-8 space-y-8">
-          {/* Header with audio button */}
+          {/* Header with audio button and loading indicator */}
           <div className="flex justify-between items-center">
-            <div className="text-sm text-muted-foreground capitalize">
-              {exercise.difficulty}
+            <div className="flex items-center gap-3">
+              <div className="text-sm text-muted-foreground capitalize">
+                {exercise.difficulty}
+              </div>
+              {loading && (
+                <div className="flex items-center gap-2 text-sm text-blue-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Processing...</span>
+                </div>
+              )}
             </div>
             <ClozeAudioPlayer 
               text={exercise.sentence}
@@ -91,19 +127,29 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
             </div>
           </div>
 
-          {/* Input field */}
+          {/* Input field with enhanced keyboard hints */}
           {!showResult && (
-            <div className="flex justify-center">
-              <Input
-                type="text"
-                value={userResponse}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder="Type your answer..."
-                className="max-w-xs text-center text-lg py-3"
-                disabled={loading}
-                autoFocus
-              />
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <Input
+                  type="text"
+                  value={userResponse}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Type your answer..."
+                  className="max-w-xs text-center text-lg py-3"
+                  disabled={loading}
+                  autoFocus
+                />
+              </div>
+              
+              {/* Keyboard shortcuts hint */}
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">
+                  Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> or{' '}
+                  <kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl+Enter</kbd> to check answer
+                </p>
+              </div>
             </div>
           )}
 
@@ -121,9 +167,9 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
             </div>
           )}
 
-          {/* Translation toggle */}
+          {/* Translation toggle with keyboard hint */}
           {exercise.translation && (
-            <div className="text-center">
+            <div className="text-center space-y-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -132,6 +178,10 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
               >
                 {showTranslation ? 'Hide' : 'Show'} translation
               </Button>
+              
+              <p className="text-xs text-muted-foreground">
+                Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Space</kbd> to toggle
+              </p>
               
               {showTranslation && (
                 <div className="mt-4 p-4 bg-muted rounded-lg">
@@ -143,16 +193,26 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
             </div>
           )}
 
-          {/* Action buttons */}
+          {/* Action buttons with enhanced loading states */}
           <div className="flex justify-center">
             {!showResult ? (
               <Button
                 onClick={onSubmit}
                 disabled={!userResponse.trim() || loading}
                 size="lg"
-                className="px-12"
+                className="px-12 relative"
               >
-                {loading ? 'Checking...' : 'Check Answer'}
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Check Answer
+                  </>
+                )}
               </Button>
             ) : (
               <div className="text-center space-y-6">
@@ -172,13 +232,20 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
                   )}
                 </div>
                 
-                <Button
-                  onClick={onNext}
-                  size="lg"
-                  className="px-12"
-                >
-                  Next Exercise
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    onClick={onNext}
+                    size="lg"
+                    className="px-12"
+                  >
+                    Next Exercise
+                  </Button>
+                  
+                  <p className="text-xs text-muted-foreground">
+                    Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> or{' '}
+                    <kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl+Enter</kbd> to continue
+                  </p>
+                </div>
               </div>
             )}
           </div>
