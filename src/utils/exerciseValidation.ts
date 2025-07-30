@@ -1,117 +1,77 @@
 
-import { SentenceMiningExercise } from '@/types/sentence-mining';
-import { evaluateAnswer, evaluateVocabularyMarking } from './answerEvaluation';
+import { evaluateAnswer } from './answerEvaluation';
 
-export interface ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
+export interface TestCase {
+  description: string;
+  userAnswer: string;
+  correctAnswer: string;
+  expectedResult: boolean;
+  expectedAccuracy?: number;
 }
 
-/**
- * Validate a sentence mining exercise for completeness and correctness
- */
-export const validateExercise = (exercise: SentenceMiningExercise): ValidationResult => {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  // Basic required fields
-  if (!exercise.id) errors.push('Exercise ID is required');
-  if (!exercise.sentence) errors.push('Sentence is required');
-  if (!exercise.difficulty) errors.push('Difficulty level is required');
-
-  // Cloze exercise validation
-  if (!exercise.clozeSentence) {
-    errors.push('Cloze sentence is required for cloze exercises');
-  }
-  if (!exercise.targetWord) {
-    errors.push('Target word is required for cloze exercises');
-  }
-
-  // Difficulty validation
-  if (!['beginner', 'intermediate', 'advanced'].includes(exercise.difficulty)) {
-    errors.push('Invalid difficulty level');
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-    warnings
-  };
+export const getTestCases = (exerciseType: 'cloze'): TestCase[] => {
+  return [
+    {
+      description: 'Exact match should be correct',
+      userAnswer: 'Ball',
+      correctAnswer: 'Ball',
+      expectedResult: true,
+      expectedAccuracy: 100
+    },
+    {
+      description: 'Case insensitive match should be correct',
+      userAnswer: 'ball',
+      correctAnswer: 'Ball',
+      expectedResult: true,
+      expectedAccuracy: 100
+    },
+    {
+      description: 'Close match should be accepted',
+      userAnswer: 'Bal',
+      correctAnswer: 'Ball',
+      expectedResult: true
+    },
+    {
+      description: 'Empty answer should be incorrect',
+      userAnswer: '',
+      correctAnswer: 'Ball',
+      expectedResult: false,
+      expectedAccuracy: 0
+    },
+    {
+      description: 'Completely wrong answer should be incorrect',
+      userAnswer: 'House',
+      correctAnswer: 'Ball',
+      expectedResult: false
+    }
+  ];
 };
 
-/**
- * Test answer evaluation for different scenarios
- */
-export const testAnswerEvaluation = (
-  exerciseType: 'cloze',
-  testCases: Array<{
-    userAnswer: string | string[];
-    correctAnswer: string | string[];
-    expectedResult: boolean;
-    description: string;
-  }>
-) => {
+export const testAnswerEvaluation = (exerciseType: 'cloze', testCases: TestCase[]) => {
   const results = testCases.map(testCase => {
-    const evaluationResult = evaluateAnswer(
-      testCase.userAnswer as string,
-      testCase.correctAnswer as string,
+    const result = evaluateAnswer(
+      testCase.userAnswer,
+      testCase.correctAnswer,
       exerciseType
     );
 
-    const passed = evaluationResult.isCorrect === testCase.expectedResult;
+    const passed = result.isCorrect === testCase.expectedResult &&
+      (testCase.expectedAccuracy ? result.accuracy === testCase.expectedAccuracy : true);
 
     return {
       ...testCase,
-      actualResult: evaluationResult.isCorrect,
-      accuracy: evaluationResult.accuracy,
-      feedback: evaluationResult.feedback,
-      passed,
-      evaluationResult
+      actualResult: result.isCorrect,
+      accuracy: result.accuracy,
+      feedback: result.feedback,
+      passed
     };
   });
 
-  const passedCount = results.filter(r => r.passed).length;
-  const totalCount = results.length;
-
-  return {
-    results,
-    summary: {
-      passed: passedCount,
-      total: totalCount,
-      percentage: Math.round((passedCount / totalCount) * 100)
-    }
+  const summary = {
+    total: results.length,
+    passed: results.filter(r => r.passed).length,
+    percentage: Math.round((results.filter(r => r.passed).length / results.length) * 100)
   };
-};
 
-/**
- * Predefined test cases for cloze exercises
- */
-export const getTestCases = (exerciseType: 'cloze') => {
-  return [
-    {
-      userAnswer: 'casa',
-      correctAnswer: 'casa',
-      expectedResult: true,
-      description: 'Exact match'
-    },
-    {
-      userAnswer: 'casas',
-      correctAnswer: 'casa',
-      expectedResult: false,
-      description: 'Plural vs singular'
-    },
-    {
-      userAnswer: 'hogar',
-      correctAnswer: 'casa',
-      expectedResult: false,
-      description: 'Synonym but not exact'
-    },
-    {
-      userAnswer: '',
-      correctAnswer: 'casa',
-      expectedResult: false,
-      description: 'Empty answer'
-    }
-  ];
+  return { results, summary };
 };

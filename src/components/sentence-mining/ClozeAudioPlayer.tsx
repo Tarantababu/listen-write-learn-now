@@ -7,13 +7,11 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface ClozeAudioPlayerProps {
   text: string;
-  language: string;
   className?: string;
 }
 
 export const ClozeAudioPlayer: React.FC<ClozeAudioPlayerProps> = ({
   text,
-  language,
   className = ""
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -30,7 +28,7 @@ export const ClozeAudioPlayer: React.FC<ClozeAudioPlayerProps> = ({
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: {
           text,
-          language: language.toLowerCase(),
+          language: settings.selectedLanguage.toLowerCase(),
           voice_settings: {
             stability: 0.5,
             similarity_boost: 0.8,

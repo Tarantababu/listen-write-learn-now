@@ -81,7 +81,6 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
             </div>
             <ClozeAudioPlayer 
               text={exercise.sentence}
-              language="german" // This should come from context/settings
             />
           </div>
 
