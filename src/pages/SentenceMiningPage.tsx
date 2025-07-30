@@ -1,12 +1,11 @@
 
 import React from 'react';
 import { SentenceMiningSection } from '@/components/sentence-mining/SentenceMiningSection';
-import Layout from '@/components/Layout';
 import SEO from '@/components/SEO';
 
 export const SentenceMiningPage: React.FC = () => {
   return (
-    <Layout>
+    <>
       <SEO 
         title="Sentence Mining - Learn Languages Naturally"
         description="Practice language learning through contextual sentence completion exercises"
@@ -22,6 +21,6 @@ export const SentenceMiningPage: React.FC = () => {
           <SentenceMiningSection />
         </div>
       </div>
-    </Layout>
+    </>
   );
 };
