@@ -3,12 +3,13 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { DifficultySelector } from './DifficultySelector';
-import { VocabularyStats } from './VocabularyStats';
-import { SimpleClozeExercise } from './SimpleClozeExercise';
+import { Brain, Trophy, BookOpen, Loader2 } from 'lucide-react';
 import { useSentenceMining } from '@/hooks/use-sentence-mining';
 import { DifficultyLevel } from '@/types/sentence-mining';
-import { BookOpen, Play, Square } from 'lucide-react';
+import { SimpleClozeExercise } from './SimpleClozeExercise';
+import { ProgressTracker } from './ProgressTracker';
+import { VocabularyStats } from './VocabularyStats';
+import { SessionStats } from './SessionStats';
 
 export const SentenceMiningSection: React.FC = () => {
   const {
@@ -18,9 +19,9 @@ export const SentenceMiningSection: React.FC = () => {
     showResult,
     isCorrect,
     loading,
-    error,
     progress,
     showTranslation,
+    isGeneratingNext,
     startSession,
     submitAnswer,
     nextExercise,
@@ -34,111 +35,176 @@ export const SentenceMiningSection: React.FC = () => {
   };
 
   const handleSubmitAnswer = () => {
-    submitAnswer(userResponse, []);
+    submitAnswer(userResponse);
   };
 
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="text-center">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <BookOpen className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Sentence Mining</h1>
-        </div>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          Learn vocabulary naturally through context. Complete sentences to master new words.
-        </p>
-      </div>
-
-      {/* Progress Overview */}
-      {progress?.vocabularyStats && (
-        <div className="max-w-4xl mx-auto">
-          <VocabularyStats stats={progress.vocabularyStats} />
-        </div>
-      )}
-
-      {/* Session Status */}
-      {currentSession && (
-        <div className="max-w-2xl mx-auto">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
+  // Show session selection if no active session
+  if (!currentSession) {
+    return (
+      <div className="space-y-8">
+        {/* Progress Overview */}
+        {progress && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <VocabularyStats stats={progress.vocabularyStats} />
+            <Card>
+              <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <span>Current Session</span>
-                  <Badge variant="outline" className="capitalize">
-                    {currentSession.difficulty_level}
-                  </Badge>
+                  <Trophy className="h-5 w-5 text-yellow-500" />
+                  Your Progress
                 </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Total Sessions</span>
+                    <Badge variant="outline">{progress.totalSessions}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Exercises Completed</span>
+                    <Badge variant="outline">{progress.totalExercises}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Average Accuracy</span>
+                    <Badge variant={progress.averageAccuracy >= 70 ? 'default' : 'secondary'}>
+                      {progress.averageAccuracy}%
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Current Streak</span>
+                    <Badge variant="outline">{progress.streak} days</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Difficulty Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-purple-500" />
+              Start New Session
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-muted-foreground">
+                Choose your difficulty level to begin practicing with cloze exercises.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Button
                   variant="outline"
-                  size="sm"
-                  onClick={endSession}
-                  className="flex items-center gap-2"
+                  size="lg"
+                  onClick={() => handleStartSession('beginner')}
+                  disabled={loading}
+                  className="h-20 flex flex-col gap-2"
                 >
-                  <Square className="h-4 w-4" />
-                  End Session
+                  <BookOpen className="h-6 w-6" />
+                  <span className="font-medium">Beginner</span>
+                  <span className="text-xs text-muted-foreground">Simple sentences</span>
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => handleStartSession('intermediate')}
+                  disabled={loading}
+                  className="h-20 flex flex-col gap-2"
+                >
+                  <Brain className="h-6 w-6" />
+                  <span className="font-medium">Intermediate</span>
+                  <span className="text-xs text-muted-foreground">Moderate complexity</span>
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => handleStartSession('advanced')}
+                  disabled={loading}
+                  className="h-20 flex flex-col gap-2"
+                >
+                  <Trophy className="h-6 w-6" />
+                  <span className="font-medium">Advanced</span>
+                  <span className="text-xs text-muted-foreground">Complex sentences</span>
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center gap-6 text-sm">
-                <span>Exercises: {currentSession.total_exercises}</span>
-                <span>Correct: {currentSession.correct_exercises}</span>
-                <span>
-                  Accuracy: {currentSession.total_exercises > 0 
-                    ? Math.round((currentSession.correct_exercises / currentSession.total_exercises) * 100)
-                    : 0}%
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-      {/* Main Content */}
-      {!currentSession ? (
-        <div className="max-w-2xl mx-auto">
-          <DifficultySelector 
-            onSelectDifficulty={handleStartSession} 
-            progress={progress?.difficultyProgress}
-          />
+  // Show loading state while generating exercise
+  if (!currentExercise && isGeneratingNext) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="text-muted-foreground">Generating your next exercise...</p>
         </div>
-      ) : currentExercise ? (
-        <SimpleClozeExercise
-          exercise={currentExercise}
-          userResponse={userResponse}
-          showResult={showResult}
-          isCorrect={isCorrect}
-          loading={loading}
-          showTranslation={showTranslation}
-          onToggleTranslation={toggleTranslation}
-          onResponseChange={updateUserResponse}
-          onSubmit={handleSubmitAnswer}
-          onNext={nextExercise}
-        />
-      ) : (
-        <div className="max-w-2xl mx-auto">
-          <Card>
-            <CardContent className="flex items-center justify-center p-12">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Generating your exercise...</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      </div>
+    );
+  }
 
-      {/* Error Display */}
-      {error && (
-        <div className="max-w-2xl mx-auto">
-          <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20">
-            <CardContent className="p-4">
-              <p className="text-red-800 dark:text-red-200 text-sm text-center">{error}</p>
-            </CardContent>
-          </Card>
+  // Show active session
+  return (
+    <div className="space-y-8">
+      {/* Session Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold">Active Session</h2>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="capitalize">
+              {currentSession.difficulty_level}
+            </Badge>
+            <Badge variant="secondary">
+              Exercise {currentSession.total_exercises + 1}
+            </Badge>
+          </div>
         </div>
-      )}
+        <Button
+          variant="outline"
+          onClick={endSession}
+          className="text-red-600 hover:text-red-700"
+        >
+          End Session
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Exercise Area */}
+        <div className="lg:col-span-2">
+          {currentExercise ? (
+            <SimpleClozeExercise
+              exercise={currentExercise}
+              userResponse={userResponse}
+              showResult={showResult}
+              isCorrect={isCorrect}
+              loading={loading}
+              onResponseChange={updateUserResponse}
+              onSubmit={handleSubmitAnswer}
+              onNext={nextExercise}
+              showTranslation={showTranslation}
+              onToggleTranslation={toggleTranslation}
+            />
+          ) : (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center space-y-4">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                <p className="text-muted-foreground">Loading exercise...</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          <SessionStats session={currentSession} />
+          <ProgressTracker progress={progress} currentSession={currentSession} />
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Volume2, CheckCircle, XCircle, Lightbulb } from 'lucide-react';
+import { CheckCircle, XCircle, Lightbulb } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
+import { ClozeAudioPlayer } from './ClozeAudioPlayer';
 
 interface SimpleClozeExerciseProps {
   exercise: SentenceMiningExercise;
@@ -12,8 +13,6 @@ interface SimpleClozeExerciseProps {
   showResult: boolean;
   isCorrect: boolean;
   loading: boolean;
-  onPlayAudio?: () => void;
-  audioLoading?: boolean;
   onResponseChange: (response: string) => void;
   onSubmit: () => void;
   onNext: () => void;
@@ -27,8 +26,6 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
   showResult,
   isCorrect,
   loading,
-  onPlayAudio,
-  audioLoading = false,
   onResponseChange,
   onSubmit,
   onNext,
@@ -82,18 +79,10 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
             <div className="text-sm text-muted-foreground capitalize">
               {exercise.difficulty}
             </div>
-            {onPlayAudio && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onPlayAudio}
-                disabled={audioLoading}
-                className="flex items-center gap-2"
-              >
-                <Volume2 className="h-4 w-4" />
-                {audioLoading ? 'Loading...' : 'Listen'}
-              </Button>
-            )}
+            <ClozeAudioPlayer 
+              text={exercise.sentence}
+              language="german" // This should come from context/settings
+            />
           </div>
 
           {/* Main sentence display */}
