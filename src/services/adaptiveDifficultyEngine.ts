@@ -135,7 +135,7 @@ export class AdaptiveDifficultyEngine {
     };
   }
 
-  private static getNextDifficultyLevel(current: DifficultyLevel): DifficultyLevel {
+  protected static getNextDifficultyLevel(current: DifficultyLevel): DifficultyLevel {
     switch (current) {
       case 'beginner': return 'intermediate';
       case 'intermediate': return 'advanced';
@@ -144,7 +144,7 @@ export class AdaptiveDifficultyEngine {
     }
   }
 
-  private static getPreviousDifficultyLevel(current: DifficultyLevel): DifficultyLevel {
+  protected static getPreviousDifficultyLevel(current: DifficultyLevel): DifficultyLevel {
     switch (current) {
       case 'advanced': return 'intermediate';
       case 'intermediate': return 'beginner';
