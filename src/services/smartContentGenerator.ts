@@ -75,17 +75,25 @@ export class SmartContentGenerator {
   }
 
   static async detectFailurePatterns(userId: string, language: string): Promise<string[]> {
-    // Get recent failed exercises
+    // First get the session IDs
+    const { data: sessions } = await supabase
+      .from('sentence_mining_sessions')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('language', language);
+
+    if (!sessions || sessions.length === 0) {
+      return [];
+    }
+
+    const sessionIds = sessions.map(session => session.id);
+
+    // Get recent failed exercises using the extracted session IDs
     const { data: recentExercises } = await supabase
       .from('sentence_mining_exercises')
       .select('target_words, is_correct, session_id')
       .eq('is_correct', false)
-      .in('session_id', 
-        supabase.from('sentence_mining_sessions')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('language', language)
-      )
+      .in('session_id', sessionIds)
       .order('created_at', { ascending: false })
       .limit(20);
 

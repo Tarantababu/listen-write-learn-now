@@ -220,7 +220,7 @@ export const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
                     <div className="space-y-2">
                       <div>
                         <strong className="text-sm">{rec.title}</strong>
-                        <Badge variant="outline" className="ml-2 text-xs" size="sm">
+                        <Badge variant="outline" className="ml-2 text-xs">
                           {rec.priority}
                         </Badge>
                       </div>
@@ -239,7 +239,7 @@ export const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
                       )}
                       
                       {rec.actionable && (
-                        <Button size="sm" variant="outline" className="text-xs h-7 mt-2">
+                        <Button variant="outline" className="text-xs h-7 mt-2">
                           Take Action
                         </Button>
                       )}
