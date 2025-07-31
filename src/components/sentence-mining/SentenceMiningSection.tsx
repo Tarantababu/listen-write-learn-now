@@ -2,12 +2,15 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Trophy, BookOpen, Loader2, Keyboard } from 'lucide-react';
-import { useSentenceMining } from '@/hooks/use-sentence-mining';
+import { Brain, Trophy, BookOpen, Loader2, Keyboard, Lightbulb } from 'lucide-react';
 import { DifficultyLevel } from '@/types/sentence-mining';
 import { SimpleClozeExercise } from './SimpleClozeExercise';
 import { EnhancedProgressIndicator } from './EnhancedProgressIndicator';
 import { VocabularyStats } from './VocabularyStats';
+import { AdaptiveDifficultyIndicator } from './AdaptiveDifficultyIndicator';
+import { PersonalizedInsights } from './PersonalizedInsights';
+import { useAdaptiveSentenceMining } from '@/hooks/use-adaptive-sentence-mining';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const SentenceMiningSection: React.FC = () => {
   const {
@@ -25,8 +28,11 @@ export const SentenceMiningSection: React.FC = () => {
     nextExercise,
     endSession,
     updateUserResponse,
-    toggleTranslation
-  } = useSentenceMining();
+    toggleTranslation,
+    vocabularyProfile,
+    adaptiveDifficulty,
+    loadingProfile
+  } = useAdaptiveSentenceMining();
 
   const handleStartSession = (difficulty: DifficultyLevel) => {
     startSession(difficulty);
@@ -40,7 +46,7 @@ export const SentenceMiningSection: React.FC = () => {
   if (!currentSession) {
     return (
       <div className="space-y-8">
-        {/* Progress Overview */}
+        {/* Progress Overview with Personalized Insights */}
         {progress && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <VocabularyStats stats={progress.vocabularyStats} />
@@ -75,6 +81,15 @@ export const SentenceMiningSection: React.FC = () => {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Personalized Insights */}
+        {progress && (
+          <PersonalizedInsights 
+            userId={""} // Will be set by the component
+            language={""} // Will be set by the component  
+            progress={progress}
+          />
         )}
 
         {/* Keyboard Shortcuts Info */}
@@ -114,7 +129,7 @@ export const SentenceMiningSection: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Difficulty Selection */}
+        {/* Difficulty Selection with Adaptive Suggestions */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -125,8 +140,19 @@ export const SentenceMiningSection: React.FC = () => {
           <CardContent>
             <div className="space-y-4">
               <p className="text-muted-foreground">
-                Choose your difficulty level to begin practicing with cloze exercises.
+                Choose your difficulty level to begin practicing with adaptive cloze exercises.
               </p>
+              
+              {/* Show adaptive difficulty suggestion if available */}
+              {adaptiveDifficulty && (
+                <Alert className="border-l-4 border-l-blue-500">
+                  <Lightbulb className="h-4 w-4" />
+                  <AlertDescription>
+                    AI suggests starting with <strong className="capitalize">{adaptiveDifficulty}</strong> difficulty based on your recent performance.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Button
                   variant="outline"
@@ -268,12 +294,55 @@ export const SentenceMiningSection: React.FC = () => {
           )}
         </div>
 
-        {/* Enhanced Sidebar */}
+        {/* Enhanced Sidebar with Adaptive Features */}
         <div className="space-y-6">
           <EnhancedProgressIndicator 
             session={currentSession} 
             isGeneratingNext={isGeneratingNext}
           />
+          
+          {/* Adaptive Difficulty Indicator */}
+          <AdaptiveDifficultyIndicator
+            userId="" // Will be set by the component
+            language="" // Will be set by the component
+            currentDifficulty={currentSession.difficulty_level as DifficultyLevel}
+            onDifficultyChange={(newDifficulty) => {
+              console.log('Difficulty change suggested:', newDifficulty);
+              // Could implement mid-session difficulty adjustment
+            }}
+          />
+          
+          {/* Real-time Vocabulary Insights */}
+          {vocabularyProfile && !loadingProfile && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <BookOpen className="h-4 w-4" />
+                  Session Insights
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>Words practiced today</span>
+                    <Badge variant="outline">{currentSession.total_exercises}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Struggling words</span>
+                    <Badge variant="outline" className="text-yellow-600">
+                      {vocabularyProfile.strugglingWords.length}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Mastered words</span>
+                    <Badge variant="outline" className="text-green-600">
+                      {vocabularyProfile.masteredWords.length}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
