@@ -13,6 +13,7 @@ interface SimpleClozeExerciseProps {
   showResult: boolean;
   isCorrect: boolean;
   loading: boolean;
+  isGeneratingNext: boolean;
   onResponseChange: (response: string) => void;
   onSubmit: () => void;
   onNext: () => void;
@@ -26,6 +27,7 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
   showResult,
   isCorrect,
   loading,
+  isGeneratingNext,
   onResponseChange,
   onSubmit,
   onNext,
@@ -41,7 +43,7 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
       e.preventDefault();
       onSubmit();
     }
-    if (e.key === 'Enter' && showResult) {
+    if (e.key === 'Enter' && showResult && !isGeneratingNext) {
       e.preventDefault();
       onNext();
     }
@@ -55,7 +57,7 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
         e.preventDefault();
         if (!showResult && userResponse.trim() && !loading) {
           onSubmit();
-        } else if (showResult) {
+        } else if (showResult && !isGeneratingNext) {
           onNext();
         }
       }
@@ -69,7 +71,7 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
 
     document.addEventListener('keydown', handleGlobalKeyDown);
     return () => document.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [showResult, userResponse, loading, onSubmit, onNext, onToggleTranslation]);
+  }, [showResult, userResponse, loading, isGeneratingNext, onSubmit, onNext, onToggleTranslation]);
 
   const renderClozeSentence = () => {
     if (!showResult) {
@@ -235,15 +237,31 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
                 <div className="space-y-2">
                   <Button
                     onClick={onNext}
+                    disabled={isGeneratingNext}
                     size="lg"
-                    className="px-12"
+                    className="px-12 relative"
                   >
-                    Next Exercise
+                    {isGeneratingNext ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Generating Next...
+                      </>
+                    ) : (
+                      <>
+                        Next Exercise
+                      </>
+                    )}
                   </Button>
                   
                   <p className="text-xs text-muted-foreground">
-                    Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> or{' '}
-                    <kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl+Enter</kbd> to continue
+                    {isGeneratingNext ? (
+                      'Please wait while we generate your next exercise...'
+                    ) : (
+                      <>
+                        Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> or{' '}
+                        <kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl+Enter</kbd> to continue
+                      </>
+                    )}
                   </p>
                 </div>
               </div>

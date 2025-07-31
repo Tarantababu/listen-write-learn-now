@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -249,6 +248,7 @@ export const SentenceMiningSection: React.FC = () => {
               showResult={showResult}
               isCorrect={isCorrect}
               loading={loading}
+              isGeneratingNext={isGeneratingNext}
               onResponseChange={updateUserResponse}
               onSubmit={handleSubmitAnswer}
               onNext={nextExercise}
