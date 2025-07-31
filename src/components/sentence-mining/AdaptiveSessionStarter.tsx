@@ -8,7 +8,7 @@ import { Loader2, Brain, Zap, Target, TrendingUp } from 'lucide-react';
 import { SmartSessionConfig } from '@/services/enhancedAdaptiveDifficultyEngine';
 
 interface AdaptiveSessionStarterProps {
-  sessionConfig: SmartSessionConfig | null;
+  sessionConfig: SmartSessionConfig;
   loadingOptimalDifficulty: boolean;
   isInitializingSession: boolean;
   onStartSession: () => void;
@@ -59,18 +59,6 @@ export const AdaptiveSessionStarter: React.FC<AdaptiveSessionStarterProps> = ({
                 AI is determining the optimal difficulty level for your next session...
               </p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!sessionConfig) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">Unable to analyze optimal difficulty. Please try again.</p>
           </div>
         </CardContent>
       </Card>

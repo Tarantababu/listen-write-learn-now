@@ -9,12 +9,19 @@ import { PersonalizedLearningPath } from '@/services/personalizedLearningPath';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 
+const DEFAULT_SESSION_CONFIG: SmartSessionConfig = {
+  suggestedDifficulty: 'intermediate',
+  confidence: 0.5,
+  reasoning: ['Using default difficulty level'],
+  fallbackDifficulty: 'intermediate'
+};
+
 export const useFullyAdaptiveSentenceMining = () => {
   const { settings } = useUserSettingsContext();
   const baseMining = useSentenceMining();
   
   const [vocabularyProfile, setVocabularyProfile] = useState<VocabularyProfile | null>(null);
-  const [sessionConfig, setSessionConfig] = useState<SmartSessionConfig | null>(null);
+  const [sessionConfig, setSessionConfig] = useState<SmartSessionConfig>(DEFAULT_SESSION_CONFIG);
   const [loadingOptimalDifficulty, setLoadingOptimalDifficulty] = useState(false);
   const [isInitializingSession, setIsInitializingSession] = useState(false);
   const [exerciseCount, setExerciseCount] = useState(0);
@@ -45,12 +52,22 @@ export const useFullyAdaptiveSentenceMining = () => {
       setVocabularyProfile(profile);
     } catch (error) {
       console.error('Error loading vocabulary profile:', error);
+      // Set a basic profile if loading fails
+      setVocabularyProfile({
+        knownWords: [],
+        strugglingWords: [],
+        masteredWords: [],
+        wordFrequency: {}
+      });
     }
   };
 
   const loadOptimalDifficulty = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setSessionConfig(DEFAULT_SESSION_CONFIG);
+      return;
+    }
 
     setLoadingOptimalDifficulty(true);
     try {
@@ -63,11 +80,11 @@ export const useFullyAdaptiveSentenceMining = () => {
       console.log('Adaptive difficulty analysis:', config);
     } catch (error) {
       console.error('Error determining optimal difficulty:', error);
-      // Fallback configuration
+      // Always ensure we have a valid configuration
       setSessionConfig({
         suggestedDifficulty: 'intermediate',
         confidence: 0.3,
-        reasoning: ['Using default difficulty due to analysis error'],
+        reasoning: ['Using fallback difficulty due to analysis error'],
         fallbackDifficulty: 'intermediate'
       });
     } finally {
@@ -76,16 +93,14 @@ export const useFullyAdaptiveSentenceMining = () => {
   };
 
   const startAdaptiveSession = async () => {
-    if (!sessionConfig) return;
-
     setIsInitializingSession(true);
     try {
       const difficulty = sessionConfig.confidence >= 0.6 
         ? sessionConfig.suggestedDifficulty 
         : sessionConfig.fallbackDifficulty;
 
-      // Show reasoning to user
-      if (sessionConfig.reasoning.length > 0) {
+      // Show reasoning to user only if it's not a fallback
+      if (sessionConfig.reasoning.length > 0 && !sessionConfig.reasoning[0].includes('fallback')) {
         toast.info(`Starting with ${difficulty} difficulty: ${sessionConfig.reasoning[0]}`);
       }
 
@@ -93,7 +108,14 @@ export const useFullyAdaptiveSentenceMining = () => {
       return await baseMining.startSession(difficulty);
     } catch (error) {
       console.error('Error starting adaptive session:', error);
-      toast.error('Failed to start adaptive session');
+      // Even if adaptive session fails, try to start a basic session
+      try {
+        return await baseMining.startSession('intermediate');
+      } catch (fallbackError) {
+        console.error('Fallback session also failed:', fallbackError);
+        toast.error('Failed to start session. Please try again.');
+        throw fallbackError;
+      }
     } finally {
       setIsInitializingSession(false);
     }
@@ -124,6 +146,7 @@ export const useFullyAdaptiveSentenceMining = () => {
       }
     } catch (error) {
       console.error('Error checking for mid-session adjustment:', error);
+      // Silently fail for mid-session adjustments as they're not critical
     }
   };
 
@@ -149,6 +172,7 @@ export const useFullyAdaptiveSentenceMining = () => {
       });
     } catch (error) {
       console.error('Error in smart exercise generation:', error);
+      // Don't throw error as this is enhancement, not core functionality
     }
   };
 
@@ -172,6 +196,8 @@ export const useFullyAdaptiveSentenceMining = () => {
       await loadVocabularyProfile();
     } catch (error) {
       console.error('Error tracking adaptive performance:', error);
+      // Still increment exercise count even if tracking fails
+      setExerciseCount(prev => prev + 1);
     }
   };
 
