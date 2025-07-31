@@ -1,16 +1,17 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Trophy, BookOpen, Loader2, Keyboard, Lightbulb } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Brain, Trophy, BookOpen, Loader2, Keyboard, Target } from 'lucide-react';
 import { DifficultyLevel } from '@/types/sentence-mining';
 import { SimpleClozeExercise } from './SimpleClozeExercise';
 import { EnhancedProgressIndicator } from './EnhancedProgressIndicator';
 import { VocabularyStats } from './VocabularyStats';
 import { AdaptiveDifficultyIndicator } from './AdaptiveDifficultyIndicator';
 import { PersonalizedInsights } from './PersonalizedInsights';
-import { useAdaptiveSentenceMining } from '@/hooks/use-adaptive-sentence-mining';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AdaptiveSessionStarter } from './AdaptiveSessionStarter';
+import { useFullyAdaptiveSentenceMining } from '@/hooks/use-fully-adaptive-sentence-mining';
 
 export const SentenceMiningSection: React.FC = () => {
   const {
@@ -23,20 +24,18 @@ export const SentenceMiningSection: React.FC = () => {
     progress,
     showTranslation,
     isGeneratingNext,
-    startSession,
     submitAnswer,
     nextExercise,
     endSession,
     updateUserResponse,
     toggleTranslation,
     vocabularyProfile,
-    adaptiveDifficulty,
-    loadingProfile
-  } = useAdaptiveSentenceMining();
-
-  const handleStartSession = (difficulty: DifficultyLevel) => {
-    startSession(difficulty);
-  };
+    sessionConfig,
+    loadingOptimalDifficulty,
+    isInitializingSession,
+    startAdaptiveSession,
+    exerciseCount
+  } = useFullyAdaptiveSentenceMining();
 
   const handleSubmitAnswer = () => {
     submitAnswer(userResponse);
@@ -129,88 +128,13 @@ export const SentenceMiningSection: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Difficulty Selection with Adaptive Suggestions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-purple-500" />
-              Start New Session
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-muted-foreground">
-                Choose your difficulty level to begin practicing with adaptive cloze exercises.
-              </p>
-              
-              {/* Show adaptive difficulty suggestion if available */}
-              {adaptiveDifficulty && (
-                <Alert className="border-l-4 border-l-blue-500">
-                  <Lightbulb className="h-4 w-4" />
-                  <AlertDescription>
-                    AI suggests starting with <strong className="capitalize">{adaptiveDifficulty}</strong> difficulty based on your recent performance.
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => handleStartSession('beginner')}
-                  disabled={loading}
-                  className="h-20 flex flex-col gap-2 relative"
-                >
-                  {loading ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    <>
-                      <BookOpen className="h-6 w-6" />
-                      <span className="font-medium">Beginner</span>
-                      <span className="text-xs text-muted-foreground">Simple sentences</span>
-                    </>
-                  )}
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => handleStartSession('intermediate')}
-                  disabled={loading}
-                  className="h-20 flex flex-col gap-2 relative"
-                >
-                  {loading ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    <>
-                      <Brain className="h-6 w-6" />
-                      <span className="font-medium">Intermediate</span>
-                      <span className="text-xs text-muted-foreground">Moderate complexity</span>
-                    </>
-                  )}
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => handleStartSession('advanced')}
-                  disabled={loading}
-                  className="h-20 flex flex-col gap-2 relative"
-                >
-                  {loading ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    <>
-                      <Trophy className="h-6 w-6" />
-                      <span className="font-medium">Advanced</span>
-                      <span className="text-xs text-muted-foreground">Complex sentences</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Adaptive Session Starter - Replaces manual difficulty selection */}
+        <AdaptiveSessionStarter
+          sessionConfig={sessionConfig}
+          loadingOptimalDifficulty={loadingOptimalDifficulty}
+          isInitializingSession={isInitializingSession}
+          onStartSession={startAdaptiveSession}
+        />
       </div>
     );
   }
@@ -225,8 +149,8 @@ export const SentenceMiningSection: React.FC = () => {
             <div className="absolute -inset-4 border-2 border-blue-200 dark:border-blue-800 rounded-full animate-pulse opacity-30" />
           </div>
           <div className="space-y-2">
-            <p className="text-muted-foreground font-medium">Generating your next exercise...</p>
-            <p className="text-xs text-muted-foreground">This may take a few seconds</p>
+            <p className="text-muted-foreground font-medium">Generating your next adaptive exercise...</p>
+            <p className="text-xs text-muted-foreground">AI is personalizing the content for you</p>
           </div>
         </div>
       </div>
@@ -239,13 +163,17 @@ export const SentenceMiningSection: React.FC = () => {
       {/* Session Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold">Active Session</h2>
+          <h2 className="text-2xl font-bold">Adaptive Session</h2>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="capitalize">
               {currentSession.difficulty_level}
             </Badge>
             <Badge variant="secondary">
-              Exercise {currentSession.total_exercises + 1}
+              Exercise {exerciseCount + 1}
+            </Badge>
+            <Badge variant="outline" className="text-purple-600">
+              <Brain className="h-3 w-3 mr-1" />
+              AI-Powered
             </Badge>
             {loading && (
               <Badge variant="outline" className="text-blue-600">
@@ -288,7 +216,7 @@ export const SentenceMiningSection: React.FC = () => {
                   <Loader2 className="h-8 w-8 animate-spin mx-auto" />
                   <div className="absolute -inset-4 border-2 border-blue-200 dark:border-blue-800 rounded-full animate-pulse opacity-30" />
                 </div>
-                <p className="text-muted-foreground">Loading exercise...</p>
+                <p className="text-muted-foreground">Loading adaptive exercise...</p>
               </div>
             </div>
           )}
@@ -301,31 +229,20 @@ export const SentenceMiningSection: React.FC = () => {
             isGeneratingNext={isGeneratingNext}
           />
           
-          {/* Adaptive Difficulty Indicator */}
-          <AdaptiveDifficultyIndicator
-            userId="" // Will be set by the component
-            language="" // Will be set by the component
-            currentDifficulty={currentSession.difficulty_level as DifficultyLevel}
-            onDifficultyChange={(newDifficulty) => {
-              console.log('Difficulty change suggested:', newDifficulty);
-              // Could implement mid-session difficulty adjustment
-            }}
-          />
-          
           {/* Real-time Vocabulary Insights */}
-          {vocabularyProfile && !loadingProfile && (
+          {vocabularyProfile && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <BookOpen className="h-4 w-4" />
-                  Session Insights
+                  Adaptive Insights
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between">
-                    <span>Words practiced today</span>
-                    <Badge variant="outline">{currentSession.total_exercises}</Badge>
+                    <span>Session exercises</span>
+                    <Badge variant="outline">{exerciseCount}</Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Struggling words</span>
@@ -338,6 +255,12 @@ export const SentenceMiningSection: React.FC = () => {
                     <Badge variant="outline" className="text-green-600">
                       {vocabularyProfile.masteredWords.length}
                     </Badge>
+                  </div>
+                  <div className="pt-2 border-t">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Target className="h-3 w-3" />
+                      AI adapts difficulty in real-time
+                    </div>
                   </div>
                 </div>
               </CardContent>
