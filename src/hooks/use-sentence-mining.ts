@@ -358,15 +358,16 @@ export const useSentenceMining = () => {
       return;
     }
 
-    // Now TypeScript knows both currentSession and currentExercise are defined
+    // Now we have guaranteed non-null values
     setState(prev => ({ ...prev, loading: true }));
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Safe to access currentExercise.correctAnswer because we've verified it exists above
-      const isCorrect = !isSkipped && response.toLowerCase().trim() === currentExercise.correctAnswer.toLowerCase().trim();
+      // Safe to access properties because we've verified they exist above
+      const correctAnswer = currentExercise.correctAnswer;
+      const isCorrect = !isSkipped && response.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
 
       // Enhanced exercise result storage with adaptive metadata
       const { error: exerciseError } = await supabase
