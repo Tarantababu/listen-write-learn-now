@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +15,7 @@ import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { FlagIcon } from 'react-flag-kit';
 import { getLanguageFlagCode, capitalizeLanguage } from '@/utils/languageUtils';
+import { AdaptiveLearningInsights } from './AdaptiveLearningInsights';
 
 export const SentenceMiningSection: React.FC = () => {
   const { user } = useAuth();
@@ -53,7 +53,7 @@ export const SentenceMiningSection: React.FC = () => {
       <div className="space-y-8">
         {/* Language-aware Progress Overview with Personalized Insights */}
         {progress && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -96,6 +96,11 @@ export const SentenceMiningSection: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* New Adaptive Learning Insights */}
+            <AdaptiveLearningInsights 
+              language={settings.selectedLanguage}
+            />
           </div>
         )}
 
@@ -249,6 +254,12 @@ export const SentenceMiningSection: React.FC = () => {
           <EnhancedProgressIndicator 
             session={currentSession} 
             isGeneratingNext={isGeneratingNext}
+          />
+          
+          {/* Real-time Adaptive Learning Insights */}
+          <AdaptiveLearningInsights 
+            language={settings.selectedLanguage}
+            sessionId={currentSession.id}
           />
           
           {/* Real-time Language-specific Vocabulary Insights */}

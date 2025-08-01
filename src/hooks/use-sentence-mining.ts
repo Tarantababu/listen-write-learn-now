@@ -131,7 +131,7 @@ export const useSentenceMining = () => {
       return;
     }
 
-    console.log(`[startSession] Starting session with difficulty: ${difficulty} for language: ${settings.selectedLanguage}`);
+    console.log(`[startSession] Starting adaptive session with difficulty: ${difficulty} for language: ${settings.selectedLanguage}`);
     
     // Validate difficulty parameter
     const validLevels: DifficultyLevel[] = ['beginner', 'intermediate', 'advanced'];
@@ -144,12 +144,13 @@ export const useSentenceMining = () => {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      // Create session data with explicit validation
+      
+      
       const rawSessionData = {
         user_id: user.id,
         language: settings.selectedLanguage,
-        difficulty_level: difficulty, // Ensure this is explicitly set
-        exercise_types: ['cloze'], // Add required exercise_types field - currently only supporting cloze exercises
+        difficulty_level: difficulty,
+        exercise_types: ['cloze'],
         total_exercises: 0,
         correct_exercises: 0,
         new_words_encountered: 0,
@@ -157,15 +158,18 @@ export const useSentenceMining = () => {
         started_at: new Date().toISOString(),
         session_data: {
           startTime: new Date().toISOString(),
-          difficulty: difficulty, // Also store in session_data for redundancy
+          difficulty: difficulty,
           language: settings.selectedLanguage,
-          exerciseTypes: ['cloze'] // Also store in session_data
+          exerciseTypes: ['cloze'],
+          // Enhanced session metadata for adaptive features
+          intelligentWordSelection: true,
+          spacedRepetitionEnabled: true,
+          wordCooldownEnabled: true,
+          adaptiveGeneration: true
         }
       };
 
-      console.log('[startSession] Raw session data before sanitization:', rawSessionData);
       
-      // Sanitize the session data before creating
       const sessionData = sanitizeSessionData(rawSessionData);
       
       console.log('[startSession] Sanitized session data:', sessionData);
@@ -199,7 +203,7 @@ export const useSentenceMining = () => {
         throw error;
       }
 
-      console.log('[startSession] Successfully created session in database:', session);
+      console.log('[startSession] Successfully created adaptive session in database:', session);
 
       // Validate that the created session has the correct difficulty
       if (!session.difficulty_level) {
@@ -245,19 +249,19 @@ export const useSentenceMining = () => {
         loading: false
       }));
 
-      // Generate first exercise
+      // Generate first adaptive exercise
       await generateNextExercise(newSession);
       
-      toast.success(`Started ${difficulty} session in ${settings.selectedLanguage}`);
+      toast.success(`Started adaptive ${difficulty} session in ${settings.selectedLanguage}`);
       return newSession;
     } catch (error) {
-      console.error('[startSession] Error starting session:', error);
+      console.error('[startSession] Error starting adaptive session:', error);
       setState(prev => ({ 
         ...prev, 
         loading: false, 
-        error: error instanceof Error ? error.message : 'Failed to start session' 
+        error: error instanceof Error ? error.message : 'Failed to start adaptive session' 
       }));
-      toast.error('Failed to start session');
+      toast.error('Failed to start adaptive session');
       throw error;
     }
   };
@@ -266,11 +270,32 @@ export const useSentenceMining = () => {
     setState(prev => ({ ...prev, isGeneratingNext: true, error: null }));
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Get session history for intelligent generation
+      const { data: previousExercises } = await supabase
+        .from('sentence_mining_exercises')
+        .select('sentence, target_words')
+        .eq('session_id', session.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      const previousSentences = previousExercises?.map(ex => ex.sentence) || [];
+
+      // Enhanced generation with adaptive intelligence
       const { data, error } = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
           language: session.language,
           difficulty: session.difficulty_level,
-          sessionId: session.id
+          sessionId: session.id,
+          user_id: user.id, // Add user ID for intelligent word selection
+          previous_sentences: previousSentences,
+          n_plus_one: true, // Enable N+1 methodology
+          // Add adaptive parameters
+          enable_smart_selection: true,
+          enable_spaced_repetition: true,
+          enable_word_cooldown: true
         }
       });
 
@@ -290,8 +315,18 @@ export const useSentenceMining = () => {
         correctAnswer: data.targetWord,
         hints: data.hints,
         session_id: session.id,
-        difficultyScore: data.difficultyScore
+        difficultyScore: data.difficultyScore,
+        // Enhanced metadata from adaptive generation
+        isSkipped: false
       };
+
+      console.log(`[generateNextExercise] Generated adaptive exercise:`, {
+        targetWord: data.targetWord,
+        wordSelectionReason: data.wordSelectionReason,
+        isReviewWord: data.isReviewWord,
+        isStrugglingWord: data.isStrugglingWord,
+        selectionQuality: data.selectionQuality
+      });
 
       setState(prev => ({
         ...prev,
@@ -301,13 +336,13 @@ export const useSentenceMining = () => {
         isGeneratingNext: false
       }));
     } catch (error) {
-      console.error('Error generating exercise:', error);
+      console.error('Error generating adaptive exercise:', error);
       setState(prev => ({
         ...prev,
-        error: error instanceof Error ? error.message : 'Failed to generate exercise',
+        error: error instanceof Error ? error.message : 'Failed to generate adaptive exercise',
         isGeneratingNext: false
       }));
-      toast.error('Failed to generate exercise');
+      toast.error('Failed to generate adaptive exercise');
     }
   };
 
@@ -318,28 +353,43 @@ export const useSentenceMining = () => {
     setState(prev => ({ ...prev, loading: true }));
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const isCorrect = !isSkipped && response.toLowerCase().trim() === currentExercise.correctAnswer.toLowerCase().trim();
 
-      // Store exercise result in database - match the exact schema
+      // Enhanced exercise result storage with adaptive metadata
       const { error: exerciseError } = await supabase
         .from('sentence_mining_exercises')
         .insert([{
           session_id: currentSession.id,
           sentence: currentExercise.sentence,
-          target_words: [currentExercise.targetWord], // Convert single target word to array
+          target_words: [currentExercise.targetWord],
           user_response: response,
           is_correct: isCorrect,
           difficulty_score: currentExercise.difficultyScore || 1,
           exercise_type: 'cloze',
           translation: currentExercise.translation,
-          unknown_words: isSkipped ? [currentExercise.targetWord] : [] // Track unknown words if skipped
+          unknown_words: isSkipped ? [currentExercise.targetWord] : [],
+          // Enhanced tracking fields
+          hints_used: 0, // Could be enhanced to track hint usage
+          completion_time: null, // Could be enhanced to track completion time
+          completed_at: new Date().toISOString()
         }]);
 
       if (exerciseError) {
         console.error('Error storing exercise result:', exerciseError);
       }
 
-      // Update session stats
+      // Update spaced repetition system with performance
+      try {
+        // Import and use the SpacedRepetitionEngine (inline implementation for edge function compatibility)
+        await this.updateWordPerformanceInline(user.id, currentExercise.targetWord, currentSession.language, isCorrect);
+      } catch (srError) {
+        console.error('Error updating spaced repetition:', srError);
+      }
+
+      
       const updatedSession = {
         ...currentSession,
         totalAttempts: currentSession.totalAttempts + 1,
@@ -363,31 +413,98 @@ export const useSentenceMining = () => {
         loading: false
       }));
 
-      // Track word performance if correct
+      // Enhanced word tracking for adaptive learning
       if (isCorrect && !isSkipped) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase
-            .from('known_words')
-            .upsert({
-              user_id: user.id,
-              word: currentExercise.targetWord,
-              language: currentSession.language,
-              correct_count: 1,
-              review_count: 1,
-              mastery_level: 1
-            }, {
-              onConflict: 'user_id,word,language'
-            });
-        }
+        await supabase
+          .from('known_words')
+          .upsert({
+            user_id: user.id,
+            word: currentExercise.targetWord,
+            language: currentSession.language,
+            correct_count: 1,
+            review_count: 1,
+            mastery_level: 1,
+            last_reviewed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id,word,language'
+          });
+
+        console.log(`[submitAnswer] Updated word performance for: ${currentExercise.targetWord} (correct: ${isCorrect})`);
       }
     } catch (error) {
-      console.error('Error submitting answer:', error);
+      console.error('Error submitting adaptive answer:', error);
       setState(prev => ({ ...prev, loading: false, error: 'Failed to submit answer' }));
       toast.error('Failed to submit answer');
     }
   };
 
+  // Inline spaced repetition update for immediate use
+  const updateWordPerformanceInline = async (
+    userId: string,
+    word: string,
+    language: string,
+    isCorrect: boolean
+  ) => {
+    try {
+      // Get existing performance
+      const { data: existing } = await supabase
+        .from('known_words')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('word', word)
+        .eq('language', language)
+        .maybeSingle();
+
+      const now = new Date();
+      let newMasteryLevel = 1;
+      let nextReviewDate = new Date(now);
+
+      if (existing) {
+        const newAccuracy = (existing.correct_count + (isCorrect ? 1 : 0)) / (existing.review_count + 1);
+        
+        // Simple spaced repetition calculation
+        const baseInterval = isCorrect ? 2 : 1;
+        const multiplier = Math.min(existing.mastery_level * 1.5, 7);
+        const intervalDays = Math.ceil(baseInterval * multiplier);
+        
+        nextReviewDate.setDate(nextReviewDate.getDate() + intervalDays);
+        
+        // Update mastery level
+        if (isCorrect && newAccuracy >= 0.8) {
+          newMasteryLevel = Math.min(existing.mastery_level + 1, 10);
+        } else if (!isCorrect && newAccuracy < 0.6) {
+          newMasteryLevel = Math.max(existing.mastery_level - 1, 1);
+        } else {
+          newMasteryLevel = existing.mastery_level;
+        }
+      } else {
+        nextReviewDate.setDate(nextReviewDate.getDate() + (isCorrect ? 2 : 1));
+      }
+
+      await supabase
+        .from('known_words')
+        .upsert({
+          user_id: userId,
+          word,
+          language,
+          correct_count: existing ? existing.correct_count + (isCorrect ? 1 : 0) : (isCorrect ? 1 : 0),
+          review_count: existing ? existing.review_count + 1 : 1,
+          mastery_level: newMasteryLevel,
+          last_reviewed_at: now.toISOString(),
+          next_review_date: nextReviewDate.toISOString().split('T')[0],
+          updated_at: now.toISOString()
+        }, {
+          onConflict: 'user_id,word,language'
+        });
+
+      console.log(`Updated spaced repetition: ${word} -> mastery level ${newMasteryLevel}, next review: ${nextReviewDate.toDateString()}`);
+    } catch (error) {
+      console.error('Error in inline spaced repetition update:', error);
+    }
+  };
+
+  
   const nextExercise = useCallback(async () => {
     const { currentSession } = state;
     if (!currentSession) return;
