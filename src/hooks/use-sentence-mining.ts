@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress, SentenceMiningState } from '@/types/sentence-mining';
@@ -258,18 +259,19 @@ export const useSentenceMining = () => {
     try {
       const isCorrect = !isSkipped && response.toLowerCase().trim() === currentExercise.correctAnswer.toLowerCase().trim();
 
-      // Store exercise result in database
+      // Store exercise result in database - match the exact schema
       const { error: exerciseError } = await supabase
         .from('sentence_mining_exercises')
         .insert([{
           session_id: currentSession.id,
           sentence: currentExercise.sentence,
-          target_word: currentExercise.targetWord,
+          target_words: [currentExercise.targetWord], // Convert single target word to array
           user_response: response,
           is_correct: isCorrect,
-          is_skipped: isSkipped,
           difficulty_score: currentExercise.difficultyScore || 1,
-          exercise_type: 'cloze'
+          exercise_type: 'cloze',
+          translation: currentExercise.translation,
+          unknown_words: isSkipped ? [currentExercise.targetWord] : [] // Track unknown words if skipped
         }]);
 
       if (exerciseError) {
