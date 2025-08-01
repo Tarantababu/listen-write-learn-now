@@ -6,22 +6,16 @@ import { useSentenceMining } from './use-sentence-mining';
 import { useAdaptiveSentenceMining } from './use-adaptive-sentence-mining';
 import { AdaptiveDifficultyEngine } from '@/services/adaptiveDifficultyEngine';
 import { SmartContentGenerator, VocabularyProfile } from '@/services/smartContentGenerator';
-import { EnhancedAdaptiveDifficultyEngine } from '@/services/enhancedAdaptiveDifficultyEngine';
+import { EnhancedAdaptiveDifficultyEngine, SmartSessionConfig } from '@/services/enhancedAdaptiveDifficultyEngine';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
-
-interface SessionConfig {
-  optimalDifficulty: DifficultyLevel;
-  confidence: number;
-  reasoning: string;
-}
 
 export const useFullyAdaptiveSentenceMining = () => {
   const { settings } = useUserSettingsContext();
   const adaptiveMining = useAdaptiveSentenceMining();
   
   // Enhanced state for fully adaptive features
-  const [sessionConfig, setSessionConfig] = useState<SessionConfig | null>(null);
+  const [sessionConfig, setSessionConfig] = useState<SmartSessionConfig | null>(null);
   const [loadingOptimalDifficulty, setLoadingOptimalDifficulty] = useState(false);
   const [isInitializingSession, setIsInitializingSession] = useState(false);
   const [exerciseCount, setExerciseCount] = useState(0);
@@ -39,16 +33,6 @@ export const useFullyAdaptiveSentenceMining = () => {
       if (adaptiveMining.currentSession) {
         console.log('Ending current session due to language change');
         adaptiveMining.endSession();
-      }
-      
-      // Reload progress data for new language
-      if (adaptiveMining.loadProgress) {
-        adaptiveMining.loadProgress();
-      }
-      
-      // Reload vocabulary profile for new language
-      if (adaptiveMining.loadVocabularyProfile) {
-        adaptiveMining.loadVocabularyProfile();
       }
     }
   }, [settings.selectedLanguage, currentLanguage, adaptiveMining.currentSession]);
@@ -73,16 +57,17 @@ export const useFullyAdaptiveSentenceMining = () => {
     try {
       console.log(`Loading optimal difficulty for ${settings.selectedLanguage}`);
       
-      // Use the enhanced adaptive engine for more sophisticated analysis
-      const analysis = await EnhancedAdaptiveDifficultyEngine.determineOptimalDifficulty(
+      // Use the correct method name from enhanced adaptive engine
+      const analysis = await EnhancedAdaptiveDifficultyEngine.determineOptimalStartingDifficulty(
         user.id,
         settings.selectedLanguage
       );
 
       setSessionConfig({
-        optimalDifficulty: analysis.recommendedDifficulty,
+        suggestedDifficulty: analysis.suggestedDifficulty,
         confidence: analysis.confidence,
-        reasoning: analysis.reasoning
+        reasoning: analysis.reasoning,
+        fallbackDifficulty: analysis.fallbackDifficulty
       });
 
       console.log(`Optimal difficulty determined for ${settings.selectedLanguage}:`, analysis);
@@ -90,9 +75,10 @@ export const useFullyAdaptiveSentenceMining = () => {
       console.error(`Error determining optimal difficulty for ${settings.selectedLanguage}:`, error);
       // Fallback to intermediate difficulty
       setSessionConfig({
-        optimalDifficulty: 'intermediate',
+        suggestedDifficulty: 'intermediate',
         confidence: 0.5,
-        reasoning: 'Fallback to intermediate due to analysis error'
+        reasoning: ['Fallback to intermediate due to analysis error'],
+        fallbackDifficulty: 'intermediate'
       });
     } finally {
       setLoadingOptimalDifficulty(false);
@@ -107,12 +93,12 @@ export const useFullyAdaptiveSentenceMining = () => {
     
     try {
       // Use manual difficulty if provided, otherwise use the AI-determined optimal difficulty
-      const difficulty = manualDifficulty || sessionConfig.optimalDifficulty;
+      const difficulty = manualDifficulty || sessionConfig.suggestedDifficulty;
       
       console.log(`Starting adaptive session in ${settings.selectedLanguage} with difficulty: ${difficulty}`);
       
-      if (difficulty !== sessionConfig.optimalDifficulty) {
-        toast.info(`Starting ${difficulty} session (AI suggested ${sessionConfig.optimalDifficulty})`);
+      if (difficulty !== sessionConfig.suggestedDifficulty) {
+        toast.info(`Starting ${difficulty} session (AI suggested ${sessionConfig.suggestedDifficulty})`);
       } else {
         toast.success(`Starting AI-optimized ${difficulty} session for ${settings.selectedLanguage}`);
       }
