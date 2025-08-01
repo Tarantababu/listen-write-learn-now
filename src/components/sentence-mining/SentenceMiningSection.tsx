@@ -12,8 +12,14 @@ import { AdaptiveDifficultyIndicator } from './AdaptiveDifficultyIndicator';
 import { PersonalizedInsights } from './PersonalizedInsights';
 import { AdaptiveSessionStarter } from './AdaptiveSessionStarter';
 import { useFullyAdaptiveSentenceMining } from '@/hooks/use-fully-adaptive-sentence-mining';
+import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { FlagIcon } from 'react-flag-kit';
+import { getLanguageFlagCode, capitalizeLanguage } from '@/utils/languageUtils';
 
 export const SentenceMiningSection: React.FC = () => {
+  const { user } = useAuth();
+  const { settings } = useUserSettingsContext();
   const {
     currentSession,
     currentExercise,
@@ -45,15 +51,26 @@ export const SentenceMiningSection: React.FC = () => {
   if (!currentSession) {
     return (
       <div className="space-y-8">
-        {/* Progress Overview with Personalized Insights */}
+        {/* Language-aware Progress Overview with Personalized Insights */}
         {progress && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <VocabularyStats stats={progress.vocabularyStats} />
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FlagIcon code={getLanguageFlagCode(settings.selectedLanguage)} size={20} />
+                  <span>{capitalizeLanguage(settings.selectedLanguage)} Vocabulary</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <VocabularyStats stats={progress.vocabularyStats} />
+              </CardContent>
+            </Card>
+            
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Trophy className="h-5 w-5 text-yellow-500" />
-                  Your Progress
+                  <span>{capitalizeLanguage(settings.selectedLanguage)} Progress</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -82,11 +99,11 @@ export const SentenceMiningSection: React.FC = () => {
           </div>
         )}
 
-        {/* Personalized Insights */}
-        {progress && (
+        {/* Personalized Insights with proper userId and language */}
+        {progress && user && (
           <PersonalizedInsights 
-            userId={""} // Will be set by the component
-            language={""} // Will be set by the component  
+            userId={user.id}
+            language={settings.selectedLanguage}
             progress={progress}
           />
         )}
@@ -160,10 +177,15 @@ export const SentenceMiningSection: React.FC = () => {
   // Show active session
   return (
     <div className="space-y-8">
-      {/* Session Header */}
+      {/* Session Header with Language Context */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold">Adaptive Session</h2>
+          <div className="flex items-center gap-2">
+            <FlagIcon code={getLanguageFlagCode(settings.selectedLanguage)} size={24} />
+            <h2 className="text-2xl font-bold">
+              {capitalizeLanguage(settings.selectedLanguage)} Adaptive Session
+            </h2>
+          </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="capitalize">
               {currentSession.difficulty_level}
@@ -222,20 +244,20 @@ export const SentenceMiningSection: React.FC = () => {
           )}
         </div>
 
-        {/* Enhanced Sidebar with Adaptive Features */}
+        {/* Enhanced Sidebar with Language-specific Adaptive Features */}
         <div className="space-y-6">
           <EnhancedProgressIndicator 
             session={currentSession} 
             isGeneratingNext={isGeneratingNext}
           />
           
-          {/* Real-time Vocabulary Insights */}
+          {/* Real-time Language-specific Vocabulary Insights */}
           {vocabularyProfile && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <BookOpen className="h-4 w-4" />
-                  Adaptive Insights
+                  <span>{capitalizeLanguage(settings.selectedLanguage)} Insights</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>

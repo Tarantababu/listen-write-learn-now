@@ -1,249 +1,155 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { DifficultyLevel } from '@/types/sentence-mining';
+import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
 import { useSentenceMining } from './use-sentence-mining';
-import { EnhancedAdaptiveDifficultyEngine, SmartSessionConfig } from '@/services/enhancedAdaptiveDifficultyEngine';
+import { useAdaptiveSentenceMining } from './use-adaptive-sentence-mining';
+import { AdaptiveDifficultyEngine } from '@/services/adaptiveDifficultyEngine';
 import { SmartContentGenerator, VocabularyProfile } from '@/services/smartContentGenerator';
-import { PersonalizedLearningPath } from '@/services/personalizedLearningPath';
+import { EnhancedAdaptiveDifficultyEngine } from '@/services/enhancedAdaptiveDifficultyEngine';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 
-const DEFAULT_SESSION_CONFIG: SmartSessionConfig = {
-  suggestedDifficulty: 'intermediate',
-  confidence: 0.5,
-  reasoning: ['Using default difficulty level'],
-  fallbackDifficulty: 'intermediate'
-};
+interface SessionConfig {
+  optimalDifficulty: DifficultyLevel;
+  confidence: number;
+  reasoning: string;
+}
 
 export const useFullyAdaptiveSentenceMining = () => {
   const { settings } = useUserSettingsContext();
-  const baseMining = useSentenceMining();
+  const adaptiveMining = useAdaptiveSentenceMining();
   
-  const [vocabularyProfile, setVocabularyProfile] = useState<VocabularyProfile | null>(null);
-  const [sessionConfig, setSessionConfig] = useState<SmartSessionConfig>(DEFAULT_SESSION_CONFIG);
+  // Enhanced state for fully adaptive features
+  const [sessionConfig, setSessionConfig] = useState<SessionConfig | null>(null);
   const [loadingOptimalDifficulty, setLoadingOptimalDifficulty] = useState(false);
   const [isInitializingSession, setIsInitializingSession] = useState(false);
   const [exerciseCount, setExerciseCount] = useState(0);
+  const [currentLanguage, setCurrentLanguage] = useState(settings.selectedLanguage);
 
+  // Reset state when language changes
   useEffect(() => {
-    if (settings.selectedLanguage) {
-      loadVocabularyProfile();
-      loadOptimalDifficulty();
+    if (currentLanguage !== settings.selectedLanguage) {
+      console.log(`Language changed from ${currentLanguage} to ${settings.selectedLanguage}`);
+      setCurrentLanguage(settings.selectedLanguage);
+      setSessionConfig(null);
+      setExerciseCount(0);
+      
+      // End current session if active to prevent cross-language contamination
+      if (adaptiveMining.currentSession) {
+        console.log('Ending current session due to language change');
+        adaptiveMining.endSession();
+      }
+      
+      // Reload progress data for new language
+      if (adaptiveMining.loadProgress) {
+        adaptiveMining.loadProgress();
+      }
+      
+      // Reload vocabulary profile for new language
+      if (adaptiveMining.loadVocabularyProfile) {
+        adaptiveMining.loadVocabularyProfile();
+      }
     }
+  }, [settings.selectedLanguage, currentLanguage, adaptiveMining.currentSession]);
+
+  // Load optimal difficulty when component mounts or language changes
+  useEffect(() => {
+    loadOptimalDifficulty();
   }, [settings.selectedLanguage]);
 
-  // Monitor for mid-session adjustments
+  // Track exercise count
   useEffect(() => {
-    if (baseMining.currentSession && exerciseCount > 0 && exerciseCount % 3 === 0) {
-      checkForMidSessionAdjustment();
+    if (adaptiveMining.currentExercise) {
+      setExerciseCount(prev => prev + 1);
     }
-  }, [exerciseCount, baseMining.currentSession]);
-
-  const loadVocabularyProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    try {
-      const profile = await SmartContentGenerator.generateVocabularyProfile(
-        user.id,
-        settings.selectedLanguage
-      );
-      setVocabularyProfile(profile);
-    } catch (error) {
-      console.error('Error loading vocabulary profile:', error);
-      // Set a basic profile if loading fails
-      setVocabularyProfile({
-        knownWords: [],
-        strugglingWords: [],
-        masteredWords: [],
-        wordFrequency: {}
-      });
-    }
-  };
+  }, [adaptiveMining.currentExercise]);
 
   const loadOptimalDifficulty = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setSessionConfig(DEFAULT_SESSION_CONFIG);
-      return;
-    }
+    if (!user) return;
 
     setLoadingOptimalDifficulty(true);
     try {
-      const config = await EnhancedAdaptiveDifficultyEngine.determineOptimalStartingDifficulty(
+      console.log(`Loading optimal difficulty for ${settings.selectedLanguage}`);
+      
+      // Use the enhanced adaptive engine for more sophisticated analysis
+      const analysis = await EnhancedAdaptiveDifficultyEngine.determineOptimalDifficulty(
         user.id,
         settings.selectedLanguage
       );
-      setSessionConfig(config);
-      
-      console.log('Adaptive difficulty analysis:', config);
-    } catch (error) {
-      console.error('Error determining optimal difficulty:', error);
-      // Always ensure we have a valid configuration
+
       setSessionConfig({
-        suggestedDifficulty: 'intermediate',
-        confidence: 0.3,
-        reasoning: ['Using fallback difficulty due to analysis error'],
-        fallbackDifficulty: 'intermediate'
+        optimalDifficulty: analysis.recommendedDifficulty,
+        confidence: analysis.confidence,
+        reasoning: analysis.reasoning
+      });
+
+      console.log(`Optimal difficulty determined for ${settings.selectedLanguage}:`, analysis);
+    } catch (error) {
+      console.error(`Error determining optimal difficulty for ${settings.selectedLanguage}:`, error);
+      // Fallback to intermediate difficulty
+      setSessionConfig({
+        optimalDifficulty: 'intermediate',
+        confidence: 0.5,
+        reasoning: 'Fallback to intermediate due to analysis error'
       });
     } finally {
       setLoadingOptimalDifficulty(false);
     }
   };
 
-  const startAdaptiveSession = async () => {
+  const startAdaptiveSession = async (manualDifficulty?: DifficultyLevel) => {
+    if (!sessionConfig) return;
+
     setIsInitializingSession(true);
+    setExerciseCount(0);
+    
     try {
-      const difficulty = sessionConfig.confidence >= 0.6 
-        ? sessionConfig.suggestedDifficulty 
-        : sessionConfig.fallbackDifficulty;
-
-      // Show reasoning to user only if it's not a fallback
-      if (sessionConfig.reasoning.length > 0 && !sessionConfig.reasoning[0].includes('fallback')) {
-        toast.info(`Starting with ${difficulty} difficulty: ${sessionConfig.reasoning[0]}`);
+      // Use manual difficulty if provided, otherwise use the AI-determined optimal difficulty
+      const difficulty = manualDifficulty || sessionConfig.optimalDifficulty;
+      
+      console.log(`Starting adaptive session in ${settings.selectedLanguage} with difficulty: ${difficulty}`);
+      
+      if (difficulty !== sessionConfig.optimalDifficulty) {
+        toast.info(`Starting ${difficulty} session (AI suggested ${sessionConfig.optimalDifficulty})`);
+      } else {
+        toast.success(`Starting AI-optimized ${difficulty} session for ${settings.selectedLanguage}`);
       }
 
-      setExerciseCount(0);
-      return await baseMining.startSession(difficulty);
-    } catch (error) {
-      console.error('Error starting adaptive session:', error);
-      // Even if adaptive session fails, try to start a basic session
-      try {
-        return await baseMining.startSession('intermediate');
-      } catch (fallbackError) {
-        console.error('Fallback session also failed:', fallbackError);
-        toast.error('Failed to start session. Please try again.');
-        throw fallbackError;
-      }
+      return await adaptiveMining.startSession(difficulty);
     } finally {
       setIsInitializingSession(false);
     }
   };
 
-  const checkForMidSessionAdjustment = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !baseMining.currentSession) return;
+  const enhancedSubmitAnswer = useCallback(async (response: string, selectedWords: string[] = [], isSkipped: boolean = false) => {
+    // Call the adaptive submit method which includes performance tracking
+    await adaptiveMining.submitAnswer(response, selectedWords, isSkipped);
+  }, [adaptiveMining.submitAnswer]);
 
-    try {
-      const analysis = await EnhancedAdaptiveDifficultyEngine.evaluateMidSessionAdjustment(
-        baseMining.currentSession.id,
-        user.id,
-        settings.selectedLanguage,
-        baseMining.currentSession.difficulty_level as DifficultyLevel
-      );
-
-      if (analysis && analysis.shouldAdjust) {
-        toast.info(`AI suggests switching to ${analysis.suggestedLevel} difficulty - ${analysis.reasons[0]}`, {
-          action: {
-            label: 'Apply',
-            onClick: () => {
-              // In a real implementation, you might want to adjust the session difficulty
-              console.log('Mid-session difficulty adjustment:', analysis);
-            }
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Error checking for mid-session adjustment:', error);
-      // Silently fail for mid-session adjustments as they're not critical
-    }
-  };
-
-  const generateSmartExercise = async (sessionId: string, difficulty: DifficultyLevel) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !vocabularyProfile) return;
-
-    try {
-      const failurePatterns = await SmartContentGenerator.detectFailurePatterns(
-        user.id,
-        settings.selectedLanguage
-      );
-
-      const wordSelection = PersonalizedLearningPath.optimizeWordSelection(
-        vocabularyProfile,
-        difficulty
-      );
-
-      console.log('Smart exercise generation:', {
-        priorityWords: wordSelection.priorityWords.slice(0, 3),
-        failurePatterns: failurePatterns.slice(0, 3),
-        difficulty
-      });
-    } catch (error) {
-      console.error('Error in smart exercise generation:', error);
-      // Don't throw error as this is enhancement, not core functionality
-    }
-  };
-
-  const trackAdaptivePerformance = async (
-    exerciseId: string,
-    word: string,
-    isCorrect: boolean
-  ) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    try {
-      await SmartContentGenerator.trackWordPerformance(
-        user.id,
-        word,
-        settings.selectedLanguage,
-        isCorrect
-      );
-
-      setExerciseCount(prev => prev + 1);
-      await loadVocabularyProfile();
-    } catch (error) {
-      console.error('Error tracking adaptive performance:', error);
-      // Still increment exercise count even if tracking fails
-      setExerciseCount(prev => prev + 1);
-    }
-  };
-
-  const submitAnswerWithAdaptiveTracking = async (
-    response: string, 
-    selectedWords: string[] = [], 
-    isSkipped: boolean = false
-  ) => {
-    await baseMining.submitAnswer(response, selectedWords, isSkipped);
-
-    if (baseMining.currentExercise && !isSkipped) {
-      await trackAdaptivePerformance(
-        baseMining.currentExercise.id,
-        baseMining.currentExercise.targetWord,
-        baseMining.isCorrect
-      );
-    }
-  };
-
-  const nextExerciseWithAdaptation = useCallback(async () => {
-    if (baseMining.currentSession) {
-      await generateSmartExercise(
-        baseMining.currentSession.id,
-        baseMining.currentSession.difficulty_level as DifficultyLevel
-      );
-    }
-    baseMining.nextExercise();
-  }, [baseMining.currentSession, vocabularyProfile]);
+  const enhancedNextExercise = useCallback(async () => {
+    // Use the adaptive next exercise method
+    await adaptiveMining.nextExercise();
+  }, [adaptiveMining.nextExercise]);
 
   return {
-    // Base mining functionality
-    ...baseMining,
+    // Base functionality from adaptive mining
+    ...adaptiveMining,
     
-    // Override specific methods with adaptive versions
-    submitAnswer: submitAnswerWithAdaptiveTracking,
-    nextExercise: nextExerciseWithAdaptation,
+    // Override methods with enhanced versions
+    submitAnswer: enhancedSubmitAnswer,
+    nextExercise: enhancedNextExercise,
     
-    // Adaptive session management
-    startAdaptiveSession,
+    // Enhanced adaptive features
     sessionConfig,
     loadingOptimalDifficulty,
     isInitializingSession,
-    
-    // Additional adaptive features
-    vocabularyProfile,
+    startAdaptiveSession,
     exerciseCount,
-    loadVocabularyProfile
+    
+    // Language-aware helpers
+    currentLanguage: settings.selectedLanguage,
+    languageChanged: currentLanguage !== settings.selectedLanguage
   };
 };

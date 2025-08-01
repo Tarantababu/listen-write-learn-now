@@ -13,11 +13,15 @@ import {
   Lightbulb,
   Clock,
   CheckCircle,
-  AlertCircle 
+  AlertCircle,
+  Languages,
+  RefreshCw
 } from 'lucide-react';
 import { SentenceMiningProgress } from '@/types/sentence-mining';
 import { SmartContentGenerator, VocabularyProfile } from '@/services/smartContentGenerator';
 import { PersonalizedLearningPath, LearningRecommendation, LearningTrajectory } from '@/services/personalizedLearningPath';
+import { FlagIcon } from 'react-flag-kit';
+import { getLanguageFlagCode, capitalizeLanguage } from '@/utils/languageUtils';
 
 interface PersonalizedInsightsProps {
   userId: string;
@@ -34,21 +38,43 @@ export const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
   const [recommendations, setRecommendations] = useState<LearningRecommendation[]>([]);
   const [trajectory, setTrajectory] = useState<LearningTrajectory | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentLanguage, setCurrentLanguage] = useState(language);
+
+  // Reset data when language changes
+  useEffect(() => {
+    if (currentLanguage !== language) {
+      setCurrentLanguage(language);
+      setVocabularyProfile(null);
+      setRecommendations([]);
+      setTrajectory(null);
+      setError(null);
+      setLoading(true);
+    }
+  }, [language, currentLanguage]);
 
   useEffect(() => {
     loadPersonalizedData();
   }, [userId, language]);
 
   const loadPersonalizedData = async () => {
-    if (!userId || !language) return;
+    if (!userId || !language) {
+      setError('Missing user ID or language');
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
+    setError(null);
+    
     try {
-      // Generate vocabulary profile
+      console.log(`Loading personalized data for user ${userId} in ${language}`);
+      
+      // Generate vocabulary profile for the specific language
       const profile = await SmartContentGenerator.generateVocabularyProfile(userId, language);
       setVocabularyProfile(profile);
 
-      // Generate recommendations
+      // Generate language-specific recommendations
       const recs = PersonalizedLearningPath.generateRecommendations(
         profile,
         progress.averageAccuracy,
@@ -57,15 +83,22 @@ export const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
       );
       setRecommendations(recs);
 
-      // Predict learning trajectory
+      // Predict learning trajectory for this language
       const traj = PersonalizedLearningPath.predictLearningTrajectory(
         profile,
         progress.averageAccuracy,
         progress.streak
       );
       setTrajectory(traj);
+      
+      console.log(`Successfully loaded data for ${language}:`, {
+        profileWords: profile.knownWords.length,
+        recommendations: recs.length,
+        trajectory: traj ? 'loaded' : 'not available'
+      });
     } catch (error) {
-      console.error('Error loading personalized insights:', error);
+      console.error(`Error loading personalized insights for ${language}:`, error);
+      setError(`Failed to load insights for ${capitalizeLanguage(language)}`);
     } finally {
       setLoading(false);
     }
@@ -90,12 +123,50 @@ export const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
     }
   };
 
+  if (error) {
+    return (
+      <Card className="border-red-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-red-600">
+            <AlertCircle className="h-5 w-5" />
+            Error Loading Insights
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <p className="text-sm text-red-600">{error}</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={loadPersonalizedData}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Retry
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (loading) {
     return (
       <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Languages className="h-5 w-5 text-blue-500" />
+            <span>Loading {capitalizeLanguage(language)} Insights...</span>
+          </CardTitle>
+        </CardHeader>
         <CardContent className="pt-6">
           <div className="flex items-center justify-center">
-            <div className="text-sm text-muted-foreground">Loading personalized insights...</div>
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              <span className="text-sm text-muted-foreground">
+                Analyzing your {capitalizeLanguage(language)} progress...
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -104,6 +175,12 @@ export const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Language Context Header */}
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <FlagIcon code={getLanguageFlagCode(language)} size={20} />
+        <span>{capitalizeLanguage(language)} Learning Insights</span>
+      </div>
+
       {/* Learning Trajectory */}
       {trajectory && (
         <Card>
@@ -152,13 +229,13 @@ export const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
         </Card>
       )}
 
-      {/* Vocabulary Profile */}
+      {/* Language-specific Vocabulary Profile */}
       {vocabularyProfile && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <BookOpen className="h-5 w-5 text-green-500" />
-              Vocabulary Profile
+              {capitalizeLanguage(language)} Vocabulary Profile
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -204,12 +281,12 @@ export const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
         </Card>
       )}
 
-      {/* Recommendations */}
+      {/* Language-specific Recommendations */}
       {recommendations.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-yellow-500" />
-            AI Recommendations
+            AI Recommendations for {capitalizeLanguage(language)}
           </h3>
           {recommendations.map((rec, index) => (
             <Alert key={index} className={`border-l-4 ${getRecommendationColor(rec.priority)}`}>
