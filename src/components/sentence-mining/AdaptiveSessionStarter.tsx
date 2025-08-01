@@ -6,12 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Brain, Zap, Target, TrendingUp } from 'lucide-react';
 import { SmartSessionConfig } from '@/services/enhancedAdaptiveDifficultyEngine';
+import { DifficultyLevel } from '@/types/sentence-mining';
 
 interface AdaptiveSessionStarterProps {
   sessionConfig: SmartSessionConfig | null;
   loadingOptimalDifficulty: boolean;
   isInitializingSession: boolean;
-  onStartSession: () => void;
+  onStartSession: (difficulty?: DifficultyLevel) => void;
 }
 
 export const AdaptiveSessionStarter: React.FC<AdaptiveSessionStarterProps> = ({
@@ -42,6 +43,31 @@ export const AdaptiveSessionStarter: React.FC<AdaptiveSessionStarterProps> = ({
     if (confidence >= 0.7) return 'text-green-600';
     if (confidence >= 0.5) return 'text-yellow-600';
     return 'text-red-600';
+  };
+
+  const handleStartSession = () => {
+    console.log('[AdaptiveSessionStarter] Starting session with config:', sessionConfig);
+    
+    if (!sessionConfig) {
+      console.error('[AdaptiveSessionStarter] No session config available when starting session');
+      return;
+    }
+    
+    // Validate the suggested difficulty before passing it
+    const validLevels: DifficultyLevel[] = ['beginner', 'intermediate', 'advanced'];
+    const suggestedDifficulty = sessionConfig.suggestedDifficulty;
+    
+    console.log('[AdaptiveSessionStarter] Suggested difficulty:', suggestedDifficulty);
+    
+    if (!validLevels.includes(suggestedDifficulty)) {
+      console.error('[AdaptiveSessionStarter] Invalid suggested difficulty:', suggestedDifficulty);
+      // Don't pass any difficulty, let the hook handle the fallback
+      onStartSession();
+    } else {
+      console.log('[AdaptiveSessionStarter] Starting session with validated difficulty:', suggestedDifficulty);
+      // Pass the suggested difficulty explicitly
+      onStartSession(suggestedDifficulty);
+    }
   };
 
   if (loadingOptimalDifficulty) {
@@ -136,7 +162,7 @@ export const AdaptiveSessionStarter: React.FC<AdaptiveSessionStarterProps> = ({
         {/* Start Session Button */}
         <div className="pt-4">
           <Button
-            onClick={onStartSession}
+            onClick={handleStartSession}
             disabled={isInitializingSession}
             className="w-full h-12 text-lg"
             size="lg"

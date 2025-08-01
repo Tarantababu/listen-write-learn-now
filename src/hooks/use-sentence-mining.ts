@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress, SentenceMiningState } from '@/types/sentence-mining';
@@ -7,19 +6,20 @@ import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Sanitizes data to prevent circular references when sending to Supabase
+ * Preserves critical session fields like difficulty_level
  */
 const sanitizeSessionData = (data: any): any => {
   if (data === null || data === undefined) return data;
   
-  // Handle primitive types
+  // Handle primitive types - preserve them as-is
   if (typeof data !== 'object') return data;
   
   // Handle Date objects
   if (data instanceof Date) return data.toISOString();
   
-  // Handle DOM elements and event objects
+  // Handle DOM elements and event objects - filter them out
   if (data.nodeType || data.target || data.currentTarget || data.preventDefault) {
-    console.warn('Filtering out DOM element or event object from session data');
+    console.warn('[sanitizeSessionData] Filtering out DOM element or event object from session data');
     return null;
   }
   
@@ -28,18 +28,27 @@ const sanitizeSessionData = (data: any): any => {
     return data.map(item => sanitizeSessionData(item)).filter(item => item !== null);
   }
   
-  // Handle objects
+  // Handle objects - preserve critical fields
   const sanitized: any = {};
+  const criticalFields = ['difficulty_level', 'language', 'user_id', 'started_at', 'session_data'];
+  
   for (const [key, value] of Object.entries(data)) {
     // Skip function properties
-    if (typeof value === 'function') continue;
+    if (typeof value === 'function') {
+      console.log(`[sanitizeSessionData] Skipping function property: ${key}`);
+      continue;
+    }
     
-    // Skip properties that look like DOM elements or events
-    if (key.includes('element') || key.includes('event') || key.includes('target')) continue;
+    // Skip properties that look like DOM elements or events (but not critical fields)
+    if (!criticalFields.includes(key) && (key.includes('element') || key.includes('event') || key.includes('target'))) {
+      console.log(`[sanitizeSessionData] Skipping DOM-like property: ${key}`);
+      continue;
+    }
     
     const sanitizedValue = sanitizeSessionData(value);
-    if (sanitizedValue !== null) {
+    if (sanitizedValue !== null || criticalFields.includes(key)) {
       sanitized[key] = sanitizedValue;
+      console.log(`[sanitizeSessionData] Preserved field ${key}:`, sanitizedValue);
     }
   }
   
@@ -122,14 +131,24 @@ export const useSentenceMining = () => {
       return;
     }
 
+    console.log(`[startSession] Starting session with difficulty: ${difficulty} for language: ${settings.selectedLanguage}`);
+    
+    // Validate difficulty parameter
+    const validLevels: DifficultyLevel[] = ['beginner', 'intermediate', 'advanced'];
+    if (!validLevels.includes(difficulty)) {
+      console.error(`[startSession] Invalid difficulty level provided: ${difficulty}`);
+      toast.error('Invalid difficulty level');
+      return;
+    }
+
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      // Sanitize the session data before creating
-      const sessionData = sanitizeSessionData({
+      // Create session data with explicit validation
+      const rawSessionData = {
         user_id: user.id,
         language: settings.selectedLanguage,
-        difficulty_level: difficulty,
+        difficulty_level: difficulty, // Ensure this is explicitly set
         total_exercises: 0,
         correct_exercises: 0,
         new_words_encountered: 0,
@@ -137,12 +156,30 @@ export const useSentenceMining = () => {
         started_at: new Date().toISOString(),
         session_data: {
           startTime: new Date().toISOString(),
-          difficulty: difficulty,
+          difficulty: difficulty, // Also store in session_data for redundancy
           language: settings.selectedLanguage
         }
-      });
+      };
 
-      console.log('Creating session with sanitized data:', sessionData);
+      console.log('[startSession] Raw session data before sanitization:', rawSessionData);
+      
+      // Sanitize the session data before creating
+      const sessionData = sanitizeSessionData(rawSessionData);
+      
+      console.log('[startSession] Sanitized session data:', sessionData);
+      
+      // Final validation that critical fields are preserved
+      if (!sessionData.difficulty_level) {
+        console.error('[startSession] difficulty_level was lost during sanitization!');
+        sessionData.difficulty_level = difficulty; // Force restore
+      }
+      
+      if (!sessionData.language) {
+        console.error('[startSession] language was lost during sanitization!');
+        sessionData.language = settings.selectedLanguage; // Force restore
+      }
+
+      console.log('[startSession] Final session data being sent to Supabase:', sessionData);
 
       const { data: session, error } = await supabase
         .from('sentence_mining_sessions')
@@ -151,8 +188,16 @@ export const useSentenceMining = () => {
         .single();
 
       if (error) {
-        console.error('Error creating session:', error);
+        console.error('[startSession] Supabase error creating session:', error);
         throw error;
+      }
+
+      console.log('[startSession] Successfully created session in database:', session);
+
+      // Validate that the created session has the correct difficulty
+      if (!session.difficulty_level) {
+        console.error('[startSession] Created session has null difficulty_level!', session);
+        throw new Error('Session creation failed: difficulty_level is null');
       }
 
       // Convert to expected format
@@ -177,6 +222,8 @@ export const useSentenceMining = () => {
         session_data: session.session_data
       };
 
+      console.log('[startSession] Created session object:', newSession);
+
       setState(prev => ({
         ...prev,
         currentSession: newSession,
@@ -190,14 +237,16 @@ export const useSentenceMining = () => {
       await generateNextExercise(newSession);
       
       toast.success(`Started ${difficulty} session in ${settings.selectedLanguage}`);
+      return newSession;
     } catch (error) {
-      console.error('Error starting session:', error);
+      console.error('[startSession] Error starting session:', error);
       setState(prev => ({ 
         ...prev, 
         loading: false, 
         error: error instanceof Error ? error.message : 'Failed to start session' 
       }));
       toast.error('Failed to start session');
+      throw error;
     }
   };
 
