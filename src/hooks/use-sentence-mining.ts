@@ -348,14 +348,21 @@ export const useSentenceMining = () => {
 
   const submitAnswer = async (response: string, selectedWords: string[] = [], isSkipped: boolean = false) => {
     const { currentSession, currentExercise } = state;
-    if (!currentSession || !currentExercise) return;
+    
+    // Early return with proper type checking
+    if (!currentSession || !currentExercise) {
+      console.error('[submitAnswer] Missing session or exercise');
+      return;
+    }
 
+    // At this point, TypeScript knows both currentSession and currentExercise are defined
     setState(prev => ({ ...prev, loading: true }));
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      // Now we can safely access currentExercise.correctAnswer because we've verified it exists above
       const isCorrect = !isSkipped && response.toLowerCase().trim() === currentExercise.correctAnswer.toLowerCase().trim();
 
       // Enhanced exercise result storage with adaptive metadata
