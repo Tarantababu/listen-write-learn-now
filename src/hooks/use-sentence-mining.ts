@@ -30,7 +30,7 @@ const sanitizeSessionData = (data: any): any => {
   
   // Handle objects - preserve critical fields
   const sanitized: any = {};
-  const criticalFields = ['difficulty_level', 'language', 'user_id', 'started_at', 'session_data'];
+  const criticalFields = ['difficulty_level', 'language', 'user_id', 'started_at', 'session_data', 'exercise_types'];
   
   for (const [key, value] of Object.entries(data)) {
     // Skip function properties
@@ -149,6 +149,7 @@ export const useSentenceMining = () => {
         user_id: user.id,
         language: settings.selectedLanguage,
         difficulty_level: difficulty, // Ensure this is explicitly set
+        exercise_types: ['cloze'], // Add required exercise_types field - currently only supporting cloze exercises
         total_exercises: 0,
         correct_exercises: 0,
         new_words_encountered: 0,
@@ -157,7 +158,8 @@ export const useSentenceMining = () => {
         session_data: {
           startTime: new Date().toISOString(),
           difficulty: difficulty, // Also store in session_data for redundancy
-          language: settings.selectedLanguage
+          language: settings.selectedLanguage,
+          exerciseTypes: ['cloze'] // Also store in session_data
         }
       };
 
@@ -179,6 +181,11 @@ export const useSentenceMining = () => {
         sessionData.language = settings.selectedLanguage; // Force restore
       }
 
+      if (!sessionData.exercise_types) {
+        console.error('[startSession] exercise_types was lost during sanitization!');
+        sessionData.exercise_types = ['cloze']; // Force restore
+      }
+
       console.log('[startSession] Final session data being sent to Supabase:', sessionData);
 
       const { data: session, error } = await supabase
@@ -198,6 +205,11 @@ export const useSentenceMining = () => {
       if (!session.difficulty_level) {
         console.error('[startSession] Created session has null difficulty_level!', session);
         throw new Error('Session creation failed: difficulty_level is null');
+      }
+
+      if (!session.exercise_types || session.exercise_types.length === 0) {
+        console.error('[startSession] Created session has null or empty exercise_types!', session);
+        throw new Error('Session creation failed: exercise_types is null or empty');
       }
 
       // Convert to expected format
