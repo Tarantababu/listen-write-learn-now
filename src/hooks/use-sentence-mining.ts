@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress, SentenceMiningState } from '@/types/sentence-mining';
@@ -347,7 +348,9 @@ export const useSentenceMining = () => {
   };
 
   const submitAnswer = async (response: string, selectedWords: string[] = [], isSkipped: boolean = false) => {
-    const { currentSession, currentExercise } = state;
+    // Store references to avoid potential state changes during execution
+    const currentSession = state.currentSession;
+    const currentExercise = state.currentExercise;
     
     // Early return with proper type checking
     if (!currentSession || !currentExercise) {
@@ -355,14 +358,14 @@ export const useSentenceMining = () => {
       return;
     }
 
-    // At this point, TypeScript knows both currentSession and currentExercise are defined
+    // Now TypeScript knows both currentSession and currentExercise are defined
     setState(prev => ({ ...prev, loading: true }));
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Now we can safely access currentExercise.correctAnswer because we've verified it exists above
+      // Safe to access currentExercise.correctAnswer because we've verified it exists above
       const isCorrect = !isSkipped && response.toLowerCase().trim() === currentExercise.correctAnswer.toLowerCase().trim();
 
       // Enhanced exercise result storage with adaptive metadata
