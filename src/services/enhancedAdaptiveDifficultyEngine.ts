@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { DifficultyLevel, SentenceMiningProgress } from '@/types/sentence-mining';
 import { AdaptiveDifficultyEngine, DifficultyAnalysis, PerformanceMetrics } from './adaptiveDifficultyEngine';
@@ -11,8 +10,37 @@ export interface SmartSessionConfig {
 }
 
 export class EnhancedAdaptiveDifficultyEngine extends AdaptiveDifficultyEngine {
-  private static readonly NEW_USER_THRESHOLD = 5; // Sessions needed to be considered "experienced"
+  private static readonly NEW_USER_THRESHOLD = 5;
   private static readonly CONFIDENCE_THRESHOLD = 0.7;
+
+  /**
+   * Ensures difficulty value is properly typed as DifficultyLevel string
+   */
+  private static sanitizeDifficultyLevel(level: any): DifficultyLevel {
+    const validLevels: DifficultyLevel[] = ['beginner', 'intermediate', 'advanced'];
+    
+    // Handle object or complex types - extract string value
+    if (typeof level === 'object' && level !== null) {
+      // If it's an object with a difficulty property
+      if (level.difficulty) return this.sanitizeDifficultyLevel(level.difficulty);
+      if (level.value) return this.sanitizeDifficultyLevel(level.value);
+      if (level.level) return this.sanitizeDifficultyLevel(level.level);
+      // If it's an object, try to convert to string
+      level = String(level);
+    }
+
+    // Ensure it's a string and lowercase
+    const cleanLevel = String(level).toLowerCase().trim();
+    
+    // Validate against allowed values
+    if (validLevels.includes(cleanLevel as DifficultyLevel)) {
+      return cleanLevel as DifficultyLevel;
+    }
+    
+    // Default fallback
+    console.warn(`Invalid difficulty level: ${level}, falling back to intermediate`);
+    return 'intermediate';
+  }
 
   /**
    * Determines the optimal starting difficulty for a new session
@@ -22,7 +50,6 @@ export class EnhancedAdaptiveDifficultyEngine extends AdaptiveDifficultyEngine {
     language: string
   ): Promise<SmartSessionConfig> {
     try {
-      // Get user's historical performance
       const performanceData = await this.getUserPerformanceHistory(userId, language);
       const isNewUser = performanceData.totalSessions < this.NEW_USER_THRESHOLD;
 
@@ -33,7 +60,6 @@ export class EnhancedAdaptiveDifficultyEngine extends AdaptiveDifficultyEngine {
       return await this.getExperiencedUserConfiguration(userId, language, performanceData);
     } catch (error) {
       console.error('Error determining optimal difficulty:', error);
-      // Return a safe fallback configuration instead of throwing
       return {
         suggestedDifficulty: 'intermediate',
         confidence: 0.5,
@@ -70,7 +96,6 @@ export class EnhancedAdaptiveDifficultyEngine extends AdaptiveDifficultyEngine {
           ? (session.correct_exercises / session.total_exercises) * 100 
           : 0;
         
-        // More recent sessions have higher weight
         const weight = Math.pow(0.8, index);
         weightedAccuracy += accuracy * weight;
         totalWeight += weight;
@@ -80,17 +105,20 @@ export class EnhancedAdaptiveDifficultyEngine extends AdaptiveDifficultyEngine {
       const averageAccuracy = recentSessions.length > 0 ? totalAccuracy / recentSessions.length : 0;
       const recentWeightedAccuracy = totalWeight > 0 ? weightedAccuracy / totalWeight : 0;
 
+      // Ensure lastSessionDifficulty is properly sanitized
+      const rawLastDifficulty = sessions?.[0]?.difficulty_level;
+      const lastSessionDifficulty = this.sanitizeDifficultyLevel(rawLastDifficulty);
+
       return {
         totalSessions,
         recentSessions: recentSessions.length,
         averageAccuracy,
         recentWeightedAccuracy,
-        lastSessionDifficulty: sessions?.[0]?.difficulty_level as DifficultyLevel,
+        lastSessionDifficulty,
         sessions: recentSessions
       };
     } catch (error) {
       console.error('Error in getUserPerformanceHistory:', error);
-      // Return safe defaults if database query fails
       return {
         totalSessions: 0,
         recentSessions: 0,
@@ -103,7 +131,6 @@ export class EnhancedAdaptiveDifficultyEngine extends AdaptiveDifficultyEngine {
   }
 
   private static getNewUserConfiguration(performanceData: any): SmartSessionConfig {
-    // For new users, start with beginner but be ready to adapt quickly
     return {
       suggestedDifficulty: 'beginner',
       confidence: 0.8,
@@ -125,38 +152,36 @@ export class EnhancedAdaptiveDifficultyEngine extends AdaptiveDifficultyEngine {
     let confidence = 0.5;
 
     try {
-      // Analyze recent performance trends
       if (performanceData.recentWeightedAccuracy >= 85) {
-        // High performer - suggest challenging level
-        suggestedDifficulty = performanceData.lastSessionDifficulty === 'advanced' 
+        const nextLevel = performanceData.lastSessionDifficulty === 'advanced' 
           ? 'advanced' 
-          : this.getNextDifficultyLevel(performanceData.lastSessionDifficulty || 'intermediate');
+          : this.getNextDifficultyLevel(performanceData.lastSessionDifficulty);
         
+        // Ensure the next level is properly sanitized
+        suggestedDifficulty = this.sanitizeDifficultyLevel(nextLevel);
         confidence = 0.8;
         reasoning.push(`High recent accuracy (${Math.round(performanceData.recentWeightedAccuracy)}%) suggests readiness for ${suggestedDifficulty}`);
       } else if (performanceData.recentWeightedAccuracy <= 60) {
-        // Lower performer - suggest easier level
-        suggestedDifficulty = this.getPreviousDifficultyLevel(performanceData.lastSessionDifficulty || 'intermediate');
+        const prevLevel = this.getPreviousDifficultyLevel(performanceData.lastSessionDifficulty);
+        suggestedDifficulty = this.sanitizeDifficultyLevel(prevLevel);
         confidence = 0.7;
         reasoning.push(`Lower recent accuracy (${Math.round(performanceData.recentWeightedAccuracy)}%) suggests ${suggestedDifficulty} level`);
       } else {
-        // Moderate performer - stay at current or slightly adjust
-        suggestedDifficulty = performanceData.lastSessionDifficulty || 'intermediate';
+        suggestedDifficulty = this.sanitizeDifficultyLevel(performanceData.lastSessionDifficulty || 'intermediate');
         confidence = 0.6;
         reasoning.push(`Moderate performance suggests maintaining ${suggestedDifficulty} level`);
       }
 
-      // Check for vocabulary mastery to fine-tune
       try {
         const vocabularyInsights = await this.getVocabularyInsights(userId, language);
         if (vocabularyInsights.strugglingWordsCount > 10) {
-          suggestedDifficulty = this.getPreviousDifficultyLevel(suggestedDifficulty);
+          const easierLevel = this.getPreviousDifficultyLevel(suggestedDifficulty);
+          suggestedDifficulty = this.sanitizeDifficultyLevel(easierLevel);
           confidence += 0.1;
           reasoning.push(`High number of struggling words (${vocabularyInsights.strugglingWordsCount}) suggests focusing on ${suggestedDifficulty}`);
         }
       } catch (vocabError) {
         console.error('Error getting vocabulary insights:', vocabError);
-        // Continue without vocabulary insights
       }
 
       return {
@@ -167,7 +192,6 @@ export class EnhancedAdaptiveDifficultyEngine extends AdaptiveDifficultyEngine {
       };
     } catch (error) {
       console.error('Error in getExperiencedUserConfiguration:', error);
-      // Return safe fallback
       return {
         suggestedDifficulty: 'intermediate',
         confidence: 0.5,
@@ -210,7 +234,6 @@ export class EnhancedAdaptiveDifficultyEngine extends AdaptiveDifficultyEngine {
       };
     } catch (error) {
       console.error('Error in getVocabularyInsights:', error);
-      // Return safe defaults
       return {
         strugglingWordsCount: 0,
         masteredWordsCount: 0,
@@ -229,7 +252,6 @@ export class EnhancedAdaptiveDifficultyEngine extends AdaptiveDifficultyEngine {
     currentDifficulty: DifficultyLevel
   ): Promise<DifficultyAnalysis | null> {
     try {
-      // Get current session performance
       const { data: exercises, error } = await supabase
         .from('sentence_mining_exercises')
         .select('is_correct, created_at')
@@ -242,47 +264,52 @@ export class EnhancedAdaptiveDifficultyEngine extends AdaptiveDifficultyEngine {
       }
 
       if (!exercises || exercises.length < 3) {
-        return null; // Need at least 3 exercises to make adjustment
+        return null;
       }
 
       const recentExercises = exercises.slice(0, 5);
       const correctCount = recentExercises.filter(e => e.is_correct === true).length;
       const sessionAccuracy = (correctCount / recentExercises.length) * 100;
 
+      // Ensure current difficulty is properly sanitized
+      const sanitizedCurrentDifficulty = this.sanitizeDifficultyLevel(currentDifficulty);
+
       const analysis: DifficultyAnalysis = {
-        currentLevel: currentDifficulty,
-        suggestedLevel: currentDifficulty,
+        currentLevel: sanitizedCurrentDifficulty,
+        suggestedLevel: sanitizedCurrentDifficulty,
         shouldAdjust: false,
         confidence: 0,
         reasons: []
       };
 
-      // Too easy - increase difficulty
       if (sessionAccuracy >= 90 && recentExercises.length >= 4) {
-        const nextLevel = this.getNextDifficultyLevel(currentDifficulty);
-        if (nextLevel !== currentDifficulty) {
-          analysis.suggestedLevel = nextLevel;
+        const nextLevel = this.getNextDifficultyLevel(sanitizedCurrentDifficulty);
+        const sanitizedNextLevel = this.sanitizeDifficultyLevel(nextLevel);
+        
+        if (sanitizedNextLevel !== sanitizedCurrentDifficulty) {
+          analysis.suggestedLevel = sanitizedNextLevel;
           analysis.shouldAdjust = true;
           analysis.confidence = 0.7;
-          analysis.reasons.push(`Perfect performance (${sessionAccuracy}%) in current session suggests ${nextLevel} difficulty`);
+          analysis.reasons.push(`Perfect performance (${sessionAccuracy}%) in current session suggests ${sanitizedNextLevel} difficulty`);
         }
       }
 
-      // Too hard - decrease difficulty
       if (sessionAccuracy <= 40 && recentExercises.length >= 4) {
-        const prevLevel = this.getPreviousDifficultyLevel(currentDifficulty);
-        if (prevLevel !== currentDifficulty) {
-          analysis.suggestedLevel = prevLevel;
+        const prevLevel = this.getPreviousDifficultyLevel(sanitizedCurrentDifficulty);
+        const sanitizedPrevLevel = this.sanitizeDifficultyLevel(prevLevel);
+        
+        if (sanitizedPrevLevel !== sanitizedCurrentDifficulty) {
+          analysis.suggestedLevel = sanitizedPrevLevel;
           analysis.shouldAdjust = true;
           analysis.confidence = 0.8;
-          analysis.reasons.push(`Low performance (${sessionAccuracy}%) in current session suggests ${prevLevel} difficulty`);
+          analysis.reasons.push(`Low performance (${sessionAccuracy}%) in current session suggests ${sanitizedPrevLevel} difficulty`);
         }
       }
 
       return analysis.shouldAdjust ? analysis : null;
     } catch (error) {
       console.error('Error in evaluateMidSessionAdjustment:', error);
-      return null; // Fail silently for mid-session adjustments
+      return null;
     }
   }
 }
