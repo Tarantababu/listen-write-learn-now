@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Language } from '@/types';
 
@@ -22,7 +21,7 @@ export class WordMasteryService {
    */
   static async getMasteryStats(userId: string, language: Language): Promise<WordMasteryStats> {
     try {
-      // Use the new unified calculation function
+      // Use the unified calculation function
       const { data: totalMastered, error: totalError } = await supabase
         .rpc('calculate_total_mastered_words', {
           user_id_param: userId,
@@ -34,7 +33,7 @@ export class WordMasteryService {
         throw totalError;
       }
 
-      // Get breakdown by source for detailed analytics
+      // Get detailed breakdown by source
       const [sentenceMiningResult, bidirectionalResult] = await Promise.all([
         // Sentence mining mastered words (mastery level >= 4)
         supabase
@@ -214,6 +213,20 @@ export class WordMasteryService {
     } catch (error) {
       console.error('Error getting recent mastery achievements:', error);
       return [];
+    }
+  }
+
+  /**
+   * Refresh mastery stats after sentence mining session
+   */
+  static async refreshStatsAfterSession(sessionId: string): Promise<void> {
+    try {
+      await supabase.rpc('update_session_words_mastered', {
+        session_id_param: sessionId
+      });
+    } catch (error) {
+      console.error('Error refreshing stats after session:', error);
+      throw error;
     }
   }
 }
