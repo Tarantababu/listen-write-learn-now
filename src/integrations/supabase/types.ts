@@ -1692,10 +1692,6 @@ export type Database = {
         Args: { current_status: string }
         Returns: string
       }
-      calculate_total_mastered_words: {
-        Args: { user_id_param: string; language_param: string }
-        Returns: number
-      }
       delete_curriculum_node: {
         Args: { node_id_param: string }
         Returns: undefined
@@ -1886,10 +1882,6 @@ export type Database = {
           user_id_param: string
           sentence_index_param: number
         }
-        Returns: undefined
-      }
-      update_session_words_mastered: {
-        Args: { session_id_param: string }
         Returns: undefined
       }
       update_shadowing_progress: {
