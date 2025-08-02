@@ -4,6 +4,7 @@ import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, Sentenc
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { WordMasteryService } from '@/services/wordMasteryService';
 import { supabase } from '@/integrations/supabase/client';
+import { Language } from '@/types';
 
 /**
  * Sanitizes data to prevent circular references when sending to Supabase
@@ -489,6 +490,25 @@ export const useSentenceMining = () => {
   const toggleTranslation = () => {
     setState(prev => ({ ...prev, showTranslation: !prev.showTranslation }));
   };
+
+    const updateWordResponse = useCallback(async (
+    userId: string,
+    word: string,
+    language: Language,
+    isCorrect: boolean
+  ): Promise<void> => {
+    try {
+      await WordMasteryService.updateWordMasteryFromSentenceMining(
+        userId,
+        word,
+        language as Language,
+        isCorrect
+      );
+    } catch (error) {
+      console.error('Error updating word mastery:', error);
+      throw error;
+    }
+  }, []);
 
   return {
     ...state,

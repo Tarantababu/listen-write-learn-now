@@ -91,17 +91,17 @@ export class WordMasteryService {
 
     return [
       {
-        source: 'sentence_mining',
+        source: 'sentence_mining' as const,
         count: stats.sentenceMiningMastered,
         percentage: Math.round((stats.sentenceMiningMastered / stats.totalMastered) * 100)
       },
       {
-        source: 'regular_exercises',
+        source: 'regular_exercises' as const,
         count: stats.regularExerciseMastered,
         percentage: Math.round((stats.regularExerciseMastered / stats.totalMastered) * 100)
       },
       {
-        source: 'bidirectional',
+        source: 'bidirectional' as const,
         count: stats.bidirectionalMastered,
         percentage: Math.round((stats.bidirectionalMastered / stats.totalMastered) * 100)
       }

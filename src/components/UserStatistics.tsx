@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { WordMasteryInsights } from '@/components/WordMasteryInsights';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { LanguageLevelProgress } from '@/components/LanguageLevelProgress';
+import LanguageLevelProgress from '@/components/LanguageLevelProgress';
 import { BookOpen, Target, Zap, Calendar } from 'lucide-react';
 import { getUserLevel } from '@/utils/levelSystem';
 import { useWordMastery } from '@/hooks/useWordMastery';
