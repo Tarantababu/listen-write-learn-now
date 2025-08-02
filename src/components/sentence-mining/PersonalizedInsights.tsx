@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,17 +21,20 @@ import { SmartContentGenerator, VocabularyProfile } from '@/services/smartConten
 import { PersonalizedLearningPath, LearningRecommendation, LearningTrajectory } from '@/services/personalizedLearningPath';
 import { FlagIcon } from 'react-flag-kit';
 import { getLanguageFlagCode, capitalizeLanguage } from '@/utils/languageUtils';
+import { executeRecommendationAction, RecommendationActionHandlerProps } from './RecommendationActionHandler';
 
 interface PersonalizedInsightsProps {
   userId: string;
   language: string;
   progress: SentenceMiningProgress;
+  onRecommendationAction?: RecommendationActionHandlerProps['onStartAdaptiveSession'];
 }
 
 export const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
   userId,
   language,
-  progress
+  progress,
+  onRecommendationAction
 }) => {
   const [vocabularyProfile, setVocabularyProfile] = useState<VocabularyProfile | null>(null);
   const [recommendations, setRecommendations] = useState<LearningRecommendation[]>([]);
@@ -102,6 +104,15 @@ export const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRecommendationAction = async (recommendation: LearningRecommendation) => {
+    if (!onRecommendationAction) {
+      console.warn('[PersonalizedInsights] No action handler provided');
+      return;
+    }
+    
+    await executeRecommendationAction(recommendation, onRecommendationAction);
   };
 
   const getRecommendationIcon = (type: string) => {
@@ -315,8 +326,12 @@ export const PersonalizedInsights: React.FC<PersonalizedInsightsProps> = ({
                         </div>
                       )}
                       
-                      {rec.actionable && (
-                        <Button variant="outline" className="text-xs h-7 mt-2">
+                      {rec.actionable && onRecommendationAction && (
+                        <Button 
+                          variant="outline" 
+                          className="text-xs h-7 mt-2"
+                          onClick={() => handleRecommendationAction(rec)}
+                        >
                           Take Action
                         </Button>
                       )}

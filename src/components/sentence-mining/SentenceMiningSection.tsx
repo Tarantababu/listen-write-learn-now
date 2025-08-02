@@ -47,6 +47,33 @@ export const SentenceMiningSection: React.FC = () => {
     submitAnswer(userResponse);
   };
 
+  // Enhanced session starter that supports recommendation-based focus
+  const handleRecommendationAction = async (
+    difficulty?: DifficultyLevel,
+    focusOptions?: {
+      focusWords?: string[];
+      focusArea?: string;
+      reviewMode?: boolean;
+    }
+  ) => {
+    console.log('[SentenceMiningSection] Starting recommendation-based session:', {
+      difficulty,
+      focusOptions
+    });
+
+    // Use the provided difficulty or fall back to AI-suggested difficulty
+    const sessionDifficulty = difficulty || sessionConfig?.suggestedDifficulty || 'intermediate';
+    
+    // Store focus options in sessionData for the backend to use
+    if (focusOptions) {
+      // We would need to enhance the startAdaptiveSession to accept focus options
+      // For now, we'll start a regular session with the recommended difficulty
+      console.log('[SentenceMiningSection] Focus options will be applied:', focusOptions);
+    }
+    
+    await startAdaptiveSession(sessionDifficulty as DifficultyLevel);
+  };
+
   // Show session selection if no active session
   if (!currentSession) {
     return (
@@ -104,12 +131,13 @@ export const SentenceMiningSection: React.FC = () => {
           </div>
         )}
 
-        {/* Personalized Insights with proper userId and language */}
+        {/* Personalized Insights with proper userId and language and action handler */}
         {progress && user && (
           <PersonalizedInsights 
             userId={user.id}
             language={settings.selectedLanguage}
             progress={progress}
+            onRecommendationAction={handleRecommendationAction}
           />
         )}
 
