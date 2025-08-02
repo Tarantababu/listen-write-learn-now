@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress, SentenceMiningState } from '@/types/sentence-mining';
@@ -366,7 +365,7 @@ export const useSentenceMining = () => {
       if (!user) throw new Error('User not authenticated');
 
       // Safe to access properties because we've verified they exist above
-      const correctAnswer = currentExercise.correctAnswer;
+      const correctAnswer = currentExercise!.correctAnswer;
       const isCorrect = !isSkipped && response.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
 
       // Enhanced exercise result storage with adaptive metadata
@@ -395,7 +394,7 @@ export const useSentenceMining = () => {
       // Update spaced repetition system with performance
       try {
         // Import and use the SpacedRepetitionEngine (inline implementation for edge function compatibility)
-        await this.updateWordPerformanceInline(user.id, currentExercise.targetWord, currentSession.language, isCorrect);
+        await updateWordPerformanceInline(user.id, currentExercise.targetWord, currentSession.language, isCorrect);
       } catch (srError) {
         console.error('Error updating spaced repetition:', srError);
       }
@@ -447,71 +446,6 @@ export const useSentenceMining = () => {
       console.error('Error submitting adaptive answer:', error);
       setState(prev => ({ ...prev, loading: false, error: 'Failed to submit answer' }));
       toast.error('Failed to submit answer');
-    }
-  };
-
-  // Inline spaced repetition update for immediate use
-  const updateWordPerformanceInline = async (
-    userId: string,
-    word: string,
-    language: string,
-    isCorrect: boolean
-  ) => {
-    try {
-      // Get existing performance
-      const { data: existing } = await supabase
-        .from('known_words')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('word', word)
-        .eq('language', language)
-        .maybeSingle();
-
-      const now = new Date();
-      let newMasteryLevel = 1;
-      let nextReviewDate = new Date(now);
-
-      if (existing) {
-        const newAccuracy = (existing.correct_count + (isCorrect ? 1 : 0)) / (existing.review_count + 1);
-        
-        // Simple spaced repetition calculation
-        const baseInterval = isCorrect ? 2 : 1;
-        const multiplier = Math.min(existing.mastery_level * 1.5, 7);
-        const intervalDays = Math.ceil(baseInterval * multiplier);
-        
-        nextReviewDate.setDate(nextReviewDate.getDate() + intervalDays);
-        
-        // Update mastery level
-        if (isCorrect && newAccuracy >= 0.8) {
-          newMasteryLevel = Math.min(existing.mastery_level + 1, 10);
-        } else if (!isCorrect && newAccuracy < 0.6) {
-          newMasteryLevel = Math.max(existing.mastery_level - 1, 1);
-        } else {
-          newMasteryLevel = existing.mastery_level;
-        }
-      } else {
-        nextReviewDate.setDate(nextReviewDate.getDate() + (isCorrect ? 2 : 1));
-      }
-
-      await supabase
-        .from('known_words')
-        .upsert({
-          user_id: userId,
-          word,
-          language,
-          correct_count: existing ? existing.correct_count + (isCorrect ? 1 : 0) : (isCorrect ? 1 : 0),
-          review_count: existing ? existing.review_count + 1 : 1,
-          mastery_level: newMasteryLevel,
-          last_reviewed_at: now.toISOString(),
-          next_review_date: nextReviewDate.toISOString().split('T')[0],
-          updated_at: now.toISOString()
-        }, {
-          onConflict: 'user_id,word,language'
-        });
-
-      console.log(`Updated spaced repetition: ${word} -> mastery level ${newMasteryLevel}, next review: ${nextReviewDate.toDateString()}`);
-    } catch (error) {
-      console.error('Error in inline spaced repetition update:', error);
     }
   };
 
@@ -580,4 +514,69 @@ export const useSentenceMining = () => {
     toggleTranslation,
     loadProgress
   };
+};
+
+// Inline spaced repetition update for immediate use
+const updateWordPerformanceInline = async (
+  userId: string,
+  word: string,
+  language: string,
+  isCorrect: boolean
+) => {
+  try {
+    // Get existing performance
+    const { data: existing } = await supabase
+      .from('known_words')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('word', word)
+      .eq('language', language)
+      .maybeSingle();
+
+    const now = new Date();
+    let newMasteryLevel = 1;
+    let nextReviewDate = new Date(now);
+
+    if (existing) {
+      const newAccuracy = (existing.correct_count + (isCorrect ? 1 : 0)) / (existing.review_count + 1);
+      
+      // Simple spaced repetition calculation
+      const baseInterval = isCorrect ? 2 : 1;
+      const multiplier = Math.min(existing.mastery_level * 1.5, 7);
+      const intervalDays = Math.ceil(baseInterval * multiplier);
+      
+      nextReviewDate.setDate(nextReviewDate.getDate() + intervalDays);
+      
+      // Update mastery level
+      if (isCorrect && newAccuracy >= 0.8) {
+        newMasteryLevel = Math.min(existing.mastery_level + 1, 10);
+      } else if (!isCorrect && newAccuracy < 0.6) {
+        newMasteryLevel = Math.max(existing.mastery_level - 1, 1);
+      } else {
+        newMasteryLevel = existing.mastery_level;
+      }
+    } else {
+      nextReviewDate.setDate(nextReviewDate.getDate() + (isCorrect ? 2 : 1));
+    }
+
+    await supabase
+      .from('known_words')
+      .upsert({
+        user_id: userId,
+        word,
+        language,
+        correct_count: existing ? existing.correct_count + (isCorrect ? 1 : 0) : (isCorrect ? 1 : 0),
+        review_count: existing ? existing.review_count + 1 : 1,
+        mastery_level: newMasteryLevel,
+        last_reviewed_at: now.toISOString(),
+        next_review_date: nextReviewDate.toISOString().split('T')[0],
+        updated_at: now.toISOString()
+      }, {
+        onConflict: 'user_id,word,language'
+      });
+
+    console.log(`Updated spaced repetition: ${word} -> mastery level ${newMasteryLevel}, next review: ${nextReviewDate.toDateString()}`);
+  } catch (error) {
+    console.error('Error in inline spaced repetition update:', error);
+  }
 };
