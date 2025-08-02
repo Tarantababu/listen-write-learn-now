@@ -34,12 +34,16 @@ serve(async (req) => {
     console.log(`Generating adaptive cloze exercise for user: ${user_id}, language: ${language}, difficulty: ${difficulty_level}`);
 
     // Step 1: Get optimal word selection using intelligent algorithms
+    // Initialize variables at function scope
     let selectedWords: string[] = [];
     let selectionReasons: string[] = [];
+    let reviewWords: any[] = [];
+    let strugglingWords: string[] = [];
+    let recentlyUsedWords: Set<string> = new Set();
 
     try {
       // Get words due for review from spaced repetition
-      const { data: reviewWords, error: reviewError } = await supabase
+      const { data: reviewWordsData, error: reviewError } = await supabase
         .from('known_words')
         .select('word')
         .eq('user_id', user_id)
@@ -47,6 +51,8 @@ serve(async (req) => {
         .lte('next_review_date', new Date().toISOString().split('T')[0])
         .order('next_review_date', { ascending: true })
         .limit(5);
+
+      reviewWords = reviewWordsData || [];
 
       // Get struggling words that need reinforcement
       const { data: strugglingWordsData, error: strugglingError } = await supabase
@@ -56,7 +62,7 @@ serve(async (req) => {
         .eq('language', language)
         .gte('review_count', 3);
 
-      const strugglingWords = strugglingWordsData?.filter(item => {
+      strugglingWords = strugglingWordsData?.filter(item => {
         const accuracy = item.correct_count / item.review_count;
         return accuracy < 0.6;
       }).map(item => item.word) || [];
@@ -69,7 +75,7 @@ serve(async (req) => {
         .order('created_at', { ascending: false })
         .limit(5);
 
-      const recentlyUsedWords = new Set<string>();
+      recentlyUsedWords = new Set<string>();
       recentExercises?.forEach(exercise => {
         exercise.target_words?.forEach((word: string) => {
           recentlyUsedWords.add(word.toLowerCase());
@@ -183,7 +189,7 @@ Example format:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o-mini',
         messages: [
           { 
             role: 'system', 
@@ -239,7 +245,7 @@ Example format:
         }
       };
 
-      const levelSentences = fallbackSentences[difficulty_level as keyof typeof fallbackSentences]?.beginner || fallbackSentences.beginner;
+      const levelSentences = fallbackSentences[difficulty_level as keyof typeof fallbackSentences] || fallbackSentences.beginner;
       const langSentences = levelSentences[language as keyof typeof levelSentences] || levelSentences.german;
       const randomSentence = langSentences[Math.floor(Math.random() * langSentences.length)];
       
