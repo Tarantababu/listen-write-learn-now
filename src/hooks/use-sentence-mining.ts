@@ -396,7 +396,7 @@ export const useSentenceMining = () => {
           await WordMasteryService.updateWordMasteryFromSentenceMining(
             user.id,
             currentExercise.targetWord,
-            currentSession.language,
+            currentSession.language as Language,
             isCorrect
           );
           console.log(`[submitAnswer] Updated word mastery for: ${currentExercise.targetWord} (correct: ${isCorrect})`);
@@ -436,7 +436,6 @@ export const useSentenceMining = () => {
     }
   };
 
-  
   const nextExercise = useCallback(async () => {
     const { currentSession } = state;
     if (!currentSession) return;
@@ -491,7 +490,7 @@ export const useSentenceMining = () => {
     setState(prev => ({ ...prev, showTranslation: !prev.showTranslation }));
   };
 
-    const updateWordResponse = useCallback(async (
+  const updateWordResponse = useCallback(async (
     userId: string,
     word: string,
     language: Language,
@@ -501,7 +500,7 @@ export const useSentenceMining = () => {
       await WordMasteryService.updateWordMasteryFromSentenceMining(
         userId,
         word,
-        language as Language,
+        language,
         isCorrect
       );
     } catch (error) {
