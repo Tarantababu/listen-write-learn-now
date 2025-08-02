@@ -1,21 +1,24 @@
+
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, Trophy, BookOpen, Loader2, Keyboard, Target } from 'lucide-react';
+import { Brain, Trophy, BookOpen, Loader2, Target, Zap } from 'lucide-react';
 import { DifficultyLevel } from '@/types/sentence-mining';
 import { SimpleClozeExercise } from './SimpleClozeExercise';
-import { EnhancedProgressIndicator } from './EnhancedProgressIndicator';
-import { VocabularyStats } from './VocabularyStats';
-import { AdaptiveDifficultyIndicator } from './AdaptiveDifficultyIndicator';
-import { PersonalizedInsights } from './PersonalizedInsights';
-import { AdaptiveSessionStarter } from './AdaptiveSessionStarter';
 import { useFullyAdaptiveSentenceMining } from '@/hooks/use-fully-adaptive-sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { FlagIcon } from 'react-flag-kit';
 import { getLanguageFlagCode, capitalizeLanguage } from '@/utils/languageUtils';
 import { AdaptiveLearningInsights } from './AdaptiveLearningInsights';
+import { PersonalizedInsights } from './PersonalizedInsights';
+
+// Import new minimalist components
+import { MinimalistSessionStarter } from './MinimalistSessionStarter';
+import { MinimalistProgressCard } from './MinimalistProgressCard';
+import { MinimalistInsightsCard } from './MinimalistInsightsCard';
+import { MinimalistOverviewCards } from './MinimalistOverviewCards';
+import { MinimalistKeyboardHints } from './MinimalistKeyboardHints';
 
 export const SentenceMiningSection: React.FC = () => {
   const { user } = useAuth();
@@ -56,18 +59,9 @@ export const SentenceMiningSection: React.FC = () => {
       reviewMode?: boolean;
     }
   ) => {
-    console.log('[SentenceMiningSection] Starting recommendation-based session:', {
-      difficulty,
-      focusOptions
-    });
-
-    // Use the provided difficulty or fall back to AI-suggested difficulty
     const sessionDifficulty = difficulty || sessionConfig?.suggestedDifficulty || 'intermediate';
     
-    // Store focus options in sessionData for the backend to use
     if (focusOptions) {
-      // We would need to enhance the startAdaptiveSession to accept focus options
-      // For now, we'll start a regular session with the recommended difficulty
       console.log('[SentenceMiningSection] Focus options will be applied:', focusOptions);
     }
     
@@ -77,109 +71,29 @@ export const SentenceMiningSection: React.FC = () => {
   // Show session selection if no active session
   if (!currentSession) {
     return (
-      <div className="space-y-8">
-        {/* Language-aware Progress Overview with Personalized Insights */}
+      <div className="space-y-8 max-w-4xl mx-auto">
+        {/* Simplified Overview Section */}
         {progress && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FlagIcon code={getLanguageFlagCode(settings.selectedLanguage)} size={20} />
-                  <span>{capitalizeLanguage(settings.selectedLanguage)} Vocabulary</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <VocabularyStats stats={progress.vocabularyStats} />
-              </CardContent>
-            </Card>
+          <div className="space-y-6">
+            <MinimalistOverviewCards progress={progress} language={settings.selectedLanguage} />
             
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-yellow-500" />
-                  <span>{capitalizeLanguage(settings.selectedLanguage)} Progress</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Total Sessions</span>
-                    <Badge variant="outline">{progress.totalSessions}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Exercises Completed</span>
-                    <Badge variant="outline">{progress.totalExercises}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Average Accuracy</span>
-                    <Badge variant={progress.averageAccuracy >= 70 ? 'default' : 'secondary'}>
-                      {progress.averageAccuracy}%
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Current Streak</span>
-                    <Badge variant="outline">{progress.streak} days</Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* New Adaptive Learning Insights */}
-            <AdaptiveLearningInsights 
-              language={settings.selectedLanguage}
-            />
+            {/* Personalized Insights - More focused */}
+            {user && (
+              <PersonalizedInsights 
+                userId={user.id}
+                language={settings.selectedLanguage}
+                progress={progress}
+                onRecommendationAction={handleRecommendationAction}
+              />
+            )}
           </div>
         )}
 
-        {/* Personalized Insights with proper userId and language and action handler */}
-        {progress && user && (
-          <PersonalizedInsights 
-            userId={user.id}
-            language={settings.selectedLanguage}
-            progress={progress}
-            onRecommendationAction={handleRecommendationAction}
-          />
-        )}
+        {/* Minimalist Keyboard Shortcuts */}
+        <MinimalistKeyboardHints />
 
-        {/* Keyboard Shortcuts Info */}
-        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border-blue-200 dark:border-blue-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-              <Keyboard className="h-5 w-5" />
-              Keyboard Shortcuts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span>Check Answer</span>
-                  <div className="flex gap-1">
-                    <kbd className="px-2 py-1 bg-white dark:bg-gray-800 border rounded text-xs">Enter</kbd>
-                    <span className="text-muted-foreground">or</span>
-                    <kbd className="px-2 py-1 bg-white dark:bg-gray-800 border rounded text-xs">Ctrl+Enter</kbd>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Toggle Translation</span>
-                  <kbd className="px-2 py-1 bg-white dark:bg-gray-800 border rounded text-xs">Space</kbd>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span>Next Exercise</span>
-                  <kbd className="px-2 py-1 bg-white dark:bg-gray-800 border rounded text-xs">Enter</kbd>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Use these shortcuts to practice more efficiently!
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Adaptive Session Starter - Replaces manual difficulty selection */}
-        <AdaptiveSessionStarter
+        {/* Streamlined Session Starter */}
+        <MinimalistSessionStarter
           sessionConfig={sessionConfig}
           loadingOptimalDifficulty={loadingOptimalDifficulty}
           isInitializingSession={isInitializingSession}
@@ -195,61 +109,55 @@ export const SentenceMiningSection: React.FC = () => {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center space-y-4">
           <div className="relative">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-            <div className="absolute -inset-4 border-2 border-blue-200 dark:border-blue-800 rounded-full animate-pulse opacity-30" />
+            <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
+            <div className="absolute -inset-4 border border-primary/20 rounded-full animate-pulse" />
           </div>
           <div className="space-y-2">
-            <p className="text-muted-foreground font-medium">Generating your next adaptive exercise...</p>
-            <p className="text-xs text-muted-foreground">AI is personalizing the content for you</p>
+            <p className="text-lg font-medium">Creating your next exercise...</p>
+            <p className="text-sm text-muted-foreground">AI is personalizing the content for you</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Show active session
+  // Show active session with improved layout
   return (
-    <div className="space-y-8">
-      {/* Session Header with Language Context */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
+    <div className="space-y-8 max-w-6xl mx-auto">
+      {/* Simplified Session Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b">
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
             <FlagIcon code={getLanguageFlagCode(settings.selectedLanguage)} size={24} />
-            <h2 className="text-2xl font-bold">
-              {capitalizeLanguage(settings.selectedLanguage)} Adaptive Session
-            </h2>
+            <h1 className="text-2xl font-bold">
+              {capitalizeLanguage(settings.selectedLanguage)} Practice
+            </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="capitalize">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary" className="capitalize">
               {currentSession.difficulty_level}
             </Badge>
-            <Badge variant="secondary">
+            <Badge variant="outline">
               Exercise {exerciseCount + 1}
             </Badge>
-            <Badge variant="outline" className="text-purple-600">
+            <Badge variant="outline" className="text-primary">
               <Brain className="h-3 w-3 mr-1" />
               AI-Powered
             </Badge>
-            {loading && (
-              <Badge variant="outline" className="text-blue-600">
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                Processing
-              </Badge>
-            )}
           </div>
         </div>
         <Button
-          variant="outline"
+          variant="ghost"
           onClick={endSession}
-          className="text-red-600 hover:text-red-700"
+          className="text-muted-foreground hover:text-foreground"
         >
           End Session
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Exercise Area */}
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Main Exercise Area - Takes more space */}
+        <div className="lg:col-span-3">
           {currentExercise ? (
             <SimpleClozeExercise
               exercise={currentExercise}
@@ -267,66 +175,30 @@ export const SentenceMiningSection: React.FC = () => {
           ) : (
             <div className="flex items-center justify-center min-h-[400px]">
               <div className="text-center space-y-4">
-                <div className="relative">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-                  <div className="absolute -inset-4 border-2 border-blue-200 dark:border-blue-800 rounded-full animate-pulse opacity-30" />
-                </div>
-                <p className="text-muted-foreground">Loading adaptive exercise...</p>
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                <p className="text-muted-foreground">Loading exercise...</p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Enhanced Sidebar with Language-specific Adaptive Features */}
-        <div className="space-y-6">
-          <EnhancedProgressIndicator 
+        {/* Compact Sidebar */}
+        <div className="space-y-4">
+          <MinimalistProgressCard 
             session={currentSession} 
             isGeneratingNext={isGeneratingNext}
           />
           
-          {/* Real-time Adaptive Learning Insights */}
+          <MinimalistInsightsCard 
+            vocabularyProfile={vocabularyProfile}
+            exerciseCount={exerciseCount}
+          />
+          
+          {/* Compact Adaptive Learning Insights */}
           <AdaptiveLearningInsights 
             language={settings.selectedLanguage}
             sessionId={currentSession.id}
           />
-          
-          {/* Real-time Language-specific Vocabulary Insights */}
-          {vocabularyProfile && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <BookOpen className="h-4 w-4" />
-                  <span>{capitalizeLanguage(settings.selectedLanguage)} Insights</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span>Session exercises</span>
-                    <Badge variant="outline">{exerciseCount}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Struggling words</span>
-                    <Badge variant="outline" className="text-yellow-600">
-                      {vocabularyProfile.strugglingWords.length}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Mastered words</span>
-                    <Badge variant="outline" className="text-green-600">
-                      {vocabularyProfile.masteredWords.length}
-                    </Badge>
-                  </div>
-                  <div className="pt-2 border-t">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Target className="h-3 w-3" />
-                      AI adapts difficulty in real-time
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </div>
