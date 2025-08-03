@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { DifficultyLevel, SentenceMiningExercise, SentenceMiningSession } from '@/types/sentence-mining';
 import { IntelligentWordSelection } from './intelligentWordSelection';
@@ -188,6 +187,31 @@ export class EnhancedSentenceMiningService {
             clozeSentence: "Obwohl es regnet, gehen wir ___.",
             translation: "Although it's raining, we go for a walk.",
             context: "Weather and activities"
+          }
+        ]
+      },
+      advanced: {
+        german: [
+          {
+            sentence: "Die Regierung hat neue Maßnahmen zur Bekämpfung der Inflation beschlossen.",
+            targetWord: "Bekämpfung",
+            clozeSentence: "Die Regierung hat neue Maßnahmen zur ___ der Inflation beschlossen.",
+            translation: "The government has decided on new measures to combat inflation.",
+            context: "Economic policy"
+          },
+          {
+            sentence: "Seine Argumentation war durchaus überzeugend, jedoch fehlten konkrete Belege.",
+            targetWord: "überzeugend",
+            clozeSentence: "Seine Argumentation war durchaus ___, jedoch fehlten konkrete Belege.",
+            translation: "His argument was quite convincing, but concrete evidence was lacking.",
+            context: "Academic discussion"
+          },
+          {
+            sentence: "Die wissenschaftliche Untersuchung ergab eindeutige Hinweise auf klimatische Veränderungen.",
+            targetWord: "eindeutige",
+            clozeSentence: "Die wissenschaftliche Untersuchung ergab ___ Hinweise auf klimatische Veränderungen.",
+            translation: "The scientific investigation revealed clear evidence of climatic changes.",
+            context: "Scientific research"
           }
         ]
       }
