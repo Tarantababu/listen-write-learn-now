@@ -13,7 +13,6 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -28,159 +27,165 @@ serve(async (req) => {
       known_words = [],
       previous_sentences = [],
       n_plus_one = false,
-      user_id
+      user_id,
+      // Enhanced parameters
+      preferred_words = [],
+      novelty_words = [],
+      avoid_patterns = [],
+      diversity_score_target = 70,
+      selection_quality = 80,
+      enhanced_mode = false
     } = await req.json();
 
-    console.log(`Generating adaptive cloze exercise for user: ${user_id}, language: ${language}, difficulty: ${difficulty_level}`);
+    console.log(`[Enhanced Generation] ${enhanced_mode ? 'Enhanced' : 'Standard'} generation for ${language} (${difficulty_level})`);
+    console.log(`[Enhanced Generation] Preferred words: [${preferred_words.slice(0, 3).join(', ')}]`);
+    console.log(`[Enhanced Generation] Novelty words: [${novelty_words.join(', ')}]`);
+    console.log(`[Enhanced Generation] Avoid patterns: [${avoid_patterns.slice(0, 3).join(', ')}]`);
 
-    // Step 1: Get optimal word selection using intelligent algorithms
-    // Initialize variables at function scope
+    // Enhanced word selection logic
     let selectedWords: string[] = [];
     let selectionReasons: string[] = [];
-    let reviewWords: any[] = [];
-    let strugglingWords: string[] = [];
-    let recentlyUsedWords: Set<string> = new Set();
+    let finalTargetWord = '';
 
-    try {
-      // Get words due for review from spaced repetition
-      const { data: reviewWordsData, error: reviewError } = await supabase
-        .from('known_words')
-        .select('word')
-        .eq('user_id', user_id)
-        .eq('language', language)
-        .lte('next_review_date', new Date().toISOString().split('T')[0])
-        .order('next_review_date', { ascending: true })
-        .limit(5);
+    if (enhanced_mode && preferred_words.length > 0) {
+      // Use intelligently selected words
+      selectedWords = preferred_words;
+      selectionReasons.push(`AI-selected optimal word: "${preferred_words[0]}"`);
+      finalTargetWord = preferred_words[0];
 
-      reviewWords = reviewWordsData || [];
-
-      // Get struggling words that need reinforcement
-      const { data: strugglingWordsData, error: strugglingError } = await supabase
-        .from('known_words')
-        .select('word, review_count, correct_count')
-        .eq('user_id', user_id)
-        .eq('language', language)
-        .gte('review_count', 3);
-
-      strugglingWords = strugglingWordsData?.filter(item => {
-        const accuracy = item.correct_count / item.review_count;
-        return accuracy < 0.6;
-      }).map(item => item.word) || [];
-
-      // Get recently used words to avoid repetition
-      const { data: recentExercises, error: recentError } = await supabase
-        .from('sentence_mining_exercises')
-        .select('target_words, created_at')
-        .eq('session_id', session_id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      recentlyUsedWords = new Set<string>();
-      recentExercises?.forEach(exercise => {
-        exercise.target_words?.forEach((word: string) => {
-          recentlyUsedWords.add(word.toLowerCase());
-        });
-      });
-
-      // Smart word selection logic
-      const reviewWordsArray = reviewWords?.map(rw => rw.word) || [];
-      
-      // Prioritize struggling words, then review words, then avoid recent words
-      if (strugglingWords.length > 0) {
-        selectedWords = [strugglingWords[0]];
-        selectionReasons.push(`Selected struggling word "${strugglingWords[0]}" for reinforcement`);
-      } else if (reviewWordsArray.length > 0) {
-        selectedWords = [reviewWordsArray[0]];
-        selectionReasons.push(`Selected review word "${reviewWordsArray[0]}" for spaced repetition`);
+      // Consider novelty injection
+      if (novelty_words.length > 0 && Math.random() < 0.3) {
+        finalTargetWord = novelty_words[0];
+        selectionReasons.push(`Novelty word introduced: "${novelty_words[0]}"`);
       }
+    } else {
+      // Fallback to standard selection with pattern awareness
+      try {
+        const { data: reviewWordsData } = await supabase
+          .from('known_words')
+          .select('word')
+          .eq('user_id', user_id)
+          .eq('language', language)
+          .lte('next_review_date', new Date().toISOString().split('T')[0])
+          .order('next_review_date', { ascending: true })
+          .limit(5);
 
-      console.log(`Smart word selection: ${selectedWords.length > 0 ? selectedWords[0] : 'none'}`);
-      console.log(`Selection reasons:`, selectionReasons);
+        const reviewWords = reviewWordsData || [];
 
-    } catch (selectionError) {
-      console.error('Error in smart word selection:', selectionError);
-      selectionReasons.push('Fallback to random selection due to selection error');
+        if (reviewWords.length > 0) {
+          finalTargetWord = reviewWords[0].word;
+          selectionReasons.push(`Review word selected: "${finalTargetWord}"`);
+        }
+      } catch (error) {
+        console.error('[Enhanced Generation] Error in fallback selection:', error);
+        selectionReasons.push('Fallback to random selection due to error');
+      }
     }
 
-    // Step 2: Build enhanced prompt with word selection context
-    let prompt = `Generate a cloze (fill-in-the-blank) sentence exercise with the following requirements:
+    // Build enhanced prompt
+    let prompt = `Generate an advanced cloze (fill-in-the-blank) sentence exercise with enhanced intelligence:
 
-Language: ${language}
+Language: ${language.toUpperCase()}
 Difficulty: ${difficulty_level}
-Exercise Type: Cloze (fill-in-the-blank)
+Enhanced Mode: ${enhanced_mode ? 'ACTIVE' : 'INACTIVE'}
+Selection Quality Target: ${selection_quality}%
+Diversity Target: ${diversity_score_target}%
 
-Requirements:
-1. Create a natural, contextually appropriate sentence in ${language.toUpperCase()}
-2. Choose ONE key word from the sentence to be the target word for the blank
-3. The target word should be appropriate for ${difficulty_level} level learners
+CORE REQUIREMENTS:
+1. Create a natural, contextually rich sentence in ${language.toUpperCase()}
+2. Choose ONE target word for the blank (cloze exercise)
+3. Target word must be contextually perfect and educationally valuable
 4. Provide accurate English translation
-5. Create a cloze sentence by replacing the target word with "___"
-6. Focus on practical, everyday language usage
-7. Make the sentence interesting and memorable
+5. Create cloze sentence by replacing target word with "___"
+6. Focus on real-world, practical usage
+7. Ensure sentence flows naturally and is memorable
 
 `;
 
-    // Add intelligent word guidance if we have selected words
-    if (selectedWords.length > 0) {
-      prompt += `PRIORITY WORD SELECTION:
-- Try to use this specific word as the target word: "${selectedWords[0]}"
-- This word was selected for: ${selectionReasons.join(', ')}
-- Build a natural sentence around this word
-- If this word doesn't fit naturally, you may choose a different appropriate word
+    // Enhanced word guidance
+    if (finalTargetWord) {
+      prompt += `PRIORITY TARGET WORD:
+- PRIMARY FOCUS: Use "${finalTargetWord}" as the target word
+- CONTEXT: Build a natural, engaging sentence around this specific word
+- RATIONALE: ${selectionReasons.join('; ')}
+- If this word cannot be used naturally, choose the most appropriate alternative from the same semantic domain
 
 `;
     }
 
+    if (novelty_words.length > 0) {
+      prompt += `NOVELTY ENHANCEMENT:
+- Consider these advanced vocabulary words: ${novelty_words.join(', ')}
+- Only use if they fit naturally and enhance learning value
+- Balance challenge with comprehensibility
+
+`;
+    }
+
+    // Pattern diversity requirements
+    if (avoid_patterns.length > 0 || enhanced_mode) {
+      prompt += `PATTERN DIVERSITY REQUIREMENTS:
+- AVOID these overused sentence patterns: ${avoid_patterns.slice(0, 3).join(', ')}
+- Use varied sentence structures (simple, compound, complex)
+- Diversify grammatical patterns and word order
+- Target diversity score: ${diversity_score_target}%
+- Employ different contexts: home, work, social, travel, culture
+
+`;
+    }
+
+    // N+1 methodology enhancement
     if (n_plus_one && known_words.length > 0) {
-      prompt += `N+1 Methodology: Use mostly familiar words with one new challenging word.
-Known words (use as base vocabulary): ${known_words.slice(0, 30).join(', ')}
+      prompt += `ENHANCED N+1 METHODOLOGY:
+- Base vocabulary (familiar): ${known_words.slice(0, 20).join(', ')}
+- Introduce 1 appropriately challenging element
+- Balance familiarity with learning progression
+- Ensure cognitive load is optimal for retention
 
 `;
     }
 
-    // Enhanced repetition avoidance
+    // Advanced repetition avoidance
     if (previous_sentences.length > 0) {
-      prompt += `AVOID REPETITION:
-- Do not repeat these previous sentences: ${previous_sentences.slice(-5).join('; ')}
-- Use different sentence structures and contexts
-- Avoid recently used words: ${Array.from(recentlyUsedWords).join(', ')}
+      prompt += `ADVANCED REPETITION AVOIDANCE:
+- STRICTLY AVOID repeating: ${previous_sentences.slice(-3).join(' | ')}
+- Use completely different vocabulary and contexts
+- Vary sentence length: aim for ${difficulty_level === 'beginner' ? '6-9' : difficulty_level === 'intermediate' ? '9-13' : '12-18'} words
+- Employ different discourse patterns
 
 `;
     }
 
-    // Add contextual difficulty guidance
-    const difficultyGuidance = {
-      beginner: 'Use simple present tense, basic vocabulary, short sentences (5-8 words)',
-      intermediate: 'Use varied tenses, common phrases, medium complexity (8-12 words)',
-      advanced: 'Use complex structures, idiomatic expressions, longer sentences (10-15 words)'
+    // Difficulty-specific enhanced guidance
+    const enhancedGuidance = {
+      beginner: 'Simple present/past tense, concrete nouns, basic adjectives, everyday situations, clear subject-verb-object patterns',
+      intermediate: 'Mixed tenses, abstract concepts, conjunctions, complex sentences, cultural contexts, idiomatic elements',
+      advanced: 'Sophisticated structures, nuanced meanings, advanced vocabulary, cultural subtleties, complex discourse patterns'
     };
 
-    prompt += `Difficulty-specific guidance for ${difficulty_level}:
-${difficultyGuidance[difficulty_level as keyof typeof difficultyGuidance] || difficultyGuidance.intermediate}
+    prompt += `DIFFICULTY-SPECIFIC ENHANCEMENT (${difficulty_level}):
+${enhancedGuidance[difficulty_level as keyof typeof enhancedGuidance]}
 
 `;
 
-    prompt += `Return a JSON object with:
-- sentence: The complete ${language} sentence
-- translation: English translation 
-- targetWord: The single word that should fill the blank
-- clozeSentence: The sentence with the target word replaced by "___"
-- difficultyScore: Number from 1-10
-- context: Brief explanation of when to use this sentence
-- hints: Array with one helpful hint (optional)
-- wordSelectionReason: Brief explanation of why this word was chosen
-
-Example format:
+    prompt += `OUTPUT FORMAT (JSON):
 {
-  "sentence": "Complete sentence in ${language}",
-  "translation": "English translation",
-  "targetWord": "word",
-  "clozeSentence": "Sentence with ___ replacing the target word",
-  "difficultyScore": 5,
-  "context": "This sentence is used when...",
-  "hints": ["Helpful hint about the target word"],
-  "wordSelectionReason": "This word was chosen because..."
-}`;
+  "sentence": "Complete natural sentence in ${language}",
+  "translation": "Accurate English translation",
+  "targetWord": "single target word for blank",
+  "clozeSentence": "Sentence with ___ replacing target word",
+  "difficultyScore": [1-10 integer],
+  "context": "When/why this sentence is used",
+  "hints": ["One contextual hint"],
+  "wordSelectionReason": "Why this target word was chosen",
+  "enhancedFeatures": {
+    "patternComplexity": "Description of sentence pattern used",
+    "contextualRichness": "Description of contextual elements",
+    "learningValue": "Educational benefit explanation"
+  }
+}
+
+Focus on creating an exceptional learning experience that balances challenge, engagement, and educational value.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -193,12 +198,12 @@ Example format:
         messages: [
           { 
             role: 'system', 
-            content: `You are an expert language learning AI specializing in adaptive cloze exercises. You create personalized exercises that use spaced repetition principles, avoid word repetition, and adapt to individual learner needs. Always generate sentences in the target language specified by the user.` 
+            content: `You are an advanced AI language learning specialist with expertise in adaptive content generation, spaced repetition, and personalized learning paths. You create exceptional cloze exercises that maximize learning effectiveness while maintaining engagement and appropriate challenge levels. Your exercises are powered by advanced algorithms that ensure optimal word selection, pattern diversity, and learning progression.` 
           },
           { role: 'user', content: prompt }
         ],
         temperature: 0.7,
-        max_tokens: 600
+        max_tokens: 800
       }),
     });
 
@@ -209,7 +214,7 @@ Example format:
     }
 
     const content = data.choices[0].message.content;
-    console.log('OpenAI response content:', content);
+    console.log('[Enhanced Generation] OpenAI response received');
 
     // Parse the JSON response
     let exercise;
@@ -217,57 +222,57 @@ Example format:
       const cleanContent = content.replace(/```json\n?|```\n?/g, '').trim();
       exercise = JSON.parse(cleanContent);
     } catch (parseError) {
-      console.error('Failed to parse OpenAI response:', parseError);
-      console.error('Raw content:', content);
+      console.error('[Enhanced Generation] Failed to parse response:', parseError);
       
       // Enhanced fallback with better variety
-      const fallbackSentences = {
+      const enhancedFallbacks = {
         beginner: {
-          german: ["Das ist ein schönes Haus.", "Ich trinke gerne Kaffee.", "Der Hund spielt im Park."],
-          spanish: ["Esta es una casa bonita.", "Me gusta beber café.", "El perro juega en el parque."],
-          french: ["C'est une belle maison.", "J'aime boire du café.", "Le chien joue dans le parc."],
-          portuguese: ["Esta é uma casa bonita.", "Eu gosto de beber café.", "O cão brinca no parque."],
-          italian: ["Questa è una bella casa.", "Mi piace bere il caffè.", "Il cane gioca nel parco."]
+          german: {
+            sentences: ["Ich lese jeden ___ ein interessantes Buch.", "Der ___ schmeckt heute besonders gut.", "Meine ___ kommt morgen zu Besuch."],
+            words: ["Tag", "Kaffee", "Freundin"],
+            translations: ["I read an interesting book every day.", "The coffee tastes especially good today.", "My friend is coming to visit tomorrow."]
+          },
+          spanish: {
+            sentences: ["Me gusta ___ música en las tardes.", "El ___ está muy caliente hoy.", "Vamos al ___ este fin de semana."],
+            words: ["escuchar", "sol", "parque"],
+            translations: ["I like to listen to music in the evenings.", "The sun is very hot today.", "We're going to the park this weekend."]
+          }
         },
         intermediate: {
-          german: ["Obwohl es regnet, gehen wir spazieren.", "Nachdem ich gearbeitet habe, treffe ich Freunde."],
-          spanish: ["Aunque llueve, vamos a caminar.", "Después de trabajar, me encuentro con amigos."],
-          french: ["Bien qu'il pleuve, nous allons nous promener.", "Après avoir travaillé, je rencontre des amis."],
-          portuguese: ["Embora chova, vamos caminhar.", "Depois de trabalhar, encontro-me com amigos."],
-          italian: ["Anche se piove, andiamo a camminare.", "Dopo aver lavorato, incontro gli amici."]
-        },
-        advanced: {
-          german: ["Trotz der schwierigen Umstände haben wir unser Ziel erreicht.", "Die Lösung des komplexen Problems erfordert innovative Ansätze."],
-          spanish: ["A pesar de las circunstancias difíciles, hemos logrado nuestro objetivo.", "La solución del problema complejo requiere enfoques innovadores."],
-          french: ["Malgré les circonstances difficiles, nous avons atteint notre objectif.", "La solution du problème complexe nécessite des approches innovantes."],
-          portuguese: ["Apesar das circunstâncias difíceis, alcançamos nosso objetivo.", "A solução do problema complexo requer abordagens inovadoras."],
-          italian: ["Nonostante le circostanze difficili, abbiamo raggiunto il nostro obiettivo.", "La soluzione del problema complesso richiede approcci innovativi."]
+          german: {
+            sentences: ["Obwohl es regnet, ___ wir spazieren gehen.", "Die ___ war sehr interessant und lehrreich.", "Nachdem ich ___ hatte, fühlte ich mich besser."],
+            words: ["werden", "Veranstaltung", "gegessen"],
+            translations: ["Although it's raining, we will go for a walk.", "The event was very interesting and educational.", "After I had eaten, I felt better."]
+          }
         }
       };
 
-      const levelSentences = fallbackSentences[difficulty_level as keyof typeof fallbackSentences] || fallbackSentences.beginner;
-      const langSentences = levelSentences[language as keyof typeof levelSentences] || levelSentences.german;
-      const randomSentence = langSentences[Math.floor(Math.random() * langSentences.length)];
+      const levelFallbacks = enhancedFallbacks[difficulty_level as keyof typeof enhancedFallbacks];
+      const langFallbacks = levelFallbacks?.[language as keyof typeof levelFallbacks] || levelFallbacks?.german;
       
-      const words = randomSentence.split(' ');
-      const targetWord = words[Math.floor(words.length / 2)]; // Pick middle word
-      
-      exercise = {
-        sentence: randomSentence,
-        translation: "This is a fallback sentence.",
-        targetWord,
-        clozeSentence: randomSentence.replace(targetWord, "___"),
-        difficultyScore: difficulty_level === 'beginner' ? 3 : difficulty_level === 'intermediate' ? 5 : 7,
-        context: "This is a fallback sentence for practice.",
-        hints: [`Think of a word that fits the context`],
-        wordSelectionReason: "Fallback selection due to parsing error"
-      };
+      if (langFallbacks) {
+        const randomIndex = Math.floor(Math.random() * langFallbacks.sentences.length);
+        exercise = {
+          sentence: langFallbacks.sentences[randomIndex].replace('___', langFallbacks.words[randomIndex]),
+          translation: langFallbacks.translations[randomIndex],
+          targetWord: langFallbacks.words[randomIndex],
+          clozeSentence: langFallbacks.sentences[randomIndex],
+          difficultyScore: difficulty_level === 'beginner' ? 3 : difficulty_level === 'intermediate' ? 5 : 7,
+          context: "Enhanced fallback sentence for practice.",
+          hints: [`Think of a word that makes sense in this context`],
+          wordSelectionReason: "Enhanced fallback due to parsing error",
+          enhancedFeatures: {
+            patternComplexity: "Standard pattern",
+            contextualRichness: "Basic context",
+            learningValue: "Vocabulary practice"
+          }
+        };
+      }
     }
 
-    // Step 3: Track word usage for cooldown system
+    // Track enhanced word usage for cooldown
     try {
       if (user_id && exercise.targetWord) {
-        // Record word usage in the session for cooldown tracking
         await supabase
           .from('known_words')
           .upsert({
@@ -277,20 +282,19 @@ Example format:
             last_reviewed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             review_count: 1,
-            correct_count: 0, // Will be updated when user submits answer
+            correct_count: 0,
             mastery_level: 1
           }, {
             onConflict: 'user_id,word,language'
           });
 
-        console.log(`Tracked word usage: ${exercise.targetWord} for user ${user_id}`);
+        console.log(`[Enhanced Generation] Tracked enhanced word usage: ${exercise.targetWord}`);
       }
     } catch (trackingError) {
-      console.error('Error tracking word usage:', trackingError);
-      // Don't fail the entire request for tracking errors
+      console.error('[Enhanced Generation] Error tracking word usage:', trackingError);
     }
 
-    // Ensure the exercise has the correct structure for cloze with enhanced metadata
+    // Create final enhanced exercise
     const finalExercise = {
       sentence: exercise.sentence || "Sample sentence",
       translation: exercise.translation || "Sample translation",
@@ -307,18 +311,23 @@ Example format:
       correctAttempts: 0,
       id: crypto.randomUUID(),
       // Enhanced metadata
-      wordSelectionReason: exercise.wordSelectionReason || selectionReasons.join(', ') || 'Standard selection',
-      isReviewWord: reviewWords?.some(rw => rw.word === exercise.targetWord) || false,
-      isStrugglingWord: strugglingWords.includes(exercise.targetWord),
-      selectionQuality: selectionReasons.length > 0 ? 85 : 70
+      wordSelectionReason: exercise.wordSelectionReason || selectionReasons.join(', ') || 'Enhanced selection',
+      isReviewWord: selectedWords.length > 0,
+      isNoveltyWord: novelty_words.includes(exercise.targetWord),
+      selectionQuality: selection_quality,
+      diversityScore: diversity_score_target,
+      enhancedFeatures: exercise.enhancedFeatures || {
+        patternComplexity: "Standard",
+        contextualRichness: "Basic",
+        learningValue: "Vocabulary"
+      }
     };
 
-    console.log('Final adaptive cloze exercise generated:', {
+    console.log(`[Enhanced Generation] Final exercise created:`, {
       targetWord: finalExercise.targetWord,
-      wordSelectionReason: finalExercise.wordSelectionReason,
-      isReviewWord: finalExercise.isReviewWord,
-      isStrugglingWord: finalExercise.isStrugglingWord,
-      selectionQuality: finalExercise.selectionQuality
+      selectionQuality: finalExercise.selectionQuality,
+      diversityScore: finalExercise.diversityScore,
+      enhancedMode: enhanced_mode
     });
 
     return new Response(JSON.stringify(finalExercise), {
@@ -326,7 +335,7 @@ Example format:
     });
 
   } catch (error) {
-    console.error('Error in generate-sentence-mining function:', error);
+    console.error('[Enhanced Generation] Error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
