@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AdvancedWordSelectionEngine } from './advancedWordSelectionEngine';
 
@@ -500,7 +499,7 @@ export class AdaptiveNoveltyInjector {
     return Math.max(0.3, Math.min(1, 0.7 + trend));
   }
 
-  private static async getRecentNoveltyCount(userId: string, language: string): number {
+  private static async getRecentNoveltyCount(userId: string, language: string): Promise<number> {
     // Count novelty words introduced in recent session
     // This is simplified - would need better tracking in practice
     const { data } = await supabase
