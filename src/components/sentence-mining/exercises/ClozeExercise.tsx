@@ -40,6 +40,17 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   const clozeSentence = exercise.clozeSentence || generateClozeSentence(exercise.sentence, exercise.targetWord || '');
   const targetWord = exercise.targetWord || '';
 
+  // Get the hint - prefer targetWordTranslation, fallback to first hint
+  const getHintText = () => {
+    if (exercise.targetWordTranslation) {
+      return exercise.targetWordTranslation;
+    }
+    if (exercise.hints && exercise.hints.length > 0) {
+      return exercise.hints[0];
+    }
+    return 'Think about what word fits here';
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     onResponseChange(value);
@@ -99,22 +110,20 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             </div>
           </div>
 
-          {/* Hints */}
-          {exercise.hints && exercise.hints.length > 0 && (
-            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-start gap-2">
-                <Lightbulb className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                    Hint:
-                  </p>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    {exercise.hints[0]}
-                  </p>
-                </div>
+          {/* Hints - now showing only the English meaning of the target word */}
+          <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-start gap-2">
+              <Lightbulb className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                  English meaning:
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  {getHintText()}
+                </p>
               </div>
             </div>
-          )}
+          </div>
 
           {/* Input Field */}
           {!showResult && (
@@ -142,7 +151,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               onClick={onToggleTranslation}
               className="transition-transform duration-200 hover:scale-105 active:scale-95"
             >
-              {showTranslation ? 'Hide' : 'Show'} English Translation
+              {showTranslation ? 'Hide' : 'Show'} Full Sentence Translation
             </Button>
           </div>
 
@@ -150,7 +159,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           {showTranslation && exercise.translation && (
             <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
               <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
-                English Translation:
+                Full Sentence Translation:
               </p>
               <p className="text-sm text-green-700 dark:text-green-300">
                 {exercise.translation}

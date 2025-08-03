@@ -100,6 +100,17 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
     return filledSentence;
   };
 
+  // Get the hint - prefer targetWordTranslation, fallback to first hint
+  const getHintText = () => {
+    if (exercise.targetWordTranslation) {
+      return exercise.targetWordTranslation;
+    }
+    if (exercise.hints && exercise.hints.length > 0) {
+      return exercise.hints[0];
+    }
+    return 'Think about what word fits here';
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <Card className="border-none shadow-lg">
@@ -155,19 +166,22 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
             </div>
           )}
 
-          {/* Hints */}
-          {exercise.hints && exercise.hints.length > 0 && (
-            <div className="flex justify-center">
-              <div className="max-w-md p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-1 flex-shrink-0" />
+          {/* Hints - now showing only the English meaning of the target word */}
+          <div className="flex justify-center">
+            <div className="max-w-md p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-1 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-1">
+                    English meaning:
+                  </p>
                   <p className="text-sm text-blue-700 dark:text-blue-300">
-                    {exercise.hints[0]}
+                    {getHintText()}
                   </p>
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
           {/* Translation toggle with keyboard hint */}
           {exercise.translation && (
@@ -178,7 +192,7 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
                 onClick={onToggleTranslation}
                 className="text-muted-foreground hover:text-foreground"
               >
-                {showTranslation ? 'Hide' : 'Show'} translation
+                {showTranslation ? 'Hide' : 'Show'} full sentence translation
               </Button>
               
               <p className="text-xs text-muted-foreground">

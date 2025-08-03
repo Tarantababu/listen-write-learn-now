@@ -12,6 +12,7 @@ export interface SentenceMiningExercise {
   translation?: string;
   correctAnswer: string;
   hints?: string[];
+  targetWordTranslation?: string; // English meaning of the target word
   // Database fields
   session_id?: string;
   sessionId?: string;

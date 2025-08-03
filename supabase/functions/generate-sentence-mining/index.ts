@@ -16,6 +16,7 @@ interface ExerciseResponse {
   sentence: string;
   translation: string;
   targetWord: string;
+  targetWordTranslation: string; // English meaning of the target word
   clozeSentence: string;
   difficultyScore: number;
   context: string;
@@ -32,9 +33,10 @@ interface FallbackExercise {
   sentences: string[];
   words: string[];
   translations: string[];
+  wordTranslations: string[]; // English meanings of individual target words
 }
 
-// Enhanced fallback system with more variety and better error recovery
+// Enhanced fallback system with target word translations
 const ENHANCED_FALLBACKS = {
   beginner: {
     german: {
@@ -58,7 +60,8 @@ const ENHANCED_FALLBACKS = {
         "The cat sings a beautiful song.",
         "He reads an interesting book.",
         "She buys fresh bread in the store."
-      ]
+      ],
+      wordTranslations: ["morning", "day", "mother", "house", "park", "cat", "book", "bread"]
     },
     spanish: {
       sentences: [
@@ -81,7 +84,8 @@ const ENHANCED_FALLBACKS = {
         "She buys vegetables at the market.",
         "We watch an interesting movie.",
         "You have a very beautiful garden."
-      ]
+      ],
+      wordTranslations: ["to walk", "sun", "to eat", "fruit", "Spanish", "vegetables", "movie", "garden"]
     },
     french: {
       sentences: [
@@ -104,7 +108,8 @@ const ENHANCED_FALLBACKS = {
         "He buys colorful flowers.",
         "You live in a big house.",
         "They prepare a delicious cake."
-      ]
+      ],
+      wordTranslations: ["bread", "store", "listens", "castle", "French", "flowers", "big", "cake"]
     }
   },
   intermediate: {
@@ -129,7 +134,8 @@ const ENHANCED_FALLBACKS = {
         "The solution to the problem was not easy.",
         "We still have to complete many tasks.",
         "She made an important decision."
-      ]
+      ],
+      wordTranslations: ["go", "interesting", "eaten", "visited", "is happy", "solution", "tasks", "decision"]
     }
   },
   advanced: {
@@ -154,7 +160,8 @@ const ENHANCED_FALLBACKS = {
         "We need to analyze the effects of the measure.",
         "The development of the company is promising.",
         "Her analytical skills are remarkable."
-      ]
+      ],
+      wordTranslations: ["situation", "obstacles", "findings", "analysis", "relationship", "effects", "development", "analytical"]
     }
   }
 };
@@ -262,10 +269,11 @@ function createSmartFallback(language: string, difficultyLevel: string, previous
     sentence,
     translation: langFallbacks.translations[selectedIndex],
     targetWord: langFallbacks.words[selectedIndex],
+    targetWordTranslation: langFallbacks.wordTranslations[selectedIndex],
     clozeSentence: langFallbacks.sentences[selectedIndex],
     difficultyScore: level === 'beginner' ? 3 : level === 'intermediate' ? 5 : 7,
     context: `Smart fallback exercise for ${language} (${level})`,
-    hints: [`Think of a word that fits the context of "${sentence.substring(0, 20)}..."`],
+    hints: [langFallbacks.wordTranslations[selectedIndex]],
     wordSelectionReason: 'Smart fallback with variety optimization',
     enhancedFeatures: {
       patternComplexity: 'Standard structure with contextual clues',
@@ -441,10 +449,11 @@ serve(async (req) => {
       sentence: exercise.sentence || "This is a sample sentence for practice.",
       translation: exercise.translation || "This is a sample translation.",
       targetWord: exercise.targetWord || "sample",
+      targetWordTranslation: exercise.targetWordTranslation || "sample",
       clozeSentence: exercise.clozeSentence || exercise.sentence?.replace(exercise.targetWord, "___") || "This is a ___ sentence.",
       difficultyScore: exercise.difficultyScore || 5,
       context: exercise.context || "Practice exercise",
-      hints: exercise.hints || ["Think about the context"],
+      hints: [exercise.targetWordTranslation || "sample"],
       correctAnswer: exercise.targetWord || "sample",
       difficulty: difficulty_level,
       exerciseType: 'cloze',
@@ -562,7 +571,8 @@ STRICT REQUIREMENTS:
 - Difficulty: ${difficultyLevel}
 - Create natural, contextually appropriate sentence
 - Choose ONE target word for the blank
-- Provide accurate English translation
+- Provide accurate English translation of the full sentence
+- Provide the English meaning of ONLY the target word (not contextual hints)
 
 `;
 
@@ -611,18 +621,21 @@ ${previous_sentences.slice(-3).join(' | ')}
 REQUIRED JSON FORMAT:
 {
   "sentence": "Complete natural sentence in ${language}",
-  "translation": "Accurate English translation", 
+  "translation": "Accurate English translation of the full sentence", 
   "targetWord": "single target word",
+  "targetWordTranslation": "English meaning of the target word only",
   "clozeSentence": "Sentence with ___ replacing target word",
   "difficultyScore": number between 1-10,
   "context": "When/where this sentence is used",
-  "hints": ["One helpful hint"],
+  "hints": ["English meaning of the target word only"],
   "enhancedFeatures": {
     "patternComplexity": "Description of sentence pattern",
     "contextualRichness": "Description of context elements", 
     "learningValue": "Educational benefit explanation"
   }
 }
+
+IMPORTANT: The "hints" array should contain ONLY the English meaning of the target word, not contextual clues that reveal the answer. For example, if the target word is "Katze" (cat), the hint should be "cat", not "an animal that meows".
 
 Create an engaging, educational exercise that helps language learning.`;
 
