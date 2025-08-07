@@ -131,7 +131,7 @@ export const useSentenceMining = () => {
       return;
     }
 
-    console.log(`[startSession] Starting adaptive session with difficulty: ${difficulty} for language: ${settings.selectedLanguage}`);
+    console.log(`[startSession] Starting language-aware session with difficulty: ${difficulty} for language: ${settings.selectedLanguage}`);
     
     // Validate difficulty parameter
     const validLevels: DifficultyLevel[] = ['beginner', 'intermediate', 'advanced'];
@@ -141,11 +141,16 @@ export const useSentenceMining = () => {
       return;
     }
 
+    // Validate language parameter
+    if (!settings.selectedLanguage || typeof settings.selectedLanguage !== 'string' || settings.selectedLanguage.trim().length === 0) {
+      console.error(`[startSession] Invalid language setting: ${settings.selectedLanguage}`);
+      toast.error('Please select a valid language first');
+      return;
+    }
+
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      
-      
       const rawSessionData = {
         user_id: user.id,
         language: settings.selectedLanguage,
@@ -161,7 +166,8 @@ export const useSentenceMining = () => {
           difficulty: difficulty,
           language: settings.selectedLanguage,
           exerciseTypes: ['cloze'],
-          // Enhanced session metadata for adaptive features
+          // Enhanced session metadata for language-aware features
+          languageAwareGeneration: true,
           intelligentWordSelection: true,
           spacedRepetitionEnabled: true,
           wordCooldownEnabled: true,
@@ -169,10 +175,9 @@ export const useSentenceMining = () => {
         }
       };
 
-      
       const sessionData = sanitizeSessionData(rawSessionData);
       
-      console.log('[startSession] Sanitized session data:', sessionData);
+      console.log('[startSession] Sanitized session data for language-aware generation:', sessionData);
       
       // Final validation that critical fields are preserved
       if (!sessionData.difficulty_level) {
@@ -190,7 +195,7 @@ export const useSentenceMining = () => {
         sessionData.exercise_types = ['cloze']; // Force restore
       }
 
-      console.log('[startSession] Final session data being sent to Supabase:', sessionData);
+      console.log(`[startSession] Final session data being sent to Supabase for ${settings.selectedLanguage}:`, sessionData);
 
       const { data: session, error } = await supabase
         .from('sentence_mining_sessions')
@@ -203,12 +208,17 @@ export const useSentenceMining = () => {
         throw error;
       }
 
-      console.log('[startSession] Successfully created adaptive session in database:', session);
+      console.log(`[startSession] Successfully created language-aware session in database for ${settings.selectedLanguage}:`, session);
 
-      // Validate that the created session has the correct difficulty
+      // Validate that the created session has the correct difficulty and language
       if (!session.difficulty_level) {
         console.error('[startSession] Created session has null difficulty_level!', session);
         throw new Error('Session creation failed: difficulty_level is null');
+      }
+
+      if (!session.language) {
+        console.error('[startSession] Created session has null language!', session);
+        throw new Error('Session creation failed: language is null');
       }
 
       if (!session.exercise_types || session.exercise_types.length === 0) {
@@ -238,7 +248,7 @@ export const useSentenceMining = () => {
         session_data: session.session_data
       };
 
-      console.log('[startSession] Created session object:', newSession);
+      console.log(`[startSession] Created session object for ${settings.selectedLanguage}:`, newSession);
 
       setState(prev => ({
         ...prev,
@@ -249,19 +259,19 @@ export const useSentenceMining = () => {
         loading: false
       }));
 
-      // Generate first adaptive exercise
+      // Generate first language-aware exercise
       await generateNextExercise(newSession);
       
-      toast.success(`Started adaptive ${difficulty} session in ${settings.selectedLanguage}`);
+      toast.success(`Started language-aware ${difficulty} session in ${settings.selectedLanguage}`);
       return newSession;
     } catch (error) {
-      console.error('[startSession] Error starting adaptive session:', error);
+      console.error(`[startSession] Error starting language-aware session for ${settings.selectedLanguage}:`, error);
       setState(prev => ({ 
         ...prev, 
         loading: false, 
-        error: error instanceof Error ? error.message : 'Failed to start adaptive session' 
+        error: error instanceof Error ? error.message : `Failed to start language-aware session for ${settings.selectedLanguage}` 
       }));
-      toast.error('Failed to start adaptive session');
+      toast.error(`Failed to start language-aware session for ${settings.selectedLanguage}`);
       throw error;
     }
   };
@@ -283,23 +293,29 @@ export const useSentenceMining = () => {
 
       const previousSentences = previousExercises?.map(ex => ex.sentence) || [];
 
-      // Enhanced generation with adaptive intelligence
+      console.log(`[generateNextExercise] Generating exercise for language: ${session.language}`);
+
+      // Enhanced generation with language-aware intelligence
       const { data, error } = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
           language: session.language,
-          difficulty: session.difficulty_level,
-          sessionId: session.id,
-          user_id: user.id, // Add user ID for intelligent word selection
+          difficulty_level: session.difficulty_level,
+          session_id: session.id,
+          user_id: user.id,
           previous_sentences: previousSentences,
-          n_plus_one: true, // Enable N+1 methodology
-          // Add adaptive parameters
+          n_plus_one: true,
+          // Add language-aware parameters
           enable_smart_selection: true,
           enable_spaced_repetition: true,
-          enable_word_cooldown: true
+          enable_word_cooldown: true,
+          enhanced_mode: true
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`[generateNextExercise] Edge function error for ${session.language}:`, error);
+        throw error;
+      }
 
       const exercise: SentenceMiningExercise = {
         id: crypto.randomUUID(),
@@ -316,16 +332,17 @@ export const useSentenceMining = () => {
         hints: data.hints,
         session_id: session.id,
         difficultyScore: data.difficultyScore,
-        // Enhanced metadata from adaptive generation
+        // Enhanced metadata from language-aware generation
         isSkipped: false
       };
 
-      console.log(`[generateNextExercise] Generated adaptive exercise:`, {
+      console.log(`[generateNextExercise] Generated language-aware exercise for ${session.language}:`, {
         targetWord: data.targetWord,
         wordSelectionReason: data.wordSelectionReason,
         isReviewWord: data.isReviewWord,
         isStrugglingWord: data.isStrugglingWord,
-        selectionQuality: data.selectionQuality
+        selectionQuality: data.selectionQuality,
+        language: session.language
       });
 
       setState(prev => ({
@@ -336,13 +353,13 @@ export const useSentenceMining = () => {
         isGeneratingNext: false
       }));
     } catch (error) {
-      console.error('Error generating adaptive exercise:', error);
+      console.error(`[generateNextExercise] Error generating language-aware exercise for ${session.language}:`, error);
       setState(prev => ({
         ...prev,
-        error: error instanceof Error ? error.message : 'Failed to generate adaptive exercise',
+        error: error instanceof Error ? error.message : `Failed to generate language-aware exercise for ${session.language}`,
         isGeneratingNext: false
       }));
-      toast.error('Failed to generate adaptive exercise');
+      toast.error(`Failed to generate language-aware exercise for ${session.language}`);
     }
   };
 
@@ -440,7 +457,7 @@ export const useSentenceMining = () => {
             onConflict: 'user_id,word,language'
           });
 
-        console.log(`[submitAnswer] Updated word performance for: ${currentExercise.targetWord} (correct: ${isCorrect})`);
+        console.log(`[submitAnswer] Updated word performance for: ${currentExercise.targetWord} (correct: ${isCorrect}) in ${currentSession.language}`);
       }
     } catch (error) {
       console.error('Error submitting adaptive answer:', error);
@@ -449,7 +466,6 @@ export const useSentenceMining = () => {
     }
   };
 
-  
   const nextExercise = useCallback(async () => {
     const { currentSession } = state;
     if (!currentSession) return;
@@ -575,8 +591,8 @@ const updateWordPerformanceInline = async (
         onConflict: 'user_id,word,language'
       });
 
-    console.log(`Updated spaced repetition: ${word} -> mastery level ${newMasteryLevel}, next review: ${nextReviewDate.toDateString()}`);
+    console.log(`Updated spaced repetition for ${language}: ${word} -> mastery level ${newMasteryLevel}, next review: ${nextReviewDate.toDateString()}`);
   } catch (error) {
-    console.error('Error in inline spaced repetition update:', error);
+    console.error(`Error in inline spaced repetition update for ${language}:`, error);
   }
 };

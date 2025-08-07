@@ -16,7 +16,7 @@ interface ExerciseResponse {
   sentence: string;
   translation: string;
   targetWord: string;
-  targetWordTranslation: string; // English meaning of the target word
+  targetWordTranslation: string;
   clozeSentence: string;
   difficultyScore: number;
   context: string;
@@ -33,11 +33,11 @@ interface FallbackExercise {
   sentences: string[];
   words: string[];
   translations: string[];
-  wordTranslations: string[]; // English meanings of individual target words
+  wordTranslations: string[];
 }
 
-// Enhanced fallback system with target word translations
-const ENHANCED_FALLBACKS = {
+// Comprehensive fallback system for all supported languages
+const COMPREHENSIVE_FALLBACKS = {
   beginner: {
     german: {
       sentences: [
@@ -110,6 +110,126 @@ const ENHANCED_FALLBACKS = {
         "They prepare a delicious cake."
       ],
       wordTranslations: ["bread", "store", "listens", "castle", "French", "flowers", "big", "cake"]
+    },
+    italian: {
+      sentences: [
+        "Io ___ la pasta ogni giorno.",
+        "Il ___ è molto bello oggi.",
+        "La ___ prepara la cena.",
+        "Noi andiamo al ___ insieme.",
+        "Tu hai un ___ simpatico.",
+        "Lei compra il ___ fresco.",
+        "Voi leggete un ___ interessante.",
+        "Loro guardano la ___."
+      ],
+      words: ["mangio", "tempo", "mamma", "cinema", "cane", "pane", "libro", "televisione"],
+      translations: [
+        "I eat pasta every day.",
+        "The weather is very beautiful today.",
+        "Mom prepares dinner.",
+        "We go to the cinema together.",
+        "You have a nice dog.",
+        "She buys fresh bread.",
+        "You read an interesting book.",
+        "They watch television."
+      ],
+      wordTranslations: ["eat", "weather", "mom", "cinema", "dog", "bread", "book", "television"]
+    },
+    portuguese: {
+      sentences: [
+        "Eu ___ café todas as manhãs.",
+        "O ___ está muito bonito hoje.",
+        "A ___ cozinha o jantar.",
+        "Nós vamos ao ___ no fim de semana.",
+        "Você tem um ___ muito legal.",
+        "Ela compra ___ no mercado.",
+        "Vocês leem um ___ interessante.",
+        "Eles assistem ___."
+      ],
+      words: ["bebo", "tempo", "família", "parque", "carro", "frutas", "livro", "televisão"],
+      translations: [
+        "I drink coffee every morning.",
+        "The weather is very beautiful today.",
+        "The family cooks dinner.",
+        "We go to the park on weekends.",
+        "You have a very cool car.",
+        "She buys fruits at the market.",
+        "You read an interesting book.",
+        "They watch television."
+      ],
+      wordTranslations: ["drink", "weather", "family", "park", "car", "fruits", "book", "television"]
+    },
+    dutch: {
+      sentences: [
+        "Ik drink elke ___ koffie.",
+        "Het ___ is vandaag heel mooi.",
+        "Mijn ___ kookt het avondeten.",
+        "We gaan naar het ___ wandelen.",
+        "Jij hebt een leuke ___.",
+        "Zij koopt vers ___ in de winkel.",
+        "Jullie lezen een interessant ___.",
+        "Zij kijken naar de ___."
+      ],
+      words: ["ochtend", "weer", "moeder", "park", "hond", "brood", "boek", "televisie"],
+      translations: [
+        "I drink coffee every morning.",
+        "The weather is very beautiful today.",
+        "My mother cooks dinner.",
+        "We go for a walk to the park.",
+        "You have a nice dog.",
+        "She buys fresh bread in the store.",
+        "You read an interesting book.",
+        "They watch television."
+      ],
+      wordTranslations: ["morning", "weather", "mother", "park", "dog", "bread", "book", "television"]
+    },
+    norwegian: {
+      sentences: [
+        "Jeg drikker ___ hver morgen.",
+        "Været er meget ___ i dag.",
+        "Min ___ lager middag.",
+        "Vi går til ___ og spaserer.",
+        "Du har en fin ___.",
+        "Hun kjøper friskt ___ i butikken.",
+        "Dere leser en interessant ___.",
+        "De ser på ___."
+      ],
+      words: ["kaffe", "pent", "mor", "parken", "hund", "brød", "bok", "TV"],
+      translations: [
+        "I drink coffee every morning.",
+        "The weather is very beautiful today.",
+        "My mother makes dinner.",
+        "We go to the park and walk.",
+        "You have a nice dog.",
+        "She buys fresh bread in the store.",
+        "You read an interesting book.",
+        "They watch TV."
+      ],
+      wordTranslations: ["coffee", "nice", "mother", "park", "dog", "bread", "book", "TV"]
+    },
+    swedish: {
+      sentences: [
+        "Jag dricker ___ varje morgon.",
+        "Vädret är mycket ___ idag.",
+        "Min ___ lagar middag.",
+        "Vi går till ___ och promenerar.",
+        "Du har en fin ___.",
+        "Hon köper färskt ___ i affären.",
+        "Ni läser en intressant ___.",
+        "De tittar på ___."
+      ],
+      words: ["kaffe", "vackert", "mamma", "parken", "hund", "bröd", "bok", "TV"],
+      translations: [
+        "I drink coffee every morning.",
+        "The weather is very beautiful today.",
+        "My mother cooks dinner.",
+        "We go to the park and walk.",
+        "You have a nice dog.",
+        "She buys fresh bread in the store.",
+        "You read an interesting book.",
+        "They watch TV."
+      ],
+      wordTranslations: ["coffee", "beautiful", "mother", "park", "dog", "bread", "book", "TV"]
     }
   },
   intermediate: {
@@ -136,6 +256,54 @@ const ENHANCED_FALLBACKS = {
         "She made an important decision."
       ],
       wordTranslations: ["go", "interesting", "eaten", "visited", "is happy", "solution", "tasks", "decision"]
+    },
+    spanish: {
+      sentences: [
+        "Aunque llueve, nosotros ___ al parque.",
+        "El evento fue muy ___ e informativo.",
+        "Después de que ___, me sentí mejor.",
+        "Durante las vacaciones ___ muchos museos.",
+        "Él se ___ por el buen tiempo.",
+        "La ___ del problema no fue fácil.",
+        "Tenemos que ___ muchas tareas todavía.",
+        "Ella tomó una ___ importante."
+      ],
+      words: ["vamos", "interesante", "comí", "visitamos", "alegra", "solución", "completar", "decisión"],
+      translations: [
+        "Although it rains, we go to the park.",
+        "The event was very interesting and informative.",
+        "After I ate, I felt better.",
+        "During the holidays we visited many museums.",
+        "He is happy about the good weather.",
+        "The solution to the problem was not easy.",
+        "We still have to complete many tasks.",
+        "She made an important decision."
+      ],
+      wordTranslations: ["go", "interesting", "ate", "visited", "is happy", "solution", "complete", "decision"]
+    },
+    french: {
+      sentences: [
+        "Bien qu'il pleuve, nous ___ au parc.",
+        "L'événement était très ___ et informatif.",
+        "Après avoir ___, je me suis senti mieux.",
+        "Pendant les vacances, nous avons ___ de nombreux musées.",
+        "Il se ___ du beau temps.",
+        "La ___ du problème n'était pas facile.",
+        "Nous devons encore ___ beaucoup de tâches.",
+        "Elle a pris une ___ importante."
+      ],
+      words: ["allons", "intéressant", "mangé", "visité", "réjouit", "solution", "accomplir", "décision"],
+      translations: [
+        "Although it rains, we go to the park.",
+        "The event was very interesting and informative.",
+        "After eating, I felt better.",
+        "During the holidays, we visited many museums.",
+        "He is happy about the beautiful weather.",
+        "The solution to the problem was not easy.",
+        "We still have to accomplish many tasks.",
+        "She made an important decision."
+      ],
+      wordTranslations: ["go", "interesting", "eaten", "visited", "rejoices", "solution", "accomplish", "decision"]
     }
   },
   advanced: {
@@ -162,6 +330,54 @@ const ENHANCED_FALLBACKS = {
         "Her analytical skills are remarkable."
       ],
       wordTranslations: ["situation", "obstacles", "findings", "analysis", "relationship", "effects", "development", "analytical"]
+    },
+    spanish: {
+      sentences: [
+        "La situación ___ ha mejorado significativamente.",
+        "A pesar de los ___, pudimos completar el proyecto.",
+        "Los ___ científicos son impresionantes.",
+        "Su ___ de la situación actual fue revelador.",
+        "La ___ entre los dos países es complicada.",
+        "Debemos analizar los ___ de la medida.",
+        "El ___ de la empresa es prometedor.",
+        "Sus habilidades ___ son notables."
+      ],
+      words: ["económica", "obstáculos", "hallazgos", "análisis", "relación", "efectos", "desarrollo", "analíticas"],
+      translations: [
+        "The economic situation has improved significantly.",
+        "Despite the obstacles, we could complete the project.",
+        "The scientific findings are impressive.",
+        "His analysis of the current situation was revealing.",
+        "The relationship between the two countries is complicated.",
+        "We must analyze the effects of the measure.",
+        "The development of the company is promising.",
+        "Her analytical skills are remarkable."
+      ],
+      wordTranslations: ["economic", "obstacles", "findings", "analysis", "relationship", "effects", "development", "analytical"]
+    },
+    french: {
+      sentences: [
+        "La situation ___ s'est nettement améliorée.",
+        "Malgré les ___, nous avons pu terminer le projet.",
+        "Les ___ scientifiques sont impressionnantes.",
+        "Son ___ de la situation actuelle était révélateur.",
+        "La ___ entre les deux pays est compliquée.",
+        "Nous devons analyser les ___ de la mesure.",
+        "Le ___ de l'entreprise est prometteur.",
+        "Ses compétences ___ sont remarquables."
+      ],
+      words: ["économique", "obstacles", "découvertes", "analyse", "relation", "effets", "développement", "analytiques"],
+      translations: [
+        "The economic situation has improved significantly.",
+        "Despite the obstacles, we could complete the project.",
+        "The scientific discoveries are impressive.",
+        "His analysis of the current situation was revealing.",
+        "The relationship between the two countries is complicated.",
+        "We must analyze the effects of the measure.",
+        "The development of the company is promising.",
+        "Her analytical skills are remarkable."
+      ],
+      wordTranslations: ["economic", "obstacles", "discoveries", "analysis", "relationship", "effects", "development", "analytical"]
     }
   }
 };
@@ -243,16 +459,32 @@ function validateExerciseStructure(obj: any): boolean {
          obj.targetWord.length > 0;
 }
 
-function createSmartFallback(language: string, difficultyLevel: string, previousSentences: string[] = []): ExerciseResponse {
+function createLanguageAwareFallback(language: string, difficultyLevel: string, previousSentences: string[] = []): ExerciseResponse {
+  console.log(`[Language-Aware Fallback] Creating fallback for language: ${language}, difficulty: ${difficultyLevel}`);
+  
   const level = difficultyLevel || 'beginner';
-  const fallbacks = ENHANCED_FALLBACKS[level as keyof typeof ENHANCED_FALLBACKS];
-  const langFallbacks = fallbacks?.[language as keyof typeof fallbacks] || ENHANCED_FALLBACKS.beginner.german;
+  const normalizedLanguage = language.toLowerCase();
+  
+  // Try to get fallbacks for the specific language and difficulty
+  let fallbacks = COMPREHENSIVE_FALLBACKS[level as keyof typeof COMPREHENSIVE_FALLBACKS]?.[normalizedLanguage as keyof typeof COMPREHENSIVE_FALLBACKS['beginner']];
+  
+  // If not found, try beginner level for the language
+  if (!fallbacks && level !== 'beginner') {
+    console.log(`[Language-Aware Fallback] No ${level} fallbacks for ${normalizedLanguage}, trying beginner`);
+    fallbacks = COMPREHENSIVE_FALLBACKS.beginner[normalizedLanguage as keyof typeof COMPREHENSIVE_FALLBACKS['beginner']];
+  }
+  
+  // If still not found, generate a basic fallback
+  if (!fallbacks) {
+    console.log(`[Language-Aware Fallback] No fallbacks found for ${normalizedLanguage}, generating basic fallback`);
+    return generateBasicLanguageFallback(normalizedLanguage, level);
+  }
   
   // Find unused sentences by checking against previous ones
-  const availableIndices = langFallbacks.sentences
+  const availableIndices = fallbacks.sentences
     .map((_, index) => index)
     .filter(index => {
-      const sentence = langFallbacks.sentences[index].replace('___', langFallbacks.words[index]);
+      const sentence = fallbacks!.sentences[index].replace('___', fallbacks!.words[index]);
       return !previousSentences.some(prev => 
         prev.toLowerCase().includes(sentence.toLowerCase().substring(0, 20))
       );
@@ -261,24 +493,67 @@ function createSmartFallback(language: string, difficultyLevel: string, previous
   // If all sentences used, reset to random selection
   const selectedIndex = availableIndices.length > 0 
     ? availableIndices[Math.floor(Math.random() * availableIndices.length)]
-    : Math.floor(Math.random() * langFallbacks.sentences.length);
+    : Math.floor(Math.random() * fallbacks.sentences.length);
 
-  const sentence = langFallbacks.sentences[selectedIndex].replace('___', langFallbacks.words[selectedIndex]);
+  const sentence = fallbacks.sentences[selectedIndex].replace('___', fallbacks.words[selectedIndex]);
   
   return {
     sentence,
-    translation: langFallbacks.translations[selectedIndex],
-    targetWord: langFallbacks.words[selectedIndex],
-    targetWordTranslation: langFallbacks.wordTranslations[selectedIndex],
-    clozeSentence: langFallbacks.sentences[selectedIndex],
+    translation: fallbacks.translations[selectedIndex],
+    targetWord: fallbacks.words[selectedIndex],
+    targetWordTranslation: fallbacks.wordTranslations[selectedIndex],
+    clozeSentence: fallbacks.sentences[selectedIndex],
     difficultyScore: level === 'beginner' ? 3 : level === 'intermediate' ? 5 : 7,
-    context: `Smart fallback exercise for ${language} (${level})`,
-    hints: [langFallbacks.wordTranslations[selectedIndex]],
-    wordSelectionReason: 'Smart fallback with variety optimization',
+    context: `Language-aware fallback exercise for ${language} (${level})`,
+    hints: [fallbacks.wordTranslations[selectedIndex]],
+    wordSelectionReason: `Language-aware fallback with variety optimization for ${language}`,
     enhancedFeatures: {
       patternComplexity: 'Standard structure with contextual clues',
       contextualRichness: 'Everyday situation with clear meaning',
       learningValue: 'Essential vocabulary practice'
+    }
+  };
+}
+
+function generateBasicLanguageFallback(language: string, difficulty: string): ExerciseResponse {
+  console.log(`[Basic Language Fallback] Generating for ${language} at ${difficulty} level`);
+  
+  // Generate a simple, language-appropriate fallback
+  const basicSentences = {
+    english: {
+      sentence: "I drink coffee every morning.",
+      targetWord: "coffee",
+      clozeSentence: "I drink ___ every morning.",
+      translation: "I drink coffee every morning.",
+      targetWordTranslation: "coffee",
+      context: "Daily routine"
+    },
+    default: {
+      sentence: "This is a practice sentence.",
+      targetWord: "practice",
+      clozeSentence: "This is a ___ sentence.",
+      translation: "This is a practice sentence.",
+      targetWordTranslation: "practice",
+      context: "Language learning exercise"
+    }
+  };
+  
+  const fallback = basicSentences[language as keyof typeof basicSentences] || basicSentences.default;
+  
+  return {
+    sentence: fallback.sentence,
+    translation: fallback.translation,
+    targetWord: fallback.targetWord,
+    targetWordTranslation: fallback.targetWordTranslation,
+    clozeSentence: fallback.clozeSentence,
+    difficultyScore: difficulty === 'beginner' ? 3 : difficulty === 'intermediate' ? 5 : 7,
+    context: fallback.context,
+    hints: [fallback.targetWordTranslation],
+    wordSelectionReason: `Basic language fallback for ${language}`,
+    enhancedFeatures: {
+      patternComplexity: 'Simple structure',
+      contextualRichness: 'Basic context',
+      learningValue: 'Fundamental vocabulary'
     }
   };
 }
@@ -309,13 +584,25 @@ serve(async (req) => {
       enhanced_mode = false
     } = await req.json();
 
+    // Enhanced logging for debugging
     console.log(`[Enhanced Generation] Starting ${enhanced_mode ? 'Enhanced' : 'Standard'} generation`);
     console.log(`[Enhanced Generation] Language: ${language}, Difficulty: ${difficulty_level}`);
     console.log(`[Enhanced Generation] Previous sentences count: ${previous_sentences.length}`);
 
-    // Validate required parameters
+    // Validate required parameters with better error messages
     if (!difficulty_level || !language || !user_id) {
+      console.error('[Enhanced Generation] Missing required parameters:', { 
+        difficulty_level: !!difficulty_level, 
+        language: !!language, 
+        user_id: !!user_id 
+      });
       throw new Error('Missing required parameters: difficulty_level, language, or user_id');
+    }
+
+    // Validate language parameter
+    if (typeof language !== 'string' || language.trim().length === 0) {
+      console.error('[Enhanced Generation] Invalid language parameter:', language);
+      throw new Error('Invalid language parameter provided');
     }
 
     // Enhanced word selection with fallback
@@ -399,12 +686,14 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('[Enhanced Generation] OpenAI API error:', response.status, errorText);
       throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error('[Enhanced Generation] Invalid OpenAI response structure:', data);
       throw new Error('Invalid response structure from OpenAI');
     }
 
@@ -415,8 +704,8 @@ serve(async (req) => {
     let exercise = parseOpenAIResponse(content);
     
     if (!exercise) {
-      console.warn('[Enhanced Generation] JSON parsing failed, using smart fallback');
-      exercise = createSmartFallback(language, difficulty_level, previous_sentences);
+      console.warn('[Enhanced Generation] JSON parsing failed, using language-aware fallback');
+      exercise = createLanguageAwareFallback(language, difficulty_level, previous_sentences);
     }
 
     // Enhanced word usage tracking with error resilience
@@ -437,7 +726,7 @@ serve(async (req) => {
             onConflict: 'user_id,word,language'
           });
 
-        console.log(`[Enhanced Generation] Tracked word usage: ${exercise.targetWord}`);
+        console.log(`[Enhanced Generation] Tracked word usage: ${exercise.targetWord} for language: ${language}`);
       } catch (trackingError) {
         console.warn('[Enhanced Generation] Word tracking failed:', trackingError);
         // Continue without failing the entire request
@@ -474,11 +763,13 @@ serve(async (req) => {
       // Performance metrics
       generationTime: Date.now() - startTime,
       fallbackUsed: !parseOpenAIResponse(content),
-      version: '2.0'
+      version: '2.0',
+      // Add language validation
+      generatedLanguage: language
     };
 
     console.log(`[Enhanced Generation] Exercise created successfully in ${Date.now() - startTime}ms`);
-    console.log(`[Enhanced Generation] Target word: ${finalExercise.targetWord}, Quality: ${finalExercise.selectionQuality}`);
+    console.log(`[Enhanced Generation] Target word: ${finalExercise.targetWord}, Language: ${language}, Quality: ${finalExercise.selectionQuality}`);
 
     return new Response(JSON.stringify(finalExercise), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -487,11 +778,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('[Enhanced Generation] Critical error:', error);
     
-    // Enhanced error recovery - never fail completely
+    // Enhanced error recovery - never fail completely with language awareness
     try {
       const { difficulty_level, language, previous_sentences = [] } = await req.json().catch(() => ({}));
       
-      const emergencyExercise = createSmartFallback(
+      const emergencyExercise = createLanguageAwareFallback(
         language || 'german', 
         difficulty_level || 'beginner', 
         previous_sentences
@@ -512,10 +803,11 @@ serve(async (req) => {
         generationTime: Date.now() - startTime,
         fallbackUsed: true,
         version: '2.0',
-        errorRecovery: true
+        errorRecovery: true,
+        generatedLanguage: language || 'german'
       };
 
-      console.log('[Enhanced Generation] Emergency fallback exercise created');
+      console.log(`[Enhanced Generation] Emergency fallback exercise created for language: ${language || 'german'}`);
       
       return new Response(JSON.stringify(finalExercise), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

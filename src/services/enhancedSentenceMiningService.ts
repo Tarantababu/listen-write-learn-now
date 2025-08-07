@@ -82,6 +82,7 @@ export class EnhancedSentenceMiningService {
       });
 
       if (error) {
+        console.error('[EnhancedSentenceMiningService] Edge function error:', error);
         throw new Error(`Edge function error: ${error.message}`);
       }
 
@@ -133,8 +134,8 @@ export class EnhancedSentenceMiningService {
     } catch (error) {
       console.error('[EnhancedSentenceMiningService] Generation error:', error);
       
-      // Enhanced fallback with better error recovery
-      const fallbackExercise = await this.createFallbackExercise(params);
+      // Enhanced fallback with better error recovery and language awareness
+      const fallbackExercise = await this.createLanguageAwareFallbackExercise(params);
       
       return {
         exercise: fallbackExercise,
@@ -143,17 +144,17 @@ export class EnhancedSentenceMiningService {
           fallbackUsed: true,
           selectionQuality: 50,
           diversityScore: 50,
-          wordSelectionReason: 'Fallback due to generation error'
+          wordSelectionReason: `Fallback due to generation error for ${params.language}`
         }
       };
     }
   }
 
-  private static async createFallbackExercise(params: GenerationParams): Promise<SentenceMiningExercise> {
-    console.log('[EnhancedSentenceMiningService] Creating fallback exercise');
+  private static async createLanguageAwareFallbackExercise(params: GenerationParams): Promise<SentenceMiningExercise> {
+    console.log(`[EnhancedSentenceMiningService] Creating language-aware fallback for ${params.language}`);
 
-    // Enhanced fallback with better variety
-    const fallbackExercises = {
+    // Comprehensive fallback exercises for all supported languages
+    const languageAwareFallbacks = {
       beginner: {
         german: [
           {
@@ -169,13 +170,134 @@ export class EnhancedSentenceMiningService {
             clozeSentence: "Das ___ ist heute sehr schön.",
             translation: "The weather is very beautiful today.",
             context: "Weather discussion"
+          }
+        ],
+        spanish: [
+          {
+            sentence: "Me gusta caminar en el parque.",
+            targetWord: "caminar",
+            clozeSentence: "Me gusta ___ en el parque.",
+            translation: "I like to walk in the park.",
+            context: "Recreation activities"
           },
           {
-            sentence: "Meine Familie kocht das Abendessen.",
-            targetWord: "Familie",
-            clozeSentence: "Meine ___ kocht das Abendessen.",
-            translation: "My family cooks dinner.",
-            context: "Family activities"
+            sentence: "El sol brilla mucho hoy.",
+            targetWord: "sol",
+            clozeSentence: "El ___ brilla mucho hoy.",
+            translation: "The sun shines a lot today.",
+            context: "Weather description"
+          }
+        ],
+        french: [
+          {
+            sentence: "Je mange du pain au petit-déjeuner.",
+            targetWord: "pain",
+            clozeSentence: "Je mange du ___ au petit-déjeuner.",
+            translation: "I eat bread for breakfast.",
+            context: "Morning routine"
+          },
+          {
+            sentence: "Le magasin est fermé le dimanche.",
+            targetWord: "magasin",
+            clozeSentence: "Le ___ est fermé le dimanche.",
+            translation: "The store is closed on Sunday.",
+            context: "Shopping information"
+          }
+        ],
+        italian: [
+          {
+            sentence: "Io mangio la pasta ogni giorno.",
+            targetWord: "mangio",
+            clozeSentence: "Io ___ la pasta ogni giorno.",
+            translation: "I eat pasta every day.",
+            context: "Daily meals"
+          },
+          {
+            sentence: "Il tempo è molto bello oggi.",
+            targetWord: "tempo",
+            clozeSentence: "Il ___ è molto bello oggi.",
+            translation: "The weather is very beautiful today.",
+            context: "Weather discussion"
+          }
+        ],
+        portuguese: [
+          {
+            sentence: "Eu bebo café todas as manhãs.",
+            targetWord: "bebo",
+            clozeSentence: "Eu ___ café todas as manhãs.",
+            translation: "I drink coffee every morning.",
+            context: "Morning routine"
+          },
+          {
+            sentence: "O tempo está muito bonito hoje.",
+            targetWord: "tempo",
+            clozeSentence: "O ___ está muito bonito hoje.",
+            translation: "The weather is very beautiful today.",
+            context: "Weather observation"
+          }
+        ],
+        dutch: [
+          {
+            sentence: "Ik drink elke ochtend koffie.",
+            targetWord: "ochtend",
+            clozeSentence: "Ik drink elke ___ koffie.",
+            translation: "I drink coffee every morning.",
+            context: "Daily routine"
+          },
+          {
+            sentence: "Het weer is vandaag heel mooi.",
+            targetWord: "weer",
+            clozeSentence: "Het ___ is vandaag heel mooi.",
+            translation: "The weather is very beautiful today.",
+            context: "Weather comment"
+          }
+        ],
+        norwegian: [
+          {
+            sentence: "Jeg drikker kaffe hver morgen.",
+            targetWord: "kaffe",
+            clozeSentence: "Jeg drikker ___ hver morgen.",
+            translation: "I drink coffee every morning.",
+            context: "Morning routine"
+          },
+          {
+            sentence: "Været er meget pent i dag.",
+            targetWord: "pent",
+            clozeSentence: "Været er meget ___ i dag.",
+            translation: "The weather is very nice today.",
+            context: "Weather observation"
+          }
+        ],
+        swedish: [
+          {
+            sentence: "Jag dricker kaffe varje morgon.",
+            targetWord: "kaffe",
+            clozeSentence: "Jag dricker ___ varje morgon.",
+            translation: "I drink coffee every morning.",
+            context: "Daily routine"
+          },
+          {
+            sentence: "Vädret är mycket vackert idag.",
+            targetWord: "vackert",
+            clozeSentence: "Vädret är mycket ___ idag.",
+            translation: "The weather is very beautiful today.",
+            context: "Weather description"
+          }
+        ],
+        english: [
+          {
+            sentence: "I drink coffee every morning.",
+            targetWord: "coffee",
+            clozeSentence: "I drink ___ every morning.",
+            translation: "I drink coffee every morning.",
+            context: "Daily routine"
+          },
+          {
+            sentence: "The weather is very beautiful today.",
+            targetWord: "weather",
+            clozeSentence: "The ___ is very beautiful today.",
+            translation: "The weather is very beautiful today.",
+            context: "Weather observation"
           }
         ]
       },
@@ -188,6 +310,24 @@ export class EnhancedSentenceMiningService {
             translation: "Although it's raining, we go for a walk.",
             context: "Weather and activities"
           }
+        ],
+        spanish: [
+          {
+            sentence: "Aunque llueve, nosotros vamos al parque.",
+            targetWord: "vamos",
+            clozeSentence: "Aunque llueve, nosotros ___ al parque.",
+            translation: "Although it rains, we go to the park.",
+            context: "Weather and activities"
+          }
+        ],
+        french: [
+          {
+            sentence: "Bien qu'il pleuve, nous allons au parc.",
+            targetWord: "allons",
+            clozeSentence: "Bien qu'il pleuve, nous ___ au parc.",
+            translation: "Although it rains, we go to the park.",
+            context: "Weather and activities"
+          }
         ]
       },
       advanced: {
@@ -198,29 +338,38 @@ export class EnhancedSentenceMiningService {
             clozeSentence: "Die Regierung hat neue Maßnahmen zur ___ der Inflation beschlossen.",
             translation: "The government has decided on new measures to combat inflation.",
             context: "Economic policy"
-          },
+          }
+        ],
+        spanish: [
           {
-            sentence: "Seine Argumentation war durchaus überzeugend, jedoch fehlten konkrete Belege.",
-            targetWord: "überzeugend",
-            clozeSentence: "Seine Argumentation war durchaus ___, jedoch fehlten konkrete Belege.",
-            translation: "His argument was quite convincing, but concrete evidence was lacking.",
-            context: "Academic discussion"
-          },
+            sentence: "La situación económica ha mejorado significativamente.",
+            targetWord: "económica",
+            clozeSentence: "La situación ___ ha mejorado significativamente.",
+            translation: "The economic situation has improved significantly.",
+            context: "Economic analysis"
+          }
+        ],
+        french: [
           {
-            sentence: "Die wissenschaftliche Untersuchung ergab eindeutige Hinweise auf klimatische Veränderungen.",
-            targetWord: "eindeutige",
-            clozeSentence: "Die wissenschaftliche Untersuchung ergab ___ Hinweise auf klimatische Veränderungen.",
-            translation: "The scientific investigation revealed clear evidence of climatic changes.",
-            context: "Scientific research"
+            sentence: "La situación económica s'est nettement améliorée.",
+            targetWord: "économique",
+            clozeSentence: "La situation ___ s'est nettement améliorée.",
+            translation: "The economic situation has improved significantly.",
+            context: "Economic discussion"
           }
         ]
       }
     };
 
-    const levelExercises = fallbackExercises[params.difficulty]?.[params.language as keyof typeof fallbackExercises[typeof params.difficulty]] || 
-                          fallbackExercises.beginner.german;
+    // Get language-specific fallbacks
+    const normalizedLanguage = params.language.toLowerCase();
+    const levelExercises = languageAwareFallbacks[params.difficulty]?.[normalizedLanguage as keyof typeof languageAwareFallbacks[typeof params.difficulty]] || 
+                          languageAwareFallbacks.beginner[normalizedLanguage as keyof typeof languageAwareFallbacks['beginner']] ||
+                          languageAwareFallbacks.beginner.german;
 
     const randomExercise = levelExercises[Math.floor(Math.random() * levelExercises.length)];
+
+    console.log(`[EnhancedSentenceMiningService] Created language-aware fallback for ${params.language}: ${randomExercise.targetWord}`);
 
     return {
       id: crypto.randomUUID(),
@@ -282,7 +431,7 @@ export class EnhancedSentenceMiningService {
     const cacheKey = `preload_${userId}_${language}_${difficulty}_${sessionId}`;
     
     try {
-      console.log(`[EnhancedSentenceMiningService] Preloading ${count} exercises`);
+      console.log(`[EnhancedSentenceMiningService] Preloading ${count} exercises for ${language}`);
       
       const results = await this.batchGenerateExercises({
         language,
@@ -298,9 +447,9 @@ export class EnhancedSentenceMiningService {
         timestamp: Date.now()
       });
 
-      console.log(`[EnhancedSentenceMiningService] Successfully preloaded ${results.length} exercises`);
+      console.log(`[EnhancedSentenceMiningService] Successfully preloaded ${results.length} exercises for ${language}`);
     } catch (error) {
-      console.error('[EnhancedSentenceMiningService] Preloading failed:', error);
+      console.error(`[EnhancedSentenceMiningService] Preloading failed for ${language}:`, error);
     }
   }
 
