@@ -1,15 +1,14 @@
-
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { DifficultyLevel } from '@/types/sentence-mining';
+import { useOptimizedSentenceMining } from '@/hooks/use-optimized-sentence-mining';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Progress } from '@/components/ui/progress';
-import { useOptimizedSentenceMining } from '@/hooks/use-optimized-sentence-mining';
-import { DifficultyLevel } from '@/types/sentence-mining';
-import { Loader2, Zap, Target, Clock, TrendingUp } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Brain, Target, TrendingUp, BarChart3, Lightbulb, RefreshCw } from 'lucide-react';
+import { EnhancedDiversityInsights } from './EnhancedDiversityInsights';
 
-export const OptimizedSentenceMiningSection = () => {
+export const OptimizedSentenceMiningSection: React.FC = () => {
   const {
     currentSession,
     currentExercise,
@@ -18,13 +17,17 @@ export const OptimizedSentenceMiningSection = () => {
     isCorrect,
     loading,
     error,
-    showTranslation,
+    progress,
     showHint,
+    showTranslation,
     isGeneratingNext,
     exerciseCount,
     averageResponseTime,
     sessionQuality,
     preloadStatus,
+    diversityMetrics,
+    wordPoolStats,
+    diversityInsights,
     startSession,
     submitAnswer,
     nextExercise,
@@ -32,7 +35,9 @@ export const OptimizedSentenceMiningSection = () => {
     updateUserResponse,
     toggleTranslation,
     toggleHint,
-    getPerformanceMetrics
+    getPerformanceMetrics,
+    getDiversityInsights,
+    getWordPoolInfo
   } = useOptimizedSentenceMining();
 
   const handleStartSession = (difficulty: DifficultyLevel) => {
@@ -40,257 +45,286 @@ export const OptimizedSentenceMiningSection = () => {
   };
 
   const handleSubmitAnswer = () => {
-    submitAnswer(userResponse.trim());
+    submitAnswer(userResponse);
   };
 
-  const handleSkip = () => {
-    submitAnswer('', [], true);
+  const handleNextExercise = () => {
+    nextExercise();
   };
 
-  const performanceMetrics = getPerformanceMetrics();
+  const handleEndSession = () => {
+    endSession();
+  };
 
-  if (!currentSession) {
+  const handleUpdateUserResponse = (event: React.ChangeEvent<HTMLInputElement>) => {
+    updateUserResponse(event.target.value);
+  };
+
+  if (currentSession && currentExercise) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <Card className="border-2 border-dashed border-gray-200 dark:border-gray-800">
-          <CardHeader className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Zap className="h-8 w-8 text-blue-500" />
-              <CardTitle className="text-2xl">Optimized Sentence Mining</CardTitle>
-            </div>
-            <CardDescription className="text-lg">
-              Enhanced AI-powered language learning with smart preloading and performance optimization
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                <Target className="h-6 w-6 mx-auto mb-2 text-blue-500" />
-                <h3 className="font-semibold">Smart Word Selection</h3>
-                <p className="text-sm text-muted-foreground">AI analyzes your progress</p>
+      <div className="space-y-6">
+        {/* Enhanced header with diversity info */}
+        <Card className="border-2 border-primary/20">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5" />
+                  Enhanced Sentence Mining
+                  <Badge variant="secondary" className="ml-2">
+                    {currentSession.difficulty_level}
+                  </Badge>
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  AI-powered vocabulary practice with smart diversity
+                </p>
               </div>
-              <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                <Clock className="h-6 w-6 mx-auto mb-2 text-green-500" />
-                <h3 className="font-semibold">Instant Exercises</h3>
-                <p className="text-sm text-muted-foreground">Preloaded for speed</p>
-              </div>
-              <div className="text-center p-4 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
-                <TrendingUp className="h-6 w-6 mx-auto mb-2 text-purple-500" />
-                <h3 className="font-semibold">Performance Tracking</h3>
-                <p className="text-sm text-muted-foreground">Real-time metrics</p>
+              <div className="text-right">
+                <div className="text-2xl font-bold">{exerciseCount}</div>
+                <div className="text-xs text-muted-foreground">exercises</div>
               </div>
             </div>
 
-            <div className="flex justify-center gap-4">
-              <Button 
-                onClick={() => handleStartSession('beginner')}
-                disabled={loading}
-                variant="outline"
-                className="flex-1 max-w-xs"
-              >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Beginner
-              </Button>
-              <Button 
-                onClick={() => handleStartSession('intermediate')}
-                disabled={loading}
-                variant="outline" 
-                className="flex-1 max-w-xs"
-              >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Intermediate
-              </Button>
-              <Button 
-                onClick={() => handleStartSession('advanced')}
-                disabled={loading}
-                variant="outline"
-                className="flex-1 max-w-xs"
-              >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Advanced
-              </Button>
-            </div>
-
-            {error && (
-              <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-red-600 dark:text-red-400">{error}</p>
+            {/* Enhanced progress indicators */}
+            {diversityMetrics && (
+              <div className="flex items-center gap-4 pt-3 border-t">
+                <div className="flex items-center gap-2">
+                  <div className="text-xs text-muted-foreground">Diversity:</div>
+                  <Badge variant={diversityMetrics.overallScore >= 80 ? "default" : diversityMetrics.overallScore >= 60 ? "secondary" : "destructive"}>
+                    {diversityMetrics.overallScore}%
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="text-xs text-muted-foreground">Quality:</div>
+                  <Badge variant="outline">
+                    {Math.round(sessionQuality)}%
+                  </Badge>
+                </div>
+                {wordPoolStats && (
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground">Available:</div>
+                    <Badge variant="outline">
+                      {wordPoolStats.availableWords}/{wordPoolStats.totalWords}
+                    </Badge>
+                  </div>
+                )}
               </div>
             )}
+          </CardHeader>
+
+          <CardContent className="pt-0">
+            {/* Exercise display */}
+            <div className="space-y-4">
+              <div className="p-6 bg-gradient-to-r from-muted/20 to-muted/10 rounded-lg border">
+                <blockquote className="text-lg leading-relaxed">
+                  {currentExercise.clozeSentence.split('___').map((part, index, array) => (
+                    <React.Fragment key={index}>
+                      {part}
+                      {index < array.length - 1 && (
+                        <span className="inline-block mx-2 px-3 py-1 bg-primary/10 border-2 border-dashed border-primary/30 rounded text-primary font-medium min-w-[80px] text-center">
+                          {showResult ? currentExercise.targetWord : '___'}
+                        </span>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </blockquote>
+              </div>
+
+              {/* Answer input and buttons */}
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  placeholder="Your answer"
+                  value={userResponse}
+                  onChange={handleUpdateUserResponse}
+                  disabled={showResult || loading}
+                />
+                <div className="flex justify-between">
+                  <Button
+                    variant="secondary"
+                    onClick={toggleHint}
+                    disabled={showHint}
+                  >
+                    {showHint ? 'Hint Shown' : 'Show Hint'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={toggleTranslation}
+                    disabled={showTranslation}
+                  >
+                    {showTranslation ? 'Translation Shown' : 'Show Translation'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Submit and Next buttons */}
+              <div className="flex justify-end gap-2">
+                {showResult ? (
+                  <Button onClick={handleNextExercise} disabled={loading || isGeneratingNext}>
+                    {isGeneratingNext ? 'Generating...' : 'Next Exercise'}
+                  </Button>
+                ) : (
+                  <Button onClick={handleSubmitAnswer} disabled={loading}>
+                    {loading ? 'Submitting...' : 'Submit Answer'}
+                  </Button>
+                )}
+              </div>
+
+              {/* Result display */}
+              {showResult && (
+                <div className={`p-4 rounded-md ${isCorrect ? 'bg-green-100 border border-green-500 text-green-700' : 'bg-red-100 border border-red-500 text-red-700'}`}>
+                  {isCorrect ? 'Correct!' : `Incorrect. The correct answer was: ${currentExercise.correctAnswer}`}
+                </div>
+              )}
+
+              {/* Error display */}
+              {error && (
+                <div className="p-4 rounded-md bg-red-100 border border-red-500 text-red-700">
+                  Error: {error}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
+
+        {/* Enhanced Diversity Insights */}
+        <EnhancedDiversityInsights
+          diversityMetrics={diversityMetrics}
+          wordPoolStats={wordPoolStats}
+          insights={diversityInsights}
+          exerciseCount={exerciseCount}
+          sessionQuality={sessionQuality}
+        />
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-48">
+        Loading...
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      {/* Performance Dashboard */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
-          <div className="text-sm text-muted-foreground">Exercises</div>
-          <div className="text-2xl font-bold">{exerciseCount}</div>
-        </div>
-        <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg">
-          <div className="text-sm text-muted-foreground">Avg Speed</div>
-          <div className="text-2xl font-bold">{averageResponseTime}ms</div>
-        </div>
-        <div className="bg-purple-50 dark:bg-purple-950/20 p-3 rounded-lg">
-          <div className="text-sm text-muted-foreground">Quality</div>
-          <div className="text-2xl font-bold">{Math.round(sessionQuality)}%</div>
-        </div>
-        <div className="bg-orange-50 dark:bg-orange-950/20 p-3 rounded-lg">
-          <div className="text-sm text-muted-foreground">Preload</div>
-          <div className="flex items-center gap-1">
-            <Badge 
-              variant={preloadStatus === 'ready' ? 'default' : preloadStatus === 'loading' ? 'secondary' : 'destructive'}
-              className="text-xs"
-            >
-              {preloadStatus}
-            </Badge>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Exercise Card */}
-      <Card className="mb-6">
+    <div className="space-y-6">
+      {/* Enhanced welcome screen */}
+      <Card className="text-center">
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-lg">
-                {currentSession.language.charAt(0).toUpperCase() + currentSession.language.slice(1)} - {currentSession.difficulty}
-              </CardTitle>
-              <CardDescription>
-                Complete the sentence by filling in the blank
-              </CardDescription>
+          <CardTitle className="flex items-center justify-center gap-2 text-2xl">
+            <Brain className="h-6 w-6" />
+            Enhanced Sentence Mining
+          </CardTitle>
+          <p className="text-muted-foreground">
+            AI-powered vocabulary learning with intelligent word diversity and smart recommendations
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Enhanced features showcase */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+            <div className="p-4 border rounded-lg">
+              <Target className="h-5 w-5 mb-2 text-primary" />
+              <h3 className="font-medium mb-1">Intelligent Word Selection</h3>
+              <p className="text-sm text-muted-foreground">
+                AI chooses optimal vocabulary based on your learning progress and word diversity needs
+              </p>
             </div>
-            <div className="flex gap-2">
-              <Badge variant="outline">{currentExercise?.targetWord || 'Loading...'}</Badge>
-              {preloadStatus === 'ready' && (
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  <Zap className="h-3 w-3 mr-1" />
-                  Ready
-                </Badge>
-              )}
+            <div className="p-4 border rounded-lg">
+              <RefreshCw className="h-5 w-5 mb-2 text-primary" />
+              <h3 className="font-medium mb-1">Smart Cooldown System</h3>
+              <p className="text-sm text-muted-foreground">
+                Prevents word repetition and ensures varied practice across different contexts
+              </p>
+            </div>
+            <div className="p-4 border rounded-lg">
+              <BarChart3 className="h-5 w-5 mb-2 text-primary" />
+              <h3 className="font-medium mb-1">Diversity Tracking</h3>
+              <p className="text-sm text-muted-foreground">
+                Real-time analysis of vocabulary variety and learning pattern diversity
+              </p>
+            </div>
+            <div className="p-4 border rounded-lg">
+              <TrendingUp className="h-5 w-5 mb-2 text-primary" />
+              <h3 className="font-medium mb-1">Performance Insights</h3>
+              <p className="text-sm text-muted-foreground">
+                Detailed analytics on your learning progress and recommendations for improvement
+              </p>
             </div>
           </div>
-        </CardHeader>
-        
-        <CardContent className="space-y-4">
-          {currentExercise ? (
-            <>
-              {/* Exercise Sentence */}
-              <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-lg text-center">
-                <p className="text-xl md:text-2xl font-medium leading-relaxed">
-                  {currentExercise.clozeSentence}
-                </p>
-                {showTranslation && currentExercise.translation && (
-                  <p className="text-sm text-muted-foreground mt-3 italic">
-                    {currentExercise.translation}
-                  </p>
-                )}
-              </div>
 
-              {/* Answer Input */}
-              <div className="space-y-3">
-                <Input
-                  value={userResponse}
-                  onChange={(e) => updateUserResponse(e.target.value)}
-                  placeholder="Type your answer here..."
-                  disabled={showResult || loading || isGeneratingNext}
-                  className="text-center text-lg py-3"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !showResult && userResponse.trim()) {
-                      handleSubmitAnswer();
-                    }
-                  }}
-                />
+          {/* Difficulty selection */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card 
+              className="cursor-pointer transition-all hover:shadow-md border-2 hover:border-primary/50"
+              onClick={() => startSession('beginner')}
+            >
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl mb-2">🌱</div>
+                <h3 className="font-medium mb-1">Beginner</h3>
+                <p className="text-sm text-muted-foreground">Essential vocabulary and common words</p>
+                <Badge variant="outline" className="mt-2">A1-A2 Level</Badge>
+              </CardContent>
+            </Card>
 
-                {/* Hints */}
-                {showHint && currentExercise.hints && currentExercise.hints.length > 0 && (
-                  <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                    <p className="text-sm">💡 <strong>Hint:</strong> {currentExercise.hints[0]}</p>
-                  </div>
-                )}
+            <Card 
+              className="cursor-pointer transition-all hover:shadow-md border-2 hover:border-primary/50"
+              onClick={() => startSession('intermediate')}
+            >
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl mb-2">🚀</div>
+                <h3 className="font-medium mb-1">Intermediate</h3>
+                <p className="text-sm text-muted-foreground">Complex expressions and nuanced vocabulary</p>
+                <Badge variant="outline" className="mt-2">B1-B2 Level</Badge>
+              </CardContent>
+            </Card>
 
-                {/* Result */}
-                {showResult && (
-                  <div className={`p-4 rounded-lg border ${
-                    isCorrect 
-                      ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' 
-                      : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
-                  }`}>
-                    <p className={`text-center font-semibold ${
-                      isCorrect 
-                        ? 'text-green-600 dark:text-green-400' 
-                        : 'text-red-600 dark:text-red-400'
-                    }`}>
-                      {isCorrect ? '✅ Correct!' : '❌ Incorrect'}
-                    </p>
-                    {!isCorrect && (
-                      <p className="text-center text-sm mt-2">
-                        The correct answer is: <strong>{currentExercise.correctAnswer}</strong>
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 justify-center">
-                {!showResult ? (
-                  <>
-                    <Button
-                      onClick={handleSubmitAnswer}
-                      disabled={!userResponse.trim() || loading}
-                      className="px-8"
-                    >
-                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Submit
-                    </Button>
-                    <Button variant="outline" onClick={handleSkip} disabled={loading}>
-                      Skip
-                    </Button>
-                    <Button variant="ghost" onClick={toggleHint}>
-                      {showHint ? 'Hide Hint' : 'Show Hint'}
-                    </Button>
-                    <Button variant="ghost" onClick={toggleTranslation}>
-                      {showTranslation ? 'Hide Translation' : 'Show Translation'}
-                    </Button>
-                  </>
-                ) : (
-                  <Button 
-                    onClick={nextExercise} 
-                    disabled={isGeneratingNext}
-                    className="px-8"
-                  >
-                    {isGeneratingNext && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {preloadStatus === 'ready' ? 'Next Exercise' : 'Generate Next'}
-                  </Button>
-                )}
-              </div>
-
-              {/* Context */}
-              {currentExercise.context && (
-                <div className="text-center text-sm text-muted-foreground">
-                  <p><strong>Context:</strong> {currentExercise.context}</p>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="text-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-              <p>Generating your first optimized exercise...</p>
-            </div>
-          )}
+            <Card 
+              className="cursor-pointer transition-all hover:shadow-md border-2 hover:border-primary/50"
+              onClick={() => startSession('advanced')}
+            >
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl mb-2">🎯</div>
+                <h3 className="font-medium mb-1">Advanced</h3>
+                <p className="text-sm text-muted-foreground">Sophisticated and specialized terminology</p>
+                <Badge variant="outline" className="mt-2">C1-C2 Level</Badge>
+              </CardContent>
+            </Card>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Session Controls */}
-      <div className="flex justify-center">
-        <Button variant="outline" onClick={endSession} disabled={loading}>
-          End Session
-        </Button>
-      </div>
+      {/* Progress overview with enhanced metrics */}
+      {progress && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Your Learning Progress
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{progress.totalSessions}</div>
+                <div className="text-sm text-muted-foreground">Sessions</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{progress.totalExercises}</div>
+                <div className="text-sm text-muted-foreground">Exercises</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{progress.averageAccuracy}%</div>
+                <div className="text-sm text-muted-foreground">Accuracy</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{progress.totalCorrect}</div>
+                <div className="text-sm text-muted-foreground">Correct</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

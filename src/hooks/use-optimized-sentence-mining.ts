@@ -6,6 +6,8 @@ import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { EnhancedSentenceMiningService, GenerationResult } from '@/services/enhancedSentenceMiningService';
 import { EnhancedCooldownSystem } from '@/services/enhancedCooldownSystem';
+import { WordDiversityEngine, WordDiversityMetrics } from '@/services/wordDiversityEngine';
+import { IntelligentWordPoolManager, WordPoolStats } from '@/services/intelligentWordPoolManager';
 
 interface OptimizedSentenceMiningState {
   currentSession: SentenceMiningSession | null;
@@ -21,11 +23,16 @@ interface OptimizedSentenceMiningState {
   showTranslation: boolean;
   isGeneratingNext: boolean;
   
-  // Performance features
+  // Enhanced performance features
   exerciseCount: number;
   averageResponseTime: number;
   sessionQuality: number;
   preloadStatus: 'idle' | 'loading' | 'ready' | 'error';
+  
+  // New diversity features
+  diversityMetrics: WordDiversityMetrics | null;
+  wordPoolStats: WordPoolStats | null;
+  diversityInsights: string[];
 }
 
 export const useOptimizedSentenceMining = () => {
@@ -46,7 +53,10 @@ export const useOptimizedSentenceMining = () => {
     exerciseCount: 0,
     averageResponseTime: 0,
     sessionQuality: 0,
-    preloadStatus: 'idle'
+    preloadStatus: 'idle',
+    diversityMetrics: null,
+    wordPoolStats: null,
+    diversityInsights: []
   });
 
   const exerciseHistory = useRef<GenerationResult[]>([]);
@@ -58,12 +68,57 @@ export const useOptimizedSentenceMining = () => {
     loadProgress();
   }, [settings.selectedLanguage]);
 
+  // Enhanced diversity tracking
+  useEffect(() => {
+    if (state.currentSession) {
+      updateDiversityMetrics();
+    }
+  }, [state.currentSession, state.exerciseCount]);
+
   // Preload next exercise when current exercise is shown
   useEffect(() => {
     if (state.currentExercise && state.currentSession && !state.nextExerciseReady && !state.isGeneratingNext) {
       preloadNextExercise();
     }
   }, [state.currentExercise, state.currentSession]);
+
+  const updateDiversityMetrics = async () => {
+    if (!state.currentSession) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get diversity metrics
+      const diversityMetrics = await WordDiversityEngine.analyzeSessionDiversity(
+        user.id,
+        settings.selectedLanguage,
+        state.currentSession.id,
+        24
+      );
+
+      // Get word pool statistics
+      const wordPoolStats = await IntelligentWordPoolManager.getWordPoolStats(
+        user.id,
+        settings.selectedLanguage,
+        state.currentSession.difficulty_level
+      );
+
+      // Generate insights
+      const diversityInsights = WordDiversityEngine.generateDiversityReport(diversityMetrics);
+
+      setState(prev => ({
+        ...prev,
+        diversityMetrics,
+        wordPoolStats,
+        diversityInsights
+      }));
+
+      console.log(`[OptimizedSentenceMining] Diversity updated: Overall ${diversityMetrics.overallScore}%, Pool: ${wordPoolStats.availableWords}/${wordPoolStats.totalWords}`);
+    } catch (error) {
+      console.error('[OptimizedSentenceMining] Error updating diversity metrics:', error);
+    }
+  };
 
   const loadProgress = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -111,7 +166,7 @@ export const useOptimizedSentenceMining = () => {
       return;
     }
 
-    console.log(`[OptimizedSentenceMining] Starting optimized session with difficulty: ${difficulty}`);
+    console.log(`[OptimizedSentenceMining] Starting enhanced diversity-aware session: ${difficulty}`);
     
     setState(prev => ({ 
       ...prev, 
@@ -120,11 +175,14 @@ export const useOptimizedSentenceMining = () => {
       exerciseCount: 0,
       averageResponseTime: 0,
       sessionQuality: 0,
-      preloadStatus: 'idle'
+      preloadStatus: 'idle',
+      diversityMetrics: null,
+      wordPoolStats: null,
+      diversityInsights: []
     }));
 
     try {
-      // Create session
+      // Create session with enhanced metadata
       const sessionData = {
         user_id: user.id,
         language: settings.selectedLanguage,
@@ -139,12 +197,15 @@ export const useOptimizedSentenceMining = () => {
           startTime: new Date().toISOString(),
           difficulty: difficulty,
           language: settings.selectedLanguage,
-          optimizedFeatures: {
-            enhancedGeneration: true,
+          enhancedFeatures: {
+            diversityTracking: true,
+            intelligentWordSelection: true,
             smartPreloading: true,
             performanceTracking: true,
-            adaptiveCooldown: true
-          }
+            adaptiveCooldown: true,
+            contextAwareness: true
+          },
+          targetDiversityScore: 75
         }
       };
 
@@ -178,7 +239,7 @@ export const useOptimizedSentenceMining = () => {
 
       setState(prev => ({ ...prev, currentSession: newSession }));
 
-      // Start preloading exercises
+      // Start enhanced preloading with diversity optimization
       EnhancedSentenceMiningService.preloadExercises(
         user.id,
         settings.selectedLanguage,
@@ -187,19 +248,22 @@ export const useOptimizedSentenceMining = () => {
         3
       );
 
-      // Generate first exercise
+      // Generate first exercise with diversity tracking
       await generateFirstExercise(newSession);
       
-      toast.success(`Started optimized ${difficulty} session with smart features`);
+      // Initial diversity metrics update
+      await updateDiversityMetrics();
+      
+      toast.success(`Started enhanced ${difficulty} session with smart diversity features`);
       return newSession;
     } catch (error) {
-      console.error('[OptimizedSentenceMining] Error starting session:', error);
+      console.error('[OptimizedSentenceMining] Error starting enhanced session:', error);
       setState(prev => ({ 
         ...prev, 
         loading: false, 
         error: error instanceof Error ? error.message : 'Failed to start session' 
       }));
-      toast.error('Failed to start optimized session');
+      toast.error('Failed to start enhanced session');
     }
   };
 
@@ -231,7 +295,7 @@ export const useOptimizedSentenceMining = () => {
         sessionQuality: result.metadata.selectionQuality
       }));
 
-      console.log(`[OptimizedSentenceMining] First exercise generated in ${result.metadata.generationTime}ms`);
+      console.log(`[OptimizedSentenceMining] First exercise generated with diversity score: ${result.metadata.diversityScore}, quality: ${result.metadata.selectionQuality}`);
     } catch (error) {
       console.error('[OptimizedSentenceMining] Error generating first exercise:', error);
       setState(prev => ({
@@ -260,10 +324,11 @@ export const useOptimizedSentenceMining = () => {
 
       if (preloaded) {
         setState(prev => ({ ...prev, nextExerciseReady: preloaded.exercise }));
+        console.log(`[OptimizedSentenceMining] Next exercise preloaded with diversity: ${preloaded.metadata.diversityScore}`);
         return;
       }
 
-      // Generate new exercise if no preloaded one available
+      // Generate new exercise with enhanced diversity
       setState(prev => ({ ...prev, preloadStatus: 'loading' }));
 
       const result = await EnhancedSentenceMiningService.generateExerciseWithEnhancements({
@@ -281,9 +346,9 @@ export const useOptimizedSentenceMining = () => {
         preloadStatus: 'ready'
       }));
 
-      console.log('[OptimizedSentenceMining] Next exercise preloaded');
+      console.log(`[OptimizedSentenceMining] Next exercise preloaded with enhanced diversity: ${result.metadata.diversityScore}`);
     } catch (error) {
-      console.error('[OptimizedSentenceMining] Error preloading exercise:', error);
+      console.error('[OptimizedSentenceMining] Error preloading enhanced exercise:', error);
       setState(prev => ({ ...prev, preloadStatus: 'error' }));
     }
   };
@@ -358,6 +423,9 @@ export const useOptimizedSentenceMining = () => {
         averageResponseTime: Math.round(avgResponseTime)
       }));
 
+      // Update diversity metrics after each exercise
+      setTimeout(() => updateDiversityMetrics(), 500);
+
     } catch (error) {
       console.error('[OptimizedSentenceMining] Error submitting answer:', error);
       setState(prev => ({ ...prev, loading: false, error: 'Failed to submit answer' }));
@@ -386,7 +454,7 @@ export const useOptimizedSentenceMining = () => {
       return;
     }
 
-    // Fallback to generate new exercise
+    // Fallback to generate new exercise with enhanced diversity
     setState(prev => ({ ...prev, isGeneratingNext: true }));
     
     try {
@@ -414,8 +482,10 @@ export const useOptimizedSentenceMining = () => {
         isGeneratingNext: false,
         sessionQuality: (prev.sessionQuality + result.metadata.selectionQuality) / 2
       }));
+
+      console.log(`[OptimizedSentenceMining] Next exercise generated with enhanced diversity: ${result.metadata.diversityScore}`);
     } catch (error) {
-      console.error('[OptimizedSentenceMining] Error generating next exercise:', error);
+      console.error('[OptimizedSentenceMining] Error generating next enhanced exercise:', error);
       setState(prev => ({ 
         ...prev, 
         error: 'Failed to generate next exercise',
@@ -441,6 +511,11 @@ export const useOptimizedSentenceMining = () => {
         })
         .eq('id', currentSession.id);
 
+      // Get final diversity metrics for summary
+      const finalDiversityScore = state.diversityMetrics?.overallScore || 0;
+      const poolUtilization = state.wordPoolStats ? 
+        Math.round((state.wordPoolStats.totalWords - state.wordPoolStats.coolingDownWords) / state.wordPoolStats.totalWords * 100) : 0;
+
       setState(prev => ({
         ...prev,
         currentSession: null,
@@ -451,7 +526,10 @@ export const useOptimizedSentenceMining = () => {
         exerciseCount: 0,
         averageResponseTime: 0,
         sessionQuality: 0,
-        preloadStatus: 'idle'
+        preloadStatus: 'idle',
+        diversityMetrics: null,
+        wordPoolStats: null,
+        diversityInsights: []
       }));
 
       // Reset histories
@@ -461,11 +539,11 @@ export const useOptimizedSentenceMining = () => {
       await loadProgress();
 
       toast.success(
-        `Session completed! ${currentSession.totalCorrect}/${currentSession.totalAttempts} correct (Avg: ${state.averageResponseTime}ms)`,
-        { duration: 5000 }
+        `Enhanced session completed! ${currentSession.totalCorrect}/${currentSession.totalAttempts} correct • Diversity: ${finalDiversityScore}% • Pool utilization: ${poolUtilization}%`,
+        { duration: 6000 }
       );
     } catch (error) {
-      console.error('[OptimizedSentenceMining] Error ending session:', error);
+      console.error('[OptimizedSentenceMining] Error ending enhanced session:', error);
     }
   };
 
@@ -491,15 +569,25 @@ export const useOptimizedSentenceMining = () => {
     toggleTranslation,
     toggleHint,
     loadProgress,
+    updateDiversityMetrics,
     
-    // Performance insights
+    // Enhanced performance insights
     getPerformanceMetrics: () => ({
       exerciseCount: state.exerciseCount,
       averageResponseTime: state.averageResponseTime,
       sessionQuality: state.sessionQuality,
       preloadStatus: state.preloadStatus,
       cacheHitRate: exerciseHistory.current.length > 0 ? 
-        exerciseHistory.current.filter(r => !r.metadata.fallbackUsed).length / exerciseHistory.current.length : 0
-    })
+        exerciseHistory.current.filter(r => !r.metadata.fallbackUsed).length / exerciseHistory.current.length : 0,
+      diversityScore: state.diversityMetrics?.overallScore || 0,
+      wordPoolUtilization: state.wordPoolStats ? 
+        (state.wordPoolStats.availableWords / state.wordPoolStats.totalWords) * 100 : 0
+    }),
+
+    // Diversity insights
+    getDiversityInsights: () => state.diversityInsights,
+    
+    // Word pool information
+    getWordPoolInfo: () => state.wordPoolStats
   };
 };
