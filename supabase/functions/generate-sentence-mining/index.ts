@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
@@ -34,6 +33,197 @@ interface FallbackExercise {
   words: string[];
   translations: string[];
   wordTranslations: string[];
+}
+
+// Enhanced word selection with cooldown checking
+async function getIntelligentWordSelection(
+  userId: string,
+  language: string,
+  difficulty: string,
+  sessionId: string,
+  preferredWords: string[] = [],
+  noveltyWords: string[] = [],
+  avoidPatterns: string[] = []
+): Promise<{
+  selectedWord: string;
+  selectionReason: string;
+  alternativeWords: string[];
+}> {
+  try {
+    console.log(`[Enhanced Generation] Starting intelligent word selection for ${language} (${difficulty})`);
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Step 1: Get recent word usage to avoid repetition
+    const recentUsage = await getRecentWordUsage(userId, language, sessionId, 72); // 3 days lookback
+    
+    // Step 2: Filter preferred words by cooldown and recent usage
+    let availableWords: string[] = [];
+    let selectionReason = '';
+    
+    if (preferredWords.length > 0) {
+      availableWords = preferredWords.filter(word => {
+        const recentCount = recentUsage.get(word.toLowerCase()) || 0;
+        // Block words used more than 2 times in last 72 hours
+        if (recentCount > 2) {
+          console.log(`[Enhanced Generation] Blocking overused word: ${word} (used ${recentCount} times)`);
+          return false;
+        }
+        return true;
+      });
+      
+      if (availableWords.length > 0) {
+        selectionReason = 'Intelligent selection from preferred words';
+      } else {
+        console.log(`[Enhanced Generation] All preferred words are on cooldown, switching to novelty selection`);
+      }
+    }
+    
+    // Step 3: Try novelty words if no preferred words available
+    if (availableWords.length === 0 && noveltyWords.length > 0) {
+      availableWords = noveltyWords.filter(word => {
+        const recentCount = recentUsage.get(word.toLowerCase()) || 0;
+        return recentCount <= 1; // Allow novelty words used once
+      });
+      
+      if (availableWords.length > 0) {
+        selectionReason = 'Novelty word selection for variety';
+      }
+    }
+    
+    // Step 4: Fallback to database query with diversity constraints
+    if (availableWords.length === 0) {
+      console.log(`[Enhanced Generation] No suitable preferred/novelty words, querying database with diversity constraints`);
+      
+      const { data: reviewWords } = await supabase
+        .from('known_words')
+        .select('word')
+        .eq('user_id', userId)
+        .eq('language', language)
+        .lte('next_review_date', new Date().toISOString().split('T')[0])
+        .order('next_review_date', { ascending: true })
+        .limit(20);
+      
+      if (reviewWords && reviewWords.length > 0) {
+        // Filter by recent usage and select diverse words
+        const candidateWords = reviewWords
+          .map(r => r.word)
+          .filter(word => {
+            const recentCount = recentUsage.get(word.toLowerCase()) || 0;
+            return recentCount <= 1; // Allow words used at most once recently
+          });
+        
+        if (candidateWords.length > 0) {
+          // Score words based on diversity and usage
+          const scoredWords = candidateWords.map(word => {
+            const recentCount = recentUsage.get(word.toLowerCase()) || 0;
+            let score = 100;
+            
+            // Heavily penalize recent usage
+            score -= recentCount * 40;
+            
+            // Add randomness for variety
+            score += (Math.random() - 0.5) * 20;
+            
+            return { word, score };
+          });
+          
+          // Select top scoring word
+          scoredWords.sort((a, b) => b.score - a.score);
+          availableWords = [scoredWords[0].word];
+          selectionReason = `Diverse database selection (score: ${Math.round(scoredWords[0].score)})`;
+        }
+      }
+    }
+    
+    // Step 5: Final fallback to basic selection if all else fails
+    if (availableWords.length === 0) {
+      console.log(`[Enhanced Generation] All selection methods failed, using emergency fallback`);
+      
+      // Get any words that haven't been used in the last 24 hours
+      const { data: emergencyWords } = await supabase
+        .from('known_words')
+        .select('word')
+        .eq('user_id', userId)
+        .eq('language', language)
+        .limit(50);
+      
+      if (emergencyWords && emergencyWords.length > 0) {
+        const emergencyCandidates = emergencyWords
+          .map(r => r.word)
+          .filter(word => {
+            const recentCount = recentUsage.get(word.toLowerCase()) || 0;
+            return recentCount === 0; // Only completely unused words
+          });
+        
+        if (emergencyCandidates.length > 0) {
+          availableWords = [emergencyCandidates[Math.floor(Math.random() * emergencyCandidates.length)]];
+          selectionReason = 'Emergency fallback - unused word';
+        }
+      }
+    }
+    
+    const selectedWord = availableWords.length > 0 ? availableWords[0] : 'der'; // Ultimate fallback
+    const alternativeWords = availableWords.slice(1, 4);
+    
+    console.log(`[Enhanced Generation] Selected word: "${selectedWord}" - ${selectionReason}`);
+    
+    return {
+      selectedWord,
+      selectionReason,
+      alternativeWords
+    };
+    
+  } catch (error) {
+    console.error('[Enhanced Generation] Error in intelligent word selection:', error);
+    return {
+      selectedWord: 'der',
+      selectionReason: 'Error fallback selection',
+      alternativeWords: []
+    };
+  }
+}
+
+async function getRecentWordUsage(
+  userId: string,
+  language: string,
+  sessionId: string,
+  lookbackHours: number
+): Promise<Map<string, number>> {
+  const usageMap = new Map<string, number>();
+  const cutoffTime = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
+
+  try {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const { data: exercises } = await supabase
+      .from('sentence_mining_exercises')
+      .select('target_words')
+      .gte('created_at', cutoffTime.toISOString());
+
+    exercises?.forEach(exercise => {
+      exercise.target_words?.forEach((word: string) => {
+        const normalizedWord = word.toLowerCase();
+        usageMap.set(normalizedWord, (usageMap.get(normalizedWord) || 0) + 1);
+      });
+    });
+    
+    console.log(`[Enhanced Generation] Recent usage analysis: ${usageMap.size} unique words tracked`);
+    
+    // Log the most frequently used words
+    const sortedUsage = Array.from(usageMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+    
+    if (sortedUsage.length > 0) {
+      console.log(`[Enhanced Generation] Most used words: ${sortedUsage.map(([word, count]) => `${word}(${count})`).join(', ')}`);
+    }
+    
+  } catch (error) {
+    console.error('[Enhanced Generation] Error getting recent usage:', error);
+  }
+
+  return usageMap;
 }
 
 // Comprehensive fallback system for all supported languages
@@ -587,64 +777,29 @@ serve(async (req) => {
     // Enhanced logging for debugging
     console.log(`[Enhanced Generation] Starting ${enhanced_mode ? 'Enhanced' : 'Standard'} generation`);
     console.log(`[Enhanced Generation] Language: ${language}, Difficulty: ${difficulty_level}`);
+    console.log(`[Enhanced Generation] Preferred words: [${preferred_words.join(', ')}]`);
+    console.log(`[Enhanced Generation] Novelty words: [${novelty_words.join(', ')}]`);
     console.log(`[Enhanced Generation] Previous sentences count: ${previous_sentences.length}`);
 
-    // Validate required parameters with better error messages
+    // Validate required parameters
     if (!difficulty_level || !language || !user_id) {
-      console.error('[Enhanced Generation] Missing required parameters:', { 
-        difficulty_level: !!difficulty_level, 
-        language: !!language, 
-        user_id: !!user_id 
-      });
       throw new Error('Missing required parameters: difficulty_level, language, or user_id');
     }
 
-    // Validate language parameter
-    if (typeof language !== 'string' || language.trim().length === 0) {
-      console.error('[Enhanced Generation] Invalid language parameter:', language);
-      throw new Error('Invalid language parameter provided');
-    }
+    // Get intelligent word selection
+    const wordSelection = await getIntelligentWordSelection(
+      user_id,
+      language,
+      difficulty_level,
+      session_id,
+      preferred_words,
+      novelty_words,
+      avoid_patterns
+    );
 
-    // Enhanced word selection with fallback
-    let selectedWords: string[] = [];
-    let selectionReasons: string[] = [];
-    let finalTargetWord = '';
+    const finalTargetWord = wordSelection.selectedWord;
 
-    if (enhanced_mode && preferred_words.length > 0) {
-      selectedWords = preferred_words;
-      selectionReasons.push(`Enhanced word selection: "${preferred_words[0]}"`);
-      finalTargetWord = preferred_words[0];
-
-      if (novelty_words.length > 0 && Math.random() < 0.3) {
-        finalTargetWord = novelty_words[0];
-        selectionReasons.push(`Novelty injection: "${novelty_words[0]}"`);
-      }
-    } else {
-      // Improved fallback selection with database resilience
-      try {
-        const { data: reviewWordsData, error } = await supabase
-          .from('known_words')
-          .select('word')
-          .eq('user_id', user_id)
-          .eq('language', language)
-          .lte('next_review_date', new Date().toISOString().split('T')[0])
-          .order('next_review_date', { ascending: true })
-          .limit(5);
-
-        if (error) {
-          console.warn('[Enhanced Generation] Database query failed:', error);
-          selectionReasons.push('Database unavailable, using adaptive selection');
-        } else if (reviewWordsData && reviewWordsData.length > 0) {
-          finalTargetWord = reviewWordsData[0].word;
-          selectionReasons.push(`Review word selected: "${finalTargetWord}"`);
-        }
-      } catch (dbError) {
-        console.error('[Enhanced Generation] Database error:', dbError);
-        selectionReasons.push('Database error, using random selection');
-      }
-    }
-
-    // Build optimized prompt with performance improvements
+    // Build optimized prompt
     const prompt = buildOptimizedPrompt({
       language,
       difficultyLevel: difficulty_level,
@@ -652,7 +807,7 @@ serve(async (req) => {
       selection_quality,
       diversity_score_target,
       finalTargetWord,
-      selectionReasons,
+      selectionReasons: [wordSelection.selectionReason],
       novelty_words,
       avoid_patterns,
       n_plus_one,
@@ -660,9 +815,10 @@ serve(async (req) => {
       previous_sentences
     });
 
+    console.log(`[Enhanced Generation] Using target word: "${finalTargetWord}" - ${wordSelection.selectionReason}`);
     console.log('[Enhanced Generation] Sending request to OpenAI...');
     
-    // Enhanced OpenAI request with better error handling
+    // OpenAI request
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -691,16 +847,10 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      console.error('[Enhanced Generation] Invalid OpenAI response structure:', data);
-      throw new Error('Invalid response structure from OpenAI');
-    }
-
     const content = data.choices[0].message.content;
     console.log('[Enhanced Generation] OpenAI response received');
 
-    // Parse with enhanced recovery
+    // Parse response
     let exercise = parseOpenAIResponse(content);
     
     if (!exercise) {
@@ -708,7 +858,7 @@ serve(async (req) => {
       exercise = createLanguageAwareFallback(language, difficulty_level, previous_sentences);
     }
 
-    // Enhanced word usage tracking with error resilience
+    // Track word usage for future diversity
     if (user_id && exercise.targetWord) {
       try {
         await supabase
@@ -729,29 +879,28 @@ serve(async (req) => {
         console.log(`[Enhanced Generation] Tracked word usage: ${exercise.targetWord} for language: ${language}`);
       } catch (trackingError) {
         console.warn('[Enhanced Generation] Word tracking failed:', trackingError);
-        // Continue without failing the entire request
       }
     }
 
-    // Create enhanced final exercise with all safety checks
+    // Create final exercise response
     const finalExercise = {
       sentence: exercise.sentence || "This is a sample sentence for practice.",
       translation: exercise.translation || "This is a sample translation.",
-      targetWord: exercise.targetWord || "sample",
+      targetWord: exercise.targetWord || finalTargetWord,
       targetWordTranslation: exercise.targetWordTranslation || "sample",
       clozeSentence: exercise.clozeSentence || exercise.sentence?.replace(exercise.targetWord, "___") || "This is a ___ sentence.",
       difficultyScore: exercise.difficultyScore || 5,
       context: exercise.context || "Practice exercise",
       hints: [exercise.targetWordTranslation || "sample"],
-      correctAnswer: exercise.targetWord || "sample",
+      correctAnswer: exercise.targetWord || finalTargetWord,
       difficulty: difficulty_level,
       exerciseType: 'cloze',
       createdAt: new Date(),
       attempts: 0,
       correctAttempts: 0,
       id: crypto.randomUUID(),
-      wordSelectionReason: exercise.wordSelectionReason || selectionReasons.join(', ') || 'Standard selection',
-      isReviewWord: selectedWords.length > 0,
+      wordSelectionReason: wordSelection.selectionReason,
+      isReviewWord: preferred_words.includes(exercise.targetWord || ''),
       isNoveltyWord: novelty_words.includes(exercise.targetWord || ''),
       selectionQuality: selection_quality,
       diversityScore: diversity_score_target,
@@ -760,16 +909,15 @@ serve(async (req) => {
         contextualRichness: "Basic",
         learningValue: "Vocabulary"
       },
-      // Performance metrics
+      alternativeWords: wordSelection.alternativeWords,
       generationTime: Date.now() - startTime,
       fallbackUsed: !parseOpenAIResponse(content),
-      version: '2.0',
-      // Add language validation
+      version: '2.1',
       generatedLanguage: language
     };
 
     console.log(`[Enhanced Generation] Exercise created successfully in ${Date.now() - startTime}ms`);
-    console.log(`[Enhanced Generation] Target word: ${finalExercise.targetWord}, Language: ${language}, Quality: ${finalExercise.selectionQuality}`);
+    console.log(`[Enhanced Generation] Final word: ${finalExercise.targetWord}, Selection: ${wordSelection.selectionReason}`);
 
     return new Response(JSON.stringify(finalExercise), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -778,7 +926,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('[Enhanced Generation] Critical error:', error);
     
-    // Enhanced error recovery - never fail completely with language awareness
+    // Enhanced error recovery
     try {
       const { difficulty_level, language, previous_sentences = [] } = await req.json().catch(() => ({}));
       
@@ -796,18 +944,19 @@ serve(async (req) => {
         correctAttempts: 0,
         id: crypto.randomUUID(),
         difficulty: difficulty_level || 'beginner',
+        wordSelectionReason: 'Emergency fallback due to error',
         isReviewWord: false,
         isNoveltyWord: false,
         selectionQuality: 50,
         diversityScore: 50,
         generationTime: Date.now() - startTime,
         fallbackUsed: true,
-        version: '2.0',
+        version: '2.1',
         errorRecovery: true,
         generatedLanguage: language || 'german'
       };
 
-      console.log(`[Enhanced Generation] Emergency fallback exercise created for language: ${language || 'german'}`);
+      console.log(`[Enhanced Generation] Emergency fallback exercise created`);
       
       return new Response(JSON.stringify(finalExercise), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
