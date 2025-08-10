@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
@@ -65,6 +66,56 @@ export const useSentenceMining = () => {
       console.error('Error loading progress:', error);
     }
   };
+
+  // Declare nextExercise function first
+  const nextExercise = useCallback(async () => {
+    if (!state.currentSession) return;
+
+    setState(prev => ({ ...prev, loading: true }));
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Generate exercise
+      const exerciseResponse = await supabase.functions.invoke('generate-sentence-mining', {
+        body: {
+          difficulty_level: state.currentSession.difficulty,
+          language: settings.selectedLanguage,
+          session_id: state.currentSession.id,
+          user_id: user.id,
+          preferred_words: [],
+          novelty_words: [],
+          avoid_patterns: [],
+          diversity_score_target: 75,
+          selection_quality: 50,
+          enhanced_mode: false,
+          previous_sentences: [],
+          known_words: [],
+          n_plus_one: false
+        }
+      });
+
+      if (exerciseResponse.error) {
+        throw new Error(`Exercise generation failed: ${exerciseResponse.error.message}`);
+      }
+
+      const exercise = exerciseResponse.data;
+
+      setState(prev => ({
+        ...prev,
+        currentExercise: exercise,
+        userResponse: '',
+        showResult: false,
+        showTranslation: false,
+        showHint: false,
+        loading: false
+      }));
+    } catch (error) {
+      console.error('Error generating exercise:', error);
+      setState(prev => ({ ...prev, error: 'Failed to generate exercise', loading: false }));
+    }
+  }, [settings.selectedLanguage, state.currentSession]);
 
   const startSession = useCallback(async (difficulty: DifficultyLevel) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
@@ -184,55 +235,6 @@ export const useSentenceMining = () => {
       setState(prev => ({ ...prev, loading: false, error: 'Failed to submit answer' }));
     }
   }, [loadProgress, settings.selectedLanguage]);
-
-  const nextExercise = useCallback(async () => {
-    if (!state.currentSession) return;
-
-    setState(prev => ({ ...prev, loading: true }));
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      // Generate exercise
-      const exerciseResponse = await supabase.functions.invoke('generate-sentence-mining', {
-        body: {
-          difficulty_level: state.currentSession.difficulty,
-          language: settings.selectedLanguage,
-          session_id: state.currentSession.id,
-          user_id: user.id,
-          preferred_words: [],
-          novelty_words: [],
-          avoid_patterns: [],
-          diversity_score_target: 75,
-          selection_quality: 50,
-          enhanced_mode: false,
-          previous_sentences: [],
-          known_words: [],
-          n_plus_one: false
-        }
-      });
-
-      if (exerciseResponse.error) {
-        throw new Error(`Exercise generation failed: ${exerciseResponse.error.message}`);
-      }
-
-      const exercise = exerciseResponse.data;
-
-      setState(prev => ({
-        ...prev,
-        currentExercise: exercise,
-        userResponse: '',
-        showResult: false,
-        showTranslation: false,
-        showHint: false,
-        loading: false
-      }));
-    } catch (error) {
-      console.error('Error generating exercise:', error);
-      setState(prev => ({ ...prev, error: 'Failed to generate exercise', loading: false }));
-    }
-  }, [settings.selectedLanguage, state.currentSession]);
 
   const endSession = useCallback(async () => {
     const { currentSession } = state;
