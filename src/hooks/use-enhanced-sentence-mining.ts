@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
@@ -111,6 +110,7 @@ export const useEnhancedSentenceMining = (language: string, difficulty: Difficul
       const formattedSession: SentenceMiningSession = {
         ...newSession,
         difficulty: newSession.difficulty_level as DifficultyLevel,
+        difficulty_level: newSession.difficulty_level as DifficultyLevel,
         exercises: [],
         currentExerciseIndex: 0,
         startTime: new Date(newSession.started_at),
