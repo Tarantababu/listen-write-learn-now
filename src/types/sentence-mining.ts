@@ -8,9 +8,9 @@ export interface SentenceMiningExercise {
   context: string;
   createdAt: Date;
   attempts: number;
-  correctAttempts: number;
+  correctAttempts?: number;
   translation?: string;
-  correctAnswer: string;
+  correctAnswer?: string;
   hints?: string[];
   targetWordTranslation?: string; // English meaning of the target word
   // Database fields
@@ -18,6 +18,10 @@ export interface SentenceMiningExercise {
   sessionId?: string;
   difficultyScore?: number;
   isSkipped?: boolean;
+  isCorrect?: boolean | null;
+  userAnswer?: string;
+  exerciseType?: 'cloze';
+  language?: string;
 }
 
 export interface SentenceMiningSession {
@@ -63,7 +67,7 @@ export interface DifficultyProgress {
   advanced: DifficultyProgressStats;
 }
 
-// Simplified progress interface for cloze-only exercises
+// Simplified progress interface that matches what's actually used
 export interface SentenceMiningProgress {
   language: string;
   totalSessions: number;
@@ -73,7 +77,11 @@ export interface SentenceMiningProgress {
   streak: number;
   lastSessionDate?: Date;
   vocabularyStats: VocabularyStats;
-  // Simplified for cloze-only
+  // Additional fields that are actually used in the code
+  correct: number;
+  total: number;
+  incorrect?: number;
+  // Optional fields
   wordsLearned?: number;
   difficultyProgress?: DifficultyProgress;
   exerciseTypeProgress?: Record<string, { attempted: number; correct: number; accuracy: number }>;

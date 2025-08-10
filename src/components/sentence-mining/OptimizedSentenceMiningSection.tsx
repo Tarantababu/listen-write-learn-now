@@ -1,12 +1,11 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Slider } from "@/components/ui/slider"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from '@/contexts/AuthContext';
-import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
-import { supabase } from '@/integrations/supabase/client';
+import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise } from '@/types/sentence-mining';
 import { ExerciseDisplay } from './ExerciseDisplay';
 import { ExerciseInput } from './ExerciseInput';
 import { ProgressBar } from './ProgressBar';
@@ -17,6 +16,12 @@ interface OptimizedSentenceMiningSectionProps {
   language: string;
   difficulty: DifficultyLevel;
   onDifficultyChange: (difficulty: DifficultyLevel) => void;
+}
+
+// Simple progress type for the component
+interface SimpleProgress {
+  correct: number;
+  total: number;
 }
 
 export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSectionProps> = ({
@@ -30,7 +35,7 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
   const [currentSession, setCurrentSession] = useState<SentenceMiningSession | null>(null);
   const [exercises, setExercises] = useState<SentenceMiningExercise[]>([]);
   const [currentExercise, setCurrentExercise] = useState<SentenceMiningExercise | null>(null);
-  const [progress, setProgress] = useState<SentenceMiningProgress>({ correct: 0, total: 0 });
+  const [progress, setProgress] = useState<SimpleProgress>({ correct: 0, total: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionActive, setSessionActive] = useState(false);
@@ -100,6 +105,10 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       const newExercise = await generateExercise();
       if (newExercise) {
         setCurrentExercise(newExercise);
+        setExercises(prev => {
+          const exists = prev.find(ex => ex.id === newExercise.id);
+          return exists ? prev : [...prev, newExercise];
+        });
       } else {
         toast({
           title: "Exercise generation failed.",
@@ -140,7 +149,7 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
         setExercises(prevExercises =>
           prevExercises.map(ex => (ex.id === updatedExercise.id ? updatedExercise : ex))
         );
-        setCurrentExercise(updatedExercise);
+        setCurrentExercise(null);
 
         // Update progress
         setProgress(prevProgress => {
