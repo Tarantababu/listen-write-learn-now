@@ -20,7 +20,13 @@ export const SentenceMiningSection: React.FC = () => {
 
   const handleStartSession = async (difficulty: DifficultyLevel) => {
     setSelectedDifficulty(difficulty);
-    await mining.startSession(difficulty);
+    try {
+      const session = await mining.startSession(difficulty);
+      // Generate first exercise immediately after session creation
+      await mining.nextExercise();
+    } catch (error) {
+      console.error('Failed to start session and generate exercise:', error);
+    }
   };
 
   const handleSubmitAnswer = async () => {
