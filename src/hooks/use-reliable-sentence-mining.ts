@@ -1,9 +1,12 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
+import { IntelligentWordSelection } from '@/services/intelligentWordSelection';
+import { WordDiversityEngine } from '@/services/wordDiversityEngine';
+import { SentencePatternDiversityEngine } from '@/services/sentencePatternDiversityEngine';
+import { EnhancedCooldownSystem } from '@/services/enhancedCooldownSystem';
 
 interface ReliableSentenceMiningState {
   currentSession: SentenceMiningSession | null;
@@ -138,8 +141,8 @@ export const useReliableSentenceMining = () => {
 
       setState(prev => ({ ...prev, currentSession: newSession, loading: false }));
 
-      // Generate first exercise immediately
-      await generateFirstExercise(newSession);
+      // Generate first exercise with enhanced parameters
+      await generateEnhancedExercise(newSession);
       
       toast.success(`Started ${difficulty} session for ${settings.selectedLanguage}`);
       return newSession;
@@ -155,28 +158,106 @@ export const useReliableSentenceMining = () => {
     }
   }, [settings.selectedLanguage]);
 
-  const generateFirstExercise = async (session: SentenceMiningSession) => {
-    console.log(`[ReliableSentenceMining] Generating first exercise for session: ${session.id}`);
+  const generateEnhancedExercise = async (session: SentenceMiningSession) => {
+    console.log(`[ReliableSentenceMining] Generating enhanced exercise for session: ${session.id}`);
     setState(prev => ({ ...prev, isGeneratingNext: true, error: null }));
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Call the edge function with proper parameters
+      // Get intelligent word selection with enhanced diversity
+      const wordSelection = await IntelligentWordSelection.selectOptimalWords(
+        user.id,
+        session.language,
+        session.difficulty_level as DifficultyLevel,
+        session.id,
+        1, // Select 1 word
+        {
+          maxRecentUsage: 1,
+          minCooldownHours: 12,
+          preferredDifficulty: 50,
+          diversityWeight: 0.6,
+          noveltyWeight: 0.4
+        }
+      );
+
+      // Get word diversity metrics
+      const diversityMetrics = await WordDiversityEngine.analyzeSessionDiversity(
+        user.id,
+        session.language,
+        session.id,
+        48
+      );
+
+      // Get pattern avoidance recommendations
+      const avoidPatterns = await SentencePatternDiversityEngine.getAvoidancePatterns(
+        user.id,
+        session.language,
+        session.difficulty_level as DifficultyLevel,
+        session.id,
+        24
+      );
+
+      // Apply enhanced cooldown filtering
+      const { available: availableWords } = await EnhancedCooldownSystem.getAvailableWords(
+        user.id,
+        session.language,
+        wordSelection.selectedWords,
+        session.id
+      );
+
+      // Determine final word selection
+      let finalSelectedWords = wordSelection.selectedWords;
+      let selectionMethod = 'intelligent_selection';
+      
+      if (availableWords.length === 0) {
+        console.log(`[ReliableSentenceMining] All words on cooldown, using emergency selection`);
+        
+        // Emergency: find any unused words from the last 24 hours
+        const { data: unusedWords } = await supabase
+          .from('known_words')
+          .select('word')
+          .eq('user_id', user.id)
+          .eq('language', session.language)
+          .order('last_reviewed_at', { ascending: true, nullsFirst: true })
+          .limit(10);
+
+        if (unusedWords && unusedWords.length > 0) {
+          finalSelectedWords = [unusedWords[Math.floor(Math.random() * unusedWords.length)].word];
+          selectionMethod = 'emergency_unused_words';
+        } else {
+          // Ultimate fallback
+          finalSelectedWords = ['cat']; // Safe fallback word
+          selectionMethod = 'ultimate_fallback';
+        }
+      } else {
+        finalSelectedWords = availableWords.slice(0, 1);
+        selectionMethod = 'cooldown_filtered_selection';
+      }
+
+      // Get previous sentences to avoid repetition
+      const { data: previousExercises } = await supabase
+        .from('sentence_mining_exercises')
+        .select('sentence')
+        .eq('session_id', session.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Call the edge function with enhanced parameters
       const exerciseResponse = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
           difficulty_level: session.difficulty_level,
           language: session.language,
           session_id: session.id,
           user_id: user.id,
-          preferred_words: [],
+          preferred_words: finalSelectedWords,
           novelty_words: [],
-          avoid_patterns: [],
-          diversity_score_target: 75,
-          selection_quality: 50,
+          avoid_patterns: avoidPatterns,
+          diversity_score_target: Math.max(80, diversityMetrics.overallScore),
+          selection_quality: Math.round(wordSelection.diversityScore),
           enhanced_mode: true,
-          previous_sentences: [],
+          previous_sentences: previousExercises?.map(e => e.sentence) || [],
           known_words: [],
           n_plus_one: false
         }
@@ -190,6 +271,19 @@ export const useReliableSentenceMining = () => {
       
       if (!exerciseData || !exerciseData.sentence) {
         throw new Error('Invalid exercise data received from server');
+      }
+
+      // Track word usage for future diversity
+      if (exerciseData.targetWord) {
+        await EnhancedCooldownSystem.trackWordUsage(
+          user.id,
+          exerciseData.targetWord,
+          session.language,
+          session.id,
+          exerciseData.sentence || '',
+          this.extractSentencePattern(exerciseData.sentence || ''),
+          session.difficulty_level as DifficultyLevel
+        );
       }
 
       // Create exercise record in database
@@ -220,7 +314,7 @@ export const useReliableSentenceMining = () => {
         targetWordTranslation: exerciseData.targetWordTranslation,
         clozeSentence: exerciseData.clozeSentence,
         translation: exerciseData.translation,
-        difficulty: session.difficulty_level,
+        difficulty: session.difficulty_level as DifficultyLevel,
         context: exerciseData.context || '',
         hints: exerciseData.hints || [],
         isCorrect: null,
@@ -239,9 +333,9 @@ export const useReliableSentenceMining = () => {
         exerciseCount: prev.exerciseCount + 1
       }));
 
-      console.log(`[ReliableSentenceMining] Successfully generated first exercise: ${exerciseData.targetWord}`);
+      console.log(`[ReliableSentenceMining] Successfully generated exercise: ${exerciseData.targetWord} using ${selectionMethod}`);
     } catch (error) {
-      console.error('[ReliableSentenceMining] Error generating first exercise:', error);
+      console.error('[ReliableSentenceMining] Error generating exercise:', error);
       setState(prev => ({
         ...prev,
         error: error instanceof Error ? error.message : 'Failed to generate exercise',
@@ -269,78 +363,7 @@ export const useReliableSentenceMining = () => {
     if (!state.currentSession) return;
 
     console.log(`[ReliableSentenceMining] Generating next exercise`);
-    setState(prev => ({ ...prev, isGeneratingNext: true, error: null }));
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      // Call the edge function
-      const exerciseResponse = await supabase.functions.invoke('generate-sentence-mining', {
-        body: {
-          difficulty_level: state.currentSession.difficulty_level,
-          language: state.currentSession.language,
-          session_id: state.currentSession.id,
-          user_id: user.id,
-          preferred_words: [],
-          novelty_words: [],
-          avoid_patterns: [],
-          diversity_score_target: 75,
-          selection_quality: 50,
-          enhanced_mode: true,
-          previous_sentences: [],
-          known_words: [],
-          n_plus_one: false
-        }
-      });
-
-      if (exerciseResponse.error) {
-        throw new Error(`Exercise generation failed: ${exerciseResponse.error.message}`);
-      }
-
-      const exerciseData = exerciseResponse.data;
-
-      // Create the exercise object
-      const newExercise: SentenceMiningExercise = {
-        id: `temp-${Date.now()}`,
-        sentence: exerciseData.sentence,
-        targetWord: exerciseData.targetWord,
-        targetWordTranslation: exerciseData.targetWordTranslation,
-        clozeSentence: exerciseData.clozeSentence,
-        translation: exerciseData.translation,
-        difficulty: state.currentSession.difficulty_level,
-        context: exerciseData.context || '',
-        hints: exerciseData.hints || [],
-        isCorrect: null,
-        userAnswer: '',
-        attempts: 0,
-        sessionId: state.currentSession.id,
-        createdAt: new Date(),
-        exerciseType: 'cloze',
-        correctAnswer: exerciseData.targetWord
-      };
-
-      setState(prev => ({
-        ...prev,
-        currentExercise: newExercise,
-        userResponse: '',
-        showResult: false,
-        showTranslation: false,
-        showHint: false,
-        isGeneratingNext: false,
-        exerciseCount: prev.exerciseCount + 1
-      }));
-
-      console.log(`[ReliableSentenceMining] Successfully generated next exercise: ${exerciseData.targetWord}`);
-    } catch (error) {
-      console.error('[ReliableSentenceMining] Error generating next exercise:', error);
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Failed to generate exercise',
-        isGeneratingNext: false
-      }));
-      toast.error('Failed to generate next exercise');
-    }
+    await generateEnhancedExercise(state.currentSession);
   }, [state.currentSession]);
 
   const submitAnswer = useCallback(async (response: string, selectedWords: string[] = [], isSkipped: boolean = false) => {
@@ -463,6 +486,23 @@ export const useReliableSentenceMining = () => {
 
   const toggleHint = () => {
     setState(prev => ({ ...prev, showHint: !prev.showHint }));
+  };
+
+  // Helper method for pattern extraction
+  const extractSentencePattern = (sentence: string): string => {
+    if (!sentence) return 'unknown';
+    
+    const length = sentence.split(' ').length;
+    let pattern = '';
+    
+    if (length <= 6) pattern += 'short_';
+    else if (length <= 12) pattern += 'medium_';
+    else pattern += 'long_';
+    
+    if (sentence.includes('?')) pattern += 'question_';
+    if (sentence.includes(',')) pattern += 'complex_';
+    
+    return pattern || 'simple';
   };
 
   return {
