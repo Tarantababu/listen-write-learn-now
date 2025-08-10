@@ -51,11 +51,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          <AuthProvider>
-            <UserSettingsProvider>
-              <SubscriptionProvider>
-                <VocabularyProvider>
-                  <Router>
+          <Router>
+            <AuthProvider>
+              <UserSettingsProvider>
+                <SubscriptionProvider>
+                  <VocabularyProvider>
                     <Routes>
                       {/* Public routes */}
                       <Route path="/" element={<Index />} />
@@ -89,12 +89,12 @@ function App() {
                       {/* Fallback */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>
-                  </Router>
-                  <Toaster />
-                </VocabularyProvider>
-              </SubscriptionProvider>
-            </UserSettingsProvider>
-          </AuthProvider>
+                    <Toaster />
+                  </VocabularyProvider>
+                </SubscriptionProvider>
+              </UserSettingsProvider>
+            </AuthProvider>
+          </Router>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
