@@ -31,9 +31,9 @@ export const SentenceMiningQuickStart: React.FC = () => {
   };
 
   return (
-    <Card className="border-primary/20 hover:border-primary/40 transition-all duration-200">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between gap-4">
+    <Card className="w-full border-primary/20 hover:border-primary/40 transition-all duration-200">
+      <CardContent className="w-full p-4">
+        <div className="flex items-center justify-between gap-4 w-full">
           {/* Left section - Icon and title */}
           <div className="flex items-center gap-3">
             <Brain className="h-5 w-5 text-primary" />
