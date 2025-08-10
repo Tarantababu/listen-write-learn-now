@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AnticipationLesson, AnticipationProgress, CreateLessonRequest, LessonContent } from '@/types/anticipation';
 
@@ -42,7 +41,7 @@ export class AnticipationService {
 
       return {
         ...data,
-        content: data.content as LessonContent,
+        content: data.content as unknown as LessonContent,
         audio_urls: data.audio_urls as Record<string, string>
       };
     } catch (error) {
@@ -72,7 +71,7 @@ export class AnticipationService {
 
       return (data || []).map(lesson => ({
         ...lesson,
-        content: lesson.content as LessonContent,
+        content: lesson.content as unknown as LessonContent,
         audio_urls: lesson.audio_urls as Record<string, string>
       }));
     } catch (error) {
@@ -98,7 +97,7 @@ export class AnticipationService {
 
       return {
         ...data,
-        content: data.content as LessonContent,
+        content: data.content as unknown as LessonContent,
         audio_urls: data.audio_urls as Record<string, string>
       };
     } catch (error) {

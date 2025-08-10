@@ -6,7 +6,7 @@ import {
   Routes,
   useLocation,
 } from 'react-router-dom';
-import { Index } from '@/pages/Index';
+import Index from '@/pages/Index';
 import LoginPage from '@/pages/LoginPage';
 import SignUpPage from '@/pages/SignUpPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
@@ -15,7 +15,7 @@ import HomePage from '@/pages/HomePage';
 import ExercisesPage from '@/pages/ExercisesPage';
 import BidirectionalPage from '@/pages/BidirectionalPage';
 import BidirectionalExercises from '@/pages/BidirectionalExercises';
-import SentenceMiningPage from '@/pages/SentenceMiningPage';
+import { SentenceMiningPage } from '@/pages/SentenceMiningPage';
 import VocabularyPage from '@/pages/VocabularyPage';
 import SettingsPage from '@/pages/SettingsPage';
 import SubscriptionPage from '@/pages/SubscriptionPage';
