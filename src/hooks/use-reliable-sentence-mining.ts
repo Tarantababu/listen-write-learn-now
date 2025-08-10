@@ -7,6 +7,7 @@ import { IntelligentWordSelection } from '@/services/intelligentWordSelection';
 import { WordDiversityEngine } from '@/services/wordDiversityEngine';
 import { SentencePatternDiversityEngine } from '@/services/sentencePatternDiversityEngine';
 import { EnhancedCooldownSystem } from '@/services/enhancedCooldownSystem';
+import { SpacedRepetitionEngine } from '@/services/spacedRepetitionEngine';
 
 interface ReliableSentenceMiningState {
   currentSession: SentenceMiningSession | null;
@@ -151,8 +152,8 @@ export const useReliableSentenceMining = () => {
 
       setState(prev => ({ ...prev, currentSession: newSession, loading: false }));
 
-      // Generate first exercise with enhanced parameters
-      await generateEnhancedExercise(newSession);
+      // Generate first exercise with spaced repetition
+      await generateSpacedRepetitionExercise(newSession);
       
       toast.success(`Started ${difficulty} session for ${settings.selectedLanguage}`);
       return newSession;
@@ -168,8 +169,8 @@ export const useReliableSentenceMining = () => {
     }
   }, [settings.selectedLanguage]);
 
-  const generateEnhancedExercise = async (session: SentenceMiningSession) => {
-    console.log(`[ReliableSentenceMining] Generating enhanced exercise for session: ${session.id}`);
+  const generateSpacedRepetitionExercise = async (session: SentenceMiningSession) => {
+    console.log(`[ReliableSentenceMining] Generating spaced repetition exercise for session: ${session.id}`);
     setState(prev => ({ 
       ...prev, 
       isGeneratingNext: true, 
@@ -185,29 +186,66 @@ export const useReliableSentenceMining = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Get intelligent word selection with enhanced diversity
-      const wordSelection = await IntelligentWordSelection.selectOptimalWords(
+      let selectedWords: string[] = [];
+      let selectionMethod = 'spaced_repetition';
+
+      // Step 1: Get struggling words (highest priority)
+      const strugglingWords = await SpacedRepetitionEngine.getStrugglingWords(
         user.id,
         session.language,
-        session.difficulty_level as DifficultyLevel,
-        session.id,
-        1, // Select 1 word
-        {
-          maxRecentUsage: 1,
-          minCooldownHours: 12,
-          preferredDifficulty: 50,
-          diversityWeight: 0.6,
-          noveltyWeight: 0.4
-        }
+        3
       );
 
-      // Get word diversity metrics
-      const diversityMetrics = await WordDiversityEngine.analyzeSessionDiversity(
+      // Step 2: Get words due for review
+      const reviewWords = await SpacedRepetitionEngine.getWordsForReview(
         user.id,
         session.language,
-        session.id,
-        48
+        10
       );
+
+      // Step 3: Combine spaced repetition candidates
+      const spacedRepetitionCandidates = [...strugglingWords, ...reviewWords.filter(w => !strugglingWords.includes(w))];
+
+      console.log(`[ReliableSentenceMining] Spaced repetition candidates: ${spacedRepetitionCandidates.length} words`);
+      console.log(`[ReliableSentenceMining] Struggling words: ${strugglingWords.length}, Review words: ${reviewWords.length}`);
+
+      if (spacedRepetitionCandidates.length > 0) {
+        // Use spaced repetition words with priority for struggling words
+        if (strugglingWords.length > 0) {
+          selectedWords = [strugglingWords[0]];
+          selectionMethod = 'struggling_words';
+        } else {
+          selectedWords = [reviewWords[0]];
+          selectionMethod = 'review_words';
+        }
+      } else {
+        // Fallback to intelligent word selection for new words
+        console.log(`[ReliableSentenceMining] No spaced repetition words available, using intelligent selection`);
+        
+        const wordSelection = await IntelligentWordSelection.selectOptimalWords(
+          user.id,
+          session.language,
+          session.difficulty_level as DifficultyLevel,
+          session.id,
+          1,
+          {
+            maxRecentUsage: 1,
+            minCooldownHours: 12,
+            preferredDifficulty: 50,
+            diversityWeight: 0.6,
+            noveltyWeight: 0.4
+          }
+        );
+
+        selectedWords = wordSelection.selectedWords;
+        selectionMethod = 'intelligent_new_words';
+      }
+
+      // If no words found, use emergency fallback
+      if (selectedWords.length === 0) {
+        selectedWords = ['der']; // Safe German word fallback
+        selectionMethod = 'emergency_fallback';
+      }
 
       // Get pattern avoidance recommendations
       const avoidPatterns = await SentencePatternDiversityEngine.getAvoidancePatterns(
@@ -218,43 +256,6 @@ export const useReliableSentenceMining = () => {
         24
       );
 
-      // Apply enhanced cooldown filtering
-      const { available: availableWords } = await EnhancedCooldownSystem.getAvailableWords(
-        user.id,
-        session.language,
-        wordSelection.selectedWords,
-        session.id
-      );
-
-      // Determine final word selection
-      let finalSelectedWords = wordSelection.selectedWords;
-      let selectionMethod = 'intelligent_selection';
-      
-      if (availableWords.length === 0) {
-        console.log(`[ReliableSentenceMining] All words on cooldown, using emergency selection`);
-        
-        // Emergency: find any unused words from the last 24 hours
-        const { data: unusedWords } = await supabase
-          .from('known_words')
-          .select('word')
-          .eq('user_id', user.id)
-          .eq('language', session.language)
-          .order('last_reviewed_at', { ascending: true, nullsFirst: true })
-          .limit(10);
-
-        if (unusedWords && unusedWords.length > 0) {
-          finalSelectedWords = [unusedWords[Math.floor(Math.random() * unusedWords.length)].word];
-          selectionMethod = 'emergency_unused_words';
-        } else {
-          // Ultimate fallback
-          finalSelectedWords = ['cat']; // Safe fallback word
-          selectionMethod = 'ultimate_fallback';
-        }
-      } else {
-        finalSelectedWords = availableWords.slice(0, 1);
-        selectionMethod = 'cooldown_filtered_selection';
-      }
-
       // Get previous sentences to avoid repetition
       const { data: previousExercises } = await supabase
         .from('sentence_mining_exercises')
@@ -263,18 +264,18 @@ export const useReliableSentenceMining = () => {
         .order('created_at', { ascending: false })
         .limit(5);
 
-      // Call the edge function with enhanced parameters
+      // Call the edge function to generate exercise
       const exerciseResponse = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
           difficulty_level: session.difficulty_level,
           language: session.language,
           session_id: session.id,
           user_id: user.id,
-          preferred_words: finalSelectedWords,
+          preferred_words: selectedWords,
           novelty_words: [],
           avoid_patterns: avoidPatterns,
-          diversity_score_target: Math.max(80, diversityMetrics.overallScore),
-          selection_quality: Math.round(wordSelection.diversityScore),
+          diversity_score_target: 85,
+          selection_quality: 90,
           enhanced_mode: true,
           previous_sentences: previousExercises?.map(e => e.sentence) || [],
           known_words: [],
@@ -292,7 +293,7 @@ export const useReliableSentenceMining = () => {
         throw new Error('Invalid exercise data received from server');
       }
 
-      // Track word usage for future diversity - add null check
+      // Track word usage for future diversity
       if (exerciseData.targetWord) {
         await EnhancedCooldownSystem.trackWordUsage(
           user.id,
@@ -359,7 +360,7 @@ export const useReliableSentenceMining = () => {
 
       console.log(`[ReliableSentenceMining] Successfully generated exercise: ${exerciseData.targetWord} using ${selectionMethod}`);
     } catch (error) {
-      console.error('[ReliableSentenceMining] Error generating exercise:', error);
+      console.error('[ReliableSentenceMining] Error generating spaced repetition exercise:', error);
       setState(prev => ({
         ...prev,
         error: error instanceof Error ? error.message : 'Failed to generate exercise',
@@ -398,7 +399,7 @@ export const useReliableSentenceMining = () => {
       showTranslation: false
     }));
 
-    await generateEnhancedExercise(state.currentSession);
+    await generateSpacedRepetitionExercise(state.currentSession);
   }, [state.currentSession]);
 
   const submitAnswer = useCallback(async (response: string, selectedWords: string[] = [], isSkipped: boolean = false) => {
@@ -415,6 +416,18 @@ export const useReliableSentenceMining = () => {
 
       const correctAnswer = currentExercise.correctAnswer || currentExercise.targetWord;
       const isCorrect = !isSkipped && response.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
+
+      // Update spaced repetition performance
+      if (currentExercise.targetWord) {
+        await SpacedRepetitionEngine.updateWordPerformance(
+          user.id,
+          currentExercise.targetWord,
+          currentSession.language,
+          isCorrect
+        );
+        
+        console.log(`[ReliableSentenceMining] Updated spaced repetition for word: ${currentExercise.targetWord}, correct: ${isCorrect}`);
+      }
 
       // Store exercise result
       const { error: exerciseError } = await supabase
