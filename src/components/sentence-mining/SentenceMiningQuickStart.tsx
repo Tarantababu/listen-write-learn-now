@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,16 +10,13 @@ import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { getLanguageFlagCode, capitalizeLanguage } from '@/utils/languageUtils';
 import { useReliableSentenceMining } from '@/hooks/use-reliable-sentence-mining';
 import { DifficultyLevel } from '@/types/sentence-mining';
+
 export const SentenceMiningQuickStart: React.FC = () => {
   const navigate = useNavigate();
-  const {
-    settings
-  } = useUserSettingsContext();
-  const {
-    startSession,
-    loading
-  } = useReliableSentenceMining();
+  const { settings } = useUserSettingsContext();
+  const { startSession, loading } = useReliableSentenceMining();
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('intermediate');
+
   const handleQuickStart = async () => {
     try {
       await startSession(selectedDifficulty);
@@ -27,8 +25,56 @@ export const SentenceMiningQuickStart: React.FC = () => {
       console.error('Failed to start quick session:', error);
     }
   };
+
   const handleViewAll = () => {
     navigate('/dashboard/sentence-mining');
   };
-  return;
+
+  return (
+    <Card className="w-full">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Brain className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">Sentence Mining</h3>
+              <div className="flex items-center gap-2 mt-1">
+                <FlagIcon
+                  country={getLanguageFlagCode(settings.targetLanguage)}
+                  size={16}
+                />
+                <span className="text-sm text-muted-foreground">
+                  {capitalizeLanguage(settings.targetLanguage)}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <Badge variant="secondary" className="capitalize">
+              {selectedDifficulty}
+            </Badge>
+            <Button onClick={handleQuickStart} disabled={loading} size="sm">
+              {loading ? (
+                <>
+                  <Play className="h-4 w-4 mr-1" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 mr-1" />
+                  Start
+                </>
+              )}
+            </Button>
+            <Button onClick={handleViewAll} variant="ghost" size="sm">
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
