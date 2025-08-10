@@ -1,180 +1,194 @@
-
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import {
-  NavigationMenu,
-  NavigationMenuList,
-  NavigationMenuItem,
-  NavigationMenuContent,
-  NavigationMenuTrigger,
-  NavigationMenuLink,
-} from "@/components/ui/navigation-menu"
-import { BookOpen } from 'lucide-react';
-import ThemeToggle from './ThemeToggle';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { Skeleton } from "@/components/ui/skeleton"
-
-export function Header() {
-  const { user, signOut } = useAuth();
-  const { settings, loading } = useUserSettingsContext();
-  const { subscription } = useSubscription();
-  const navigate = useNavigate();
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigate('/login');
-      toast.success("Signed out successfully!");
-    } catch (error) {
-      console.error("Sign out failed:", error);
-      toast.error("Failed to sign out.");
-    }
+import { useAdmin } from '@/hooks/use-admin';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { LogOut, BookOpen, Home, Settings, CreditCard, Crown, LayoutDashboard, Book, Shield, HelpCircle, GraduationCap, ArrowLeftRight } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import UserAvatar from './UserAvatar';
+import { cn } from '@/lib/utils';
+import { UserMessages } from '@/components/UserMessages';
+import ThemeToggle from './ThemeToggle';
+import { Logo } from './landing/Logo';
+import { StreakIndicator } from './StreakIndicator';
+import { LanguageSelectionDropdown } from './LanguageSelectionDropdown';
+const Header: React.FC = () => {
+  const {
+    user,
+    signOut
+  } = useAuth();
+  const {
+    isAdmin
+  } = useAdmin();
+  const {
+    subscription
+  } = useSubscription();
+  const location = useLocation();
+  const isMobile = useIsMobile();
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const isActive = (path: string) => {
+    return location.pathname === path || path !== '/dashboard' && location.pathname.startsWith(path);
   };
-
-  return (
-    <header className="bg-background sticky top-0 z-50 w-full border-b">
-      <div className="container flex h-16 items-center justify-between py-4">
-        <Link to="/home" className="mr-4 flex items-center font-semibold">
-          Language<span className="text-primary">Leap</span>
-        </Link>
-        <NavigationMenu>
-          <NavigationMenuList>
-            <NavigationMenuItem>
-              <NavigationMenuTrigger>Exercises</NavigationMenuTrigger>
-              <NavigationMenuContent>
-                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                  <li className="row-span-3">
-                    <NavigationMenuLink asChild>
-                      <Link
-                        to="/exercises"
-                        className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
-                      >
-                        <BookOpen className="h-6 w-6" />
-                        <div className="mb-2 mt-4 text-lg font-medium">
-                          Exercises
-                        </div>
-                        <p className="text-sm leading-tight text-muted-foreground">
-                          Practice with dictation exercises
-                        </p>
-                      </Link>
-                    </NavigationMenuLink>
-                  </li>
-                  <li>
-                    <NavigationMenuLink asChild>
-                      <Link
-                        to="/sentence-mining"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                      >
-                        <div className="text-sm font-medium leading-none">Sentence Mining</div>
-                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                          AI-powered contextual learning
-                        </p>
-                      </Link>
-                    </NavigationMenuLink>
-                  </li>
-                  <li>
-                    <NavigationMenuLink asChild>
-                      <Link
-                        to="/anticipation"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                      >
-                        <div className="text-sm font-medium leading-none">Principle of Anticipation</div>
-                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                          Learn through prediction and cultural context
-                        </p>
-                      </Link>
-                    </NavigationMenuLink>
-                  </li>
-                  <li>
-                    <NavigationMenuLink asChild>
-                      <Link
-                        to="/bidirectional"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                      >
-                        <div className="text-sm font-medium leading-none">Bidirectional</div>
-                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                          Practice translation both ways
-                        </p>
-                      </Link>
-                    </NavigationMenuLink>
-                  </li>
-                  <li>
-                    <NavigationMenuLink asChild>
-                      <Link
-                        to="/vocabulary"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                      >
-                        <div className="text-sm font-medium leading-none">Vocabulary</div>
-                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                          Manage your vocabulary collection
-                        </p>
-                      </Link>
-                    </NavigationMenuLink>
-                  </li>
-                  <li>
-                    <NavigationMenuLink asChild>
-                      <Link
-                        to="/curriculum"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                      >
-                        <div className="text-sm font-medium leading-none">Curriculum</div>
-                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                          Structured learning paths
-                        </p>
-                      </Link>
-                    </NavigationMenuLink>
-                  </li>
-                </ul>
-              </NavigationMenuContent>
-            </NavigationMenuItem>
-            <NavigationMenuItem>
-              <NavigationMenuLink asChild>
-                <Link to="/roadmap" className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">Roadmap</Link>
-              </NavigationMenuLink>
-            </NavigationMenuItem>
-            <NavigationMenuItem>
-              <NavigationMenuLink asChild>
-                <Link to="/blog" className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">Blog</Link>
-              </NavigationMenuLink>
-            </NavigationMenuItem>
-          </NavigationMenuList>
-        </NavigationMenu>
-        <div className="flex items-center space-x-4">
-          <ThemeToggle />
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0 data-[state=open]:bg-muted">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email || "Avatar"} />
-                    <AvatarFallback>{user.email?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/settings')}>Settings</DropdownMenuItem>
-                {subscription.isSubscribed ? null : (
-                  <DropdownMenuItem onClick={() => navigate('/subscription')}>
-                    {subscription.isLoading ? <Skeleton className="h-4 w-12" /> : 'Subscription'}
+  return <header className="border-b sticky top-0 z-40 bg-background/95 backdrop-blur">
+      <div className="container flex h-14 sm:h-16 items-center justify-between px-2 sm:px-4">
+        <div className="flex items-center gap-1 sm:gap-2 md:gap-6 min-w-0 flex-1">
+          <Link to="/dashboard" className="flex items-center gap-1 sm:gap-2 text-lg font-semibold flex-shrink-0">
+            <Logo />
+          </Link>
+          
+          {!isMobile && user && <nav className="flex items-center gap-0.5 sm:gap-1 overflow-x-auto scrollbar-hide">
+              <Button asChild variant={isActive('/dashboard') && !isActive('/dashboard/exercises') && !isActive('/dashboard/vocabulary') && !isActive('/dashboard/curriculum') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
+                <Link to="/dashboard">
+                  <LayoutDashboard className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                  <span className="hidden lg:inline">Dashboard</span>
+                </Link>
+              </Button>
+              
+              <Button asChild variant={isActive('/dashboard/curriculum') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
+                <Link to="/dashboard/curriculum">
+                  <GraduationCap className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                  <span className="hidden lg:inline">Learning Plan</span>
+                </Link>
+              </Button>
+              
+              <Button asChild variant={isActive('/dashboard/exercises') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
+                <Link to="/dashboard/exercises">
+                  <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                  <span className="hidden lg:inline">Exercises</span>
+                </Link>
+              </Button>
+              
+              <Button asChild variant={isActive('/dashboard/vocabulary') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
+                <Link to="/dashboard/vocabulary">
+                  <Book className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                  <span className="hidden lg:inline">My Vocabulary</span>
+                </Link>
+              </Button>
+              
+              <Button asChild variant={isActive('/dashboard/bidirectional') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
+                
+              </Button>
+              
+              {isAdmin && <Button asChild variant={isActive('/dashboard/admin') ? "default" : "ghost"} size="sm" className="transition-all flex-shrink-0 bg-amber-500/10 hover:bg-amber-500/20 text-xs sm:text-sm px-2 sm:px-3">
+                  <Link to="/dashboard/admin">
+                    <Shield className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1 text-amber-500" />
+                    <span className="hidden lg:inline text-amber-500">Admin</span>
+                  </Link>
+                </Button>}
+            </nav>}
+        </div>
+        
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          {/* StreakIndicator visible on both mobile and desktop */}
+          {user && <StreakIndicator />}
+          
+          {/* Language Selection Dropdown visible on desktop only */}
+          {user && <div className="hidden md:block">
+              <LanguageSelectionDropdown />
+            </div>}
+          
+          {/* Theme Toggle Added Here */}
+          <ThemeToggle variant="compact" showLabel={false} />
+          
+          {user ? <>
+              {subscription.isSubscribed && <span className="hidden lg:flex items-center text-xs font-medium bg-primary/15 text-primary px-2 py-1 rounded animate-fade-in">
+                  <Crown className="h-3 w-3 mr-1" />
+                  Premium
+                </span>}
+              
+              {/* Add UserMessages component here */}
+              <UserMessages />
+              
+              {/* Admin quick access button */}
+              {isAdmin && <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button asChild variant="ghost" size="icon" className="rounded-full text-amber-500 hover:text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/30 h-8 w-8 sm:h-10 sm:w-10">
+                        <Link to="/dashboard/admin">
+                          <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Link>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Admin Dashboard</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>}
+              
+              {/* User dropdown menu */}
+              <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-10 sm:w-10">
+                    <UserAvatar />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className={cn("z-50 min-w-[12rem] bg-background border border-border overflow-hidden rounded-md shadow-md", "animate-in fade-in-80")}>
+                  {isMobile && <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard" className="flex items-center w-full">
+                          <Home className="h-4 w-4 mr-2" /> Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard/curriculum" className="flex items-center w-full">
+                          <GraduationCap className="h-4 w-4 mr-2" /> Learning Plan
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard/exercises" className="flex items-center w-full">
+                          <BookOpen className="h-4 w-4 mr-2" /> Exercises
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard/vocabulary" className="flex items-center w-full">
+                          <Book className="h-4 w-4 mr-2" /> Vocabulary
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        
+                      </DropdownMenuItem>
+                      {isAdmin && <DropdownMenuItem asChild>
+                          <Link to="/dashboard/admin" className="flex items-center w-full">
+                            <Shield className="h-4 w-4 mr-2 text-amber-500" /> Admin Dashboard
+                          </Link>
+                        </DropdownMenuItem>}
+                      <DropdownMenuSeparator />
+                    </>}
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/settings" className="flex items-center w-full">
+                      <Settings className="h-4 w-4 mr-2" /> Settings
+                    </Link>
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={handleSignOut}>Logout</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Link to="/login">Login</Link>
-          )}
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/subscription" className="flex items-center w-full">
+                      <CreditCard className="h-4 w-4 mr-2" /> Subscription
+                      {subscription.isSubscribed && <Crown className="h-3 w-3 ml-1 text-primary" />}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/tutorial" className="flex items-center w-full">
+                      <HelpCircle className="h-4 w-4 mr-2" /> Tutorial
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut} className="flex items-center w-full">
+                    <LogOut className="h-4 w-4 mr-2" /> Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </> : <>
+              <Button asChild variant="ghost" className="transition-all text-xs sm:text-sm px-2 sm:px-3" size="sm">
+                <Link to="/login">Log in</Link>
+              </Button>
+              <Button asChild className="transition-all text-xs sm:text-sm px-2 sm:px-3" size="sm">
+                <Link to="/signup">Sign up</Link>
+              </Button>
+            </>}
         </div>
       </div>
-    </header>
-  );
-}
+    </header>;
+};
+export default Header;
