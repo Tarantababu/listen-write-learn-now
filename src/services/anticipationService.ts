@@ -40,7 +40,11 @@ export class AnticipationService {
         throw new Error(`Failed to create lesson: ${error.message}`);
       }
 
-      return data;
+      return {
+        ...data,
+        content: data.content as LessonContent,
+        audio_urls: data.audio_urls as Record<string, string>
+      };
     } catch (error) {
       console.error('Error creating anticipation lesson:', error);
       throw error;
@@ -66,7 +70,11 @@ export class AnticipationService {
         throw new Error(`Failed to fetch lessons: ${error.message}`);
       }
 
-      return data || [];
+      return (data || []).map(lesson => ({
+        ...lesson,
+        content: lesson.content as LessonContent,
+        audio_urls: lesson.audio_urls as Record<string, string>
+      }));
     } catch (error) {
       console.error('Error fetching anticipation lessons:', error);
       throw error;
@@ -88,7 +96,11 @@ export class AnticipationService {
         throw new Error(`Failed to fetch lesson: ${error.message}`);
       }
 
-      return data;
+      return {
+        ...data,
+        content: data.content as LessonContent,
+        audio_urls: data.audio_urls as Record<string, string>
+      };
     } catch (error) {
       console.error('Error fetching anticipation lesson:', error);
       throw error;

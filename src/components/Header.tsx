@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,8 +12,9 @@ import {
   NavigationMenuLink,
 } from "@/components/ui/navigation-menu"
 import { BookOpen } from 'lucide-react';
-import { ThemeToggle } from './ThemeToggle';
+import ThemeToggle from './ThemeToggle';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -162,7 +164,7 @@ export function Header() {
                 <DropdownMenuItem onClick={() => navigate('/settings')}>Settings</DropdownMenuItem>
                 {subscription.isSubscribed ? null : (
                   <DropdownMenuItem onClick={() => navigate('/subscription')}>
-                    {subscription.loading ? <Skeleton className="h-4 w-12" /> : 'Subscription'}
+                    {subscription.isLoading ? <Skeleton className="h-4 w-12" /> : 'Subscription'}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={handleSignOut}>Logout</DropdownMenuItem>
