@@ -2,7 +2,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -50,56 +49,54 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <HelmetProvider>
-        <ThemeProvider>
-          <TooltipProvider>
-            <Router>
-              <AuthProvider>
-                <UserSettingsProvider>
-                  <SubscriptionProvider>
-                    <VocabularyProvider>
-                      <Routes>
-                        {/* Public routes */}
-                        <Route path="/" element={<Index />} />
-                        <Route path="/login" element={<LoginPage />} />
-                        <Route path="/signup" element={<SignUpPage />} />
-                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                        <Route path="/reset-password" element={<ResetPasswordPage />} />
-                        <Route path="/terms" element={<TermsOfService />} />
-                        <Route path="/privacy" element={<PrivacyPolicy />} />
-                        <Route path="/cookies" element={<CookiePolicy />} />
-                        <Route path="/blog" element={<BlogPage />} />
-                        <Route path="/blog/:slug" element={<BlogPostPage />} />
+      <ThemeProvider>
+        <TooltipProvider>
+          <AuthProvider>
+            <UserSettingsProvider>
+              <SubscriptionProvider>
+                <VocabularyProvider>
+                  <Router>
+                    <Routes>
+                      {/* Public routes */}
+                      <Route path="/" element={<Index />} />
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/signup" element={<SignUpPage />} />
+                      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                      <Route path="/reset-password" element={<ResetPasswordPage />} />
+                      <Route path="/terms" element={<TermsOfService />} />
+                      <Route path="/privacy" element={<PrivacyPolicy />} />
+                      <Route path="/cookies" element={<CookiePolicy />} />
+                      <Route path="/blog" element={<BlogPage />} />
+                      <Route path="/blog/:slug" element={<BlogPostPage />} />
 
-                        {/* Protected routes */}
-                        <Route path="/dashboard" element={<Layout />}>
-                          <Route index element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-                          <Route path="exercises" element={<ProtectedRoute><ExercisesPage /></ProtectedRoute>} />
-                          <Route path="vocabulary" element={<ProtectedRoute><VocabularyPage /></ProtectedRoute>} />
-                          <Route path="settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-                          <Route path="subscription" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
-                          <Route path="admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
-                          <Route path="curriculum" element={<ProtectedRoute><CurriculumPage /></ProtectedRoute>} />
-                          <Route path="roadmap" element={<ProtectedRoute><RoadmapPage /></ProtectedRoute>} />
-                          <Route path="bidirectional" element={<ProtectedRoute><BidirectionalPage /></ProtectedRoute>} />
-                          <Route path="bidirectional-exercises" element={<ProtectedRoute><BidirectionalExercises /></ProtectedRoute>} />
-                          <Route path="sentence-mining" element={<ProtectedRoute><SentenceMiningPage /></ProtectedRoute>} />
-                          <Route path="tutorial" element={<ProtectedRoute><TutorialPage /></ProtectedRoute>} />
-                          <Route path="language-selection" element={<ProtectedRoute><LanguageSelectionPage /></ProtectedRoute>} />
-                        </Route>
+                      {/* Protected routes */}
+                      <Route path="/dashboard" element={<Layout />}>
+                        <Route index element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+                        <Route path="exercises" element={<ProtectedRoute><ExercisesPage /></ProtectedRoute>} />
+                        <Route path="vocabulary" element={<ProtectedRoute><VocabularyPage /></ProtectedRoute>} />
+                        <Route path="settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+                        <Route path="subscription" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
+                        <Route path="admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+                        <Route path="curriculum" element={<ProtectedRoute><CurriculumPage /></ProtectedRoute>} />
+                        <Route path="roadmap" element={<ProtectedRoute><RoadmapPage /></ProtectedRoute>} />
+                        <Route path="bidirectional" element={<ProtectedRoute><BidirectionalPage /></ProtectedRoute>} />
+                        <Route path="bidirectional-exercises" element={<ProtectedRoute><BidirectionalExercises /></ProtectedRoute>} />
+                        <Route path="sentence-mining" element={<ProtectedRoute><SentenceMiningPage /></ProtectedRoute>} />
+                        <Route path="tutorial" element={<ProtectedRoute><TutorialPage /></ProtectedRoute>} />
+                        <Route path="language-selection" element={<ProtectedRoute><LanguageSelectionPage /></ProtectedRoute>} />
+                      </Route>
 
-                        {/* Fallback */}
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                      <Toaster />
-                    </VocabularyProvider>
-                  </SubscriptionProvider>
-                </UserSettingsProvider>
-              </AuthProvider>
-            </Router>
-          </TooltipProvider>
-        </ThemeProvider>
-      </HelmetProvider>
+                      {/* Fallback */}
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </Router>
+                  <Toaster />
+                </VocabularyProvider>
+              </SubscriptionProvider>
+            </UserSettingsProvider>
+          </AuthProvider>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
