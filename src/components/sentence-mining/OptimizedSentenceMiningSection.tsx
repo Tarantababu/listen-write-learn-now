@@ -18,12 +18,6 @@ interface OptimizedSentenceMiningSectionProps {
   onDifficultyChange: (difficulty: DifficultyLevel) => void;
 }
 
-// Simple progress type for the component
-interface SimpleProgress {
-  correct: number;
-  total: number;
-}
-
 export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSectionProps> = ({
   language,
   difficulty,
@@ -32,7 +26,7 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Use state from the enhanced hook instead of managing our own
+  // Use the enhanced hook directly without local state management
   const {
     currentSession,
     currentExercise,
@@ -45,14 +39,8 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
     nextExercise
   } = useEnhancedSentenceMining();
 
-  // Local state for exercises history and session tracking
+  // Local state for exercises history
   const [exercises, setExercises] = useState<SentenceMiningExercise[]>([]);
-  const [sessionActive, setSessionActive] = useState(false);
-
-  // Update session active state based on currentSession
-  useEffect(() => {
-    setSessionActive(!!currentSession);
-  }, [currentSession]);
 
   // Update exercises when a new exercise is generated
   useEffect(() => {
@@ -64,12 +52,24 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
     }
   }, [currentExercise]);
 
+  // Show error toast when error occurs
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive"
+      });
+    }
+  }, [error, toast]);
+
   const handleStartSession = useCallback(async () => {
     if (!user) {
       toast({
-        title: "Not authenticated.",
+        title: "Not authenticated",
         description: "You must be logged in to start a session.",
-      })
+        variant: "destructive"
+      });
       return;
     }
 
@@ -80,22 +80,24 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       toast({
         title: "Session started!",
         description: "Let's start learning.",
-      })
+      });
     } catch (error) {
       console.error("Failed to start session:", error);
       toast({
-        title: "Session start failed.",
+        title: "Session start failed",
         description: "Please try again.",
-      })
+        variant: "destructive"
+      });
     }
   }, [user, startSession, difficulty, toast]);
 
   const handleGenerateExercise = useCallback(async () => {
-    if (!sessionActive) {
+    if (!currentSession) {
       toast({
-        title: "No active session.",
+        title: "No active session",
         description: "Please start a session first.",
-      })
+        variant: "destructive"
+      });
       return;
     }
 
@@ -105,22 +107,24 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       toast({
         title: "New exercise generated!",
         description: "Complete the sentence below.",
-      })
+      });
     } catch (error) {
       console.error("Failed to generate exercise:", error);
       toast({
-        title: "Exercise generation failed.",
+        title: "Exercise generation failed",
         description: "Please try again.",
-      })
+        variant: "destructive"
+      });
     }
-  }, [sessionActive, nextExercise, toast]);
+  }, [currentSession, nextExercise, toast]);
 
   const handleSubmitAnswer = useCallback(async (answer: string) => {
     if (!currentExercise) {
       toast({
-        title: "No active exercise.",
+        title: "No active exercise",
         description: "Please generate an exercise first.",
-      })
+        variant: "destructive"
+      });
       return;
     }
 
@@ -140,20 +144,26 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       );
 
       toast({
-        title: updatedExercise.isCorrect ? "Correct!" : "Incorrect.",
+        title: updatedExercise.isCorrect ? "Correct!" : "Incorrect",
         description: updatedExercise.isCorrect ? "Great job!" : "Try again next time.",
-      })
+      });
     } catch (error) {
       console.error("Failed to submit answer:", error);
+      toast({
+        title: "Submission failed",
+        description: "Please try again.",
+        variant: "destructive"
+      });
     }
   }, [currentExercise, submitAnswer, toast]);
 
   const handleEndSession = useCallback(async () => {
     if (!currentSession) {
       toast({
-        title: "No active session.",
+        title: "No active session",
         description: "Please start a session first.",
-      })
+        variant: "destructive"
+      });
       return;
     }
 
@@ -163,9 +173,14 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       toast({
         title: "Session ended!",
         description: "See you next time.",
-      })
+      });
     } catch (error) {
       console.error("Failed to end session:", error);
+      toast({
+        title: "Failed to end session",
+        description: "Please try again.",
+        variant: "destructive"
+      });
     }
   }, [currentSession, endSession, toast]);
 
@@ -180,6 +195,7 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
             value={difficulty}
             onChange={(e) => onDifficultyChange(e.target.value as DifficultyLevel)}
             className="rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            disabled={!!currentSession}
           >
             <option value="beginner">Beginner</option>
             <option value="intermediate">Intermediate</option>
@@ -198,7 +214,6 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
             <Button onClick={handleStartSession} disabled={loading}>
               {loading ? "Starting Session..." : "Start Session"}
             </Button>
-            {error && <p className="text-red-500 mt-2">{error}</p>}
           </CardContent>
         </Card>
       )}
@@ -249,7 +264,6 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
                   {loading ? "Generating Exercise..." : "Generate Exercise"}
                 </Button>
               )}
-              {error && <p className="text-red-500 mt-2">{error}</p>}
             </CardContent>
           </Card>
 
