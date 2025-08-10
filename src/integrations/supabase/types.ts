@@ -86,6 +86,101 @@ export type Database = {
         }
         Relationships: []
       }
+      anticipation_lessons: {
+        Row: {
+          archived: boolean | null
+          audio_urls: Json | null
+          content: Json
+          conversation_theme: string
+          created_at: string
+          difficulty_level: string
+          id: string
+          language: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean | null
+          audio_urls?: Json | null
+          content?: Json
+          conversation_theme: string
+          created_at?: string
+          difficulty_level: string
+          id?: string
+          language: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived?: boolean | null
+          audio_urls?: Json | null
+          content?: Json
+          conversation_theme?: string
+          created_at?: string
+          difficulty_level?: string
+          id?: string
+          language?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      anticipation_progress: {
+        Row: {
+          anticipation_accuracy: number | null
+          completed_at: string | null
+          completion_percentage: number | null
+          created_at: string
+          current_section: number
+          id: string
+          last_practiced_at: string | null
+          lesson_id: string
+          sections_completed: number
+          total_sections: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          anticipation_accuracy?: number | null
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string
+          current_section?: number
+          id?: string
+          last_practiced_at?: string | null
+          lesson_id: string
+          sections_completed?: number
+          total_sections?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          anticipation_accuracy?: number | null
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string
+          current_section?: number
+          id?: string
+          last_practiced_at?: string | null
+          lesson_id?: string
+          sections_completed?: number
+          total_sections?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anticipation_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "anticipation_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bidirectional_exercises: {
         Row: {
           created_at: string
@@ -1692,6 +1787,10 @@ export type Database = {
         Args: { current_status: string }
         Returns: string
       }
+      calculate_total_mastered_words: {
+        Args: { user_id_param: string; language_param: string }
+        Returns: number
+      }
       delete_curriculum_node: {
         Args: { node_id_param: string }
         Returns: undefined
@@ -1856,6 +1955,16 @@ export type Database = {
         }
         Returns: string
       }
+      update_anticipation_progress: {
+        Args: {
+          lesson_id_param: string
+          user_id_param: string
+          section_index_param: number
+          total_sections_param: number
+          accuracy_param?: number
+        }
+        Returns: undefined
+      }
       update_curriculum_node: {
         Args: {
           node_id_param: string
@@ -1882,6 +1991,10 @@ export type Database = {
           user_id_param: string
           sentence_index_param: number
         }
+        Returns: undefined
+      }
+      update_session_words_mastered: {
+        Args: { session_id_param: string }
         Returns: undefined
       }
       update_shadowing_progress: {
