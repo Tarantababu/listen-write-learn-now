@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress, VocabularyStats } from '@/types/sentence-mining';
@@ -101,6 +100,11 @@ export const useEnhancedSentenceMining = () => {
     }
   };
 
+  useEffect(() => {
+    loadProgress();
+    loadVocabularyStats();
+  }, [settings.selectedLanguage]);
+
   const startSession = async (difficulty: DifficultyLevel): Promise<SentenceMiningSession> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -188,9 +192,6 @@ export const useEnhancedSentenceMining = () => {
         loading: false 
       }));
 
-      // Immediately generate first exercise
-      await generateNextExercise(newSession);
-
       return newSession;
     } catch (error) {
       console.error('[useEnhancedSentenceMining] Error starting session:', error);
@@ -244,28 +245,33 @@ export const useEnhancedSentenceMining = () => {
         throw new Error(`Failed to generate exercise: ${error.message}`);
       }
 
-      if (!result || !result.exercise) {
-        console.error('[useEnhancedSentenceMining] No exercise in result:', result);
+      console.log('[useEnhancedSentenceMining] Raw API response:', result);
+
+      // The API returns the exercise data directly, not wrapped in an 'exercise' property
+      if (!result || !result.id) {
+        console.error('[useEnhancedSentenceMining] No valid exercise in result:', result);
         throw new Error('No exercise generated');
       }
 
-      console.log('[useEnhancedSentenceMining] Exercise generated successfully:', result.exercise.id);
+      console.log('[useEnhancedSentenceMining] Exercise generated successfully:', result.id);
 
       const exercise: SentenceMiningExercise = {
-        id: result.exercise.id,
+        id: result.id,
         sessionId: currentSession.id,
-        sentence: result.exercise.sentence,
-        targetWord: result.exercise.targetWord,
-        clozeSentence: result.exercise.clozeSentence || result.exercise.sentence,
+        sentence: result.sentence,
+        targetWord: result.targetWord,
+        clozeSentence: result.clozeSentence || result.sentence,
         difficulty: currentSession.difficulty_level,
-        context: result.exercise.context || '',
-        correctAnswer: result.exercise.correctAnswer,
-        translation: result.exercise.translation,
-        difficultyScore: result.exercise.difficultyScore,
+        context: result.context || '',
+        correctAnswer: result.targetWord, // Use targetWord as correctAnswer
+        translation: result.translation,
+        difficultyScore: result.difficultyScore,
         createdAt: new Date(),
         attempts: 0,
         isCorrect: null,
-        userAnswer: null
+        userAnswer: null,
+        hints: result.hints || [],
+        targetWordTranslation: result.targetWordTranslation
       };
 
       setState(prev => ({
@@ -274,7 +280,7 @@ export const useEnhancedSentenceMining = () => {
         loading: false
       }));
 
-      console.log('[useEnhancedSentenceMining] Exercise state updated');
+      console.log('[useEnhancedSentenceMining] Exercise state updated successfully');
 
     } catch (error) {
       console.error('[useEnhancedSentenceMining] Error generating exercise:', error);
