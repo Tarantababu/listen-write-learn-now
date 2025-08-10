@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
@@ -273,7 +274,7 @@ export const useReliableSentenceMining = () => {
         throw new Error('Invalid exercise data received from server');
       }
 
-      // Track word usage for future diversity
+      // Track word usage for future diversity - add null check
       if (exerciseData.targetWord) {
         await EnhancedCooldownSystem.trackWordUsage(
           user.id,
@@ -281,7 +282,7 @@ export const useReliableSentenceMining = () => {
           session.language,
           session.id,
           exerciseData.sentence || '',
-          this.extractSentencePattern(exerciseData.sentence || ''),
+          extractSentencePattern(exerciseData.sentence || ''),
           session.difficulty_level as DifficultyLevel
         );
       }
