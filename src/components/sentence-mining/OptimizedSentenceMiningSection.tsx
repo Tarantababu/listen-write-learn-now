@@ -26,7 +26,7 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Use the enhanced hook directly without local state management
+  // Use the enhanced hook
   const {
     currentSession,
     currentExercise,
@@ -41,25 +41,30 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
 
   // Local state for exercises history
   const [exercises, setExercises] = useState<SentenceMiningExercise[]>([]);
+  const [isGeneratingExercise, setIsGeneratingExercise] = useState(false);
 
   // Update exercises when a new exercise is generated
   useEffect(() => {
     if (currentExercise) {
+      console.log('[OptimizedSentenceMining] New exercise received:', currentExercise.id);
       setExercises(prev => {
         const exists = prev.find(ex => ex.id === currentExercise.id);
         return exists ? prev : [...prev, currentExercise];
       });
+      setIsGeneratingExercise(false);
     }
   }, [currentExercise]);
 
   // Show error toast when error occurs
   useEffect(() => {
     if (error) {
+      console.error('[OptimizedSentenceMining] Error occurred:', error);
       toast({
         title: "Error",
         description: error,
         variant: "destructive"
       });
+      setIsGeneratingExercise(false);
     }
   }, [error, toast]);
 
@@ -74,22 +79,35 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
     }
 
     try {
-      await startSession(difficulty);
-      setExercises([]);
+      console.log('[OptimizedSentenceMining] Starting session with difficulty:', difficulty);
       
-      toast({
-        title: "Session started!",
-        description: "Let's start learning.",
-      });
+      const session = await startSession(difficulty);
+      
+      if (session) {
+        setExercises([]);
+        
+        // Generate first exercise immediately after session creation
+        console.log('[OptimizedSentenceMining] Session created, generating first exercise...');
+        setIsGeneratingExercise(true);
+        
+        // Call nextExercise to generate the first exercise
+        await nextExercise();
+        
+        toast({
+          title: "Session started!",
+          description: "Generating your first exercise...",
+        });
+      }
     } catch (error) {
-      console.error("Failed to start session:", error);
+      console.error('[OptimizedSentenceMining] Failed to start session:', error);
       toast({
         title: "Session start failed",
-        description: "Please try again.",
+        description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive"
       });
+      setIsGeneratingExercise(false);
     }
-  }, [user, startSession, difficulty, toast]);
+  }, [user, startSession, difficulty, toast, nextExercise]);
 
   const handleGenerateExercise = useCallback(async () => {
     if (!currentSession) {
@@ -102,19 +120,20 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
     }
 
     try {
+      console.log('[OptimizedSentenceMining] Generating new exercise for session:', currentSession.id);
+      setIsGeneratingExercise(true);
+      
       await nextExercise();
       
-      toast({
-        title: "New exercise generated!",
-        description: "Complete the sentence below.",
-      });
+      console.log('[OptimizedSentenceMining] Exercise generation completed');
     } catch (error) {
-      console.error("Failed to generate exercise:", error);
+      console.error('[OptimizedSentenceMining] Failed to generate exercise:', error);
       toast({
         title: "Exercise generation failed",
-        description: "Please try again.",
+        description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive"
       });
+      setIsGeneratingExercise(false);
     }
   }, [currentSession, nextExercise, toast]);
 
@@ -129,6 +148,8 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
     }
 
     try {
+      console.log('[OptimizedSentenceMining] Submitting answer for exercise:', currentExercise.id);
+      
       await submitAnswer(answer);
       
       // Update the exercise in the exercises array
@@ -148,10 +169,10 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
         description: updatedExercise.isCorrect ? "Great job!" : "Try again next time.",
       });
     } catch (error) {
-      console.error("Failed to submit answer:", error);
+      console.error('[OptimizedSentenceMining] Failed to submit answer:', error);
       toast({
         title: "Submission failed",
-        description: "Please try again.",
+        description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive"
       });
     }
@@ -168,21 +189,27 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
     }
 
     try {
+      console.log('[OptimizedSentenceMining] Ending session:', currentSession.id);
+      
       await endSession();
       setExercises([]);
+      setIsGeneratingExercise(false);
+      
       toast({
         title: "Session ended!",
         description: "See you next time.",
       });
     } catch (error) {
-      console.error("Failed to end session:", error);
+      console.error('[OptimizedSentenceMining] Failed to end session:', error);
       toast({
         title: "Failed to end session",
-        description: "Please try again.",
+        description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive"
       });
     }
   }, [currentSession, endSession, toast]);
+
+  const isLoadingOrGenerating = loading || isGeneratingExercise;
 
   return (
     <div className="space-y-6">
@@ -211,8 +238,8 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
             <CardDescription>Click the button below to begin a new sentence mining session.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={handleStartSession} disabled={loading}>
-              {loading ? "Starting Session..." : "Start Session"}
+            <Button onClick={handleStartSession} disabled={isLoadingOrGenerating}>
+              {isLoadingOrGenerating ? "Starting Session..." : "Start Session"}
             </Button>
           </CardContent>
         </Card>
@@ -256,19 +283,32 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
                   <ExerciseDisplay exercise={currentExercise} />
                   <ExerciseInput
                     onSubmit={handleSubmitAnswer}
-                    disabled={loading}
+                    disabled={isLoadingOrGenerating}
                   />
                 </>
               ) : (
-                <Button onClick={handleGenerateExercise} disabled={loading}>
-                  {loading ? "Generating Exercise..." : "Generate Exercise"}
-                </Button>
+                <div className="space-y-4">
+                  {isGeneratingExercise ? (
+                    <div className="text-center p-4">
+                      <div className="text-lg text-muted-foreground">
+                        Generating personalized exercise...
+                      </div>
+                      <div className="mt-2 text-sm text-muted-foreground">
+                        This may take a few moments
+                      </div>
+                    </div>
+                  ) : (
+                    <Button onClick={handleGenerateExercise} disabled={isLoadingOrGenerating}>
+                      {isLoadingOrGenerating ? "Generating Exercise..." : "Generate Exercise"}
+                    </Button>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
 
-          <Button onClick={handleEndSession} disabled={loading} variant="destructive">
-            {loading ? "Ending Session..." : "End Session"}
+          <Button onClick={handleEndSession} disabled={isLoadingOrGenerating} variant="destructive">
+            {isLoadingOrGenerating ? "Ending Session..." : "End Session"}
           </Button>
         </div>
       )}

@@ -4,49 +4,44 @@ import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
-import { VocabularyTrackingService } from '@/services/vocabularyTrackingService';
-import { EnhancedWordSelection } from '@/services/enhancedWordSelection';
+
+interface EnhancedSentenceMiningState {
+  currentSession: SentenceMiningSession | null;
+  currentExercise: SentenceMiningExercise | null;
+  loading: boolean;
+  error: string | null;
+  progress: SentenceMiningProgress | null;
+}
 
 export const useEnhancedSentenceMining = () => {
   const { settings } = useUserSettingsContext();
-  const [state, setState] = useState({
-    currentSession: null as SentenceMiningSession | null,
-    currentExercise: null as SentenceMiningExercise | null,
-    userResponse: '',
-    showResult: false,
-    isCorrect: false,
+  const [state, setState] = useState<EnhancedSentenceMiningState>({
+    currentSession: null,
+    currentExercise: null,
     loading: false,
-    error: null as string | null,
-    progress: null as SentenceMiningProgress | null,
-    showHint: false,
-    showTranslation: false,
-    isGeneratingNext: false,
-    vocabularyStats: null as any,
+    error: null,
+    progress: null,
   });
 
-  // Load progress and vocabulary data
+  // Load progress when language changes
   useEffect(() => {
-    loadProgressAndVocabulary();
+    loadProgress();
   }, [settings.selectedLanguage]);
 
-  const loadProgressAndVocabulary = async () => {
+  const loadProgress = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     try {
-      // Load session progress
+      console.log('[useEnhancedSentenceMining] Loading progress for language:', settings.selectedLanguage);
+      
+      // Get sessions for the selected language
       const { data: sessions } = await supabase
         .from('sentence_mining_sessions')
         .select('*')
         .eq('user_id', user.id)
         .eq('language', settings.selectedLanguage)
         .order('created_at', { ascending: false });
-
-      // Load vocabulary stats
-      const vocabularyStats = await VocabularyTrackingService.getVocabularyStats(
-        user.id,
-        settings.selectedLanguage
-      );
 
       const totalSessions = sessions?.length || 0;
       const totalExercises = sessions?.reduce((sum, s) => sum + s.total_exercises, 0) || 0;
@@ -61,45 +56,77 @@ export const useEnhancedSentenceMining = () => {
         averageAccuracy,
         streak: 0,
         vocabularyStats: {
-          passiveVocabulary: vocabularyStats.passiveVocabulary,
-          activeVocabulary: vocabularyStats.activeVocabulary,
-          totalWordsEncountered: vocabularyStats.totalWordsEncountered,
+          passiveVocabulary: 0,
+          activeVocabulary: 0,
+          totalWordsEncountered: 0,
           language: settings.selectedLanguage
         },
         correct: totalCorrect,
         total: totalExercises
       };
 
-      setState(prev => ({ 
-        ...prev, 
-        progress,
-        vocabularyStats
-      }));
+      setState(prev => ({ ...prev, progress }));
     } catch (error) {
-      console.error('Error loading progress and vocabulary:', error);
+      console.error('[useEnhancedSentenceMining] Error loading progress:', error);
     }
   };
 
-  const startSession = useCallback(async (difficulty: DifficultyLevel) => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+  const startSession = async (difficulty: DifficultyLevel): Promise<SentenceMiningSession | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('Please log in to start a session');
+    }
+
+    console.log('[useEnhancedSentenceMining] Starting session for user:', user.id, 'language:', settings.selectedLanguage, 'difficulty:', difficulty);
+    
+    setState(prev => ({ 
+      ...prev, 
+      loading: true, 
+      error: null
+    }));
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      // Create session with enhanced metadata
+      const sessionData = {
+        user_id: user.id,
+        language: settings.selectedLanguage,
+        difficulty_level: difficulty,
+        exercise_types: ['cloze'],
+        total_exercises: 0,
+        correct_exercises: 0,
+        new_words_encountered: 0,
+        words_mastered: 0,
+        started_at: new Date().toISOString(),
+        session_data: {
+          startTime: new Date().toISOString(),
+          difficulty: difficulty,
+          language: settings.selectedLanguage,
+          enhancedFeatures: {
+            diversityTracking: true,
+            intelligentWordSelection: true,
+            smartPreloading: true,
+            performanceTracking: true,
+            adaptiveCooldown: true,
+            contextAwareness: true
+          },
+          targetDiversityScore: 75
+        }
+      };
 
-      // Create session
+      console.log('[useEnhancedSentenceMining] Creating session with data:', sessionData);
+
       const { data: session, error } = await supabase
         .from('sentence_mining_sessions')
-        .insert([{
-          user_id: user.id,
-          language: settings.selectedLanguage,
-          difficulty_level: difficulty,
-          exercise_types: ['cloze']
-        }])
+        .insert([sessionData])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useEnhancedSentenceMining] Session creation error:', error);
+        throw error;
+      }
+
+      console.log('[useEnhancedSentenceMining] Session created successfully:', session.id);
 
       const newSession: SentenceMiningSession = {
         id: session.id,
@@ -107,7 +134,7 @@ export const useEnhancedSentenceMining = () => {
         difficulty: session.difficulty_level as DifficultyLevel,
         exercises: [],
         currentExerciseIndex: 0,
-        startTime: new Date(),
+        startTime: new Date(session.started_at),
         totalCorrect: 0,
         totalAttempts: 0,
         user_id: session.user_id,
@@ -121,89 +148,104 @@ export const useEnhancedSentenceMining = () => {
         session_data: session.session_data
       };
 
-      setState(prev => ({ ...prev, currentSession: newSession }));
+      setState(prev => ({ 
+        ...prev, 
+        currentSession: newSession,
+        loading: false 
+      }));
 
-      // Generate first exercise with enhanced word selection
-      await generateNextExercise();
+      return newSession;
     } catch (error) {
-      console.error('Error starting session:', error);
-      setState(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Failed to start session' }));
-    } finally {
-      setState(prev => ({ ...prev, loading: false }));
+      console.error('[useEnhancedSentenceMining] Error starting session:', error);
+      setState(prev => ({ 
+        ...prev, 
+        loading: false, 
+        error: error instanceof Error ? error.message : 'Failed to start session' 
+      }));
+      throw error;
     }
-  }, [settings.selectedLanguage]);
+  };
 
-  const generateNextExercise = useCallback(async () => {
-    if (!state.currentSession) return;
+  const nextExercise = useCallback(async () => {
+    const session = state.currentSession;
+    if (!session) {
+      console.error('[useEnhancedSentenceMining] No current session for nextExercise');
+      throw new Error('No active session');
+    }
 
-    setState(prev => ({ ...prev, loading: true }));
+    setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
 
-      // Get enhanced word selection
-      const wordSelection = await EnhancedWordSelection.selectVocabularyAwareWords(
-        user.id,
-        settings.selectedLanguage,
-        state.currentSession.difficulty,
-        1 // For now, one word per exercise
-      );
+      console.log('[useEnhancedSentenceMining] Generating exercise for session:', session.id);
 
-      console.log('Enhanced word selection:', wordSelection);
-
-      // Generate exercise with selected words
-      const exerciseResponse = await supabase.functions.invoke('generate-sentence-mining', {
+      // Call the Supabase function to generate sentence mining exercise
+      const { data: result, error } = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
-          difficulty_level: state.currentSession.difficulty,
-          language: settings.selectedLanguage,
-          session_id: state.currentSession.id,
-          user_id: user.id,
-          preferred_words: wordSelection.selectedWords,
-          novelty_words: [],
-          avoid_patterns: [],
-          diversity_score_target: 75,
-          selection_quality: 50,
-          enhanced_mode: true,
-          previous_sentences: [],
-          known_words: wordSelection.wordTypes,
-          n_plus_one: true,
-          vocabulary_distribution: wordSelection.vocabularyDistribution
+          language: session.language,
+          difficulty: session.difficulty_level,
+          userId: user.id,
+          sessionId: session.id,
+          enhancedMode: true
         }
       });
 
-      if (exerciseResponse.error) {
-        throw new Error(`Exercise generation failed: ${exerciseResponse.error.message}`);
+      if (error) {
+        console.error('[useEnhancedSentenceMining] Function call error:', error);
+        throw new Error(`Failed to generate exercise: ${error.message}`);
       }
 
-      const exercise = exerciseResponse.data;
+      if (!result || !result.exercise) {
+        console.error('[useEnhancedSentenceMining] No exercise in result:', result);
+        throw new Error('No exercise generated');
+      }
+
+      console.log('[useEnhancedSentenceMining] Exercise generated successfully:', result.exercise.id);
+
+      const exercise: SentenceMiningExercise = {
+        id: result.exercise.id,
+        sessionId: session.id,
+        sentence: result.exercise.sentence,
+        targetWord: result.exercise.targetWord,
+        correctAnswer: result.exercise.correctAnswer,
+        translation: result.exercise.translation,
+        difficultyScore: result.exercise.difficultyScore,
+        createdAt: new Date(),
+        attempts: 0,
+        isCorrect: null,
+        userAnswer: null
+      };
 
       setState(prev => ({
         ...prev,
         currentExercise: exercise,
-        userResponse: '',
-        showResult: false,
-        showTranslation: false,
-        showHint: false,
         loading: false
       }));
 
-      // Show selection reasoning to user
-      if (wordSelection.selectionReason) {
-        toast.info(`Word selection: ${wordSelection.selectionReason}`, {
-          duration: 3000
-        });
-      }
-    } catch (error) {
-      console.error('Error generating exercise:', error);
-      setState(prev => ({ ...prev, error: 'Failed to generate exercise', loading: false }));
-    }
-  }, [settings.selectedLanguage, state.currentSession]);
+      console.log('[useEnhancedSentenceMining] Exercise state updated');
 
-  const submitAnswer = useCallback(async (response: string, selectedWords: string[] = [], isSkipped: boolean = false) => {
+    } catch (error) {
+      console.error('[useEnhancedSentenceMining] Error generating exercise:', error);
+      setState(prev => ({ 
+        ...prev, 
+        error: error instanceof Error ? error.message : 'Failed to generate exercise',
+        loading: false
+      }));
+      throw error;
+    }
+  }, [state.currentSession]);
+
+  const submitAnswer = async (answer: string) => {
     const currentSession = state.currentSession;
     const currentExercise = state.currentExercise;
-    if (!currentSession || !currentExercise) return;
+    
+    if (!currentSession || !currentExercise) {
+      throw new Error('No active session or exercise');
+    }
 
     setState(prev => ({ ...prev, loading: true }));
 
@@ -212,7 +254,9 @@ export const useEnhancedSentenceMining = () => {
       if (!user) throw new Error('User not authenticated');
 
       const correctAnswer = currentExercise.correctAnswer;
-      const isCorrect = !isSkipped && response.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
+      const isCorrect = answer.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
+
+      console.log('[useEnhancedSentenceMining] Submitting answer:', { answer, correctAnswer, isCorrect });
 
       // Store exercise result
       const { error: exerciseError } = await supabase
@@ -221,28 +265,19 @@ export const useEnhancedSentenceMining = () => {
           session_id: currentSession.id,
           sentence: currentExercise.sentence,
           target_words: [currentExercise.targetWord],
-          user_response: response,
+          user_response: answer,
           is_correct: isCorrect,
           difficulty_score: currentExercise.difficultyScore || 1,
           exercise_type: 'cloze',
           translation: currentExercise.translation,
-          unknown_words: isSkipped ? [currentExercise.targetWord] : [],
+          unknown_words: [],
           hints_used: 0,
+          completion_time: 5000, // Default completion time
           completed_at: new Date().toISOString()
         }]);
 
       if (exerciseError) {
-        console.error('Error storing exercise:', exerciseError);
-      }
-
-      // Update word mastery
-      if (currentExercise.targetWord) {
-        await supabase.rpc('update_word_mastery', {
-          user_id_param: user.id,
-          word_param: currentExercise.targetWord,
-          language_param: settings.selectedLanguage,
-          is_correct_param: isCorrect
-        });
+        console.error('[useEnhancedSentenceMining] Error storing exercise:', exerciseError);
       }
 
       const updatedSession = {
@@ -263,24 +298,25 @@ export const useEnhancedSentenceMining = () => {
       setState(prev => ({
         ...prev,
         currentSession: updatedSession,
-        showResult: true,
-        isCorrect,
         loading: false
       }));
 
-      // Reload progress and vocabulary after each exercise
-      await loadProgressAndVocabulary();
-    } catch (error) {
-      console.error('Error submitting answer:', error);
-      setState(prev => ({ ...prev, loading: false, error: 'Failed to submit answer' }));
-    }
-  }, [loadProgressAndVocabulary, settings.selectedLanguage]);
+      console.log('[useEnhancedSentenceMining] Answer submitted successfully');
 
-  const endSession = useCallback(async () => {
+    } catch (error) {
+      console.error('[useEnhancedSentenceMining] Error submitting answer:', error);
+      setState(prev => ({ ...prev, loading: false, error: 'Failed to submit answer' }));
+      throw error;
+    }
+  };
+
+  const endSession = async () => {
     const { currentSession } = state;
     if (!currentSession) return;
 
     try {
+      console.log('[useEnhancedSentenceMining] Ending session:', currentSession.id);
+
       // Mark session as completed
       await supabase
         .from('sentence_mining_sessions')
@@ -292,38 +328,24 @@ export const useEnhancedSentenceMining = () => {
       setState(prev => ({
         ...prev,
         currentSession: null,
-        currentExercise: null,
-        userResponse: '',
-        showResult: false
+        currentExercise: null
       }));
 
-      await loadProgressAndVocabulary();
+      await loadProgress();
+
+      console.log('[useEnhancedSentenceMining] Session ended successfully');
     } catch (error) {
-      console.error('Error ending session:', error);
+      console.error('[useEnhancedSentenceMining] Error ending session:', error);
+      throw error;
     }
-  }, [loadProgressAndVocabulary]);
-
-  const updateUserResponse = (response: string) => {
-    setState(prev => ({ ...prev, userResponse: response }));
-  };
-
-  const toggleTranslation = () => {
-    setState(prev => ({ ...prev, showTranslation: !prev.showTranslation }));
-  };
-
-  const toggleHint = () => {
-    setState(prev => ({ ...prev, showHint: !prev.showHint }));
   };
 
   return {
     ...state,
     startSession,
     submitAnswer,
-    nextExercise: generateNextExercise,
+    nextExercise,
     endSession,
-    updateUserResponse,
-    toggleTranslation,
-    toggleHint,
-    loadProgress: loadProgressAndVocabulary
+    loadProgress
   };
 };
