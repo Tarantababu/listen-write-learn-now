@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Brain, Target, TrendingUp, BarChart3, Lightbulb, RefreshCw } from 'lucide-react';
-import { WordDiversityMetrics, WordPoolStats } from '@/services/wordDiversityEngine';
+import { WordDiversityMetrics } from '@/services/wordDiversityEngine';
+import { WordPoolStats } from '@/services/intelligentWordPoolManager';
 
 interface EnhancedDiversityInsightsProps {
   diversityMetrics: WordDiversityMetrics | null;
