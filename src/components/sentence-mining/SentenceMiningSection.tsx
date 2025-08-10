@@ -5,15 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Brain, Trophy, BookOpen, Loader2, Target, Zap } from 'lucide-react';
 import { DifficultyLevel } from '@/types/sentence-mining';
 import { SimpleClozeExercise } from './SimpleClozeExercise';
-import { useFullyAdaptiveSentenceMining } from '@/hooks/use-fully-adaptive-sentence-mining';
+import { useReliableSentenceMining } from '@/hooks/use-reliable-sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { FlagIcon } from 'react-flag-kit';
 import { getLanguageFlagCode, capitalizeLanguage } from '@/utils/languageUtils';
-import { AdaptiveLearningInsights } from './AdaptiveLearningInsights';
-import { PersonalizedInsights } from './PersonalizedInsights';
 
-// Import new minimalist components
+// Import minimalist components
 import { MinimalistSessionStarter } from './MinimalistSessionStarter';
 import { MinimalistProgressCard } from './MinimalistProgressCard';
 import { MinimalistInsightsCard } from './MinimalistInsightsCard';
@@ -33,72 +31,93 @@ export const SentenceMiningSection: React.FC = () => {
     progress,
     showTranslation,
     isGeneratingNext,
+    error,
+    exerciseCount,
     submitAnswer,
     nextExercise,
     endSession,
     updateUserResponse,
     toggleTranslation,
-    vocabularyProfile,
-    sessionConfig,
-    loadingOptimalDifficulty,
-    isInitializingSession,
-    startAdaptiveSession,
-    exerciseCount
-  } = useFullyAdaptiveSentenceMining();
+    startSession
+  } = useReliableSentenceMining();
 
   const handleSubmitAnswer = () => {
     submitAnswer(userResponse);
   };
 
-  // Enhanced session starter that supports recommendation-based focus
-  const handleRecommendationAction = async (
-    difficulty?: DifficultyLevel,
-    focusOptions?: {
-      focusWords?: string[];
-      focusArea?: string;
-      reviewMode?: boolean;
+  // Simple session starter that just takes difficulty
+  const handleStartSession = async (difficulty: DifficultyLevel) => {
+    try {
+      await startSession(difficulty);
+    } catch (error) {
+      console.error('Failed to start session:', error);
     }
-  ) => {
-    const sessionDifficulty = difficulty || sessionConfig?.suggestedDifficulty || 'intermediate';
-    
-    if (focusOptions) {
-      console.log('[SentenceMiningSection] Focus options will be applied:', focusOptions);
-    }
-    
-    await startAdaptiveSession(sessionDifficulty as DifficultyLevel);
   };
 
   // Show session selection if no active session
   if (!currentSession) {
     return (
       <div className="space-y-8 max-w-4xl mx-auto">
+        {/* Show error if present */}
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+            <p className="text-destructive text-sm">{error}</p>
+          </div>
+        )}
+
         {/* Simplified Overview Section */}
         {progress && (
           <div className="space-y-6">
             <MinimalistOverviewCards progress={progress} language={settings.selectedLanguage} />
-            
-            {/* Personalized Insights - More focused */}
-            {user && (
-              <PersonalizedInsights 
-                userId={user.id}
-                language={settings.selectedLanguage}
-                progress={progress}
-                onRecommendationAction={handleRecommendationAction}
-              />
-            )}
           </div>
         )}
 
         {/* Minimalist Keyboard Shortcuts */}
         <MinimalistKeyboardHints />
 
-        {/* Streamlined Session Starter */}
-        <MinimalistSessionStarter
-          sessionConfig={sessionConfig}
-          loadingOptimalDifficulty={loadingOptimalDifficulty}
-          isInitializingSession={isInitializingSession}
-          onStartSession={startAdaptiveSession}
-        />
+        {/* Simple Session Starter */}
+        <div className="bg-card border rounded-lg p-6">
+          <div className="text-center space-y-6">
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold">Start Learning</h2>
+              <p className="text-muted-foreground">
+                Choose your difficulty level to begin sentence mining practice
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button
+                onClick={() => handleStartSession('beginner')}
+                disabled={loading}
+                variant="outline"
+                size="lg"
+                className="min-w-32"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Beginner
+              </Button>
+              <Button
+                onClick={() => handleStartSession('intermediate')}
+                disabled={loading}
+                size="lg"
+                className="min-w-32"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Intermediate
+              </Button>
+              <Button
+                onClick={() => handleStartSession('advanced')}
+                disabled={loading}
+                variant="outline"
+                size="lg"
+                className="min-w-32"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Advanced
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -113,8 +132,28 @@ export const SentenceMiningSection: React.FC = () => {
             <div className="absolute -inset-4 border border-primary/20 rounded-full animate-pulse" />
           </div>
           <div className="space-y-2">
-            <p className="text-lg font-medium">Creating your next exercise...</p>
-            <p className="text-sm text-muted-foreground">AI is personalizing the content for you</p>
+            <p className="text-lg font-medium">Creating your exercise...</p>
+            <p className="text-sm text-muted-foreground">AI is generating personalized content</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if exercise generation failed
+  if (!currentExercise && error) {
+    return (
+      <div className="space-y-8 max-w-4xl mx-auto">
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
+          <h3 className="text-lg font-semibold text-destructive mb-2">Exercise Generation Failed</h3>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <div className="space-x-4">
+            <Button onClick={endSession} variant="outline">
+              End Session
+            </Button>
+            <Button onClick={() => handleStartSession(currentSession.difficulty_level)}>
+              Try Again
+            </Button>
           </div>
         </div>
       </div>
@@ -124,7 +163,7 @@ export const SentenceMiningSection: React.FC = () => {
   // Show active session with improved layout
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      {/* Simplified Session Header */}
+      {/* Session Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b">
         <div className="space-y-3">
           <div className="flex items-center gap-3">
@@ -138,7 +177,7 @@ export const SentenceMiningSection: React.FC = () => {
               {currentSession.difficulty_level}
             </Badge>
             <Badge variant="outline">
-              Exercise {exerciseCount + 1}
+              Exercise {exerciseCount}
             </Badge>
             <Badge variant="outline" className="text-primary">
               <Brain className="h-3 w-3 mr-1" />
@@ -156,7 +195,7 @@ export const SentenceMiningSection: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Main Exercise Area - Takes more space */}
+        {/* Main Exercise Area */}
         <div className="lg:col-span-3">
           {currentExercise ? (
             <SimpleClozeExercise
@@ -182,7 +221,7 @@ export const SentenceMiningSection: React.FC = () => {
           )}
         </div>
 
-        {/* Compact Sidebar */}
+        {/* Sidebar */}
         <div className="space-y-4">
           <MinimalistProgressCard 
             session={currentSession} 
@@ -190,14 +229,8 @@ export const SentenceMiningSection: React.FC = () => {
           />
           
           <MinimalistInsightsCard 
-            vocabularyProfile={vocabularyProfile}
+            vocabularyProfile={null}
             exerciseCount={exerciseCount}
-          />
-          
-          {/* Compact Adaptive Learning Insights */}
-          <AdaptiveLearningInsights 
-            language={settings.selectedLanguage}
-            sessionId={currentSession.id}
           />
         </div>
       </div>
