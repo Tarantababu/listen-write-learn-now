@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
@@ -150,7 +149,9 @@ export const useOptimizedSentenceMining = () => {
           activeVocabulary: 0,
           totalWordsEncountered: 0,
           language: settings.selectedLanguage
-        }
+        },
+        correct: totalCorrect,
+        total: totalExercises
       };
 
       setState(prev => ({ ...prev, progress }));

@@ -107,10 +107,10 @@ export const useEnhancedSentenceMining = (language: string, difficulty: Difficul
         throw new Error(`Failed to start new session: ${sessionError.message}`);
       }
 
-      // Convert to expected format
+      // Convert to expected format with proper type casting
       const formattedSession: SentenceMiningSession = {
         ...newSession,
-        difficulty: difficulty,
+        difficulty: newSession.difficulty_level as DifficultyLevel,
         exercises: [],
         currentExerciseIndex: 0,
         startTime: new Date(newSession.started_at),

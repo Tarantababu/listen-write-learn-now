@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { DifficultyLevel } from '@/types/sentence-mining';
+import { DifficultyLevel, SentenceMiningExercise } from '@/types/sentence-mining';
 import { IntelligentWordSelection } from './intelligentWordSelection';
 import { WordDiversityEngine } from './wordDiversityEngine';
 import { SentencePatternDiversityEngine } from './sentencePatternDiversityEngine';
@@ -23,7 +23,19 @@ export interface WordSelectionMetrics {
   cooldownFiltered: number;
 }
 
+export interface GenerationResult {
+  exercise: SentenceMiningExercise;
+  metadata: {
+    selectionQuality: number;
+    diversityScore: number;
+    fallbackUsed: boolean;
+  };
+}
+
 export class EnhancedSentenceMiningService {
+  // Cache for preloaded exercises
+  private static exerciseCache = new Map<string, GenerationResult[]>();
+  
   static async generateEnhancedExercise(request: EnhancedExerciseRequest) {
     try {
       console.log(`[EnhancedSentenceMiningService] Generating exercise for ${request.language} (${request.difficulty})`);
@@ -181,6 +193,74 @@ export class EnhancedSentenceMiningService {
     } catch (error) {
       console.error('[EnhancedSentenceMiningService] Error generating exercise:', error);
       throw error;
+    }
+  }
+
+  // Add missing methods for the optimized hook
+  static async generateExerciseWithEnhancements(request: any): Promise<GenerationResult> {
+    const exercise = await this.generateEnhancedExercise(request);
+    return {
+      exercise: exercise as SentenceMiningExercise,
+      metadata: {
+        selectionQuality: exercise.enhancedMetrics?.wordSelectionMetrics.diversityScore || 50,
+        diversityScore: exercise.enhancedMetrics?.diversityMetrics.overallScore || 50,
+        fallbackUsed: false
+      }
+    };
+  }
+
+  static async preloadExercises(
+    userId: string,
+    language: string,
+    difficulty: DifficultyLevel,
+    sessionId: string,
+    count: number = 3
+  ): Promise<void> {
+    const cacheKey = `${userId}-${language}-${difficulty}-${sessionId}`;
+    try {
+      const exercises: GenerationResult[] = [];
+      for (let i = 0; i < count; i++) {
+        const result = await this.generateExerciseWithEnhancements({
+          userId,
+          language,
+          difficulty,
+          sessionId,
+          previousExercises: [],
+          enhancedMode: true
+        });
+        exercises.push(result);
+      }
+      this.exerciseCache.set(cacheKey, exercises);
+    } catch (error) {
+      console.error('Error preloading exercises:', error);
+    }
+  }
+
+  static getPreloadedExercise(
+    userId: string,
+    language: string,
+    difficulty: DifficultyLevel,
+    sessionId: string
+  ): GenerationResult | null {
+    const cacheKey = `${userId}-${language}-${difficulty}-${sessionId}`;
+    const cached = this.exerciseCache.get(cacheKey);
+    if (cached && cached.length > 0) {
+      return cached.shift() || null;
+    }
+    return null;
+  }
+
+  static clearCache(sessionId?: string): void {
+    if (sessionId) {
+      // Clear specific session cache
+      for (const [key] of this.exerciseCache.entries()) {
+        if (key.includes(sessionId)) {
+          this.exerciseCache.delete(key);
+        }
+      }
+    } else {
+      // Clear all cache
+      this.exerciseCache.clear();
     }
   }
 

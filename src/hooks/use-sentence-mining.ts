@@ -1,78 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress, SentenceMiningState } from '@/types/sentence-mining';
+import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 
-/**
- * Sanitizes data to prevent circular references when sending to Supabase
- * Preserves critical session fields like difficulty_level
- */
-const sanitizeSessionData = (data: any): any => {
-  if (data === null || data === undefined) return data;
-  
-  // Handle primitive types - preserve them as-is
-  if (typeof data !== 'object') return data;
-  
-  // Handle Date objects
-  if (data instanceof Date) return data.toISOString();
-  
-  // Handle DOM elements and event objects - filter them out
-  if (data.nodeType || data.target || data.currentTarget || data.preventDefault) {
-    console.warn('[sanitizeSessionData] Filtering out DOM element or event object from session data');
-    return null;
-  }
-  
-  // Handle arrays
-  if (Array.isArray(data)) {
-    return data.map(item => sanitizeSessionData(item)).filter(item => item !== null);
-  }
-  
-  // Handle objects - preserve critical fields
-  const sanitized: any = {};
-  const criticalFields = ['difficulty_level', 'language', 'user_id', 'started_at', 'session_data', 'exercise_types'];
-  
-  for (const [key, value] of Object.entries(data)) {
-    // Skip function properties
-    if (typeof value === 'function') {
-      console.log(`[sanitizeSessionData] Skipping function property: ${key}`);
-      continue;
-    }
-    
-    // Skip properties that look like DOM elements or events (but not critical fields)
-    if (!criticalFields.includes(key) && (key.includes('element') || key.includes('event') || key.includes('target'))) {
-      console.log(`[sanitizeSessionData] Skipping DOM-like property: ${key}`);
-      continue;
-    }
-    
-    const sanitizedValue = sanitizeSessionData(value);
-    if (sanitizedValue !== null || criticalFields.includes(key)) {
-      sanitized[key] = sanitizedValue;
-      console.log(`[sanitizeSessionData] Preserved field ${key}:`, sanitizedValue);
-    }
-  }
-  
-  return sanitized;
-};
-
 export const useSentenceMining = () => {
   const { settings } = useUserSettingsContext();
-  
-  const [state, setState] = useState<SentenceMiningState>({
-    currentSession: null,
-    currentExercise: null,
+  const [state, setState] = useState({
+    currentSession: null as SentenceMiningSession | null,
+    currentExercise: null as SentenceMiningExercise | null,
     userResponse: '',
     showResult: false,
     isCorrect: false,
     loading: false,
-    error: null,
-    progress: null,
+    error: null as string | null,
+    progress: null as SentenceMiningProgress | null,
     showHint: false,
     showTranslation: false,
-    isGeneratingNext: false
+    isGeneratingNext: false,
   });
 
-  // Load progress when language changes
+  // Load progress data
   useEffect(() => {
     loadProgress();
   }, [settings.selectedLanguage]);
@@ -90,14 +38,6 @@ export const useSentenceMining = () => {
         .eq('language', settings.selectedLanguage)
         .order('created_at', { ascending: false });
 
-      // Get vocabulary stats
-      const { data: knownWords } = await supabase
-        .from('known_words')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('language', settings.selectedLanguage);
-
-      // Calculate progress
       const totalSessions = sessions?.length || 0;
       const totalExercises = sessions?.reduce((sum, s) => sum + s.total_exercises, 0) || 0;
       const totalCorrect = sessions?.reduce((sum, s) => sum + s.correct_exercises, 0) || 0;
@@ -109,13 +49,15 @@ export const useSentenceMining = () => {
         totalExercises,
         totalCorrect,
         averageAccuracy,
-        streak: 0, // Simplified for now
+        streak: 0,
         vocabularyStats: {
-          passiveVocabulary: knownWords?.length || 0,
-          activeVocabulary: knownWords?.filter(w => w.mastery_level >= 3)?.length || 0,
-          totalWordsEncountered: knownWords?.length || 0,
+          passiveVocabulary: 0,
+          activeVocabulary: 0,
+          totalWordsEncountered: 0,
           language: settings.selectedLanguage
-        }
+        },
+        correct: totalCorrect,
+        total: totalExercises
       };
 
       setState(prev => ({ ...prev, progress }));
@@ -124,119 +66,36 @@ export const useSentenceMining = () => {
     }
   };
 
-  const startSession = async (difficulty: DifficultyLevel) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error('Please log in to start a session');
-      return;
-    }
-
-    console.log(`[startSession] Starting language-aware session with difficulty: ${difficulty} for language: ${settings.selectedLanguage}`);
-    
-    // Validate difficulty parameter
-    const validLevels: DifficultyLevel[] = ['beginner', 'intermediate', 'advanced'];
-    if (!validLevels.includes(difficulty)) {
-      console.error(`[startSession] Invalid difficulty level provided: ${difficulty}`);
-      toast.error('Invalid difficulty level');
-      return;
-    }
-
-    // Validate language parameter
-    if (!settings.selectedLanguage || typeof settings.selectedLanguage !== 'string' || settings.selectedLanguage.trim().length === 0) {
-      console.error(`[startSession] Invalid language setting: ${settings.selectedLanguage}`);
-      toast.error('Please select a valid language first');
-      return;
-    }
-
+  const startSession = useCallback(async (difficulty: DifficultyLevel) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      const rawSessionData = {
-        user_id: user.id,
-        language: settings.selectedLanguage,
-        difficulty_level: difficulty,
-        exercise_types: ['cloze'],
-        total_exercises: 0,
-        correct_exercises: 0,
-        new_words_encountered: 0,
-        words_mastered: 0,
-        started_at: new Date().toISOString(),
-        session_data: {
-          startTime: new Date().toISOString(),
-          difficulty: difficulty,
-          language: settings.selectedLanguage,
-          exerciseTypes: ['cloze'],
-          // Enhanced session metadata for language-aware features
-          languageAwareGeneration: true,
-          intelligentWordSelection: true,
-          spacedRepetitionEnabled: true,
-          wordCooldownEnabled: true,
-          adaptiveGeneration: true
-        }
-      };
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-      const sessionData = sanitizeSessionData(rawSessionData);
-      
-      console.log('[startSession] Sanitized session data for language-aware generation:', sessionData);
-      
-      // Final validation that critical fields are preserved
-      if (!sessionData.difficulty_level) {
-        console.error('[startSession] difficulty_level was lost during sanitization!');
-        sessionData.difficulty_level = difficulty; // Force restore
-      }
-      
-      if (!sessionData.language) {
-        console.error('[startSession] language was lost during sanitization!');
-        sessionData.language = settings.selectedLanguage; // Force restore
-      }
-
-      if (!sessionData.exercise_types) {
-        console.error('[startSession] exercise_types was lost during sanitization!');
-        sessionData.exercise_types = ['cloze']; // Force restore
-      }
-
-      console.log(`[startSession] Final session data being sent to Supabase for ${settings.selectedLanguage}:`, sessionData);
-
+      // Create session
       const { data: session, error } = await supabase
         .from('sentence_mining_sessions')
-        .insert([sessionData])
+        .insert([{
+          user_id: user.id,
+          language: settings.selectedLanguage,
+          difficulty_level: difficulty,
+          exercise_types: ['cloze']
+        }])
         .select()
         .single();
 
-      if (error) {
-        console.error('[startSession] Supabase error creating session:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log(`[startSession] Successfully created language-aware session in database for ${settings.selectedLanguage}:`, session);
-
-      // Validate that the created session has the correct difficulty and language
-      if (!session.difficulty_level) {
-        console.error('[startSession] Created session has null difficulty_level!', session);
-        throw new Error('Session creation failed: difficulty_level is null');
-      }
-
-      if (!session.language) {
-        console.error('[startSession] Created session has null language!', session);
-        throw new Error('Session creation failed: language is null');
-      }
-
-      if (!session.exercise_types || session.exercise_types.length === 0) {
-        console.error('[startSession] Created session has null or empty exercise_types!', session);
-        throw new Error('Session creation failed: exercise_types is null or empty');
-      }
-
-      // Convert to expected format
       const newSession: SentenceMiningSession = {
         id: session.id,
         language: session.language,
         difficulty: session.difficulty_level as DifficultyLevel,
         exercises: [],
         currentExerciseIndex: 0,
-        startTime: new Date(session.started_at),
+        startTime: new Date(),
         totalCorrect: 0,
         totalAttempts: 0,
-        // Include database fields
         user_id: session.user_id,
         difficulty_level: session.difficulty_level as DifficultyLevel,
         total_exercises: session.total_exercises,
@@ -248,144 +107,33 @@ export const useSentenceMining = () => {
         session_data: session.session_data
       };
 
-      console.log(`[startSession] Created session object for ${settings.selectedLanguage}:`, newSession);
+      setState(prev => ({ ...prev, currentSession: newSession }));
 
-      setState(prev => ({
-        ...prev,
-        currentSession: newSession,
-        currentExercise: null,
-        userResponse: '',
-        showResult: false,
-        loading: false
-      }));
-
-      // Generate first language-aware exercise
-      await generateNextExercise(newSession);
-      
-      toast.success(`Started language-aware ${difficulty} session in ${settings.selectedLanguage}`);
-      return newSession;
+      // Generate first exercise
+      await nextExercise();
     } catch (error) {
-      console.error(`[startSession] Error starting language-aware session for ${settings.selectedLanguage}:`, error);
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: error instanceof Error ? error.message : `Failed to start language-aware session for ${settings.selectedLanguage}` 
-      }));
-      toast.error(`Failed to start language-aware session for ${settings.selectedLanguage}`);
-      throw error;
+      console.error('Error starting session:', error);
+      setState(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Failed to start session' }));
+    } finally {
+      setState(prev => ({ ...prev, loading: false }));
     }
-  };
+  }, [settings.selectedLanguage, nextExercise]);
 
-  const generateNextExercise = async (session: SentenceMiningSession) => {
-    setState(prev => ({ ...prev, isGeneratingNext: true, error: null }));
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      // Get session history for intelligent generation
-      const { data: previousExercises } = await supabase
-        .from('sentence_mining_exercises')
-        .select('sentence, target_words')
-        .eq('session_id', session.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      const previousSentences = previousExercises?.map(ex => ex.sentence) || [];
-
-      console.log(`[generateNextExercise] Generating exercise for language: ${session.language}`);
-
-      // Enhanced generation with language-aware intelligence
-      const { data, error } = await supabase.functions.invoke('generate-sentence-mining', {
-        body: {
-          language: session.language,
-          difficulty_level: session.difficulty_level,
-          session_id: session.id,
-          user_id: user.id,
-          previous_sentences: previousSentences,
-          n_plus_one: true,
-          // Add language-aware parameters
-          enable_smart_selection: true,
-          enable_spaced_repetition: true,
-          enable_word_cooldown: true,
-          enhanced_mode: true
-        }
-      });
-
-      if (error) {
-        console.error(`[generateNextExercise] Edge function error for ${session.language}:`, error);
-        throw error;
-      }
-
-      const exercise: SentenceMiningExercise = {
-        id: crypto.randomUUID(),
-        sentence: data.sentence,
-        targetWord: data.targetWord,
-        clozeSentence: data.clozeSentence,
-        difficulty: session.difficulty_level as DifficultyLevel,
-        context: data.context || '',
-        createdAt: new Date(),
-        attempts: 0,
-        correctAttempts: 0,
-        translation: data.translation,
-        correctAnswer: data.targetWord,
-        hints: data.hints,
-        session_id: session.id,
-        difficultyScore: data.difficultyScore,
-        // Enhanced metadata from language-aware generation
-        isSkipped: false
-      };
-
-      console.log(`[generateNextExercise] Generated language-aware exercise for ${session.language}:`, {
-        targetWord: data.targetWord,
-        wordSelectionReason: data.wordSelectionReason,
-        isReviewWord: data.isReviewWord,
-        isStrugglingWord: data.isStrugglingWord,
-        selectionQuality: data.selectionQuality,
-        language: session.language
-      });
-
-      setState(prev => ({
-        ...prev,
-        currentExercise: exercise,
-        userResponse: '',
-        showResult: false,
-        isGeneratingNext: false
-      }));
-    } catch (error) {
-      console.error(`[generateNextExercise] Error generating language-aware exercise for ${session.language}:`, error);
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : `Failed to generate language-aware exercise for ${session.language}`,
-        isGeneratingNext: false
-      }));
-      toast.error(`Failed to generate language-aware exercise for ${session.language}`);
-    }
-  };
-
-  const submitAnswer = async (response: string, selectedWords: string[] = [], isSkipped: boolean = false) => {
-    // Store references to avoid potential state changes during execution
+  const submitAnswer = useCallback(async (response: string, selectedWords: string[] = [], isSkipped: boolean = false) => {
     const currentSession = state.currentSession;
     const currentExercise = state.currentExercise;
-    
-    // Early return with proper type checking
-    if (!currentSession || !currentExercise) {
-      console.error('[submitAnswer] Missing session or exercise');
-      return;
-    }
+    if (!currentSession || !currentExercise) return;
 
-    // Now we have guaranteed non-null values
     setState(prev => ({ ...prev, loading: true }));
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Safe to access properties because we've verified they exist above
-      const correctAnswer = currentExercise!.correctAnswer;
+      const correctAnswer = currentExercise.correctAnswer;
       const isCorrect = !isSkipped && response.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
 
-      // Enhanced exercise result storage with adaptive metadata
+      // Store exercise result
       const { error: exerciseError } = await supabase
         .from('sentence_mining_exercises')
         .insert([{
@@ -398,32 +146,21 @@ export const useSentenceMining = () => {
           exercise_type: 'cloze',
           translation: currentExercise.translation,
           unknown_words: isSkipped ? [currentExercise.targetWord] : [],
-          // Enhanced tracking fields
-          hints_used: 0, // Could be enhanced to track hint usage
-          completion_time: null, // Could be enhanced to track completion time
+          hints_used: 0,
           completed_at: new Date().toISOString()
         }]);
 
       if (exerciseError) {
-        console.error('Error storing exercise result:', exerciseError);
+        console.error('Error storing exercise:', exerciseError);
       }
 
-      // Update spaced repetition system with performance
-      try {
-        // Import and use the SpacedRepetitionEngine (inline implementation for edge function compatibility)
-        await updateWordPerformanceInline(user.id, currentExercise.targetWord, currentSession.language, isCorrect);
-      } catch (srError) {
-        console.error('Error updating spaced repetition:', srError);
-      }
-
-      
       const updatedSession = {
         ...currentSession,
         totalAttempts: currentSession.totalAttempts + 1,
         totalCorrect: currentSession.totalCorrect + (isCorrect ? 1 : 0)
       };
 
-      // Update database session stats
+      // Update session stats
       await supabase
         .from('sentence_mining_sessions')
         .update({
@@ -440,48 +177,64 @@ export const useSentenceMining = () => {
         loading: false
       }));
 
-      // Enhanced word tracking for adaptive learning
-      if (isCorrect && !isSkipped) {
-        await supabase
-          .from('known_words')
-          .upsert({
-            user_id: user.id,
-            word: currentExercise.targetWord,
-            language: currentSession.language,
-            correct_count: 1,
-            review_count: 1,
-            mastery_level: 1,
-            last_reviewed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'user_id,word,language'
-          });
-
-        console.log(`[submitAnswer] Updated word performance for: ${currentExercise.targetWord} (correct: ${isCorrect}) in ${currentSession.language}`);
-      }
+      // Update progress
+      await loadProgress();
     } catch (error) {
-      console.error('Error submitting adaptive answer:', error);
+      console.error('Error submitting answer:', error);
       setState(prev => ({ ...prev, loading: false, error: 'Failed to submit answer' }));
-      toast.error('Failed to submit answer');
     }
-  };
+  }, [loadProgress, settings.selectedLanguage]);
 
   const nextExercise = useCallback(async () => {
-    const { currentSession } = state;
-    if (!currentSession) return;
+    if (!state.currentSession) return;
 
-    setState(prev => ({
-      ...prev,
-      currentExercise: null,
-      userResponse: '',
-      showResult: false,
-      showTranslation: false
-    }));
+    setState(prev => ({ ...prev, loading: true }));
 
-    await generateNextExercise(currentSession);
-  }, [state.currentSession]);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-  const endSession = async () => {
+      // Generate exercise
+      const exerciseResponse = await supabase.functions.invoke('generate-sentence-mining', {
+        body: {
+          difficulty_level: state.currentSession.difficulty,
+          language: settings.selectedLanguage,
+          session_id: state.currentSession.id,
+          user_id: user.id,
+          preferred_words: [],
+          novelty_words: [],
+          avoid_patterns: [],
+          diversity_score_target: 75,
+          selection_quality: 50,
+          enhanced_mode: false,
+          previous_sentences: [],
+          known_words: [],
+          n_plus_one: false
+        }
+      });
+
+      if (exerciseResponse.error) {
+        throw new Error(`Exercise generation failed: ${exerciseResponse.error.message}`);
+      }
+
+      const exercise = exerciseResponse.data;
+
+      setState(prev => ({
+        ...prev,
+        currentExercise: exercise,
+        userResponse: '',
+        showResult: false,
+        showTranslation: false,
+        showHint: false,
+        loading: false
+      }));
+    } catch (error) {
+      console.error('Error generating exercise:', error);
+      setState(prev => ({ ...prev, error: 'Failed to generate exercise', loading: false }));
+    }
+  }, [settings.selectedLanguage, state.currentSession]);
+
+  const endSession = useCallback(async () => {
     const { currentSession } = state;
     if (!currentSession) return;
 
@@ -502,15 +255,11 @@ export const useSentenceMining = () => {
         showResult: false
       }));
 
-      // Reload progress
       await loadProgress();
-
-      toast.success(`Session completed! ${currentSession.totalCorrect}/${currentSession.totalAttempts} correct`);
     } catch (error) {
       console.error('Error ending session:', error);
-      toast.error('Failed to end session');
     }
-  };
+  }, [loadProgress]);
 
   const updateUserResponse = (response: string) => {
     setState(prev => ({ ...prev, userResponse: response }));
@@ -518,6 +267,10 @@ export const useSentenceMining = () => {
 
   const toggleTranslation = () => {
     setState(prev => ({ ...prev, showTranslation: !prev.showTranslation }));
+  };
+
+  const toggleHint = () => {
+    setState(prev => ({ ...prev, showHint: !prev.showHint }));
   };
 
   return {
@@ -528,71 +281,7 @@ export const useSentenceMining = () => {
     endSession,
     updateUserResponse,
     toggleTranslation,
+    toggleHint,
     loadProgress
   };
-};
-
-// Inline spaced repetition update for immediate use
-const updateWordPerformanceInline = async (
-  userId: string,
-  word: string,
-  language: string,
-  isCorrect: boolean
-) => {
-  try {
-    // Get existing performance
-    const { data: existing } = await supabase
-      .from('known_words')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('word', word)
-      .eq('language', language)
-      .maybeSingle();
-
-    const now = new Date();
-    let newMasteryLevel = 1;
-    let nextReviewDate = new Date(now);
-
-    if (existing) {
-      const newAccuracy = (existing.correct_count + (isCorrect ? 1 : 0)) / (existing.review_count + 1);
-      
-      // Simple spaced repetition calculation
-      const baseInterval = isCorrect ? 2 : 1;
-      const multiplier = Math.min(existing.mastery_level * 1.5, 7);
-      const intervalDays = Math.ceil(baseInterval * multiplier);
-      
-      nextReviewDate.setDate(nextReviewDate.getDate() + intervalDays);
-      
-      // Update mastery level
-      if (isCorrect && newAccuracy >= 0.8) {
-        newMasteryLevel = Math.min(existing.mastery_level + 1, 10);
-      } else if (!isCorrect && newAccuracy < 0.6) {
-        newMasteryLevel = Math.max(existing.mastery_level - 1, 1);
-      } else {
-        newMasteryLevel = existing.mastery_level;
-      }
-    } else {
-      nextReviewDate.setDate(nextReviewDate.getDate() + (isCorrect ? 2 : 1));
-    }
-
-    await supabase
-      .from('known_words')
-      .upsert({
-        user_id: userId,
-        word,
-        language,
-        correct_count: existing ? existing.correct_count + (isCorrect ? 1 : 0) : (isCorrect ? 1 : 0),
-        review_count: existing ? existing.review_count + 1 : 1,
-        mastery_level: newMasteryLevel,
-        last_reviewed_at: now.toISOString(),
-        next_review_date: nextReviewDate.toISOString().split('T')[0],
-        updated_at: now.toISOString()
-      }, {
-        onConflict: 'user_id,word,language'
-      });
-
-    console.log(`Updated spaced repetition for ${language}: ${word} -> mastery level ${newMasteryLevel}, next review: ${nextReviewDate.toDateString()}`);
-  } catch (error) {
-    console.error(`Error in inline spaced repetition update for ${language}:`, error);
-  }
 };
