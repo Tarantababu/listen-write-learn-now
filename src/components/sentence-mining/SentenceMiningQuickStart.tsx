@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -42,11 +43,11 @@ export const SentenceMiningQuickStart: React.FC = () => {
               <h3 className="text-lg font-semibold">Sentence Mining</h3>
               <div className="flex items-center gap-2 mt-1">
                 <FlagIcon
-                  country={getLanguageFlagCode(settings.targetLanguage)}
+                  code={getLanguageFlagCode(settings.selectedLanguage)}
                   size={16}
                 />
                 <span className="text-sm text-muted-foreground">
-                  {capitalizeLanguage(settings.targetLanguage)}
+                  {capitalizeLanguage(settings.selectedLanguage)}
                 </span>
               </div>
             </div>
@@ -78,3 +79,4 @@ export const SentenceMiningQuickStart: React.FC = () => {
     </Card>
   );
 };
+
