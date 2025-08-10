@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
@@ -88,7 +87,17 @@ export const useReliableSentenceMining = () => {
 
   const startSession = useCallback(async (difficulty: DifficultyLevel) => {
     console.log(`[ReliableSentenceMining] Starting session with difficulty: ${difficulty}`);
-    setState(prev => ({ ...prev, loading: true, error: null, exerciseCount: 0 }));
+    setState(prev => ({ 
+      ...prev, 
+      loading: true, 
+      error: null, 
+      exerciseCount: 0,
+      userResponse: '',
+      showResult: false,
+      isCorrect: false,
+      showHint: false,
+      showTranslation: false
+    }));
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -161,7 +170,16 @@ export const useReliableSentenceMining = () => {
 
   const generateEnhancedExercise = async (session: SentenceMiningSession) => {
     console.log(`[ReliableSentenceMining] Generating enhanced exercise for session: ${session.id}`);
-    setState(prev => ({ ...prev, isGeneratingNext: true, error: null }));
+    setState(prev => ({ 
+      ...prev, 
+      isGeneratingNext: true, 
+      error: null,
+      userResponse: '',
+      showResult: false,
+      isCorrect: false,
+      showHint: false,
+      showTranslation: false
+    }));
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -331,7 +349,12 @@ export const useReliableSentenceMining = () => {
         ...prev,
         currentExercise: newExercise,
         isGeneratingNext: false,
-        exerciseCount: prev.exerciseCount + 1
+        exerciseCount: prev.exerciseCount + 1,
+        userResponse: '',
+        showResult: false,
+        isCorrect: false,
+        showHint: false,
+        showTranslation: false
       }));
 
       console.log(`[ReliableSentenceMining] Successfully generated exercise: ${exerciseData.targetWord} using ${selectionMethod}`);
@@ -364,6 +387,17 @@ export const useReliableSentenceMining = () => {
     if (!state.currentSession) return;
 
     console.log(`[ReliableSentenceMining] Generating next exercise`);
+    
+    // Clear current exercise state before generating next
+    setState(prev => ({
+      ...prev,
+      userResponse: '',
+      showResult: false,
+      isCorrect: false,
+      showHint: false,
+      showTranslation: false
+    }));
+
     await generateEnhancedExercise(state.currentSession);
   }, [state.currentSession]);
 
