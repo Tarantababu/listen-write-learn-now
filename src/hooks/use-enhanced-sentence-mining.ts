@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
@@ -295,7 +296,7 @@ export const useEnhancedSentenceMining = () => {
           preferred_words: wordSelection.selectedWords,
           novelty_words: noveltyWords,
           avoid_patterns: avoidPatterns,
-          diversity_score_target: Math.max(70, diversityMetrics.overallDiversity),
+          diversity_score_target: Math.max(70, diversityMetrics.patternDistribution),
           selection_quality: wordSelection.selectionQuality,
           enhanced_mode: true
         }
