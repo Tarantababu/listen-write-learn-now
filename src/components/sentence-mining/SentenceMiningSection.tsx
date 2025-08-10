@@ -1,239 +1,230 @@
 
-import React from 'react';
-import { Badge } from '@/components/ui/badge';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Brain, Trophy, BookOpen, Loader2, Target, Zap } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Play, BarChart3, BookOpen, Settings } from 'lucide-react';
 import { DifficultyLevel } from '@/types/sentence-mining';
-import { SimpleClozeExercise } from './SimpleClozeExercise';
-import { useReliableSentenceMining } from '@/hooks/use-reliable-sentence-mining';
+import { useEnhancedSentenceMining } from '@/hooks/use-enhanced-sentence-mining';
+import { ClozeExercise } from './exercises/ClozeExercise';
+import { EnhancedVocabularyStats } from './EnhancedVocabularyStats';
+import { VocabularyProgressIndicator } from './VocabularyProgressIndicator';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { FlagIcon } from 'react-flag-kit';
-import { getLanguageFlagCode, capitalizeLanguage } from '@/utils/languageUtils';
-
-// Import minimalist components
-import { MinimalistSessionStarter } from './MinimalistSessionStarter';
-import { MinimalistProgressCard } from './MinimalistProgressCard';
-import { MinimalistInsightsCard } from './MinimalistInsightsCard';
-import { MinimalistOverviewCards } from './MinimalistOverviewCards';
-import { MinimalistKeyboardHints } from './MinimalistKeyboardHints';
+import { capitalizeLanguage } from '@/utils/languageUtils';
 
 export const SentenceMiningSection: React.FC = () => {
-  const { user } = useAuth();
   const { settings } = useUserSettingsContext();
-  const {
-    currentSession,
-    currentExercise,
-    userResponse,
-    showResult,
-    isCorrect,
-    loading,
-    progress,
-    showTranslation,
-    isGeneratingNext,
-    error,
-    exerciseCount,
-    submitAnswer,
-    nextExercise,
-    endSession,
-    updateUserResponse,
-    toggleTranslation,
-    startSession
-  } = useReliableSentenceMining();
+  const mining = useEnhancedSentenceMining();
+  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('beginner');
 
-  const handleSubmitAnswer = () => {
-    submitAnswer(userResponse);
-  };
-
-  // Simple session starter that just takes difficulty
   const handleStartSession = async (difficulty: DifficultyLevel) => {
-    try {
-      await startSession(difficulty);
-    } catch (error) {
-      console.error('Failed to start session:', error);
-    }
+    setSelectedDifficulty(difficulty);
+    await mining.startSession(difficulty);
   };
 
-  // Show session selection if no active session
-  if (!currentSession) {
+  const handleSubmitAnswer = async () => {
+    await mining.submitAnswer(mining.userResponse);
+  };
+
+  const handleNextExercise = async () => {
+    await mining.nextExercise();
+  };
+
+  const handleSkip = async () => {
+    await mining.submitAnswer('', [], true);
+  };
+
+  if (mining.loading && !mining.currentSession) {
     return (
-      <div className="space-y-8 max-w-4xl mx-auto">
-        {/* Show error if present */}
-        {error && (
-          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-            <p className="text-destructive text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* Simplified Overview Section */}
-        {progress && (
-          <div className="space-y-6">
-            <MinimalistOverviewCards progress={progress} language={settings.selectedLanguage} />
-          </div>
-        )}
-
-        {/* Minimalist Keyboard Shortcuts */}
-        <MinimalistKeyboardHints />
-
-        {/* Simple Session Starter */}
-        <div className="bg-card border rounded-lg p-6">
-          <div className="text-center space-y-6">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold">Start Learning</h2>
-              <p className="text-muted-foreground">
-                Choose your difficulty level to begin sentence mining practice
-              </p>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                onClick={() => handleStartSession('beginner')}
-                disabled={loading}
-                variant="outline"
-                size="lg"
-                className="min-w-32"
-              >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Beginner
-              </Button>
-              <Button
-                onClick={() => handleStartSession('intermediate')}
-                disabled={loading}
-                size="lg"
-                className="min-w-32"
-              >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Intermediate
-              </Button>
-              <Button
-                onClick={() => handleStartSession('advanced')}
-                disabled={loading}
-                variant="outline"
-                size="lg"
-                className="min-w-32"
-              >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Advanced
-              </Button>
-            </div>
-          </div>
+      <div className="flex items-center justify-center p-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading sentence mining...</p>
         </div>
       </div>
     );
   }
 
-  // Show loading state while generating exercise
-  if (!currentExercise && isGeneratingNext) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center space-y-4">
-          <div className="relative">
-            <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
-            <div className="absolute -inset-4 border border-primary/20 rounded-full animate-pulse" />
-          </div>
-          <div className="space-y-2">
-            <p className="text-lg font-medium">Creating your exercise...</p>
-            <p className="text-sm text-muted-foreground">AI is generating personalized content</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state if exercise generation failed
-  if (!currentExercise && error) {
-    return (
-      <div className="space-y-8 max-w-4xl mx-auto">
-        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-semibold text-destructive mb-2">Exercise Generation Failed</h3>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <div className="space-x-4">
-            <Button onClick={endSession} variant="outline">
-              End Session
-            </Button>
-            <Button onClick={() => handleStartSession(currentSession.difficulty_level)}>
-              Try Again
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show active session with improved layout
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      {/* Session Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b">
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <FlagIcon code={getLanguageFlagCode(settings.selectedLanguage)} size={24} />
-            <h1 className="text-2xl font-bold">
-              {capitalizeLanguage(settings.selectedLanguage)} Practice
-            </h1>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary" className="capitalize">
-              {currentSession.difficulty_level}
-            </Badge>
-            <Badge variant="outline">
-              Exercise {exerciseCount}
-            </Badge>
-            <Badge variant="outline" className="text-primary">
-              <Brain className="h-3 w-3 mr-1" />
-              AI-Powered
-            </Badge>
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          onClick={endSession}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          End Session
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <Tabs defaultValue="practice" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="practice" className="flex items-center gap-2">
+            <Play className="h-4 w-4" />
+            Practice
+          </TabsTrigger>
+          <TabsTrigger value="vocabulary" className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4" />
+            Vocabulary
+          </TabsTrigger>
+          <TabsTrigger value="progress" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Progress
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Main Exercise Area */}
-        <div className="lg:col-span-3">
-          {currentExercise ? (
-            <SimpleClozeExercise
-              exercise={currentExercise}
-              userResponse={userResponse}
-              showResult={showResult}
-              isCorrect={isCorrect}
-              loading={loading}
-              isGeneratingNext={isGeneratingNext}
-              onResponseChange={updateUserResponse}
-              onSubmit={handleSubmitAnswer}
-              onNext={nextExercise}
-              showTranslation={showTranslation}
-              onToggleTranslation={toggleTranslation}
-            />
+        <TabsContent value="practice" className="space-y-6">
+          {!mining.currentSession ? (
+            <div className="space-y-6">
+              {/* Vocabulary Progress Overview */}
+              {mining.vocabularyStats && (
+                <VocabularyProgressIndicator vocabularyStats={mining.vocabularyStats} />
+              )}
+
+              {/* Difficulty Selection */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Start New Session - {capitalizeLanguage(settings.selectedLanguage)}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {(['beginner', 'intermediate', 'advanced'] as DifficultyLevel[]).map((difficulty) => (
+                      <Card 
+                        key={difficulty}
+                        className={`cursor-pointer transition-all hover:shadow-md ${
+                          selectedDifficulty === difficulty ? 'ring-2 ring-primary' : ''
+                        }`}
+                        onClick={() => setSelectedDifficulty(difficulty)}
+                      >
+                        <CardContent className="p-4 text-center">
+                          <h3 className="font-semibold capitalize mb-2">{difficulty}</h3>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            {difficulty === 'beginner' && 'Basic vocabulary and simple sentences'}
+                            {difficulty === 'intermediate' && 'Common phrases and moderate complexity'}
+                            {difficulty === 'advanced' && 'Complex grammar and advanced vocabulary'}
+                          </p>
+                          <Badge variant={selectedDifficulty === difficulty ? 'default' : 'outline'}>
+                            {selectedDifficulty === difficulty ? 'Selected' : 'Select'}
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                  
+                  <div className="flex justify-center mt-6">
+                    <Button 
+                      onClick={() => handleStartSession(selectedDifficulty)}
+                      disabled={mining.loading}
+                      size="lg"
+                      className="px-8"
+                    >
+                      {mining.loading ? 'Starting...' : 'Start Session'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           ) : (
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="text-center space-y-4">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-                <p className="text-muted-foreground">Loading exercise...</p>
-              </div>
+            <div className="space-y-6">
+              {/* Session Progress */}
+              {mining.currentSession && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Badge variant="outline">
+                          {capitalizeLanguage(mining.currentSession.language)}
+                        </Badge>
+                        <Badge variant="secondary" className="capitalize">
+                          {mining.currentSession.difficulty}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>
+                          Correct: {mining.currentSession.totalCorrect}/{mining.currentSession.totalAttempts}
+                        </span>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={mining.endSession}
+                        >
+                          End Session
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Current Exercise */}
+              {mining.currentExercise ? (
+                <ClozeExercise
+                  exercise={mining.currentExercise}
+                  userResponse={mining.userResponse}
+                  showResult={mining.showResult}
+                  isCorrect={mining.isCorrect}
+                  loading={mining.loading}
+                  onResponseChange={mining.updateUserResponse}
+                  onSubmit={handleSubmitAnswer}
+                  onNext={handleNextExercise}
+                  onSkip={handleSkip}
+                  showTranslation={mining.showTranslation}
+                  onToggleTranslation={mining.toggleTranslation}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="pt-6 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Generating personalized exercise...</p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
-        </div>
+        </TabsContent>
 
-        {/* Sidebar */}
-        <div className="space-y-4">
-          <MinimalistProgressCard 
-            session={currentSession} 
-            isGeneratingNext={isGeneratingNext}
-          />
-          
-          <MinimalistInsightsCard 
-            vocabularyProfile={null}
-            exerciseCount={exerciseCount}
-          />
-        </div>
-      </div>
+        <TabsContent value="vocabulary" className="space-y-6">
+          <EnhancedVocabularyStats />
+        </TabsContent>
+
+        <TabsContent value="progress" className="space-y-6">
+          {mining.progress && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{mining.progress.totalSessions}</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Exercises Completed</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{mining.progress.totalExercises}</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Average Accuracy</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{mining.progress.averageAccuracy}%</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Words Learned</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {mining.progress.vocabularyStats.totalWordsEncountered}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

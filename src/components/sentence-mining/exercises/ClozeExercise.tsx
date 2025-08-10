@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Volume2, CheckCircle, XCircle, Lightbulb } from 'lucide-react';
+import { Volume2, CheckCircle, XCircle, Lightbulb, SkipForward } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 
 interface ClozeExerciseProps {
@@ -18,6 +18,7 @@ interface ClozeExerciseProps {
   onResponseChange: (response: string) => void;
   onSubmit: () => void;
   onNext: () => void;
+  onSkip?: () => void;
   showTranslation: boolean;
   onToggleTranslation: () => void;
 }
@@ -33,6 +34,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   onResponseChange,
   onSubmit,
   onNext,
+  onSkip,
   showTranslation,
   onToggleTranslation
 }) => {
@@ -84,7 +86,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 size="sm"
                 onClick={onPlayAudio}
                 disabled={audioLoading}
-                className="flex items-center gap-1 transition-transform duration-200 hover:scale-105 active:scale-95"
+                className="flex items-center gap-1"
               >
                 <Volume2 className="h-4 w-4" />
                 {audioLoading ? 'Loading...' : 'Listen'}
@@ -149,7 +151,6 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
               variant="outline"
               size="sm"
               onClick={onToggleTranslation}
-              className="transition-transform duration-200 hover:scale-105 active:scale-95"
             >
               {showTranslation ? 'Hide' : 'Show'} Full Sentence Translation
             </Button>
@@ -170,14 +171,29 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
           {/* Action Buttons */}
           <div className="flex justify-center gap-4">
             {!showResult ? (
-              <Button
-                onClick={handleSubmit}
-                disabled={!userResponse.trim() || loading}
-                size="lg"
-                className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
-              >
-                {loading ? 'Checking...' : 'Submit Answer'}
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!userResponse.trim() || loading}
+                  size="lg"
+                  className="px-8"
+                >
+                  {loading ? 'Checking...' : 'Submit Answer'}
+                </Button>
+                
+                {onSkip && (
+                  <Button
+                    variant="outline"
+                    onClick={onSkip}
+                    disabled={loading}
+                    size="lg"
+                    className="px-6 flex items-center gap-2"
+                  >
+                    <SkipForward className="h-4 w-4" />
+                    Skip
+                  </Button>
+                )}
+              </div>
             ) : (
               <div className="text-center space-y-4">
                 <div className={`flex items-center justify-center gap-2 text-lg font-semibold ${
@@ -210,7 +226,7 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                 <Button
                   onClick={onNext}
                   size="lg"
-                  className="px-8 transition-transform duration-200 hover:scale-105 active:scale-95"
+                  className="px-8"
                 >
                   Next Exercise
                 </Button>
