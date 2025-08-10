@@ -6,6 +6,7 @@ import {
   Routes,
   useLocation,
 } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import Index from '@/pages/Index';
 import LoginPage from '@/pages/LoginPage';
 import SignUpPage from '@/pages/SignUpPage';
@@ -67,6 +68,56 @@ function AppContent() {
 
   return (
     <ThemeProvider>
+      <HelmetProvider>
+        <div className="flex flex-col min-h-screen">
+          <Header />
+          <PromotionalBanner />
+          <main className="flex-grow">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignUpPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/language-selection" element={<LanguageSelectionPage />} />
+              
+              {/* Protected Routes */}
+              <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+              <Route path="/exercises" element={<ProtectedRoute><ExercisesPage /></ProtectedRoute>} />
+              <Route path="/bidirectional" element={<ProtectedRoute><BidirectionalPage /></ProtectedRoute>} />
+              <Route path="/bidirectional-exercises" element={<ProtectedRoute><BidirectionalExercises /></ProtectedRoute>} />
+              <Route path="/sentence-mining" element={<ProtectedRoute><SentenceMiningPage /></ProtectedRoute>} />
+              <Route path="/anticipation" element={<ProtectedRoute><AnticipationPage /></ProtectedRoute>} />
+              <Route path="/vocabulary" element={<ProtectedRoute><VocabularyPage /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+              <Route path="/subscription" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
+              <Route path="/curriculum" element={<ProtectedRoute><CurriculumPage /></ProtectedRoute>} />
+              <Route path="/roadmap" element={<ProtectedRoute><RoadmapPage /></ProtectedRoute>} />
+              <Route path="/blog" element={<BlogPage />} />
+              <Route path="/blog/:slug" element={<BlogPostPage />} />
+              <Route path="/tutorial" element={<ProtectedRoute><TutorialPage /></ProtectedRoute>} />
+              
+              {/* Admin Routes */}
+              <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+              
+              {/* Legal Pages */}
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
+              <Route path="/cookie-policy" element={<CookiePolicy />} />
+              
+              {/* Catch all route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </main>
+        </div>
+      </HelmetProvider>
+    </ThemeProvider>
+  );
+}
+
+function App() {
+  return (
+    <Router>
       <AuthProvider>
         <SubscriptionProvider>
           <UserSettingsProvider>
@@ -75,47 +126,7 @@ function AppContent() {
                 <DirectoryProvider>
                   <SecurityMonitoringWrapper>
                     <ScrollToTop />
-                    <div className="flex flex-col min-h-screen">
-                      <Header />
-                      <PromotionalBanner />
-                      <main className="flex-grow">
-                        <Routes>
-                          <Route path="/" element={<Index />} />
-                          <Route path="/login" element={<LoginPage />} />
-                          <Route path="/signup" element={<SignUpPage />} />
-                          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                          <Route path="/reset-password" element={<ResetPasswordPage />} />
-                          <Route path="/language-selection" element={<LanguageSelectionPage />} />
-                          
-                          {/* Protected Routes */}
-                          <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-                          <Route path="/exercises" element={<ProtectedRoute><ExercisesPage /></ProtectedRoute>} />
-                          <Route path="/bidirectional" element={<ProtectedRoute><BidirectionalPage /></ProtectedRoute>} />
-                          <Route path="/bidirectional-exercises" element={<ProtectedRoute><BidirectionalExercises /></ProtectedRoute>} />
-                          <Route path="/sentence-mining" element={<ProtectedRoute><SentenceMiningPage /></ProtectedRoute>} />
-                          <Route path="/anticipation" element={<ProtectedRoute><AnticipationPage /></ProtectedRoute>} />
-                          <Route path="/vocabulary" element={<ProtectedRoute><VocabularyPage /></ProtectedRoute>} />
-                          <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-                          <Route path="/subscription" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
-                          <Route path="/curriculum" element={<ProtectedRoute><CurriculumPage /></ProtectedRoute>} />
-                          <Route path="/roadmap" element={<ProtectedRoute><RoadmapPage /></ProtectedRoute>} />
-                          <Route path="/blog" element={<BlogPage />} />
-                          <Route path="/blog/:slug" element={<BlogPostPage />} />
-                          <Route path="/tutorial" element={<ProtectedRoute><TutorialPage /></ProtectedRoute>} />
-                          
-                          {/* Admin Routes */}
-                          <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
-                          
-                          {/* Legal Pages */}
-                          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                          <Route path="/terms-of-service" element={<TermsOfService />} />
-                          <Route path="/cookie-policy" element={<CookiePolicy />} />
-                          
-                          {/* Catch all route */}
-                          <Route path="*" element={<NotFound />} />
-                        </Routes>
-                      </main>
-                    </div>
+                    <AppContent />
                   </SecurityMonitoringWrapper>
                 </DirectoryProvider>
               </VocabularyProvider>
@@ -123,14 +134,6 @@ function AppContent() {
           </UserSettingsProvider>
         </SubscriptionProvider>
       </AuthProvider>
-    </ThemeProvider>
-  );
-}
-
-function App() {
-  return (
-    <Router>
-      <AppContent />
     </Router>
   );
 }
