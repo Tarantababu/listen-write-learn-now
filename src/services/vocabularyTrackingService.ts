@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface VocabularyClassification {
@@ -80,8 +79,7 @@ export class VocabularyTrackingService {
         activeVocabulary,
         totalWordsEncountered: knownWords.length,
         strugglingWords,
-        masteryDistribution,
-        language
+        masteryDistribution
       };
     } catch (error) {
       console.error('Error in getVocabularyStats:', error);

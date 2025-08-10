@@ -41,11 +41,11 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
   const [sessionActive, setSessionActive] = useState(false);
 
   const {
-    generateExercise,
+    startSession,
     submitAnswer,
-    startNewSession,
-    endSession
-  } = useEnhancedSentenceMining(language, difficulty);
+    endSession,
+    generateExercise
+  } = useEnhancedSentenceMining();
 
   const handleStartSession = useCallback(async () => {
     if (!user) {
@@ -60,23 +60,39 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       setLoading(true);
       setError(null);
 
-      const newSession = await startNewSession();
-      if (newSession) {
-        setCurrentSession(newSession);
-        setExercises([]);
-        setCurrentExercise(null);
-        setProgress({ correct: 0, total: 0 });
-        setSessionActive(true);
-        toast({
-          title: "Session started!",
-          description: "Let's start learning.",
-        })
-      } else {
-        toast({
-          title: "Session start failed.",
-          description: "Please try again.",
-        })
-      }
+      await startSession(difficulty);
+      
+      // Create a mock session for UI state
+      const newSession: SentenceMiningSession = {
+        id: `session-${Date.now()}`,
+        language: language,
+        difficulty: difficulty,
+        exercises: [],
+        currentExerciseIndex: 0,
+        startTime: new Date(),
+        totalCorrect: 0,
+        totalAttempts: 0,
+        user_id: user.id,
+        difficulty_level: difficulty,
+        total_exercises: 0,
+        correct_exercises: 0,
+        new_words_encountered: 0,
+        words_mastered: 0,
+        started_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        session_data: {}
+      };
+
+      setCurrentSession(newSession);
+      setExercises([]);
+      setCurrentExercise(null);
+      setProgress({ correct: 0, total: 0 });
+      setSessionActive(true);
+      
+      toast({
+        title: "Session started!",
+        description: "Let's start learning.",
+      })
     } catch (error) {
       console.error("Failed to start session:", error);
       setError("Failed to start session. Please try again.");
@@ -87,7 +103,7 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
     } finally {
       setLoading(false);
     }
-  }, [user, startNewSession, toast]);
+  }, [user, startSession, difficulty, language, toast]);
 
   const handleGenerateExercise = useCallback(async () => {
     if (!sessionActive) {
@@ -136,38 +152,32 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       setLoading(true);
       setError(null);
 
-      const isCorrect = await submitAnswer(currentExercise, answer);
-      if (isCorrect !== null) {
-        const updatedExercise: SentenceMiningExercise = {
-          ...currentExercise,
-          isCorrect: isCorrect,
-          userAnswer: answer,
-          attempts: currentExercise.attempts + 1
-        };
+      await submitAnswer(answer);
+      
+      // Update the exercise in the exercises array
+      const updatedExercise: SentenceMiningExercise = {
+        ...currentExercise,
+        isCorrect: answer.toLowerCase().trim() === currentExercise.correctAnswer.toLowerCase().trim(),
+        userAnswer: answer,
+        attempts: currentExercise.attempts + 1
+      };
 
-        // Update the exercise in the exercises array
-        setExercises(prevExercises =>
-          prevExercises.map(ex => (ex.id === updatedExercise.id ? updatedExercise : ex))
-        );
-        setCurrentExercise(null);
+      setExercises(prevExercises =>
+        prevExercises.map(ex => (ex.id === updatedExercise.id ? updatedExercise : ex))
+      );
+      setCurrentExercise(null);
 
-        // Update progress
-        setProgress(prevProgress => {
-          const newTotal = prevProgress.total + 1;
-          const newCorrect = isCorrect ? prevProgress.correct + 1 : prevProgress.correct;
-          return { correct: newCorrect, total: newTotal };
-        });
+      // Update progress
+      setProgress(prevProgress => {
+        const newTotal = prevProgress.total + 1;
+        const newCorrect = updatedExercise.isCorrect ? prevProgress.correct + 1 : prevProgress.correct;
+        return { correct: newCorrect, total: newTotal };
+      });
 
-        toast({
-          title: isCorrect ? "Correct!" : "Incorrect.",
-          description: isCorrect ? "Great job!" : "Try again next time.",
-        })
-      } else {
-        toast({
-          title: "Answer submission failed.",
-          description: "Please try again.",
-        })
-      }
+      toast({
+        title: updatedExercise.isCorrect ? "Correct!" : "Incorrect.",
+        description: updatedExercise.isCorrect ? "Great job!" : "Try again next time.",
+      })
     } catch (error) {
       console.error("Failed to submit answer:", error);
       setError("Failed to submit answer. Please try again.");
@@ -189,7 +199,7 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       setLoading(true);
       setError(null);
 
-      await endSession(currentSession);
+      await endSession();
       setCurrentSession(null);
       setExercises([]);
       setCurrentExercise(null);
