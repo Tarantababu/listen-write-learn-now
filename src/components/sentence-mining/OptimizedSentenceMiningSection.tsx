@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,20 +32,37 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [currentSession, setCurrentSession] = useState<SentenceMiningSession | null>(null);
-  const [exercises, setExercises] = useState<SentenceMiningExercise[]>([]);
-  const [currentExercise, setCurrentExercise] = useState<SentenceMiningExercise | null>(null);
-  const [progress, setProgress] = useState<SimpleProgress>({ correct: 0, total: 0 });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sessionActive, setSessionActive] = useState(false);
-
+  // Use state from the enhanced hook instead of managing our own
   const {
+    currentSession,
+    currentExercise,
+    progress,
+    loading,
+    error,
     startSession,
     submitAnswer,
     endSession,
     nextExercise
   } = useEnhancedSentenceMining();
+
+  // Local state for exercises history and session tracking
+  const [exercises, setExercises] = useState<SentenceMiningExercise[]>([]);
+  const [sessionActive, setSessionActive] = useState(false);
+
+  // Update session active state based on currentSession
+  useEffect(() => {
+    setSessionActive(!!currentSession);
+  }, [currentSession]);
+
+  // Update exercises when a new exercise is generated
+  useEffect(() => {
+    if (currentExercise) {
+      setExercises(prev => {
+        const exists = prev.find(ex => ex.id === currentExercise.id);
+        return exists ? prev : [...prev, currentExercise];
+      });
+    }
+  }, [currentExercise]);
 
   const handleStartSession = useCallback(async () => {
     if (!user) {
@@ -56,37 +74,8 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
     }
 
     try {
-      setLoading(true);
-      setError(null);
-
       await startSession(difficulty);
-      
-      // Create a mock session for UI state
-      const newSession: SentenceMiningSession = {
-        id: `session-${Date.now()}`,
-        language: language,
-        difficulty: difficulty,
-        exercises: [],
-        currentExerciseIndex: 0,
-        startTime: new Date(),
-        totalCorrect: 0,
-        totalAttempts: 0,
-        user_id: user.id,
-        difficulty_level: difficulty,
-        total_exercises: 0,
-        correct_exercises: 0,
-        new_words_encountered: 0,
-        words_mastered: 0,
-        started_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        session_data: {}
-      };
-
-      setCurrentSession(newSession);
       setExercises([]);
-      setCurrentExercise(null);
-      setProgress({ correct: 0, total: 0 });
-      setSessionActive(true);
       
       toast({
         title: "Session started!",
@@ -94,15 +83,12 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       })
     } catch (error) {
       console.error("Failed to start session:", error);
-      setError("Failed to start session. Please try again.");
       toast({
         title: "Session start failed.",
         description: "Please try again.",
       })
-    } finally {
-      setLoading(false);
     }
-  }, [user, startSession, difficulty, language, toast]);
+  }, [user, startSession, difficulty, toast]);
 
   const handleGenerateExercise = useCallback(async () => {
     if (!sessionActive) {
@@ -114,9 +100,6 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
     }
 
     try {
-      setLoading(true);
-      setError(null);
-
       await nextExercise();
       
       toast({
@@ -125,13 +108,10 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       })
     } catch (error) {
       console.error("Failed to generate exercise:", error);
-      setError("Failed to generate exercise. Please try again.");
       toast({
         title: "Exercise generation failed.",
         description: "Please try again.",
       })
-    } finally {
-      setLoading(false);
     }
   }, [sessionActive, nextExercise, toast]);
 
@@ -145,9 +125,6 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
     }
 
     try {
-      setLoading(true);
-      setError(null);
-
       await submitAnswer(answer);
       
       // Update the exercise in the exercises array
@@ -161,14 +138,6 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       setExercises(prevExercises =>
         prevExercises.map(ex => (ex.id === updatedExercise.id ? updatedExercise : ex))
       );
-      setCurrentExercise(null);
-
-      // Update progress
-      setProgress(prevProgress => {
-        const newTotal = prevProgress.total + 1;
-        const newCorrect = updatedExercise.isCorrect ? prevProgress.correct + 1 : prevProgress.correct;
-        return { correct: newCorrect, total: newTotal };
-      });
 
       toast({
         title: updatedExercise.isCorrect ? "Correct!" : "Incorrect.",
@@ -176,9 +145,6 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       })
     } catch (error) {
       console.error("Failed to submit answer:", error);
-      setError("Failed to submit answer. Please try again.");
-    } finally {
-      setLoading(false);
     }
   }, [currentExercise, submitAnswer, toast]);
 
@@ -192,24 +158,14 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
     }
 
     try {
-      setLoading(true);
-      setError(null);
-
       await endSession();
-      setCurrentSession(null);
       setExercises([]);
-      setCurrentExercise(null);
-      setProgress({ correct: 0, total: 0 });
-      setSessionActive(false);
       toast({
         title: "Session ended!",
         description: "See you next time.",
       })
     } catch (error) {
       console.error("Failed to end session:", error);
-      setError("Failed to end session. Please try again.");
-    } finally {
-      setLoading(false);
     }
   }, [currentSession, endSession, toast]);
 
@@ -267,9 +223,9 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
               <CardDescription>Track your progress in this session.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ProgressBar progress={progress} />
+              <ProgressBar progress={progress || { correct: 0, total: 0 }} />
               <div className="mt-2 text-sm">
-                Correct: {progress.correct} / Total: {progress.total}
+                Correct: {progress?.correct || 0} / Total: {progress?.total || 0}
               </div>
             </CardContent>
           </Card>
