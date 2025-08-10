@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -44,7 +43,7 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
     startSession,
     submitAnswer,
     endSession,
-    generateExercise
+    nextExercise
   } = useEnhancedSentenceMining();
 
   const handleStartSession = useCallback(async () => {
@@ -118,26 +117,23 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       setLoading(true);
       setError(null);
 
-      const newExercise = await generateExercise();
-      if (newExercise) {
-        setCurrentExercise(newExercise);
-        setExercises(prev => {
-          const exists = prev.find(ex => ex.id === newExercise.id);
-          return exists ? prev : [...prev, newExercise];
-        });
-      } else {
-        toast({
-          title: "Exercise generation failed.",
-          description: "Please try again.",
-        })
-      }
+      await nextExercise();
+      
+      toast({
+        title: "New exercise generated!",
+        description: "Complete the sentence below.",
+      })
     } catch (error) {
       console.error("Failed to generate exercise:", error);
       setError("Failed to generate exercise. Please try again.");
+      toast({
+        title: "Exercise generation failed.",
+        description: "Please try again.",
+      })
     } finally {
       setLoading(false);
     }
-  }, [sessionActive, generateExercise, toast]);
+  }, [sessionActive, nextExercise, toast]);
 
   const handleSubmitAnswer = useCallback(async (answer: string) => {
     if (!currentExercise) {
@@ -157,7 +153,7 @@ export const OptimizedSentenceMiningSection: React.FC<OptimizedSentenceMiningSec
       // Update the exercise in the exercises array
       const updatedExercise: SentenceMiningExercise = {
         ...currentExercise,
-        isCorrect: answer.toLowerCase().trim() === currentExercise.correctAnswer.toLowerCase().trim(),
+        isCorrect: answer.toLowerCase().trim() === currentExercise.correctAnswer?.toLowerCase().trim(),
         userAnswer: answer,
         attempts: currentExercise.attempts + 1
       };
