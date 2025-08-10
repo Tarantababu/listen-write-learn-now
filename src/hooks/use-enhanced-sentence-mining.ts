@@ -1,16 +1,21 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
+import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress, VocabularyStats } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface EnhancedSentenceMiningState {
   currentSession: SentenceMiningSession | null;
   currentExercise: SentenceMiningExercise | null;
+  userResponse: string;
+  showResult: boolean;
+  isCorrect: boolean;
   loading: boolean;
   error: string | null;
   progress: SentenceMiningProgress | null;
+  showTranslation: boolean;
+  vocabularyStats: VocabularyStats | null;
 }
 
 export const useEnhancedSentenceMining = () => {
@@ -18,15 +23,40 @@ export const useEnhancedSentenceMining = () => {
   const [state, setState] = useState<EnhancedSentenceMiningState>({
     currentSession: null,
     currentExercise: null,
+    userResponse: '',
+    showResult: false,
+    isCorrect: false,
     loading: false,
     error: null,
     progress: null,
+    showTranslation: false,
+    vocabularyStats: null,
   });
 
   // Load progress when language changes
   useEffect(() => {
     loadProgress();
+    loadVocabularyStats();
   }, [settings.selectedLanguage]);
+
+  const loadVocabularyStats = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      // Mock vocabulary stats for now - in real implementation, this would come from the database
+      const vocabularyStats: VocabularyStats = {
+        passiveVocabulary: 0,
+        activeVocabulary: 0,
+        totalWordsEncountered: 0,
+        language: settings.selectedLanguage
+      };
+
+      setState(prev => ({ ...prev, vocabularyStats }));
+    } catch (error) {
+      console.error('[useEnhancedSentenceMining] Error loading vocabulary stats:', error);
+    }
+  };
 
   const loadProgress = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -71,7 +101,7 @@ export const useEnhancedSentenceMining = () => {
     }
   };
 
-  const startSession = async (difficulty: DifficultyLevel): Promise<SentenceMiningSession | null> => {
+  const startSession = async (difficulty: DifficultyLevel): Promise<SentenceMiningSession> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       throw new Error('Please log in to start a session');
@@ -82,7 +112,11 @@ export const useEnhancedSentenceMining = () => {
     setState(prev => ({ 
       ...prev, 
       loading: true, 
-      error: null
+      error: null,
+      currentExercise: null,
+      userResponse: '',
+      showResult: false,
+      isCorrect: false
     }));
 
     try {
@@ -154,6 +188,9 @@ export const useEnhancedSentenceMining = () => {
         loading: false 
       }));
 
+      // Immediately generate first exercise
+      await generateNextExercise(newSession);
+
       return newSession;
     } catch (error) {
       console.error('[useEnhancedSentenceMining] Error starting session:', error);
@@ -166,14 +203,22 @@ export const useEnhancedSentenceMining = () => {
     }
   };
 
-  const nextExercise = useCallback(async () => {
-    const session = state.currentSession;
-    if (!session) {
-      console.error('[useEnhancedSentenceMining] No current session for nextExercise');
+  const generateNextExercise = async (session?: SentenceMiningSession) => {
+    const currentSession = session || state.currentSession;
+    if (!currentSession) {
+      console.error('[useEnhancedSentenceMining] No current session for generateNextExercise');
       throw new Error('No active session');
     }
 
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    setState(prev => ({ 
+      ...prev, 
+      loading: true, 
+      error: null,
+      currentExercise: null,
+      userResponse: '',
+      showResult: false,
+      isCorrect: false
+    }));
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -181,15 +226,15 @@ export const useEnhancedSentenceMining = () => {
         throw new Error('User not authenticated');
       }
 
-      console.log('[useEnhancedSentenceMining] Generating exercise for session:', session.id);
+      console.log('[useEnhancedSentenceMining] Generating exercise for session:', currentSession.id);
 
       // Call the Supabase function to generate sentence mining exercise
       const { data: result, error } = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
-          language: session.language,
-          difficulty: session.difficulty_level,
+          language: currentSession.language,
+          difficulty: currentSession.difficulty_level,
           userId: user.id,
-          sessionId: session.id,
+          sessionId: currentSession.id,
           enhancedMode: true
         }
       });
@@ -208,9 +253,12 @@ export const useEnhancedSentenceMining = () => {
 
       const exercise: SentenceMiningExercise = {
         id: result.exercise.id,
-        sessionId: session.id,
+        sessionId: currentSession.id,
         sentence: result.exercise.sentence,
         targetWord: result.exercise.targetWord,
+        clozeSentence: result.exercise.clozeSentence || result.exercise.sentence,
+        difficulty: currentSession.difficulty_level,
+        context: result.exercise.context || '',
         correctAnswer: result.exercise.correctAnswer,
         translation: result.exercise.translation,
         difficultyScore: result.exercise.difficultyScore,
@@ -237,9 +285,21 @@ export const useEnhancedSentenceMining = () => {
       }));
       throw error;
     }
+  };
+
+  const nextExercise = useCallback(async () => {
+    await generateNextExercise();
   }, [state.currentSession]);
 
-  const submitAnswer = async (answer: string) => {
+  const updateUserResponse = useCallback((response: string) => {
+    setState(prev => ({ ...prev, userResponse: response }));
+  }, []);
+
+  const toggleTranslation = useCallback(() => {
+    setState(prev => ({ ...prev, showTranslation: !prev.showTranslation }));
+  }, []);
+
+  const submitAnswer = async (answer: string, hints: string[] = [], isSkipped: boolean = false) => {
     const currentSession = state.currentSession;
     const currentExercise = state.currentExercise;
     
@@ -254,9 +314,9 @@ export const useEnhancedSentenceMining = () => {
       if (!user) throw new Error('User not authenticated');
 
       const correctAnswer = currentExercise.correctAnswer;
-      const isCorrect = answer.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
+      const isCorrect = !isSkipped && answer.toLowerCase().trim() === correctAnswer?.toLowerCase().trim();
 
-      console.log('[useEnhancedSentenceMining] Submitting answer:', { answer, correctAnswer, isCorrect });
+      console.log('[useEnhancedSentenceMining] Submitting answer:', { answer, correctAnswer, isCorrect, isSkipped });
 
       // Store exercise result
       const { error: exerciseError } = await supabase
@@ -266,12 +326,12 @@ export const useEnhancedSentenceMining = () => {
           sentence: currentExercise.sentence,
           target_words: [currentExercise.targetWord],
           user_response: answer,
-          is_correct: isCorrect,
+          is_correct: isSkipped ? null : isCorrect,
           difficulty_score: currentExercise.difficultyScore || 1,
           exercise_type: 'cloze',
           translation: currentExercise.translation,
           unknown_words: [],
-          hints_used: 0,
+          hints_used: hints.length,
           completion_time: 5000, // Default completion time
           completed_at: new Date().toISOString()
         }]);
@@ -298,6 +358,8 @@ export const useEnhancedSentenceMining = () => {
       setState(prev => ({
         ...prev,
         currentSession: updatedSession,
+        showResult: true,
+        isCorrect: isCorrect,
         loading: false
       }));
 
@@ -328,7 +390,10 @@ export const useEnhancedSentenceMining = () => {
       setState(prev => ({
         ...prev,
         currentSession: null,
-        currentExercise: null
+        currentExercise: null,
+        userResponse: '',
+        showResult: false,
+        isCorrect: false
       }));
 
       await loadProgress();
@@ -346,6 +411,8 @@ export const useEnhancedSentenceMining = () => {
     submitAnswer,
     nextExercise,
     endSession,
-    loadProgress
+    loadProgress,
+    updateUserResponse,
+    toggleTranslation
   };
 };
