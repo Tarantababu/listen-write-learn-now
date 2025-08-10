@@ -12,7 +12,6 @@ import { useRoadmap } from '@/hooks/use-roadmap';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/hooks/use-admin';
 import { hasTutorialBeenViewed, markTutorialAsViewed } from '@/utils/visitorTracking';
-import { SentenceMiningQuickStart } from '@/components/sentence-mining/SentenceMiningQuickStart';
 
 const HomePage = () => {
   const location = useLocation();
@@ -80,7 +79,6 @@ const HomePage = () => {
               - Equal width columns with gap
             */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <SentenceMiningQuickStart />
             </div>
             
             {/* Rest of UserStatistics content */}
