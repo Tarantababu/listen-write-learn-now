@@ -293,8 +293,13 @@ export const useEnhancedSentenceMining = () => {
   };
 
   const nextExercise = useCallback(async (targetSession?: SentenceMiningSession) => {
-    await generateNextExercise(targetSession);
-  }, []); // Remove state.currentSession dependency to avoid stale closure
+    try {
+      await generateNextExercise(targetSession);
+    } catch (error) {
+      console.error('[useEnhancedSentenceMining] Error in nextExercise:', error);
+      toast.error('Failed to generate next exercise. Please try again.');
+    }
+  }, []); // Remove state dependencies to avoid stale closures
 
   const updateUserResponse = useCallback((response: string) => {
     setState(prev => ({ ...prev, userResponse: response }));

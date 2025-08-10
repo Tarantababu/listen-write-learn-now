@@ -18,6 +18,7 @@ export const SentenceMiningSection: React.FC = () => {
   const mining = useEnhancedSentenceMining();
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('beginner');
   const [isStartingSession, setIsStartingSession] = useState(false);
+  const [isGeneratingNext, setIsGeneratingNext] = useState(false);
 
   const handleStartSession = async (difficulty: DifficultyLevel) => {
     setSelectedDifficulty(difficulty);
@@ -47,14 +48,29 @@ export const SentenceMiningSection: React.FC = () => {
   };
 
   const handleNextExercise = async () => {
-    await mining.nextExercise();
+    if (!mining.currentSession) {
+      console.error('[SentenceMiningSection] No active session for next exercise');
+      return;
+    }
+
+    setIsGeneratingNext(true);
+    
+    try {
+      console.log('[SentenceMiningSection] Generating next exercise for session:', mining.currentSession.id);
+      await mining.nextExercise(mining.currentSession);
+      console.log('[SentenceMiningSection] Next exercise generated successfully');
+    } catch (error) {
+      console.error('[SentenceMiningSection] Failed to generate next exercise:', error);
+    } finally {
+      setIsGeneratingNext(false);
+    }
   };
 
   const handleSkip = async () => {
     await mining.submitAnswer('', [], true);
   };
 
-  const isLoading = mining.loading || isStartingSession;
+  const isLoading = mining.loading || isStartingSession || isGeneratingNext;
 
   if (isLoading && !mining.currentSession) {
     return (
@@ -180,7 +196,7 @@ export const SentenceMiningSection: React.FC = () => {
                   userResponse={mining.userResponse}
                   showResult={mining.showResult}
                   isCorrect={mining.isCorrect}
-                  loading={mining.loading}
+                  loading={isGeneratingNext}
                   onResponseChange={mining.updateUserResponse}
                   onSubmit={handleSubmitAnswer}
                   onNext={handleNextExercise}
@@ -192,7 +208,9 @@ export const SentenceMiningSection: React.FC = () => {
                 <Card>
                   <CardContent className="pt-6 text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-muted-foreground">Generating personalized exercise...</p>
+                    <p className="text-muted-foreground">
+                      {isGeneratingNext ? 'Generating next exercise...' : 'Generating personalized exercise...'}
+                    </p>
                   </CardContent>
                 </Card>
               )}
