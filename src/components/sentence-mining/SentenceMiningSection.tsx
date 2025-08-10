@@ -17,15 +17,28 @@ export const SentenceMiningSection: React.FC = () => {
   const { settings } = useUserSettingsContext();
   const mining = useEnhancedSentenceMining();
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('beginner');
+  const [isStartingSession, setIsStartingSession] = useState(false);
 
   const handleStartSession = async (difficulty: DifficultyLevel) => {
     setSelectedDifficulty(difficulty);
+    setIsStartingSession(true);
+    
     try {
+      console.log('[SentenceMiningSection] Starting session with difficulty:', difficulty);
+      
+      // Start the session first
       const session = await mining.startSession(difficulty);
-      // Generate first exercise immediately after session creation
-      await mining.nextExercise();
+      console.log('[SentenceMiningSection] Session created:', session.id);
+      
+      // Then generate the first exercise using the new session
+      console.log('[SentenceMiningSection] Generating first exercise...');
+      await mining.nextExercise(session);
+      console.log('[SentenceMiningSection] First exercise generated successfully');
+      
     } catch (error) {
-      console.error('Failed to start session and generate exercise:', error);
+      console.error('[SentenceMiningSection] Failed to start session and generate exercise:', error);
+    } finally {
+      setIsStartingSession(false);
     }
   };
 
@@ -41,12 +54,16 @@ export const SentenceMiningSection: React.FC = () => {
     await mining.submitAnswer('', [], true);
   };
 
-  if (mining.loading && !mining.currentSession) {
+  const isLoading = mining.loading || isStartingSession;
+
+  if (isLoading && !mining.currentSession) {
     return (
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading sentence mining...</p>
+          <p className="text-muted-foreground">
+            {isStartingSession ? 'Starting session and generating first exercise...' : 'Loading sentence mining...'}
+          </p>
         </div>
       </div>
     );
@@ -114,11 +131,11 @@ export const SentenceMiningSection: React.FC = () => {
                   <div className="flex justify-center mt-6">
                     <Button 
                       onClick={() => handleStartSession(selectedDifficulty)}
-                      disabled={mining.loading}
+                      disabled={isLoading}
                       size="lg"
                       className="px-8"
                     >
-                      {mining.loading ? 'Starting...' : 'Start Session'}
+                      {isLoading ? 'Starting Session...' : 'Start Session'}
                     </Button>
                   </div>
                 </CardContent>
