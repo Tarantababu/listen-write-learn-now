@@ -42,6 +42,35 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
   const clozeSentence = exercise.clozeSentence || generateClozeSentence(exercise.sentence, exercise.targetWord || '');
   const targetWord = exercise.targetWord || '';
 
+  // Add global keyboard shortcuts
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Enter to submit answer or move to next exercise
+      if (e.key === 'Enter') {
+        // Don't interfere if user is typing in input field
+        if (e.target instanceof HTMLInputElement) {
+          return;
+        }
+        
+        e.preventDefault();
+        if (!showResult && userResponse.trim() && !loading) {
+          onSubmit();
+        } else if (showResult) {
+          onNext();
+        }
+      }
+      
+      // Space to toggle translation (when not focused on input)
+      if (e.key === ' ' && e.target !== document.querySelector('input[type="text"]')) {
+        e.preventDefault();
+        onToggleTranslation();
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showResult, userResponse, loading, onSubmit, onNext, onToggleTranslation]);
+
   // Get the hint - prefer targetWordTranslation, fallback to first hint
   const getHintText = () => {
     if (exercise.targetWordTranslation) {
@@ -141,6 +170,11 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   disabled={loading}
                   autoFocus
                 />
+                <div className="text-center mt-2">
+                  <p className="text-xs text-muted-foreground">
+                    Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> to check answer
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -154,6 +188,9 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
             >
               {showTranslation ? 'Hide' : 'Show'} Full Sentence Translation
             </Button>
+            <p className="text-xs text-muted-foreground mt-1">
+              Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Space</kbd> to toggle
+            </p>
           </div>
 
           {/* English Translation Display */}
@@ -223,13 +260,18 @@ export const ClozeExercise: React.FC<ClozeExerciseProps> = ({
                   </div>
                 )}
                 
-                <Button
-                  onClick={onNext}
-                  size="lg"
-                  className="px-8"
-                >
-                  Next Exercise
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    onClick={onNext}
+                    size="lg"
+                    className="px-8"
+                  >
+                    Next Exercise
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> to continue
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -255,7 +297,6 @@ function generateClozeSentence(sentence: string, targetWord: string): string {
   return words.join(' ');
 }
 
-// Helper function to render the cloze sentence with proper styling
 function renderClozeSentence(
   clozeSentence: string, 
   userResponse: string, 
