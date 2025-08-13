@@ -80,7 +80,7 @@ export class WordFrequencyService {
       'on', 'notre', 'votre', 'leur', 'mon', 'ton', 'ma', 'ta', 'sa', 'mes',
       'tes', 'ses', 'nos', 'vos', 'leurs', 'cette', 'ces', 'cet', 'qui', 'quoi',
       'dont', 'comment', 'quand', 'pourquoi', 'combien', 'bon', 'mauvais', 'beau', 'joli', 'gros',
-      'haut', 'bas', 'large', 'étroit', 'vieux', 'ancien', 'dernier', 'prochain', 'maintenant', 'aujourd'hui',
+      'haut', 'bas', 'large', 'étroit', 'vieux', 'ancien', 'dernier', 'prochain', 'maintenant', 'aujourd\'hui',
       'hier', 'demain', 'toujours', 'jamais', 'souvent', 'parfois', 'déjà', 'ici', 'là', 'partout',
       'nulle part', 'quelque part', 'ailleurs', 'dedans', 'dehors', 'dessus', 'dessous', 'devant', 'derrière', 'près',
       'loin', 'avant', 'maison', 'famille', 'père', 'mère', 'enfant', 'fils', 'fille', 'frère',
@@ -124,7 +124,7 @@ export class WordFrequencyService {
       'primeiro', 'último', 'próximo', 'anterior', 'hoje', 'ontem', 'amanhã', 'agora', 'sempre', 'nunca',
       'às vezes', 'ainda', 'aqui', 'aí', 'ali', 'lá', 'onde', 'aonde', 'donde', 'quando',
       'por que', 'porque', 'para que', 'poder', 'dever', 'querer', 'saber', 'conhecer', 'ver', 'ouvir',
-      'falar', 'escutar', 'perguntar', 'responder', 'entender', 'aprender', 'ensinar', 'estudar', 'ler', 'escrever',
+      'falar', 'escutar', 'perguntar', 'responder', 'entender', 'aprender', 'ensinar', 'estudiar', 'ler', 'escrever',
       'homem', 'mulher', 'criança', 'menino', 'menina', 'pessoa', 'gente', 'família', 'pai', 'mãe',
       'filho', 'filha', 'irmão', 'irmã', 'avô', 'avó', 'amigo', 'amiga', 'casa', 'trabalho'
     ]
