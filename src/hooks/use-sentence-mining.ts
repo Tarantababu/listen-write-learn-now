@@ -21,8 +21,9 @@ export const useSentenceMining = () => {
     isGeneratingNext: false,
   });
 
-  // Track used words in current session
+  // Track used words in current session with better management
   const [sessionWords, setSessionWords] = useState<string[]>([]);
+  const [sessionWordFrequency, setSessionWordFrequency] = useState<Map<string, number>>(new Map());
 
   // Load progress data
   useEffect(() => {
@@ -70,6 +71,29 @@ export const useSentenceMining = () => {
     }
   };
 
+  const addToSessionWords = (word: string) => {
+    setSessionWords(prev => {
+      const updated = [...prev, word].slice(-20); // Keep last 20 words
+      return updated;
+    });
+    
+    setSessionWordFrequency(prev => {
+      const updated = new Map(prev);
+      updated.set(word.toLowerCase(), (updated.get(word.toLowerCase()) || 0) + 1);
+      return updated;
+    });
+  };
+
+  const getWordAvoidanceList = (): string[] => {
+    // Get words used recently with higher frequency
+    const recentWords = sessionWords.slice(-10); // Last 10 words
+    const frequentWords = Array.from(sessionWordFrequency.entries())
+      .filter(([_, count]) => count >= 2)
+      .map(([word, _]) => word);
+    
+    return [...new Set([...recentWords, ...frequentWords])];
+  };
+
   const nextExercise = useCallback(async () => {
     if (!state.currentSession) return;
 
@@ -79,17 +103,22 @@ export const useSentenceMining = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      // Get words to avoid (recently used + frequently used in session)
+      const avoidWords = getWordAvoidanceList();
+      
+      console.log(`[SentenceMining] Avoiding words: [${avoidWords.join(', ')}]`);
+
       // Get automatic word selection
       const wordSelection = await AutomaticWordSelection.selectAutomaticWord({
         language: settings.selectedLanguage,
         difficulty: state.currentSession.difficulty_level as DifficultyLevel,
         userId: user.id,
         sessionId: state.currentSession.id,
-        previousWords: sessionWords,
+        previousWords: avoidWords,
         wordCount: 1
       });
 
-      console.log(`[SentenceMining] Using auto-selected word: ${wordSelection.selectedWord} - ${wordSelection.selectionReason}`);
+      console.log(`[SentenceMining] Selected word: ${wordSelection.selectedWord} - ${wordSelection.selectionReason}`);
 
       // Generate exercise with the selected word
       const exerciseResponse = await supabase.functions.invoke('generate-sentence-mining', {
@@ -125,8 +154,8 @@ export const useSentenceMining = () => {
           state.currentSession.id
         );
 
-        // Add to session words to avoid repetition
-        setSessionWords(prev => [...prev, exercise.targetWord].slice(-10)); // Keep last 10 words
+        // Add to session tracking
+        addToSessionWords(exercise.targetWord);
       }
 
       setState(prev => ({
@@ -142,7 +171,7 @@ export const useSentenceMining = () => {
 
       // Show word selection info
       if (wordSelection.selectionReason) {
-        toast.info(`Word selected: ${wordSelection.selectedWord} (${wordSelection.selectionReason})`);
+        toast.info(`Word: ${wordSelection.selectedWord} (${wordSelection.selectionReason})`);
       }
 
     } catch (error) {
@@ -154,11 +183,12 @@ export const useSentenceMining = () => {
         isGeneratingNext: false 
       }));
     }
-  }, [settings.selectedLanguage, state.currentSession, sessionWords]);
+  }, [settings.selectedLanguage, state.currentSession, sessionWords, sessionWordFrequency]);
 
   const startSession = useCallback(async (difficulty: DifficultyLevel) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
     setSessionWords([]); // Reset session words
+    setSessionWordFrequency(new Map()); // Reset word frequency tracking
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -298,6 +328,7 @@ export const useSentenceMining = () => {
       }));
 
       setSessionWords([]); // Reset session words
+      setSessionWordFrequency(new Map()); // Reset frequency tracking
       await loadProgress();
     } catch (error) {
       console.error('Error ending session:', error);
@@ -326,6 +357,8 @@ export const useSentenceMining = () => {
     toggleTranslation,
     toggleHint,
     loadProgress,
-    sessionWords
+    sessionWords,
+    sessionWordFrequency: Object.fromEntries(sessionWordFrequency),
+    wordAvoidanceList: getWordAvoidanceList()
   };
 };
