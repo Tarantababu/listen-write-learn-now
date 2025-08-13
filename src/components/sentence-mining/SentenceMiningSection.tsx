@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -224,10 +223,13 @@ export const SentenceMiningSection: React.FC = () => {
           ) : (
             <div className="space-y-4">
               <UserResponse
-                userResponse={activeMining.userResponse}
-                targetWord={activeMining.currentExercise.targetWord}
+                onSubmit={handleSubmitAnswer}
+                onNext={handleNextExercise}
+                showResult={activeMining.showResult}
                 isCorrect={activeMining.isCorrect}
-                showTranslation={showTranslation}
+                correctAnswer={activeMining.currentExercise.targetWord}
+                loading={activeMining.loading}
+                explanation={activeMining.currentExercise.hints?.[0]}
               />
               
               <div className="flex justify-center">
