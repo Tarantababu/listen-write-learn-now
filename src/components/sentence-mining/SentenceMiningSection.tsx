@@ -223,7 +223,7 @@ export const SentenceMiningSection: React.FC = () => {
           ) : (
             <div className="space-y-4">
               <UserResponse
-                onSubmit={handleSubmitAnswer}
+                onSubmit={() => {}} // Empty function since result is already shown
                 onNext={handleNextExercise}
                 showResult={activeMining.showResult}
                 isCorrect={activeMining.isCorrect}
