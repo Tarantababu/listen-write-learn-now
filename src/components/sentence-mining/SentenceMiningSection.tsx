@@ -4,16 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, BarChart3, BookOpen, Settings, Brain, TrendingUp } from 'lucide-react';
+import { Play, BarChart3, BookOpen } from 'lucide-react';
 import { DifficultyLevel } from '@/types/sentence-mining';
 import { useEnhancedSentenceMining } from '@/hooks/use-enhanced-sentence-mining';
 import { ClozeExercise } from './exercises/ClozeExercise';
 import { EnhancedVocabularyStats } from './EnhancedVocabularyStats';
 import { VocabularyProgressIndicator } from './VocabularyProgressIndicator';
 import { EnhancedDifficultySelector } from './EnhancedDifficultySelector';
-import { EnhancedExerciseDisplay } from './EnhancedExerciseDisplay';
-import { EnhancedProgressTracker } from './EnhancedProgressTracker';
-import { WordMasteryIndicator, calculateMasteryLevel } from './WordMasteryIndicator';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { capitalizeLanguage } from '@/utils/languageUtils';
 
@@ -76,38 +73,6 @@ export const SentenceMiningSection: React.FC = () => {
 
   const isLoading = mining.loading || isStartingSession || isGeneratingNext;
 
-  // Generate mock session metrics for the progress tracker
-  const getSessionMetrics = () => {
-    if (!mining.currentSession) {
-      return {
-        currentStreak: 0,
-        sessionAccuracy: 0,
-        averageComplexity: 50,
-        wordsEncountered: 0,
-        newWordsLearned: 0,
-        difficulty: selectedDifficulty,
-        totalExercises: 0,
-        correctExercises: 0
-      };
-    }
-
-    const sessionAccuracy = mining.currentSession.totalAttempts > 0 
-      ? (mining.currentSession.totalCorrect / mining.currentSession.totalAttempts) * 100 
-      : 0;
-
-    return {
-      currentStreak: mining.currentSession.totalCorrect,
-      sessionAccuracy,
-      averageComplexity: mining.currentSession.difficulty === 'advanced' ? 85 : 
-                        mining.currentSession.difficulty === 'intermediate' ? 65 : 45,
-      wordsEncountered: mining.currentSession.totalAttempts,
-      newWordsLearned: Math.floor(mining.currentSession.totalAttempts * 0.6),
-      difficulty: mining.currentSession.difficulty_level as DifficultyLevel,
-      totalExercises: mining.currentSession.totalAttempts,
-      correctExercises: mining.currentSession.totalCorrect
-    };
-  };
-
   // Generate mock difficulty progress for the selector
   const getDifficultyProgress = () => {
     if (!mining.progress) return undefined;
@@ -167,75 +132,22 @@ export const SentenceMiningSection: React.FC = () => {
               />
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Session Header with Progress Tracker */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <Badge variant="outline">
-                            {capitalizeLanguage(mining.currentSession.language)}
-                          </Badge>
-                          <Badge variant="secondary" className="capitalize">
-                            {mining.currentSession.difficulty}
-                          </Badge>
-                          {mining.currentExercise?.targetWord && (
-                            <WordMasteryIndicator
-                              word={mining.currentExercise.targetWord}
-                              masteryLevel={calculateMasteryLevel(3, 2)}
-                              encounters={3}
-                              correctCount={2}
-                              showProgress={false}
-                            />
-                          )}
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={mining.endSession}
-                        >
-                          End Session
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-                
-                <EnhancedProgressTracker 
-                  metrics={getSessionMetrics()}
-                  className="lg:col-span-1"
-                />
-              </div>
-
-              {/* Current Exercise */}
+            <div className="w-full">
+              {/* Current Exercise - Only this div remains */}
               {mining.currentExercise ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2">
-                    <ClozeExercise
-                      exercise={mining.currentExercise}
-                      userResponse={mining.userResponse}
-                      showResult={mining.showResult}
-                      isCorrect={mining.isCorrect}
-                      loading={isGeneratingNext}
-                      onResponseChange={mining.updateUserResponse}
-                      onSubmit={handleSubmitAnswer}
-                      onNext={handleNextExercise}
-                      onSkip={handleSkip}
-                      showTranslation={mining.showTranslation}
-                      onToggleTranslation={mining.toggleTranslation}
-                    />
-                  </div>
-                  
-                  <div className="lg:col-span-1">
-                    <EnhancedExerciseDisplay
-                      exercise={mining.currentExercise}
-                      showTranslation={mining.showTranslation}
-                      onToggleTranslation={mining.toggleTranslation}
-                    />
-                  </div>
-                </div>
+                <ClozeExercise
+                  exercise={mining.currentExercise}
+                  userResponse={mining.userResponse}
+                  showResult={mining.showResult}
+                  isCorrect={mining.isCorrect}
+                  loading={isGeneratingNext}
+                  onResponseChange={mining.updateUserResponse}
+                  onSubmit={handleSubmitAnswer}
+                  onNext={handleNextExercise}
+                  onSkip={handleSkip}
+                  showTranslation={mining.showTranslation}
+                  onToggleTranslation={mining.toggleTranslation}
+                />
               ) : (
                 <Card>
                   <CardContent className="pt-6 text-center">
