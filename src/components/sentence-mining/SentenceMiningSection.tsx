@@ -220,14 +220,12 @@ export const SentenceMiningSection: React.FC = () => {
             <ExerciseInput
               onSubmit={handleSubmitAnswer}
               disabled={activeMining.loading}
-              userResponse={activeMining.userResponse}
-              setUserResponse={activeMining.setUserResponse}
             />
           ) : (
             <div className="space-y-4">
               <UserResponse
-                exercise={activeMining.currentExercise}
                 userResponse={activeMining.userResponse}
+                targetWord={activeMining.currentExercise.targetWord}
                 isCorrect={activeMining.isCorrect}
                 showTranslation={showTranslation}
               />

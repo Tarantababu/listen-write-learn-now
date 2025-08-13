@@ -51,7 +51,12 @@ export const useProgressiveSentenceMining = () => {
         words_mastered: 0,
         started_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
-        exercise_types: ['cloze'],
+        difficulty: difficulty,
+        exercises: [],
+        currentExerciseIndex: 0,
+        startTime: new Date(),
+        totalCorrect: 0,
+        totalAttempts: 0,
         session_data: sessionData.config
       };
 
@@ -173,10 +178,12 @@ export const useProgressiveSentenceMining = () => {
     if (!user) return null;
 
     try {
-      return await ProgressiveSentenceMiningService.getProgressionInsights(
+      const insights = await ProgressiveSentenceMiningService.getProgressionInsights(
         user.id,
         settings.selectedLanguage
       );
+      setProgressionInsights(insights);
+      return insights;
     } catch (error) {
       console.error('Error getting progression insights:', error);
       return null;

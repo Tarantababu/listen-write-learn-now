@@ -61,7 +61,20 @@ export class ProgressiveVocabularyEngine {
       ).length;
       
       const averageMastery = progressionData.reduce((sum, w) => sum + w.mastery_level, 0) / progressionData.length;
-      const averageComplexity = progressionData.reduce((sum, w) => sum + (w.contextual_strength?.complexity || 30), 0) / progressionData.length;
+      
+      // Calculate average complexity more safely
+      const complexityScores = progressionData
+        .map(w => {
+          const contextualStrength = w.contextual_strength;
+          if (typeof contextualStrength === 'object' && contextualStrength !== null && 'complexity' in contextualStrength) {
+            return (contextualStrength as any).complexity || 30;
+          }
+          return 30;
+        });
+      
+      const averageComplexity = complexityScores.length > 0 
+        ? complexityScores.reduce((sum, score) => sum + score, 0) / complexityScores.length 
+        : 30;
       
       // Determine if user is ready for progression
       const readyForProgression = masteredWords >= 5 && learningWords <= 8;

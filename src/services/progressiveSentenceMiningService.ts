@@ -36,7 +36,7 @@ export class ProgressiveSentenceMiningService {
           session_type: 'progressive',
           current_complexity_level: 30,
           progression_velocity: finalConfig.progressionVelocity,
-          session_data: { config: finalConfig }
+          session_data: { config: finalConfig } as any
         })
         .select()
         .single();
@@ -55,7 +55,7 @@ export class ProgressiveSentenceMiningService {
             progressive: true, 
             progressionSessionId: session.id,
             config: finalConfig
-          }
+          } as any
         })
         .select()
         .single();
@@ -82,7 +82,7 @@ export class ProgressiveSentenceMiningService {
     difficulty: DifficultyLevel
   ): Promise<SentenceMiningExercise> {
     try {
-      console.log('[ProgressiveSentenceMiningService] Generating progressive exercise');
+      console.log('[ProgressiveSentenceMiningService] Generating progressive exercise for:', { userId, sessionId, language, difficulty });
 
       // Get progressive word selection
       const wordSelection = await ProgressiveVocabularyEngine.selectProgressiveWords(
@@ -126,7 +126,7 @@ export class ProgressiveSentenceMiningService {
 
       // Update progression session
       await this.updateProgressionSession(
-        wordSelection.sessionData.progressionSessionId,
+        wordSelection.sessionData.progressionSessionId || sessionId,
         wordSelection.introducedWords.length,
         wordSelection.reinforcedWords.length,
         wordSelection.nextComplexityLevel
