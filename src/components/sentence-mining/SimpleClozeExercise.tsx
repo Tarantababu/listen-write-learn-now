@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,7 +51,22 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
   // Add global keyboard shortcuts
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + Enter to submit answer
+      // Enter to submit answer or move to next exercise
+      if (e.key === 'Enter') {
+        // Don't interfere if user is typing in input field
+        if (e.target instanceof HTMLInputElement) {
+          return;
+        }
+        
+        e.preventDefault();
+        if (!showResult && userResponse.trim() && !loading) {
+          onSubmit();
+        } else if (showResult && !isGeneratingNext) {
+          onNext();
+        }
+      }
+      
+      // Ctrl/Cmd + Enter to submit answer or move to next (works even in input field)
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
         if (!showResult && userResponse.trim() && !loading) {
@@ -100,7 +114,6 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
     return filledSentence;
   };
 
-  // Get the hint - prefer targetWordTranslation, fallback to first hint
   const getHintText = () => {
     if (exercise.targetWordTranslation) {
       return exercise.targetWordTranslation;
@@ -159,8 +172,7 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
               {/* Keyboard shortcuts hint */}
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">
-                  Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> or{' '}
-                  <kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl+Enter</kbd> to check answer
+                  Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> to check answer
                 </p>
               </div>
             </div>
@@ -272,8 +284,7 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
                       'Please wait while we generate your next exercise...'
                     ) : (
                       <>
-                        Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> or{' '}
-                        <kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl+Enter</kbd> to continue
+                        Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> to continue
                       </>
                     )}
                   </p>
