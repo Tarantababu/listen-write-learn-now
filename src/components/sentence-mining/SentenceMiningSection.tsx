@@ -1,18 +1,16 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Play, BarChart3, BookOpen } from 'lucide-react';
 import { DifficultyLevel } from '@/types/sentence-mining';
 import { useEnhancedSentenceMining } from '@/hooks/use-enhanced-sentence-mining';
-import { ClozeExercise } from './exercises/ClozeExercise';
+import { MinimalistClozeExercise } from './exercises/MinimalistClozeExercise';
 import { EnhancedVocabularyStats } from './EnhancedVocabularyStats';
 import { VocabularyProgressIndicator } from './VocabularyProgressIndicator';
 import { EnhancedDifficultySelector } from './EnhancedDifficultySelector';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
-import { capitalizeLanguage } from '@/utils/languageUtils';
 
 export const SentenceMiningSection: React.FC = () => {
   const { settings } = useUserSettingsContext();
@@ -26,19 +24,17 @@ export const SentenceMiningSection: React.FC = () => {
     setIsStartingSession(true);
     
     try {
-      console.log('[SentenceMiningSection] Starting session with difficulty:', difficulty);
+      console.log('[SentenceMiningSection] Starting enhanced session with difficulty:', difficulty);
       
-      // Start the session first
       const session = await mining.startSession(difficulty);
-      console.log('[SentenceMiningSection] Session created:', session.id);
+      console.log('[SentenceMiningSection] Enhanced session created:', session?.id);
       
-      // Then generate the first exercise using the new session
       console.log('[SentenceMiningSection] Generating first exercise...');
       await mining.nextExercise(session);
       console.log('[SentenceMiningSection] First exercise generated successfully');
       
     } catch (error) {
-      console.error('[SentenceMiningSection] Failed to start session and generate exercise:', error);
+      console.error('[SentenceMiningSection] Failed to start enhanced session:', error);
     } finally {
       setIsStartingSession(false);
     }
@@ -57,11 +53,11 @@ export const SentenceMiningSection: React.FC = () => {
     setIsGeneratingNext(true);
     
     try {
-      console.log('[SentenceMiningSection] Generating next exercise for session:', mining.currentSession.id);
+      console.log('[SentenceMiningSection] Generating next enhanced exercise');
       await mining.nextExercise(mining.currentSession);
-      console.log('[SentenceMiningSection] Next exercise generated successfully');
+      console.log('[SentenceMiningSection] Next enhanced exercise generated successfully');
     } catch (error) {
-      console.error('[SentenceMiningSection] Failed to generate next exercise:', error);
+      console.error('[SentenceMiningSection] Failed to generate next enhanced exercise:', error);
     } finally {
       setIsGeneratingNext(false);
     }
@@ -73,24 +69,14 @@ export const SentenceMiningSection: React.FC = () => {
 
   const isLoading = mining.loading || isStartingSession || isGeneratingNext;
 
-  // Generate mock difficulty progress for the selector
-  const getDifficultyProgress = () => {
-    if (!mining.progress) return undefined;
-    
-    return {
-      beginner: { attempted: 25, correct: 22, accuracy: 88 },
-      intermediate: { attempted: 15, correct: 11, accuracy: 73 },
-      advanced: { attempted: 8, correct: 5, accuracy: 62 }
-    };
-  };
-
+  // Simplified loading state
   if (isLoading && !mining.currentSession) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+      <div className="flex items-center justify-center p-16">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="text-muted-foreground">
-            {isStartingSession ? 'Starting session and generating first exercise...' : 'Loading sentence mining...'}
+            {isStartingSession ? 'Starting your session...' : 'Loading...'}
           </p>
         </div>
       </div>
@@ -117,25 +103,34 @@ export const SentenceMiningSection: React.FC = () => {
 
         <TabsContent value="practice" className="space-y-6">
           {!mining.currentSession ? (
-            <div className="space-y-6">
-              {/* Vocabulary Progress Overview */}
-              {mining.vocabularyStats && (
-                <VocabularyProgressIndicator vocabularyStats={mining.vocabularyStats} />
-              )}
-
-              {/* Enhanced Difficulty Selection */}
-              <EnhancedDifficultySelector
-                onSelectDifficulty={handleStartSession}
-                progress={getDifficultyProgress()}
-                recommendedDifficulty="intermediate"
-                confidenceScore={0.8}
-              />
+            <div className="space-y-8">
+              {/* Minimalist Difficulty Selection */}
+              <div className="max-w-md mx-auto space-y-6">
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold mb-2">Choose Your Level</h2>
+                  <p className="text-muted-foreground">Start practicing with {settings.selectedLanguage}</p>
+                </div>
+                
+                <div className="space-y-3">
+                  {(['beginner', 'intermediate', 'advanced'] as DifficultyLevel[]).map(level => (
+                    <Button
+                      key={level}
+                      variant={level === selectedDifficulty ? 'default' : 'outline'}
+                      className="w-full py-3 text-left justify-start capitalize"
+                      onClick={() => handleStartSession(level)}
+                      disabled={isLoading}
+                    >
+                      {level}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : (
+            // Current Exercise - Minimalist Design
             <div className="w-full">
-              {/* Current Exercise - Only this div remains */}
               {mining.currentExercise ? (
-                <ClozeExercise
+                <MinimalistClozeExercise
                   exercise={mining.currentExercise}
                   userResponse={mining.userResponse}
                   showResult={mining.showResult}
@@ -153,7 +148,7 @@ export const SentenceMiningSection: React.FC = () => {
                   <CardContent className="pt-6 text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                     <p className="text-muted-foreground">
-                      {isGeneratingNext ? 'Generating next exercise...' : 'Generating personalized exercise...'}
+                      {isGeneratingNext ? 'Preparing next exercise...' : 'Generating personalized exercise...'}
                     </p>
                   </CardContent>
                 </Card>
@@ -170,40 +165,32 @@ export const SentenceMiningSection: React.FC = () => {
           {mining.progress && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   <div className="text-2xl font-bold">{mining.progress.totalSessions}</div>
+                  <p className="text-sm text-muted-foreground">Total Sessions</p>
                 </CardContent>
               </Card>
               
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Exercises Completed</CardTitle>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   <div className="text-2xl font-bold">{mining.progress.totalExercises}</div>
+                  <p className="text-sm text-muted-foreground">Exercises Completed</p>
                 </CardContent>
               </Card>
               
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Average Accuracy</CardTitle>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   <div className="text-2xl font-bold">{mining.progress.averageAccuracy}%</div>
+                  <p className="text-sm text-muted-foreground">Average Accuracy</p>
                 </CardContent>
               </Card>
               
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Words Learned</CardTitle>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   <div className="text-2xl font-bold">
                     {mining.progress.vocabularyStats.totalWordsEncountered}
                   </div>
+                  <p className="text-sm text-muted-foreground">Words Learned</p>
                 </CardContent>
               </Card>
             </div>
