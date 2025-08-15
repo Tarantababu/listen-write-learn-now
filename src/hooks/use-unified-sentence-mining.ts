@@ -1,12 +1,11 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DifficultyLevel, SentenceMiningSession, SentenceMiningExercise, SentenceMiningProgress } from '@/types/sentence-mining';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
-import { SpacedRepetitionEngine } from '@/services/spacedRepetitionEngine';
+import { SpacedRepetitionEngine } from '@/services/spacedRepetition/spacedRepetitionEngine';
 import { EnhancedWordFrequencyService } from '@/services/enhancedWordFrequencyService';
-import { SessionWordTracker } from '@/services/sessionWordTracker';
+import { SessionWordTracker } from '@/services/sessionManagement/sessionWordTracker';
 
 interface UnifiedSentenceMiningState {
   currentSession: SentenceMiningSession | null;
@@ -38,7 +37,6 @@ export const useUnifiedSentenceMining = () => {
     isGeneratingNext: false,
   });
 
-  // Load progress and initialize spaced repetition data
   useEffect(() => {
     loadProgress();
   }, [settings.selectedLanguage]);
@@ -48,7 +46,6 @@ export const useUnifiedSentenceMining = () => {
     if (!user) return;
 
     try {
-      // Get sessions for the selected language
       const { data: sessions } = await supabase
         .from('sentence_mining_sessions')
         .select('*')
@@ -61,7 +58,6 @@ export const useUnifiedSentenceMining = () => {
       const totalCorrect = sessions?.reduce((sum, s) => sum + s.correct_exercises, 0) || 0;
       const averageAccuracy = totalExercises > 0 ? Math.round((totalCorrect / totalExercises) * 100) : 0;
 
-      // Load vocabulary stats from spaced repetition engine
       const { data: knownWords } = await supabase
         .from('known_words')
         .select('mastery_level')
@@ -95,31 +91,25 @@ export const useUnifiedSentenceMining = () => {
 
   const selectOptimalWord = async (userId: string, sessionId: string): Promise<string> => {
     try {
-      // First check for words due for review (spaced repetition priority)
       const wordsForReview = await SpacedRepetitionEngine.getWordsForReview(
         userId,
         settings.selectedLanguage,
         5
       );
 
-      // Get struggling words that need reinforcement
       const strugglingWords = await SpacedRepetitionEngine.getStrugglingWords(
         userId,
         settings.selectedLanguage,
         3
       );
 
-      // Get session words to avoid immediate repetition
       const sessionWords = SessionWordTracker.getSessionWords(sessionId);
       const recentWords = await SessionWordTracker.loadRecentWords(userId, settings.selectedLanguage);
 
-      // Combined avoidance list
       const avoidWords = [...sessionWords, ...recentWords];
 
-      // Priority selection logic
       let selectedWord: string | null = null;
 
-      // 1. Prioritize struggling words (30% chance if available)
       if (strugglingWords.length > 0 && Math.random() < 0.3) {
         const availableStruggling = strugglingWords.filter(w => !avoidWords.includes(w.toLowerCase()));
         if (availableStruggling.length > 0) {
@@ -128,7 +118,6 @@ export const useUnifiedSentenceMining = () => {
         }
       }
 
-      // 2. Use words due for review (40% chance if available)
       if (!selectedWord && wordsForReview.length > 0 && Math.random() < 0.4) {
         const availableReview = wordsForReview.filter(w => !avoidWords.includes(w.toLowerCase()));
         if (availableReview.length > 0) {
@@ -137,7 +126,6 @@ export const useUnifiedSentenceMining = () => {
         }
       }
 
-      // 3. Fallback to frequency-based selection with language consistency
       if (!selectedWord) {
         const difficultyMapping: Record<DifficultyLevel, 'beginner' | 'intermediate' | 'advanced'> = {
           beginner: 'beginner',
@@ -160,7 +148,6 @@ export const useUnifiedSentenceMining = () => {
         }
       }
 
-      // 4. Emergency fallback with language-appropriate words
       if (!selectedWord) {
         const emergencyWords = EnhancedWordFrequencyService.getEmergencyFallbackWords(settings.selectedLanguage);
         const availableEmergency = emergencyWords.filter(w => !avoidWords.includes(w.toLowerCase()));
@@ -169,7 +156,6 @@ export const useUnifiedSentenceMining = () => {
           selectedWord = availableEmergency[Math.floor(Math.random() * availableEmergency.length)];
           console.log(`[UnifiedSentenceMining] Selected emergency fallback: ${selectedWord}`);
         } else {
-          // Absolute fallback
           selectedWord = emergencyWords[0] || 'word';
           console.warn(`[UnifiedSentenceMining] Using absolute fallback: ${selectedWord}`);
         }
@@ -178,7 +164,6 @@ export const useUnifiedSentenceMining = () => {
       return selectedWord;
     } catch (error) {
       console.error('[UnifiedSentenceMining] Error in word selection:', error);
-      // Language-appropriate emergency fallback
       const emergencyWords = EnhancedWordFrequencyService.getEmergencyFallbackWords(settings.selectedLanguage);
       return emergencyWords[0] || 'word';
     }
@@ -194,12 +179,10 @@ export const useUnifiedSentenceMining = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Select optimal word using unified strategy
       const selectedWord = await selectOptimalWord(user.id, currentSession.id);
 
       console.log(`[UnifiedSentenceMining] Generating exercise for word: ${selectedWord} in ${settings.selectedLanguage}`);
 
-      // Generate exercise with enhanced parameters
       const exerciseResponse = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
           difficulty_level: currentSession.difficulty_level,
@@ -220,17 +203,15 @@ export const useUnifiedSentenceMining = () => {
 
       const exercise = exerciseResponse.data;
 
-      // Track word usage and update spaced repetition data
       if (exercise.targetWord) {
         SessionWordTracker.addWordToSession(currentSession.id, exercise.targetWord);
         SessionWordTracker.setCooldown(user.id, exercise.targetWord);
 
-        // Initialize word in spaced repetition system if not exists
         await SpacedRepetitionEngine.updateWordPerformance(
           user.id,
           exercise.targetWord,
           settings.selectedLanguage,
-          true // Initial positive entry
+          true
         );
       }
 
@@ -266,7 +247,6 @@ export const useUnifiedSentenceMining = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Create session
       const { data: session, error } = await supabase
         .from('sentence_mining_sessions')
         .insert([{
@@ -302,7 +282,6 @@ export const useUnifiedSentenceMining = () => {
 
       setState(prev => ({ ...prev, currentSession: newSession }));
 
-      // Initialize session tracking
       SessionWordTracker.initializeSession(newSession.id);
 
       console.log(`[UnifiedSentenceMining] Started session with spaced repetition for ${settings.selectedLanguage}`);
@@ -331,7 +310,6 @@ export const useUnifiedSentenceMining = () => {
       const correctAnswer = currentExercise.correctAnswer;
       const isCorrect = !isSkipped && response.toLowerCase().trim() === correctAnswer?.toLowerCase().trim();
 
-      // Store exercise result
       const { error: exerciseError } = await supabase
         .from('sentence_mining_exercises')
         .insert([{
@@ -352,7 +330,6 @@ export const useUnifiedSentenceMining = () => {
         console.error('Error storing exercise:', exerciseError);
       }
 
-      // Update spaced repetition data
       await SpacedRepetitionEngine.updateWordPerformance(
         user.id,
         currentExercise.targetWord,
@@ -366,7 +343,6 @@ export const useUnifiedSentenceMining = () => {
         totalCorrect: currentSession.totalCorrect + (isCorrect ? 1 : 0)
       };
 
-      // Update session stats
       await supabase
         .from('sentence_mining_sessions')
         .update({
@@ -385,7 +361,6 @@ export const useUnifiedSentenceMining = () => {
 
       await loadProgress();
 
-      // Enhanced feedback
       if (isCorrect) {
         const meaning = EnhancedWordFrequencyService.getWordMeaning(settings.selectedLanguage, currentExercise.targetWord);
         toast.success('Correct!', {
@@ -411,7 +386,6 @@ export const useUnifiedSentenceMining = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Mark session as completed
       await supabase
         .from('sentence_mining_sessions')
         .update({
@@ -419,7 +393,6 @@ export const useUnifiedSentenceMining = () => {
         })
         .eq('id', currentSession.id);
 
-      // Clear session tracking
       SessionWordTracker.clearSession(currentSession.id);
 
       setState(prev => ({
@@ -432,7 +405,6 @@ export const useUnifiedSentenceMining = () => {
 
       await loadProgress();
 
-      // Show session completion feedback
       const accuracy = currentSession.totalAttempts > 0 
         ? Math.round((currentSession.totalCorrect / currentSession.totalAttempts) * 100)
         : 0;
