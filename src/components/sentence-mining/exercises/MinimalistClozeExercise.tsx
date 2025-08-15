@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Check, X, ArrowRight, RotateCcw } from 'lucide-react';
+import { Check, X, ArrowRight, RotateCcw, Lightbulb } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
+import { EnhancedWordFrequencyService } from '@/services/enhancedWordFrequencyService';
 import { cn } from '@/lib/utils';
 
 interface MinimalistClozeExerciseProps {
@@ -19,6 +20,7 @@ interface MinimalistClozeExerciseProps {
   onSkip: () => void;
   showTranslation: boolean;
   onToggleTranslation: () => void;
+  language?: string;
 }
 
 export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = ({
@@ -32,14 +34,25 @@ export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = (
   onNext,
   onSkip,
   showTranslation,
-  onToggleTranslation
+  onToggleTranslation,
+  language = 'english'
 }) => {
   const [focusInput, setFocusInput] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+  const [englishMeaning, setEnglishMeaning] = useState<string>('');
 
   useEffect(() => {
     const timer = setTimeout(() => setFocusInput(true), 100);
     return () => clearTimeout(timer);
   }, [exercise.id]);
+
+  useEffect(() => {
+    // Get English meaning for the target word
+    if (exercise.targetWord && language) {
+      const meaning = EnhancedWordFrequencyService.getWordMeaning(language, exercise.targetWord);
+      setEnglishMeaning(meaning);
+    }
+  }, [exercise.targetWord, language]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !showResult) {
@@ -49,13 +62,20 @@ export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = (
     } else if (e.key === ' ' && e.ctrlKey) {
       e.preventDefault();
       onToggleTranslation();
+    } else if (e.key === 'h' && e.ctrlKey) {
+      e.preventDefault();
+      setShowHint(!showHint);
     }
   };
 
+  const toggleHint = () => {
+    setShowHint(!showHint);
+  };
+
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="max-w-2xl mx-auto space-y-6">
       {/* Main Exercise Card */}
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-background to-muted/20">
+      <Card className="border-0 shadow-lg bg-gradient-to-br from-background to-muted/10">
         <div className="p-8 space-y-8">
           {/* Sentence with Blank */}
           <div className="text-center space-y-6">
@@ -91,6 +111,17 @@ export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = (
               ))}
             </div>
 
+            {/* English Meaning Hint */}
+            {showHint && englishMeaning && !showResult && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
+                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                  <Lightbulb className="h-4 w-4" />
+                  <span className="text-sm font-medium">English meaning:</span>
+                  <span className="text-sm italic">{englishMeaning}</span>
+                </div>
+              </div>
+            )}
+
             {/* Translation (if enabled) */}
             {showTranslation && exercise.translation && (
               <div className="text-sm text-muted-foreground italic bg-muted/30 p-4 rounded-lg">
@@ -100,7 +131,7 @@ export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = (
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-3 flex-wrap">
             {!showResult ? (
               <>
                 <Button
@@ -110,6 +141,22 @@ export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = (
                 >
                   {loading ? 'Checking...' : 'Check'}
                 </Button>
+                
+                {/* Hint Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleHint}
+                  disabled={loading}
+                  className={cn(
+                    "flex items-center gap-1",
+                    showHint && "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                  )}
+                >
+                  <Lightbulb className="h-3 w-3" />
+                  {showHint ? 'Hide Hint' : 'Hint'}
+                </Button>
+                
                 <Button
                   variant="ghost"
                   onClick={onSkip}
@@ -120,7 +167,7 @@ export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = (
                 </Button>
               </>
             ) : (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap justify-center">
                 {/* Result Feedback */}
                 <div className="flex items-center gap-2">
                   {isCorrect ? (
@@ -135,6 +182,14 @@ export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = (
                     {isCorrect ? 'Correct!' : `Correct answer: ${exercise.correctAnswer}`}
                   </span>
                 </div>
+                
+                {/* Show meaning after result */}
+                {englishMeaning && (
+                  <div className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Lightbulb className="h-3 w-3" />
+                    <span>"{englishMeaning}"</span>
+                  </div>
+                )}
                 
                 <Button
                   onClick={onNext}
@@ -158,7 +213,7 @@ export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = (
       {/* Minimal Keyboard Hints */}
       <div className="text-center text-xs text-muted-foreground space-y-1">
         <div>Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Enter</kbd> to check answer</div>
-        <div>Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl + Space</kbd> to toggle translation</div>
+        <div>Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl + H</kbd> for hint • <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl + Space</kbd> for translation</div>
       </div>
     </div>
   );

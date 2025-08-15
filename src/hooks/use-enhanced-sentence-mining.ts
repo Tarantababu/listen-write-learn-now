@@ -6,6 +6,8 @@ import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ImprovedAutomaticWordSelection } from '@/services/improvedAutomaticWordSelection';
 import { SessionWordTracker } from '@/services/sessionWordTracker';
+import { AdaptiveLearningEngine, AdaptiveLearningInsights } from '@/services/adaptiveLearningEngine';
+import { EnhancedWordFrequencyService } from '@/services/enhancedWordFrequencyService';
 
 export const useEnhancedSentenceMining = () => {
   const { settings } = useUserSettingsContext();
@@ -25,11 +27,14 @@ export const useEnhancedSentenceMining = () => {
 
   const [vocabularyStats, setVocabularyStats] = useState<VocabularyStats | null>(null);
   const [recentWords, setRecentWords] = useState<string[]>([]);
+  const [learningInsights, setLearningInsights] = useState<AdaptiveLearningInsights | null>(null);
+  const [adaptiveDifficulty, setAdaptiveDifficulty] = useState<DifficultyLevel>('beginner');
 
   // Load progress and recent words
   useEffect(() => {
     loadProgress();
     loadRecentWords();
+    loadLearningInsights();
   }, [settings.selectedLanguage]);
 
   const loadProgress = async () => {
@@ -95,6 +100,19 @@ export const useEnhancedSentenceMining = () => {
     }
   };
 
+  const loadLearningInsights = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      const insights = await AdaptiveLearningEngine.generateLearningInsights(user.id, settings.selectedLanguage);
+      setLearningInsights(insights);
+      setAdaptiveDifficulty(insights.nextSessionSuggestion.difficulty);
+    } catch (error) {
+      console.error('Error loading learning insights:', error);
+    }
+  };
+
   const nextExercise = useCallback(async (session?: SentenceMiningSession) => {
     const currentSession = session || state.currentSession;
     if (!currentSession) return;
@@ -105,17 +123,19 @@ export const useEnhancedSentenceMining = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Get comprehensive avoidance list
+      // Get comprehensive avoidance list with enhanced tracking
       const sessionWords = SessionWordTracker.getSessionWords(currentSession.id);
       const avoidanceList = SessionWordTracker.getAvoidanceList(currentSession.id, user.id, recentWords);
       
       console.log(`[EnhancedSentenceMining] Session words: [${sessionWords.join(', ')}]`);
       console.log(`[EnhancedSentenceMining] Total avoiding: ${avoidanceList.length} words`);
 
-      // Get improved word selection
+      // Use enhanced word selection with adaptive difficulty
+      const effectiveDifficulty = adaptiveDifficulty || (currentSession.difficulty_level as DifficultyLevel);
+      
       const wordSelection = await ImprovedAutomaticWordSelection.selectAutomaticWord({
         language: settings.selectedLanguage,
-        difficulty: currentSession.difficulty_level as DifficultyLevel,
+        difficulty: effectiveDifficulty,
         userId: user.id,
         sessionId: currentSession.id,
         previousWords: avoidanceList,
@@ -125,19 +145,23 @@ export const useEnhancedSentenceMining = () => {
 
       console.log(`[EnhancedSentenceMining] Selected: ${wordSelection.selectedWord} (${wordSelection.selectionReason})`);
 
-      // Generate exercise with enhanced parameters
+      // Generate exercise with enhanced parameters and learning insights
+      const focusWords = learningInsights?.nextSessionSuggestion.focusWords || [];
+      const preferredWords = focusWords.length > 0 ? [...focusWords, wordSelection.selectedWord] : [wordSelection.selectedWord];
+
       const exerciseResponse = await supabase.functions.invoke('generate-sentence-mining', {
         body: {
-          difficulty_level: currentSession.difficulty_level,
+          difficulty_level: effectiveDifficulty,
           language: settings.selectedLanguage,
           session_id: currentSession.id,
           user_id: user.id,
-          preferred_words: [wordSelection.selectedWord],
+          preferred_words: preferredWords,
           novelty_words: wordSelection.alternativeWords,
           avoid_patterns: avoidanceList,
-          diversity_score_target: 85,
+          diversity_score_target: 90, // Higher target for enhanced mode
           selection_quality: wordSelection.quality,
           enhanced_mode: true,
+          adaptive_learning: true,
           previous_sentences: [],
           known_words: [],
           n_plus_one: false
@@ -150,7 +174,7 @@ export const useEnhancedSentenceMining = () => {
 
       const exercise = exerciseResponse.data;
 
-      // Track word usage
+      // Track word usage with performance analytics
       if (exercise.targetWord) {
         await ImprovedAutomaticWordSelection.trackWordUsage(
           user.id,
@@ -160,11 +184,21 @@ export const useEnhancedSentenceMining = () => {
           undefined
         );
 
-        // Add to session tracking
+        // Enhanced session tracking
         SessionWordTracker.addWordToSession(currentSession.id, exercise.targetWord);
-        
-        // Set cooldown for future sessions
         SessionWordTracker.setCooldown(user.id, exercise.targetWord);
+
+        // Track learning event for adaptive engine
+        await AdaptiveLearningEngine.trackLearningEvent(
+          user.id,
+          settings.selectedLanguage,
+          'exercise_completed',
+          {
+            word: exercise.targetWord,
+            difficulty: effectiveDifficulty,
+            sessionId: currentSession.id
+          }
+        );
       }
 
       setState(prev => ({
@@ -178,11 +212,19 @@ export const useEnhancedSentenceMining = () => {
         isGeneratingNext: false
       }));
 
-      // Show minimal feedback
+      // Enhanced feedback based on word selection quality and type
       if (wordSelection.wordType === 'review') {
-        toast.success(`Review: ${wordSelection.selectedWord}`);
-      } else if (wordSelection.quality >= 90) {
-        toast.success(`New word: ${wordSelection.selectedWord}`);
+        toast.success(`Review word: ${wordSelection.selectedWord}`, {
+          description: 'Reinforcement learning active'
+        });
+      } else if (wordSelection.quality >= 95) {
+        toast.success(`Premium word: ${wordSelection.selectedWord}`, {
+          description: 'High-quality selection'
+        });
+      } else if (focusWords.includes(wordSelection.selectedWord)) {
+        toast.info(`Focus word: ${wordSelection.selectedWord}`, {
+          description: 'Based on your learning insights'
+        });
       }
 
     } catch (error) {
@@ -195,22 +237,25 @@ export const useEnhancedSentenceMining = () => {
       }));
       toast.error('Failed to generate exercise');
     }
-  }, [settings.selectedLanguage, state.currentSession, recentWords]);
+  }, [settings.selectedLanguage, state.currentSession, recentWords, adaptiveDifficulty, learningInsights]);
 
-  const startSession = useCallback(async (difficulty: DifficultyLevel) => {
+  const startSession = useCallback(async (difficulty?: DifficultyLevel) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Create session
+      // Use adaptive difficulty if not specified
+      const sessionDifficulty = difficulty || adaptiveDifficulty;
+
+      // Create session with enhanced tracking
       const { data: session, error } = await supabase
         .from('sentence_mining_sessions')
         .insert([{
           user_id: user.id,
           language: settings.selectedLanguage,
-          difficulty_level: difficulty,
+          difficulty_level: sessionDifficulty,
           exercise_types: ['cloze']
         }])
         .select()
@@ -240,8 +285,23 @@ export const useEnhancedSentenceMining = () => {
 
       setState(prev => ({ ...prev, currentSession: newSession }));
 
-      // Load fresh recent words for this session
-      await loadRecentWords();
+      // Initialize session tracking
+      SessionWordTracker.initializeSession(newSession.id);
+
+      // Load fresh data for this session
+      await Promise.all([loadRecentWords(), loadLearningInsights()]);
+
+      // Track session start
+      await AdaptiveLearningEngine.trackLearningEvent(
+        user.id,
+        settings.selectedLanguage,
+        'session_completed',
+        {
+          difficulty: sessionDifficulty,
+          sessionId: newSession.id,
+          adaptiveMode: true
+        }
+      );
 
       return newSession;
     } catch (error) {
@@ -251,7 +311,7 @@ export const useEnhancedSentenceMining = () => {
     } finally {
       setState(prev => ({ ...prev, loading: false }));
     }
-  }, [settings.selectedLanguage, loadRecentWords]);
+  }, [settings.selectedLanguage, adaptiveDifficulty, loadRecentWords, loadLearningInsights]);
 
   const submitAnswer = useCallback(async (response: string, selectedWords: string[] = [], isSkipped: boolean = false) => {
     const currentSession = state.currentSession;
@@ -267,7 +327,7 @@ export const useEnhancedSentenceMining = () => {
       const correctAnswer = currentExercise.correctAnswer;
       const isCorrect = !isSkipped && response.toLowerCase().trim() === correctAnswer?.toLowerCase().trim();
 
-      // Store exercise result
+      // Store exercise result with enhanced tracking
       const { error: exerciseError } = await supabase
         .from('sentence_mining_exercises')
         .insert([{
@@ -288,7 +348,7 @@ export const useEnhancedSentenceMining = () => {
         console.error('Error storing exercise:', exerciseError);
       }
 
-      // Track performance for adaptive learning
+      // Enhanced performance tracking
       await ImprovedAutomaticWordSelection.trackWordUsage(
         user.id,
         currentExercise.targetWord,
@@ -296,6 +356,33 @@ export const useEnhancedSentenceMining = () => {
         currentSession.id,
         isCorrect
       );
+
+      // Track learning events for adaptive engine
+      await AdaptiveLearningEngine.trackLearningEvent(
+        user.id,
+        settings.selectedLanguage,
+        'exercise_completed',
+        {
+          word: currentExercise.targetWord,
+          isCorrect,
+          isSkipped,
+          responseTime: 5.0, // Could be enhanced with actual timing
+          difficulty: currentSession.difficulty_level
+        }
+      );
+
+      // Check for word mastery
+      if (isCorrect) {
+        await AdaptiveLearningEngine.trackLearningEvent(
+          user.id,
+          settings.selectedLanguage,
+          'word_mastered',
+          {
+            word: currentExercise.targetWord,
+            sessionId: currentSession.id
+          }
+        );
+      }
 
       const updatedSession = {
         ...currentSession,
@@ -320,19 +407,35 @@ export const useEnhancedSentenceMining = () => {
         loading: false
       }));
 
-      // Update progress
-      await loadProgress();
+      // Update progress and insights
+      await Promise.all([loadProgress(), loadLearningInsights()]);
+
+      // Provide enhanced feedback
+      if (isCorrect) {
+        const meaning = EnhancedWordFrequencyService.getWordMeaning(settings.selectedLanguage, currentExercise.targetWord);
+        toast.success('Correct!', {
+          description: meaning !== currentExercise.targetWord ? `"${meaning}"` : undefined
+        });
+      } else if (!isSkipped) {
+        toast.error('Try again next time!', {
+          description: `The answer was "${correctAnswer}"`
+        });
+      }
+
     } catch (error) {
       console.error('Error submitting answer:', error);
       setState(prev => ({ ...prev, loading: false, error: 'Failed to submit answer' }));
     }
-  }, [loadProgress, settings.selectedLanguage]);
+  }, [loadProgress, loadLearningInsights, settings.selectedLanguage]);
 
   const endSession = useCallback(async () => {
     const { currentSession } = state;
     if (!currentSession) return;
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       // Mark session as completed
       await supabase
         .from('sentence_mining_sessions')
@@ -340,6 +443,19 @@ export const useEnhancedSentenceMining = () => {
           completed_at: new Date().toISOString()
         })
         .eq('id', currentSession.id);
+
+      // Track session completion
+      await AdaptiveLearningEngine.trackLearningEvent(
+        user.id,
+        settings.selectedLanguage,
+        'session_completed',
+        {
+          sessionId: currentSession.id,
+          totalExercises: currentSession.totalAttempts,
+          totalCorrect: currentSession.totalCorrect,
+          accuracy: currentSession.totalAttempts > 0 ? (currentSession.totalCorrect / currentSession.totalAttempts) * 100 : 0
+        }
+      );
 
       // Clear session tracking
       SessionWordTracker.clearSession(currentSession.id);
@@ -352,11 +468,22 @@ export const useEnhancedSentenceMining = () => {
         showResult: false
       }));
 
-      await loadProgress();
+      // Refresh all data
+      await Promise.all([loadProgress(), loadLearningInsights()]);
+
+      // Show session completion feedback
+      const accuracy = currentSession.totalAttempts > 0 
+        ? Math.round((currentSession.totalCorrect / currentSession.totalAttempts) * 100)
+        : 0;
+      
+      toast.success(`Session completed! ${accuracy}% accuracy`, {
+        description: `${currentSession.totalCorrect}/${currentSession.totalAttempts} correct answers`
+      });
+
     } catch (error) {
       console.error('Error ending session:', error);
     }
-  }, [loadProgress]);
+  }, [loadProgress, loadLearningInsights, settings.selectedLanguage]);
 
   const updateUserResponse = (response: string) => {
     setState(prev => ({ ...prev, userResponse: response }));
@@ -381,6 +508,8 @@ export const useEnhancedSentenceMining = () => {
     toggleHint,
     loadProgress,
     vocabularyStats,
-    recentWords
+    recentWords,
+    learningInsights,
+    adaptiveDifficulty
   };
 };
