@@ -2,6 +2,24 @@
 import { EnhancedWordFrequencyService, WordSelectionOptions, WordSelectionResult } from './enhancedWordFrequencyService';
 import { DifficultyLevel } from '@/types/sentence-mining';
 
+export interface ImprovedAutoWordSelectionConfig {
+  language: string;
+  difficulty: DifficultyLevel;
+  userId: string;
+  sessionId: string;
+  previousWords: string[];
+  wordCount: number;
+  avoidRecentWords?: boolean;
+}
+
+export interface ImprovedWordSelectionResult {
+  selectedWord: string;
+  selectionReason: string;
+  wordType: 'new' | 'review' | 'common' | 'frequency_based';
+  alternativeWords: string[];
+  quality?: number;
+}
+
 export interface EnhancedWordSelectionOptions extends WordSelectionOptions {
   userLevel?: string;
   previousWords?: string[];
@@ -20,6 +38,91 @@ export interface EnhancedWordSelectionResult extends WordSelectionResult {
 
 export class ImprovedAutomaticWordSelection {
   private static readonly DIFFICULTY_PROGRESSION = ['beginner', 'intermediate', 'advanced'] as const;
+  
+  // Add the missing selectAutomaticWord method
+  static async selectAutomaticWord(config: ImprovedAutoWordSelectionConfig): Promise<ImprovedWordSelectionResult> {
+    console.log(`[ImprovedAutomaticWordSelection] Selecting automatic word for ${config.language}`);
+    
+    try {
+      const options: WordSelectionOptions = {
+        language: config.language,
+        difficulty: config.difficulty,
+        count: config.wordCount || 1,
+        excludeWords: config.previousWords || [],
+        maxRepetitions: 2
+      };
+
+      const result = await EnhancedWordFrequencyService.selectWordsForDifficulty(options);
+      
+      if (result.words.length === 0) {
+        return {
+          selectedWord: 'the',
+          selectionReason: 'Fallback word - no suitable words found',
+          wordType: 'common',
+          alternativeWords: ['a', 'an', 'this'],
+          quality: 30
+        };
+      }
+
+      const selectedWord = result.words[0];
+      
+      return {
+        selectedWord,
+        selectionReason: `Selected from ${result.metadata.source} with ${result.metadata.selectionQuality}% quality`,
+        wordType: result.metadata.selectionQuality > 80 ? 'frequency_based' : 'common',
+        alternativeWords: result.words.slice(1, 4),
+        quality: result.metadata.selectionQuality
+      };
+    } catch (error) {
+      console.error('[ImprovedAutomaticWordSelection] Error in word selection:', error);
+      return {
+        selectedWord: 'the',
+        selectionReason: 'Error fallback',
+        wordType: 'common',
+        alternativeWords: ['a', 'an', 'this'],
+        quality: 20
+      };
+    }
+  }
+
+  // Add the missing trackWordUsage method
+  static async trackWordUsage(
+    userId: string,
+    word: string,
+    language: string,
+    sessionId: string,
+    isCorrect?: boolean
+  ): Promise<void> {
+    console.log(`[ImprovedAutomaticWordSelection] Tracking word usage: ${word} (${isCorrect ? 'correct' : 'incorrect'})`);
+    
+    try {
+      // Store word usage in session data for tracking
+      const sessionData = EnhancedWordFrequencyService.getSessionData(language);
+      if (!sessionData.wordUsage) {
+        sessionData.wordUsage = {};
+      }
+      
+      if (!sessionData.wordUsage[word]) {
+        sessionData.wordUsage[word] = { count: 0, correct: 0, lastUsed: Date.now() };
+      }
+      
+      sessionData.wordUsage[word].count++;
+      if (isCorrect) {
+        sessionData.wordUsage[word].correct++;
+      }
+      sessionData.wordUsage[word].lastUsed = Date.now();
+      
+      // Update session stats
+      sessionData.totalExercises = (sessionData.totalExercises || 0) + 1;
+      if (isCorrect) {
+        sessionData.correctAnswers = (sessionData.correctAnswers || 0) + 1;
+      }
+      
+      console.log(`[ImprovedAutomaticWordSelection] Word usage tracked for ${word}`);
+    } catch (error) {
+      console.error('[ImprovedAutomaticWordSelection] Error tracking word usage:', error);
+    }
+  }
   
   static async selectOptimalWords(options: EnhancedWordSelectionOptions): Promise<EnhancedWordSelectionResult> {
     console.log('[ImprovedAutomaticWordSelection] Starting optimal word selection');
@@ -187,7 +290,7 @@ export class ImprovedAutomaticWordSelection {
     }, {} as Record<string, number>);
     
     const suffixCounts = suffixes.reduce((acc, suffix) => {
-      acc[suffix] = (acc[suffix] || 0) + 1;
+      acc[suffix] = (suffix[suffix] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     

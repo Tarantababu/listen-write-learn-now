@@ -1,24 +1,9 @@
-import { supabase } from '@/integrations/supabase/client';
 import { DifficultyLevel } from '@/types/sentence-mining';
-
-export interface WordFrequencyEntry {
-  word: string;
-  frequency: number;
-  rank: number;
-  language: string;
-}
-
-export interface WordFrequencyData {
-  top1k: string[];
-  top3k: string[];
-  top5k: string[];
-  top10k: string[];
-}
 
 export interface WordSelectionOptions {
   language: string;
   difficulty: DifficultyLevel;
-  count?: number;
+  count: number;
   excludeWords?: string[];
   maxRepetitions?: number;
 }
@@ -30,339 +15,243 @@ export interface WordSelectionResult {
     diversityScore: number;
     source: string;
     totalAvailable: number;
-    difficultyLevel?: string;
+    difficultyLevel?: DifficultyLevel;
   };
 }
 
+interface WordFrequencyData {
+  top1k: string[];
+  top3k: string[];
+  top5k: string[];
+  top10k: string[];
+}
+
+interface SessionData {
+  totalExercises: number;
+  correctAnswers: number;
+  lastAccessed: number;
+  wordUsage?: Record<string, { count: number; correct: number; lastUsed: number }>;
+}
+
 export class EnhancedWordFrequencyService {
-  private static wordFrequencyCache: Map<string, WordFrequencyData> = new Map();
-  private static sessionData: Map<string, any> = new Map();
+  private static sessionData: Record<string, SessionData> = {};
+  private static wordFrequencyCache: Record<string, WordFrequencyData> = {};
 
-  // Enhanced language-specific emergency fallbacks
-  static getEmergencyFallbackWords(language: string): string[] {
-    const fallbacks: Record<string, string[]> = {
-      german: ['der', 'die', 'das', 'und', 'ist', 'ich', 'du', 'er', 'sie', 'wir', 'haben', 'sein', 'können', 'werden', 'müssen', 'mit', 'auf', 'für', 'von', 'zu', 'sich', 'nicht', 'ein', 'eine', 'aber', 'oder', 'wenn', 'wie', 'was', 'wo'],
-      spanish: ['el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'ser', 'se', 'no', 'te', 'lo', 'le', 'da', 'su', 'por', 'son', 'con', 'para', 'una', 'es', 'al', 'como', 'le', 'del', 'los', 'si', 'mi', 'sus'],
-      french: ['le', 'de', 'et', 'à', 'un', 'il', 'être', 'et', 'en', 'avoir', 'que', 'pour', 'dans', 'ce', 'son', 'une', 'sur', 'avec', 'ne', 'se', 'pas', 'tout', 'plus', 'par', 'grand', 'si', 'me', 'même', 'faire', 'elle'],
-      italian: ['il', 'di', 'che', 'e', 'la', 'a', 'per', 'non', 'in', 'da', 'un', 'essere', 'con', 'avere', 'lo', 'tutto', 'lei', 'mi', 'su', 'si', 'come', 'ma', 'anche', 'ci', 'molto', 'fare', 'più', 'bene', 'lui', 'dire'],
-      portuguese: ['o', 'de', 'que', 'e', 'do', 'a', 'em', 'um', 'para', 'com', 'não', 'uma', 'os', 'no', 'se', 'na', 'por', 'mais', 'as', 'dos', 'como', 'mas', 'foi', 'ao', 'ele', 'das', 'tem', 'à', 'seu', 'sua'],
-      japanese: ['の', 'に', 'は', 'を', 'た', 'が', 'で', 'て', 'と', 'し', 'れ', 'さ', 'ある', 'いる', 'する', 'です', 'だ', 'この', 'その', 'あの', 'から', 'まで', 'より', 'など', 'として', 'について', 'による', 'において', 'に対して', 'に関して'],
-      arabic: ['في', 'من', 'إلى', 'على', 'هذا', 'هذه', 'التي', 'الذي', 'كان', 'كانت', 'يكون', 'تكون', 'اللذان', 'اللتان', 'بعد', 'قبل', 'عند', 'لدى', 'حول', 'ضد', 'تحت', 'فوق', 'أمام', 'خلف', 'بين', 'عبر', 'خلال', 'أثناء', 'منذ'],
-      english: ['the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at', 'this', 'but', 'his', 'by', 'from', 'they', 'she', 'or', 'an', 'will', 'my']
-    };
-
-    return fallbacks[language.toLowerCase()] || fallbacks.english;
-  }
-
-  // Enhanced word meaning retrieval with language consistency
-  static getWordMeaning(language: string, word: string): string {
-    const meanings: Record<string, Record<string, string>> = {
+  private static generateWordPool(language: string, difficulty: DifficultyLevel): string[] {
+    const pools = {
       german: {
-        'der': 'the (masculine)',
-        'die': 'the (feminine)',
-        'das': 'the (neuter)',
-        'und': 'and',
-        'ist': 'is',
-        'ich': 'I',
-        'du': 'you',
-        'er': 'he',
-        'sie': 'she/they',
-        'wir': 'we',
-        'haben': 'to have',
-        'sein': 'to be',
-        'können': 'can/to be able to',
-        'werden': 'to become',
-        'müssen': 'must/to have to'
+        beginner: ['der', 'die', 'das', 'und', 'ich', 'bin', 'haben', 'sein', 'gehen', 'gut', 'neu', 'groß', 'klein', 'Zeit', 'Jahr', 'Tag', 'Haus', 'Mann', 'Frau', 'Kind'],
+        intermediate: ['jedoch', 'während', 'dadurch', 'trotzdem', 'beispielsweise', 'möglich', 'wichtig', 'schwierig', 'einfach', 'bekannt', 'verschieden', 'besonders', 'natürlich', 'wahrscheinlich', 'eigentlich'],
+        advanced: ['nichtsdestotrotz', 'diesbezüglich', 'hinsichtlich', 'entsprechend', 'ausschließlich', 'gegebenenfalls', 'möglicherweise', 'ausnahmsweise', 'selbstverständlich', 'unverzüglich']
+      },
+      english: {
+        beginner: ['the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at', 'this'],
+        intermediate: ['however', 'therefore', 'although', 'because', 'through', 'during', 'without', 'between', 'among', 'within', 'toward', 'upon', 'beneath', 'beyond', 'throughout'],
+        advanced: ['nevertheless', 'consequently', 'furthermore', 'moreover', 'notwithstanding', 'inadvertently', 'substantiate', 'corroborate', 'exemplify', 'elucidate']
       },
       spanish: {
-        'el': 'the (masculine)',
-        'la': 'the (feminine)',
-        'de': 'of/from',
-        'que': 'that/which',
-        'y': 'and',
-        'a': 'to/at',
-        'en': 'in/on',
-        'un': 'a/an (masculine)',
-        'ser': 'to be',
-        'se': 'himself/herself/itself',
-        'no': 'no/not',
-        'te': 'you (object)',
-        'lo': 'it/him (object)',
-        'le': 'to him/her',
-        'da': 'gives'
+        beginner: ['el', 'de', 'que', 'y', 'a', 'en', 'un', 'ser', 'se', 'no', 'te', 'lo', 'le', 'da', 'su', 'por', 'son', 'con', 'para', 'al'],
+        intermediate: ['aunque', 'mientras', 'durante', 'través', 'además', 'entonces', 'después', 'antes', 'siempre', 'nunca', 'todavía', 'también', 'solamente', 'especialmente'],
+        advanced: ['consecuentemente', 'principalmente', 'generalmente', 'particularmente', 'específicamente', 'constantemente', 'frecuentemente', 'simultáneamente', 'excepcionalmente']
       },
       french: {
-        'le': 'the (masculine)',
-        'de': 'of/from',
-        'et': 'and',
-        'à': 'to/at',
-        'un': 'a/an (masculine)',
-        'il': 'he/it',
-        'être': 'to be',
-        'en': 'in/of it',
-        'avoir': 'to have',
-        'que': 'that/which',
-        'pour': 'for',
-        'dans': 'in',
-        'ce': 'this/that',
-        'son': 'his/her/its'
+        beginner: ['le', 'de', 'et', 'à', 'un', 'il', 'être', 'et', 'en', 'avoir', 'que', 'pour', 'dans', 'ce', 'son', 'une', 'sur', 'avec', 'ne', 'se'],
+        intermediate: ['cependant', 'néanmoins', 'toutefois', 'pourtant', 'alors', 'ensuite', 'puis', 'maintenant', 'toujours', 'jamais', 'souvent', 'parfois', 'quelquefois'],
+        advanced: ['néanmoins', 'conséquemment', 'particulièrement', 'spécifiquement', 'généralement', 'habituellement', 'exceptionnellement', 'simultanément', 'consécutivement']
       }
     };
 
-    const languageMeanings = meanings[language.toLowerCase()];
-    if (languageMeanings && languageMeanings[word.toLowerCase()]) {
-      return languageMeanings[word.toLowerCase()];
-    }
-
-    // Fallback to word itself if no meaning found
-    return word;
+    return pools[language as keyof typeof pools]?.[difficulty] || pools.english[difficulty] || pools.english.beginner;
   }
 
   static async getWordFrequencyData(language: string): Promise<WordFrequencyData> {
-    if (this.wordFrequencyCache.has(language)) {
-      console.log(`[EnhancedWordFrequencyService] Getting word frequency data from cache for ${language}`);
-      return this.wordFrequencyCache.get(language)!;
+    console.log(`[EnhancedWordFrequencyService] Getting word frequency data for ${language}`);
+    
+    if (this.wordFrequencyCache[language]) {
+      return this.wordFrequencyCache[language];
     }
 
     try {
-      console.log(`[EnhancedWordFrequencyService] Generating word frequency data for ${language}`);
+      // Generate comprehensive word pools for each tier
+      const beginnerWords = this.generateWordPool(language, 'beginner');
+      const intermediateWords = this.generateWordPool(language, 'intermediate');
+      const advancedWords = this.generateWordPool(language, 'advanced');
 
-      // Since word_frequencies table doesn't exist, generate data based on language-specific fallbacks
-      const emergencyWords = this.getEmergencyFallbackWords(language);
-      const extendedWords = [...emergencyWords];
-      
-      // Extend with numbered variations to simulate larger pools
-      for (let i = 1; i <= 100; i++) {
-        extendedWords.push(...emergencyWords.map(word => `${word}_${i}`));
-      }
+      // Create tiered lists with proper overlap
+      const top1k = beginnerWords;
+      const top3k = [...beginnerWords, ...intermediateWords].slice(0, 50);
+      const top5k = [...beginnerWords, ...intermediateWords, ...advancedWords.slice(0, 10)].slice(0, 80);
+      const top10k = [...beginnerWords, ...intermediateWords, ...advancedWords].slice(0, 100);
 
       const wordData: WordFrequencyData = {
-        top1k: extendedWords.slice(0, 1000),
-        top3k: extendedWords.slice(0, 3000),
-        top5k: extendedWords.slice(0, 5000),
-        top10k: extendedWords.slice(0, 10000)
+        top1k,
+        top3k,
+        top5k,
+        top10k
       };
 
-      this.wordFrequencyCache.set(language, wordData);
-      return wordData;
-
-    } catch (error) {
-      console.error(`[EnhancedWordFrequencyService] Error getting word frequency data:`, error);
+      this.wordFrequencyCache[language] = wordData;
+      console.log(`[EnhancedWordFrequencyService] Cached word data for ${language}: ${top1k.length}/${top3k.length}/${top5k.length}/${top10k.length} words`);
       
-      // Fallback data using emergency words
-      const emergencyWords = this.getEmergencyFallbackWords(language);
+      return wordData;
+    } catch (error) {
+      console.error(`[EnhancedWordFrequencyService] Error getting word data:`, error);
+      
+      // Emergency fallback
+      const emergency = this.getEmergencyWordPool(language);
       return {
-        top1k: emergencyWords,
-        top3k: emergencyWords,
-        top5k: emergencyWords,
-        top10k: emergencyWords
+        top1k: emergency,
+        top3k: emergency,
+        top5k: emergency,
+        top10k: emergency
       };
     }
   }
 
+  private static getEmergencyWordPool(language: string): string[] {
+    const emergency = {
+      german: ['der', 'die', 'das', 'ich', 'und'],
+      english: ['the', 'a', 'an', 'this', 'that'],
+      spanish: ['el', 'la', 'un', 'una', 'y'],
+      french: ['le', 'la', 'un', 'une', 'et']
+    };
+    
+    return emergency[language as keyof typeof emergency] || emergency.english;
+  }
+
   static async selectWordsForDifficulty(options: WordSelectionOptions): Promise<WordSelectionResult> {
-    const {
-      language,
-      difficulty,
-      count = 10,
-      excludeWords = [],
-      maxRepetitions = 3
-    } = options;
-
-    console.log(`[EnhancedWordFrequencyService] Selecting ${count} words for ${language} (${difficulty})`);
-
+    console.log(`[EnhancedWordFrequencyService] Selecting ${options.count} words for ${options.language} (${options.difficulty})`);
+    
     try {
-      // Get language-specific word pool
-      const wordData = await this.getWordFrequencyData(language);
-      let availableWords: string[] = [];
-
-      // Select appropriate difficulty tier with language consistency check
-      switch (difficulty) {
+      const wordData = await this.getWordFrequencyData(options.language);
+      const excludeWords = (options.excludeWords || []).map(w => w.toLowerCase());
+      
+      // Select appropriate word pool based on difficulty
+      let wordPool: string[];
+      switch (options.difficulty) {
         case 'beginner':
-          availableWords = wordData.top1k || this.getEmergencyFallbackWords(language);
+          wordPool = wordData.top1k;
           break;
         case 'intermediate':
-          availableWords = wordData.top3k.length > 0 ? wordData.top3k : wordData.top1k || this.getEmergencyFallbackWords(language);
+          wordPool = wordData.top3k;
           break;
         case 'advanced':
-          availableWords = wordData.top5k.length > 0 ? wordData.top5k : (wordData.top3k.length > 0 ? wordData.top3k : wordData.top1k) || this.getEmergencyFallbackWords(language);
+          wordPool = wordData.top5k;
           break;
         default:
-          availableWords = wordData.top1k || this.getEmergencyFallbackWords(language);
+          wordPool = wordData.top1k;
       }
 
       // Filter out excluded words
-      const filteredWords = availableWords.filter(word => 
-        !excludeWords.map(w => w.toLowerCase()).includes(word.toLowerCase())
+      const availableWords = wordPool.filter(word => 
+        !excludeWords.includes(word.toLowerCase())
       );
 
-      // If no words available after filtering, use emergency fallbacks
-      if (filteredWords.length === 0) {
-        console.warn(`[EnhancedWordFrequencyService] No words available after filtering, using emergency fallbacks for ${language}`);
-        const emergencyWords = this.getEmergencyFallbackWords(language);
-        const availableEmergency = emergencyWords.filter(word => 
-          !excludeWords.map(w => w.toLowerCase()).includes(word.toLowerCase())
-        );
-        
-        if (availableEmergency.length === 0) {
-          // Absolute emergency - just use the first few emergency words
-          return {
-            words: emergencyWords.slice(0, count),
-            metadata: {
-              selectionQuality: 30,
-              diversityScore: 40,
-              source: `emergency_fallback_${language}`,
-              totalAvailable: emergencyWords.length,
-              difficultyLevel: difficulty
-            }
-          };
-        }
-        
+      if (availableWords.length === 0) {
+        console.warn('[EnhancedWordFrequencyService] No available words after filtering, using emergency fallback');
+        const emergency = this.getEmergencyWordPool(options.language);
         return {
-          words: this.shuffleArray(availableEmergency).slice(0, count),
+          words: emergency.slice(0, options.count),
           metadata: {
-            selectionQuality: 50,
-            diversityScore: 60,
-            source: `filtered_emergency_${language}`,
-            totalAvailable: availableEmergency.length,
-            difficultyLevel: difficulty
+            selectionQuality: 20,
+            diversityScore: 30,
+            source: 'emergency_fallback',
+            totalAvailable: emergency.length,
+            difficultyLevel: options.difficulty
           }
         };
       }
 
-      // Intelligent selection with diversity
-      const selectedWords = this.selectDiverseWords(filteredWords, count, maxRepetitions);
-      const selectionQuality = Math.min(85 + (filteredWords.length / 100), 100);
+      // Select words with some randomization for variety
+      const selectedWords: string[] = [];
+      const shuffled = [...availableWords].sort(() => Math.random() - 0.5);
+      
+      for (let i = 0; i < Math.min(options.count, shuffled.length); i++) {
+        selectedWords.push(shuffled[i]);
+      }
 
-      console.log(`[EnhancedWordFrequencyService] Selected ${selectedWords.length} words with ${selectionQuality}% quality for ${language}`);
+      // Calculate quality metrics
+      const selectionQuality = Math.min(95, 60 + (availableWords.length / wordPool.length) * 35);
+      const diversityScore = Math.min(90, selectedWords.length * 20);
+
+      console.log(`[EnhancedWordFrequencyService] Selected ${selectedWords.length} words with ${Math.round(selectionQuality)}% quality`);
 
       return {
         words: selectedWords,
         metadata: {
           selectionQuality: Math.round(selectionQuality),
-          diversityScore: Math.round(this.calculateDiversityScore(selectedWords)),
-          source: `${difficulty}_${language}`,
-          totalAvailable: filteredWords.length,
-          difficultyLevel: difficulty
+          diversityScore: Math.round(diversityScore),
+          source: `${options.difficulty}_pool`,
+          totalAvailable: availableWords.length,
+          difficultyLevel: options.difficulty
         }
       };
-
     } catch (error) {
-      console.error(`[EnhancedWordFrequencyService] Error selecting words for ${language}:`, error);
+      console.error('[EnhancedWordFrequencyService] Error in word selection:', error);
       
-      // Emergency fallback on error
-      const emergencyWords = this.getEmergencyFallbackWords(language);
+      const emergency = this.getEmergencyWordPool(options.language);
       return {
-        words: emergencyWords.slice(0, count),
+        words: emergency.slice(0, options.count),
         metadata: {
-          selectionQuality: 25,
-          diversityScore: 30,
-          source: `error_fallback_${language}`,
-          totalAvailable: emergencyWords.length,
-          difficultyLevel: difficulty
+          selectionQuality: 10,
+          diversityScore: 20,
+          source: 'error_fallback',
+          totalAvailable: emergency.length,
+          difficultyLevel: options.difficulty
         }
       };
     }
   }
 
-  private static selectDiverseWords(words: string[], count: number, maxRepetitions: number): string[] {
-    const selectedWords: string[] = [];
-    const wordCounts: { [word: string]: number } = {};
-
-    for (const word of words) {
-      const lowerCaseWord = word.toLowerCase();
-      wordCounts[lowerCaseWord] = (wordCounts[lowerCaseWord] || 0) + 1;
+  static getSessionData(language: string): SessionData {
+    if (!this.sessionData[language]) {
+      this.sessionData[language] = {
+        totalExercises: 0,
+        correctAnswers: 0,
+        lastAccessed: Date.now(),
+        wordUsage: {}
+      };
     }
-
-    // Sort words by frequency in descending order
-    const sortedWords = Object.entries(wordCounts).sort(([, countA], [, countB]) => countB - countA);
-
-    for (const [word] of sortedWords) {
-      if (selectedWords.length >= count) {
-        break;
-      }
-
-      if (selectedWords.filter(selected => selected.toLowerCase() === word).length < maxRepetitions) {
-        selectedWords.push(word);
-      }
-    }
-
-    return selectedWords;
+    
+    this.sessionData[language].lastAccessed = Date.now();
+    return this.sessionData[language];
   }
 
-  private static calculateDiversityScore(words: string[]): number {
-    if (words.length === 0) return 0;
-
-    const uniqueChars = new Set<string>();
-    for (const word of words) {
-      for (const char of word) {
-        uniqueChars.add(char);
-      }
-    }
-
-    // A higher number of unique characters indicates greater diversity
-    const diversityScore = (uniqueChars.size / words.length) * 50;
-    return Math.min(diversityScore, 100);
+  static getSessionStats(language: string): SessionData {
+    return this.getSessionData(language);
   }
 
-  private static shuffleArray<T>(array: T[]): T[] {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }
-
-  static clearCache(language?: string) {
+  static clearSessionData(language?: string): void {
     if (language) {
-      console.log(`[EnhancedWordFrequencyService] Clearing cache for ${language}`);
-      this.wordFrequencyCache.delete(language);
+      delete this.sessionData[language];
+      delete this.wordFrequencyCache[language];
+      console.log(`[EnhancedWordFrequencyService] Cleared session data for ${language}`);
     } else {
-      console.log(`[EnhancedWordFrequencyService] Clearing all cache`);
-      this.wordFrequencyCache.clear();
+      this.sessionData = {};
+      this.wordFrequencyCache = {};
+      console.log('[EnhancedWordFrequencyService] Cleared all session data');
     }
   }
 
-  static clearSessionData(language?: string) {
-    if (language) {
-      console.log(`[EnhancedWordFrequencyService] Clearing session data for ${language}`);
-      this.sessionData.delete(language);
-    } else {
-      console.log(`[EnhancedWordFrequencyService] Clearing all session data`);
-      this.sessionData.clear();
-    }
-  }
-
-  static getCacheInfo(): { languages: string[], totalWords: number } {
-    let totalWords = 0;
-    const languages: string[] = [];
-
-    for (const [language, data] of this.wordFrequencyCache.entries()) {
-      languages.push(language);
-      totalWords += (data.top1k?.length || 0) + (data.top3k?.length || 0) + (data.top5k?.length || 0);
-    }
-
-    return { languages, totalWords };
-  }
-
-  static setSessionData(key: string, data: any, language?: string) {
-    const sessionKey = language ? `${language}-${key}` : key;
-    this.sessionData.set(sessionKey, data);
-  }
-
-  static getSessionData(key: string, language?: string): any {
-    const sessionKey = language ? `${language}-${key}` : key;
-    return this.sessionData.get(sessionKey);
-  }
-
-  static getSessionStats(language?: string): any {
-    const sessionKey = language ? `${language}-session-stats` : 'session-stats';
-    return this.sessionData.get(sessionKey) || {
-      totalExercises: 0,
-      correctAnswers: 0,
-      wordsEncountered: 0,
-      averageTime: 0
+  static getWordMeaning(language: string, word: string): string {
+    // Simple meaning lookup - in production this would be more sophisticated
+    const meanings: Record<string, Record<string, string>> = {
+      german: {
+        'der': 'the (masculine)',
+        'die': 'the (feminine)',
+        'das': 'the (neuter)',
+        'ich': 'I',
+        'und': 'and'
+      },
+      english: {
+        'the': 'definite article',
+        'a': 'indefinite article',
+        'an': 'indefinite article',
+        'this': 'demonstrative pronoun',
+        'that': 'demonstrative pronoun'
+      }
     };
+
+    return meanings[language]?.[word.toLowerCase()] || word;
   }
 }
