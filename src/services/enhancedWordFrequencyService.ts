@@ -7,6 +7,10 @@ import { WordMeaningService } from './wordSelection/wordMeaningService';
 import { WordUsageTracker } from './wordSelection/wordUsageTracker';
 
 export class EnhancedWordFrequencyService {
+  static async getWordFrequencyData(language: string) {
+    return WordFrequencyService.getWordFrequencyData(language);
+  }
+
   static async selectWordsForDifficulty(options: WordSelectionOptions): Promise<WordSelectionResult> {
     console.log(`[EnhancedWordFrequencyService] Selecting ${options.count} words for ${options.language} (${options.difficulty})`);
     
