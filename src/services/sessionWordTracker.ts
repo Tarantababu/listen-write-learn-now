@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 interface WordUsageEntry {
@@ -14,6 +15,14 @@ export class SessionWordTracker {
   private static crossSessionCooldown = new Map<string, Map<string, Date>>();
   private static readonly COOLDOWN_HOURS = 24; // Words can't repeat for 24 hours
   private static readonly SESSION_WORD_LIMIT = 15; // Max words to track per session
+
+  // Initialize session tracking
+  static initializeSession(sessionId: string): void {
+    if (!this.sessionWordUsage.has(sessionId)) {
+      this.sessionWordUsage.set(sessionId, new Set());
+      console.log(`[SessionWordTracker] Initialized session ${sessionId}`);
+    }
+  }
 
   // Track word usage in current session
   static addWordToSession(sessionId: string, word: string): void {

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { DifficultyLevel } from '@/types/sentence-mining';
 
@@ -29,6 +28,13 @@ export interface WordWithMeaning {
   wordType: 'noun' | 'verb' | 'adjective' | 'other';
 }
 
+export interface WordFrequencyData {
+  top1k: string[];
+  top3k: string[];
+  top5k: string[];
+  top10k: string[];
+}
+
 export class EnhancedWordFrequencyService {
   private static wordPools: Map<string, WordWithMeaning[]> = new Map();
   private static sessionStats: Map<string, any> = new Map();
@@ -37,65 +43,65 @@ export class EnhancedWordFrequencyService {
   private static readonly COMPREHENSIVE_WORD_POOLS = {
     german: {
       beginner: [
-        { word: 'der', englishMeaning: 'the (masculine)', difficulty: 'beginner', frequency: 1, wordType: 'other' },
-        { word: 'die', englishMeaning: 'the (feminine)', difficulty: 'beginner', frequency: 2, wordType: 'other' },
-        { word: 'das', englishMeaning: 'the (neuter)', difficulty: 'beginner', frequency: 3, wordType: 'other' },
-        { word: 'ich', englishMeaning: 'I', difficulty: 'beginner', frequency: 4, wordType: 'other' },
-        { word: 'du', englishMeaning: 'you', difficulty: 'beginner', frequency: 5, wordType: 'other' },
-        { word: 'er', englishMeaning: 'he', difficulty: 'beginner', frequency: 6, wordType: 'other' },
-        { word: 'sie', englishMeaning: 'she/they', difficulty: 'beginner', frequency: 7, wordType: 'other' },
-        { word: 'es', englishMeaning: 'it', difficulty: 'beginner', frequency: 8, wordType: 'other' },
-        { word: 'haben', englishMeaning: 'to have', difficulty: 'beginner', frequency: 9, wordType: 'verb' },
-        { word: 'sein', englishMeaning: 'to be', difficulty: 'beginner', frequency: 10, wordType: 'verb' },
-        { word: 'Haus', englishMeaning: 'house', difficulty: 'beginner', frequency: 11, wordType: 'noun' },
-        { word: 'Auto', englishMeaning: 'car', difficulty: 'beginner', frequency: 12, wordType: 'noun' },
-        { word: 'Katze', englishMeaning: 'cat', difficulty: 'beginner', frequency: 13, wordType: 'noun' },
-        { word: 'Hund', englishMeaning: 'dog', difficulty: 'beginner', frequency: 14, wordType: 'noun' },
-        { word: 'groß', englishMeaning: 'big', difficulty: 'beginner', frequency: 15, wordType: 'adjective' },
-        { word: 'klein', englishMeaning: 'small', difficulty: 'beginner', frequency: 16, wordType: 'adjective' },
-        { word: 'gut', englishMeaning: 'good', difficulty: 'beginner', frequency: 17, wordType: 'adjective' },
-        { word: 'schlecht', englishMeaning: 'bad', difficulty: 'beginner', frequency: 18, wordType: 'adjective' },
-        { word: 'kommen', englishMeaning: 'to come', difficulty: 'beginner', frequency: 19, wordType: 'verb' },
-        { word: 'gehen', englishMeaning: 'to go', difficulty: 'beginner', frequency: 20, wordType: 'verb' }
+        { word: 'der', englishMeaning: 'the (masculine)', difficulty: 'beginner' as DifficultyLevel, frequency: 1, wordType: 'other' as const },
+        { word: 'die', englishMeaning: 'the (feminine)', difficulty: 'beginner' as DifficultyLevel, frequency: 2, wordType: 'other' as const },
+        { word: 'das', englishMeaning: 'the (neuter)', difficulty: 'beginner' as DifficultyLevel, frequency: 3, wordType: 'other' as const },
+        { word: 'ich', englishMeaning: 'I', difficulty: 'beginner' as DifficultyLevel, frequency: 4, wordType: 'other' as const },
+        { word: 'du', englishMeaning: 'you', difficulty: 'beginner' as DifficultyLevel, frequency: 5, wordType: 'other' as const },
+        { word: 'er', englishMeaning: 'he', difficulty: 'beginner' as DifficultyLevel, frequency: 6, wordType: 'other' as const },
+        { word: 'sie', englishMeaning: 'she/they', difficulty: 'beginner' as DifficultyLevel, frequency: 7, wordType: 'other' as const },
+        { word: 'es', englishMeaning: 'it', difficulty: 'beginner' as DifficultyLevel, frequency: 8, wordType: 'other' as const },
+        { word: 'haben', englishMeaning: 'to have', difficulty: 'beginner' as DifficultyLevel, frequency: 9, wordType: 'verb' as const },
+        { word: 'sein', englishMeaning: 'to be', difficulty: 'beginner' as DifficultyLevel, frequency: 10, wordType: 'verb' as const },
+        { word: 'Haus', englishMeaning: 'house', difficulty: 'beginner' as DifficultyLevel, frequency: 11, wordType: 'noun' as const },
+        { word: 'Auto', englishMeaning: 'car', difficulty: 'beginner' as DifficultyLevel, frequency: 12, wordType: 'noun' as const },
+        { word: 'Katze', englishMeaning: 'cat', difficulty: 'beginner' as DifficultyLevel, frequency: 13, wordType: 'noun' as const },
+        { word: 'Hund', englishMeaning: 'dog', difficulty: 'beginner' as DifficultyLevel, frequency: 14, wordType: 'noun' as const },
+        { word: 'groß', englishMeaning: 'big', difficulty: 'beginner' as DifficultyLevel, frequency: 15, wordType: 'adjective' as const },
+        { word: 'klein', englishMeaning: 'small', difficulty: 'beginner' as DifficultyLevel, frequency: 16, wordType: 'adjective' as const },
+        { word: 'gut', englishMeaning: 'good', difficulty: 'beginner' as DifficultyLevel, frequency: 17, wordType: 'adjective' as const },
+        { word: 'schlecht', englishMeaning: 'bad', difficulty: 'beginner' as DifficultyLevel, frequency: 18, wordType: 'adjective' as const },
+        { word: 'kommen', englishMeaning: 'to come', difficulty: 'beginner' as DifficultyLevel, frequency: 19, wordType: 'verb' as const },
+        { word: 'gehen', englishMeaning: 'to go', difficulty: 'beginner' as DifficultyLevel, frequency: 20, wordType: 'verb' as const }
       ],
       intermediate: [
-        { word: 'werden', englishMeaning: 'to become', difficulty: 'intermediate', frequency: 21, wordType: 'verb' },
-        { word: 'können', englishMeaning: 'can/to be able to', difficulty: 'intermediate', frequency: 22, wordType: 'verb' },
-        { word: 'müssen', englishMeaning: 'must/to have to', difficulty: 'intermediate', frequency: 23, wordType: 'verb' },
-        { word: 'sollen', englishMeaning: 'should/ought to', difficulty: 'intermediate', frequency: 24, wordType: 'verb' },
-        { word: 'wollen', englishMeaning: 'to want', difficulty: 'intermediate', frequency: 25, wordType: 'verb' },
-        { word: 'zwischen', englishMeaning: 'between', difficulty: 'intermediate', frequency: 26, wordType: 'other' },
-        { word: 'während', englishMeaning: 'during/while', difficulty: 'intermediate', frequency: 27, wordType: 'other' },
-        { word: 'trotzdem', englishMeaning: 'nevertheless', difficulty: 'intermediate', frequency: 28, wordType: 'other' },
-        { word: 'deshalb', englishMeaning: 'therefore', difficulty: 'intermediate', frequency: 29, wordType: 'other' },
-        { word: 'außerdem', englishMeaning: 'furthermore', difficulty: 'intermediate', frequency: 30, wordType: 'other' },
-        { word: 'Erfahrung', englishMeaning: 'experience', difficulty: 'intermediate', frequency: 31, wordType: 'noun' },
-        { word: 'Gesellschaft', englishMeaning: 'society', difficulty: 'intermediate', frequency: 32, wordType: 'noun' },
-        { word: 'Entwicklung', englishMeaning: 'development', difficulty: 'intermediate', frequency: 33, wordType: 'noun' },
-        { word: 'Möglichkeit', englishMeaning: 'possibility', difficulty: 'intermediate', frequency: 34, wordType: 'noun' },
-        { word: 'wichtig', englishMeaning: 'important', difficulty: 'intermediate', frequency: 35, wordType: 'adjective' },
-        { word: 'schwierig', englishMeaning: 'difficult', difficulty: 'intermediate', frequency: 36, wordType: 'adjective' },
-        { word: 'interessant', englishMeaning: 'interesting', difficulty: 'intermediate', frequency: 37, wordType: 'adjective' },
-        { word: 'notwendig', englishMeaning: 'necessary', difficulty: 'intermediate', frequency: 38, wordType: 'adjective' },
-        { word: 'verstehen', englishMeaning: 'to understand', difficulty: 'intermediate', frequency: 39, wordType: 'verb' },
-        { word: 'erklären', englishMeaning: 'to explain', difficulty: 'intermediate', frequency: 40, wordType: 'verb' }
+        { word: 'werden', englishMeaning: 'to become', difficulty: 'intermediate' as DifficultyLevel, frequency: 21, wordType: 'verb' as const },
+        { word: 'können', englishMeaning: 'can/to be able to', difficulty: 'intermediate' as DifficultyLevel, frequency: 22, wordType: 'verb' as const },
+        { word: 'müssen', englishMeaning: 'must/to have to', difficulty: 'intermediate' as DifficultyLevel, frequency: 23, wordType: 'verb' as const },
+        { word: 'sollen', englishMeaning: 'should/ought to', difficulty: 'intermediate' as DifficultyLevel, frequency: 24, wordType: 'verb' as const },
+        { word: 'wollen', englishMeaning: 'to want', difficulty: 'intermediate' as DifficultyLevel, frequency: 25, wordType: 'verb' as const },
+        { word: 'zwischen', englishMeaning: 'between', difficulty: 'intermediate' as DifficultyLevel, frequency: 26, wordType: 'other' as const },
+        { word: 'während', englishMeaning: 'during/while', difficulty: 'intermediate' as DifficultyLevel, frequency: 27, wordType: 'other' as const },
+        { word: 'trotzdem', englishMeaning: 'nevertheless', difficulty: 'intermediate' as DifficultyLevel, frequency: 28, wordType: 'other' as const },
+        { word: 'deshalb', englishMeaning: 'therefore', difficulty: 'intermediate' as DifficultyLevel, frequency: 29, wordType: 'other' as const },
+        { word: 'außerdem', englishMeaning: 'furthermore', difficulty: 'intermediate' as DifficultyLevel, frequency: 30, wordType: 'other' as const },
+        { word: 'Erfahrung', englishMeaning: 'experience', difficulty: 'intermediate' as DifficultyLevel, frequency: 31, wordType: 'noun' as const },
+        { word: 'Gesellschaft', englishMeaning: 'society', difficulty: 'intermediate' as DifficultyLevel, frequency: 32, wordType: 'noun' as const },
+        { word: 'Entwicklung', englishMeaning: 'development', difficulty: 'intermediate' as DifficultyLevel, frequency: 33, wordType: 'noun' as const },
+        { word: 'Möglichkeit', englishMeaning: 'possibility', difficulty: 'intermediate' as DifficultyLevel, frequency: 34, wordType: 'noun' as const },
+        { word: 'wichtig', englishMeaning: 'important', difficulty: 'intermediate' as DifficultyLevel, frequency: 35, wordType: 'adjective' as const },
+        { word: 'schwierig', englishMeaning: 'difficult', difficulty: 'intermediate' as DifficultyLevel, frequency: 36, wordType: 'adjective' as const },
+        { word: 'interessant', englishMeaning: 'interesting', difficulty: 'intermediate' as DifficultyLevel, frequency: 37, wordType: 'adjective' as const },
+        { word: 'notwendig', englishMeaning: 'necessary', difficulty: 'intermediate' as DifficultyLevel, frequency: 38, wordType: 'adjective' as const },
+        { word: 'verstehen', englishMeaning: 'to understand', difficulty: 'intermediate' as DifficultyLevel, frequency: 39, wordType: 'verb' as const },
+        { word: 'erklären', englishMeaning: 'to explain', difficulty: 'intermediate' as DifficultyLevel, frequency: 40, wordType: 'verb' as const }
       ],
       advanced: [
-        { word: 'Verantwortung', englishMeaning: 'responsibility', difficulty: 'advanced', frequency: 41, wordType: 'noun' },
-        { word: 'Wissenschaft', englishMeaning: 'science', difficulty: 'advanced', frequency: 42, wordType: 'noun' },
-        { word: 'Verständnis', englishMeaning: 'understanding', difficulty: 'advanced', frequency: 43, wordType: 'noun' },
-        { word: 'Beziehung', englishMeaning: 'relationship', difficulty: 'advanced', frequency: 44, wordType: 'noun' },
-        { word: 'Entscheidung', englishMeaning: 'decision', difficulty: 'advanced', frequency: 45, wordType: 'noun' },
-        { word: 'außergewöhnlich', englishMeaning: 'extraordinary', difficulty: 'advanced', frequency: 46, wordType: 'adjective' },
-        { word: 'verantwortlich', englishMeaning: 'responsible', difficulty: 'advanced', frequency: 47, wordType: 'adjective' },
-        { word: 'wissenschaftlich', englishMeaning: 'scientific', difficulty: 'advanced', frequency: 48, wordType: 'adjective' },
-        { word: 'charakteristisch', englishMeaning: 'characteristic', difficulty: 'advanced', frequency: 49, wordType: 'adjective' },
-        { word: 'repräsentativ', englishMeaning: 'representative', difficulty: 'advanced', frequency: 50, wordType: 'adjective' },
-        { word: 'berücksichtigen', englishMeaning: 'to consider', difficulty: 'advanced', frequency: 51, wordType: 'verb' },
-        { word: 'charakterisieren', englishMeaning: 'to characterize', difficulty: 'advanced', frequency: 52, wordType: 'verb' },
-        { word: 'repräsentieren', englishMeaning: 'to represent', difficulty: 'advanced', frequency: 53, wordType: 'verb' },
-        { word: 'demonstrieren', englishMeaning: 'to demonstrate', difficulty: 'advanced', frequency: 54, wordType: 'verb' },
-        { word: 'interpretieren', englishMeaning: 'to interpret', difficulty: 'advanced', frequency: 55, wordType: 'verb' }
+        { word: 'Verantwortung', englishMeaning: 'responsibility', difficulty: 'advanced' as DifficultyLevel, frequency: 41, wordType: 'noun' as const },
+        { word: 'Wissenschaft', englishMeaning: 'science', difficulty: 'advanced' as DifficultyLevel, frequency: 42, wordType: 'noun' as const },
+        { word: 'Verständnis', englishMeaning: 'understanding', difficulty: 'advanced' as DifficultyLevel, frequency: 43, wordType: 'noun' as const },
+        { word: 'Beziehung', englishMeaning: 'relationship', difficulty: 'advanced' as DifficultyLevel, frequency: 44, wordType: 'noun' as const },
+        { word: 'Entscheidung', englishMeaning: 'decision', difficulty: 'advanced' as DifficultyLevel, frequency: 45, wordType: 'noun' as const },
+        { word: 'außergewöhnlich', englishMeaning: 'extraordinary', difficulty: 'advanced' as DifficultyLevel, frequency: 46, wordType: 'adjective' as const },
+        { word: 'verantwortlich', englishMeaning: 'responsible', difficulty: 'advanced' as DifficultyLevel, frequency: 47, wordType: 'adjective' as const },
+        { word: 'wissenschaftlich', englishMeaning: 'scientific', difficulty: 'advanced' as DifficultyLevel, frequency: 48, wordType: 'adjective' as const },
+        { word: 'charakteristisch', englishMeaning: 'characteristic', difficulty: 'advanced' as DifficultyLevel, frequency: 49, wordType: 'adjective' as const },
+        { word: 'repräsentativ', englishMeaning: 'representative', difficulty: 'advanced' as DifficultyLevel, frequency: 50, wordType: 'adjective' as const },
+        { word: 'berücksichtigen', englishMeaning: 'to consider', difficulty: 'advanced' as DifficultyLevel, frequency: 51, wordType: 'verb' as const },
+        { word: 'charakterisieren', englishMeaning: 'to characterize', difficulty: 'advanced' as DifficultyLevel, frequency: 52, wordType: 'verb' as const },
+        { word: 'repräsentieren', englishMeaning: 'to represent', difficulty: 'advanced' as DifficultyLevel, frequency: 53, wordType: 'verb' as const },
+        { word: 'demonstrieren', englishMeaning: 'to demonstrate', difficulty: 'advanced' as DifficultyLevel, frequency: 54, wordType: 'verb' as const },
+        { word: 'interpretieren', englishMeaning: 'to interpret', difficulty: 'advanced' as DifficultyLevel, frequency: 55, wordType: 'verb' as const }
       ]
     },
     english: {
@@ -183,6 +189,46 @@ export class EnhancedWordFrequencyService {
       ]
     }
   };
+
+  static async getWordFrequencyData(language: string): Promise<WordFrequencyData> {
+    const normalizedLanguage = language.toLowerCase();
+    const languagePool = this.COMPREHENSIVE_WORD_POOLS[normalizedLanguage as keyof typeof this.COMPREHENSIVE_WORD_POOLS];
+    
+    if (!languagePool) {
+      console.warn(`[EnhancedWordFrequency] No word pool for language: ${language}`);
+      return {
+        top1k: ['the', 'be', 'to', 'of', 'and'],
+        top3k: ['the', 'be', 'to', 'of', 'and'],
+        top5k: ['the', 'be', 'to', 'of', 'and'],
+        top10k: ['the', 'be', 'to', 'of', 'and']
+      };
+    }
+
+    const allWords = [
+      ...(languagePool.beginner || []),
+      ...(languagePool.intermediate || []),
+      ...(languagePool.advanced || [])
+    ];
+
+    const wordList = allWords.map(w => w.word);
+    
+    return {
+      top1k: wordList.slice(0, Math.min(1000, wordList.length)),
+      top3k: wordList.slice(0, Math.min(3000, wordList.length)),
+      top5k: wordList.slice(0, Math.min(5000, wordList.length)),
+      top10k: wordList
+    };
+  }
+
+  static clearSessionData(language?: string): void {
+    if (language) {
+      this.sessionStats.delete(language);
+      console.log(`[EnhancedWordFrequency] Cleared session data for ${language}`);
+    } else {
+      this.sessionStats.clear();
+      console.log('[EnhancedWordFrequency] Cleared all session data');
+    }
+  }
 
   static async selectWordsForDifficulty(options: WordSelectionOptions): Promise<WordSelectionResult> {
     const { language, difficulty, count, excludeWords, maxRepetitions = 2 } = options;
