@@ -1,301 +1,221 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { EnhancedWordFrequencyService, WordSelectionOptions, WordSelectionResult } from './enhancedWordFrequencyService';
 import { DifficultyLevel } from '@/types/sentence-mining';
-import { EnhancedWordFrequencyService, WordSelectionOptions } from './enhancedWordFrequencyService';
 
-export interface ImprovedAutoWordSelectionConfig {
-  language: string;
-  difficulty: DifficultyLevel;
-  userId: string;
-  sessionId: string;
-  previousWords: string[];
-  wordCount: number;
-  preferredWordTypes?: string[];
-  avoidRecentWords?: boolean;
+export interface EnhancedWordSelectionOptions extends WordSelectionOptions {
+  userLevel?: string;
+  previousWords?: string[];
+  sessionContext?: any;
+  targetWordCount?: number;
 }
 
-export interface ImprovedWordSelectionResult {
-  selectedWord: string;
-  selectionReason: string;
-  wordType: 'new' | 'review' | 'frequency_based' | 'fallback';
-  alternativeWords: string[];
-  quality: number;
-  metadata: {
-    source: string;
-    difficultyLevel: DifficultyLevel;
-    totalCandidates: number;
+export interface EnhancedWordSelectionResult extends WordSelectionResult {
+  recommendedNextDifficulty?: DifficultyLevel;
+  learningInsights?: {
+    strongAreas: string[];
+    improvementAreas: string[];
+    nextFocus: string;
   };
 }
 
 export class ImprovedAutomaticWordSelection {
-  static async selectAutomaticWord(config: ImprovedAutoWordSelectionConfig): Promise<ImprovedWordSelectionResult> {
-    const { language, difficulty, userId, sessionId, previousWords, wordCount, avoidRecentWords = true } = config;
+  private static readonly DIFFICULTY_PROGRESSION = ['beginner', 'intermediate', 'advanced'] as const;
+  
+  static async selectOptimalWords(options: EnhancedWordSelectionOptions): Promise<EnhancedWordSelectionResult> {
+    console.log('[ImprovedAutomaticWordSelection] Starting optimal word selection');
     
-    console.log(`[ImprovedAutoWordSelection] Selecting word for ${language} (${difficulty})`);
-    console.log(`[ImprovedAutoWordSelection] Previous words: [${previousWords.join(', ')}]`);
-
     try {
-      // Phase 1: Try to get user-specific words that need review
-      const userSpecificWord = await this.getUserSpecificWord(userId, language, previousWords);
-      if (userSpecificWord) {
-        console.log(`[ImprovedAutoWordSelection] Selected review word: ${userSpecificWord.selectedWord}`);
-        return userSpecificWord;
-      }
-
-      // Phase 2: Use enhanced frequency-based selection
-      const frequencyWord = await this.getEnhancedFrequencyBasedWord(
-        language, 
-        difficulty, 
-        previousWords,
-        sessionId
-      );
-      if (frequencyWord) {
-        console.log(`[ImprovedAutoWordSelection] Selected frequency word: ${frequencyWord.selectedWord}`);
-        return frequencyWord;
-      }
-
-      // Phase 3: Final fallback
-      return this.getImprovedFallbackWord(language, difficulty, previousWords);
-
-    } catch (error) {
-      console.error('[ImprovedAutoWordSelection] Error in word selection:', error);
-      return this.getImprovedFallbackWord(language, difficulty, previousWords);
-    }
-  }
-
-  private static async getUserSpecificWord(
-    userId: string, 
-    language: string, 
-    previousWords: string[]
-  ): Promise<ImprovedWordSelectionResult | null> {
-    try {
-      console.log(`[ImprovedAutoWordSelection] Checking for user review words...`);
+      // Get base word selection from enhanced service
+      const baseResult = await EnhancedWordFrequencyService.selectWordsForDifficulty(options);
       
-      // Get words that need review (more sophisticated query)
-      const { data: reviewWords } = await supabase
-        .from('known_words')
-        .select('word, mastery_level, last_reviewed_at, review_count, correct_count')
-        .eq('user_id', userId)
-        .eq('language', language)
-        .lte('next_review_date', new Date().toISOString().split('T')[0])
-        .not('word', 'in', `(${previousWords.map(w => `"${w}"`).join(',')})`)
-        .order('mastery_level', { ascending: true }) // Prioritize lower mastery
-        .order('last_reviewed_at', { ascending: true }) // Then by oldest reviews
-        .limit(10);
-
-      if (reviewWords && reviewWords.length > 0) {
-        // Select word with lowest mastery and longest time since review
-        const selectedWord = reviewWords[0];
-        const accuracy = selectedWord.review_count > 0 
-          ? Math.round((selectedWord.correct_count / selectedWord.review_count) * 100)
-          : 0;
-        
-        return {
-          selectedWord: selectedWord.word,
-          selectionReason: `Review needed (mastery: ${selectedWord.mastery_level}, accuracy: ${accuracy}%)`,
-          wordType: 'review',
-          alternativeWords: reviewWords.slice(1, 4).map(w => w.word),
-          quality: 90, // High quality for targeted review
-          metadata: {
-            source: 'user_review_system',
-            difficultyLevel: this.masteryToDifficulty(selectedWord.mastery_level),
-            totalCandidates: reviewWords.length
-          }
-        };
-      }
-
-      console.log(`[ImprovedAutoWordSelection] No review words found`);
-      return null;
-    } catch (error) {
-      console.error('[ImprovedAutoWordSelection] Error getting user-specific words:', error);
-      return null;
-    }
-  }
-
-  private static async getEnhancedFrequencyBasedWord(
-    language: string, 
-    difficulty: DifficultyLevel, 
-    previousWords: string[],
-    sessionId: string
-  ): Promise<ImprovedWordSelectionResult | null> {
-    try {
-      console.log(`[ImprovedAutoWordSelection] Getting enhanced frequency-based words...`);
-      
-      // Use the new enhanced word frequency service
-      const selectionOptions: WordSelectionOptions = {
-        language,
-        difficulty,
-        count: 10, // Get 10 candidates
-        excludeWords: previousWords,
-        maxRepetitions: 2 // Limit word repetition in session
+      // Enhance with additional analytics
+      const enhancedResult: EnhancedWordSelectionResult = {
+        ...baseResult,
+        metadata: {
+          ...baseResult.metadata,
+          difficultyLevel: options.difficulty // Add the missing property
+        },
+        recommendedNextDifficulty: this.calculateNextDifficulty(options.difficulty, baseResult.metadata.selectionQuality),
+        learningInsights: this.generateLearningInsights(options, baseResult)
       };
 
-      const wordSelection = await EnhancedWordFrequencyService.selectWordsForDifficulty(selectionOptions);
-
-      if (wordSelection.words.length === 0) {
-        console.log(`[ImprovedAutoWordSelection] No enhanced frequency words available`);
-        return null;
-      }
-
-      // Select the first word (they're already randomized and quality-filtered)
-      const selectedWord = wordSelection.words[0];
+      console.log('[ImprovedAutomaticWordSelection] Enhanced word selection completed');
+      return enhancedResult;
       
-      console.log(`[ImprovedAutoWordSelection] Enhanced selection - quality: ${wordSelection.metadata.selectionQuality}%`);
+    } catch (error) {
+      console.error('[ImprovedAutomaticWordSelection] Error in optimal word selection:', error);
       
+      // Fallback to basic selection
+      const fallbackResult = await EnhancedWordFrequencyService.selectWordsForDifficulty(options);
       return {
-        selectedWord,
-        selectionReason: `Enhanced frequency selection (${difficulty}, quality: ${wordSelection.metadata.selectionQuality}%)`,
-        wordType: 'frequency_based',
-        alternativeWords: wordSelection.words.slice(1, 4),
-        quality: wordSelection.metadata.selectionQuality,
+        ...fallbackResult,
         metadata: {
-          source: wordSelection.metadata.source,
-          difficultyLevel: wordSelection.metadata.difficultyLevel,
-          totalCandidates: wordSelection.metadata.totalAvailable
+          ...fallbackResult.metadata,
+          difficultyLevel: options.difficulty
+        },
+        recommendedNextDifficulty: options.difficulty,
+        learningInsights: {
+          strongAreas: [],
+          improvementAreas: ['Technical difficulties encountered'],
+          nextFocus: 'Continue with current difficulty level'
         }
       };
-    } catch (error) {
-      console.error('[ImprovedAutoWordSelection] Error getting enhanced frequency word:', error);
-      return null;
     }
   }
 
-  private static getImprovedFallbackWord(
-    language: string, 
-    difficulty: DifficultyLevel, 
-    previousWords: string[]
-  ): ImprovedWordSelectionResult {
-    console.log(`[ImprovedAutoWordSelection] Using improved fallback selection`);
+  private static calculateNextDifficulty(currentDifficulty: DifficultyLevel, selectionQuality: number): DifficultyLevel {
+    const currentIndex = this.DIFFICULTY_PROGRESSION.indexOf(currentDifficulty);
     
-    // Enhanced fallback with more comprehensive word sets
-    const fallbackWords = {
-      english: {
-        beginner: ['the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'it'],
-        intermediate: ['become', 'through', 'between', 'important', 'different', 'example', 'without', 'government', 'development', 'experience'],
-        advanced: ['sophisticated', 'consequence', 'particularly', 'administration', 'representative', 'approximately', 'characteristic', 'responsibility', 'environmental', 'extraordinary']
-      },
-      german: {
-        beginner: ['der', 'die', 'das', 'ich', 'du', 'er', 'sie', 'es', 'haben', 'sein'],
-        intermediate: ['werden', 'können', 'müssen', 'sollen', 'wollen', 'zwischen', 'während', 'trotzdem', 'deshalb', 'außerdem'],
-        advanced: ['Verantwortung', 'Möglichkeit', 'Entwicklung', 'Gesellschaft', 'Wissenschaft', 'Verständnis', 'Erfahrung', 'Bedeutung', 'Beziehung', 'Entscheidung']
-      },
-      spanish: {
-        beginner: ['el', 'la', 'yo', 'tú', 'él', 'ella', 'ser', 'estar', 'tener', 'hacer'],
-        intermediate: ['porque', 'durante', 'después', 'antes', 'mientras', 'aunque', 'entonces', 'además', 'también', 'tampoco'],
-        advanced: ['desarrollar', 'establecer', 'relacionar', 'representar', 'caracterizar', 'considerar', 'determinar', 'demostrar', 'explicar', 'interpretar']
-      },
-      french: {
-        beginner: ['le', 'la', 'je', 'tu', 'il', 'elle', 'être', 'avoir', 'faire', 'dire'],
-        intermediate: ['parce que', 'pendant', 'après', 'avant', 'tandis que', 'bien que', 'alors', 'aussi', 'également', 'non plus'],
-        advanced: ['développer', 'établir', 'représenter', 'caractériser', 'considérer', 'déterminer', 'démontrer', 'expliquer', 'interpréter', 'comprendre']
-      }
-    };
+    if (selectionQuality > 85 && currentIndex < this.DIFFICULTY_PROGRESSION.length - 1) {
+      return this.DIFFICULTY_PROGRESSION[currentIndex + 1];
+    }
+    
+    if (selectionQuality < 60 && currentIndex > 0) {
+      return this.DIFFICULTY_PROGRESSION[currentIndex - 1];
+    }
+    
+    return currentDifficulty;
+  }
 
-    const normalizedLanguage = language.toLowerCase();
-    const languageWords = fallbackWords[normalizedLanguage as keyof typeof fallbackWords] || fallbackWords.english;
-    const difficultyWords = languageWords[difficulty] || languageWords.beginner;
+  private static generateLearningInsights(
+    options: EnhancedWordSelectionOptions, 
+    result: WordSelectionResult
+  ): EnhancedWordSelectionResult['learningInsights'] {
+    const strongAreas: string[] = [];
+    const improvementAreas: string[] = [];
+    let nextFocus = 'Continue practicing current level';
 
-    // Filter out previously used words
-    let availableWords = difficultyWords.filter(word => 
-      !previousWords.some(prev => prev.toLowerCase() === word.toLowerCase())
-    );
-
-    // If no words available, use full pool
-    if (availableWords.length === 0) {
-      availableWords = [...difficultyWords];
+    // Analyze selection quality
+    if (result.metadata.selectionQuality > 80) {
+      strongAreas.push('Good word variety available');
+    } else {
+      improvementAreas.push('Limited word pool - consider expanding vocabulary');
     }
 
-    const selectedWord = availableWords[Math.floor(Math.random() * availableWords.length)];
-    
+    // Analyze diversity
+    if (result.metadata.diversityScore > 70) {
+      strongAreas.push('High vocabulary diversity');
+    } else {
+      improvementAreas.push('Word patterns could be more diverse');
+    }
+
+    // Provide next focus based on difficulty and performance
+    if (result.metadata.selectionQuality > 85) {
+      nextFocus = 'Ready to advance to next difficulty level';
+    } else if (result.metadata.selectionQuality < 60) {
+      nextFocus = 'Focus on mastering current level words';
+    }
+
     return {
-      selectedWord,
-      selectionReason: `Improved fallback (${difficulty} level, ${availableWords.length} available)`,
-      wordType: 'fallback',
-      alternativeWords: availableWords.filter(w => w !== selectedWord).slice(0, 3),
-      quality: 60, // Moderate quality for fallback
-      metadata: {
-        source: 'improved_fallback',
-        difficultyLevel: difficulty,
-        totalCandidates: availableWords.length
-      }
+      strongAreas,
+      improvementAreas,
+      nextFocus
     };
   }
 
-  // Helper function to convert mastery level to difficulty
-  private static masteryToDifficulty(masteryLevel: number): DifficultyLevel {
-    if (masteryLevel <= 2) return 'beginner';
-    if (masteryLevel <= 4) return 'intermediate';
-    return 'advanced';
-  }
-
-  // Track word usage with improved analytics
-  static async trackWordUsage(
-    userId: string,
-    word: string,
+  static async getAdaptiveWordSelection(
     language: string,
-    sessionId: string,
-    isCorrect?: boolean
-  ): Promise<void> {
-    try {
-      // Enhanced word tracking with performance metrics
-      const { data, error } = await supabase
-        .from('known_words')
-        .upsert({
-          user_id: userId,
-          word: word.toLowerCase(),
-          language: language,
-          last_reviewed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          review_count: 1,
-          correct_count: isCorrect === true ? 1 : 0,
-          mastery_level: 1
-        }, {
-          onConflict: 'user_id,word,language',
-          ignoreDuplicates: false
-        });
+    difficulty: DifficultyLevel,
+    sessionHistory?: any[]
+  ): Promise<EnhancedWordSelectionResult> {
+    console.log('[ImprovedAutomaticWordSelection] Getting adaptive word selection');
+    
+    // Analyze session history for patterns
+    const excludeWords = sessionHistory 
+      ? sessionHistory.flatMap(session => session.words || [])
+      : [];
 
-      if (error) {
-        console.error('[ImprovedAutoWordSelection] Error tracking word:', error);
-        return;
-      }
-
-      // Also update session-level analytics
-      EnhancedWordFrequencyService.getSessionStats(language);
-
-      console.log(`[ImprovedAutoWordSelection] Tracked word usage: ${word} (correct: ${isCorrect})`);
-    } catch (error) {
-      console.error('[ImprovedAutoWordSelection] Error in trackWordUsage:', error);
+    // Get session statistics
+    const sessionStats = EnhancedWordFrequencyService.getSessionStats(language);
+    
+    // Adjust count based on performance
+    let wordCount = 10;
+    if (sessionStats.correctAnswers / Math.max(sessionStats.totalExercises, 1) > 0.8) {
+      wordCount = 12; // Increase challenge for high performers
+    } else if (sessionStats.correctAnswers / Math.max(sessionStats.totalExercises, 1) < 0.6) {
+      wordCount = 8; // Reduce load for struggling learners
     }
+
+    const options: EnhancedWordSelectionOptions = {
+      language,
+      difficulty,
+      count: wordCount,
+      excludeWords: excludeWords.slice(-50), // Only recent exclusions to allow word recycling
+      maxRepetitions: 2,
+      sessionContext: sessionStats
+    };
+
+    return this.selectOptimalWords(options);
   }
 
-  // Get analytics for word selection quality
-  static async getSelectionAnalytics(userId: string, language: string): Promise<{
-    totalWords: number;
-    reviewWords: number;
-    newWords: number;
-    averageQuality: number;
-  }> {
-    try {
-      const { data: knownWords } = await supabase
-        .from('known_words')
-        .select('mastery_level, review_count')
-        .eq('user_id', userId)
-        .eq('language', language);
+  static getWordDifficultyScore(word: string, language: string): number {
+    // Simple heuristic based on word length and character complexity
+    let score = Math.min(word.length * 10, 100);
+    
+    // Adjust for language-specific complexity
+    if (language === 'german' && word.includes('ß')) score += 10;
+    if (language === 'french' && /[àáâäèéêëìíîïòóôöùúûü]/.test(word)) score += 5;
+    if (language === 'spanish' && /[ñáéíóúü]/.test(word)) score += 5;
+    
+    return Math.min(score, 100);
+  }
 
-      const sessionStats = EnhancedWordFrequencyService.getSessionStats(language);
-
-      const reviewWords = knownWords?.filter(w => w.review_count > 0).length || 0;
-      const newWords = knownWords?.filter(w => w.review_count === 0).length || 0;
-      
+  static analyzeWordPatterns(words: string[]): {
+    averageLength: number;
+    commonPrefixes: string[];
+    commonSuffixes: string[];
+    complexityDistribution: { simple: number; medium: number; complex: number };
+  } {
+    if (words.length === 0) {
       return {
-        totalWords: knownWords?.length || 0,
-        reviewWords,
-        newWords,
-        averageQuality: 85 // Calculated based on selection quality metrics
+        averageLength: 0,
+        commonPrefixes: [],
+        commonSuffixes: [],
+        complexityDistribution: { simple: 0, medium: 0, complex: 0 }
       };
-    } catch (error) {
-      console.error('[ImprovedAutoWordSelection] Error getting analytics:', error);
-      return { totalWords: 0, reviewWords: 0, newWords: 0, averageQuality: 0 };
     }
+
+    const averageLength = words.reduce((sum, word) => sum + word.length, 0) / words.length;
+    
+    // Analyze prefixes and suffixes
+    const prefixes = words.map(word => word.substring(0, 2)).filter(p => p.length === 2);
+    const suffixes = words.map(word => word.substring(word.length - 2)).filter(s => s.length === 2);
+    
+    const prefixCounts = prefixes.reduce((acc, prefix) => {
+      acc[prefix] = (acc[prefix] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const suffixCounts = suffixes.reduce((acc, suffix) => {
+      acc[suffix] = (acc[suffix] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const commonPrefixes = Object.entries(prefixCounts)
+      .filter(([, count]) => count > 1)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([prefix]) => prefix);
+      
+    const commonSuffixes = Object.entries(suffixCounts)
+      .filter(([, count]) => count > 1)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([suffix]) => suffix);
+
+    // Complexity distribution
+    let simple = 0, medium = 0, complex = 0;
+    words.forEach(word => {
+      if (word.length <= 4) simple++;
+      else if (word.length <= 7) medium++;
+      else complex++;
+    });
+
+    return {
+      averageLength: Math.round(averageLength * 10) / 10,
+      commonPrefixes,
+      commonSuffixes,
+      complexityDistribution: { simple, medium, complex }
+    };
   }
 }
