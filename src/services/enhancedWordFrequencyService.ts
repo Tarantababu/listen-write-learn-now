@@ -298,11 +298,18 @@ export class EnhancedWordFrequencyService {
     let words: WordWithMeaning[] = [];
     
     if (difficulty === 'advanced') {
-      words = [...(languagePool.beginner || []), ...(languagePool.intermediate || []), ...(languagePool.advanced || [])];
+      words = [
+        ...(languagePool.beginner || []).map(w => ({ ...w, difficulty: 'beginner' as DifficultyLevel })),
+        ...(languagePool.intermediate || []).map(w => ({ ...w, difficulty: 'intermediate' as DifficultyLevel })),
+        ...(languagePool.advanced || []).map(w => ({ ...w, difficulty: 'advanced' as DifficultyLevel }))
+      ];
     } else if (difficulty === 'intermediate') {
-      words = [...(languagePool.beginner || []), ...(languagePool.intermediate || [])];
+      words = [
+        ...(languagePool.beginner || []).map(w => ({ ...w, difficulty: 'beginner' as DifficultyLevel })),
+        ...(languagePool.intermediate || []).map(w => ({ ...w, difficulty: 'intermediate' as DifficultyLevel }))
+      ];
     } else {
-      words = languagePool.beginner || [];
+      words = (languagePool.beginner || []).map(w => ({ ...w, difficulty: 'beginner' as DifficultyLevel }));
     }
 
     return words;
