@@ -1,3 +1,4 @@
+
 import { DifficultyLevel } from '@/types/sentence-mining';
 
 export interface WordSelectionOptions {
@@ -117,6 +118,10 @@ export class EnhancedWordFrequencyService {
     };
     
     return emergency[language as keyof typeof emergency] || emergency.english;
+  }
+
+  static getEmergencyFallbackWords(language: string): string[] {
+    return this.getEmergencyWordPool(language);
   }
 
   static async selectWordsForDifficulty(options: WordSelectionOptions): Promise<WordSelectionResult> {
@@ -253,5 +258,43 @@ export class EnhancedWordFrequencyService {
     };
 
     return meanings[language]?.[word.toLowerCase()] || word;
+  }
+
+  static trackWordUsage(
+    userId: string,
+    word: string,
+    language: string,
+    sessionId: string,
+    isCorrect?: boolean
+  ): void {
+    console.log(`[EnhancedWordFrequencyService] Tracking word usage: ${word} (${isCorrect ? 'correct' : 'incorrect'})`);
+    
+    try {
+      // Store word usage in session data for tracking
+      const sessionData = this.getSessionData(language);
+      if (!sessionData.wordUsage) {
+        sessionData.wordUsage = {};
+      }
+      
+      if (!sessionData.wordUsage[word]) {
+        sessionData.wordUsage[word] = { count: 0, correct: 0, lastUsed: Date.now() };
+      }
+      
+      sessionData.wordUsage[word].count++;
+      if (isCorrect) {
+        sessionData.wordUsage[word].correct++;
+      }
+      sessionData.wordUsage[word].lastUsed = Date.now();
+      
+      // Update session stats
+      sessionData.totalExercises = (sessionData.totalExercises || 0) + 1;
+      if (isCorrect) {
+        sessionData.correctAnswers = (sessionData.correctAnswers || 0) + 1;
+      }
+      
+      console.log(`[EnhancedWordFrequencyService] Word usage tracked for ${word}`);
+    } catch (error) {
+      console.error('[EnhancedWordFrequencyService] Error tracking word usage:', error);
+    }
   }
 }
