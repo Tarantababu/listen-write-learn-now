@@ -1,10 +1,12 @@
-import React, { useEffect } from 'react';
+
+import React, { useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CheckCircle, XCircle, Lightbulb, Loader2, Zap } from 'lucide-react';
 import { SentenceMiningExercise } from '@/types/sentence-mining';
 import { ClozeAudioPlayer } from './ClozeAudioPlayer';
+import { EnhancedWordFrequencyService } from '@/services/enhancedWordFrequencyService';
 
 interface SimpleClozeExerciseProps {
   exercise: SentenceMiningExercise;
@@ -18,6 +20,7 @@ interface SimpleClozeExerciseProps {
   onNext: () => void;
   showTranslation: boolean;
   onToggleTranslation: () => void;
+  language?: string;
 }
 
 export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
@@ -31,8 +34,11 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
   onSubmit,
   onNext,
   showTranslation,
-  onToggleTranslation
+  onToggleTranslation,
+  language = 'english'
 }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onResponseChange(e.target.value);
   };
@@ -47,6 +53,16 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
       onNext();
     }
   };
+
+  // Focus input when exercise changes or component mounts
+  useEffect(() => {
+    if (!showResult && inputRef.current) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [exercise.id, showResult]);
 
   // Add global keyboard shortcuts
   useEffect(() => {
@@ -114,13 +130,33 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
     return filledSentence;
   };
 
-  const getHintText = () => {
-    if (exercise.targetWordTranslation) {
-      return exercise.targetWordTranslation;
+  const getEnglishMeaning = () => {
+    // Get English meaning from the enhanced word frequency service
+    if (exercise.targetWord && language) {
+      const meaning = EnhancedWordFrequencyService.getWordMeaning(language, exercise.targetWord);
+      if (meaning) {
+        return meaning;
+      }
     }
+    
+    // Fallback to targetWordTranslation only if it appears to be in English
+    if (exercise.targetWordTranslation) {
+      // Simple check to see if it might be English (contains common English words or is short)
+      const translation = exercise.targetWordTranslation.toLowerCase();
+      const englishIndicators = ['the', 'a', 'an', 'to', 'of', 'and', 'or', 'is', 'are', 'was', 'were'];
+      const hasEnglishIndicators = englishIndicators.some(indicator => translation.includes(indicator));
+      const isShortTranslation = translation.length < 30; // Likely to be English if short
+      
+      if (hasEnglishIndicators || isShortTranslation) {
+        return exercise.targetWordTranslation;
+      }
+    }
+    
+    // Final fallback to hints
     if (exercise.hints && exercise.hints.length > 0) {
       return exercise.hints[0];
     }
+    
     return 'Think about what word fits here';
   };
 
@@ -158,6 +194,7 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
             <div className="space-y-4">
               <div className="flex justify-center">
                 <Input
+                  ref={inputRef}
                   type="text"
                   value={userResponse}
                   onChange={handleInputChange}
@@ -165,7 +202,6 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
                   placeholder="Type your answer..."
                   className="max-w-xs text-center text-lg py-3"
                   disabled={loading}
-                  autoFocus
                 />
               </div>
               
@@ -178,7 +214,7 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
             </div>
           )}
 
-          {/* Hints - now showing only the English meaning of the target word */}
+          {/* Hints - now showing proper English meaning */}
           <div className="flex justify-center">
             <div className="max-w-md p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <div className="flex items-start gap-2">
@@ -188,7 +224,7 @@ export const SimpleClozeExercise: React.FC<SimpleClozeExerciseProps> = ({
                     English meaning:
                   </p>
                   <p className="text-sm text-blue-700 dark:text-blue-300">
-                    {getHintText()}
+                    {getEnglishMeaning()}
                   </p>
                 </div>
               </div>

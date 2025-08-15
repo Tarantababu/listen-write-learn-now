@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,22 +37,18 @@ export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = (
   onToggleTranslation,
   language = 'english'
 }) => {
-  const [focusInput, setFocusInput] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const [englishMeaning, setEnglishMeaning] = useState<string>('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // Focus input when exercise changes or component mounts
   useEffect(() => {
-    const timer = setTimeout(() => setFocusInput(true), 100);
-    return () => clearTimeout(timer);
-  }, [exercise.id]);
-
-  useEffect(() => {
-    // Get English meaning for the target word
-    if (exercise.targetWord && language) {
-      const meaning = EnhancedWordFrequencyService.getWordMeaning(language, exercise.targetWord);
-      setEnglishMeaning(meaning);
+    if (!showResult && inputRef.current) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [exercise.targetWord, language]);
+  }, [exercise.id, showResult]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !showResult) {
@@ -70,6 +66,36 @@ export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = (
 
   const toggleHint = () => {
     setShowHint(!showHint);
+  };
+
+  const getEnglishMeaning = () => {
+    // Get English meaning from the enhanced word frequency service
+    if (exercise.targetWord && language) {
+      const meaning = EnhancedWordFrequencyService.getWordMeaning(language, exercise.targetWord);
+      if (meaning) {
+        return meaning;
+      }
+    }
+    
+    // Fallback to targetWordTranslation only if it appears to be in English
+    if (exercise.targetWordTranslation) {
+      // Simple check to see if it might be English (contains common English words or is short)
+      const translation = exercise.targetWordTranslation.toLowerCase();
+      const englishIndicators = ['the', 'a', 'an', 'to', 'of', 'and', 'or', 'is', 'are', 'was', 'were'];
+      const hasEnglishIndicators = englishIndicators.some(indicator => translation.includes(indicator));
+      const isShortTranslation = translation.length < 30; // Likely to be English if short
+      
+      if (hasEnglishIndicators || isShortTranslation) {
+        return exercise.targetWordTranslation;
+      }
+    }
+    
+    // Final fallback to hints
+    if (exercise.hints && exercise.hints.length > 0) {
+      return exercise.hints[0];
+    }
+    
+    return 'Think about what word fits here';
   };
 
   return (
@@ -96,12 +122,12 @@ export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = (
                         </span>
                       ) : (
                         <Input
+                          ref={inputRef}
                           value={userResponse}
                           onChange={(e) => onResponseChange(e.target.value)}
                           onKeyPress={handleKeyPress}
                           className="inline-block w-32 text-center border-2 border-dashed border-primary/40 focus:border-primary bg-background/50"
                           placeholder="?"
-                          autoFocus={focusInput}
                           disabled={loading}
                         />
                       )}
@@ -112,12 +138,12 @@ export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = (
             </div>
 
             {/* English Meaning Hint */}
-            {showHint && englishMeaning && !showResult && (
+            {showHint && !showResult && (
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
                 <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
                   <Lightbulb className="h-4 w-4" />
                   <span className="text-sm font-medium">English meaning:</span>
-                  <span className="text-sm italic">{englishMeaning}</span>
+                  <span className="text-sm italic">{getEnglishMeaning()}</span>
                 </div>
               </div>
             )}
@@ -184,12 +210,10 @@ export const MinimalistClozeExercise: React.FC<MinimalistClozeExerciseProps> = (
                 </div>
                 
                 {/* Show meaning after result */}
-                {englishMeaning && (
-                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Lightbulb className="h-3 w-3" />
-                    <span>"{englishMeaning}"</span>
-                  </div>
-                )}
+                <div className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Lightbulb className="h-3 w-3" />
+                  <span>"{getEnglishMeaning()}"</span>
+                </div>
                 
                 <Button
                   onClick={onNext}
