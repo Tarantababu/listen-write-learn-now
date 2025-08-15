@@ -1,31 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
 import { DifficultyLevel } from '@/types/sentence-mining';
 
-export interface WordSelectionOptions {
-  language: string;
-  difficulty: DifficultyLevel;
-  count: number;
-  excludeWords: string[];
-  maxRepetitions?: number;
-  preferWordTypes?: string[];
-}
-
-export interface WordSelectionResult {
-  words: string[];
-  metadata: {
-    source: string;
-    selectionQuality: number;
-    difficultyLevel: DifficultyLevel;
-    totalAvailable: number;
-  };
-}
-
-export interface WordWithMeaning {
+export interface WordFrequencyEntry {
   word: string;
-  englishMeaning: string;
-  difficulty: DifficultyLevel;
   frequency: number;
-  wordType: 'noun' | 'verb' | 'adjective' | 'other';
+  rank: number;
+  language: string;
 }
 
 export interface WordFrequencyData {
@@ -35,389 +15,343 @@ export interface WordFrequencyData {
   top10k: string[];
 }
 
-export class EnhancedWordFrequencyService {
-  private static wordPools: Map<string, WordWithMeaning[]> = new Map();
-  private static sessionStats: Map<string, any> = new Map();
+export interface WordSelectionOptions {
+  language: string;
+  difficulty: DifficultyLevel;
+  count?: number;
+  excludeWords?: string[];
+  maxRepetitions?: number;
+}
 
-  // Comprehensive word pools with English meanings for different languages
-  private static readonly COMPREHENSIVE_WORD_POOLS = {
-    german: {
-      beginner: [
-        { word: 'der', englishMeaning: 'the (masculine)', difficulty: 'beginner' as DifficultyLevel, frequency: 1, wordType: 'other' as const },
-        { word: 'die', englishMeaning: 'the (feminine)', difficulty: 'beginner' as DifficultyLevel, frequency: 2, wordType: 'other' as const },
-        { word: 'das', englishMeaning: 'the (neuter)', difficulty: 'beginner' as DifficultyLevel, frequency: 3, wordType: 'other' as const },
-        { word: 'ich', englishMeaning: 'I', difficulty: 'beginner' as DifficultyLevel, frequency: 4, wordType: 'other' as const },
-        { word: 'du', englishMeaning: 'you', difficulty: 'beginner' as DifficultyLevel, frequency: 5, wordType: 'other' as const },
-        { word: 'er', englishMeaning: 'he', difficulty: 'beginner' as DifficultyLevel, frequency: 6, wordType: 'other' as const },
-        { word: 'sie', englishMeaning: 'she/they', difficulty: 'beginner' as DifficultyLevel, frequency: 7, wordType: 'other' as const },
-        { word: 'es', englishMeaning: 'it', difficulty: 'beginner' as DifficultyLevel, frequency: 8, wordType: 'other' as const },
-        { word: 'haben', englishMeaning: 'to have', difficulty: 'beginner' as DifficultyLevel, frequency: 9, wordType: 'verb' as const },
-        { word: 'sein', englishMeaning: 'to be', difficulty: 'beginner' as DifficultyLevel, frequency: 10, wordType: 'verb' as const },
-        { word: 'Haus', englishMeaning: 'house', difficulty: 'beginner' as DifficultyLevel, frequency: 11, wordType: 'noun' as const },
-        { word: 'Auto', englishMeaning: 'car', difficulty: 'beginner' as DifficultyLevel, frequency: 12, wordType: 'noun' as const },
-        { word: 'Katze', englishMeaning: 'cat', difficulty: 'beginner' as DifficultyLevel, frequency: 13, wordType: 'noun' as const },
-        { word: 'Hund', englishMeaning: 'dog', difficulty: 'beginner' as DifficultyLevel, frequency: 14, wordType: 'noun' as const },
-        { word: 'groß', englishMeaning: 'big', difficulty: 'beginner' as DifficultyLevel, frequency: 15, wordType: 'adjective' as const },
-        { word: 'klein', englishMeaning: 'small', difficulty: 'beginner' as DifficultyLevel, frequency: 16, wordType: 'adjective' as const },
-        { word: 'gut', englishMeaning: 'good', difficulty: 'beginner' as DifficultyLevel, frequency: 17, wordType: 'adjective' as const },
-        { word: 'schlecht', englishMeaning: 'bad', difficulty: 'beginner' as DifficultyLevel, frequency: 18, wordType: 'adjective' as const },
-        { word: 'kommen', englishMeaning: 'to come', difficulty: 'beginner' as DifficultyLevel, frequency: 19, wordType: 'verb' as const },
-        { word: 'gehen', englishMeaning: 'to go', difficulty: 'beginner' as DifficultyLevel, frequency: 20, wordType: 'verb' as const }
-      ],
-      intermediate: [
-        { word: 'werden', englishMeaning: 'to become', difficulty: 'intermediate' as DifficultyLevel, frequency: 21, wordType: 'verb' as const },
-        { word: 'können', englishMeaning: 'can/to be able to', difficulty: 'intermediate' as DifficultyLevel, frequency: 22, wordType: 'verb' as const },
-        { word: 'müssen', englishMeaning: 'must/to have to', difficulty: 'intermediate' as DifficultyLevel, frequency: 23, wordType: 'verb' as const },
-        { word: 'sollen', englishMeaning: 'should/ought to', difficulty: 'intermediate' as DifficultyLevel, frequency: 24, wordType: 'verb' as const },
-        { word: 'wollen', englishMeaning: 'to want', difficulty: 'intermediate' as DifficultyLevel, frequency: 25, wordType: 'verb' as const },
-        { word: 'zwischen', englishMeaning: 'between', difficulty: 'intermediate' as DifficultyLevel, frequency: 26, wordType: 'other' as const },
-        { word: 'während', englishMeaning: 'during/while', difficulty: 'intermediate' as DifficultyLevel, frequency: 27, wordType: 'other' as const },
-        { word: 'trotzdem', englishMeaning: 'nevertheless', difficulty: 'intermediate' as DifficultyLevel, frequency: 28, wordType: 'other' as const },
-        { word: 'deshalb', englishMeaning: 'therefore', difficulty: 'intermediate' as DifficultyLevel, frequency: 29, wordType: 'other' as const },
-        { word: 'außerdem', englishMeaning: 'furthermore', difficulty: 'intermediate' as DifficultyLevel, frequency: 30, wordType: 'other' as const },
-        { word: 'Erfahrung', englishMeaning: 'experience', difficulty: 'intermediate' as DifficultyLevel, frequency: 31, wordType: 'noun' as const },
-        { word: 'Gesellschaft', englishMeaning: 'society', difficulty: 'intermediate' as DifficultyLevel, frequency: 32, wordType: 'noun' as const },
-        { word: 'Entwicklung', englishMeaning: 'development', difficulty: 'intermediate' as DifficultyLevel, frequency: 33, wordType: 'noun' as const },
-        { word: 'Möglichkeit', englishMeaning: 'possibility', difficulty: 'intermediate' as DifficultyLevel, frequency: 34, wordType: 'noun' as const },
-        { word: 'wichtig', englishMeaning: 'important', difficulty: 'intermediate' as DifficultyLevel, frequency: 35, wordType: 'adjective' as const },
-        { word: 'schwierig', englishMeaning: 'difficult', difficulty: 'intermediate' as DifficultyLevel, frequency: 36, wordType: 'adjective' as const },
-        { word: 'interessant', englishMeaning: 'interesting', difficulty: 'intermediate' as DifficultyLevel, frequency: 37, wordType: 'adjective' as const },
-        { word: 'notwendig', englishMeaning: 'necessary', difficulty: 'intermediate' as DifficultyLevel, frequency: 38, wordType: 'adjective' as const },
-        { word: 'verstehen', englishMeaning: 'to understand', difficulty: 'intermediate' as DifficultyLevel, frequency: 39, wordType: 'verb' as const },
-        { word: 'erklären', englishMeaning: 'to explain', difficulty: 'intermediate' as DifficultyLevel, frequency: 40, wordType: 'verb' as const }
-      ],
-      advanced: [
-        { word: 'Verantwortung', englishMeaning: 'responsibility', difficulty: 'advanced' as DifficultyLevel, frequency: 41, wordType: 'noun' as const },
-        { word: 'Wissenschaft', englishMeaning: 'science', difficulty: 'advanced' as DifficultyLevel, frequency: 42, wordType: 'noun' as const },
-        { word: 'Verständnis', englishMeaning: 'understanding', difficulty: 'advanced' as DifficultyLevel, frequency: 43, wordType: 'noun' as const },
-        { word: 'Beziehung', englishMeaning: 'relationship', difficulty: 'advanced' as DifficultyLevel, frequency: 44, wordType: 'noun' as const },
-        { word: 'Entscheidung', englishMeaning: 'decision', difficulty: 'advanced' as DifficultyLevel, frequency: 45, wordType: 'noun' as const },
-        { word: 'außergewöhnlich', englishMeaning: 'extraordinary', difficulty: 'advanced' as DifficultyLevel, frequency: 46, wordType: 'adjective' as const },
-        { word: 'verantwortlich', englishMeaning: 'responsible', difficulty: 'advanced' as DifficultyLevel, frequency: 47, wordType: 'adjective' as const },
-        { word: 'wissenschaftlich', englishMeaning: 'scientific', difficulty: 'advanced' as DifficultyLevel, frequency: 48, wordType: 'adjective' as const },
-        { word: 'charakteristisch', englishMeaning: 'characteristic', difficulty: 'advanced' as DifficultyLevel, frequency: 49, wordType: 'adjective' as const },
-        { word: 'repräsentativ', englishMeaning: 'representative', difficulty: 'advanced' as DifficultyLevel, frequency: 50, wordType: 'adjective' as const },
-        { word: 'berücksichtigen', englishMeaning: 'to consider', difficulty: 'advanced' as DifficultyLevel, frequency: 51, wordType: 'verb' as const },
-        { word: 'charakterisieren', englishMeaning: 'to characterize', difficulty: 'advanced' as DifficultyLevel, frequency: 52, wordType: 'verb' as const },
-        { word: 'repräsentieren', englishMeaning: 'to represent', difficulty: 'advanced' as DifficultyLevel, frequency: 53, wordType: 'verb' as const },
-        { word: 'demonstrieren', englishMeaning: 'to demonstrate', difficulty: 'advanced' as DifficultyLevel, frequency: 54, wordType: 'verb' as const },
-        { word: 'interpretieren', englishMeaning: 'to interpret', difficulty: 'advanced' as DifficultyLevel, frequency: 55, wordType: 'verb' as const }
-      ]
-    },
-    english: {
-      beginner: [
-        { word: 'the', englishMeaning: 'definite article', difficulty: 'beginner', frequency: 1, wordType: 'other' },
-        { word: 'be', englishMeaning: 'to exist', difficulty: 'beginner', frequency: 2, wordType: 'verb' },
-        { word: 'to', englishMeaning: 'preposition', difficulty: 'beginner', frequency: 3, wordType: 'other' },
-        { word: 'of', englishMeaning: 'belonging to', difficulty: 'beginner', frequency: 4, wordType: 'other' },
-        { word: 'and', englishMeaning: 'conjunction', difficulty: 'beginner', frequency: 5, wordType: 'other' },
-        { word: 'have', englishMeaning: 'to possess', difficulty: 'beginner', frequency: 6, wordType: 'verb' },
-        { word: 'it', englishMeaning: 'pronoun', difficulty: 'beginner', frequency: 7, wordType: 'other' },
-        { word: 'in', englishMeaning: 'inside', difficulty: 'beginner', frequency: 8, wordType: 'other' },
-        { word: 'that', englishMeaning: 'demonstrative', difficulty: 'beginner', frequency: 9, wordType: 'other' },
-        { word: 'for', englishMeaning: 'preposition', difficulty: 'beginner', frequency: 10, wordType: 'other' }
-      ],
-      intermediate: [
-        { word: 'become', englishMeaning: 'to grow to be', difficulty: 'intermediate', frequency: 11, wordType: 'verb' },
-        { word: 'through', englishMeaning: 'by way of', difficulty: 'intermediate', frequency: 12, wordType: 'other' },
-        { word: 'between', englishMeaning: 'in the middle of', difficulty: 'intermediate', frequency: 13, wordType: 'other' },
-        { word: 'important', englishMeaning: 'significant', difficulty: 'intermediate', frequency: 14, wordType: 'adjective' },
-        { word: 'different', englishMeaning: 'not the same', difficulty: 'intermediate', frequency: 15, wordType: 'adjective' }
-      ],
-      advanced: [
-        { word: 'sophisticated', englishMeaning: 'complex and refined', difficulty: 'advanced', frequency: 16, wordType: 'adjective' },
-        { word: 'consequence', englishMeaning: 'result or effect', difficulty: 'advanced', frequency: 17, wordType: 'noun' },
-        { word: 'particularly', englishMeaning: 'especially', difficulty: 'advanced', frequency: 18, wordType: 'other' },
-        { word: 'administration', englishMeaning: 'management', difficulty: 'advanced', frequency: 19, wordType: 'noun' },
-        { word: 'representative', englishMeaning: 'typical example', difficulty: 'advanced', frequency: 20, wordType: 'adjective' }
-      ]
-    },
-    spanish: {
-      beginner: [
-        { word: 'el', englishMeaning: 'the (masculine)', difficulty: 'beginner', frequency: 1, wordType: 'other' },
-        { word: 'la', englishMeaning: 'the (feminine)', difficulty: 'beginner', frequency: 2, wordType: 'other' },
-        { word: 'yo', englishMeaning: 'I', difficulty: 'beginner', frequency: 3, wordType: 'other' },
-        { word: 'tú', englishMeaning: 'you', difficulty: 'beginner', frequency: 4, wordType: 'other' },
-        { word: 'él', englishMeaning: 'he', difficulty: 'beginner', frequency: 5, wordType: 'other' },
-        { word: 'ella', englishMeaning: 'she', difficulty: 'beginner', frequency: 6, wordType: 'other' },
-        { word: 'ser', englishMeaning: 'to be (permanent)', difficulty: 'beginner', frequency: 7, wordType: 'verb' },
-        { word: 'estar', englishMeaning: 'to be (temporary)', difficulty: 'beginner', frequency: 8, wordType: 'verb' },
-        { word: 'tener', englishMeaning: 'to have', difficulty: 'beginner', frequency: 9, wordType: 'verb' },
-        { word: 'hacer', englishMeaning: 'to do/make', difficulty: 'beginner', frequency: 10, wordType: 'verb' }
-      ],
-      intermediate: [
-        { word: 'porque', englishMeaning: 'because', difficulty: 'intermediate', frequency: 11, wordType: 'other' },
-        { word: 'durante', englishMeaning: 'during', difficulty: 'intermediate', frequency: 12, wordType: 'other' },
-        { word: 'después', englishMeaning: 'after', difficulty: 'intermediate', frequency: 13, wordType: 'other' },
-        { word: 'antes', englishMeaning: 'before', difficulty: 'intermediate', frequency: 14, wordType: 'other' },
-        { word: 'mientras', englishMeaning: 'while', difficulty: 'intermediate', frequency: 15, wordType: 'other' }
-      ],
-      advanced: [
-        { word: 'desarrollar', englishMeaning: 'to develop', difficulty: 'advanced', frequency: 16, wordType: 'verb' },
-        { word: 'establecer', englishMeaning: 'to establish', difficulty: 'advanced', frequency: 17, wordType: 'verb' },
-        { word: 'representar', englishMeaning: 'to represent', difficulty: 'advanced', frequency: 18, wordType: 'verb' },
-        { word: 'caracterizar', englishMeaning: 'to characterize', difficulty: 'advanced', frequency: 19, wordType: 'verb' },
-        { word: 'considerar', englishMeaning: 'to consider', difficulty: 'advanced', frequency: 20, wordType: 'verb' }
-      ]
-    },
-    french: {
-      beginner: [
-        { word: 'le', englishMeaning: 'the (masculine)', difficulty: 'beginner', frequency: 1, wordType: 'other' },
-        { word: 'la', englishMeaning: 'the (feminine)', difficulty: 'beginner', frequency: 2, wordType: 'other' },
-        { word: 'je', englishMeaning: 'I', difficulty: 'beginner', frequency: 3, wordType: 'other' },
-        { word: 'tu', englishMeaning: 'you', difficulty: 'beginner', frequency: 4, wordType: 'other' },
-        { word: 'il', englishMeaning: 'he', difficulty: 'beginner', frequency: 5, wordType: 'other' },
-        { word: 'elle', englishMeaning: 'she', difficulty: 'beginner', frequency: 6, wordType: 'other' },
-        { word: 'être', englishMeaning: 'to be', difficulty: 'beginner', frequency: 7, wordType: 'verb' },
-        { word: 'avoir', englishMeaning: 'to have', difficulty: 'beginner', frequency: 8, wordType: 'verb' },
-        { word: 'faire', englishMeaning: 'to do/make', difficulty: 'beginner', frequency: 9, wordType: 'verb' },
-        { word: 'dire', englishMeaning: 'to say', difficulty: 'beginner', frequency: 10, wordType: 'verb' }
-      ],
-      intermediate: [
-        { word: 'parce que', englishMeaning: 'because', difficulty: 'intermediate', frequency: 11, wordType: 'other' },
-        { word: 'pendant', englishMeaning: 'during', difficulty: 'intermediate', frequency: 12, wordType: 'other' },
-        { word: 'après', englishMeaning: 'after', difficulty: 'intermediate', frequency: 13, wordType: 'other' },
-        { word: 'avant', englishMeaning: 'before', difficulty: 'intermediate', frequency: 14, wordType: 'other' },
-        { word: 'tandis que', englishMeaning: 'while', difficulty: 'intermediate', frequency: 15, wordType: 'other' }
-      ],
-      advanced: [
-        { word: 'développer', englishMeaning: 'to develop', difficulty: 'advanced', frequency: 16, wordType: 'verb' },
-        { word: 'établir', englishMeaning: 'to establish', difficulty: 'advanced', frequency: 17, wordType: 'verb' },
-        { word: 'représenter', englishMeaning: 'to represent', difficulty: 'advanced', frequency: 18, wordType: 'verb' },
-        { word: 'caractériser', englishMeaning: 'to characterize', difficulty: 'advanced', frequency: 19, wordType: 'verb' },
-        { word: 'considérer', englishMeaning: 'to consider', difficulty: 'advanced', frequency: 20, wordType: 'verb' }
-      ]
-    }
+export interface WordSelectionResult {
+  words: string[];
+  metadata: {
+    selectionQuality: number;
+    diversityScore: number;
+    source: string;
+    totalAvailable: number;
   };
+}
 
-  static async getWordFrequencyData(language: string): Promise<WordFrequencyData> {
-    const normalizedLanguage = language.toLowerCase();
-    const languagePool = this.COMPREHENSIVE_WORD_POOLS[normalizedLanguage as keyof typeof this.COMPREHENSIVE_WORD_POOLS];
-    
-    if (!languagePool) {
-      console.warn(`[EnhancedWordFrequency] No word pool for language: ${language}`);
-      return {
-        top1k: ['the', 'be', 'to', 'of', 'and'],
-        top3k: ['the', 'be', 'to', 'of', 'and'],
-        top5k: ['the', 'be', 'to', 'of', 'and'],
-        top10k: ['the', 'be', 'to', 'of', 'and']
-      };
-    }
+export class EnhancedWordFrequencyService {
+  private static wordFrequencyCache: Map<string, WordFrequencyData> = new Map();
+  private static sessionData: Map<string, any> = new Map();
 
-    const allWords = [
-      ...(languagePool.beginner || []),
-      ...(languagePool.intermediate || []),
-      ...(languagePool.advanced || [])
-    ];
-
-    const wordList = allWords.map(w => w.word);
-    
-    return {
-      top1k: wordList.slice(0, Math.min(1000, wordList.length)),
-      top3k: wordList.slice(0, Math.min(3000, wordList.length)),
-      top5k: wordList.slice(0, Math.min(5000, wordList.length)),
-      top10k: wordList
+  // Enhanced language-specific emergency fallbacks
+  static getEmergencyFallbackWords(language: string): string[] {
+    const fallbacks: Record<string, string[]> = {
+      german: ['der', 'die', 'das', 'und', 'ist', 'ich', 'du', 'er', 'sie', 'wir', 'haben', 'sein', 'können', 'werden', 'müssen'],
+      spanish: ['el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'ser', 'se', 'no', 'te', 'lo', 'le', 'da'],
+      french: ['le', 'de', 'et', 'à', 'un', 'il', 'être', 'et', 'en', 'avoir', 'que', 'pour', 'dans', 'ce', 'son'],
+      italian: ['il', 'di', 'che', 'e', 'la', 'a', 'per', 'non', 'in', 'da', 'un', 'essere', 'con', 'avere', 'lo'],
+      portuguese: ['o', 'de', 'que', 'e', 'do', 'a', 'em', 'um', 'para', 'com', 'não', 'uma', 'os', 'no', 'se'],
+      japanese: ['の', 'に', 'は', 'を', 'た', 'が', 'で', 'て', 'と', 'し', 'れ', 'さ', 'ある', 'いる', 'する'],
+      arabic: ['في', 'من', 'إلى', 'على', 'هذا', 'هذه', 'التي', 'التي', 'كان', 'كانت', 'يكون', 'تكون', 'الذي', 'اللذان', 'اللتان'],
+      english: ['the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'it', 'for', 'not', 'on', 'with', 'he']
     };
+
+    return fallbacks[language.toLowerCase()] || fallbacks.english;
   }
 
-  static clearSessionData(language?: string): void {
-    if (language) {
-      this.sessionStats.delete(language);
-      console.log(`[EnhancedWordFrequency] Cleared session data for ${language}`);
-    } else {
-      this.sessionStats.clear();
-      console.log('[EnhancedWordFrequency] Cleared all session data');
+  // Enhanced word meaning retrieval with language consistency
+  static getWordMeaning(language: string, word: string): string {
+    const meanings: Record<string, Record<string, string>> = {
+      german: {
+        'der': 'the (masculine)',
+        'die': 'the (feminine)',
+        'das': 'the (neuter)',
+        'und': 'and',
+        'ist': 'is',
+        'ich': 'I',
+        'du': 'you',
+        'er': 'he',
+        'sie': 'she/they',
+        'wir': 'we',
+        'haben': 'to have',
+        'sein': 'to be',
+        'können': 'can/to be able to',
+        'werden': 'to become',
+        'müssen': 'must/to have to'
+      },
+      spanish: {
+        'el': 'the (masculine)',
+        'la': 'the (feminine)',
+        'de': 'of/from',
+        'que': 'that/which',
+        'y': 'and',
+        'a': 'to/at',
+        'en': 'in/on',
+        'un': 'a/an (masculine)',
+        'ser': 'to be',
+        'se': 'himself/herself/itself',
+        'no': 'no/not',
+        'te': 'you (object)',
+        'lo': 'it/him (object)',
+        'le': 'to him/her',
+        'da': 'gives'
+      },
+      french: {
+        'le': 'the (masculine)',
+        'de': 'of/from',
+        'et': 'and',
+        'à': 'to/at',
+        'un': 'a/an (masculine)',
+        'il': 'he/it',
+        'être': 'to be',
+        'en': 'in/of it',
+        'avoir': 'to have',
+        'que': 'that/which',
+        'pour': 'for',
+        'dans': 'in',
+        'ce': 'this/that',
+        'son': 'his/her/its'
+      }
+    };
+
+    const languageMeanings = meanings[language.toLowerCase()];
+    if (languageMeanings && languageMeanings[word.toLowerCase()]) {
+      return languageMeanings[word.toLowerCase()];
+    }
+
+    // Fallback to word itself if no meaning found
+    return word;
+  }
+
+  static async getWordFrequencyData(language: string): Promise<WordFrequencyData> {
+    if (this.wordFrequencyCache.has(language)) {
+      console.log(`[EnhancedWordFrequencyService] Getting word frequency data from cache for ${language}`);
+      return this.wordFrequencyCache.get(language)!;
+    }
+
+    try {
+      console.log(`[EnhancedWordFrequencyService] Fetching word frequency data for ${language}`);
+
+      const { data, error } = await supabase
+        .from('word_frequencies')
+        .select('top1k, top3k, top5k, top10k')
+        .eq('language', language)
+        .single();
+
+      if (error) {
+        throw new Error(`Error fetching word frequencies: ${error.message}`);
+      }
+
+      if (!data) {
+        throw new Error(`No word frequency data found for language: ${language}`);
+      }
+
+      const wordData: WordFrequencyData = {
+        top1k: data.top1k || [],
+        top3k: data.top3k || [],
+        top5k: data.top5k || [],
+        top10k: data.top10k || []
+      };
+
+      this.wordFrequencyCache.set(language, wordData);
+      return wordData;
+
+    } catch (error) {
+      console.error(`[EnhancedWordFrequencyService] Error getting word frequency data:`, error);
+      
+      // Fallback data
+      return {
+        top1k: ['the', 'be', 'to', 'of', 'and'],
+        top3k: ['the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'it'],
+        top5k: ['the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'it', 'for', 'not', 'on', 'with', 'he'],
+        top10k: ['the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at', 'this']
+      };
     }
   }
 
   static async selectWordsForDifficulty(options: WordSelectionOptions): Promise<WordSelectionResult> {
-    const { language, difficulty, count, excludeWords, maxRepetitions = 2 } = options;
-    
-    console.log(`[EnhancedWordFrequency] Selecting ${count} ${difficulty} words for ${language}`);
-    
+    const {
+      language,
+      difficulty,
+      count = 10,
+      excludeWords = [],
+      maxRepetitions = 3
+    } = options;
+
+    console.log(`[EnhancedWordFrequencyService] Selecting ${count} words for ${language} (${difficulty})`);
+
     try {
-      // Get comprehensive word pool
-      const wordPool = this.getComprehensiveWordPool(language, difficulty);
-      
-      // Filter out excluded words and apply repetition limits
-      const availableWords = wordPool
-        .filter(wordData => !excludeWords.some(excluded => 
-          excluded.toLowerCase() === wordData.word.toLowerCase()
-        ))
-        .sort(() => Math.random() - 0.5); // Randomize
+      // Get language-specific word pool
+      const wordData = await this.getWordFrequencyData(language);
+      let availableWords: string[] = [];
 
-      // Select words ensuring variety
-      const selectedWords = this.selectDiverseWords(availableWords, count, maxRepetitions);
+      // Select appropriate difficulty tier with language consistency check
+      switch (difficulty) {
+        case 'beginner':
+          availableWords = wordData.top1k || this.getEmergencyFallbackWords(language);
+          break;
+        case 'intermediate':
+          availableWords = wordData.top3k.length > 0 ? wordData.top3k : wordData.top1k || this.getEmergencyFallbackWords(language);
+          break;
+        case 'advanced':
+          availableWords = wordData.top5k.length > 0 ? wordData.top5k : (wordData.top3k.length > 0 ? wordData.top3k : wordData.top1k) || this.getEmergencyFallbackWords(language);
+          break;
+        default:
+          availableWords = wordData.top1k || this.getEmergencyFallbackWords(language);
+      }
 
-      const selectionQuality = this.calculateSelectionQuality(selectedWords, wordPool);
+      // Filter out excluded words
+      const filteredWords = availableWords.filter(word => 
+        !excludeWords.map(w => w.toLowerCase()).includes(word.toLowerCase())
+      );
+
+      // If no words available after filtering, use emergency fallbacks
+      if (filteredWords.length === 0) {
+        console.warn(`[EnhancedWordFrequencyService] No words available after filtering, using emergency fallbacks for ${language}`);
+        const emergencyWords = this.getEmergencyFallbackWords(language);
+        const availableEmergency = emergencyWords.filter(word => 
+          !excludeWords.map(w => w.toLowerCase()).includes(word.toLowerCase())
+        );
+        
+        if (availableEmergency.length === 0) {
+          // Absolute emergency - just use the first few emergency words
+          return {
+            words: emergencyWords.slice(0, count),
+            metadata: {
+              selectionQuality: 30,
+              diversityScore: 40,
+              source: `emergency_fallback_${language}`,
+              totalAvailable: emergencyWords.length
+            }
+          };
+        }
+        
+        return {
+          words: this.shuffleArray(availableEmergency).slice(0, count),
+          metadata: {
+            selectionQuality: 50,
+            diversityScore: 60,
+            source: `filtered_emergency_${language}`,
+            totalAvailable: availableEmergency.length
+          }
+        };
+      }
+
+      // Intelligent selection with diversity
+      const selectedWords = this.selectDiverseWords(filteredWords, count, maxRepetitions);
+      const selectionQuality = Math.min(85 + (filteredWords.length / 100), 100);
+
+      console.log(`[EnhancedWordFrequencyService] Selected ${selectedWords.length} words with ${selectionQuality}% quality for ${language}`);
 
       return {
-        words: selectedWords.map(w => w.word),
+        words: selectedWords,
         metadata: {
-          source: 'enhanced_comprehensive_pool',
-          selectionQuality,
-          difficultyLevel: difficulty,
-          totalAvailable: availableWords.length
+          selectionQuality: Math.round(selectionQuality),
+          diversityScore: Math.round(this.calculateDiversityScore(selectedWords)),
+          source: `${difficulty}_${language}`,
+          totalAvailable: filteredWords.length
         }
       };
+
     } catch (error) {
-      console.error('[EnhancedWordFrequency] Error selecting words:', error);
-      return this.getFallbackSelection(language, difficulty, count, excludeWords);
-    }
-  }
-
-  static getWordMeaning(language: string, word: string): string {
-    const normalizedLanguage = language.toLowerCase();
-    const languagePool = this.COMPREHENSIVE_WORD_POOLS[normalizedLanguage as keyof typeof this.COMPREHENSIVE_WORD_POOLS];
-    
-    if (!languagePool) return word;
-
-    // Search across all difficulty levels
-    for (const difficulty of ['beginner', 'intermediate', 'advanced'] as const) {
-      const wordData = languagePool[difficulty]?.find(w => 
-        w.word.toLowerCase() === word.toLowerCase()
-      );
-      if (wordData) {
-        return wordData.englishMeaning;
-      }
-    }
-
-    return word; // Fallback to word itself if meaning not found
-  }
-
-  private static getComprehensiveWordPool(language: string, difficulty: DifficultyLevel): WordWithMeaning[] {
-    const normalizedLanguage = language.toLowerCase();
-    const languagePool = this.COMPREHENSIVE_WORD_POOLS[normalizedLanguage as keyof typeof this.COMPREHENSIVE_WORD_POOLS];
-    
-    if (!languagePool) {
-      console.warn(`[EnhancedWordFrequency] No word pool for language: ${language}`);
-      return [];
-    }
-
-    // Include words from current difficulty and below for progressive learning
-    let words: WordWithMeaning[] = [];
-    
-    if (difficulty === 'advanced') {
-      words = [
-        ...(languagePool.beginner || []).map(w => ({ 
-          ...w, 
-          difficulty: 'beginner' as DifficultyLevel,
-          wordType: w.wordType as 'noun' | 'verb' | 'adjective' | 'other'
-        })),
-        ...(languagePool.intermediate || []).map(w => ({ 
-          ...w, 
-          difficulty: 'intermediate' as DifficultyLevel,
-          wordType: w.wordType as 'noun' | 'verb' | 'adjective' | 'other'
-        })),
-        ...(languagePool.advanced || []).map(w => ({ 
-          ...w, 
-          difficulty: 'advanced' as DifficultyLevel,
-          wordType: w.wordType as 'noun' | 'verb' | 'adjective' | 'other'
-        }))
-      ];
-    } else if (difficulty === 'intermediate') {
-      words = [
-        ...(languagePool.beginner || []).map(w => ({ 
-          ...w, 
-          difficulty: 'beginner' as DifficultyLevel,
-          wordType: w.wordType as 'noun' | 'verb' | 'adjective' | 'other'
-        })),
-        ...(languagePool.intermediate || []).map(w => ({ 
-          ...w, 
-          difficulty: 'intermediate' as DifficultyLevel,
-          wordType: w.wordType as 'noun' | 'verb' | 'adjective' | 'other'
-        }))
-      ];
-    } else {
-      words = (languagePool.beginner || []).map(w => ({ 
-        ...w, 
-        difficulty: 'beginner' as DifficultyLevel,
-        wordType: w.wordType as 'noun' | 'verb' | 'adjective' | 'other'
-      }));
-    }
-
-    return words;
-  }
-
-  private static selectDiverseWords(
-    availableWords: WordWithMeaning[], 
-    count: number, 
-    maxRepetitions: number
-  ): WordWithMeaning[] {
-    const selected: WordWithMeaning[] = [];
-    const typeCount: Record<string, number> = {};
-
-    // First pass: Select diverse word types
-    for (const wordData of availableWords) {
-      if (selected.length >= count) break;
+      console.error(`[EnhancedWordFrequencyService] Error selecting words for ${language}:`, error);
       
-      const currentTypeCount = typeCount[wordData.wordType] || 0;
-      if (currentTypeCount < maxRepetitions) {
-        selected.push(wordData);
-        typeCount[wordData.wordType] = currentTypeCount + 1;
-      }
-    }
-
-    // Second pass: Fill remaining slots if needed
-    if (selected.length < count) {
-      for (const wordData of availableWords) {
-        if (selected.length >= count) break;
-        if (!selected.includes(wordData)) {
-          selected.push(wordData);
+      // Emergency fallback on error
+      const emergencyWords = this.getEmergencyFallbackWords(language);
+      return {
+        words: emergencyWords.slice(0, count),
+        metadata: {
+          selectionQuality: 25,
+          diversityScore: 30,
+          source: `error_fallback_${language}`,
+          totalAvailable: emergencyWords.length
         }
+      };
+    }
+  }
+
+  private static selectDiverseWords(words: string[], count: number, maxRepetitions: number): string[] {
+    const selectedWords: string[] = [];
+    const wordCounts: { [word: string]: number } = {};
+
+    for (const word of words) {
+      const lowerCaseWord = word.toLowerCase();
+      wordCounts[lowerCaseWord] = (wordCounts[lowerCaseWord] || 0) + 1;
+    }
+
+    // Sort words by frequency in descending order
+    const sortedWords = Object.entries(wordCounts).sort(([, countA], [, countB]) => countB - countA);
+
+    for (const [word] of sortedWords) {
+      if (selectedWords.length >= count) {
+        break;
+      }
+
+      if (selectedWords.filter(selected => selected.toLowerCase() === word).length < maxRepetitions) {
+        selectedWords.push(word);
       }
     }
 
-    return selected.slice(0, count);
+    return selectedWords;
   }
 
-  private static calculateSelectionQuality(selected: WordWithMeaning[], pool: WordWithMeaning[]): number {
-    if (selected.length === 0) return 0;
-    
-    const typeVariety = new Set(selected.map(w => w.wordType)).size;
-    const maxTypes = Math.min(4, new Set(pool.map(w => w.wordType)).size);
-    const varietyScore = (typeVariety / maxTypes) * 50;
-    
-    const frequencyScore = selected.reduce((sum, word) => sum + (100 - word.frequency), 0) / selected.length;
-    
-    return Math.min(100, Math.round(varietyScore + frequencyScore * 0.5));
-  }
+  private static calculateDiversityScore(words: string[]): number {
+    if (words.length === 0) return 0;
 
-  private static getFallbackSelection(
-    language: string, 
-    difficulty: DifficultyLevel, 
-    count: number, 
-    excludeWords: string[]
-  ): WordSelectionResult {
-    const fallbackWords = ['the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'it'];
-    const available = fallbackWords.filter(w => !excludeWords.includes(w));
-    
-    return {
-      words: available.slice(0, count),
-      metadata: {
-        source: 'fallback_selection',
-        selectionQuality: 40,
-        difficultyLevel: difficulty,
-        totalAvailable: available.length
+    const uniqueChars = new Set<string>();
+    for (const word of words) {
+      for (const char of word) {
+        uniqueChars.add(char);
       }
-    };
+    }
+
+    // A higher number of unique characters indicates greater diversity
+    const diversityScore = (uniqueChars.size / words.length) * 50;
+    return Math.min(diversityScore, 100);
   }
 
-  static getSessionStats(language: string): any {
-    return this.sessionStats.get(language) || {
-      wordsUsed: 0,
-      typeDistribution: {},
-      averageQuality: 0
-    };
+  private static shuffleArray<T>(array: T[]): T[] {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
   }
 
-  static updateSessionStats(language: string, words: string[], quality: number): void {
-    const current = this.getSessionStats(language);
-    
-    this.sessionStats.set(language, {
-      wordsUsed: current.wordsUsed + words.length,
-      typeDistribution: current.typeDistribution,
-      averageQuality: Math.round((current.averageQuality + quality) / 2)
-    });
+  static clearCache(language?: string) {
+    if (language) {
+      console.log(`[EnhancedWordFrequencyService] Clearing cache for ${language}`);
+      this.wordFrequencyCache.delete(language);
+    } else {
+      console.log(`[EnhancedWordFrequencyService] Clearing all cache`);
+      this.wordFrequencyCache.clear();
+    }
+  }
+
+  static clearSessionData(language?: string) {
+    if (language) {
+      console.log(`[EnhancedWordFrequencyService] Clearing session data for ${language}`);
+      this.sessionData.delete(language);
+    } else {
+      console.log(`[EnhancedWordFrequencyService] Clearing all session data`);
+      this.sessionData.clear();
+    }
+  }
+
+  static getCacheInfo(): { languages: string[], totalWords: number } {
+    let totalWords = 0;
+    const languages: string[] = [];
+
+    for (const [language, data] of this.wordFrequencyCache.entries()) {
+      languages.push(language);
+      totalWords += (data.top1k?.length || 0) + (data.top3k?.length || 0) + (data.top5k?.length || 0);
+    }
+
+    return { languages, totalWords };
+  }
+
+  static setSessionData(key: string, data: any, language?: string) {
+    const sessionKey = language ? `${language}-${key}` : key;
+    this.sessionData.set(sessionKey, data);
+  }
+
+  static getSessionData(key: string, language?: string): any {
+    const sessionKey = language ? `${language}-${key}` : key;
+    return this.sessionData.get(sessionKey);
   }
 }

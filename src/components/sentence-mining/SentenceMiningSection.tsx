@@ -5,16 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Play, BarChart3, BookOpen } from 'lucide-react';
 import { DifficultyLevel } from '@/types/sentence-mining';
-import { useEnhancedSentenceMining } from '@/hooks/use-enhanced-sentence-mining';
+import { useUnifiedSentenceMining } from '@/hooks/use-unified-sentence-mining';
 import { MinimalistClozeExercise } from './exercises/MinimalistClozeExercise';
 import { EnhancedVocabularyStats } from './EnhancedVocabularyStats';
 import { VocabularyProgressIndicator } from './VocabularyProgressIndicator';
-import { EnhancedDifficultySelector } from './EnhancedDifficultySelector';
 import { useUserSettingsContext } from '@/contexts/UserSettingsContext';
 
 export const SentenceMiningSection: React.FC = () => {
   const { settings } = useUserSettingsContext();
-  const mining = useEnhancedSentenceMining();
+  const mining = useUnifiedSentenceMining();
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('beginner');
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [isGeneratingNext, setIsGeneratingNext] = useState(false);
@@ -24,17 +23,17 @@ export const SentenceMiningSection: React.FC = () => {
     setIsStartingSession(true);
     
     try {
-      console.log('[SentenceMiningSection] Starting enhanced session with difficulty:', difficulty);
+      console.log('[SentenceMiningSection] Starting unified spaced repetition session with difficulty:', difficulty);
       
       const session = await mining.startSession(difficulty);
-      console.log('[SentenceMiningSection] Enhanced session created:', session?.id);
+      console.log('[SentenceMiningSection] Unified session created:', session?.id);
       
-      console.log('[SentenceMiningSection] Generating first exercise...');
+      console.log('[SentenceMiningSection] Generating first exercise with spaced repetition...');
       await mining.nextExercise(session);
       console.log('[SentenceMiningSection] First exercise generated successfully');
       
     } catch (error) {
-      console.error('[SentenceMiningSection] Failed to start enhanced session:', error);
+      console.error('[SentenceMiningSection] Failed to start unified session:', error);
     } finally {
       setIsStartingSession(false);
     }
@@ -53,11 +52,11 @@ export const SentenceMiningSection: React.FC = () => {
     setIsGeneratingNext(true);
     
     try {
-      console.log('[SentenceMiningSection] Generating next enhanced exercise');
+      console.log('[SentenceMiningSection] Generating next spaced repetition exercise');
       await mining.nextExercise(mining.currentSession);
-      console.log('[SentenceMiningSection] Next enhanced exercise generated successfully');
+      console.log('[SentenceMiningSection] Next spaced repetition exercise generated successfully');
     } catch (error) {
-      console.error('[SentenceMiningSection] Failed to generate next enhanced exercise:', error);
+      console.error('[SentenceMiningSection] Failed to generate next exercise:', error);
     } finally {
       setIsGeneratingNext(false);
     }
@@ -76,7 +75,7 @@ export const SentenceMiningSection: React.FC = () => {
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="text-muted-foreground">
-            {isStartingSession ? 'Starting your session...' : 'Loading...'}
+            {isStartingSession ? 'Initializing spaced repetition session...' : 'Loading...'}
           </p>
         </div>
       </div>
@@ -104,11 +103,16 @@ export const SentenceMiningSection: React.FC = () => {
         <TabsContent value="practice" className="space-y-6">
           {!mining.currentSession ? (
             <div className="space-y-8">
-              {/* Minimalist Difficulty Selection */}
+              {/* Enhanced Difficulty Selection with Spaced Repetition Info */}
               <div className="max-w-md mx-auto space-y-6">
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold mb-2">Choose Your Level</h2>
-                  <p className="text-muted-foreground">Start practicing with {settings.selectedLanguage}</p>
+                  <h2 className="text-2xl font-bold mb-2">Smart Learning Mode</h2>
+                  <p className="text-muted-foreground">
+                    AI-powered spaced repetition for {settings.selectedLanguage}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Words are selected based on your learning progress and optimal review timing
+                  </p>
                 </div>
                 
                 <div className="space-y-3">
@@ -120,35 +124,54 @@ export const SentenceMiningSection: React.FC = () => {
                       onClick={() => handleStartSession(level)}
                       disabled={isLoading}
                     >
-                      {level}
+                      <div className="flex flex-col items-start w-full">
+                        <span className="font-medium">{level}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {level === 'beginner' && 'Most common words, spaced repetition'}
+                          {level === 'intermediate' && 'Balanced vocabulary, adaptive learning'}
+                          {level === 'advanced' && 'Complex words, intelligent review'}
+                        </span>
+                      </div>
                     </Button>
                   ))}
                 </div>
               </div>
             </div>
           ) : (
-            // Current Exercise - Minimalist Design
+            // Current Exercise with Enhanced Feedback
             <div className="w-full">
               {mining.currentExercise ? (
-                <MinimalistClozeExercise
-                  exercise={mining.currentExercise}
-                  userResponse={mining.userResponse}
-                  showResult={mining.showResult}
-                  isCorrect={mining.isCorrect}
-                  loading={isGeneratingNext}
-                  onResponseChange={mining.updateUserResponse}
-                  onSubmit={handleSubmitAnswer}
-                  onNext={handleNextExercise}
-                  onSkip={handleSkip}
-                  showTranslation={mining.showTranslation}
-                  onToggleTranslation={mining.toggleTranslation}
-                />
+                <div className="space-y-4">
+                  {/* Session Info */}
+                  <div className="text-center text-sm text-muted-foreground">
+                    <span>Spaced Repetition Mode • </span>
+                    <span className="capitalize">{mining.currentSession.difficulty_level}</span>
+                    <span> • {settings.selectedLanguage}</span>
+                  </div>
+                  
+                  <MinimalistClozeExercise
+                    exercise={mining.currentExercise}
+                    userResponse={mining.userResponse}
+                    showResult={mining.showResult}
+                    isCorrect={mining.isCorrect}
+                    loading={isGeneratingNext}
+                    onResponseChange={mining.updateUserResponse}
+                    onSubmit={handleSubmitAnswer}
+                    onNext={handleNextExercise}
+                    onSkip={handleSkip}
+                    showTranslation={mining.showTranslation}
+                    onToggleTranslation={mining.toggleTranslation}
+                  />
+                </div>
               ) : (
                 <Card>
                   <CardContent className="pt-6 text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                     <p className="text-muted-foreground">
-                      {isGeneratingNext ? 'Preparing next exercise...' : 'Generating personalized exercise...'}
+                      {isGeneratingNext ? 'Selecting optimal word for review...' : 'Analyzing your learning progress...'}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Using spaced repetition algorithm
                     </p>
                   </CardContent>
                 </Card>
@@ -190,7 +213,7 @@ export const SentenceMiningSection: React.FC = () => {
                   <div className="text-2xl font-bold">
                     {mining.progress.vocabularyStats.totalWordsEncountered}
                   </div>
-                  <p className="text-sm text-muted-foreground">Words Learned</p>
+                  <p className="text-sm text-muted-foreground">Words in Spaced Repetition</p>
                 </CardContent>
               </Card>
             </div>
