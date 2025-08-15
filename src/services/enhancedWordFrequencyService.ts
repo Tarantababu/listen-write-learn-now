@@ -299,17 +299,41 @@ export class EnhancedWordFrequencyService {
     
     if (difficulty === 'advanced') {
       words = [
-        ...(languagePool.beginner || []).map(w => ({ ...w, difficulty: 'beginner' as DifficultyLevel })),
-        ...(languagePool.intermediate || []).map(w => ({ ...w, difficulty: 'intermediate' as DifficultyLevel })),
-        ...(languagePool.advanced || []).map(w => ({ ...w, difficulty: 'advanced' as DifficultyLevel }))
+        ...(languagePool.beginner || []).map(w => ({ 
+          ...w, 
+          difficulty: 'beginner' as DifficultyLevel,
+          wordType: w.wordType as 'noun' | 'verb' | 'adjective' | 'other'
+        })),
+        ...(languagePool.intermediate || []).map(w => ({ 
+          ...w, 
+          difficulty: 'intermediate' as DifficultyLevel,
+          wordType: w.wordType as 'noun' | 'verb' | 'adjective' | 'other'
+        })),
+        ...(languagePool.advanced || []).map(w => ({ 
+          ...w, 
+          difficulty: 'advanced' as DifficultyLevel,
+          wordType: w.wordType as 'noun' | 'verb' | 'adjective' | 'other'
+        }))
       ];
     } else if (difficulty === 'intermediate') {
       words = [
-        ...(languagePool.beginner || []).map(w => ({ ...w, difficulty: 'beginner' as DifficultyLevel })),
-        ...(languagePool.intermediate || []).map(w => ({ ...w, difficulty: 'intermediate' as DifficultyLevel }))
+        ...(languagePool.beginner || []).map(w => ({ 
+          ...w, 
+          difficulty: 'beginner' as DifficultyLevel,
+          wordType: w.wordType as 'noun' | 'verb' | 'adjective' | 'other'
+        })),
+        ...(languagePool.intermediate || []).map(w => ({ 
+          ...w, 
+          difficulty: 'intermediate' as DifficultyLevel,
+          wordType: w.wordType as 'noun' | 'verb' | 'adjective' | 'other'
+        }))
       ];
     } else {
-      words = (languagePool.beginner || []).map(w => ({ ...w, difficulty: 'beginner' as DifficultyLevel }));
+      words = (languagePool.beginner || []).map(w => ({ 
+        ...w, 
+        difficulty: 'beginner' as DifficultyLevel,
+        wordType: w.wordType as 'noun' | 'verb' | 'adjective' | 'other'
+      }));
     }
 
     return words;
